@@ -53,6 +53,7 @@ export default function AvailabilityCalendar({
         <Legend swatch="bg-yellow-light border-yellow" label="Ultimi posti" />
         <Legend swatch="bg-orange-light border-orange-mid" label="Pieno" />
         <Legend swatch="bg-[#F4F6FA] border-[#E8EBF0]" label="Chiuso" />
+        <span className="flex items-center gap-1.5">🏊 Giornata particolare</span>
       </div>
 
       <div className="overflow-x-auto">
@@ -98,6 +99,14 @@ export default function AvailabilityCalendar({
                         {(day.discountPercent || day.lastMinute) && (
                           <span className="absolute -top-1.5 -right-1.5 flex items-center gap-0.5 rounded-full bg-purple px-1.5 py-0.5 text-[9px] font-bold text-white">
                             {day.lastMinute ? "⚡" : `-${day.discountPercent}%`}
+                          </span>
+                        )}
+                        {day.specialEmoji && (
+                          <span
+                            title={day.specialLabel}
+                            className="absolute -top-1.5 -left-1.5 flex h-5 w-5 items-center justify-center rounded-full bg-white text-xs shadow-sm ring-1 ring-[#E8EBF0]"
+                          >
+                            {day.specialEmoji}
                           </span>
                         )}
                       </button>
@@ -182,6 +191,41 @@ export default function AvailabilityCalendar({
                 className="w-full bg-transparent text-sm font-semibold text-ink outline-none"
               />
             </label>
+          </div>
+
+          <div className="mt-3 rounded-md bg-bg px-3 py-2.5">
+            <div className="mb-1.5 text-xs text-ink-2">
+              Giornata particolare (es. piscina, giochi d&apos;acqua)
+            </div>
+            <input
+              value={selectedDay.specialLabel ?? ""}
+              onChange={(e) =>
+                updateSelectedDay({ specialLabel: e.target.value || undefined })
+              }
+              placeholder="Es. Giornata in piscina"
+              className="mb-2 w-full rounded-md border border-[#E8EBF0] bg-white px-3 py-2 text-sm outline-none focus:border-sky"
+            />
+            <div className="flex flex-wrap gap-1.5">
+              {["", "🏊", "💦", "🎉", "🎨", "🌳", "🏆"].map((emoji) => (
+                <button
+                  key={emoji || "none"}
+                  type="button"
+                  onClick={() =>
+                    updateSelectedDay({
+                      specialEmoji: emoji || undefined,
+                      specialLabel: emoji ? selectedDay.specialLabel : undefined,
+                    })
+                  }
+                  className={`flex h-8 w-8 items-center justify-center rounded-md border text-sm ${
+                    (selectedDay.specialEmoji ?? "") === emoji
+                      ? "border-sky bg-sky-light"
+                      : "border-[#E8EBF0] bg-white"
+                  }`}
+                >
+                  {emoji || "—"}
+                </button>
+              ))}
+            </div>
           </div>
 
           <p className="mt-3 text-[11px] text-ink-3">

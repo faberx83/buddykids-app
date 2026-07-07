@@ -7,10 +7,14 @@ import {
   GroupItem,
   Kid,
   Promotion,
+  Tag,
   Week,
 } from "./types";
 
-export const categories = [
+// Lista "master" dei tag di centro/attività — gestibile lato Admin
+// piattaforma in /admin/tags. Un'attività può avere più tag (vedi
+// Activity.tagIds), non un'unica categoria fissa.
+export const categories: Tag[] = [
   { id: "sport", label: "Sport", emoji: "⚽", bg: "#E3F9F5" },
   { id: "arte", label: "Arte", emoji: "🎨", bg: "#FFF0EA" },
   { id: "musica", label: "Musica", emoji: "🎵", bg: "#F0EEFF" },
@@ -18,6 +22,13 @@ export const categories = [
   { id: "outdoor", label: "Outdoor", emoji: "🌳", bg: "#E8F9EE" },
   { id: "intera", label: "Intera", emoji: "☀️", bg: "#FFF8E7" },
   { id: "mezza", label: "Mezza", emoji: "🕐", bg: "#FFF0EA" },
+  { id: "piscina", label: "Piscina", emoji: "🏊", bg: "#E3F9F5" },
+  { id: "teatro", label: "Teatro", emoji: "🎭", bg: "#F0EEFF" },
+  { id: "tecnologia", label: "Tecnologia", emoji: "💻", bg: "#E8F6FD" },
+  { id: "natura", label: "Natura", emoji: "🌿", bg: "#E8F9EE" },
+  { id: "lingue", label: "Lingue", emoji: "🌍", bg: "#E8F6FD" },
+  { id: "cucina", label: "Cucina", emoji: "🍳", bg: "#FFF0EA" },
+  { id: "danza", label: "Danza", emoji: "💃", bg: "#F0EEFF" },
 ];
 
 export const activities: Activity[] = [
@@ -28,7 +39,10 @@ export const activities: Activity[] = [
     imgGradient: "linear-gradient(135deg,#C8ECFD,#A5E5D8)",
     centerId: "centro-sportivo-lido",
     center: "Centro Sportivo Lido",
+    tagIds: ["sport", "piscina", "intera"],
     address: "Porta Nuova, Milano",
+    lat: 45.479,
+    lng: 9.1938,
     rating: 4.9,
     reviewsCount: 128,
     distanceKm: 1.2,
@@ -62,6 +76,9 @@ export const activities: Activity[] = [
     ],
     weeksAvailable: "6 di 8",
     shuttlePrice: 30,
+    preService: { available: true, time: "07:30", priceExtra: 5 },
+    postService: { available: true, time: "18:30", priceExtra: 8 },
+    mealOption: "included",
     reviews: [
       {
         initials: "AL",
@@ -84,7 +101,10 @@ export const activities: Activity[] = [
     imgGradient: "linear-gradient(135deg,#FFE8D9,#FFD0BB)",
     centerId: "accademia-crearte",
     center: "Accademia CreArte",
+    tagIds: ["arte", "teatro", "mezza"],
     address: "Milano",
+    lat: 45.48,
+    lng: 9.195,
     rating: 4.8,
     reviewsCount: 94,
     distanceKm: 2.5,
@@ -111,6 +131,9 @@ export const activities: Activity[] = [
     ],
     weeksAvailable: "8 di 8",
     shuttlePrice: 25,
+    preService: { available: false, time: "", priceExtra: 0 },
+    postService: { available: true, time: "17:00", priceExtra: 6 },
+    mealOption: "included",
     reviews: [
       {
         initials: "GF",
@@ -127,7 +150,10 @@ export const activities: Activity[] = [
     imgGradient: "linear-gradient(135deg,#EDE8FF,#D4CDFF)",
     centerId: "techkids-milano",
     center: "TechKids Milano",
+    tagIds: ["stem", "tecnologia"],
     address: "Milano",
+    lat: 45.4685,
+    lng: 9.1824,
     rating: 4.7,
     reviewsCount: 61,
     distanceKm: 0.8,
@@ -152,6 +178,9 @@ export const activities: Activity[] = [
     ],
     weeksAvailable: "5 di 8",
     shuttlePrice: 0,
+    preService: { available: false, time: "", priceExtra: 0 },
+    postService: { available: false, time: "", priceExtra: 0 },
+    mealOption: "packed",
     reviews: [
       {
         initials: "PT",
@@ -168,7 +197,10 @@ export const activities: Activity[] = [
     imgGradient: "linear-gradient(135deg,#D8F5E8,#B5EDD1)",
     centerId: "campo-brera",
     center: "Campo Brera",
+    tagIds: ["sport", "outdoor", "intera"],
     address: "Milano",
+    lat: 45.4719,
+    lng: 9.188,
     rating: 4.6,
     reviewsCount: 47,
     distanceKm: 3.1,
@@ -193,6 +225,9 @@ export const activities: Activity[] = [
     ],
     weeksAvailable: "7 di 8",
     shuttlePrice: 20,
+    preService: { available: true, time: "08:00", priceExtra: 4 },
+    postService: { available: true, time: "18:00", priceExtra: 6 },
+    mealOption: "included",
     reviews: [
       {
         initials: "SR",
@@ -209,7 +244,10 @@ export const activities: Activity[] = [
     imgGradient: "linear-gradient(135deg,#FFF5D6,#FFE89A)",
     centerId: "scuola-musica-aria",
     center: "Scuola di Musica Aria",
+    tagIds: ["musica"],
     address: "Milano",
+    lat: 45.475,
+    lng: 9.205,
     rating: 4.5,
     reviewsCount: 38,
     distanceKm: 1.8,
@@ -234,6 +272,9 @@ export const activities: Activity[] = [
     ],
     weeksAvailable: "8 di 8",
     shuttlePrice: 0,
+    preService: { available: false, time: "", priceExtra: 0 },
+    postService: { available: false, time: "", priceExtra: 0 },
+    mealOption: "packed",
     reviews: [
       {
         initials: "EC",
@@ -389,11 +430,17 @@ export const centers: Center[] = [
     gradient: "linear-gradient(135deg,#C8ECFD,#A5E5D8)",
     city: "Milano",
     address: "Via Lido 12, Porta Nuova",
+    lat: 45.479,
+    lng: 9.1938,
     description:
       "Centro sportivo con piscina olimpionica, campi esterni e staff qualificato per camp estivi acquatici e multisport.",
     contactEmail: "info@centrolido.it",
     contactPhone: "+39 02 1234567",
     ownerName: "Luca Bianchi",
+    socialLinks: {
+      instagram: "https://instagram.com/centrolido",
+      facebook: "https://facebook.com/centrolido",
+    },
   },
   {
     id: "accademia-crearte",
@@ -402,10 +449,16 @@ export const centers: Center[] = [
     gradient: "linear-gradient(135deg,#FFE8D9,#FFD0BB)",
     city: "Milano",
     address: "Via delle Arti 8",
+    lat: 45.48,
+    lng: 9.195,
     description: "Scuola d'arte con laboratori di pittura, ceramica e teatro per bambini e ragazzi.",
     contactEmail: "info@crearte.it",
     contactPhone: "+39 02 2345678",
     ownerName: "Giorgia Ferri",
+    socialLinks: {
+      instagram: "https://instagram.com/crearte_milano",
+      website: "https://crearte.it",
+    },
   },
   {
     id: "techkids-milano",
@@ -414,10 +467,16 @@ export const centers: Center[] = [
     gradient: "linear-gradient(135deg,#EDE8FF,#D4CDFF)",
     city: "Milano",
     address: "Via dell'Innovazione 3",
+    lat: 45.4685,
+    lng: 9.1824,
     description: "Centro STEM specializzato in coding, robotica e stampa 3D per ragazzi.",
     contactEmail: "info@techkids.it",
     contactPhone: "+39 02 3456789",
     ownerName: "Paolo Conti",
+    socialLinks: {
+      website: "https://techkids.it",
+      youtube: "https://youtube.com/@techkidsmilano",
+    },
   },
   {
     id: "campo-brera",
@@ -426,10 +485,15 @@ export const centers: Center[] = [
     gradient: "linear-gradient(135deg,#D8F5E8,#B5EDD1)",
     city: "Milano",
     address: "Via Brera 22",
+    lat: 45.4719,
+    lng: 9.188,
     description: "Impianto sportivo dedicato al calcio giovanile con staff di allenatori certificati.",
     contactEmail: "info@camobrera.it",
     contactPhone: "+39 02 4567890",
     ownerName: "Sara Romano",
+    socialLinks: {
+      instagram: "https://instagram.com/campobrera",
+    },
   },
   {
     id: "scuola-musica-aria",
@@ -438,10 +502,16 @@ export const centers: Center[] = [
     gradient: "linear-gradient(135deg,#FFF5D6,#FFE89A)",
     city: "Milano",
     address: "Via delle Note 5",
+    lat: 45.475,
+    lng: 9.205,
     description: "Scuola di musica con corsi di canto, strumento e propedeutica musicale.",
     contactEmail: "info@scuolaaria.it",
     contactPhone: "+39 02 5678901",
     ownerName: "Elena Costa",
+    socialLinks: {
+      instagram: "https://instagram.com/scuolaaria",
+      tiktok: "https://tiktok.com/@scuolaaria",
+    },
   },
 ];
 
@@ -461,6 +531,9 @@ function buildWeekDays(
     discountPercent?: number;
     lastMinuteDay?: number;
     closedDays?: number[];
+    specialDay?: number;
+    specialLabel?: string;
+    specialEmoji?: string;
   } = {}
 ): DayAvailability[] {
   const start = new Date(startDateISO + "T00:00:00");
@@ -483,6 +556,8 @@ function buildWeekDays(
       singleDayBookable: true,
       discountPercent: opts.discountDay === i ? opts.discountPercent ?? 15 : undefined,
       lastMinute: opts.lastMinuteDay === i,
+      specialLabel: opts.specialDay === i ? opts.specialLabel : undefined,
+      specialEmoji: opts.specialDay === i ? opts.specialEmoji : undefined,
     };
   });
 }
@@ -490,8 +565,17 @@ function buildWeekDays(
 export const activityDaysByActivity: Record<string, DayAvailability[]> = {
   "summer-camp-acquatico": [
     ...buildWeekDays("2025-06-24", 0, 12, { discountDay: 4, discountPercent: 15 }),
-    ...buildWeekDays("2025-07-01", 1, 12, { lastMinuteDay: 0 }),
-    ...buildWeekDays("2025-07-08", 2, 12),
+    ...buildWeekDays("2025-07-01", 1, 12, {
+      lastMinuteDay: 0,
+      specialDay: 2,
+      specialLabel: "Giornata in piscina",
+      specialEmoji: "🏊",
+    }),
+    ...buildWeekDays("2025-07-08", 2, 12, {
+      specialDay: 3,
+      specialLabel: "Giochi d'acqua",
+      specialEmoji: "💦",
+    }),
     ...buildWeekDays("2025-07-15", 3, 12),
     ...buildWeekDays("2025-07-22", 4, 12),
     ...buildWeekDays("2025-07-29", 5, 12, { closedDays: [0, 1, 2, 3, 4] }),
@@ -510,7 +594,11 @@ export const activityDaysByActivity: Record<string, DayAvailability[]> = {
   ],
   "soccer-academy-estate": [
     ...buildWeekDays("2025-06-24", 0, 16, { discountDay: 2, discountPercent: 10 }),
-    ...buildWeekDays("2025-07-01", 1, 16),
+    ...buildWeekDays("2025-07-01", 1, 16, {
+      specialDay: 4,
+      specialLabel: "Torneo di fine settimana",
+      specialEmoji: "🏆",
+    }),
     ...buildWeekDays("2025-07-08", 2, 16),
     ...buildWeekDays("2025-07-15", 3, 16),
   ],
@@ -595,6 +683,7 @@ export const bookingsMock: BookingRecord[] = [
     id: "bk-1",
     activityId: "summer-camp-acquatico",
     kidName: "Marco Ferretti",
+    kidAge: 10,
     parentName: "Sofia Ferretti",
     weeksLabel: "Settimana 1 – 3",
     totalAmount: 592,
@@ -605,6 +694,7 @@ export const bookingsMock: BookingRecord[] = [
     id: "bk-2",
     activityId: "summer-camp-acquatico",
     kidName: "Giulia Marchetti",
+    kidAge: 8,
     parentName: "Laura Marchetti",
     weeksLabel: "Settimana 2",
     totalAmount: 280,
@@ -615,6 +705,7 @@ export const bookingsMock: BookingRecord[] = [
     id: "bk-3",
     activityId: "laboratorio-arti-creative",
     kidName: "Tommaso Greco",
+    kidAge: 9,
     parentName: "Anna Greco",
     weeksLabel: "Settimana 1",
     totalAmount: 220,
@@ -625,6 +716,7 @@ export const bookingsMock: BookingRecord[] = [
     id: "bk-4",
     activityId: "coding-robotica-kids",
     kidName: "Marco Ferretti",
+    kidAge: 10,
     parentName: "Sofia Ferretti",
     weeksLabel: "Settimana 1",
     totalAmount: 310,
@@ -635,6 +727,7 @@ export const bookingsMock: BookingRecord[] = [
     id: "bk-5",
     activityId: "soccer-academy-estate",
     kidName: "Davide Rossi",
+    kidAge: 11,
     parentName: "Elisa Rossi",
     weeksLabel: "Settimana 1 – 2",
     totalAmount: 450,
@@ -645,10 +738,121 @@ export const bookingsMock: BookingRecord[] = [
     id: "bk-6",
     activityId: "summer-music-camp",
     kidName: "Giulia Ferretti",
+    kidAge: 7,
     parentName: "Sofia Ferretti",
     weeksLabel: "Settimana 1",
     totalAmount: 195,
     status: "cancelled",
     createdAt: "2025-06-08",
+  },
+  {
+    id: "bk-7",
+    activityId: "summer-camp-acquatico",
+    kidName: "Elisa Bruno",
+    kidAge: 12,
+    parentName: "Marta Bruno",
+    weeksLabel: "Settimana 1",
+    totalAmount: 280,
+    status: "confirmed",
+    createdAt: "2025-06-18",
+  },
+  {
+    id: "bk-8",
+    activityId: "laboratorio-arti-creative",
+    kidName: "Sara Neri",
+    kidAge: 8,
+    parentName: "Paolo Neri",
+    weeksLabel: "Settimana 2",
+    totalAmount: 220,
+    status: "confirmed",
+    createdAt: "2025-06-20",
+  },
+  {
+    id: "bk-9",
+    activityId: "coding-robotica-kids",
+    kidName: "Luca Verdi",
+    kidAge: 12,
+    parentName: "Chiara Verdi",
+    weeksLabel: "Settimana 2",
+    totalAmount: 310,
+    status: "confirmed",
+    createdAt: "2025-06-21",
+  },
+  {
+    id: "bk-10",
+    activityId: "soccer-academy-estate",
+    kidName: "Pietro Colombo",
+    kidAge: 9,
+    parentName: "Francesca Colombo",
+    weeksLabel: "Settimana 2",
+    totalAmount: 250,
+    status: "pending",
+    createdAt: "2025-06-22",
+  },
+  {
+    id: "bk-11",
+    activityId: "summer-music-camp",
+    kidName: "Chiara Gallo",
+    kidAge: 8,
+    parentName: "Marco Gallo",
+    weeksLabel: "Settimana 2",
+    totalAmount: 195,
+    status: "confirmed",
+    createdAt: "2025-06-23",
+  },
+  {
+    id: "bk-12",
+    activityId: "summer-camp-acquatico",
+    kidName: "Anna Lombardi",
+    kidAge: 13,
+    parentName: "Roberto Lombardi",
+    weeksLabel: "Settimana 3",
+    totalAmount: 280,
+    status: "pending",
+    createdAt: "2025-06-25",
+  },
+  {
+    id: "bk-13",
+    activityId: "laboratorio-arti-creative",
+    kidName: "Giorgio Fontana",
+    kidAge: 11,
+    parentName: "Silvia Fontana",
+    weeksLabel: "Settimana 3",
+    totalAmount: 220,
+    status: "confirmed",
+    createdAt: "2025-07-01",
+  },
+  {
+    id: "bk-14",
+    activityId: "soccer-academy-estate",
+    kidName: "Federico Villa",
+    kidAge: 14,
+    parentName: "Davide Villa",
+    weeksLabel: "Settimana 3",
+    totalAmount: 250,
+    status: "confirmed",
+    createdAt: "2025-07-02",
+  },
+  {
+    id: "bk-15",
+    activityId: "coding-robotica-kids",
+    kidName: "Emma Ricci",
+    kidAge: 10,
+    parentName: "Luca Ricci",
+    weeksLabel: "Settimana 3",
+    totalAmount: 310,
+    status: "confirmed",
+    createdAt: "2025-07-03",
+  },
+  {
+    id: "bk-16",
+    activityId: "summer-music-camp",
+    kidName: "Nicolò Bianchi",
+    kidAge: 7,
+    parentName: "Elena Bianchi",
+    weeksLabel: "Settimana 1",
+    totalAmount: 195,
+    status: "cancelled",
+    createdAt: "2025-06-05",
   },
 ];

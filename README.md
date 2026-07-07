@@ -18,8 +18,8 @@ Senza chiavi Supabase l'app funziona comunque: tutte le schermate usano dati moc
 BuddyKids ha tre viste, per tre tipi di persone diverse:
 
 1. **App genitori** (`/`, `/search`, `/activity/[id]`, `/booking/[id]`, `/groups`, `/calendar`, `/profile`) — quella del mockup originale: cerca attività, prenota, gestisci i bambini. Nella sezione Calendario, il tab "Calendari centri" mostra il calendario giorno-per-giorno del centro per ogni attività a cui i bambini sono iscritti (giorni aperti, pieni, con sconto o promo), evidenziando i giorni effettivamente frequentati.
-2. **Pannello Gestore centro** (`/center`) — per chi gestisce un singolo centro estivo: modifica le informazioni del centro e delle attività, gestisce il calendario di disponibilità giorno-per-giorno (aprire/chiudere un giorno, aggiornare i posti liberi) e crea promozioni: sconti su un giorno specifico della settimana (es. "-15% ogni venerdì") o promo last-minute per riempire i posti rimasti vuoti a ridosso della data.
-3. **Pannello Admin piattaforma** (`/admin`) — per chi gestisce BuddyKids: panoramica su tutti i centri, tutte le attività e tutte le prenotazioni della piattaforma.
+2. **Pannello Gestore centro** (`/center`) — per chi gestisce un singolo centro estivo: modifica le informazioni del centro e delle attività, gestisce il calendario di disponibilità giorno-per-giorno (aprire/chiudere un giorno, aggiornare i posti liberi, segnalare "giornate particolari" come piscina o giochi d'acqua) e crea promozioni: sconti su un giorno specifico della settimana (es. "-15% ogni venerdì") o promo last-minute per riempire i posti rimasti vuoti a ridosso della data. La configurazione di ogni attività include: tag multipli (sport, arte, piscina…), pre/post servizio (ingresso anticipato/uscita posticipata con orario e sovrapprezzo), pasto (incluso / al sacco / non fornito), agenda della giornata editabile e posizione con anteprima mappa. Dalla pagina profilo si collegano anche gli account social del centro.
+3. **Pannello Admin piattaforma** (`/admin`) — per chi gestisce BuddyKids: panoramica su tutti i centri, tutte le attività, tutte le prenotazioni, un'area Analisi (stagionalità, composizione clienti, cross-selling tra centri vicini) e la gestione della lista master dei tag (`/admin/tags`) che i centri possono assegnare alle proprie attività.
 
 ### Ruolo demo
 
@@ -37,7 +37,7 @@ Questo è **solo un meccanismo di demo/anteprima** — quando colleghi Supabase,
    NEXT_PUBLIC_SUPABASE_ANON_KEY=...
    ```
 
-3. Apri lo **SQL Editor** di Supabase ed esegui il contenuto di `supabase/schema.sql`. Crea le tabelle `centers`, `profiles` (con `role` e `center_id`), `kids`, `activities`, `activity_weeks`, `activity_days` (calendario giorno-per-giorno), `promotions`, `bookings`, `booking_weeks`, `booking_kids`, `groups`, `group_members`, `reviews` — con Row Level Security già configurata e un trigger che crea automaticamente un profilo "parent" alla registrazione.
+3. Apri lo **SQL Editor** di Supabase ed esegui il contenuto di `supabase/schema.sql`. Crea le tabelle `centers` (con `social_links` jsonb), `profiles` (con `role` e `center_id`), `kids`, `activities` (con `pre_service`/`post_service`/`meal_option`/`latitude`/`longitude`), `tags` + `activity_tags` (lista master dei tag, gestita dall'admin, e relazione N:N con le attività), `activity_weeks`, `activity_days` (calendario giorno-per-giorno, con `special_label`/`special_emoji` per le giornate particolari), `promotions`, `bookings`, `booking_weeks`, `booking_kids`, `groups`, `group_members`, `reviews` — con Row Level Security già configurata e un trigger che crea automaticamente un profilo "parent" alla registrazione.
 4. Riavvia `npm run dev`.
 
 A questo punto `/auth/login` autentica realmente gli utenti (email + password, con conferma via email). Le pagine continuano a mostrare i dati mock finché non colleghi le query reali alle tabelle Supabase (vedi sotto).
@@ -94,7 +94,7 @@ supabase/schema.sql        Schema SQL completo con RLS pronto per l'import
 
 Le pagine leggono da `lib/mock-data.ts`. Per collegarle ai dati reali:
 
-1. Popola le tabelle `centers` / `activities` / `activity_weeks` / `activity_days` / `promotions` in Supabase (manualmente o via script).
+1. Popola le tabelle `centers` / `activities` / `tags` / `activity_tags` / `activity_weeks` / `activity_days` / `promotions` in Supabase (manualmente o via script).
 2. Nelle pagine server (`app/(main)/page.tsx`, `app/activity/[id]/page.tsx`, `app/center/**`, `app/admin/**`, ecc.) sostituisci l'import da `mock-data` con una query al client Supabase server-side (`lib/supabase/server.ts`), mantenendo la stessa forma dati definita in `lib/types.ts`.
 3. Per bambini, prenotazioni e gruppi legati all'utente loggato, usa `createClient()` da `lib/supabase/server.ts` per leggere `auth.getUser()` e filtrare le query per `parent_id`. Per `/center`, filtra per `center_id` del profilo loggato invece della costante demo `demoCenterAdminCenterId`.
 4. Il salvataggio di calendario/promozioni/profilo centro (attualmente solo in stato React locale, con nota "demo" a schermo) va collegato a `insert`/`update` su `activity_days`, `promotions` e `centers`.

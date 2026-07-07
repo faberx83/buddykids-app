@@ -21,6 +21,7 @@ create table if not exists public.centers (
   description text,
   contact_email text,
   contact_phone text,
+  social_links jsonb default '{}', -- { instagram, facebook, tiktok, youtube, website }
   created_at timestamptz default now()
 );
 
@@ -122,14 +123,16 @@ create table if not exists public.activities (
   city text default 'Milano',
   latitude double precision,
   longitude double precision,
-  category text,
   age_min int,
   age_max int,
   price_per_week numeric(10, 2) not null,
   shuttle_price numeric(10, 2) default 0,
   description text,
-  schedule jsonb default '[]',
-  tags text[] default '{}',
+  schedule jsonb default '[]', -- agenda della giornata: [{ time, label, color }]
+  tags text[] default '{}', -- pillole informative mostrate in scheda (es. "🏊 Piscina")
+  meal_option text default 'none' check (meal_option in ('included', 'packed', 'none')),
+  pre_service jsonb default '{"available": false, "time": null, "priceExtra": 0}',
+  post_service jsonb default '{"available": false, "time": null, "priceExtra": 0}',
   rating numeric(2, 1) default 0,
   reviews_count int default 0,
   created_at timestamptz default now()
@@ -152,6 +155,56 @@ create policy "Activities: il gestore aggiorna le attività del proprio centro"
 create policy "Activities: il gestore elimina le attività del proprio centro"
   on public.activities for delete
   using (center_id = public.current_center_id() or public.is_platform_admin());
+
+-- ─────────────────────────────────────────────
+-- TAGS (lista master gestita dall'Admin piattaforma, es. sportivo, musica,
+-- piscina… — un'attività può avere più tag, vedi ACTIVITY_TAGS sotto)
+-- ─────────────────────────────────────────────
+create table if not exists public.tags (
+  id text primary key, -- slug, es. "piscina"
+  label text not null,
+  emoji text default '🏷️',
+  bg_color text default '#E3F9F5',
+  created_at timestamptz default now()
+);
+
+alter table public.tags enable row level security;
+
+create policy "Tags: lettura pubblica"
+  on public.tags for select
+  using (true);
+
+create policy "Tags: gestibili solo dall'admin piattaforma"
+  on public.tags for all
+  using (public.is_platform_admin())
+  with check (public.is_platform_admin());
+
+create table if not exists public.activity_tags (
+  activity_id uuid references public.activities(id) on delete cascade not null,
+  tag_id text references public.tags(id) on delete cascade not null,
+  primary key (activity_id, tag_id)
+);
+
+alter table public.activity_tags enable row level security;
+
+create policy "Activity tags: lettura pubblica"
+  on public.activity_tags for select
+  using (true);
+
+create policy "Activity tags: gestibili dal centro proprietario"
+  on public.activity_tags for all
+  using (
+    public.is_platform_admin() or exists (
+      select 1 from public.activities a
+      where a.id = activity_tags.activity_id and a.center_id = public.current_center_id()
+    )
+  )
+  with check (
+    public.is_platform_admin() or exists (
+      select 1 from public.activities a
+      where a.id = activity_tags.activity_id and a.center_id = public.current_center_id()
+    )
+  );
 
 -- ─────────────────────────────────────────────
 -- ACTIVITY WEEKS (disponibilità settimanale — usata dal flusso di prenotazione)
@@ -195,6 +248,8 @@ create table if not exists public.activity_days (
   single_day_bookable boolean default true,
   discount_percent numeric(4, 1),
   last_minute boolean default false,
+  special_label text, -- giornata particolare, es. "Giornata in piscina"
+  special_emoji text, -- es. 🏊, 💦, 🎉
   unique (activity_id, date)
 );
 
@@ -400,6 +455,8 @@ create policy "Reviews: scrittura solo dall'autore"
 create index if not exists idx_profiles_center on public.profiles(center_id);
 create index if not exists idx_kids_parent on public.kids(parent_id);
 create index if not exists idx_activities_center on public.activities(center_id);
+create index if not exists idx_activity_tags_activity on public.activity_tags(activity_id);
+create index if not exists idx_activity_tags_tag on public.activity_tags(tag_id);
 create index if not exists idx_bookings_parent on public.bookings(parent_id);
 create index if not exists idx_bookings_activity on public.bookings(activity_id);
 create index if not exists idx_activity_weeks_activity on public.activity_weeks(activity_id);

@@ -1,6 +1,7 @@
 import Link from "next/link";
 import StatCard from "@/components/dashboard/StatCard";
 import StatusBadge from "@/components/dashboard/StatusBadge";
+import OccupancyChart from "@/components/charts/OccupancyChart";
 import {
   activities,
   bookingsMock,
@@ -8,6 +9,7 @@ import {
   demoCenterAdminCenterId,
   promotions,
 } from "@/lib/mock-data";
+import { aggregateWeeklyOccupancy } from "@/lib/analytics";
 
 export default function CenterDashboardPage() {
   const center = centers.find((c) => c.id === demoCenterAdminCenterId)!;
@@ -21,6 +23,8 @@ export default function CenterDashboardPage() {
   const revenue = myBookings
     .filter((b) => b.status === "confirmed")
     .reduce((sum, b) => sum + b.totalAmount, 0);
+  const occupancy = aggregateWeeklyOccupancy(myActivities.map((a) => a.id));
+  const weakWeeks = occupancy.filter((w) => w.occupancyPercent < 40);
 
   return (
     <div>
@@ -42,6 +46,26 @@ export default function CenterDashboardPage() {
         <StatCard label="Prenotazioni" value={String(myBookings.length)} icon="ti-ticket" iconBg="#E3F9F5" iconColor="#3ECFB2" />
         <StatCard label="Promozioni attive" value={String(myPromotions.length)} icon="ti-discount-2" iconBg="#F0EEFF" iconColor="#8B7CF8" />
         <StatCard label="Fatturato confermato" value={`€${revenue}`} icon="ti-coin-euro" iconBg="#FFF0EA" iconColor="#FF8C5A" />
+      </div>
+
+      <div className="mb-5 rounded-lg border border-[#E8EBF0] bg-white p-4">
+        <div className="mb-1 flex items-center justify-between">
+          <span className="text-sm font-bold text-ink">Occupazione settimanale (tutte le attività)</span>
+          {weakWeeks.length > 0 && (
+            <Link
+              href="/center/promotions"
+              className="flex items-center gap-1 rounded-full bg-orange-light px-2.5 py-1 text-[11px] font-semibold text-[#d4622a]"
+            >
+              <i className="ti ti-bolt text-xs" />
+              {weakWeeks.length} settiman{weakWeeks.length === 1 ? "a" : "e"} sotto il 40% — valuta un last-minute
+            </Link>
+          )}
+        </div>
+        <p className="mb-2 text-xs text-ink-2">
+          Usa questo grafico per capire dove i posti restano vuoti e decidere su quali settimane
+          spingere una promo last-minute.
+        </p>
+        <OccupancyChart data={occupancy} />
       </div>
 
       <div className="grid gap-5 lg:grid-cols-[2fr_1fr]">

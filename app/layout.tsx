@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import { DemoRoleProvider } from "@/components/DemoRoleProvider";
 import RoleSwitcher from "@/components/RoleSwitcher";
@@ -7,6 +7,18 @@ export const metadata: Metadata = {
   title: "BuddyKids — Attività per bambini",
   description:
     "Trova, prenota e gestisci le attività extrascolastiche per i tuoi bambini.",
+  manifest: "/manifest.json",
+  icons: {
+    icon: [
+      { url: "/icon-192.png", sizes: "192x192", type: "image/png" },
+      { url: "/icon-512.png", sizes: "512x512", type: "image/png" },
+    ],
+    apple: "/apple-touch-icon.png",
+  },
+};
+
+export const viewport: Viewport = {
+  themeColor: "#4DAFEF",
 };
 
 export default function RootLayout({

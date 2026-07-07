@@ -2,14 +2,28 @@
 
 import { useState } from "react";
 import { centers, demoCenterAdminCenterId } from "@/lib/mock-data";
+import { SocialLinks } from "@/lib/types";
+
+const socialFields: { key: keyof SocialLinks; label: string; icon: string; placeholder: string }[] = [
+  { key: "instagram", label: "Instagram", icon: "ti-brand-instagram", placeholder: "https://instagram.com/..." },
+  { key: "facebook", label: "Facebook", icon: "ti-brand-facebook", placeholder: "https://facebook.com/..." },
+  { key: "tiktok", label: "TikTok", icon: "ti-brand-tiktok", placeholder: "https://tiktok.com/@..." },
+  { key: "youtube", label: "YouTube", icon: "ti-brand-youtube", placeholder: "https://youtube.com/@..." },
+  { key: "website", label: "Sito web", icon: "ti-world", placeholder: "https://..." },
+];
 
 export default function CenterProfilePage() {
   const initial = centers.find((c) => c.id === demoCenterAdminCenterId)!;
-  const [form, setForm] = useState({ ...initial });
+  const [form, setForm] = useState({ ...initial, socialLinks: { ...initial.socialLinks } });
   const [saved, setSaved] = useState(false);
 
   function update<K extends keyof typeof form>(key: K, value: (typeof form)[K]) {
     setForm((f) => ({ ...f, [key]: value }));
+    setSaved(false);
+  }
+
+  function updateSocial(key: keyof SocialLinks, value: string) {
+    setForm((f) => ({ ...f, socialLinks: { ...f.socialLinks, [key]: value || undefined } }));
     setSaved(false);
   }
 
@@ -85,6 +99,31 @@ export default function CenterProfilePage() {
               className="w-full rounded-md border border-[#E8EBF0] bg-bg px-3 py-2 text-sm outline-none focus:border-sky"
             />
           </Field>
+        </div>
+
+        <div className="my-2 h-px bg-[#F0F2F5]" />
+
+        <div>
+          <div className="mb-1 text-sm font-bold text-ink">Social</div>
+          <p className="mb-3 text-xs text-ink-2">
+            Collega gli account social del centro: verranno mostrati nella pagina attività
+            dell&apos;app.
+          </p>
+          <div className="grid grid-cols-2 gap-3">
+            {socialFields.map((s) => (
+              <Field key={s.key} label={s.label}>
+                <div className="flex items-center gap-2 rounded-md border border-[#E8EBF0] bg-bg px-3 py-2">
+                  <i className={`ti ${s.icon} text-base text-ink-3`} />
+                  <input
+                    value={form.socialLinks?.[s.key] ?? ""}
+                    onChange={(e) => updateSocial(s.key, e.target.value)}
+                    placeholder={s.placeholder}
+                    className="w-full bg-transparent text-sm outline-none"
+                  />
+                </div>
+              </Field>
+            ))}
+          </div>
         </div>
 
         <div className="flex items-center gap-3 pt-2">

@@ -1,12 +1,15 @@
 import Link from "next/link";
 import StatCard from "@/components/dashboard/StatCard";
 import StatusBadge from "@/components/dashboard/StatusBadge";
+import OccupancyChart from "@/components/charts/OccupancyChart";
 import { activities, bookingsMock, centers } from "@/lib/mock-data";
+import { aggregateWeeklyOccupancy } from "@/lib/analytics";
 
 export default function AdminDashboardPage() {
   const confirmedBookings = bookingsMock.filter((b) => b.status === "confirmed");
   const revenue = confirmedBookings.reduce((sum, b) => sum + b.totalAmount, 0);
   const recent = [...bookingsMock].sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1)).slice(0, 5);
+  const occupancy = aggregateWeeklyOccupancy(activities.map((a) => a.id));
 
   return (
     <div>
@@ -20,6 +23,16 @@ export default function AdminDashboardPage() {
         <StatCard label="Attività pubblicate" value={String(activities.length)} icon="ti-list-details" iconBg="#E3F9F5" iconColor="#3ECFB2" />
         <StatCard label="Prenotazioni totali" value={String(bookingsMock.length)} icon="ti-ticket" iconBg="#FFF0EA" iconColor="#FF8C5A" />
         <StatCard label="Fatturato confermato" value={`€${revenue}`} icon="ti-coin-euro" iconBg="#F0EEFF" iconColor="#8B7CF8" />
+      </div>
+
+      <div className="mb-5 rounded-lg border border-[#E8EBF0] bg-white p-4">
+        <div className="mb-1 flex items-center justify-between">
+          <span className="text-sm font-bold text-ink">Occupazione settimanale — tutta la piattaforma</span>
+          <Link href="/admin/analytics" className="text-xs font-medium text-sky">
+            Analisi completa →
+          </Link>
+        </div>
+        <OccupancyChart data={occupancy} />
       </div>
 
       <div className="grid gap-5 lg:grid-cols-[2fr_1fr]">
