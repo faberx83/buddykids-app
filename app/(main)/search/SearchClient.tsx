@@ -3,6 +3,7 @@
 import { useState } from "react";
 import ActivityCardHorizontal from "@/components/ActivityCardHorizontal";
 import { Activity } from "@/lib/types";
+import { ComingSoonBadge } from "@/components/StatusBadge";
 
 const filters = [
   { icon: "ti-adjustments-horizontal", label: "Filtri" },
@@ -32,12 +33,12 @@ export default function SearchClient({ initialActivities }: { initialActivities:
             placeholder="Cerca attività, centri, sport..."
           />
         </div>
-        <div className="no-scrollbar flex gap-2 overflow-x-auto pt-2.5">
+        <div className="no-scrollbar flex items-center gap-2 overflow-x-auto pt-2.5">
           {filters.map((f, i) => (
             <div
               key={f.label}
               onClick={() => setActive(i)}
-              className={`flex flex-shrink-0 cursor-pointer items-center gap-1.5 rounded-full border-[1.5px] px-3 py-1.5 text-xs font-medium transition-colors ${
+              className={`flex flex-shrink-0 cursor-pointer items-center gap-1.5 rounded-full border-[1.5px] px-3 py-1.5 text-xs font-medium opacity-70 transition-colors ${
                 active === i
                   ? "border-sky bg-sky text-white"
                   : "border-[#E8EBF0] bg-[#F4F6FA] text-ink-2 hover:border-sky hover:bg-sky hover:text-white"
@@ -47,14 +48,16 @@ export default function SearchClient({ initialActivities }: { initialActivities:
               {f.label}
             </div>
           ))}
+          <ComingSoonBadge label="Filtri" />
         </div>
       </div>
 
       <div className="flex items-center justify-between px-5 pb-2 pt-3">
         <span className="text-[13px] text-ink-2">{results.length} attività trovate</span>
-        <div className="flex cursor-pointer items-center gap-1 text-xs font-medium text-sky">
+        <div className="flex items-center gap-1.5 text-xs font-medium text-sky opacity-70">
           <i className="ti ti-arrows-sort text-sm" />
           Ordina
+          <ComingSoonBadge />
         </div>
       </div>
 

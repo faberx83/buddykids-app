@@ -1,5 +1,6 @@
 import { GroupItem } from "@/lib/types";
 import { pillClasses } from "@/lib/colors";
+import { ComingSoonBadge } from "@/components/StatusBadge";
 
 export default function GroupCard({ group }: { group: GroupItem }) {
   return (
@@ -17,7 +18,8 @@ export default function GroupCard({ group }: { group: GroupItem }) {
         <div className="mb-1 text-sm font-bold text-ink">{group.name}</div>
         <div className="mb-2.5 flex items-center gap-1.5 text-xs text-ink-2">
           <i className="ti ti-map-pin" />
-          {group.location} · {group.dateRange}
+          {group.location}
+          {group.dateRange ? ` · ${group.dateRange}` : ""}
         </div>
         <div className="mb-2.5 flex items-center">
           {group.members.map((m, i) => (
@@ -45,8 +47,9 @@ export default function GroupCard({ group }: { group: GroupItem }) {
             <i className={`ti ${group.discountBadgeColor === "green" ? "ti-tag" : "ti-users"} text-xs`} />
             {group.discountLabel}
           </div>
-          <button className="rounded-md bg-sky-light px-3.5 py-1.5 text-xs font-semibold text-sky">
+          <button className="flex items-center gap-1.5 rounded-md bg-sky-light px-3.5 py-1.5 text-xs font-semibold text-sky opacity-70">
             Invita
+            <ComingSoonBadge />
           </button>
         </div>
       </div>

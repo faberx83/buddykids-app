@@ -10,6 +10,7 @@ import PayMethodCard from "@/components/PayMethodCard";
 import { Activity, Kid, Week } from "@/lib/types";
 import { createBookingAction } from "./actions";
 import AddKidForm from "@/components/AddKidForm";
+import { ComingSoonBadge } from "@/components/StatusBadge";
 
 const paymentMethodMap: Record<string, "card" | "apple_pay" | "bank_transfer"> = {
   card: "card",
@@ -163,9 +164,12 @@ export default function BookingClient({
                 Aggiungi bambino
               </div>
             )}
-            <div className="mb-1.5 mt-4 text-[13px] font-bold text-ink">Andiamo Insieme 🤝</div>
+            <div className="mb-1.5 mt-4 flex items-center gap-1.5 text-[13px] font-bold text-ink">
+              Andiamo Insieme 🤝
+              <ComingSoonBadge />
+            </div>
             <div className="mb-2.5 text-xs text-ink-2">Invita amici per sconti di gruppo</div>
-            <div className="mt-2.5 flex cursor-pointer items-center gap-3 rounded-md border-[1.5px] border-[#E3F0FB] bg-sky-light p-3 transition-colors hover:border-sky">
+            <div className="mt-2.5 flex items-center gap-3 rounded-md border-[1.5px] border-[#E3F0FB] bg-sky-light p-3 opacity-70 transition-colors">
               <div className="flex h-[42px] w-[42px] flex-shrink-0 items-center justify-center rounded-full bg-sky-light">
                 <i className="ti ti-user-plus text-xl text-sky" />
               </div>

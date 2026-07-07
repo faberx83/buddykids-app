@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { centers, demoCenterAdminCenterId } from "@/lib/mock-data";
 import { SocialLinks } from "@/lib/types";
+import { DemoBadge } from "@/components/StatusBadge";
 
 const socialFields: { key: keyof SocialLinks; label: string; icon: string; placeholder: string }[] = [
   { key: "instagram", label: "Instagram", icon: "ti-brand-instagram", placeholder: "https://instagram.com/..." },
@@ -30,7 +31,10 @@ export default function CenterProfilePage() {
   return (
     <div className="max-w-2xl">
       <div className="mb-6">
-        <h1 className="text-xl font-bold text-ink">Il mio centro</h1>
+        <div className="flex items-center gap-2">
+          <h1 className="text-xl font-bold text-ink">Il mio centro</h1>
+          <DemoBadge />
+        </div>
         <p className="text-sm text-ink-2">Queste informazioni sono visibili ai genitori nell&apos;app</p>
       </div>
 

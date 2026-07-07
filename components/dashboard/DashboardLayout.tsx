@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useDemoRole } from "@/components/DemoRoleProvider";
 import { Role } from "@/lib/types";
+import { DemoBadge } from "@/components/StatusBadge";
 
 interface NavItem {
   href: string;
@@ -102,6 +103,13 @@ export default function DashboardLayout({
               );
             })}
           </nav>
+          <div className="flex items-center gap-2 border-b border-[#F0E6C8] bg-[#FFFBF0] px-5 py-2 md:px-8">
+            <DemoBadge label="Dati demo" />
+            <span className="text-xs text-ink-2">
+              Dashboard, grafici e form di questa area sono ancora collegati a dati di esempio —
+              le scritture reali arrivano nel prossimo step.
+            </span>
+          </div>
           <main className="p-5 md:p-8">{children}</main>
         </div>
       </div>

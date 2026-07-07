@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { Tag } from "@/lib/types";
+import { DemoBadge } from "@/components/StatusBadge";
 
 function slugify(label: string) {
   return label
@@ -46,7 +47,10 @@ export default function TagsClient({ initialTags }: { initialTags: Tag[] }) {
     <div>
       <div className="mb-6 flex items-center justify-between">
         <div>
-          <h1 className="text-xl font-bold text-ink">Tag piattaforma</h1>
+          <div className="flex items-center gap-2">
+            <h1 className="text-xl font-bold text-ink">Tag piattaforma</h1>
+            <DemoBadge />
+          </div>
           <p className="text-sm text-ink-2">
             Lista master dei tag che i centri possono assegnare alle proprie attività (es.
             sportivo, musica, piscina…)

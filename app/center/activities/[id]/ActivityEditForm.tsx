@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { Activity, MealOption, ServiceOption } from "@/lib/types";
 import { categories } from "@/lib/mock-data";
+import { DemoBadge } from "@/components/StatusBadge";
 
 const scheduleColors = ["#4DAFEF", "#3ECFB2", "#FF8C5A", "#8B7CF8", "#52C87A", "#9CA3AF"];
 
@@ -87,7 +88,10 @@ export default function ActivityEditForm({ activity }: { activity: Activity }) {
       <div className="mb-6 flex items-center gap-3">
         <span className="text-2xl">{activity.emoji}</span>
         <div>
-          <h1 className="text-xl font-bold text-ink">{activity.name}</h1>
+          <div className="flex items-center gap-2">
+            <h1 className="text-xl font-bold text-ink">{activity.name}</h1>
+            <DemoBadge />
+          </div>
           <p className="text-sm text-ink-2">Modifica le informazioni pubblicate nell&apos;app</p>
         </div>
         <Link

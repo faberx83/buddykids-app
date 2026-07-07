@@ -4,6 +4,7 @@ import { activities, activityDaysByActivity, defaultWeeks, weeksByActivity } fro
 import AvailabilityCalendar from "@/components/AvailabilityCalendar";
 import OccupancyChart from "@/components/charts/OccupancyChart";
 import { weeklyOccupancy } from "@/lib/analytics";
+import { DemoBadge } from "@/components/StatusBadge";
 
 export function generateStaticParams() {
   return activities.map((a) => ({ id: a.id }));
@@ -33,7 +34,10 @@ export default async function CenterActivityCalendarPage({
       </Link>
 
       <div className="mb-6">
-        <h1 className="text-xl font-bold text-ink">Calendario disponibilità</h1>
+        <div className="flex items-center gap-2">
+          <h1 className="text-xl font-bold text-ink">Calendario disponibilità</h1>
+          <DemoBadge />
+        </div>
         <p className="text-sm text-ink-2">
           Apri o chiudi singoli giorni, aggiorna i posti e imposta sconti mirati o promo
           last-minute — {weeksCount} settimane pubblicate.

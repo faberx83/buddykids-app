@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { Activity, Promotion, PromotionType } from "@/lib/types";
+import { DemoBadge } from "@/components/StatusBadge";
 
 const weekdayLabels = ["Lunedì", "Martedì", "Mercoledì", "Giovedì", "Venerdì"];
 
@@ -49,7 +50,10 @@ export default function PromotionsClient({
     <div>
       <div className="mb-6 flex items-center justify-between">
         <div>
-          <h1 className="text-xl font-bold text-ink">Promozioni</h1>
+          <div className="flex items-center gap-2">
+            <h1 className="text-xl font-bold text-ink">Promozioni</h1>
+            <DemoBadge />
+          </div>
           <p className="text-sm text-ink-2">
             Sconti su giorni specifici della settimana e promo last-minute per riempire i posti
             vuoti

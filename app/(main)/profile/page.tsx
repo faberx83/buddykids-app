@@ -4,6 +4,7 @@ import ProfileKidsSection from "@/components/ProfileKidsSection";
 import { createClient } from "@/lib/supabase/server";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
 import { getKidsForUser } from "@/lib/data/kids";
+import { ComingSoonBadge, DemoBadge } from "@/components/StatusBadge";
 
 async function getProfileIdentity() {
   const fallback = { displayName: "Sofia Ferretti", displayEmail: "sofia.ferretti@email.it", initials: "SF" };
@@ -57,9 +58,13 @@ export default async function ProfilePage() {
             <div className="text-lg font-bold text-ink">{displayName}</div>
             <div className="mt-0.5 text-xs text-ink-2">{displayEmail}</div>
           </div>
-          <button className="ml-auto rounded-sm border border-[#E8EBF0] bg-white px-3 py-1.5 text-xs font-medium text-ink">
+          <button className="ml-auto flex items-center gap-1.5 rounded-sm border border-[#E8EBF0] bg-white px-3 py-1.5 text-xs font-medium text-ink opacity-70">
             Modifica
+            <ComingSoonBadge />
           </button>
+        </div>
+        <div className="mb-1.5 flex justify-end">
+          <DemoBadge label="Numeri demo" />
         </div>
         <div className="grid grid-cols-3 gap-2">
           <Stat num="12" label="Prenotazioni" />
@@ -79,30 +84,32 @@ export default async function ProfilePage() {
           iconBg="#E8F6FD"
           iconColor="#4DAFEF"
           main="Le mie prenotazioni"
-          sub="2 attive · 10 passate"
+          sub="Elenco prenotazioni in arrivo"
+          comingSoon
         />
         <MenuItem
           icon="ti-bell"
           iconBg="#FFF0EA"
           iconColor="#FF8C5A"
           main="Notifiche"
-          sub="3 nuovi messaggi"
-          badge={3}
+          sub="Non ancora attive"
+          comingSoon
         />
         <MenuItem
           icon="ti-heart"
           iconBg="#FFF8E7"
           iconColor="#c49a00"
           main="Preferiti"
-          sub="8 attività salvate"
+          sub="Non ancora attivi"
+          comingSoon
         />
         <MenuItem
           icon="ti-bus"
           iconBg="#E8F9EE"
           iconColor="#52C87A"
           main="Navetta"
-          sub="Segui il percorso live"
-          href="/groups"
+          sub="Tracciamento live non ancora disponibile"
+          comingSoon
         />
       </div>
 
@@ -110,9 +117,9 @@ export default async function ProfilePage() {
         <div className="mb-2 text-[11px] font-bold uppercase tracking-wide text-ink-3">
           Supporto
         </div>
-        <MenuItem icon="ti-message-circle" iconBg="#F4F6FA" iconColor="#6B7280" main="Chat con organizzatori" sub="Rispondiamo in 2 ore" />
-        <MenuItem icon="ti-file-invoice" iconBg="#F4F6FA" iconColor="#6B7280" main="Ricevute e fatture" />
-        <MenuItem icon="ti-language" iconBg="#F4F6FA" iconColor="#6B7280" main="Lingua" sub="Italiano · English" />
+        <MenuItem icon="ti-message-circle" iconBg="#F4F6FA" iconColor="#6B7280" main="Chat con organizzatori" sub="Rispondiamo in 2 ore" comingSoon />
+        <MenuItem icon="ti-file-invoice" iconBg="#F4F6FA" iconColor="#6B7280" main="Ricevute e fatture" comingSoon />
+        <MenuItem icon="ti-language" iconBg="#F4F6FA" iconColor="#6B7280" main="Lingua" sub="Italiano · English" comingSoon />
       </div>
 
       <LogoutButton />

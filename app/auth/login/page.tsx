@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
 import PhoneShell from "@/components/PhoneShell";
+import { ComingSoonBadge } from "@/components/StatusBadge";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -82,6 +83,13 @@ export default function LoginPage() {
           className="mb-4 w-full rounded-lg border-[1.5px] border-[#E8EBF0] bg-[#F4F6FA] px-4 py-3 text-sm outline-none focus:border-sky"
           placeholder="••••••••"
         />
+
+        {mode === "login" && (
+          <div className="mb-4 flex items-center gap-1.5 text-xs font-medium text-ink-3 opacity-70">
+            Password dimenticata?
+            <ComingSoonBadge />
+          </div>
+        )}
 
         {error && <p className="mb-3 text-xs font-medium text-orange">{error}</p>}
         {message && <p className="mb-3 text-xs font-medium text-green">{message}</p>}
