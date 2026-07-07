@@ -1,11 +1,48 @@
 import Link from "next/link";
 import ActivityCard from "@/components/ActivityCard";
 import CategoryChip from "@/components/CategoryChip";
-import { activities, categories } from "@/lib/mock-data";
+import { categories } from "@/lib/mock-data";
+import { getActivities } from "@/lib/data/activities";
+import { createClient } from "@/lib/supabase/server";
+import { isSupabaseConfigured } from "@/lib/supabase/env";
 
-export default function HomePage() {
+async function getDisplayIdentity() {
+  if (!isSupabaseConfigured) {
+    return { displayName: "Sofia", initials: "SF" };
+  }
+
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { displayName: "Sofia", initials: "SF" };
+
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("full_name, email")
+    .eq("id", user.id)
+    .single();
+
+  const emailLocalPart: string = (profile?.email || user.email || "").split("@")[0];
+  const fullName: string = profile?.full_name?.trim() || "";
+  const displayName = fullName || emailLocalPart || "👋";
+  const nameForInitials: string = fullName || emailLocalPart || "?";
+  const initials =
+    nameForInitials
+      .split(/\s+/)
+      .map((part: string) => part[0])
+      .join("")
+      .slice(0, 2)
+      .toUpperCase() || "?";
+
+  return { displayName, initials };
+}
+
+export default async function HomePage() {
+  const activities = await getActivities();
   const popular = activities.slice(0, 2);
   const recommended = activities.slice(2, 3);
+  const { displayName, initials } = await getDisplayIdentity();
 
   return (
     <div className="animate-fade-in">
@@ -17,13 +54,13 @@ export default function HomePage() {
       >
         <div className="mb-3.5 flex items-center justify-between">
           <div>
-            <h2 className="text-xl font-bold text-ink">Ciao, Sofia! 👋</h2>
+            <h2 className="text-xl font-bold text-ink">Ciao, {displayName}! 👋</h2>
             <p className="mt-0.5 text-[13px] text-ink-2">
               Cosa facciamo questa estate?
             </p>
           </div>
           <div className="relative flex h-[42px] w-[42px] items-center justify-center rounded-full bg-orange-mid text-[15px] font-bold text-orange">
-            SF
+            {initials}
             <div className="absolute -right-0.5 -top-0.5 h-3.5 w-3.5 rounded-full border-2 border-white bg-[#FF6B6B]" />
           </div>
         </div>

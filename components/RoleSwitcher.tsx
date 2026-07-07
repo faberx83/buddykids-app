@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useDemoRole } from "./DemoRoleProvider";
 import { Role } from "@/lib/types";
+import { isSupabaseConfigured } from "@/lib/supabase/env";
 
 const roles: { id: Role; label: string; emoji: string; href: string }[] = [
   { id: "parent", label: "Genitore", emoji: "👨‍👩‍👧", href: "/" },
@@ -13,12 +14,16 @@ const roles: { id: Role; label: string; emoji: string; href: string }[] = [
 
 // Selettore di ruolo per la demo — permette di navigare tra vista genitore,
 // vista gestore centro e vista admin piattaforma senza un vero login con ruoli.
-// Da rimuovere/sostituire quando i ruoli reali arrivano da Supabase.
+// Sparisce del tutto quando Supabase è collegato: con account reali il ruolo
+// arriva da profiles.role e questo switcher non avrebbe più alcun effetto
+// (lasciarlo visibile sarebbe solo fuorviante).
 export default function RoleSwitcher() {
   const { role, setRole } = useDemoRole();
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const current = roles.find((r) => r.id === role) ?? roles[0];
+
+  if (isSupabaseConfigured) return null;
 
   return (
     <div className="fixed bottom-4 right-4 z-50">

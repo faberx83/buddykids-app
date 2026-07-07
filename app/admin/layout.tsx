@@ -1,4 +1,8 @@
+import { redirect } from "next/navigation";
 import DashboardLayout from "@/components/dashboard/DashboardLayout";
+import { createClient } from "@/lib/supabase/server";
+import { isSupabaseConfigured } from "@/lib/supabase/env";
+import { Role } from "@/lib/types";
 
 const navItems = [
   { href: "/admin", label: "Dashboard", icon: "ti-layout-dashboard" },
@@ -9,13 +13,34 @@ const navItems = [
   { href: "/admin/tags", label: "Tag", icon: "ti-tags" },
 ];
 
-export default function AdminLayout({ children }: { children: React.ReactNode }) {
+export default async function AdminLayout({ children }: { children: React.ReactNode }) {
+  // Con Supabase collegato, il ruolo reale (da profiles.role) sostituisce del
+  // tutto il selettore "ruolo demo" per decidere l'accesso a questa sezione.
+  let realRole: Role | null | undefined;
+
+  if (isSupabaseConfigured) {
+    const supabase = await createClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) redirect("/auth/login");
+
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("role")
+      .eq("id", user.id)
+      .single();
+
+    realRole = (profile?.role as Role) ?? "parent";
+  }
+
   return (
     <DashboardLayout
       brand="BuddyKids Admin"
       brandEmoji="🛠️"
       navItems={navItems}
       requiredRole="platform_admin"
+      realRole={realRole}
     >
       {children}
     </DashboardLayout>

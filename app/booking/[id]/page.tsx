@@ -1,11 +1,11 @@
-import { notFound } from "next/navigation";
-import { activities, defaultWeeks, kids, weeksByActivity } from "@/lib/mock-data";
+import { notFound, redirect } from "next/navigation";
+import { getActivityBySlug } from "@/lib/data/activities";
+import { getWeeksForActivity } from "@/lib/data/weeks";
+import { getKidsForUser } from "@/lib/data/kids";
+import { createClient } from "@/lib/supabase/server";
+import { isSupabaseConfigured } from "@/lib/supabase/env";
 import PhoneShell from "@/components/PhoneShell";
 import BookingClient from "./BookingClient";
-
-export function generateStaticParams() {
-  return activities.map((a) => ({ id: a.id }));
-}
 
 export default async function BookingPage({
   params,
@@ -13,10 +13,25 @@ export default async function BookingPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const activity = activities.find((a) => a.id === id);
+
+  // Prenotare scrive davvero su Supabase (bookings/booking_weeks/booking_kids)
+  // legato all'utente autenticato: qui, a differenza del dettaglio attività,
+  // richiediamo il login prima di entrare nel flusso.
+  if (isSupabaseConfigured) {
+    const supabase = await createClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) redirect(`/auth/login?next=/booking/${id}`);
+  }
+
+  const activity = await getActivityBySlug(id);
   if (!activity) return notFound();
 
-  const weeks = weeksByActivity[activity.id] ?? defaultWeeks;
+  const [weeks, kids] = await Promise.all([
+    getWeeksForActivity(activity),
+    getKidsForUser(),
+  ]);
 
   return (
     <PhoneShell>

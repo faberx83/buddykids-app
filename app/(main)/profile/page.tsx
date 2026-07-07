@@ -1,8 +1,43 @@
 import MenuItem from "@/components/MenuItem";
 import LogoutButton from "@/components/LogoutButton";
-import { kids } from "@/lib/mock-data";
+import ProfileKidsSection from "@/components/ProfileKidsSection";
+import { createClient } from "@/lib/supabase/server";
+import { isSupabaseConfigured } from "@/lib/supabase/env";
+import { getKidsForUser } from "@/lib/data/kids";
 
-export default function ProfilePage() {
+async function getProfileIdentity() {
+  const fallback = { displayName: "Sofia Ferretti", displayEmail: "sofia.ferretti@email.it", initials: "SF" };
+  if (!isSupabaseConfigured) return fallback;
+
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return fallback;
+
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("full_name, email")
+    .eq("id", user.id)
+    .single();
+
+  const displayEmail: string = profile?.email || user.email || fallback.displayEmail;
+  const displayName: string = profile?.full_name?.trim() || displayEmail.split("@")[0];
+  const initials =
+    displayName
+      .split(/\s+/)
+      .map((part: string) => part[0])
+      .join("")
+      .slice(0, 2)
+      .toUpperCase() || "?";
+
+  return { displayName, displayEmail, initials };
+}
+
+export default async function ProfilePage() {
+  const { displayName, displayEmail, initials } = await getProfileIdentity();
+  const kids = await getKidsForUser();
+
   return (
     <div className="animate-fade-in">
       <div
@@ -16,11 +51,11 @@ export default function ProfilePage() {
             className="flex h-[62px] w-[62px] items-center justify-center rounded-full text-xl font-bold text-white"
             style={{ background: "linear-gradient(135deg,#4DAFEF,#3ECFB2)" }}
           >
-            SF
+            {initials}
           </div>
           <div>
-            <div className="text-lg font-bold text-ink">Sofia Ferretti</div>
-            <div className="mt-0.5 text-xs text-ink-2">sofia.ferretti@email.it</div>
+            <div className="text-lg font-bold text-ink">{displayName}</div>
+            <div className="mt-0.5 text-xs text-ink-2">{displayEmail}</div>
           </div>
           <button className="ml-auto rounded-sm border border-[#E8EBF0] bg-white px-3 py-1.5 text-xs font-medium text-ink">
             Modifica
@@ -33,44 +68,7 @@ export default function ProfilePage() {
         </div>
       </div>
 
-      <div className="px-5 pt-4">
-        <div className="mb-3 flex items-center justify-between">
-          <span className="text-[15px] font-bold text-ink">I miei bambini</span>
-          <span className="cursor-pointer text-[13px] font-medium text-sky">+ Aggiungi</span>
-        </div>
-        {kids.map((k) => (
-          <div
-            key={k.id}
-            className="mb-2.5 flex cursor-pointer items-center gap-3 rounded-lg border border-[#F0F2F5] bg-white p-3.5 transition-all hover:scale-[0.98] hover:shadow-md"
-          >
-            <div
-              className="flex h-[50px] w-[50px] flex-shrink-0 items-center justify-center rounded-full text-2xl"
-              style={{ background: k.color }}
-            >
-              {k.emoji}
-            </div>
-            <div className="flex-1">
-              <div className="text-sm font-bold text-ink">
-                {k.name} Ferretti
-              </div>
-              <div className="mb-1 text-xs text-ink-2">
-                {k.age} anni · {k.grade}
-              </div>
-              <div className="flex flex-wrap gap-1">
-                {k.interests?.map((int) => (
-                  <span
-                    key={int}
-                    className="rounded-full bg-bg px-2 py-0.5 text-[10px] font-medium text-ink-2"
-                  >
-                    {int}
-                  </span>
-                ))}
-              </div>
-            </div>
-            <i className="ti ti-chevron-right text-lg text-ink-3" />
-          </div>
-        ))}
-      </div>
+      <ProfileKidsSection initialKids={kids} />
 
       <div className="px-5 pt-2">
         <div className="mb-2 text-[11px] font-bold uppercase tracking-wide text-ink-3">

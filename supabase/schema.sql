@@ -22,6 +22,7 @@ create table if not exists public.centers (
   contact_email text,
   contact_phone text,
   social_links jsonb default '{}', -- { instagram, facebook, tiktok, youtube, website }
+  gradient text default 'linear-gradient(135deg,#E8F6FD,#E3F9F5)', -- sfondo decorativo mostrato nell'app
   created_at timestamptz default now()
 );
 
@@ -129,12 +130,20 @@ create table if not exists public.activities (
   shuttle_price numeric(10, 2) default 0,
   description text,
   schedule jsonb default '[]', -- agenda della giornata: [{ time, label, color }]
-  tags text[] default '{}', -- pillole informative mostrate in scheda (es. "🏊 Piscina")
+  tags text[] default '{}', -- deprecato, non più popolato: sostituito da "pills" jsonb + activity_tags
   meal_option text default 'none' check (meal_option in ('included', 'packed', 'none')),
   pre_service jsonb default '{"available": false, "time": null, "priceExtra": 0}',
   post_service jsonb default '{"available": false, "time": null, "priceExtra": 0}',
   rating numeric(2, 1) default 0,
   reviews_count int default 0,
+  img_gradient text default 'linear-gradient(135deg,#E8F6FD,#E3F9F5)', -- sfondo decorativo scheda/copertina
+  days text, -- riepilogo testuale, es. "Lun-Ven"
+  hours text, -- riepilogo testuale, es. "08:00 - 17:30"
+  distance_km numeric(4, 1) default 0, -- placeholder finché non calcoliamo la distanza reale dalla posizione dell'utente
+  spots_left int, -- posti "in evidenza" mostrati in scheda (separato dal dettaglio giorno-per-giorno di activity_days)
+  weeks_available text default '', -- riepilogo testuale, es. "6 di 8"
+  pills jsonb default '[]', -- pillole colorate mostrate in scheda: [{ label, color }]
+  badges jsonb default '[]', -- badge mostrati nel dettaglio: [{ label, icon, color }]
   created_at timestamptz default now()
 );
 
@@ -390,6 +399,13 @@ create table if not exists public.groups (
   created_at timestamptz default now()
 );
 
+create table if not exists public.group_members (
+  group_id uuid references public.groups(id) on delete cascade not null,
+  parent_id uuid references public.profiles(id) on delete cascade not null,
+  joined_at timestamptz default now(),
+  primary key (group_id, parent_id)
+);
+
 alter table public.groups enable row level security;
 
 create policy "Groups: lettura per i membri"
@@ -404,13 +420,6 @@ create policy "Groups: lettura per i membri"
 create policy "Groups: creazione da utenti autenticati"
   on public.groups for insert
   with check (auth.uid() = created_by);
-
-create table if not exists public.group_members (
-  group_id uuid references public.groups(id) on delete cascade not null,
-  parent_id uuid references public.profiles(id) on delete cascade not null,
-  joined_at timestamptz default now(),
-  primary key (group_id, parent_id)
-);
 
 alter table public.group_members enable row level security;
 

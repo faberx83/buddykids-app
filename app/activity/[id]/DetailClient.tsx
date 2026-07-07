@@ -3,16 +3,21 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import Link from "next/link";
-import { Activity } from "@/lib/types";
+import { Activity, Promotion } from "@/lib/types";
 import { badgeClasses } from "@/lib/colors";
-import { promotions } from "@/lib/mock-data";
 
 const weekdayLabels = ["lunedì", "martedì", "mercoledì", "giovedì", "venerdì"];
 
-export default function DetailClient({ activity }: { activity: Activity }) {
+export default function DetailClient({
+  activity,
+  promotions,
+}: {
+  activity: Activity;
+  promotions: Promotion[];
+}) {
   const router = useRouter();
   const [fav, setFav] = useState(true);
-  const activePromotions = promotions.filter((p) => p.activityId === activity.id && p.active);
+  const activePromotions = promotions.filter((p) => p.active);
 
   return (
     <div className="flex h-full min-h-screen flex-col sm:min-h-0 sm:flex-1">

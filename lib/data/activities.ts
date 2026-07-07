@@ -1,0 +1,173 @@
+// Livello di accesso ai dati per le attività — legge da Supabase quando è
+// collegato e ci sono righe reali (seminate con supabase/seed.sql), altrimenti
+// usa i dati mock come rete di sicurezza (anche a Supabase configurato, così
+// non si rompe nulla finché non hai eseguito il seed).
+
+import { Activity, Promotion } from "@/lib/types";
+import { activities as mockActivities, promotions as mockPromotions } from "@/lib/mock-data";
+import { createClient } from "@/lib/supabase/server";
+import { isSupabaseConfigured } from "@/lib/supabase/env";
+
+const SELECT_COLUMNS = `
+  id, slug, name, emoji, address, latitude, longitude, age_min, age_max,
+  price_per_week, shuttle_price, description, schedule, meal_option,
+  pre_service, post_service, rating, reviews_count, img_gradient, days, hours,
+  distance_km, spots_left, weeks_available, pills, badges, center_id,
+  centers ( slug, name, emoji, gradient ),
+  activity_tags ( tag_id )
+`;
+
+interface RawCenterRef {
+  slug: string | null;
+  name: string | null;
+  emoji: string | null;
+  gradient: string | null;
+}
+
+interface RawActivityRow {
+  id: string;
+  slug: string;
+  name: string;
+  emoji: string;
+  address: string | null;
+  latitude: number | null;
+  longitude: number | null;
+  age_min: number | null;
+  age_max: number | null;
+  price_per_week: number | null;
+  shuttle_price: number | null;
+  description: string | null;
+  schedule: unknown;
+  meal_option: string | null;
+  pre_service: unknown;
+  post_service: unknown;
+  rating: number | null;
+  reviews_count: number | null;
+  img_gradient: string | null;
+  days: string | null;
+  hours: string | null;
+  distance_km: number | null;
+  spots_left: number | null;
+  weeks_available: string | null;
+  pills: unknown;
+  badges: unknown;
+  center_id: string;
+  centers: RawCenterRef | RawCenterRef[] | null;
+  activity_tags: { tag_id: string }[] | null;
+}
+
+function mapRow(row: RawActivityRow): Activity {
+  const center = Array.isArray(row.centers) ? row.centers[0] : row.centers;
+  const tagIds = Array.isArray(row.activity_tags)
+    ? row.activity_tags.map((t) => t.tag_id)
+    : [];
+
+  return {
+    id: row.slug,
+    dbId: row.id,
+    name: row.name,
+    emoji: row.emoji,
+    imgGradient: row.img_gradient || "linear-gradient(135deg,#E8F6FD,#E3F9F5)",
+    centerId: center?.slug || row.center_id,
+    center: center?.name || "",
+    tagIds,
+    address: row.address || "",
+    lat: row.latitude ?? undefined,
+    lng: row.longitude ?? undefined,
+    rating: Number(row.rating ?? 0),
+    reviewsCount: row.reviews_count ?? 0,
+    distanceKm: Number(row.distance_km ?? 0),
+    ageRange: `${row.age_min ?? "?"}-${row.age_max ?? "?"} anni`,
+    days: row.days ?? undefined,
+    hours: row.hours ?? undefined,
+    pricePerWeek: Number(row.price_per_week ?? 0),
+    tags: (row.pills as Activity["tags"]) ?? [],
+    badges: (row.badges as Activity["badges"]) ?? [],
+    spotsLeft: row.spots_left ?? undefined,
+    description: row.description || "",
+    schedule: (row.schedule as Activity["schedule"]) ?? [],
+    weeksAvailable: row.weeks_available || "",
+    shuttlePrice: Number(row.shuttle_price ?? 0),
+    reviews: [], // le recensioni reali arrivano allo Step 4 (dettaglio attività)
+    preService: (row.pre_service as Activity["preService"]) ?? undefined,
+    postService: (row.post_service as Activity["postService"]) ?? undefined,
+    mealOption: (row.meal_option as Activity["mealOption"]) ?? undefined,
+  };
+}
+
+export async function getActivities(): Promise<Activity[]> {
+  if (!isSupabaseConfigured) return mockActivities;
+
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("activities")
+    .select(SELECT_COLUMNS)
+    .order("created_at", { ascending: true });
+
+  if (error || !data || data.length === 0) {
+    // Nessun dato reale ancora (seed non eseguito) o errore: non rompiamo
+    // l'app, mostriamo comunque i dati demo.
+    return mockActivities;
+  }
+
+  return data.map(mapRow);
+}
+
+export async function getActivityBySlug(slug: string): Promise<Activity | null> {
+  if (!isSupabaseConfigured) {
+    return mockActivities.find((a) => a.id === slug) ?? null;
+  }
+
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("activities")
+    .select(SELECT_COLUMNS)
+    .eq("slug", slug)
+    .maybeSingle();
+
+  if (error || !data) {
+    return mockActivities.find((a) => a.id === slug) ?? null;
+  }
+
+  return mapRow(data);
+}
+
+interface RawPromotionRow {
+  id: string;
+  type: "day_discount" | "last_minute";
+  label: string;
+  discount_percent: number;
+  day_of_week: number | null;
+  valid_from: string | null;
+  valid_to: string | null;
+  active: boolean;
+}
+
+export async function getPromotionsForActivity(activity: Activity): Promise<Promotion[]> {
+  if (!isSupabaseConfigured || !activity.dbId) {
+    return mockPromotions.filter((p) => p.activityId === activity.id);
+  }
+
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("promotions")
+    .select("id, type, label, discount_percent, day_of_week, valid_from, valid_to, active")
+    .eq("activity_id", activity.dbId)
+    .eq("active", true);
+
+  if (error || !data) {
+    return mockPromotions.filter((p) => p.activityId === activity.id);
+  }
+
+  return (data as RawPromotionRow[]).map((row) => ({
+    id: row.id,
+    activityId: activity.id,
+    type: row.type,
+    label: row.label,
+    discountPercent: Number(row.discount_percent),
+    dayOfWeek: row.day_of_week ?? undefined,
+    validFrom: row.valid_from ?? undefined,
+    validTo: row.valid_to ?? undefined,
+    active: row.active,
+  }));
+}

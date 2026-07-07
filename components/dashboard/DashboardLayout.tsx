@@ -16,19 +16,32 @@ export default function DashboardLayout({
   brandEmoji,
   navItems,
   requiredRole,
+  realRole,
   children,
 }: {
   brand: string;
   brandEmoji: string;
   navItems: NavItem[];
   requiredRole: Role;
+  // Ruolo reale verificato lato server (da Supabase). `undefined` significa
+  // "Supabase non configurato" — in quel caso si usa il ruolo demo come prima.
+  // Quando è presente (anche `null`, es. profilo mancante), ha sempre la
+  // precedenza sul ruolo demo: con account reali il selettore demo non conta.
+  realRole?: Role | null;
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
-  const { role } = useDemoRole();
+  const { role: demoRole } = useDemoRole();
+  const usingRealAuth = realRole !== undefined;
+  const effectiveRole = usingRealAuth ? realRole : demoRole;
+  // L'Admin piattaforma è un ruolo "superset": può entrare anche nelle
+  // sezioni riservate al Gestore centro (utile anche per un unico account
+  // che gestisce tutto in questa fase). Il Gestore centro resta invece
+  // limitato alla propria sezione.
+  const hasAccess = effectiveRole === requiredRole || effectiveRole === "platform_admin";
 
-  if (role !== requiredRole) {
-    return <AccessGate requiredRole={requiredRole} />;
+  if (!hasAccess) {
+    return <AccessGate requiredRole={requiredRole} usingRealAuth={usingRealAuth} />;
   }
 
   return (
@@ -96,13 +109,40 @@ export default function DashboardLayout({
   );
 }
 
-function AccessGate({ requiredRole }: { requiredRole: Role }) {
+function AccessGate({
+  requiredRole,
+  usingRealAuth,
+}: {
+  requiredRole: Role;
+  usingRealAuth: boolean;
+}) {
   const { setRole } = useDemoRole();
   const labels: Record<Role, string> = {
     parent: "Genitore",
     center_admin: "Gestore centro",
     platform_admin: "Admin piattaforma",
   };
+
+  if (usingRealAuth) {
+    return (
+      <div className="flex min-h-screen flex-col items-center justify-center gap-4 bg-bg px-6 text-center">
+        <div className="flex h-16 w-16 items-center justify-center rounded-full bg-orange-light text-3xl">
+          🔒
+        </div>
+        <div className="text-lg font-bold text-ink">Accesso non autorizzato</div>
+        <p className="max-w-sm text-sm text-ink-2">
+          Il tuo account non ha i permessi di <strong>{labels[requiredRole]}</strong>. Se pensi
+          sia un errore, contatta chi gestisce la piattaforma per farti assegnare il ruolo giusto.
+        </p>
+        <Link
+          href="/"
+          className="rounded-md bg-sky px-4 py-2.5 text-sm font-semibold text-white"
+        >
+          Torna all&apos;app
+        </Link>
+      </div>
+    );
+  }
 
   return (
     <div className="flex min-h-screen flex-col items-center justify-center gap-4 bg-bg px-6 text-center">

@@ -1,11 +1,7 @@
 import { notFound } from "next/navigation";
-import { activities } from "@/lib/mock-data";
+import { getActivityBySlug, getPromotionsForActivity } from "@/lib/data/activities";
 import PhoneShell from "@/components/PhoneShell";
 import DetailClient from "./DetailClient";
-
-export function generateStaticParams() {
-  return activities.map((a) => ({ id: a.id }));
-}
 
 export default async function ActivityDetailPage({
   params,
@@ -13,12 +9,13 @@ export default async function ActivityDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const activity = activities.find((a) => a.id === id);
+  const activity = await getActivityBySlug(id);
   if (!activity) return notFound();
+  const promotions = await getPromotionsForActivity(activity);
 
   return (
     <PhoneShell>
-      <DetailClient activity={activity} />
+      <DetailClient activity={activity} promotions={promotions} />
     </PhoneShell>
   );
 }

@@ -48,12 +48,17 @@ export interface Activity {
   preService?: ServiceOption; // ingresso anticipato
   postService?: ServiceOption; // uscita posticipata
   mealOption?: MealOption;
+  dbId?: string; // uuid reale in Supabase — presente solo quando i dati arrivano dal database, non nei dati mock
 }
+
+export type KidGender = "M" | "F" | "altro";
 
 export interface Kid {
   id: string;
   name: string;
   age: number;
+  birthDate?: string; // ISO yyyy-mm-dd, presente solo per bambini reali
+  gender?: KidGender;
   emoji: string;
   color: string;
   note: string;

@@ -8,11 +8,19 @@ import WeekCard from "@/components/WeekCard";
 import KidRow from "@/components/KidRow";
 import PayMethodCard from "@/components/PayMethodCard";
 import { Activity, Kid, Week } from "@/lib/types";
+import { createBookingAction } from "./actions";
+import AddKidForm from "@/components/AddKidForm";
+
+const paymentMethodMap: Record<string, "card" | "apple_pay" | "bank_transfer"> = {
+  card: "card",
+  apple: "apple_pay",
+  bank: "bank_transfer",
+};
 
 export default function BookingClient({
   activity,
   weeks,
-  kids,
+  kids: initialKids,
 }: {
   activity: Activity;
   weeks: Week[];
@@ -20,11 +28,15 @@ export default function BookingClient({
 }) {
   const router = useRouter();
   const [step, setStep] = useState<1 | 2 | 3>(1);
+  const [kids, setKids] = useState<Kid[]>(initialKids);
   const [selectedWeeks, setSelectedWeeks] = useState<string[]>(
     weeks.filter((w) => !w.soldOut).slice(0, 2).map((w) => w.id)
   );
   const [selectedKids, setSelectedKids] = useState<string[]>([kids[0]?.id].filter(Boolean));
   const [payMethod, setPayMethod] = useState("card");
+  const [showAddKid, setShowAddKid] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
 
   const nWeeks = selectedWeeks.length || 1;
   const subtotal = nWeeks * activity.pricePerWeek;
@@ -42,12 +54,37 @@ export default function BookingClient({
       prev.includes(id) ? prev.filter((k) => k !== id) : [...prev, id]
     );
 
-  const handleNext = () => {
+  const handleNext = async () => {
     if (step < 3) {
       setStep((s) => (s + 1) as 1 | 2 | 3);
-    } else {
-      router.push(`/booking/${activity.id}/success`);
+      return;
     }
+
+    if (!activity.dbId) {
+      // Modalità demo (Supabase non collegato o attività non reale): come prima.
+      router.push(`/booking/${activity.id}/success`);
+      return;
+    }
+
+    setSubmitting(true);
+    setSubmitError(null);
+    const result = await createBookingAction({
+      activityDbId: activity.dbId,
+      weekIds: selectedWeeks,
+      kidIds: selectedKids,
+      totalAmount: total,
+      discountAmount: groupDiscount,
+      shuttleIncluded: activity.shuttlePrice > 0,
+      paymentMethod: paymentMethodMap[payMethod] ?? "card",
+    });
+    setSubmitting(false);
+
+    if (result.error || !result.bookingId) {
+      setSubmitError(result.error || "Qualcosa è andato storto, riprova.");
+      return;
+    }
+
+    router.push(`/booking/${activity.id}/success?bookingId=${result.bookingId}`);
   };
 
   const kidNames = useMemo(
@@ -94,6 +131,11 @@ export default function BookingClient({
             <div className="mb-1 text-base font-bold text-ink">Chi partecipa?</div>
             <div className="mb-4 text-[13px] text-ink-2">Seleziona bambini e aggiungi amici</div>
             <div className="mb-2.5 text-[13px] font-bold text-ink">I tuoi bambini</div>
+            {kids.length === 0 && !showAddKid && (
+              <p className="mb-2.5 text-xs text-ink-2">
+                Non hai ancora aggiunto nessun bambino — aggiungine uno per continuare.
+              </p>
+            )}
             {kids.map((k) => (
               <KidRow
                 key={k.id}
@@ -102,10 +144,25 @@ export default function BookingClient({
                 onToggle={() => toggleKid(k.id)}
               />
             ))}
-            <div className="flex cursor-pointer items-center gap-2.5 rounded-md border-[1.5px] border-dashed border-[#C5CDD8] p-3 text-[13px] font-medium text-ink-2 transition-colors hover:border-sky hover:text-sky">
-              <i className="ti ti-plus text-xl" />
-              Aggiungi bambino
-            </div>
+
+            {showAddKid ? (
+              <AddKidForm
+                onAdded={(kid) => {
+                  setKids((prev) => [...prev, kid]);
+                  setSelectedKids((prev) => [...prev, kid.id]);
+                  setShowAddKid(false);
+                }}
+                onCancel={() => setShowAddKid(false)}
+              />
+            ) : (
+              <div
+                onClick={() => setShowAddKid(true)}
+                className="flex cursor-pointer items-center gap-2.5 rounded-md border-[1.5px] border-dashed border-[#C5CDD8] p-3 text-[13px] font-medium text-ink-2 transition-colors hover:border-sky hover:text-sky"
+              >
+                <i className="ti ti-plus text-xl" />
+                Aggiungi bambino
+              </div>
+            )}
             <div className="mb-1.5 mt-4 text-[13px] font-bold text-ink">Andiamo Insieme 🤝</div>
             <div className="mb-2.5 text-xs text-ink-2">Invita amici per sconti di gruppo</div>
             <div className="mt-2.5 flex cursor-pointer items-center gap-3 rounded-md border-[1.5px] border-[#E3F0FB] bg-sky-light p-3 transition-colors hover:border-sky">
@@ -165,11 +222,15 @@ export default function BookingClient({
       </div>
 
       <div className="flex-shrink-0 border-t border-[#F0F2F5] bg-white px-5 py-3.5 pb-5">
+        {submitError && (
+          <p className="mb-2 text-center text-xs font-medium text-orange">{submitError}</p>
+        )}
         <button
           onClick={handleNext}
-          className="w-full rounded-lg bg-sky py-[15px] text-[15px] font-bold text-white transition-colors hover:bg-[#3A9FDC]"
+          disabled={submitting || (step === 2 && selectedKids.length === 0)}
+          className="w-full rounded-lg bg-sky py-[15px] text-[15px] font-bold text-white transition-colors hover:bg-[#3A9FDC] disabled:cursor-not-allowed disabled:opacity-60"
         >
-          {step === 3 ? "Conferma e paga" : "Continua"}
+          {submitting ? "Attendere…" : step === 3 ? "Conferma e paga" : "Continua"}
         </button>
       </div>
     </div>
