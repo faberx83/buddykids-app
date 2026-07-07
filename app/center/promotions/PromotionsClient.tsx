@@ -3,8 +3,15 @@
 import { useState } from "react";
 import { Activity, Promotion, PromotionType } from "@/lib/types";
 import { DemoBadge } from "@/components/StatusBadge";
+import {
+  createPromotionAction,
+  deletePromotionAction,
+  togglePromotionAction,
+} from "@/app/actions/center";
 
 const weekdayLabels = ["Lunedì", "Martedì", "Mercoledì", "Giovedì", "Venerdì"];
+
+const isUuid = (v: string) => /^[0-9a-f-]{36}$/i.test(v);
 
 export default function PromotionsClient({
   activities,
@@ -20,28 +27,72 @@ export default function PromotionsClient({
   const [label, setLabel] = useState("");
   const [discountPercent, setDiscountPercent] = useState(15);
   const [dayOfWeek, setDayOfWeek] = useState(4);
+  const [error, setError] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
 
-  function toggleActive(id: string) {
+  async function toggleActive(id: string) {
+    const current = items.find((p) => p.id === id);
+    if (!current) return;
     setItems((prev) => prev.map((p) => (p.id === id ? { ...p, active: !p.active } : p)));
+    if (isUuid(id)) {
+      const result = await togglePromotionAction(id, !current.active);
+      if (result.error) setError(result.error);
+    }
   }
 
-  function removePromotion(id: string) {
+  async function removePromotion(id: string) {
     setItems((prev) => prev.filter((p) => p.id !== id));
+    if (isUuid(id)) {
+      const result = await deletePromotionAction(id);
+      if (result.error) setError(result.error);
+    }
   }
 
-  function addPromotion(e: React.FormEvent) {
+  async function addPromotion(e: React.FormEvent) {
     e.preventDefault();
+    setError(null);
     if (!label.trim() || !activityId) return;
-    const newPromo: Promotion = {
-      id: `promo-${Date.now()}`,
-      activityId,
-      type,
-      label,
-      discountPercent,
-      dayOfWeek: type === "day_discount" ? dayOfWeek : undefined,
-      active: true,
-    };
-    setItems((prev) => [newPromo, ...prev]);
+
+    const activity = activities.find((a) => a.id === activityId);
+
+    if (activity?.dbId) {
+      setSaving(true);
+      const result = await createPromotionAction({
+        activityDbId: activity.dbId,
+        type,
+        label,
+        discountPercent,
+        dayOfWeek: type === "day_discount" ? dayOfWeek : undefined,
+      });
+      setSaving(false);
+      if (result.error || !result.promotionId) {
+        setError(result.error || "Errore nella creazione della promozione");
+        return;
+      }
+      setItems((prev) => [
+        {
+          id: result.promotionId!,
+          activityId,
+          type,
+          label,
+          discountPercent,
+          dayOfWeek: type === "day_discount" ? dayOfWeek : undefined,
+          active: true,
+        },
+        ...prev,
+      ]);
+    } else {
+      const newPromo: Promotion = {
+        id: `promo-${Date.now()}`,
+        activityId,
+        type,
+        label,
+        discountPercent,
+        dayOfWeek: type === "day_discount" ? dayOfWeek : undefined,
+        active: true,
+      };
+      setItems((prev) => [newPromo, ...prev]);
+    }
     setLabel("");
     setShowForm(false);
   }
@@ -52,7 +103,7 @@ export default function PromotionsClient({
         <div>
           <div className="flex items-center gap-2">
             <h1 className="text-xl font-bold text-ink">Promozioni</h1>
-            <DemoBadge />
+            {!activities.some((a) => a.dbId) && <DemoBadge />}
           </div>
           <p className="text-sm text-ink-2">
             Sconti su giorni specifici della settimana e promo last-minute per riempire i posti
@@ -140,12 +191,17 @@ export default function PromotionsClient({
             />
           </div>
 
+          {error && (
+            <p className="text-xs font-medium text-orange md:col-span-2">{error}</p>
+          )}
+
           <div className="flex gap-2 md:col-span-2">
             <button
               type="submit"
-              className="rounded-md bg-sky px-5 py-2.5 text-sm font-bold text-white transition-colors hover:bg-[#3A9FDC]"
+              disabled={saving}
+              className="rounded-md bg-sky px-5 py-2.5 text-sm font-bold text-white transition-colors hover:bg-[#3A9FDC] disabled:opacity-60"
             >
-              Crea promozione
+              {saving ? "Creo…" : "Crea promozione"}
             </button>
             <button
               type="button"

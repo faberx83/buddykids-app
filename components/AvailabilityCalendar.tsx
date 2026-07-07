@@ -2,6 +2,8 @@
 
 import { useMemo, useState } from "react";
 import { DayAvailability } from "@/lib/types";
+import { saveActivityDaysAction } from "@/app/actions/center";
+import { DemoBadge } from "@/components/StatusBadge";
 
 const weekdayLabels = ["Lun", "Mar", "Mer", "Gio", "Ven"];
 
@@ -22,14 +24,35 @@ export default function AvailabilityCalendar({
   mode,
   highlightDates,
   onChange,
+  activityDbId,
 }: {
   days: DayAvailability[];
   mode: "edit" | "view";
   highlightDates?: string[];
   onChange?: (updated: DayAvailability[]) => void;
+  activityDbId?: string;
 }) {
   const [localDays, setLocalDays] = useState(days);
   const [selected, setSelected] = useState<string | null>(null);
+  const [dirty, setDirty] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const [savedOk, setSavedOk] = useState(false);
+
+  async function handleSaveAll() {
+    if (!activityDbId) return;
+    setSaving(true);
+    setSaveError(null);
+    setSavedOk(false);
+    const result = await saveActivityDaysAction(activityDbId, localDays);
+    setSaving(false);
+    if (result.error) {
+      setSaveError(result.error);
+      return;
+    }
+    setDirty(false);
+    setSavedOk(true);
+  }
 
   const weeks = useMemo(() => {
     const chunks: DayAvailability[][] = [];
@@ -43,6 +66,8 @@ export default function AvailabilityCalendar({
     if (!selected) return;
     const updated = localDays.map((d) => (d.date === selected ? { ...d, ...patch } : d));
     setLocalDays(updated);
+    setDirty(true);
+    setSavedOk(false);
     onChange?.(updated);
   }
 
@@ -228,10 +253,33 @@ export default function AvailabilityCalendar({
             </div>
           </div>
 
-          <p className="mt-3 text-[11px] text-ink-3">
-            Modifiche demo salvate solo in questa sessione — quando colleghi Supabase
-            aggiorneranno la tabella <code className="rounded bg-bg px-1">activity_days</code>.
-          </p>
+          {activityDbId ? (
+            <div className="mt-3 flex items-center gap-3">
+              <button
+                type="button"
+                onClick={handleSaveAll}
+                disabled={saving || !dirty}
+                className="rounded-md bg-sky px-4 py-2 text-xs font-bold text-white transition-colors hover:bg-[#3A9FDC] disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {saving ? "Salvo…" : "Salva calendario"}
+              </button>
+              {saveError && <span className="text-xs font-medium text-orange">{saveError}</span>}
+              {savedOk && !dirty && (
+                <span className="text-xs font-medium text-green">Salvato su Supabase ✓</span>
+              )}
+              {dirty && !saving && (
+                <span className="text-xs text-ink-3">Modifiche non ancora salvate</span>
+              )}
+            </div>
+          ) : (
+            <div className="mt-3 flex items-center gap-2">
+              <DemoBadge />
+              <p className="text-[11px] text-ink-3">
+                Questa attività non è ancora collegata a Supabase — le modifiche restano solo in
+                questa sessione.
+              </p>
+            </div>
+          )}
         </div>
       )}
     </div>

@@ -2,9 +2,10 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { Activity, MealOption, ServiceOption } from "@/lib/types";
-import { categories } from "@/lib/mock-data";
+import { Activity, MealOption, ServiceOption, Tag } from "@/lib/types";
+import { categories as mockCategories } from "@/lib/mock-data";
 import { DemoBadge } from "@/components/StatusBadge";
+import { updateActivityAction } from "@/app/actions/center";
 
 const scheduleColors = ["#4DAFEF", "#3ECFB2", "#FF8C5A", "#8B7CF8", "#52C87A", "#9CA3AF"];
 
@@ -14,7 +15,13 @@ const mealLabels: Record<MealOption, string> = {
   none: "— Non fornito",
 };
 
-export default function ActivityEditForm({ activity }: { activity: Activity }) {
+export default function ActivityEditForm({
+  activity,
+  tags = mockCategories,
+}: {
+  activity: Activity;
+  tags?: Tag[];
+}) {
   const [form, setForm] = useState({
     name: activity.name,
     ageRange: activity.ageRange,
@@ -32,6 +39,8 @@ export default function ActivityEditForm({ activity }: { activity: Activity }) {
     schedule: activity.schedule,
   });
   const [saved, setSaved] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
 
   function update<K extends keyof typeof form>(key: K, value: (typeof form)[K]) {
     setForm((f) => ({ ...f, [key]: value }));
@@ -90,7 +99,7 @@ export default function ActivityEditForm({ activity }: { activity: Activity }) {
         <div>
           <div className="flex items-center gap-2">
             <h1 className="text-xl font-bold text-ink">{activity.name}</h1>
-            <DemoBadge />
+            {!activity.dbId && <DemoBadge />}
           </div>
           <p className="text-sm text-ink-2">Modifica le informazioni pubblicate nell&apos;app</p>
         </div>
@@ -103,8 +112,36 @@ export default function ActivityEditForm({ activity }: { activity: Activity }) {
       </div>
 
       <form
-        onSubmit={(e) => {
+        onSubmit={async (e) => {
           e.preventDefault();
+          setSaveError(null);
+          if (!activity.dbId) {
+            setSaved(true);
+            return;
+          }
+          setSaving(true);
+          const result = await updateActivityAction({
+            activityDbId: activity.dbId,
+            name: form.name,
+            ageRange: form.ageRange,
+            pricePerWeek: form.pricePerWeek,
+            shuttlePrice: form.shuttlePrice,
+            description: form.description,
+            spotsLeft: form.spotsLeft,
+            tagIds: form.tagIds,
+            address: form.address,
+            lat: form.lat,
+            lng: form.lng,
+            mealOption: form.mealOption,
+            preService: form.preService,
+            postService: form.postService,
+            schedule: form.schedule,
+          });
+          setSaving(false);
+          if (result.error) {
+            setSaveError(result.error);
+            return;
+          }
           setSaved(true);
         }}
         className="space-y-6"
@@ -177,7 +214,7 @@ export default function ActivityEditForm({ activity }: { activity: Activity }) {
             La lista dei tag disponibili è gestita dall&apos;Admin piattaforma.
           </p>
           <div className="flex flex-wrap gap-2">
-            {categories.map((c) => {
+            {tags.map((c) => {
               const active = form.tagIds.includes(c.id);
               return (
                 <button
@@ -320,13 +357,17 @@ export default function ActivityEditForm({ activity }: { activity: Activity }) {
         <div className="flex items-center gap-3 rounded-lg border border-[#E8EBF0] bg-white p-5">
           <button
             type="submit"
-            className="rounded-md bg-sky px-5 py-2.5 text-sm font-bold text-white transition-colors hover:bg-[#3A9FDC]"
+            disabled={saving}
+            className="rounded-md bg-sky px-5 py-2.5 text-sm font-bold text-white transition-colors hover:bg-[#3A9FDC] disabled:opacity-60"
           >
-            Salva modifiche
+            {saving ? "Salvo…" : "Salva modifiche"}
           </button>
-          {saved && (
+          {saveError && <span className="text-xs font-medium text-orange">{saveError}</span>}
+          {saved && !saveError && (
             <span className="text-xs font-medium text-green">
-              Salvato (demo) — verrà scritto su Supabase quando collegato.
+              {activity.dbId
+                ? "Salvato su Supabase ✓"
+                : "Salvato (demo) — verrà scritto su Supabase quando collegato."}
             </span>
           )}
         </div>

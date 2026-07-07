@@ -1,14 +1,11 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
-import { activities, activityDaysByActivity, defaultWeeks, weeksByActivity } from "@/lib/mock-data";
+import { defaultWeeks, weeksByActivity } from "@/lib/mock-data";
 import AvailabilityCalendar from "@/components/AvailabilityCalendar";
 import OccupancyChart from "@/components/charts/OccupancyChart";
-import { weeklyOccupancy } from "@/lib/analytics";
-import { DemoBadge } from "@/components/StatusBadge";
-
-export function generateStaticParams() {
-  return activities.map((a) => ({ id: a.id }));
-}
+import { weeklyOccupancyFromDays } from "@/lib/analytics";
+import { getActivityBySlug } from "@/lib/data/activities";
+import { getActivityDays } from "@/lib/data/activity-days";
 
 export default async function CenterActivityCalendarPage({
   params,
@@ -16,12 +13,12 @@ export default async function CenterActivityCalendarPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const activity = activities.find((a) => a.id === id);
+  const activity = await getActivityBySlug(id);
   if (!activity) return notFound();
 
-  const days = activityDaysByActivity[activity.id] ?? [];
+  const days = await getActivityDays(activity);
   const weeksCount = (weeksByActivity[activity.id] ?? defaultWeeks).length;
-  const occupancy = weeklyOccupancy(activity.id);
+  const occupancy = weeklyOccupancyFromDays(days);
   const weakWeeks = occupancy.filter((w) => w.occupancyPercent < 40);
 
   return (
@@ -34,10 +31,7 @@ export default async function CenterActivityCalendarPage({
       </Link>
 
       <div className="mb-6">
-        <div className="flex items-center gap-2">
-          <h1 className="text-xl font-bold text-ink">Calendario disponibilità</h1>
-          <DemoBadge />
-        </div>
+        <h1 className="text-xl font-bold text-ink">Calendario disponibilità</h1>
         <p className="text-sm text-ink-2">
           Apri o chiudi singoli giorni, aggiorna i posti e imposta sconti mirati o promo
           last-minute — {weeksCount} settimane pubblicate.
@@ -61,7 +55,7 @@ export default async function CenterActivityCalendarPage({
       </div>
 
       <div className="rounded-lg border border-[#E8EBF0] bg-white p-4">
-        <AvailabilityCalendar days={days} mode="edit" />
+        <AvailabilityCalendar days={days} mode="edit" activityDbId={activity.dbId} />
       </div>
     </div>
   );

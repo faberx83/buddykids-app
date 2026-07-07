@@ -1,10 +1,7 @@
 import { notFound } from "next/navigation";
-import { activities } from "@/lib/mock-data";
 import ActivityEditForm from "./ActivityEditForm";
-
-export function generateStaticParams() {
-  return activities.map((a) => ({ id: a.id }));
-}
+import { getActivityBySlug } from "@/lib/data/activities";
+import { getTags } from "@/lib/data/tags";
 
 export default async function CenterActivityEditPage({
   params,
@@ -12,8 +9,8 @@ export default async function CenterActivityEditPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const activity = activities.find((a) => a.id === id);
+  const [activity, tags] = await Promise.all([getActivityBySlug(id), getTags()]);
   if (!activity) return notFound();
 
-  return <ActivityEditForm activity={activity} />;
+  return <ActivityEditForm activity={activity} tags={tags} />;
 }

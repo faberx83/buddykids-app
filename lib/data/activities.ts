@@ -56,7 +56,7 @@ interface RawActivityRow {
   activity_tags: { tag_id: string }[] | null;
 }
 
-function mapRow(row: RawActivityRow): Activity {
+export function mapRow(row: RawActivityRow): Activity {
   const center = Array.isArray(row.centers) ? row.centers[0] : row.centers;
   const tagIds = Array.isArray(row.activity_tags)
     ? row.activity_tags.map((t) => t.tag_id)
@@ -113,6 +113,30 @@ export async function getActivities(): Promise<Activity[]> {
   return data.map(mapRow);
 }
 
+// Attività di UN centro specifico — usata dalla dashboard Gestore centro.
+// `centerDbId` è l'uuid reale (colonna activities.center_id); se assente
+// (demo, o centro non ancora assegnato) si torna ai dati mock filtrati per
+// `centerSlugFallback` (il comportamento di prima).
+export async function getActivitiesForCenter(
+  centerDbId: string | null,
+  centerSlugFallback?: string | null
+): Promise<Activity[]> {
+  if (!isSupabaseConfigured || !centerDbId) {
+    const slug = centerSlugFallback ?? null;
+    return slug ? mockActivities.filter((a) => a.centerId === slug) : [];
+  }
+
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("activities")
+    .select(SELECT_COLUMNS)
+    .eq("center_id", centerDbId)
+    .order("created_at", { ascending: true });
+
+  if (error || !data) return [];
+  return data.map(mapRow);
+}
+
 export async function getActivityBySlug(slug: string): Promise<Activity | null> {
   if (!isSupabaseConfigured) {
     return mockActivities.find((a) => a.id === slug) ?? null;
@@ -162,6 +186,38 @@ export async function getPromotionsForActivity(activity: Activity): Promise<Prom
   return (data as RawPromotionRow[]).map((row) => ({
     id: row.id,
     activityId: activity.id,
+    type: row.type,
+    label: row.label,
+    discountPercent: Number(row.discount_percent),
+    dayOfWeek: row.day_of_week ?? undefined,
+    validFrom: row.valid_from ?? undefined,
+    validTo: row.valid_to ?? undefined,
+    active: row.active,
+  }));
+}
+
+// Tutte le promozioni (attive e in pausa) delle attività indicate — usata
+// dalla dashboard Gestore centro per amministrare le promozioni.
+export async function getPromotionsForActivities(activities: Activity[]): Promise<Promotion[]> {
+  const dbIds = activities.filter((a) => a.dbId).map((a) => a.dbId as string);
+  if (!isSupabaseConfigured || dbIds.length === 0) {
+    const ids = activities.map((a) => a.id);
+    return mockPromotions.filter((p) => ids.includes(p.activityId));
+  }
+
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("promotions")
+    .select("id, activity_id, type, label, discount_percent, day_of_week, valid_from, valid_to, active")
+    .in("activity_id", dbIds);
+
+  if (error || !data) return [];
+
+  const slugByDbId = new Map(activities.map((a) => [a.dbId, a.id]));
+
+  return (data as (RawPromotionRow & { activity_id: string })[]).map((row) => ({
+    id: row.id,
+    activityId: slugByDbId.get(row.activity_id) || row.activity_id,
     type: row.type,
     label: row.label,
     discountPercent: Number(row.discount_percent),

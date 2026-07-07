@@ -1,12 +1,21 @@
 import Link from "next/link";
 import { activities, bookingsMock, centers } from "@/lib/mock-data";
+import NewCenterForm from "@/components/admin/NewCenterForm";
+import { DemoBadge } from "@/components/StatusBadge";
+import { isSupabaseConfigured } from "@/lib/supabase/env";
 
 export default function AdminCentersPage() {
   return (
     <div>
-      <div className="mb-6">
-        <h1 className="text-xl font-bold text-ink">Centri</h1>
-        <p className="text-sm text-ink-2">Tutti i centri estivi registrati sulla piattaforma</p>
+      <div className="mb-6 flex items-start justify-between gap-4">
+        <div>
+          <div className="flex items-center gap-2">
+            <h1 className="text-xl font-bold text-ink">Centri</h1>
+            <DemoBadge label="Elenco demo" />
+          </div>
+          <p className="text-sm text-ink-2">Tutti i centri estivi registrati sulla piattaforma</p>
+        </div>
+        {isSupabaseConfigured && <NewCenterForm />}
       </div>
 
       <div className="overflow-hidden rounded-lg border border-[#E8EBF0] bg-white">

@@ -32,6 +32,11 @@ create policy "Centers: lettura pubblica"
   on public.centers for select
   using (true);
 
+-- Nota: le policy di update/insert su "centers" sono definite più sotto,
+-- dopo le funzioni helper current_center_id()/is_platform_admin() (schema
+-- circolare: quelle funzioni leggono "profiles", quindi vanno definite prima
+-- di poterle usare qui).
+
 -- ─────────────────────────────────────────────
 -- PROFILES (estende auth.users)
 -- ─────────────────────────────────────────────
@@ -75,6 +80,18 @@ create policy "Profiles: un utente vede/modifica il proprio profilo"
   on public.profiles for all
   using (auth.uid() = id or public.is_platform_admin())
   with check (auth.uid() = id);
+
+-- Ora che current_center_id()/is_platform_admin() esistono, completiamo le
+-- policy di scrittura su "centers" (il gestore modifica il proprio centro,
+-- l'Admin piattaforma può crearne di nuovi e modificarli tutti).
+create policy "Centers: il gestore aggiorna il proprio centro"
+  on public.centers for update
+  using (id = public.current_center_id() or public.is_platform_admin())
+  with check (id = public.current_center_id() or public.is_platform_admin());
+
+create policy "Centers: l'admin piattaforma crea nuovi centri"
+  on public.centers for insert
+  with check (public.is_platform_admin());
 
 -- Crea automaticamente un profilo alla registrazione (ruolo di default: parent)
 create or replace function public.handle_new_user()
@@ -423,14 +440,22 @@ create policy "Groups: creazione da utenti autenticati"
 
 alter table public.group_members enable row level security;
 
+-- Funzione "security definer": legge group_members bypassando la RLS,
+-- così la policy sotto non interroga di nuovo se stessa (altrimenti Postgres
+-- segnala "infinite recursion detected in policy for relation group_members").
+create or replace function public.is_group_member(gid uuid)
+returns boolean
+language sql security definer stable
+as $$
+  select exists (
+    select 1 from public.group_members
+    where group_id = gid and parent_id = auth.uid()
+  );
+$$;
+
 create policy "Group members: visibili solo ai membri del gruppo"
   on public.group_members for select
-  using (
-    exists (
-      select 1 from public.group_members gm2
-      where gm2.group_id = group_members.group_id and gm2.parent_id = auth.uid()
-    )
-  );
+  using (public.is_group_member(group_id));
 
 create policy "Group members: un utente può aggiungersi da solo"
   on public.group_members for insert
@@ -457,6 +482,34 @@ create policy "Reviews: lettura pubblica"
 create policy "Reviews: scrittura solo dall'autore"
   on public.reviews for insert
   with check (auth.uid() = parent_id);
+
+-- ─────────────────────────────────────────────
+-- ACTIVITY LOG (audit) — traccia le modifiche fatte dai Gestori centro, così
+-- l'Admin piattaforma può vedere quanto e come intervengono (pricing,
+-- calendario, promozioni…). Ogni scrittura importante lato /center inserisce
+-- una riga qui (vedi app/actions/center.ts e app/actions/tags.ts).
+-- ─────────────────────────────────────────────
+create table if not exists public.activity_log (
+  id uuid primary key default gen_random_uuid(),
+  actor_id uuid references public.profiles(id) on delete set null,
+  center_id uuid references public.centers(id) on delete cascade,
+  action text not null, -- es. "activity_update", "activity_days_save", "promotion_create", "center_profile_update", "tag_create"
+  entity_type text, -- es. "activity", "center", "promotion", "tag"
+  entity_id text,
+  meta jsonb default '{}', -- dettagli extra (es. { "priceChanged": true, "oldPrice": 280, "newPrice": 300 })
+  created_at timestamptz default now()
+);
+
+alter table public.activity_log enable row level security;
+
+create policy "Activity log: il gestore vede/scrive il log del proprio centro"
+  on public.activity_log for all
+  using (center_id = public.current_center_id() or public.is_platform_admin())
+  with check (center_id = public.current_center_id() or public.is_platform_admin());
+
+create index if not exists idx_activity_log_center on public.activity_log(center_id);
+create index if not exists idx_activity_log_actor on public.activity_log(actor_id);
+create index if not exists idx_activity_log_created on public.activity_log(created_at desc);
 
 -- ─────────────────────────────────────────────
 -- Indici utili

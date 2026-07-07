@@ -3,14 +3,8 @@
 import { useState } from "react";
 import { Tag } from "@/lib/types";
 import { DemoBadge } from "@/components/StatusBadge";
-
-function slugify(label: string) {
-  return label
-    .trim()
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/(^-|-$)/g, "");
-}
+import { isSupabaseConfigured } from "@/lib/supabase/env";
+import { createTagAction, deleteTagAction } from "@/app/actions/tags";
 
 const swatchOptions = [
   "#E3F9F5",
@@ -27,20 +21,43 @@ export default function TagsClient({ initialTags }: { initialTags: Tag[] }) {
   const [label, setLabel] = useState("");
   const [emoji, setEmoji] = useState("🏷️");
   const [bg, setBg] = useState(swatchOptions[0]);
+  const [error, setError] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
 
-  function addTag(e: React.FormEvent) {
+  async function addTag(e: React.FormEvent) {
     e.preventDefault();
+    setError(null);
     if (!label.trim()) return;
-    const id = slugify(label);
-    if (tags.some((t) => t.id === id)) return;
-    setTags((prev) => [...prev, { id, label: label.trim(), emoji, bg }]);
+
+    if (isSupabaseConfigured) {
+      setSaving(true);
+      const result = await createTagAction(label, emoji, bg);
+      setSaving(false);
+      if (result.error || !result.tag) {
+        setError(result.error || "Errore nella creazione del tag");
+        return;
+      }
+      setTags((prev) => [...prev, result.tag!]);
+    } else {
+      const id = label
+        .trim()
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, "-")
+        .replace(/(^-|-$)/g, "");
+      if (tags.some((t) => t.id === id)) return;
+      setTags((prev) => [...prev, { id, label: label.trim(), emoji, bg }]);
+    }
     setLabel("");
     setEmoji("🏷️");
     setShowForm(false);
   }
 
-  function removeTag(id: string) {
+  async function removeTag(id: string) {
     setTags((prev) => prev.filter((t) => t.id !== id));
+    if (isSupabaseConfigured) {
+      const result = await deleteTagAction(id);
+      if (result.error) setError(result.error);
+    }
   }
 
   return (
@@ -49,7 +66,7 @@ export default function TagsClient({ initialTags }: { initialTags: Tag[] }) {
         <div>
           <div className="flex items-center gap-2">
             <h1 className="text-xl font-bold text-ink">Tag piattaforma</h1>
-            <DemoBadge />
+            {!isSupabaseConfigured && <DemoBadge />}
           </div>
           <p className="text-sm text-ink-2">
             Lista master dei tag che i centri possono assegnare alle proprie attività (es.
@@ -100,12 +117,15 @@ export default function TagsClient({ initialTags }: { initialTags: Tag[] }) {
               ))}
             </div>
           </div>
+          {error && <p className="text-xs font-medium text-orange md:col-span-3">{error}</p>}
+
           <div className="flex gap-2 md:col-span-3">
             <button
               type="submit"
-              className="rounded-md bg-sky px-5 py-2.5 text-sm font-bold text-white transition-colors hover:bg-[#3A9FDC]"
+              disabled={saving}
+              className="rounded-md bg-sky px-5 py-2.5 text-sm font-bold text-white transition-colors hover:bg-[#3A9FDC] disabled:opacity-60"
             >
-              Crea tag
+              {saving ? "Creo…" : "Crea tag"}
             </button>
             <button
               type="button"
@@ -143,9 +163,10 @@ export default function TagsClient({ initialTags }: { initialTags: Tag[] }) {
       </div>
 
       <p className="mt-5 text-[11px] text-ink-3">
-        Modifiche demo salvate solo in questa sessione — quando colleghi Supabase aggiorneranno la
-        tabella <code className="rounded bg-bg px-1">tags</code>. I centri assegnano i tag alle
-        proprie attività dalla pagina di modifica attività.
+        {isSupabaseConfigured
+          ? "Le modifiche vengono salvate su Supabase in tempo reale."
+          : "Modifiche demo salvate solo in questa sessione — quando colleghi Supabase aggiorneranno la tabella tags."}{" "}
+        I centri assegnano i tag alle proprie attività dalla pagina di modifica attività.
       </p>
     </div>
   );

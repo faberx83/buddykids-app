@@ -19,6 +19,12 @@ export function weeklyOccupancy(activityId: string): WeekOccupancy[] {
   return chunkIntoWeeks(days).map((week, i) => summarizeWeek(week, `Sett. ${i + 1}`));
 }
 
+// Come weeklyOccupancy, ma a partire da un elenco di giorni già disponibile
+// (es. letto da Supabase) invece che dalla mappa mock.
+export function weeklyOccupancyFromDays(days: DayAvailability[]): WeekOccupancy[] {
+  return chunkIntoWeeks(days).map((week, i) => summarizeWeek(week, `Sett. ${i + 1}`));
+}
+
 // Occupazione settimanale aggregata su più attività (stesso indice di
 // settimana sommato tra le attività) — utile per un centro con più attività
 // o per la piattaforma nel suo complesso.

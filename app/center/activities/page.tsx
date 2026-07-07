@@ -1,8 +1,10 @@
 import Link from "next/link";
-import { activities, demoCenterAdminCenterId } from "@/lib/mock-data";
+import { getActivitiesForCenter } from "@/lib/data/activities";
+import { getCenterContext } from "@/lib/data/center-admin";
 
-export default function CenterActivitiesPage() {
-  const myActivities = activities.filter((a) => a.centerId === demoCenterAdminCenterId);
+export default async function CenterActivitiesPage() {
+  const { centerDbId, centerSlug } = await getCenterContext();
+  const myActivities = await getActivitiesForCenter(centerDbId, centerSlug);
 
   return (
     <div>
@@ -50,6 +52,9 @@ export default function CenterActivitiesPage() {
             </div>
           </div>
         ))}
+        {myActivities.length === 0 && (
+          <p className="text-sm text-ink-2">Nessuna attività trovata per il tuo centro.</p>
+        )}
       </div>
     </div>
   );
