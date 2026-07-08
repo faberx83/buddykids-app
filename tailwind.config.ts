@@ -17,6 +17,10 @@ const config: Config = {
         green: { DEFAULT: "#52C87A", light: "#E8F9EE" },
         ink: { DEFAULT: "#1A1D2E", 2: "#6B7280", 3: "#9CA3AF" },
         bg: "#F7F9FC",
+        // Accento del tenant "Partner" (gestori centro) — sottodominio partner.*
+        partner: { DEFAULT: "#1FA88E", light: "#E3F5F1", mid: "#9FDCCF" },
+        // Sfondo scuro del tenant "Admin" (piattaforma) — sottodominio admin.*
+        navy: { DEFAULT: "#1A1D2E", 2: "#242A40", 3: "#343B57", text2: "#9CA6C4" },
       },
       fontFamily: {
         sans: ["Inter", "sans-serif"],

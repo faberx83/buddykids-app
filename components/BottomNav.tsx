@@ -15,7 +15,12 @@ export default function BottomNav() {
   const pathname = usePathname();
 
   return (
-    <div className="flex flex-shrink-0 border-t border-[#F0F2F5] bg-white pb-5 pt-2">
+    <div
+      className="flex flex-shrink-0 border-t border-[#F0F2F5] bg-white pt-2"
+      // pb-5 di base + lo spazio reale occupato dai pulsanti/gesture bar di
+      // sistema (Android/iOS), altrimenti la barra finisce nascosta dietro.
+      style={{ paddingBottom: "calc(1.25rem + env(safe-area-inset-bottom))" }}
+    >
       {items.map((item) => {
         const active = pathname === item.href;
         return (

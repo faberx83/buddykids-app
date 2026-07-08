@@ -1,6 +1,5 @@
 import Link from "next/link";
-import ActivityCard from "@/components/ActivityCard";
-import CategoryChip from "@/components/CategoryChip";
+import HomeFeed from "@/components/HomeFeed";
 import { categories } from "@/lib/mock-data";
 import { getActivities } from "@/lib/data/activities";
 import { createClient } from "@/lib/supabase/server";
@@ -40,8 +39,6 @@ async function getDisplayIdentity() {
 
 export default async function HomePage() {
   const activities = await getActivities();
-  const popular = activities.slice(0, 2);
-  const recommended = activities.slice(2, 3);
   const { displayName, initials } = await getDisplayIdentity();
 
   return (
@@ -77,54 +74,7 @@ export default async function HomePage() {
         </Link>
       </div>
 
-      <div className="px-5 pt-4">
-        <div className="mb-3 flex items-center justify-between">
-          <span className="text-[15px] font-bold text-ink">Categorie</span>
-          <span className="cursor-pointer text-[13px] font-medium text-sky">Tutte</span>
-        </div>
-        <div className="no-scrollbar flex gap-2.5 overflow-x-auto pb-1">
-          {categories.map((cat, i) => (
-            <CategoryChip
-              key={cat.id}
-              emoji={cat.emoji}
-              label={cat.label}
-              bg={cat.bg}
-              selected={i === 0}
-            />
-          ))}
-        </div>
-      </div>
-
-      <div className="px-5 pt-4">
-        <div className="mb-3 flex items-center justify-between">
-          <span className="text-[15px] font-bold text-ink">🔥 Popolari vicino a te</span>
-          <span className="cursor-pointer text-[13px] font-medium text-sky">Vedi tutti</span>
-        </div>
-        {popular.map((a) => (
-          <ActivityCard key={a.id} activity={a} />
-        ))}
-
-        <div className="mb-3 mt-1 flex items-center justify-between">
-          <span className="text-[15px] font-bold text-ink">⭐ Consigliati per Marco</span>
-          <span className="cursor-pointer text-[13px] font-medium text-sky">Vedi tutti</span>
-        </div>
-        {recommended.map((a) => (
-          <ActivityCard key={a.id} activity={a} />
-        ))}
-      </div>
-
-      <div className="mx-5 mt-3.5 flex cursor-pointer items-center justify-between rounded-lg bg-sky-light px-4 py-3.5">
-        <div className="flex items-center gap-2.5">
-          <i className="ti ti-map text-[26px] text-sky" />
-          <div>
-            <p className="text-sm font-semibold text-ink">Attività sulla mappa</p>
-            <p className="text-xs text-ink-2">24 centri nel raggio di 5 km</p>
-          </div>
-        </div>
-        <button className="rounded-sm bg-sky px-3.5 py-2 text-xs font-semibold text-white">
-          Vedi mappa
-        </button>
-      </div>
+      <HomeFeed activities={activities} categories={categories} />
       <div className="h-5" />
     </div>
   );

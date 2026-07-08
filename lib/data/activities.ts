@@ -13,7 +13,7 @@ const SELECT_COLUMNS = `
   price_per_week, shuttle_price, description, schedule, meal_option,
   pre_service, post_service, rating, reviews_count, img_gradient, days, hours,
   distance_km, spots_left, weeks_available, pills, badges, center_id,
-  centers ( slug, name, emoji, gradient ),
+  centers ( slug, name, emoji, gradient, has_bar ),
   activity_tags ( tag_id )
 `;
 
@@ -22,6 +22,7 @@ interface RawCenterRef {
   name: string | null;
   emoji: string | null;
   gradient: string | null;
+  has_bar: boolean | null;
 }
 
 interface RawActivityRow {
@@ -92,6 +93,7 @@ export function mapRow(row: RawActivityRow): Activity {
     preService: (row.pre_service as Activity["preService"]) ?? undefined,
     postService: (row.post_service as Activity["postService"]) ?? undefined,
     mealOption: (row.meal_option as Activity["mealOption"]) ?? undefined,
+    centerHasBar: Boolean(center?.has_bar),
   };
 }
 

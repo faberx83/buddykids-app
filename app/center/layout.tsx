@@ -9,6 +9,7 @@ const navItems = [
   { href: "/center/profile", label: "Il mio centro", icon: "ti-building" },
   { href: "/center/activities", label: "Attività", icon: "ti-list-details" },
   { href: "/center/promotions", label: "Promozioni", icon: "ti-discount-2" },
+  { href: "/center/group-requests", label: "Richieste Gruppo", icon: "ti-users-group" },
 ];
 
 export default async function CenterLayout({ children }: { children: React.ReactNode }) {
@@ -34,11 +35,12 @@ export default async function CenterLayout({ children }: { children: React.React
 
   return (
     <DashboardLayout
-      brand="BuddyKids Centro"
+      brand="BuddyKids Partner"
       brandEmoji="🏫"
       navItems={navItems}
       requiredRole="center_admin"
       realRole={realRole}
+      variant="partner"
     >
       {children}
     </DashboardLayout>

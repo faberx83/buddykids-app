@@ -11,6 +11,7 @@ import { Activity, Kid, Week } from "@/lib/types";
 import { createBookingAction } from "./actions";
 import AddKidForm from "@/components/AddKidForm";
 import { ComingSoonBadge } from "@/components/StatusBadge";
+import { familyDiscountAmount } from "@/lib/family-discount";
 
 const paymentMethodMap: Record<string, "card" | "apple_pay" | "bank_transfer"> = {
   card: "card",
@@ -40,9 +41,15 @@ export default function BookingClient({
   const [submitError, setSubmitError] = useState<string | null>(null);
 
   const nWeeks = selectedWeeks.length || 1;
-  const subtotal = nWeeks * activity.pricePerWeek;
-  const groupDiscount = nWeeks >= 2 ? Math.round(subtotal * 0.05) : 0;
-  const shuttleCost = activity.shuttlePrice * nWeeks;
+  const kidsCount = selectedKids.length || 1;
+  // Prezzo di UN bambino (settimane × prezzo a settimana), usato come base
+  // sia per il totale sia per calcolare lo sconto famiglia dal 2° bambino.
+  const perChildSubtotal = nWeeks * activity.pricePerWeek;
+  const subtotal = perChildSubtotal * kidsCount;
+  const weekDiscount = nWeeks >= 2 ? Math.round(subtotal * 0.05) : 0;
+  const familyDiscount = familyDiscountAmount(perChildSubtotal, kidsCount);
+  const groupDiscount = weekDiscount + familyDiscount;
+  const shuttleCost = activity.shuttlePrice * nWeeks * kidsCount;
   const total = subtotal - groupDiscount + shuttleCost;
 
   const toggleWeek = (id: string) =>
@@ -114,9 +121,15 @@ export default function BookingClient({
               ))}
             </div>
             <div className="rounded-md bg-bg p-3.5">
-              <Row label={`${nWeeks} settiman${nWeeks === 1 ? "a" : "e"} × €${activity.pricePerWeek}`} value={`€${subtotal}`} />
-              {groupDiscount > 0 && (
-                <Row label="Sconto gruppo 🎉" value={`-€${groupDiscount}`} valueClass="text-green" />
+              <Row
+                label={`${nWeeks} settiman${nWeeks === 1 ? "a" : "e"} × €${activity.pricePerWeek} × ${kidsCount} bambin${kidsCount === 1 ? "o" : "i"}`}
+                value={`€${subtotal}`}
+              />
+              {weekDiscount > 0 && (
+                <Row label="Sconto multi-settimana" value={`-€${weekDiscount}`} valueClass="text-green" />
+              )}
+              {familyDiscount > 0 && (
+                <Row label="Sconto famiglia 👨‍👩‍👧‍👦" value={`-€${familyDiscount}`} valueClass="text-green" />
               )}
               <Row
                 label="Totale stimato"
@@ -210,14 +223,17 @@ export default function BookingClient({
             <div className="mt-4 rounded-md bg-bg p-3.5">
               <Row label={`${activity.name} (${nWeeks} sett.)`} value={`€${subtotal}`} />
               <Row
-                label={`${kidNames[0] ?? "Bambino"} — ${selectedKids.length} bambino${selectedKids.length === 1 ? "" : "i"}`}
+                label={`${kidNames.join(", ") || "Bambino"} — ${selectedKids.length} bambino${selectedKids.length === 1 ? "" : "i"}`}
                 value={`×${selectedKids.length || 1}`}
               />
               {activity.shuttlePrice > 0 && (
-                <Row label={`Navetta (${nWeeks} sett.)`} value={`€${shuttleCost}`} />
+                <Row label={`Navetta (${nWeeks} sett. × ${kidsCount})`} value={`€${shuttleCost}`} />
               )}
-              {groupDiscount > 0 && (
-                <Row label="Sconto gruppo" value={`-€${groupDiscount}`} valueClass="text-green" />
+              {weekDiscount > 0 && (
+                <Row label="Sconto multi-settimana" value={`-€${weekDiscount}`} valueClass="text-green" />
+              )}
+              {familyDiscount > 0 && (
+                <Row label="Sconto famiglia 👨‍👩‍👧‍👦" value={`-€${familyDiscount}`} valueClass="text-green" />
               )}
               <Row label="Totale" value={`€${total}`} total />
             </div>

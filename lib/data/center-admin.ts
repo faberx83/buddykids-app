@@ -57,6 +57,7 @@ interface RawCenterRow {
   contact_email: string | null;
   contact_phone: string | null;
   social_links: unknown;
+  has_bar: boolean | null;
 }
 
 function mapCenterRow(row: RawCenterRow): Center {
@@ -74,6 +75,7 @@ function mapCenterRow(row: RawCenterRow): Center {
     contactPhone: row.contact_phone || "",
     ownerName: "",
     socialLinks: (row.social_links as Center["socialLinks"]) ?? undefined,
+    hasBar: Boolean(row.has_bar),
   };
 }
 
@@ -88,7 +90,9 @@ export async function getMyCenter(): Promise<{ center: Center; dbId: string | nu
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("centers")
-    .select("id, slug, name, emoji, gradient, city, address, description, contact_email, contact_phone, social_links")
+    .select(
+      "id, slug, name, emoji, gradient, city, address, description, contact_email, contact_phone, social_links, has_bar"
+    )
     .eq("id", centerDbId)
     .single();
 

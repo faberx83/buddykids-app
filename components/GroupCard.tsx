@@ -1,10 +1,13 @@
+import Link from "next/link";
 import { GroupItem } from "@/lib/types";
 import { pillClasses } from "@/lib/colors";
-import { ComingSoonBadge } from "@/components/StatusBadge";
 
 export default function GroupCard({ group }: { group: GroupItem }) {
   return (
-    <div className="mx-5 mb-3 cursor-pointer overflow-hidden rounded-lg border border-[#F0F2F5] bg-white transition-transform hover:scale-[0.98]">
+    <Link
+      href={`/groups/${group.id}`}
+      className="mx-5 mb-3 block cursor-pointer overflow-hidden rounded-lg border border-[#F0F2F5] bg-white transition-transform hover:scale-[0.98]"
+    >
       <div
         className="relative flex h-[84px] items-center justify-center text-[44px]"
         style={{ background: group.gradient }}
@@ -47,12 +50,12 @@ export default function GroupCard({ group }: { group: GroupItem }) {
             <i className={`ti ${group.discountBadgeColor === "green" ? "ti-tag" : "ti-users"} text-xs`} />
             {group.discountLabel}
           </div>
-          <button className="flex items-center gap-1.5 rounded-md bg-sky-light px-3.5 py-1.5 text-xs font-semibold text-sky opacity-70">
-            Invita
-            <ComingSoonBadge />
-          </button>
+          <span className="flex items-center gap-1 rounded-md bg-sky-light px-3.5 py-1.5 text-xs font-semibold text-sky">
+            Apri gruppo
+            <i className="ti ti-chevron-right text-xs" />
+          </span>
         </div>
       </div>
-    </div>
+    </Link>
   );
 }

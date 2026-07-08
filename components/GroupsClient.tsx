@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import GroupCard from "@/components/GroupCard";
 import { createGroupAction } from "@/app/actions/groups";
 import { GroupItem } from "@/lib/types";
@@ -8,8 +9,9 @@ import { GroupItem } from "@/lib/types";
 const tabs = ["I miei gruppi", "Scopri", "Inviti"];
 
 export default function GroupsClient({ initialGroups }: { initialGroups: GroupItem[] }) {
+  const router = useRouter();
   const [active, setActive] = useState(0);
-  const [groups, setGroups] = useState<GroupItem[]>(initialGroups);
+  const [groups] = useState<GroupItem[]>(initialGroups);
   const [showNew, setShowNew] = useState(false);
   const [newName, setNewName] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -24,9 +26,9 @@ export default function GroupsClient({ initialGroups }: { initialGroups: GroupIt
       setError(result.error || "Errore nella creazione");
       return;
     }
-    setGroups((prev) => [result.group!, ...prev]);
-    setNewName("");
-    setShowNew(false);
+    // Appena creato, si entra subito nella configurazione del gruppo
+    // (bambini, attività, richiesta) invece di restare sulla lista.
+    router.push(`/groups/${result.group.id}`);
   }
 
   return (

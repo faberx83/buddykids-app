@@ -78,14 +78,14 @@ export async function createCenterAndAssignAction(
   const { data: profile, error: findError } = await supabase
     .from("profiles")
     .select("id")
-    .eq("email", email)
+    .ilike("email", email)
     .maybeSingle();
 
   if (findError || !profile) {
     return {
       ...result,
       warning:
-        "Centro creato, ma nessun utente registrato trovato con questa email. Chiedi alla persona di registrarsi nell'app, poi assegnale il ruolo dalla stessa pagina.",
+        "Centro creato, ma nessun utente registrato trovato con questa email. Verifica che l'indirizzo sia scritto esattamente come nel profilo (Supabase → Table Editor → profiles), oppure chiedi alla persona di registrarsi nell'app e poi assegnale il ruolo dalla stessa pagina.",
     };
   }
 
@@ -113,7 +113,7 @@ export async function assignCenterAdminAction(
   const { data: profile, error: findError } = await supabase
     .from("profiles")
     .select("id")
-    .eq("email", email.trim())
+    .ilike("email", email.trim())
     .maybeSingle();
 
   if (findError || !profile) {

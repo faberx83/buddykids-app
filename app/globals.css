@@ -28,7 +28,13 @@ body {
 .app-shell {
   width: 100%;
   max-width: 480px;
-  min-height: 100vh;
+  /* Altezza FISSA (non min-height): serve a "chiudere" il contenitore alla
+     viewport così il figlio con overflow-y-auto scrolla internamente e la
+     bottom nav resta ancorata in fondo invece di scorrere via con la pagina.
+     100dvh (dynamic viewport height) sovrascrive 100vh sui browser che la
+     supportano, gestendo meglio la barra indirizzi mobile che si nasconde. */
+  height: 100vh;
+  height: 100dvh;
   background: #ffffff;
   display: flex;
   flex-direction: column;
@@ -37,7 +43,8 @@ body {
 
 @media (min-width: 640px) {
   .app-shell {
-    min-height: calc(100vh - 64px);
+    height: calc(100vh - 64px);
+    height: calc(100dvh - 64px);
     margin: 32px 0;
     border-radius: 32px;
     overflow: hidden;

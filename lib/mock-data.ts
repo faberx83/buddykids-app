@@ -437,6 +437,7 @@ export const centers: Center[] = [
     contactEmail: "info@centrolido.it",
     contactPhone: "+39 02 1234567",
     ownerName: "Luca Bianchi",
+    hasBar: true,
     socialLinks: {
       instagram: "https://instagram.com/centrolido",
       facebook: "https://facebook.com/centrolido",
@@ -508,12 +509,21 @@ export const centers: Center[] = [
     contactEmail: "info@scuolaaria.it",
     contactPhone: "+39 02 5678901",
     ownerName: "Elena Costa",
+    hasBar: true,
     socialLinks: {
       instagram: "https://instagram.com/scuolaaria",
       tiktok: "https://tiktok.com/@scuolaaria",
     },
   },
 ];
+
+// Riporta su ogni attività se il centro che la ospita ha un bar/punto ristoro
+// (usato dal filtro "servizi aggiuntivi" in Cerca) — evita di dover ripetere
+// il campo su ogni singola attività qui sopra.
+const centerHasBarById = new Map(centers.map((c) => [c.id, Boolean(c.hasBar)]));
+activities.forEach((a) => {
+  a.centerHasBar = centerHasBarById.get(a.centerId) ?? false;
+});
 
 // L'utente demo che "gestisce" un centro, per il ruolo Gestore centro
 export const demoCenterAdminCenterId = "centro-sportivo-lido";

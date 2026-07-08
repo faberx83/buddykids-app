@@ -10,6 +10,7 @@ const navItems = [
   { href: "/admin/centers", label: "Centri", icon: "ti-building-community" },
   { href: "/admin/activities", label: "Attività", icon: "ti-list-details" },
   { href: "/admin/bookings", label: "Prenotazioni", icon: "ti-ticket" },
+  { href: "/admin/group-requests", label: "Richieste Gruppo", icon: "ti-users-group" },
   { href: "/admin/tags", label: "Tag", icon: "ti-tags" },
 ];
 
@@ -41,6 +42,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
       navItems={navItems}
       requiredRole="platform_admin"
       realRole={realRole}
+      variant="admin"
     >
       {children}
     </DashboardLayout>

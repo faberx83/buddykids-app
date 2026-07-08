@@ -48,6 +48,7 @@ export interface Activity {
   preService?: ServiceOption; // ingresso anticipato
   postService?: ServiceOption; // uscita posticipata
   mealOption?: MealOption;
+  centerHasBar?: boolean; // presenza di un bar/punto ristoro nel centro che ospita l'attività
   dbId?: string; // uuid reale in Supabase — presente solo quando i dati arrivano dal database, non nei dati mock
 }
 
@@ -86,6 +87,95 @@ export interface GroupItem {
   totalFamilies: number;
   discountLabel: string;
   discountBadgeColor: PillColor;
+}
+
+// ─────────────────────────────────────────────
+// Gruppi — dettaglio (bambini + preferenze, aggregazioni, Richiesta Gruppo,
+// accompagnamento) — vedi lib/data/group-detail.ts
+// ─────────────────────────────────────────────
+
+export type CarpoolLeg = "dropoff" | "pickup" | "both";
+
+// Un bambino iscritto al gruppo, con la preferenza (tag) del genitore.
+export interface GroupKidEntry {
+  id: string; // id della riga group_kids
+  kidId: string;
+  kidName: string;
+  kidEmoji: string;
+  isOwn: boolean; // true se è un bambino del genitore loggato (può modificarlo/rimuoverlo)
+  preferredTagId: string | null;
+  preferredTagLabel: string | null;
+  notes: string;
+}
+
+// Sotto-gruppo/aggregazione proposta per una preferenza (es. "Calcio").
+export interface GroupSubgroup {
+  id: string;
+  label: string;
+  tagId: string | null;
+  kidIds: string[]; // GroupKidEntry.id inclusi
+  feasible: boolean; // l'attività target ha questo tag ed è ancora aperta
+}
+
+export type GroupRequestStatus = "pending" | "accepted" | "rejected";
+
+export interface GroupRequestItem {
+  id: string;
+  groupId: string;
+  groupName: string;
+  activityName: string;
+  centerName: string;
+  kidsCount: number;
+  discountPercent: number;
+  message: string;
+  status: GroupRequestStatus;
+  createdAt: string;
+}
+
+export interface CarpoolOfferItem {
+  id: string;
+  parentId: string;
+  parentLabel: string; // "Tu" per l'utente loggato, altrimenti iniziali
+  isOwn: boolean;
+  seatsAvailable: number;
+  hasChildSeat: boolean;
+  legs: CarpoolLeg;
+  notes: string;
+}
+
+export interface CarpoolRequestItem {
+  id: string;
+  parentId: string;
+  parentLabel: string;
+  isOwn: boolean;
+  kidsCount: number;
+  needsChildSeat: boolean;
+  legs: CarpoolLeg;
+}
+
+export interface CarpoolMatch {
+  request: CarpoolRequestItem;
+  offers: CarpoolOfferItem[]; // offerte compatibili, già filtrate/ordinate
+}
+
+// Vista completa della pagina di dettaglio gruppo.
+export interface GroupDetail {
+  id: string;
+  name: string;
+  emoji: string;
+  gradient: string;
+  createdByMe: boolean;
+  activityId: string | null; // dbId dell'attività target, se collegata
+  activityName: string | null;
+  centerName: string | null;
+  kids: GroupKidEntry[];
+  subgroups: GroupSubgroup[];
+  discountPercent: number; // fascia calcolata da lib/groups.ts sul numero attuale di bambini
+  request: GroupRequestItem | null; // ultima Richiesta Gruppo inviata, se presente
+  carpoolOffers: CarpoolOfferItem[];
+  carpoolRequests: CarpoolRequestItem[];
+  myKids: { id: string; name: string; emoji: string }[]; // bambini del genitore loggato, non ancora iscritti al gruppo
+  availableTags: Tag[];
 }
 
 export interface CalendarEvent {
@@ -127,6 +217,7 @@ export interface Center {
   contactPhone: string;
   ownerName: string;
   socialLinks?: SocialLinks;
+  hasBar?: boolean;
 }
 
 // Disponibilità di un singolo giorno per un'attività — pensata per una

@@ -140,6 +140,48 @@ export default function DetailClient({
         />
         <div className="my-3 h-px bg-[#F0F2F5]" />
 
+        <div className="mb-2.5 text-sm font-bold text-ink">Servizi disponibili</div>
+        <div className="mb-3.5 flex flex-wrap gap-2">
+          <ServiceTag
+            icon="ti-sunrise"
+            label="Pre-scuola"
+            available={Boolean(activity.preService?.available)}
+            detail={
+              activity.preService?.available
+                ? `dalle ${activity.preService.time}${
+                    activity.preService.priceExtra > 0 ? ` · +€${activity.preService.priceExtra}/sett` : " · incluso"
+                  }`
+                : undefined
+            }
+          />
+          <ServiceTag
+            icon="ti-sunset-2"
+            label="Post-scuola"
+            available={Boolean(activity.postService?.available)}
+            detail={
+              activity.postService?.available
+                ? `fino alle ${activity.postService.time}${
+                    activity.postService.priceExtra > 0 ? ` · +€${activity.postService.priceExtra}/sett` : " · incluso"
+                  }`
+                : undefined
+            }
+          />
+          <ServiceTag
+            icon="ti-tools-kitchen-2"
+            label="Pranzo"
+            available={activity.mealOption === "included" || activity.mealOption === "packed"}
+            detail={
+              activity.mealOption === "included"
+                ? "incluso"
+                : activity.mealOption === "packed"
+                ? "al sacco"
+                : undefined
+            }
+          />
+          <ServiceTag icon="ti-cup" label="Bar nel centro" available={Boolean(activity.centerHasBar)} />
+        </div>
+        <div className="my-3 h-px bg-[#F0F2F5]" />
+
         <div className="mb-2.5 text-sm font-bold text-ink">
           Recensioni ({activity.reviewsCount})
         </div>
@@ -173,6 +215,31 @@ export default function DetailClient({
           Prenota ora
         </Link>
       </div>
+    </div>
+  );
+}
+
+function ServiceTag({
+  icon,
+  label,
+  available,
+  detail,
+}: {
+  icon: string;
+  label: string;
+  available: boolean;
+  detail?: string;
+}) {
+  return (
+    <div
+      className={`flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-[11px] font-semibold ${
+        available ? "bg-green-light text-green" : "bg-bg text-ink-3"
+      }`}
+    >
+      <i className={`ti ${available ? icon : "ti-x"} text-[13px]`} />
+      {label}
+      {available && detail && <span className="font-normal">· {detail}</span>}
+      {!available && <span className="font-normal">non disponibile</span>}
     </div>
   );
 }

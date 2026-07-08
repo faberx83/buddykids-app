@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import BottomNav from "@/components/BottomNav";
 import PhoneShell from "@/components/PhoneShell";
+import PageLoadIndicator from "@/components/PageLoadIndicator";
 import { createClient } from "@/lib/supabase/server";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
 
@@ -22,7 +23,8 @@ export default async function MainLayout({
 
   return (
     <PhoneShell>
-      <div className="flex h-full min-h-screen flex-col sm:min-h-0 sm:flex-1">
+      <PageLoadIndicator color="#4DAFEF" />
+      <div className="flex h-full min-h-0 flex-col">
         <div className="no-scrollbar flex-1 overflow-y-auto">{children}</div>
         <BottomNav />
       </div>

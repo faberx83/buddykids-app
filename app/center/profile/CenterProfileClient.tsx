@@ -57,6 +57,7 @@ export default function CenterProfileClient({ center, dbId }: { center: Center; 
             contactEmail: form.contactEmail,
             contactPhone: form.contactPhone,
             socialLinks: form.socialLinks,
+            hasBar: Boolean(form.hasBar),
           });
           setSaving(false);
           if (result.error) {
@@ -125,6 +126,24 @@ export default function CenterProfileClient({ center, dbId }: { center: Center; 
               className="w-full rounded-md border border-[#E8EBF0] bg-bg px-3 py-2 text-sm outline-none focus:border-sky"
             />
           </Field>
+        </div>
+
+        <div className="my-2 h-px bg-[#F0F2F5]" />
+
+        <div>
+          <div className="mb-1 text-sm font-bold text-ink">Servizi del centro</div>
+          <p className="mb-3 text-xs text-ink-2">
+            Usati nei filtri di ricerca dell&apos;app genitori (in aggiunta a pre/post e pranzo,
+            già gestiti per singola attività).
+          </p>
+          <label className="flex items-center gap-2 rounded-md border border-[#E8EBF0] bg-bg px-3 py-2.5 text-sm text-ink">
+            <input
+              type="checkbox"
+              checked={Boolean(form.hasBar)}
+              onChange={(e) => update("hasBar", e.target.checked)}
+            />
+            🥤 Il centro ha un bar / punto ristoro
+          </label>
         </div>
 
         <div className="my-2 h-px bg-[#F0F2F5]" />

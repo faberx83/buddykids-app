@@ -4,10 +4,94 @@ import { createClient } from "@/lib/supabase/server";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
 import { DayAvailability, MealOption, ServiceOption, SocialLinks } from "@/lib/types";
 import { logGestoreAction } from "@/lib/data/activity-log";
+import { getCenterContext } from "@/lib/data/center-admin";
 
 function firstOf<T>(value: T | T[] | null | undefined): T | null {
   if (!value) return null;
   return Array.isArray(value) ? (value[0] ?? null) : value;
+}
+
+function slugify(text: string): string {
+  return (
+    text
+      .toLowerCase()
+      .normalize("NFD")
+      .replace(/[̀-ͯ]/g, "")
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/(^-+|-+$)/g, "") || "attivita"
+  );
+}
+
+// ─────────────────────────────────────────────
+// Nuova attività (activities) — creazione dal pannello Gestore centro
+// ─────────────────────────────────────────────
+export interface ActivityCreateInput {
+  name: string;
+  emoji: string;
+  ageRange: string;
+  pricePerWeek: number;
+  description: string;
+}
+
+export async function createActivityAction(
+  input: ActivityCreateInput
+): Promise<{ activitySlug?: string; error?: string }> {
+  if (!isSupabaseConfigured) return { error: "Supabase non configurato" };
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { error: "Non autenticato" };
+
+  const { centerDbId } = await getCenterContext();
+  if (!centerDbId) {
+    return { error: "Il tuo account non è ancora collegato a un centro (vedi il messaggio in \"Le tue attività\")." };
+  }
+
+  if (!input.name.trim()) return { error: "Il nome dell'attività è obbligatorio." };
+
+  const match = input.ageRange.match(/(\d+)\s*-\s*(\d+)/);
+  const ageMin = match ? Number(match[1]) : null;
+  const ageMax = match ? Number(match[2]) : null;
+
+  const baseSlug = slugify(input.name);
+  let slug = baseSlug;
+  for (let attempt = 0; attempt < 5; attempt++) {
+    const { data: existing } = await supabase
+      .from("activities")
+      .select("id")
+      .eq("slug", slug)
+      .maybeSingle();
+    if (!existing) break;
+    slug = `${baseSlug}-${Math.random().toString(36).slice(2, 6)}`;
+  }
+
+  const { data, error } = await supabase
+    .from("activities")
+    .insert({
+      center_id: centerDbId,
+      slug,
+      name: input.name,
+      emoji: input.emoji || "⭐",
+      age_min: ageMin,
+      age_max: ageMax,
+      price_per_week: input.pricePerWeek,
+      description: input.description,
+    })
+    .select("id, slug")
+    .single();
+
+  if (error || !data) return { error: error?.message || "Errore nella creazione dell'attività" };
+
+  await logGestoreAction(supabase, {
+    actorId: user.id,
+    centerId: centerDbId,
+    action: "activity_create",
+    entityType: "activity",
+    entityId: data.id,
+  });
+
+  return { activitySlug: data.slug };
 }
 
 // ─────────────────────────────────────────────
@@ -165,6 +249,7 @@ export interface CenterProfileUpdateInput {
   contactEmail: string;
   contactPhone: string;
   socialLinks: SocialLinks;
+  hasBar: boolean;
 }
 
 export async function updateCenterProfileAction(
@@ -187,6 +272,7 @@ export async function updateCenterProfileAction(
       contact_email: input.contactEmail,
       contact_phone: input.contactPhone,
       social_links: input.socialLinks,
+      has_bar: input.hasBar,
     })
     .eq("id", input.centerDbId);
 
