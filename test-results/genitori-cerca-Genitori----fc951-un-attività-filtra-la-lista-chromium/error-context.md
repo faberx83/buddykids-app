@@ -12,23 +12,33 @@
 # Error details
 
 ```
-Error: expect(locator).not.toHaveText(expected) failed
+Test timeout of 30000ms exceeded.
+```
 
-Locator:  getByText(/\d+ attività trovate/)
-Expected: not "5 attività trovate"
-Received: "5 attività trovate"
-Timeout:  8000ms
-
+```
+Error: locator.textContent: Test timeout of 30000ms exceeded.
 Call log:
-  - Expect "not toHaveText" with timeout 8000ms
   - waiting for getByText(/\d+ attività trovate/)
-    20 × locator resolved to <span class="text-[13px] text-ink-2">…</span>
-       - unexpected value "5 attività trovate"
 
 ```
 
+# Page snapshot
+
 ```yaml
-- text: 5 attività trovate
+- generic [active] [ref=e1]:
+  - generic [ref=e4]:
+    - generic [ref=e5]: BK
+    - heading "BuddyKids" [level=1] [ref=e6]
+    - paragraph [ref=e7]: Accedi a BuddyKids
+    - generic [ref=e8]:
+      - generic [ref=e9]: Email
+      - textbox "tuamail@esempio.it" [ref=e10]
+      - generic [ref=e11]: Password
+      - textbox "••••••••" [ref=e12]
+      - button "Password dimenticata?" [ref=e13] [cursor=pointer]
+      - button "Accedi" [ref=e14] [cursor=pointer]
+    - button "Non hai un account? Registrati" [ref=e15] [cursor=pointer]
+  - alert [ref=e16]
 ```
 
 # Test source
@@ -50,14 +60,14 @@ Call log:
   14 | 
   15 |   // TC-016 - Ricerca testuale
   16 |   test("TC-016 - digitare il nome di un'attività filtra la lista", async ({ page }) => {
-  17 |     const before = await resultsCount(page).textContent();
+> 17 |     const before = await resultsCount(page).textContent();
+     |                                             ^ Error: locator.textContent: Test timeout of 30000ms exceeded.
   18 |     const searchBox = page.getByPlaceholder("Cerca attività, centri, sport...");
   19 |     await searchBox.fill("zzzznonexistentzzzz");
   20 |     await expect(page.getByText("0 attività trovate")).toBeVisible();
   21 | 
   22 |     await searchBox.fill("");
-> 23 |     await expect(resultsCount(page)).not.toHaveText(before ?? "");
-     |                                          ^ Error: expect(locator).not.toHaveText(expected) failed
+  23 |     await expect(resultsCount(page)).not.toHaveText(before ?? "");
   24 |   });
   25 | 
   26 |   // TC-018 - Filtro Prezzo

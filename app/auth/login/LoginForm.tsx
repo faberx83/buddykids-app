@@ -134,10 +134,11 @@ export default function LoginForm({
 
         {mode === "signup" && (
           <>
-            <label className={`mb-1.5 block text-xs font-semibold ${isAdmin ? "text-navy-text2" : "text-ink-2"}`}>
+            <label htmlFor="login-invite-code" className={`mb-1.5 block text-xs font-semibold ${isAdmin ? "text-navy-text2" : "text-ink-2"}`}>
               Codice invito (opzionale)
             </label>
             <input
+              id="login-invite-code"
               value={inviteCode}
               onChange={(e) => setInviteCode(e.target.value.toUpperCase())}
               className={`mb-4 w-full rounded-lg border-[1.5px] px-4 py-3 text-sm outline-none ${
@@ -150,10 +151,11 @@ export default function LoginForm({
           </>
         )}
 
-        <label className={`mb-1.5 block text-xs font-semibold ${isAdmin ? "text-navy-text2" : "text-ink-2"}`}>
+        <label htmlFor="login-email" className={`mb-1.5 block text-xs font-semibold ${isAdmin ? "text-navy-text2" : "text-ink-2"}`}>
           Email
         </label>
         <input
+          id="login-email"
           type="email"
           required
           value={email}
@@ -168,10 +170,11 @@ export default function LoginForm({
 
         {mode !== "reset" && (
           <>
-            <label className={`mb-1.5 block text-xs font-semibold ${isAdmin ? "text-navy-text2" : "text-ink-2"}`}>
+            <label htmlFor="login-password" className={`mb-1.5 block text-xs font-semibold ${isAdmin ? "text-navy-text2" : "text-ink-2"}`}>
               Password
             </label>
             <input
+              id="login-password"
               type="password"
               required
               minLength={6}

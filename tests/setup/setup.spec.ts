@@ -24,9 +24,23 @@ test.describe("Setup", () => {
   // Priorita: Media | Precondizioni: Account esistente
   // Passi: Vai su /auth/login -> inserisci password sbagliata -> invia
   // Risultato atteso: Messaggio di errore visibile, nessun accesso
-  test.fixme("TC-003 - Login con credenziali errate", async ({ page }) => {
-    // TODO: implementare - vedi tests/genitori/cerca.spec.ts o home.spec.ts
-    // per esempi di test gia completati in quest'area.
+  //
+  // NOTA (bug trovato+corretto): questo test è anche la guardia di
+  // regressione per un bug reale scoperto durante la prima esecuzione vera
+  // della suite contro produzione — le label "Email"/"Password" in
+  // LoginForm.tsx non avevano htmlFor/id verso gli input corrispondenti,
+  // quindi getByLabel() (usato da loginAs() in tests/fixtures/roles.ts) non
+  // trovava mai il campo e ogni test con login reale andava in timeout dopo
+  // 30s — causa di ~70 fallimenti su una singola esecuzione. Corretto
+  // aggiungendo htmlFor/id a Email, Password e Codice invito.
+  test("TC-003 - Login con credenziali errate", async ({ page }) => {
+    await page.goto("/auth/login");
+    await page.getByLabel(/email/i).fill("indirizzo-che-non-esiste-di-sicuro@esempio.it");
+    await page.getByLabel(/password/i).fill("password-sbagliata-123");
+    await page.getByRole("button", { name: /accedi|login/i }).click();
+    await expect(page.getByText(/non corrette|errat[ao]|invalid/i)).toBeVisible({ timeout: 10_000 });
+    // Nessun accesso: restiamo sulla pagina di login.
+    await expect(page).toHaveURL(/\/auth\/login/);
   });
 
   // Priorita: Bassa | Precondizioni: Nessuna

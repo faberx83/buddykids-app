@@ -26,92 +26,16 @@ Call log:
 ```
 
 ```yaml
-- heading "Ciao, Sofia! 👋" [level=2]
-- paragraph: Cosa facciamo questa estate?
-- text: SF
-- link " Cerca attività...  Milano":
-  - /url: /search
-- button "Planner"
-- button "Per bambino"
-- button "Tutti"
-- button "👦 Marco"
-- button "👧 Giulia"
-- text: 0 di 13 settimane coperte Settimana 1 · scoperta
-- button "Non mi serve"
-- link "Riempi":
-  - /url: /search?week=2026-06-01
-- text: Settimana 2 · scoperta
-- button "Non mi serve"
-- link "Riempi":
-  - /url: /search?week=2026-06-08
-- text: Settimana 3 · scoperta
-- button "Non mi serve"
-- link "Riempi":
-  - /url: /search?week=2026-06-15
-- text: Settimana 4 · scoperta
-- button "Non mi serve"
-- link "Riempi":
-  - /url: /search?week=2026-06-22
-- text: Settimana 5 · scoperta
-- button "Non mi serve"
-- link "Riempi":
-  - /url: /search?week=2026-06-29
-- text: Settimana 6 · scoperta
-- button "Non mi serve"
-- link "Riempi":
-  - /url: /search?week=2026-07-06
-- text: Settimana 7 · scoperta
-- button "Non mi serve"
-- link "Riempi":
-  - /url: /search?week=2026-07-13
-- text: Settimana 8 · scoperta
-- button "Non mi serve"
-- link "Riempi":
-  - /url: /search?week=2026-07-20
-- text: Settimana 9 · scoperta
-- button "Non mi serve"
-- link "Riempi":
-  - /url: /search?week=2026-07-27
-- text: Settimana 10 · scoperta
-- button "Non mi serve"
-- link "Riempi":
-  - /url: /search?week=2026-08-03
-- text: Settimana 11 · scoperta
-- button "Non mi serve"
-- link "Riempi":
-  - /url: /search?week=2026-08-10
-- text: Settimana 12 · scoperta
-- button "Non mi serve"
-- link "Riempi":
-  - /url: /search?week=2026-08-17
-- text: Settimana 13 · scoperta
-- button "Non mi serve"
-- link "Riempi":
-  - /url: /search?week=2026-08-24
-- text: Per riempire la settimana 1
-- link "🏊 Summer Camp Acquatico €280":
-  - /url: /activity/summer-camp-acquatico
-- link "🎨 Laboratorio Arti Creative €220":
-  - /url: /activity/laboratorio-arti-creative
-- link "🔬 Coding & Robotica Kids €310":
-  - /url: /activity/coding-robotica-kids
-- link "⚽ Soccer Academy Estate €250":
-  - /url: /activity/soccer-academy-estate
-- text: 
-- paragraph: Attività sulla mappa
-- paragraph: Attiva la posizione per vedere i centri vicini
-- button "Usa posizione"
-- link " Home":
-  - /url: /
-- link " Cerca":
-  - /url: /search
-- link " Gruppi":
-  - /url: /groups
-- link " Calendario":
-  - /url: /calendar
-- link " Profilo":
-  - /url: /profile
-- button "👨‍👩‍👧 Genitore "
+- text: BK
+- heading "BuddyKids" [level=1]
+- paragraph: Accedi a BuddyKids
+- text: Email
+- textbox "tuamail@esempio.it"
+- text: Password
+- textbox "••••••••"
+- button "Password dimenticata?"
+- button "Accedi"
+- button "Non hai un account? Registrati"
 - alert
 ```
 
