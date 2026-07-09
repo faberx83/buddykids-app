@@ -16,8 +16,12 @@ export default function PayMethodCard({
   return (
     <div
       onClick={onSelect}
+      // Niente ":hover" quando non selezionato (stesso bug di WeekCard/KidRow:
+      // su mobile l'hover puo' restare attivo dopo il tap e, avendo gli
+      // stessi colori dello stato selezionato, un metodo deselezionato
+      // sembrava ancora scelto).
       className={`mb-2 flex cursor-pointer items-center gap-3 rounded-md border-[1.5px] p-3.5 transition-colors ${
-        selected ? "border-sky bg-sky-light" : "border-[#E8EBF0] bg-white hover:border-sky hover:bg-sky-light"
+        selected ? "border-sky bg-sky-light" : "border-[#E8EBF0] bg-white"
       }`}
     >
       <i className={`ti ${icon} text-[22px] text-ink-3`} />

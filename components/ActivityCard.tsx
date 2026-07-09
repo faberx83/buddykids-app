@@ -5,7 +5,13 @@ import { useState } from "react";
 import { Activity } from "@/lib/types";
 import { pillClasses } from "@/lib/colors";
 
-export default function ActivityCard({ activity }: { activity: Activity }) {
+export default function ActivityCard({
+  activity,
+  matchPercent,
+}: {
+  activity: Activity;
+  matchPercent?: number;
+}) {
   const [fav, setFav] = useState(false);
 
   return (
@@ -20,6 +26,11 @@ export default function ActivityCard({ activity }: { activity: Activity }) {
         <span className="absolute inset-0 flex items-center justify-center text-7xl">
           {activity.emoji}
         </span>
+        {matchPercent !== undefined && (
+          <div className="absolute left-2.5 top-2.5 z-[1] rounded-full bg-purple px-2.5 py-1 text-[11px] font-bold text-white">
+            Match {matchPercent}%
+          </div>
+        )}
         <div className="relative z-[1] m-2 flex items-center gap-1 rounded-full bg-white/95 px-2.5 py-1 text-[11px] font-semibold backdrop-blur-sm">
           <i className="ti ti-star-filled text-[11px] text-yellow" />
           {activity.rating} · {activity.center}

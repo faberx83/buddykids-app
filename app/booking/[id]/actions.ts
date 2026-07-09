@@ -11,6 +11,11 @@ export interface CreateBookingInput {
   discountAmount: number;
   shuttleIncluded: boolean;
   paymentMethod: "card" | "apple_pay" | "bank_transfer";
+  // Se presente, lo sconto invito è stato incluso nel totale mostrato al
+  // genitore: dopo aver creato la prenotazione lo segniamo "usato" (una sola
+  // volta, via RPC security definer redeem_invite_discount — vedi schema.sql)
+  // così non può essere applicato di nuovo a una prenotazione successiva.
+  inviteId?: string;
 }
 
 export async function createBookingAction(
@@ -63,6 +68,14 @@ export async function createBookingAction(
         .from("booking_kids")
         .insert(realKidIds.map((kidId) => ({ booking_id: bookingId, kid_id: kidId })));
     }
+  }
+
+  if (input.inviteId) {
+    // Best-effort: se fallisce (es. già usato altrove, o scaduto nel
+    // frattempo) non annulliamo la prenotazione appena creata — al peggio lo
+    // sconto invito non risulta "consumato" e non verrà più riofferto in
+    // automatico su prenotazioni successive di questo genitore.
+    await supabase.rpc("redeem_invite_discount", { p_invite_id: input.inviteId });
   }
 
   return { bookingId };

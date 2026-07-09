@@ -14,8 +14,12 @@ export default function KidRow({
   return (
     <div
       onClick={onToggle}
+      // Niente ":hover" quando non selezionato: su mobile lo stato hover può
+      // restare "incollato" dopo un tap, e usando gli stessi colori dello
+      // stato selezionato (border-sky/bg-sky-light) un bambino deselezionato
+      // sembrava ancora spuntato.
       className={`mb-2 flex cursor-pointer items-center gap-3 rounded-md border-[1.5px] p-3 transition-colors ${
-        selected ? "border-sky bg-sky-light" : "border-[#F0F2F5] bg-white hover:border-sky hover:bg-sky-light"
+        selected ? "border-sky bg-sky-light" : "border-[#F0F2F5] bg-white"
       }`}
     >
       <div

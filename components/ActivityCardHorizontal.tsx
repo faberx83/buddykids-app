@@ -4,12 +4,27 @@ import { pillClasses } from "@/lib/colors";
 
 export default function ActivityCardHorizontal({
   activity,
+  week,
+  kid,
 }: {
   activity: Activity;
+  // Settimana (startDate ISO) selezionata in Cerca da "Riempi" nel Planner —
+  // portata avanti nel link cosi il dettaglio attività (e poi la
+  // prenotazione) la ritrovano preselezionata.
+  week?: string | null;
+  // Se in Home era selezionato un bambino specifico (famiglie con più
+  // figli), portiamo avanti anche quello: cosi in Prenotazione risulta già
+  // spuntato il bambino giusto invece del primo della lista.
+  kid?: string | null;
 }) {
+  const params = new URLSearchParams();
+  if (week) params.set("week", week);
+  if (kid) params.set("kid", kid);
+  const query = params.toString();
+
   return (
     <Link
-      href={`/activity/${activity.id}`}
+      href={query ? `/activity/${activity.id}?${query}` : `/activity/${activity.id}`}
       className="mx-5 mb-3 flex h-[106px] cursor-pointer overflow-hidden rounded-lg border border-[#F0F2F5] bg-white transition-transform hover:scale-[0.98] hover:shadow-md"
     >
       <div

@@ -1,7 +1,7 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import PageHeader from "@/components/PageHeader";
 import StepIndicator from "@/components/StepIndicator";
 import WeekCard from "@/components/WeekCard";
@@ -11,7 +11,8 @@ import { Activity, Kid, Week } from "@/lib/types";
 import { createBookingAction } from "./actions";
 import AddKidForm from "@/components/AddKidForm";
 import { ComingSoonBadge } from "@/components/StatusBadge";
-import { familyDiscountAmount } from "@/lib/family-discount";
+import { buildFamilyTiers, familyDiscountAmount } from "@/lib/family-discount";
+import type { EligibleInviteDiscount } from "@/lib/data/invites";
 
 const paymentMethodMap: Record<string, "card" | "apple_pay" | "bank_transfer"> = {
   card: "card",
@@ -19,26 +20,96 @@ const paymentMethodMap: Record<string, "card" | "apple_pay" | "bank_transfer"> =
   bank: "bank_transfer",
 };
 
+// "Prenotabile" = questa attività copre davvero questa settimana della
+// stagione, ci sono ancora posti, e non è già coperta da una prenotazione
+// confermata di questo genitore per la stessa attività (altrimenti sarebbe
+// possibile prenotarla due volte) — le altre (offered:false, soldOut,
+// bookedWeekIds) sono mostrate ma non selezionabili.
+function bookable(w: Week, bookedWeekIds: Set<string>): boolean {
+  return w.offered !== false && !w.soldOut && !bookedWeekIds.has(w.id);
+}
+
 export default function BookingClient({
   activity,
   weeks,
   kids: initialKids,
+  bookedWeekIds: bookedWeekIdsList,
+  inviteDiscount,
 }: {
   activity: Activity;
   weeks: Week[];
   kids: Kid[];
+  bookedWeekIds: string[];
+  // Sconto invito ancora da usare per questo genitore (se si è registrato
+  // con un codice invito del Gestore) — al massimo uno, si applica una sola
+  // volta alla prima prenotazione idonea (vedi lib/data/invites.ts).
+  inviteDiscount: EligibleInviteDiscount | null;
 }) {
+  const bookedWeekIds = useMemo(() => new Set(bookedWeekIdsList), [bookedWeekIdsList]);
   const router = useRouter();
+  const searchParams = useSearchParams();
+  // Impostato quando si arriva dal pulsante "Riempi" del Planner in Home,
+  // per una settimana specifica (startDate ISO della settimana stagionale).
+  const requestedWeekStart = searchParams.get("week");
+  // Se in Home era selezionato un bambino specifico (famiglie con più
+  // figli con esigenze diverse), lo ritroviamo qui e lo preselezioniamo al
+  // posto del primo bambino della lista.
+  const requestedKidId = searchParams.get("kid");
+
+  // Settimana su cui centrare il selettore: quella richiesta dal Planner se
+  // questa attività la copre davvero, altrimenti la prima disponibile —
+  // altrimenti chi arriva da "Riempi" con una settimana precisa in mente si
+  // ritroverebbe a dover ricercare da capo tra tutte le settimane.
+  const focusWeek = useMemo(() => {
+    if (requestedWeekStart) {
+      const match = weeks.find((w) => w.startDate === requestedWeekStart);
+      if (match) return match;
+    }
+    return weeks.find((w) => bookable(w, bookedWeekIds)) ?? weeks[0];
+  }, [weeks, requestedWeekStart, bookedWeekIds]);
+
+  // Vero solo se la settimana richiesta da "Riempi" esiste davvero qui ed è
+  // prenotabile — usato per mostrare la conferma "Hai scelto già questa
+  // settimana" invece di lasciare che l'utente debba accorgersene da solo
+  // dal solo bordo colorato della card.
+  const requestedWeekConfirmed = Boolean(
+    requestedWeekStart &&
+      focusWeek?.startDate === requestedWeekStart &&
+      bookable(focusWeek, bookedWeekIds)
+  );
+
   const [step, setStep] = useState<1 | 2 | 3>(1);
   const [kids, setKids] = useState<Kid[]>(initialKids);
-  const [selectedWeeks, setSelectedWeeks] = useState<string[]>(
-    weeks.filter((w) => !w.soldOut).slice(0, 2).map((w) => w.id)
+  const [selectedWeeks, setSelectedWeeks] = useState<string[]>(() =>
+    focusWeek && bookable(focusWeek, bookedWeekIds) ? [focusWeek.id] : []
   );
-  const [selectedKids, setSelectedKids] = useState<string[]>([kids[0]?.id].filter(Boolean));
+  // Di default si vede solo la settimana scelta + quella prima/dopo (utile
+  // per lo sconto multi-settimana) — "Vedi tutte" espande alla griglia
+  // completa di 13 settimane, colorata come nel Planner.
+  const [showAllWeeks, setShowAllWeeks] = useState(false);
+  const [selectedKids, setSelectedKids] = useState<string[]>(() => {
+    if (requestedKidId && kids.some((k) => k.id === requestedKidId)) return [requestedKidId];
+    return [kids[0]?.id].filter(Boolean) as string[];
+  });
   const [payMethod, setPayMethod] = useState("card");
   const [showAddKid, setShowAddKid] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
+  const scrollRef = useRef<HTMLDivElement>(null);
+
+  // Ogni cambio step riparte dall'inizio del contenuto: senza questo, se lo
+  // step precedente era scrollato in basso (es. tanti bambini in lista), lo
+  // step successivo appariva "tagliato" in alto, già scrollato a metà.
+  useEffect(() => {
+    scrollRef.current?.scrollTo({ top: 0 });
+  }, [step]);
+
+  const visibleWeeks = useMemo(() => {
+    if (showAllWeeks || !focusWeek) return weeks;
+    const idx = weeks.findIndex((w) => w.id === focusWeek.id);
+    if (idx === -1) return weeks;
+    return weeks.slice(Math.max(0, idx - 1), idx + 2);
+  }, [weeks, showAllWeeks, focusWeek]);
 
   const nWeeks = selectedWeeks.length || 1;
   const kidsCount = selectedKids.length || 1;
@@ -46,16 +117,27 @@ export default function BookingClient({
   // sia per il totale sia per calcolare lo sconto famiglia dal 2° bambino.
   const perChildSubtotal = nWeeks * activity.pricePerWeek;
   const subtotal = perChildSubtotal * kidsCount;
-  const weekDiscount = nWeeks >= 2 ? Math.round(subtotal * 0.05) : 0;
-  const familyDiscount = familyDiscountAmount(perChildSubtotal, kidsCount);
-  const groupDiscount = weekDiscount + familyDiscount;
+  // Il gestore può personalizzare la % multi-settimana per il proprio centro
+  // (activity.centerMultiweekDiscountPercent) — 5% resta il default storico.
+  const multiweekPercent = activity.centerMultiweekDiscountPercent ?? 5;
+  const weekDiscount = nWeeks >= 2 ? Math.round(subtotal * (multiweekPercent / 100)) : 0;
+  const familyTiers = buildFamilyTiers(activity.centerFamilyDiscountTiers);
+  const familyDiscount = familyDiscountAmount(perChildSubtotal, kidsCount, familyTiers);
+  // Sconto invito: sul subtotale prima degli altri sconti, come gli altri —
+  // si applica una sola volta, indipendentemente da quante settimane/bambini.
+  const inviteDiscountAmount = inviteDiscount
+    ? Math.round(subtotal * (inviteDiscount.percent / 100))
+    : 0;
+  const groupDiscount = weekDiscount + familyDiscount + inviteDiscountAmount;
   const shuttleCost = activity.shuttlePrice * nWeeks * kidsCount;
   const total = subtotal - groupDiscount + shuttleCost;
 
-  const toggleWeek = (id: string) =>
+  const toggleWeek = (w: Week) => {
+    if (!bookable(w, bookedWeekIds)) return;
     setSelectedWeeks((prev) =>
-      prev.includes(id) ? prev.filter((w) => w !== id) : [...prev, id]
+      prev.includes(w.id) ? prev.filter((id) => id !== w.id) : [...prev, w.id]
     );
+  };
 
   const toggleKid = (id: string) =>
     setSelectedKids((prev) =>
@@ -84,6 +166,7 @@ export default function BookingClient({
       discountAmount: groupDiscount,
       shuttleIncluded: activity.shuttlePrice > 0,
       paymentMethod: paymentMethodMap[payMethod] ?? "card",
+      inviteId: inviteDiscountAmount > 0 ? inviteDiscount?.inviteId : undefined,
     });
     setSubmitting(false);
 
@@ -105,21 +188,44 @@ export default function BookingClient({
       <PageHeader title="Prenota il tuo posto" backHref={`/activity/${activity.id}`} />
       <StepIndicator step={step} />
 
-      <div className="no-scrollbar flex-1 overflow-y-auto px-5 py-[18px]">
+      <div ref={scrollRef} className="no-scrollbar flex-1 overflow-y-auto px-5 py-[18px]">
         {step === 1 && (
           <div>
             <div className="mb-1 text-base font-bold text-ink">Scegli le settimane</div>
-            <div className="mb-4 text-[13px] text-ink-2">Puoi selezionare più settimane</div>
-            <div className="mb-4 grid grid-cols-2 gap-2.5">
-              {weeks.map((w) => (
+            <div className="mb-3 text-[13px] text-ink-2">
+              Puoi selezionare più settimane — stessa numerazione del Planner in Home
+            </div>
+            {requestedWeekConfirmed && focusWeek && (
+              <div className="mb-3 flex items-center gap-2 rounded-lg border border-sky-mid bg-sky-light px-3 py-2.5 text-[12px] font-medium text-ink">
+                <i className="ti ti-circle-check-filled text-base text-sky" />
+                Hai già scelto la <b>{focusWeek.label}</b> ({focusWeek.dates}) dal Planner — è selezionata qui sotto.
+              </div>
+            )}
+            <div className="mb-2.5 flex flex-wrap items-center gap-2.5 text-[10px] text-ink-2">
+              <Legend swatch="bg-white border-[#E8EBF0]" label="Disponibile" />
+              <Legend swatch="bg-yellow-light border-yellow" label="Ultimi posti" />
+              <Legend swatch="bg-orange-light border-orange-mid" label="Pieno" />
+              <Legend swatch="bg-green-light border-green" label="Già prenotata" />
+              <Legend swatch="bg-[#FAFBFD] border-dashed border-[#E8EBF0]" label="Non attiva qui" />
+            </div>
+            <div className="mb-2.5 grid grid-cols-2 gap-2.5">
+              {visibleWeeks.map((w) => (
                 <WeekCard
                   key={w.id}
                   week={w}
                   selected={selectedWeeks.includes(w.id)}
-                  onToggle={() => toggleWeek(w.id)}
+                  onToggle={() => toggleWeek(w)}
+                  alreadyBooked={bookedWeekIds.has(w.id)}
                 />
               ))}
             </div>
+            <button
+              type="button"
+              onClick={() => setShowAllWeeks((v) => !v)}
+              className="mb-4 text-xs font-semibold text-sky"
+            >
+              {showAllWeeks ? "Mostra solo questa e le vicine" : `Vedi tutte le ${weeks.length} settimane`}
+            </button>
             <div className="rounded-md bg-bg p-3.5">
               <Row
                 label={`${nWeeks} settiman${nWeeks === 1 ? "a" : "e"} × €${activity.pricePerWeek} × ${kidsCount} bambin${kidsCount === 1 ? "o" : "i"}`}
@@ -130,6 +236,9 @@ export default function BookingClient({
               )}
               {familyDiscount > 0 && (
                 <Row label="Sconto famiglia 👨‍👩‍👧‍👦" value={`-€${familyDiscount}`} valueClass="text-green" />
+              )}
+              {inviteDiscountAmount > 0 && (
+                <Row label={`Sconto invito 🎁 (-${inviteDiscount!.percent}%)`} value={`-€${inviteDiscountAmount}`} valueClass="text-green" />
               )}
               <Row
                 label="Totale stimato"
@@ -235,6 +344,9 @@ export default function BookingClient({
               {familyDiscount > 0 && (
                 <Row label="Sconto famiglia 👨‍👩‍👧‍👦" value={`-€${familyDiscount}`} valueClass="text-green" />
               )}
+              {inviteDiscountAmount > 0 && (
+                <Row label={`Sconto invito 🎁 (-${inviteDiscount!.percent}%)`} value={`-€${inviteDiscountAmount}`} valueClass="text-green" />
+              )}
               <Row label="Totale" value={`€${total}`} total />
             </div>
           </div>
@@ -254,6 +366,15 @@ export default function BookingClient({
         </button>
       </div>
     </div>
+  );
+}
+
+function Legend({ swatch, label }: { swatch: string; label: string }) {
+  return (
+    <span className="flex items-center gap-1">
+      <span className={`h-2.5 w-2.5 rounded-sm border ${swatch}`} />
+      {label}
+    </span>
   );
 }
 

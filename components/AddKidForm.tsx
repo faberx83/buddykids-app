@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { addKidAction } from "@/app/actions/kids";
 import { Kid, KidGender } from "@/lib/types";
+import { categories as interestOptions } from "@/lib/mock-data";
 
 export default function AddKidForm({
   onAdded,
@@ -14,13 +15,20 @@ export default function AddKidForm({
   const [name, setName] = useState("");
   const [birthDate, setBirthDate] = useState("");
   const [gender, setGender] = useState<KidGender | "">("");
+  const [interests, setInterests] = useState<string[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+
+  function toggleInterest(value: string) {
+    setInterests((prev) =>
+      prev.includes(value) ? prev.filter((i) => i !== value) : [...prev, value]
+    );
+  }
 
   async function handleSave() {
     setError(null);
     setSaving(true);
-    const result = await addKidAction(name, birthDate, gender || undefined);
+    const result = await addKidAction(name, birthDate, gender || undefined, interests);
     setSaving(false);
     if (result.error || !result.kid) {
       setError(result.error || "Errore nel salvataggio");
@@ -61,6 +69,31 @@ export default function AddKidForm({
           </select>
         </label>
       </div>
+
+      <div className="mb-2.5">
+        <div className="mb-1.5 text-[11px] text-ink-2">
+          Interessi (opzionale) — usati per suggerire le attività più adatte in Home
+        </div>
+        <div className="flex flex-wrap gap-1.5">
+          {interestOptions.map((c) => {
+            const value = `${c.emoji} ${c.label}`;
+            const active = interests.includes(value);
+            return (
+              <button
+                key={c.id}
+                type="button"
+                onClick={() => toggleInterest(value)}
+                className={`rounded-full border px-2.5 py-1 text-[11px] font-medium transition-colors ${
+                  active ? "border-sky bg-sky text-white" : "border-[#E8EBF0] bg-white text-ink-2"
+                }`}
+              >
+                {c.emoji} {c.label}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
       {error && <p className="mb-2 text-xs font-medium text-orange">{error}</p>}
       <div className="flex gap-2">
         <button

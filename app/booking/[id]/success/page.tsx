@@ -3,6 +3,7 @@ import Link from "next/link";
 import { getActivityBySlug } from "@/lib/data/activities";
 import { getBookingSummary } from "@/lib/data/bookings";
 import PhoneShell from "@/components/PhoneShell";
+import BookingSuccessActions from "@/components/BookingSuccessActions";
 
 export default async function BookingSuccessPage({
   params,
@@ -46,6 +47,13 @@ export default async function BookingSuccessPage({
         <p className="mb-4 text-[11px] text-ink-3">
           Pagamento simulato a scopo dimostrativo — nessun addebito reale è stato effettuato.
         </p>
+        <BookingSuccessActions
+          activityName={summary?.activityName ?? activity.name}
+          kidNames={summary?.kidNames ?? "Marco, 10 anni"}
+          weeksLabel={summary?.weeksLabel ?? "Settimana 4 (24 giu–28 giu)"}
+          startDate={summary?.startDate ?? null}
+          endDate={summary?.endDate ?? null}
+        />
         <Link
           href="/"
           className="mb-2.5 block w-full rounded-lg bg-sky py-3.5 text-sm font-bold text-white transition-colors hover:bg-[#3A9FDC]"

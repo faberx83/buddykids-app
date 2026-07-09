@@ -24,6 +24,10 @@ create table if not exists public.centers (
   social_links jsonb default '{}', -- { instagram, facebook, tiktok, youtube, website }
   gradient text default 'linear-gradient(135deg,#E8F6FD,#E3F9F5)', -- sfondo decorativo mostrato nell'app
   has_bar boolean default false, -- presenza di un bar/punto ristoro nel centro (usato nei filtri di ricerca)
+  -- Sconti personalizzabili dal gestore (fallback ai valori globali storici se null):
+  multiweek_discount_percent numeric(4,1), -- sconto se il genitore prenota 2+ settimane (default storico: 5%)
+  family_discount_tiers jsonb, -- [2°figlio%, 3°figlio%, 4°+figlio%], default storico: [10,15,20]
+  group_discount_tiers jsonb, -- [{minKids,percent}], default storico: 5+:5%, 8+:10%, 12+:15%
   created_at timestamptz default now()
 );
 
@@ -49,6 +53,9 @@ create table if not exists public.profiles (
   avatar_emoji text default '🙂',
   role text default 'parent' check (role in ('parent', 'center_admin', 'platform_admin')),
   center_id uuid references public.centers(id) on delete set null,
+  parent_role text check (parent_role in ('padre', 'madre', 'tutore')), -- solo per genitori: usato per il check di profilo completo in Home
+  dismissed_weeks jsonb default '[]', -- settimane del Planner segnate "non mi serve" dal genitore (array di date inizio settimana, ISO)
+  invited_by_code text, -- codice invito (public.invites) usato in fase di registrazione, se presente
   created_at timestamptz default now()
 );
 
@@ -159,6 +166,7 @@ create table if not exists public.activities (
   hours text, -- riepilogo testuale, es. "08:00 - 17:30"
   distance_km numeric(4, 1) default 0, -- placeholder finché non calcoliamo la distanza reale dalla posizione dell'utente
   spots_left int, -- posti "in evidenza" mostrati in scheda (separato dal dettaglio giorno-per-giorno di activity_days)
+  show_exact_spots boolean default false, -- se true mostra il numero esatto di spots_left ai genitori; se false mostra solo "Posti disponibili" generico, a scelta del gestore
   weeks_available text default '', -- riepilogo testuale, es. "6 di 8"
   pills jsonb default '[]', -- pillole colorate mostrate in scheda: [{ label, color }]
   badges jsonb default '[]', -- badge mostrati nel dettaglio: [{ label, icon, color }]
@@ -211,6 +219,34 @@ create table if not exists public.activity_tags (
   tag_id text references public.tags(id) on delete cascade not null,
   primary key (activity_id, tag_id)
 );
+
+-- ─────────────────────────────────────────────
+-- PARTNER OFFERS ("Servizi consigliati" per i gestori — versione a lista
+-- curata: solo l'Admin piattaforma pubblica i fornitori, non è un marketplace
+-- self-service. Letta dalla dashboard Gestore centro.)
+-- ─────────────────────────────────────────────
+create table if not exists public.partner_offers (
+  id uuid primary key default gen_random_uuid(),
+  category text not null,
+  emoji text default '🤝',
+  name text not null,
+  description text default '',
+  contact_label text not null,
+  contact_href text not null,
+  active boolean default true,
+  created_at timestamptz default now()
+);
+
+alter table public.partner_offers enable row level security;
+
+create policy "Partner offers: lettura pubblica"
+  on public.partner_offers for select
+  using (true);
+
+create policy "Partner offers: gestibili solo dall'admin piattaforma"
+  on public.partner_offers for all
+  using (public.is_platform_admin())
+  with check (public.is_platform_admin());
 
 alter table public.activity_tags enable row level security;
 
@@ -709,6 +745,22 @@ create index if not exists idx_activity_log_created on public.activity_log(creat
 -- colonna (create table "if not exists" non aggiunge colonne mancanti a una
 -- tabella già creata in precedenza).
 alter table public.centers add column if not exists has_bar boolean default false;
+alter table public.activities add column if not exists show_exact_spots boolean default false;
+alter table public.centers add column if not exists multiweek_discount_percent numeric(4,1);
+alter table public.centers add column if not exists family_discount_tiers jsonb;
+alter table public.centers add column if not exists group_discount_tiers jsonb;
+alter table public.profiles add column if not exists parent_role text check (parent_role in ('padre', 'madre', 'tutore'));
+alter table public.profiles add column if not exists dismissed_weeks jsonb default '[]';
+
+-- Foto profilo reali (genitore/bambino/centro/fornitore) e galleria/copertina
+-- attività — caricate su Storage (bucket "buddykids-images", vedi sezione
+-- STORAGE più sotto), qui salviamo solo l'URL pubblico risultante.
+alter table public.profiles add column if not exists avatar_url text;
+alter table public.kids add column if not exists avatar_url text;
+alter table public.activities add column if not exists cover_image_url text;
+alter table public.activities add column if not exists gallery_urls text[] default '{}';
+alter table public.centers add column if not exists logo_url text;
+alter table public.partner_offers add column if not exists image_url text;
 
 create index if not exists idx_profiles_center on public.profiles(center_id);
 create index if not exists idx_kids_parent on public.kids(parent_id);
@@ -722,6 +774,169 @@ create index if not exists idx_activity_days_activity on public.activity_days(ac
 create index if not exists idx_activity_days_date on public.activity_days(date);
 create index if not exists idx_promotions_activity on public.promotions(activity_id);
 create index if not exists idx_reviews_activity on public.reviews(activity_id);
+
+-- ─────────────────────────────────────────────
+-- STORAGE (foto profilo, copertina/galleria attività, logo centro/fornitore)
+-- ─────────────────────────────────────────────
+-- Un unico bucket pubblico in lettura: le foto (avatar, campus, fornitori)
+-- sono tutte contenuti che l'app mostra pubblicamente comunque (non dati
+-- sensibili), quindi non serve un bucket privato con URL firmati. Scrittura
+-- permessa a chiunque sia autenticato (V1: qualsiasi utente loggato può
+-- caricare in una qualsiasi sottocartella — la UI dell'app decide COSA far
+-- caricare a chi; una policy più stretta, per-cartella/per-proprietario, è
+-- un miglioramento V2 quando ogni immagine sarà legata 1:1 al suo proprietario).
+insert into storage.buckets (id, name, public)
+values ('buddykids-images', 'buddykids-images', true)
+on conflict (id) do nothing;
+
+create policy "Buddykids images: lettura pubblica"
+  on storage.objects for select
+  using (bucket_id = 'buddykids-images');
+
+create policy "Buddykids images: upload da utenti autenticati"
+  on storage.objects for insert
+  with check (bucket_id = 'buddykids-images' and auth.role() = 'authenticated');
+
+create policy "Buddykids images: aggiornamento da utenti autenticati"
+  on storage.objects for update
+  using (bucket_id = 'buddykids-images' and auth.role() = 'authenticated');
+
+create policy "Buddykids images: eliminazione da utenti autenticati"
+  on storage.objects for delete
+  using (bucket_id = 'buddykids-images' and auth.role() = 'authenticated');
+
+-- ─────────────────────────────────────────────
+-- INVITES (il Gestore invita potenziali nuovi genitori con un codice promo)
+-- ─────────────────────────────────────────────
+-- Quale codice invito ha usato un genitore in fase di registrazione (se
+-- nessuno, resta null) — valorizzata dal trigger handle_new_user() più
+-- sotto, leggendo raw_user_meta_data->>'invite_code' passato da signUp().
+alter table public.profiles add column if not exists invited_by_code text;
+
+create table if not exists public.invites (
+  id uuid primary key default gen_random_uuid(),
+  center_id uuid references public.centers(id) on delete cascade not null,
+  created_by uuid references public.profiles(id) on delete set null,
+  contact_name text,
+  contact_email text,
+  contact_phone text,
+  invite_code text unique not null,
+  promo_discount_percent numeric(4, 1) default 10,
+  promo_expires_at date,
+  active boolean default true, -- il gestore può disattivare un invito prima che scada
+  status text default 'pending' check (status in ('pending', 'sent', 'registered', 'redeemed', 'expired')),
+  email_sent_at timestamptz,
+  registered_parent_id uuid references public.profiles(id) on delete set null,
+  registered_at timestamptz,
+  -- Valorizzato una sola volta, quando lo sconto viene applicato alla prima
+  -- prenotazione idonea del genitore invitato (vedi redeem_invite_discount
+  -- più sotto) — evita che lo stesso invito dia lo sconto più di una volta.
+  discount_applied_at timestamptz,
+  created_at timestamptz default now()
+);
+
+alter table public.invites enable row level security;
+
+create policy "Invites: il gestore vede/gestisce gli inviti del proprio centro"
+  on public.invites for all
+  using (center_id = public.current_center_id() or public.is_platform_admin())
+  with check (center_id = public.current_center_id() or public.is_platform_admin());
+
+-- Il genitore invitato deve poter leggere il PROPRIO invito (per sapere se
+-- ha uno sconto da usare in Prenotazione) — solo lettura, nessun update
+-- diretto: l'unica scrittura concessa al genitore passa dalla funzione
+-- redeem_invite_discount() qui sotto (security definer, con i suoi controlli).
+create policy "Invites: il genitore invitato vede il proprio invito"
+  on public.invites for select
+  using (registered_parent_id = auth.uid());
+
+create index if not exists idx_invites_center on public.invites(center_id);
+create index if not exists idx_invites_code on public.invites(invite_code);
+
+-- Segna lo sconto di un invito come "usato" per la prima prenotazione
+-- idonea del genitore invitato — security definer così il genitore non ha
+-- bisogno di una policy di UPDATE generica su invites (che gli permetterebbe
+-- di alterare anche altri campi, es. la percentuale di sconto).
+create or replace function public.redeem_invite_discount(p_invite_id uuid)
+returns boolean
+language plpgsql security definer
+as $$
+declare
+  v_count int;
+begin
+  update public.invites
+  set discount_applied_at = now(), status = 'redeemed'
+  where id = p_invite_id
+    and registered_parent_id = auth.uid()
+    and discount_applied_at is null
+    and active = true;
+  get diagnostics v_count = row_count;
+  return v_count > 0;
+end;
+$$;
+
+-- Anteprima pubblica di un invito (mostrata in fase di registrazione a chi
+-- NON è ancora loggato, arrivando da un link ?invite=CODICE) — security
+-- definer per restituire solo nome centro + percentuale sconto, MAI i dati
+-- di contatto della persona invitata (altrimenti servirebbe una policy di
+-- lettura pubblica sull'intera tabella invites, che esporrebbe email/telefono
+-- di tutti gli invitati a chiunque abbia la anon key).
+create or replace function public.get_invite_preview(p_code text)
+returns table (center_name text, discount_percent numeric, valid boolean)
+language plpgsql security definer
+as $$
+begin
+  return query
+    select
+      c.name,
+      i.promo_discount_percent,
+      (
+        i.active
+        and (i.promo_expires_at is null or i.promo_expires_at >= current_date)
+        and i.registered_parent_id is null
+      )
+    from public.invites i
+    join public.centers c on c.id = i.center_id
+    where i.invite_code = p_code;
+end;
+$$;
+
+grant execute on function public.get_invite_preview(text) to anon, authenticated;
+
+-- Aggiorna il trigger di registrazione: oltre a creare il profilo, se in
+-- fase di signUp() è stato passato un invite_code (raw_user_meta_data), lo
+-- salva sul profilo E collega automaticamente l'invito (se esiste, è attivo
+-- e non scaduto) segnandolo "registered" — lo sconto sarà applicabile alla
+-- prima prenotazione senza nessuna azione manuale del genitore o del gestore.
+create or replace function public.handle_new_user()
+returns trigger as $$
+declare
+  v_invite_code text;
+begin
+  v_invite_code := new.raw_user_meta_data->>'invite_code';
+
+  insert into public.profiles (id, email, full_name, invited_by_code)
+  values (new.id, new.email, new.raw_user_meta_data->>'full_name', v_invite_code);
+
+  if v_invite_code is not null then
+    update public.invites
+    set registered_parent_id = new.id,
+        registered_at = now(),
+        status = 'registered'
+    where invite_code = v_invite_code
+      and active = true
+      and (promo_expires_at is null or promo_expires_at >= current_date)
+      and registered_parent_id is null;
+  end if;
+
+  return new;
+end;
+$$ language plpgsql security definer;
+
+drop trigger if exists on_auth_user_created on auth.users;
+create trigger on_auth_user_created
+  after insert on auth.users
+  for each row execute procedure public.handle_new_user();
 
 -- ─────────────────────────────────────────────
 -- Come promuovere un utente a center_admin o platform_admin

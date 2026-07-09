@@ -1,7 +1,8 @@
 import { notFound, redirect } from "next/navigation";
 import { getActivityBySlug } from "@/lib/data/activities";
-import { getWeeksForActivity } from "@/lib/data/weeks";
+import { getWeeksForActivity, getBookedWeekIdsForActivity } from "@/lib/data/weeks";
 import { getKidsForUser } from "@/lib/data/kids";
+import { getEligibleInviteDiscount } from "@/lib/data/invites";
 import { createClient } from "@/lib/supabase/server";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
 import PhoneShell from "@/components/PhoneShell";
@@ -28,14 +29,23 @@ export default async function BookingPage({
   const activity = await getActivityBySlug(id);
   if (!activity) return notFound();
 
-  const [weeks, kids] = await Promise.all([
+  const [weeks, kids, bookedWeekIdsSet, inviteDiscount] = await Promise.all([
     getWeeksForActivity(activity),
     getKidsForUser(),
+    activity.dbId ? getBookedWeekIdsForActivity(activity.dbId) : Promise.resolve(new Set<string>()),
+    getEligibleInviteDiscount(),
   ]);
+  const bookedWeekIds = Array.from(bookedWeekIdsSet);
 
   return (
     <PhoneShell>
-      <BookingClient activity={activity} weeks={weeks} kids={kids} />
+      <BookingClient
+        activity={activity}
+        weeks={weeks}
+        kids={kids}
+        bookedWeekIds={bookedWeekIds}
+        inviteDiscount={inviteDiscount}
+      />
     </PhoneShell>
   );
 }

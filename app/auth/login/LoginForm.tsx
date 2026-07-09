@@ -1,11 +1,13 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
 import PhoneShell from "@/components/PhoneShell";
 import { friendlyAuthError } from "@/lib/auth-errors";
+import { getInvitePreviewAction } from "@/app/actions/invites";
+import type { InvitePreview } from "@/lib/data/invites";
 import type { Tenant } from "@/lib/tenant";
 
 type Mode = "login" | "signup" | "reset";
@@ -20,12 +22,28 @@ export default function LoginForm({
   themeColor: string;
 }) {
   const router = useRouter();
-  const [mode, setMode] = useState<Mode>("login");
+  const searchParams = useSearchParams();
+  // Pagina a cui tornare dopo il login (es. un link di invito a un Gruppo
+  // aperto senza essere ancora autenticati) — impostato da proxy.ts.
+  const rawNext = searchParams.get("next");
+  const next = rawNext && rawNext.startsWith("/") ? rawNext : null;
+  // Codice invito del Gestore (link ?invite=CODICE mandato a un potenziale
+  // genitore) — se presente si parte già in modalità "Registrati" e si mostra
+  // un'anteprima dello sconto offerto.
+  const inviteParam = searchParams.get("invite");
+  const [mode, setMode] = useState<Mode>(inviteParam ? "signup" : "login");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [inviteCode, setInviteCode] = useState(inviteParam || "");
+  const [invitePreview, setInvitePreview] = useState<InvitePreview | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!inviteParam || !isSupabaseConfigured) return;
+    getInvitePreviewAction(inviteParam).then(setInvitePreview);
+  }, [inviteParam]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -56,13 +74,22 @@ export default function LoginForm({
       const { error } = await supabase.auth.signInWithPassword({ email, password });
       setLoading(false);
       if (error) return setError(friendlyAuthError(error.message));
-      router.push("/");
+      router.push(next || "/");
       router.refresh();
     } else {
+      const callbackUrl = next
+        ? `${window.location.origin}/auth/callback?next=${encodeURIComponent(next)}`
+        : `${window.location.origin}/auth/callback`;
       const { error } = await supabase.auth.signUp({
         email,
         password,
-        options: { emailRedirectTo: `${window.location.origin}/auth/callback` },
+        options: {
+          emailRedirectTo: callbackUrl,
+          // Letto dal trigger handle_new_user() lato DB: se il codice esiste,
+          // attivo e non scaduto, collega automaticamente lo sconto invito
+          // al nuovo profilo (vedi supabase/schema.sql).
+          data: inviteCode.trim() ? { invite_code: inviteCode.trim() } : undefined,
+        },
       });
       setLoading(false);
       if (error) return setError(friendlyAuthError(error.message));
@@ -93,6 +120,36 @@ export default function LoginForm({
       <p className={`mb-7 text-sm ${isAdmin ? "text-navy-text2" : "text-ink-2"}`}>{heading}</p>
 
       <form onSubmit={handleSubmit} className="w-full max-w-sm">
+        {mode === "signup" && invitePreview && (
+          <div
+            className={`mb-4 rounded-lg px-3.5 py-3 text-xs font-medium ${
+              invitePreview.valid ? "bg-green-light text-[#2d8f52]" : "bg-orange-light text-[#d4622a]"
+            }`}
+          >
+            {invitePreview.valid
+              ? `🎁 ${invitePreview.centerName} ti offre uno sconto del ${invitePreview.discountPercent}% sulla tua prima prenotazione — verrà applicato automaticamente registrandoti con questo codice.`
+              : "Questo codice invito non è (più) valido — puoi comunque registrarti normalmente."}
+          </div>
+        )}
+
+        {mode === "signup" && (
+          <>
+            <label className={`mb-1.5 block text-xs font-semibold ${isAdmin ? "text-navy-text2" : "text-ink-2"}`}>
+              Codice invito (opzionale)
+            </label>
+            <input
+              value={inviteCode}
+              onChange={(e) => setInviteCode(e.target.value.toUpperCase())}
+              className={`mb-4 w-full rounded-lg border-[1.5px] px-4 py-3 text-sm outline-none ${
+                isAdmin
+                  ? "border-navy-3 bg-navy-2 text-white placeholder:text-navy-text2"
+                  : "border-[#E8EBF0] bg-[#F4F6FA]"
+              }`}
+              placeholder="Es. BK-AB12CD"
+            />
+          </>
+        )}
+
         <label className={`mb-1.5 block text-xs font-semibold ${isAdmin ? "text-navy-text2" : "text-ink-2"}`}>
           Email
         </label>

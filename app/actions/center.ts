@@ -156,6 +156,8 @@ export interface ActivityUpdateInput {
   shuttlePrice: number;
   description: string;
   spotsLeft: number;
+  showExactSpots: boolean;
+  hasBar: boolean;
   tagIds: string[];
   address: string;
   lat: number;
@@ -164,6 +166,8 @@ export interface ActivityUpdateInput {
   preService: ServiceOption;
   postService: ServiceOption;
   schedule: { time: string; label: string; color: string }[];
+  coverImageUrl?: string | null;
+  galleryUrls?: string[];
 }
 
 export async function updateActivityAction(input: ActivityUpdateInput): Promise<{ error?: string }> {
@@ -194,6 +198,7 @@ export async function updateActivityAction(input: ActivityUpdateInput): Promise<
       shuttle_price: input.shuttlePrice,
       description: input.description,
       spots_left: input.spotsLeft,
+      show_exact_spots: input.showExactSpots,
       address: input.address,
       latitude: input.lat,
       longitude: input.lng,
@@ -201,10 +206,24 @@ export async function updateActivityAction(input: ActivityUpdateInput): Promise<
       pre_service: input.preService,
       post_service: input.postService,
       schedule: input.schedule,
+      ...(input.coverImageUrl !== undefined ? { cover_image_url: input.coverImageUrl } : {}),
+      ...(input.galleryUrls !== undefined ? { gallery_urls: input.galleryUrls } : {}),
     })
     .eq("id", input.activityDbId);
 
   if (error) return { error: error.message };
+
+  // Il "bar/punto ristoro" è un attributo del centro (non della singola attività): lo
+  // aggiorniamo qui perché la UI lo espone dalla scheda attività per semplicità, ma
+  // nota che se un centro ha più attività questa modifica vale per TUTTE (task tracciato
+  // in roadmap come possibile sviluppo futuro: gestione per-attività o override).
+  if (beforeRow?.center_id) {
+    const { error: barError } = await supabase
+      .from("centers")
+      .update({ has_bar: input.hasBar })
+      .eq("id", beforeRow.center_id);
+    if (barError) return { error: barError.message };
+  }
 
   // Ricostruisce i tag scelti: rimuove i vecchi e inserisce quelli attuali.
   const { error: delError } = await supabase
@@ -250,6 +269,10 @@ export interface CenterProfileUpdateInput {
   contactPhone: string;
   socialLinks: SocialLinks;
   hasBar: boolean;
+  multiweekDiscountPercent: number;
+  familyDiscountTiers: number[]; // [2°figlio%, 3°figlio%, 4°+figlio%]
+  groupDiscountTiers: { minKids: number; percent: number }[];
+  logoUrl?: string | null;
 }
 
 export async function updateCenterProfileAction(
@@ -273,6 +296,10 @@ export async function updateCenterProfileAction(
       contact_phone: input.contactPhone,
       social_links: input.socialLinks,
       has_bar: input.hasBar,
+      multiweek_discount_percent: input.multiweekDiscountPercent,
+      family_discount_tiers: input.familyDiscountTiers,
+      group_discount_tiers: input.groupDiscountTiers,
+      ...(input.logoUrl !== undefined ? { logo_url: input.logoUrl } : {}),
     })
     .eq("id", input.centerDbId);
 

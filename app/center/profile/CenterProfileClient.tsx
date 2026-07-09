@@ -4,6 +4,10 @@ import { useState } from "react";
 import { Center, SocialLinks } from "@/lib/types";
 import { DemoBadge } from "@/components/StatusBadge";
 import { updateCenterProfileAction } from "@/app/actions/center";
+import { GROUP_DISCOUNT_TIERS } from "@/lib/groups";
+import AvatarUploadButton from "@/components/AvatarUploadButton";
+
+const DEFAULT_FAMILY_TIERS = [10, 15, 20]; // 2°, 3°, 4°+ figlio
 
 const socialFields: { key: keyof SocialLinks; label: string; icon: string; placeholder: string }[] = [
   { key: "instagram", label: "Instagram", icon: "ti-brand-instagram", placeholder: "https://instagram.com/..." },
@@ -14,7 +18,13 @@ const socialFields: { key: keyof SocialLinks; label: string; icon: string; place
 ];
 
 export default function CenterProfileClient({ center, dbId }: { center: Center; dbId: string | null }) {
-  const [form, setForm] = useState({ ...center, socialLinks: { ...center.socialLinks } });
+  const [form, setForm] = useState({
+    ...center,
+    socialLinks: { ...center.socialLinks },
+    multiweekDiscountPercent: center.multiweekDiscountPercent ?? 5,
+    familyDiscountTiers: center.familyDiscountTiers ?? DEFAULT_FAMILY_TIERS,
+    groupDiscountTiers: center.groupDiscountTiers ?? GROUP_DISCOUNT_TIERS.map((t) => ({ ...t })),
+  });
   const [saved, setSaved] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -26,6 +36,22 @@ export default function CenterProfileClient({ center, dbId }: { center: Center; 
 
   function updateSocial(key: keyof SocialLinks, value: string) {
     setForm((f) => ({ ...f, socialLinks: { ...f.socialLinks, [key]: value || undefined } }));
+    setSaved(false);
+  }
+
+  function updateFamilyTier(index: number, value: number) {
+    setForm((f) => ({
+      ...f,
+      familyDiscountTiers: f.familyDiscountTiers.map((v, i) => (i === index ? value : v)),
+    }));
+    setSaved(false);
+  }
+
+  function updateGroupTierPercent(index: number, value: number) {
+    setForm((f) => ({
+      ...f,
+      groupDiscountTiers: f.groupDiscountTiers.map((t, i) => (i === index ? { ...t, percent: value } : t)),
+    }));
     setSaved(false);
   }
 
@@ -58,6 +84,10 @@ export default function CenterProfileClient({ center, dbId }: { center: Center; 
             contactPhone: form.contactPhone,
             socialLinks: form.socialLinks,
             hasBar: Boolean(form.hasBar),
+            multiweekDiscountPercent: form.multiweekDiscountPercent,
+            familyDiscountTiers: form.familyDiscountTiers,
+            groupDiscountTiers: form.groupDiscountTiers,
+            logoUrl: form.logoUrl,
           });
           setSaving(false);
           if (result.error) {
@@ -69,12 +99,20 @@ export default function CenterProfileClient({ center, dbId }: { center: Center; 
         className="space-y-4 rounded-lg border border-[#E8EBF0] bg-white p-5"
       >
         <div className="flex items-center gap-4">
-          <div
-            className="flex h-16 w-16 flex-shrink-0 items-center justify-center rounded-full text-3xl"
-            style={{ background: form.gradient }}
-          >
-            {form.emoji}
-          </div>
+          <AvatarUploadButton
+            folder="centers"
+            currentUrl={form.logoUrl}
+            onUploaded={(url) => update("logoUrl", url)}
+            size={64}
+            fallback={
+              <div
+                className="flex h-full w-full items-center justify-center text-3xl"
+                style={{ background: form.gradient }}
+              >
+                {form.emoji}
+              </div>
+            }
+          />
           <Field label="Nome del centro" className="flex-1">
             <input
               value={form.name}
@@ -131,24 +169,6 @@ export default function CenterProfileClient({ center, dbId }: { center: Center; 
         <div className="my-2 h-px bg-[#F0F2F5]" />
 
         <div>
-          <div className="mb-1 text-sm font-bold text-ink">Servizi del centro</div>
-          <p className="mb-3 text-xs text-ink-2">
-            Usati nei filtri di ricerca dell&apos;app genitori (in aggiunta a pre/post e pranzo,
-            già gestiti per singola attività).
-          </p>
-          <label className="flex items-center gap-2 rounded-md border border-[#E8EBF0] bg-bg px-3 py-2.5 text-sm text-ink">
-            <input
-              type="checkbox"
-              checked={Boolean(form.hasBar)}
-              onChange={(e) => update("hasBar", e.target.checked)}
-            />
-            🥤 Il centro ha un bar / punto ristoro
-          </label>
-        </div>
-
-        <div className="my-2 h-px bg-[#F0F2F5]" />
-
-        <div>
           <div className="mb-1 text-sm font-bold text-ink">Social</div>
           <p className="mb-3 text-xs text-ink-2">
             Collega gli account social del centro: verranno mostrati nella pagina attività
@@ -168,6 +188,79 @@ export default function CenterProfileClient({ center, dbId }: { center: Center; 
                 </div>
               </Field>
             ))}
+          </div>
+        </div>
+
+        <div className="my-2 h-px bg-[#F0F2F5]" />
+
+        <div>
+          <div className="mb-1 text-sm font-bold text-ink">Sconti</div>
+          <p className="mb-3 text-xs text-ink-2">
+            Personalizza gli sconti applicati alle prenotazioni delle famiglie per il tuo centro.
+            Se non modifichi nulla restano i valori di default.
+          </p>
+
+          <Field label="Sconto multi-settimana (2+ settimane nella stessa prenotazione)">
+            <div className="flex items-center gap-2">
+              <input
+                type="number"
+                min={0}
+                max={90}
+                value={form.multiweekDiscountPercent}
+                onChange={(e) => update("multiweekDiscountPercent", Number(e.target.value))}
+                className="w-24 rounded-md border border-[#E8EBF0] bg-bg px-3 py-2 text-sm outline-none focus:border-sky"
+              />
+              <span className="text-sm text-ink-2">%</span>
+            </div>
+          </Field>
+
+          <div className="mt-3.5">
+            <label className="mb-1.5 block text-xs font-semibold text-ink-2">
+              Sconto famiglia (bambini della stessa famiglia nella stessa prenotazione — il 1°
+              paga sempre il prezzo pieno)
+            </label>
+            <div className="grid grid-cols-3 gap-3">
+              {["2° figlio", "3° figlio", "4°+ figlio"].map((label, i) => (
+                <div key={label}>
+                  <div className="mb-1 text-[11px] text-ink-2">{label}</div>
+                  <div className="flex items-center gap-1.5">
+                    <input
+                      type="number"
+                      min={0}
+                      max={90}
+                      value={form.familyDiscountTiers[i]}
+                      onChange={(e) => updateFamilyTier(i, Number(e.target.value))}
+                      className="w-full rounded-md border border-[#E8EBF0] bg-bg px-3 py-2 text-sm outline-none focus:border-sky"
+                    />
+                    <span className="text-sm text-ink-2">%</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="mt-3.5">
+            <label className="mb-1.5 block text-xs font-semibold text-ink-2">
+              Sconto gruppo (Richiesta Gruppo — proporzionale al numero di bambini iscritti)
+            </label>
+            <div className="grid grid-cols-3 gap-3">
+              {form.groupDiscountTiers.map((tier, i) => (
+                <div key={tier.minKids}>
+                  <div className="mb-1 text-[11px] text-ink-2">{tier.minKids}+ bambini</div>
+                  <div className="flex items-center gap-1.5">
+                    <input
+                      type="number"
+                      min={0}
+                      max={90}
+                      value={tier.percent}
+                      onChange={(e) => updateGroupTierPercent(i, Number(e.target.value))}
+                      className="w-full rounded-md border border-[#E8EBF0] bg-bg px-3 py-2 text-sm outline-none focus:border-sky"
+                    />
+                    <span className="text-sm text-ink-2">%</span>
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
         </div>
 

@@ -1,43 +1,23 @@
 import MenuItem from "@/components/MenuItem";
 import LogoutButton from "@/components/LogoutButton";
 import ProfileKidsSection from "@/components/ProfileKidsSection";
-import { createClient } from "@/lib/supabase/server";
-import { isSupabaseConfigured } from "@/lib/supabase/env";
+import ProfileHeaderClient from "@/components/ProfileHeaderClient";
 import { getKidsForUser } from "@/lib/data/kids";
-import { ComingSoonBadge, DemoBadge } from "@/components/StatusBadge";
+import { getParentProfile } from "@/lib/data/profile";
+import { DemoBadge } from "@/components/StatusBadge";
 
-async function getProfileIdentity() {
-  const fallback = { displayName: "Sofia Ferretti", displayEmail: "sofia.ferretti@email.it", initials: "SF" };
-  if (!isSupabaseConfigured) return fallback;
-
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) return fallback;
-
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("full_name, email")
-    .eq("id", user.id)
-    .single();
-
-  const displayEmail: string = profile?.email || user.email || fallback.displayEmail;
-  const displayName: string = profile?.full_name?.trim() || displayEmail.split("@")[0];
-  const initials =
-    displayName
-      .split(/\s+/)
-      .map((part: string) => part[0])
-      .join("")
-      .slice(0, 2)
-      .toUpperCase() || "?";
-
-  return { displayName, displayEmail, initials };
-}
-
-export default async function ProfilePage() {
-  const { displayName, displayEmail, initials } = await getProfileIdentity();
-  const kids = await getKidsForUser();
+export default async function ProfilePage({
+  searchParams,
+}: {
+  searchParams: Promise<{ complete?: string; addKid?: string }>;
+}) {
+  const [{ fullName, email, parentRole, avatarUrl }, kids, params] = await Promise.all([
+    getParentProfile(),
+    getKidsForUser(),
+    searchParams,
+  ]);
+  const autoOpenEdit = params.complete === "1";
+  const autoOpenAddKid = params.addKid === "1";
 
   return (
     <div className="animate-fade-in">
@@ -47,22 +27,13 @@ export default async function ProfilePage() {
           background: "linear-gradient(160deg,#E8F6FD 0%,#E3F9F5 100%)",
         }}
       >
-        <div className="mb-[18px] flex items-center gap-3.5">
-          <div
-            className="flex h-[62px] w-[62px] items-center justify-center rounded-full text-xl font-bold text-white"
-            style={{ background: "linear-gradient(135deg,#4DAFEF,#3ECFB2)" }}
-          >
-            {initials}
-          </div>
-          <div>
-            <div className="text-lg font-bold text-ink">{displayName}</div>
-            <div className="mt-0.5 text-xs text-ink-2">{displayEmail}</div>
-          </div>
-          <button className="ml-auto flex items-center gap-1.5 rounded-sm border border-[#E8EBF0] bg-white px-3 py-1.5 text-xs font-medium text-ink opacity-70">
-            Modifica
-            <ComingSoonBadge />
-          </button>
-        </div>
+        <ProfileHeaderClient
+          initialFullName={fullName}
+          initialParentRole={parentRole}
+          initialAvatarUrl={avatarUrl}
+          email={email}
+          autoOpenEdit={autoOpenEdit}
+        />
         <div className="mb-1.5 flex justify-end">
           <DemoBadge label="Numeri demo" />
         </div>
@@ -73,7 +44,7 @@ export default async function ProfilePage() {
         </div>
       </div>
 
-      <ProfileKidsSection initialKids={kids} />
+      <ProfileKidsSection initialKids={kids} autoOpenAddKid={autoOpenAddKid} />
 
       <div className="px-5 pt-2">
         <div className="mb-2 text-[11px] font-bold uppercase tracking-wide text-ink-3">

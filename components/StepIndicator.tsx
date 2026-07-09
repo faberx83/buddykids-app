@@ -33,9 +33,14 @@ export default function StepIndicator({ step }: { step: 1 | 2 | 3 }) {
         {labels.map((label, i) => (
           <span
             key={label}
-            className={`w-[30px] text-center text-[10px] font-medium ${
+            // L'ultima label ("Pagamento") non ha spazio a destra (il 3° pallino
+            // è a filo bordo): centrarla in un box fisso da 30px la faceva
+            // sporgere oltre il bordo dello schermo. Qui resta larghezza
+            // naturale e ancorata a destra, cosi cresce verso sinistra invece
+            // che tagliarsi contro il margine.
+            className={`whitespace-nowrap text-[10px] font-medium ${
               i + 1 === step ? "font-bold text-sky" : "text-ink-3"
-            }`}
+            } ${i === labels.length - 1 ? "text-right" : "w-[30px] text-center"}`}
             style={i === 1 ? { marginLeft: 18 } : undefined}
           >
             {label}

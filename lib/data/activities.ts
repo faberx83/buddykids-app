@@ -12,8 +12,9 @@ const SELECT_COLUMNS = `
   id, slug, name, emoji, address, latitude, longitude, age_min, age_max,
   price_per_week, shuttle_price, description, schedule, meal_option,
   pre_service, post_service, rating, reviews_count, img_gradient, days, hours,
-  distance_km, spots_left, weeks_available, pills, badges, center_id,
-  centers ( slug, name, emoji, gradient, has_bar ),
+  distance_km, spots_left, show_exact_spots, weeks_available, pills, badges, center_id,
+  cover_image_url, gallery_urls,
+  centers ( slug, name, emoji, gradient, has_bar, multiweek_discount_percent, family_discount_tiers, group_discount_tiers ),
   activity_tags ( tag_id )
 `;
 
@@ -23,6 +24,9 @@ interface RawCenterRef {
   emoji: string | null;
   gradient: string | null;
   has_bar: boolean | null;
+  multiweek_discount_percent: number | null;
+  family_discount_tiers: number[] | null;
+  group_discount_tiers: { minKids: number; percent: number }[] | null;
 }
 
 interface RawActivityRow {
@@ -49,10 +53,13 @@ interface RawActivityRow {
   hours: string | null;
   distance_km: number | null;
   spots_left: number | null;
+  show_exact_spots: boolean | null;
   weeks_available: string | null;
   pills: unknown;
   badges: unknown;
   center_id: string;
+  cover_image_url: string | null;
+  gallery_urls: string[] | null;
   centers: RawCenterRef | RawCenterRef[] | null;
   activity_tags: { tag_id: string }[] | null;
 }
@@ -85,6 +92,7 @@ export function mapRow(row: RawActivityRow): Activity {
     tags: (row.pills as Activity["tags"]) ?? [],
     badges: (row.badges as Activity["badges"]) ?? [],
     spotsLeft: row.spots_left ?? undefined,
+    showExactSpots: Boolean(row.show_exact_spots),
     description: row.description || "",
     schedule: (row.schedule as Activity["schedule"]) ?? [],
     weeksAvailable: row.weeks_available || "",
@@ -94,6 +102,11 @@ export function mapRow(row: RawActivityRow): Activity {
     postService: (row.post_service as Activity["postService"]) ?? undefined,
     mealOption: (row.meal_option as Activity["mealOption"]) ?? undefined,
     centerHasBar: Boolean(center?.has_bar),
+    centerMultiweekDiscountPercent: center?.multiweek_discount_percent ?? undefined,
+    centerFamilyDiscountTiers: center?.family_discount_tiers ?? undefined,
+    centerGroupDiscountTiers: center?.group_discount_tiers ?? undefined,
+    coverImageUrl: row.cover_image_url ?? undefined,
+    galleryUrls: row.gallery_urls ?? undefined,
   };
 }
 

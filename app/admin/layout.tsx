@@ -9,9 +9,10 @@ const navItems = [
   { href: "/admin/analytics", label: "Analisi", icon: "ti-chart-bar" },
   { href: "/admin/centers", label: "Centri", icon: "ti-building-community" },
   { href: "/admin/activities", label: "Attività", icon: "ti-list-details" },
+  { href: "/admin/tags", label: "Tag", icon: "ti-tags" },
   { href: "/admin/bookings", label: "Prenotazioni", icon: "ti-ticket" },
   { href: "/admin/group-requests", label: "Richieste Gruppo", icon: "ti-users-group" },
-  { href: "/admin/tags", label: "Tag", icon: "ti-tags" },
+  { href: "/admin/partner-offers", label: "Fornitori", icon: "ti-truck-delivery" },
 ];
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {

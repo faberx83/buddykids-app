@@ -6,6 +6,7 @@ import { Activity, MealOption, ServiceOption, Tag } from "@/lib/types";
 import { categories as mockCategories } from "@/lib/mock-data";
 import { DemoBadge } from "@/components/StatusBadge";
 import { updateActivityAction } from "@/app/actions/center";
+import CoverAndGalleryUploader from "@/components/CoverAndGalleryUploader";
 
 const scheduleColors = ["#4DAFEF", "#3ECFB2", "#FF8C5A", "#8B7CF8", "#52C87A", "#9CA3AF"];
 
@@ -29,6 +30,8 @@ export default function ActivityEditForm({
     shuttlePrice: activity.shuttlePrice,
     description: activity.description,
     spotsLeft: activity.spotsLeft ?? 0,
+    showExactSpots: activity.showExactSpots ?? false,
+    hasBar: activity.centerHasBar ?? false,
     tagIds: activity.tagIds,
     address: activity.address,
     lat: activity.lat ?? 45.4642,
@@ -37,6 +40,8 @@ export default function ActivityEditForm({
     preService: activity.preService ?? { available: false, time: "07:30", priceExtra: 0 },
     postService: activity.postService ?? { available: false, time: "18:00", priceExtra: 0 },
     schedule: activity.schedule,
+    coverImageUrl: activity.coverImageUrl ?? null,
+    galleryUrls: activity.galleryUrls ?? [],
   });
   const [saved, setSaved] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -128,6 +133,8 @@ export default function ActivityEditForm({
             shuttlePrice: form.shuttlePrice,
             description: form.description,
             spotsLeft: form.spotsLeft,
+            showExactSpots: form.showExactSpots,
+            hasBar: form.hasBar,
             tagIds: form.tagIds,
             address: form.address,
             lat: form.lat,
@@ -136,6 +143,8 @@ export default function ActivityEditForm({
             preService: form.preService,
             postService: form.postService,
             schedule: form.schedule,
+            coverImageUrl: form.coverImageUrl,
+            galleryUrls: form.galleryUrls,
           });
           setSaving(false);
           if (result.error) {
@@ -169,12 +178,29 @@ export default function ActivityEditForm({
               <input
                 type="number"
                 min={0}
+                disabled={!form.showExactSpots}
                 value={form.spotsLeft}
                 onChange={(e) => update("spotsLeft", Number(e.target.value))}
-                className="w-full rounded-md border border-[#E8EBF0] bg-bg px-3 py-2 text-sm outline-none focus:border-sky"
+                className="w-full rounded-md border border-[#E8EBF0] bg-bg px-3 py-2 text-sm outline-none focus:border-sky disabled:opacity-50"
               />
             </Field>
           </div>
+
+          <label className="flex items-start gap-2.5 rounded-md bg-bg p-3 text-sm text-ink">
+            <input
+              type="checkbox"
+              checked={form.showExactSpots}
+              onChange={(e) => update("showExactSpots", e.target.checked)}
+              className="mt-0.5"
+            />
+            <span>
+              Mostra ai genitori il numero esatto di posti rimasti
+              <br />
+              <span className="text-xs text-ink-2">
+                Se disattivato, la scheda attività mostra solo &quot;Posti disponibili&quot; senza numero.
+              </span>
+            </span>
+          </label>
 
           <div className="grid grid-cols-2 gap-4">
             <Field label="Prezzo a settimana (€)">
@@ -205,6 +231,21 @@ export default function ActivityEditForm({
               className="w-full rounded-md border border-[#E8EBF0] bg-bg px-3 py-2 text-sm outline-none focus:border-sky"
             />
           </Field>
+        </div>
+
+        <div className="space-y-4 rounded-lg border border-[#E8EBF0] bg-white p-5">
+          <div className="text-sm font-bold text-ink">Immagini</div>
+          <p className="text-xs text-ink-2">
+            Copertina e galleria mostrate ai genitori nella scheda attività — se non carichi una
+            copertina resta il gradiente colorato di default.
+          </p>
+          <CoverAndGalleryUploader
+            folder="activities"
+            coverUrl={form.coverImageUrl}
+            galleryUrls={form.galleryUrls}
+            onCoverChange={(url) => update("coverImageUrl", url)}
+            onGalleryChange={(urls) => update("galleryUrls", urls)}
+          />
         </div>
 
         <div className="space-y-3 rounded-lg border border-[#E8EBF0] bg-white p-5">
@@ -266,6 +307,23 @@ export default function ActivityEditForm({
               ))}
             </select>
           </Field>
+
+          <label className="flex items-start gap-2.5 rounded-md bg-bg p-3 text-sm text-ink">
+            <input
+              type="checkbox"
+              checked={form.hasBar}
+              onChange={(e) => update("hasBar", e.target.checked)}
+              className="mt-0.5"
+            />
+            <span>
+              🥤 Il centro ha un bar / punto ristoro
+              <br />
+              <span className="text-xs text-ink-2">
+                Riguarda l&apos;intero centro, non solo questa attività: se il centro ha più
+                attività pubblicate, l&apos;informazione vale per tutte.
+              </span>
+            </span>
+          </label>
         </div>
 
         <div className="space-y-3 rounded-lg border border-[#E8EBF0] bg-white p-5">

@@ -42,7 +42,7 @@ export async function getGroupDetail(groupId: string): Promise<GroupDetail | nul
       request: null,
       carpoolOffers: [],
       carpoolRequests: [],
-      myKids: mockKids.map((k) => ({ id: k.id, name: k.name, emoji: k.emoji })),
+      myKids: mockKids.map((k) => ({ id: k.id, name: k.name, emoji: k.emoji, interests: k.interests })),
       availableTags,
     };
   }
@@ -56,7 +56,7 @@ export async function getGroupDetail(groupId: string): Promise<GroupDetail | nul
   const { data: groupRow, error: groupError } = await supabase
     .from("groups")
     .select(
-      "id, name, created_by, activity_id, activities ( name, center_id, centers ( name ) )"
+      "id, name, created_by, activity_id, activities ( name, center_id, centers ( name, group_discount_tiers ) )"
     )
     .eq("id", groupId)
     .maybeSingle();
@@ -64,10 +64,14 @@ export async function getGroupDetail(groupId: string): Promise<GroupDetail | nul
   // RLS filtra i gruppi di cui non fai parte: niente riga → nessun accesso.
   if (groupError || !groupRow) return null;
 
+  interface CenterRef {
+    name: string;
+    group_discount_tiers: { minKids: number; percent: number }[] | null;
+  }
   const activity = firstOf(
     groupRow.activities as
-      | { name: string; center_id: string; centers: { name: string } | { name: string }[] | null }
-      | { name: string; center_id: string; centers: { name: string } | { name: string }[] | null }[]
+      | { name: string; center_id: string; centers: CenterRef | CenterRef[] | null }
+      | { name: string; center_id: string; centers: CenterRef | CenterRef[] | null }[]
       | null
   );
   const center = activity ? firstOf(activity.centers) : null;
@@ -245,7 +249,7 @@ export async function getGroupDetail(groupId: string): Promise<GroupDetail | nul
   const enrolledKidIds = new Set(kids.filter((k) => k.isOwn).map((k) => k.kidId));
   const myKids = myKidsAll
     .filter((k) => !enrolledKidIds.has(k.id))
-    .map((k) => ({ id: k.id, name: k.name, emoji: k.emoji }));
+    .map((k) => ({ id: k.id, name: k.name, emoji: k.emoji, interests: k.interests }));
 
   return {
     id: groupRow.id,
@@ -258,7 +262,8 @@ export async function getGroupDetail(groupId: string): Promise<GroupDetail | nul
     centerName: center?.name ?? null,
     kids,
     subgroups,
-    discountPercent: discountForGroupSize(kids.length),
+    discountPercent: discountForGroupSize(kids.length, center?.group_discount_tiers ?? undefined),
+    groupDiscountTiers: center?.group_discount_tiers ?? undefined,
     request,
     carpoolOffers,
     carpoolRequests,

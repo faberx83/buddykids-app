@@ -9,3 +9,13 @@ export const pillClasses: Record<PillColor, string> = {
 };
 
 export const badgeClasses = pillClasses;
+
+// Solo lo sfondo pastello (senza colore testo) — usato per le card "tinta
+// per categoria" del Planner in Home (settimana coperta, suggerimenti).
+export const lightBgClasses: Record<PillColor, string> = {
+  aqua: "bg-aqua-light",
+  orange: "bg-orange-light",
+  purple: "bg-purple-light",
+  sky: "bg-sky-light",
+  green: "bg-green-light",
+};

@@ -40,6 +40,7 @@ export interface Activity {
   tags: { label: string; color: PillColor }[];
   badges: { label: string; icon: string; color: PillColor }[];
   spotsLeft?: number;
+  showExactSpots?: boolean; // scelta del gestore: mostrare il numero esatto o solo "Posti disponibili" generico
   description: string;
   schedule: { time: string; label: string; color: string }[];
   weeksAvailable: string;
@@ -49,7 +50,18 @@ export interface Activity {
   postService?: ServiceOption; // uscita posticipata
   mealOption?: MealOption;
   centerHasBar?: boolean; // presenza di un bar/punto ristoro nel centro che ospita l'attività
+  // Sconti personalizzati dal gestore del centro che ospita l'attività
+  // (fallback ai valori globali di default se assenti — vedi lib/family-discount.ts e lib/groups.ts):
+  centerMultiweekDiscountPercent?: number;
+  centerFamilyDiscountTiers?: number[]; // [2°figlio%, 3°figlio%, 4°+figlio%]
+  centerGroupDiscountTiers?: { minKids: number; percent: number }[];
   dbId?: string; // uuid reale in Supabase — presente solo quando i dati arrivano dal database, non nei dati mock
+  // Foto reali caricate dal gestore (Supabase Storage) — se assenti si
+  // mostra il gradiente decorativo (imgGradient) come prima. coverImageUrl
+  // sostituisce lo sfondo di scheda/copertina; galleryUrls è l'elenco foto
+  // mostrato nel dettaglio attività.
+  coverImageUrl?: string;
+  galleryUrls?: string[];
 }
 
 export type KidGender = "M" | "F" | "altro";
@@ -65,6 +77,14 @@ export interface Kid {
   note: string;
   grade?: string;
   interests?: string[];
+  // Foto profilo reale caricata dal genitore (Supabase Storage) — se
+  // assente si mostra l'emoji/colore come prima.
+  avatarUrl?: string;
+  // Colore di accento (uno dei colori di brand, non un nuovo hex) per la
+  // vista "Per bambino" in Home: anello dell'avatar selezionato + badge
+  // match% — se assente, derivato deterministicamente dal nome (vedi
+  // accentColorForName in lib/data/kids.ts).
+  accentColor?: PillColor;
 }
 
 export interface Week {
@@ -73,6 +93,13 @@ export interface Week {
   dates: string;
   spots: number;
   soldOut?: boolean;
+  // Allineamento alla griglia stagionale condivisa (lib/season-weeks.ts,
+  // stessa usata dal Planner in Home): garantisce che "Settimana 6" indichi
+  // sempre lo stesso intervallo di calendario ovunque nell'app.
+  seasonIndex?: number; // 1-13
+  startDate?: string; // ISO yyyy-mm-dd
+  endDate?: string; // ISO yyyy-mm-dd
+  offered?: boolean; // questa attività copre questa settimana della stagione (false = non prenotabile, solo per mostrare la griglia completa)
 }
 
 export interface GroupItem {
@@ -171,10 +198,11 @@ export interface GroupDetail {
   kids: GroupKidEntry[];
   subgroups: GroupSubgroup[];
   discountPercent: number; // fascia calcolata da lib/groups.ts sul numero attuale di bambini
+  groupDiscountTiers?: { minKids: number; percent: number }[]; // fasce personalizzate dal centro, se presenti (fallback a GROUP_DISCOUNT_TIERS)
   request: GroupRequestItem | null; // ultima Richiesta Gruppo inviata, se presente
   carpoolOffers: CarpoolOfferItem[];
   carpoolRequests: CarpoolRequestItem[];
-  myKids: { id: string; name: string; emoji: string }[]; // bambini del genitore loggato, non ancora iscritti al gruppo
+  myKids: { id: string; name: string; emoji: string; interests?: string[] }[]; // bambini del genitore loggato, non ancora iscritti al gruppo — interessi dal profilo, usati per pre-selezionare la preferenza qui
   availableTags: Tag[];
 }
 
@@ -218,6 +246,12 @@ export interface Center {
   ownerName: string;
   socialLinks?: SocialLinks;
   hasBar?: boolean;
+  multiweekDiscountPercent?: number;
+  familyDiscountTiers?: number[]; // [2°figlio%, 3°figlio%, 4°+figlio%]
+  groupDiscountTiers?: { minKids: number; percent: number }[];
+  // Logo/foto reale del centro (Supabase Storage) — se assente si mostra
+  // l'emoji + gradiente come prima.
+  logoUrl?: string;
 }
 
 // Disponibilità di un singolo giorno per un'attività — pensata per una

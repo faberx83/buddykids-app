@@ -3,7 +3,7 @@
 // mock di "Sofia Ferretti" quando Supabase è configurato: un utente reale
 // senza bambini ancora inseriti deve vedere una lista vuota, non quella finta.
 
-import { Kid } from "@/lib/types";
+import { Kid, PillColor } from "@/lib/types";
 import { kids as mockKids } from "@/lib/mock-data";
 import { createClient } from "@/lib/supabase/server";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
@@ -14,6 +14,17 @@ export function colorForName(name: string): string {
   let hash = 0;
   for (let i = 0; i < name.length; i++) hash = (hash * 31 + name.charCodeAt(i)) >>> 0;
   return PALETTE[hash % PALETTE.length];
+}
+
+// Colore di accento (uno dei colori di brand, non un nuovo hex) per la vista
+// "Per bambino" in Home — deterministico dal nome, cosi resta stabile tra un
+// caricamento e l'altro senza doverlo scegliere manualmente per ogni bambino.
+const ACCENT_PALETTE: PillColor[] = ["sky", "aqua", "orange", "purple", "green"];
+
+export function accentColorForName(name: string): PillColor {
+  let hash = 0;
+  for (let i = 0; i < name.length; i++) hash = (hash * 37 + name.charCodeAt(i)) >>> 0;
+  return ACCENT_PALETTE[hash % ACCENT_PALETTE.length];
 }
 
 export function ageFromBirthDate(birthDate: string | null): number {
@@ -34,6 +45,7 @@ interface RawKidRow {
   birth_date: string | null;
   gender: string | null;
   avatar_emoji: string | null;
+  avatar_url: string | null;
   interests: string[] | null;
 }
 
@@ -48,6 +60,7 @@ function mapRow(row: RawKidRow): Kid {
     color: colorForName(row.name),
     note: "",
     interests: row.interests ?? undefined,
+    avatarUrl: row.avatar_url ?? undefined,
   };
 }
 
@@ -62,7 +75,7 @@ export async function getKidsForUser(): Promise<Kid[]> {
 
   const { data, error } = await supabase
     .from("kids")
-    .select("id, name, birth_date, gender, avatar_emoji, interests")
+    .select("id, name, birth_date, gender, avatar_emoji, avatar_url, interests")
     .eq("parent_id", user.id)
     .order("created_at", { ascending: true });
 

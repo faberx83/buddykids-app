@@ -2,11 +2,13 @@
 
 import { useMemo, useState } from "react";
 import dynamic from "next/dynamic";
+import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import ActivityCardHorizontal from "@/components/ActivityCardHorizontal";
 import { Activity } from "@/lib/types";
 import { ComingSoonBadge } from "@/components/StatusBadge";
 import { haversineKm } from "@/lib/geo";
+import { getSeasonWeekRanges, isoDate, formatShortRange } from "@/lib/season-weeks";
 
 // Leaflet usa `window`, quindi la mappa va caricata solo lato client.
 const ActivityMap = dynamic(() => import("@/components/ActivityMap"), {
@@ -59,10 +61,36 @@ function readStoredGeo(): { lat: number; lng: number } | null {
   return null;
 }
 
-export default function SearchClient({ initialActivities }: { initialActivities: Activity[] }) {
+export default function SearchClient({
+  initialActivities,
+  seasonYear,
+}: {
+  initialActivities: Activity[];
+  // Anno "di stagione" condiviso da tutta l'app (lib/data/season-year.ts) —
+  // serve solo per mostrare la data giusta nel banner "Stai cercando per la
+  // Settimana N": prima si usava sempre l'anno corrente, che con dati demo
+  // di un anno diverso mostrava un intervallo di date sbagliato (anche se il
+  // numero di settimana restava corretto).
+  seasonYear: number;
+}) {
   const searchParams = useSearchParams();
   const latParam = searchParams.get("lat");
   const lngParam = searchParams.get("lng");
+  // Impostato quando si arriva dal pulsante "Riempi" del Planner in Home per
+  // una settimana scoperta specifica — la settimana stagionale (stessa
+  // numerazione del Planner), da mostrare in un banner e portare avanti nel
+  // link verso il dettaglio attività.
+  const weekParam = searchParams.get("week");
+  // Se in Home era selezionato un bambino specifico, lo portiamo avanti fino
+  // alla Prenotazione (vedi ActivityCardHorizontal/DetailClient/BookingClient).
+  const kidParam = searchParams.get("kid");
+  const requestedWeekLabel = useMemo(() => {
+    if (!weekParam) return null;
+    const ranges = getSeasonWeekRanges(seasonYear);
+    const match = ranges.find((r) => isoDate(r.start) === weekParam);
+    if (!match) return null;
+    return `Settimana ${match.index} (${formatShortRange(match.start, match.end)})`;
+  }, [weekParam, seasonYear]);
 
   // Se non arriviamo da Home con lat/lng nell'URL, riusiamo comunque
   // un'eventuale posizione già rilevata in questa sessione del browser,
@@ -101,6 +129,34 @@ export default function SearchClient({ initialActivities }: { initialActivities:
     } catch {
       // storage non disponibile, non blocchiamo l'azione
     }
+  }
+
+  const [geoRequest, setGeoRequest] = useState<{ status: "idle" | "loading" | "error"; message?: string }>({
+    status: "idle",
+  });
+
+  // Permette di attivare la posizione direttamente da Cerca, non solo da
+  // Home: utile a chi apre l'app già sul filtro Zona.
+  function locateMeInSearch() {
+    if (!("geolocation" in navigator)) {
+      setGeoRequest({ status: "error", message: "Il browser non supporta la geolocalizzazione." });
+      return;
+    }
+    setGeoRequest({ status: "loading" });
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        setGeoRequest({ status: "idle" });
+        updateUserPosition(pos.coords.latitude, pos.coords.longitude);
+      },
+      () => {
+        setGeoRequest({
+          status: "error",
+          message:
+            "Posizione non disponibile: controlla i permessi del browser (icona vicino alla barra indirizzi).",
+        });
+      },
+      { enableHighAccuracy: false, timeout: 8000 }
+    );
   }
 
   const [openPanel, setOpenPanel] = useState<FilterPanel>(null);
@@ -331,6 +387,24 @@ export default function SearchClient({ initialActivities }: { initialActivities:
                 <option key={opt} value={opt} />
               ))}
             </datalist>
+
+            {!hasGeo && (
+              <div className="mt-2.5 border-t border-[#E8EBF0] pt-2.5">
+                <button
+                  type="button"
+                  onClick={locateMeInSearch}
+                  disabled={geoRequest.status === "loading"}
+                  className="flex items-center gap-1.5 rounded-md bg-sky px-3 py-2 text-xs font-bold text-white disabled:opacity-60"
+                >
+                  <i className="ti ti-current-location text-sm" />
+                  {geoRequest.status === "loading" ? "Rilevo la posizione…" : "Usa la mia posizione"}
+                </button>
+                {geoRequest.status === "error" && (
+                  <p className="mt-2 text-[11px] font-medium text-orange">{geoRequest.message}</p>
+                )}
+              </div>
+            )}
+
             {hasGeo && (
               <div className="mt-2.5 space-y-2 border-t border-[#E8EBF0] pt-2.5">
                 <div className="flex items-center justify-between">
@@ -400,6 +474,18 @@ export default function SearchClient({ initialActivities }: { initialActivities:
         )}
       </div>
 
+      {requestedWeekLabel && (
+        <div className="mx-5 mt-3 flex items-center justify-between gap-2 rounded-lg border border-[#E3F0FB] bg-sky-light px-3.5 py-2.5">
+          <span className="text-xs font-semibold text-ink">
+            <i className="ti ti-calendar-event mr-1 text-sky" />
+            Stai cercando per la {requestedWeekLabel}
+          </span>
+          <Link href="/search" className="flex-shrink-0 text-xs font-semibold text-sky">
+            Rimuovi
+          </Link>
+        </div>
+      )}
+
       <div className="flex items-center justify-between px-5 pb-2 pt-3">
         <span className="text-[13px] text-ink-2">{results.length} attività trovate</span>
         <div className="flex items-center gap-2">
@@ -453,7 +539,7 @@ export default function SearchClient({ initialActivities }: { initialActivities:
             Nella tua zona (entro {radiusKm} km) — {nearby.length}
           </div>
           {nearby.map(({ activity: a, distanceKm }) => (
-            <ActivityCardHorizontal key={a.id} activity={{ ...a, distanceKm }} />
+            <ActivityCardHorizontal key={a.id} activity={{ ...a, distanceKm }} week={weekParam} kid={kidParam} />
           ))}
           {nearby.length === 0 && (
             <p className="px-5 pb-3 text-sm text-ink-2">Nessuna attività entro {radiusKm} km.</p>
@@ -465,7 +551,7 @@ export default function SearchClient({ initialActivities }: { initialActivities:
                 Fuori dalla tua zona — {far.length}
               </div>
               {far.map(({ activity: a, distanceKm }) => (
-                <ActivityCardHorizontal key={a.id} activity={{ ...a, distanceKm }} />
+                <ActivityCardHorizontal key={a.id} activity={{ ...a, distanceKm }} week={weekParam} kid={kidParam} />
               ))}
             </>
           )}
@@ -473,7 +559,7 @@ export default function SearchClient({ initialActivities }: { initialActivities:
       ) : (
         <>
           {results.map(({ activity: a, distanceKm }) => (
-            <ActivityCardHorizontal key={a.id} activity={{ ...a, distanceKm }} />
+            <ActivityCardHorizontal key={a.id} activity={{ ...a, distanceKm }} week={weekParam} kid={kidParam} />
           ))}
           {results.length === 0 && (
             <p className="px-5 py-8 text-center text-sm text-ink-2">

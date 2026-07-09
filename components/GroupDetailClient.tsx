@@ -25,6 +25,20 @@ const LEG_LABELS: Record<CarpoolLeg, string> = {
   both: "Andata e ritorno",
 };
 
+// La preferenza nel gruppo resta legata al profilo del bambino (unica fonte
+// di verità, usata anche per il match% in Home) — qui la peschiamo solo per
+// pre-selezionarla nel form, invece di far ripartire il genitore da zero.
+function bestTagIdForKid(
+  kid: { interests?: string[] } | undefined,
+  tags: { id: string; label: string }[]
+): string {
+  if (!kid?.interests?.length) return "";
+  const match = tags.find((t) =>
+    kid.interests!.some((i) => i.toLowerCase().includes(t.label.toLowerCase()))
+  );
+  return match?.id || "";
+}
+
 function DemoNotice() {
   if (isSupabaseConfigured) return null;
   return (
@@ -36,19 +50,47 @@ function DemoNotice() {
   );
 }
 
-function InviteButton({ groupId }: { groupId: string }) {
+// Messaggio pronto per WhatsApp/SMS/email invece del solo link nudo — più
+// facile da capire per chi lo riceve (chi sei, cos'è, perché aggiungersi).
+function buildInviteText(
+  inviterName: string,
+  groupName: string,
+  activityName: string | null,
+  centerName: string | null
+): string {
+  const context = activityName
+    ? `per "${activityName}"${centerName ? ` (${centerName})` : ""}`
+    : "per organizzarci insieme per l'estate";
+  const who = inviterName ? `Ciao! Sono ${inviterName}.` : "Ciao!";
+  return `${who} Ho creato il gruppo "${groupName}" su BuddyKids ${context} — aggiungiti così organizziamo insieme le settimane, lo sconto gruppo e magari anche l'accompagnamento in auto 🙌`;
+}
+
+function InviteButton({
+  groupId,
+  groupName,
+  activityName,
+  centerName,
+  inviterName,
+}: {
+  groupId: string;
+  groupName: string;
+  activityName: string | null;
+  centerName: string | null;
+  inviterName: string;
+}) {
   const [copied, setCopied] = useState(false);
 
   async function share() {
     const url = `${window.location.origin}/groups/join/${groupId}`;
+    const text = buildInviteText(inviterName, groupName, activityName, centerName);
     try {
       if (navigator.share) {
-        await navigator.share({ title: "Unisciti al gruppo BuddyKids", url });
+        await navigator.share({ title: "Unisciti al gruppo BuddyKids", text, url });
         return;
       }
-      await navigator.clipboard.writeText(url);
+      await navigator.clipboard.writeText(`${text}\n${url}`);
       setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
+      setTimeout(() => setCopied(false), 2500);
     } catch {
       // utente ha annullato la condivisione — nessun errore da mostrare
     }
@@ -60,7 +102,7 @@ function InviteButton({ groupId }: { groupId: string }) {
       className="ml-auto flex flex-shrink-0 items-center gap-1.5 rounded-md bg-white/80 px-3 py-2 text-xs font-bold text-ink"
     >
       <i className={`ti ${copied ? "ti-check" : "ti-user-plus"} text-sm`} />
-      {copied ? "Link copiato!" : "Invita famiglie"}
+      {copied ? "Messaggio copiato!" : "Invita famiglie"}
     </button>
   );
 }
@@ -68,9 +110,11 @@ function InviteButton({ groupId }: { groupId: string }) {
 export default function GroupDetailClient({
   detail,
   activityOptions,
+  inviterName,
 }: {
   detail: GroupDetail;
   activityOptions: { dbId: string; name: string; center: string }[];
+  inviterName: string;
 }) {
   const [tab, setTab] = useState<"gruppo" | "accompagnamento">("gruppo");
 
@@ -93,7 +137,13 @@ export default function GroupDetailClient({
                 : "Nessuna attività collegata ancora"}
             </p>
           </div>
-          <InviteButton groupId={detail.id} />
+          <InviteButton
+            groupId={detail.id}
+            groupName={detail.name}
+            activityName={detail.activityName}
+            centerName={detail.centerName}
+            inviterName={inviterName}
+          />
         </div>
       </div>
 
@@ -141,7 +191,9 @@ function GruppoTab({
 
   const [addingKid, setAddingKid] = useState(false);
   const [selectedKid, setSelectedKid] = useState(detail.myKids[0]?.id || "");
-  const [selectedTag, setSelectedTag] = useState(detail.availableTags[0]?.id || "");
+  const [selectedTag, setSelectedTag] = useState(
+    bestTagIdForKid(detail.myKids[0], detail.availableTags)
+  );
   const [kidNotes, setKidNotes] = useState("");
   const [savingKid, setSavingKid] = useState(false);
   const [kidError, setKidError] = useState<string | null>(null);
@@ -154,7 +206,8 @@ function GruppoTab({
 
   const canSubmit = isSupabaseConfigured;
   const kidsCount = detail.kids.length;
-  const previewDiscount = discountForGroupSize(kidsCount);
+  const groupDiscountTiers = detail.groupDiscountTiers ?? GROUP_DISCOUNT_TIERS;
+  const previewDiscount = discountForGroupSize(kidsCount, groupDiscountTiers);
   // Se il bambino selezionato in precedenza è appena stato iscritto (quindi
   // non è più tra "i tuoi bambini disponibili" dopo il refresh), ricadiamo
   // sul primo disponibile invece di tenere un valore ormai non valido.
@@ -261,7 +314,12 @@ function GruppoTab({
           <div className="space-y-2 border-t border-[#F0F2F5] p-3.5">
             <select
               value={effectiveSelectedKid}
-              onChange={(e) => setSelectedKid(e.target.value)}
+              onChange={(e) => {
+                const kidId = e.target.value;
+                setSelectedKid(kidId);
+                const kid = detail.myKids.find((k) => k.id === kidId);
+                setSelectedTag(bestTagIdForKid(kid, detail.availableTags));
+              }}
               className="w-full rounded-md border border-[#E8EBF0] bg-bg px-3 py-2 text-sm outline-none focus:border-sky"
             >
               {detail.myKids.map((k) => (
@@ -282,6 +340,10 @@ function GruppoTab({
                 </option>
               ))}
             </select>
+            <p className="text-[11px] text-ink-3">
+              Pre-selezionata dagli interessi indicati nel profilo del bambino — puoi cambiarla
+              solo per questo gruppo.
+            </p>
             <input
               value={kidNotes}
               onChange={(e) => setKidNotes(e.target.value)}
@@ -382,7 +444,7 @@ function GruppoTab({
         <div className="mb-1 text-sm font-bold text-ink">Richiesta Gruppo al centro</div>
         <p className="mb-2.5 text-xs text-ink-2">
           Sconto proporzionale al numero di bambini iscritti:{" "}
-          {GROUP_DISCOUNT_TIERS.map((t) => `${t.minKids}+ → ${t.percent}%`).join(" · ")}.
+          {groupDiscountTiers.map((t) => `${t.minKids}+ → ${t.percent}%`).join(" · ")}.
         </p>
         <div className="mb-3 flex items-center gap-2 rounded-md bg-sky-light px-3 py-2">
           <i className="ti ti-tag text-sky" />

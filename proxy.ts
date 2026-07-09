@@ -1,5 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { updateSession, getRequestRole } from "@/lib/supabase/middleware";
+import { updateSession, getRequestRole, getRequestUserId } from "@/lib/supabase/middleware";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
 import { tenantForHost, TENANT_CONFIG } from "@/lib/tenant";
 
@@ -65,6 +65,27 @@ export async function proxy(request: NextRequest) {
 
   const tenant = tenantForHost(hostname);
   if (tenant === "family") {
+    // Gate qui (invece di lasciare che sia solo app/(main)/layout.tsx a
+    // rimandare al login) per poter preservare la pagina di destinazione con
+    // ?next=... — indispensabile per i link di invito (es. "Invita famiglie"
+    // in un Gruppo, che punta a /groups/join/[id]): senza questo, chi riceve
+    // il link su WhatsApp senza avere ancora un account veniva rimandato al
+    // login e, dopo essersi registrato, atterrava sulla Home invece che
+    // tornare a unirsi al gruppo.
+    if (
+      isSupabaseConfigured &&
+      !pathname.startsWith("/auth") &&
+      !pathname.startsWith("/api")
+    ) {
+      const userId = await getRequestUserId(request);
+      if (!userId) {
+        const loginUrl = request.nextUrl.clone();
+        const nextPath = `${pathname}${request.nextUrl.search || ""}`;
+        loginUrl.pathname = "/auth/login";
+        loginUrl.search = `?next=${encodeURIComponent(nextPath)}`;
+        return copyCookies(sessionResponse, NextResponse.redirect(loginUrl));
+      }
+    }
     return sessionResponse;
   }
 

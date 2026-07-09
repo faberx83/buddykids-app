@@ -286,7 +286,19 @@ export async function sendGroupRequestAction(
     .select("id", { count: "exact", head: true })
     .eq("group_id", groupId);
   const kidsCount = count ?? 0;
-  const discountPercent = discountForGroupSize(kidsCount);
+
+  // Il gestore del centro può aver personalizzato le fasce di sconto gruppo
+  // (centers.group_discount_tiers) — altrimenti si usano quelle di default.
+  const { data: centerRow } = await supabase
+    .from("centers")
+    .select("group_discount_tiers")
+    .eq("id", centerId)
+    .maybeSingle();
+  const customTiers = centerRow?.group_discount_tiers as
+    | { minKids: number; percent: number }[]
+    | null
+    | undefined;
+  const discountPercent = discountForGroupSize(kidsCount, customTiers ?? undefined);
 
   const { error } = await supabase.from("group_requests").insert({
     group_id: groupId,

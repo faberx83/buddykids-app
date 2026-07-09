@@ -31,10 +31,15 @@ body {
   /* Altezza FISSA (non min-height): serve a "chiudere" il contenitore alla
      viewport così il figlio con overflow-y-auto scrolla internamente e la
      bottom nav resta ancorata in fondo invece di scorrere via con la pagina.
-     100dvh (dynamic viewport height) sovrascrive 100vh sui browser che la
-     supportano, gestendo meglio la barra indirizzi mobile che si nasconde. */
+     100svh (SMALL viewport height, non dvh) di proposito: dvh cambia in
+     tempo reale mentre la barra indirizzi del browser mobile si nasconde/
+     mostra durante lo scroll, e quel ridimensionamento continuo del
+     contenitore flex faceva "sparire"/sfarfallare la bottom nav (segnalato
+     su Android). svh resta fissa alla viewport più piccola possibile (barra
+     indirizzi sempre visibile), quindi il layout non si ricalcola mai
+     durante lo scroll. */
   height: 100vh;
-  height: 100dvh;
+  height: 100svh;
   background: #ffffff;
   display: flex;
   flex-direction: column;
@@ -44,7 +49,7 @@ body {
 @media (min-width: 640px) {
   .app-shell {
     height: calc(100vh - 64px);
-    height: calc(100dvh - 64px);
+    height: calc(100svh - 64px);
     margin: 32px 0;
     border-radius: 32px;
     overflow: hidden;

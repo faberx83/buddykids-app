@@ -64,6 +64,7 @@ export const activities: Activity[] = [
       { label: "Outdoor", icon: "ti-sun", color: "purple" },
     ],
     spotsLeft: 3,
+    showExactSpots: true,
     description:
       "Un'estate all'insegna dell'acqua, del divertimento e della crescita! Il nostro Summer Camp offre attività in piscina, giochi di squadra, lezioni di nuoto e molto altro in un ambiente sicuro e accogliente, con istruttori qualificati e certificati.",
     schedule: [
@@ -311,6 +312,7 @@ export const kids: Kid[] = [
     age: 10,
     emoji: "👦",
     color: "#E3F9F5",
+    accentColor: "sky",
     note: "Ama calcio e robotica",
     grade: "Classe 4ª",
     interests: ["⚽ Calcio", "🤖 Robotica", "🏊 Nuoto"],
@@ -321,6 +323,7 @@ export const kids: Kid[] = [
     age: 7,
     emoji: "👧",
     color: "#FFF0EA",
+    accentColor: "orange",
     note: "Ama arte e danza",
     grade: "Classe 1ª",
     interests: ["🎨 Arte", "💃 Danza", "📚 Lettura"],

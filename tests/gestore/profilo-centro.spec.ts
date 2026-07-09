@@ -1,0 +1,33 @@
+import { test, expect } from "../fixtures/roles";
+import { gotoAsRole } from "../fixtures/roles";
+
+// Area: Gestore - Profilo Centro
+// Generato da BuddyKids_Test_Case.xlsx - 3 casi.
+// I test con test.fixme() sono placeholder tracciabili (1 per TC-ID): contengono
+// precondizioni/passi/risultato atteso come commento, pronti da completare.
+
+test.describe("Gestore - Profilo Centro", () => {
+  // Priorita: Media | Precondizioni: Account collegato a un centro
+  // Passi: Vai su /center/profile -> modifica nome/citta/descrizione/social -> salva
+  // Risultato atteso: Dati aggiornati, visibili ai genitori
+  test.fixme("TC-080 - Modifica profilo centro", async ({ page }) => {
+    // TODO: implementare - vedi tests/genitori/cerca.spec.ts o home.spec.ts
+    // per esempi di test gia completati in quest'area.
+  });
+
+  // Priorita: Alta | Precondizioni: Nessuna
+  // Passi: In /center/profile, spunta 'Il centro ha un bar / punto ristoro' -> salva
+  // Risultato atteso: Il valore has_bar=true si riflette nel filtro Servizi lato genitori
+  test.fixme("TC-081 - Attivazione campo Bar", async ({ page }) => {
+    // TODO: implementare - vedi tests/genitori/cerca.spec.ts o home.spec.ts
+    // per esempi di test gia completati in quest'area.
+  });
+
+  // Priorita: Bassa | Precondizioni: Login Gestore
+  // Passi: Vai su Gestore > Il mio centro, clicca l'icona fotocamera sul cerchio in alto
+  // Risultato atteso: Il logo sostituisce l'emoji/gradiente di default; viene salvato al click su \"Salva modifiche\" insieme al resto del form
+  test.fixme("TC-117 - Upload logo/foto del centro", async ({ page }) => {
+    // ESCLUSO dall'automazione: richiede lo snippet SQL Storage applicato su Supabase prima del test
+  });
+
+});

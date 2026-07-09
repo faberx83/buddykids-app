@@ -52,6 +52,14 @@ interface NavItem {
   href: string;
   label: string;
   icon: string;
+  // Etichetta del gruppo sopra la voce (es. "Oggi"/"Gestione") — se due voci
+  // consecutive hanno la stessa etichetta, l'intestazione si stampa solo una
+  // volta sopra la prima. Se assente (es. Admin), niente intestazioni: la
+  // lista resta piatta come prima.
+  sectionLabel?: string;
+  // Numero da mostrare come pallino rosso accanto alla voce (es. richieste
+  // gruppo in attesa) — nascosto se 0/assente.
+  badgeCount?: number;
 }
 
 // Tema visivo del pannello: "partner" (Gestore centro, teal chiaro) o
@@ -114,25 +122,42 @@ export default function DashboardLayout({
             </span>
           </div>
           <nav className="flex flex-1 flex-col gap-1">
-            {navItems.map((item) => {
+            {navItems.map((item, i) => {
               const active = pathname === item.href;
+              const showSectionHeader =
+                item.sectionLabel && item.sectionLabel !== navItems[i - 1]?.sectionLabel;
               return (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  className={`flex items-center gap-3 rounded-md px-3 py-2.5 text-sm font-medium transition-colors ${
-                    isAdmin
-                      ? active
-                        ? "bg-navy-3 text-white"
-                        : "text-navy-text2 hover:bg-navy-3/60 hover:text-white"
-                      : active
-                      ? "bg-partner-light text-partner"
-                      : "text-ink-2 hover:bg-bg hover:text-ink"
-                  }`}
-                >
-                  <i className={`ti ${item.icon} text-lg`} />
-                  {item.label}
-                </Link>
+                <div key={item.href}>
+                  {showSectionHeader && (
+                    <div
+                      className={`px-3 pb-1 text-[10.5px] font-bold uppercase tracking-wide ${
+                        isAdmin ? "text-navy-text2/70" : "text-ink-3"
+                      } ${i > 0 ? "pt-3.5" : ""}`}
+                    >
+                      {item.sectionLabel}
+                    </div>
+                  )}
+                  <Link
+                    href={item.href}
+                    className={`flex items-center gap-3 rounded-md px-3 py-2.5 text-sm font-medium transition-colors ${
+                      isAdmin
+                        ? active
+                          ? "bg-navy-3 text-white"
+                          : "text-navy-text2 hover:bg-navy-3/60 hover:text-white"
+                        : active
+                        ? "bg-partner-light text-partner"
+                        : "text-ink-2 hover:bg-bg hover:text-ink"
+                    }`}
+                  >
+                    <i className={`ti ${item.icon} text-lg`} />
+                    <span className="flex-1">{item.label}</span>
+                    {Boolean(item.badgeCount) && (
+                      <span className="flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-[#FF6B6B] px-1 text-[10px] font-bold text-white">
+                        {item.badgeCount}
+                      </span>
+                    )}
+                  </Link>
+                </div>
               );
             })}
           </nav>
@@ -191,6 +216,11 @@ export default function DashboardLayout({
                   >
                     <i className={`ti ${item.icon} text-sm`} />
                     {item.label}
+                    {Boolean(item.badgeCount) && (
+                      <span className="flex h-[15px] min-w-[15px] items-center justify-center rounded-full bg-[#FF6B6B] px-1 text-[9px] font-bold text-white">
+                        {item.badgeCount}
+                      </span>
+                    )}
                   </Link>
                 );
               })}

@@ -1,6 +1,6 @@
 "use client";
 
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useState } from "react";
 import Link from "next/link";
 import { Activity, Promotion } from "@/lib/types";
@@ -16,16 +16,36 @@ export default function DetailClient({
   promotions: Promotion[];
 }) {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  // Settimana passata da Cerca (a sua volta arrivata dal "Riempi" del
+  // Planner) — la portiamo avanti nel link di prenotazione cosi arriva
+  // preselezionata invece di doverla ricercare da capo.
+  const weekParam = searchParams.get("week");
+  // Bambino selezionato in Home/Cerca (famiglie con più figli) — passato
+  // avanti anche da qui, cosi in Prenotazione risulta già spuntato quello
+  // giusto invece del primo della lista.
+  const kidParam = searchParams.get("kid");
+  const bookingHref = (() => {
+    const params = new URLSearchParams();
+    if (weekParam) params.set("week", weekParam);
+    if (kidParam) params.set("kid", kidParam);
+    const query = params.toString();
+    return query ? `/booking/${activity.id}?${query}` : `/booking/${activity.id}`;
+  })();
   const [fav, setFav] = useState(true);
   const activePromotions = promotions.filter((p) => p.active);
 
   return (
     <div className="flex h-full min-h-screen flex-col sm:min-h-0 sm:flex-1">
       <div
-        className="relative flex h-[230px] flex-shrink-0 items-center justify-center"
-        style={{ background: activity.imgGradient }}
+        className="relative flex h-[230px] flex-shrink-0 items-center justify-center bg-cover bg-center"
+        style={
+          activity.coverImageUrl
+            ? { backgroundImage: `url(${activity.coverImageUrl})` }
+            : { background: activity.imgGradient }
+        }
       >
-        <span className="relative z-[1] text-8xl">{activity.emoji}</span>
+        {!activity.coverImageUrl && <span className="relative z-[1] text-8xl">{activity.emoji}</span>}
         <button
           onClick={() => router.back()}
           className="absolute left-[18px] top-[18px] z-10 flex h-[38px] w-[38px] items-center justify-center rounded-full bg-white/90 text-lg text-ink backdrop-blur-sm transition-transform hover:scale-110"
@@ -70,6 +90,20 @@ export default function DetailClient({
             </span>
           )}
         </div>
+
+        {activity.galleryUrls && activity.galleryUrls.length > 0 && (
+          <div className="no-scrollbar mb-4 flex gap-2 overflow-x-auto">
+            {activity.galleryUrls.map((url) => (
+              // eslint-disable-next-line @next/next/no-img-element -- URL Supabase Storage, non ottimizzabile senza config extra
+              <img
+                key={url}
+                src={url}
+                alt=""
+                className="h-20 w-28 flex-shrink-0 rounded-md object-cover"
+              />
+            ))}
+          </div>
+        )}
 
         <div className="mb-4 flex flex-wrap gap-1.5">
           {activity.badges.map((b) => (
@@ -130,13 +164,12 @@ export default function DetailClient({
         <InfoRow
           icon="ti-users"
           label="Posti rimasti"
-          value={activity.spotsLeft !== undefined ? `⚠️ Solo ${activity.spotsLeft}!` : "Disponibili"}
-          valueColor="text-orange"
-        />
-        <InfoRow
-          icon="ti-bus"
-          label="Servizio navetta"
-          value={activity.shuttlePrice > 0 ? `+€${activity.shuttlePrice}/sett` : "Non disponibile"}
+          value={
+            activity.showExactSpots && activity.spotsLeft !== undefined
+              ? `⚠️ Solo ${activity.spotsLeft}!`
+              : "Posti disponibili"
+          }
+          valueColor={activity.showExactSpots && activity.spotsLeft !== undefined ? "text-orange" : undefined}
         />
         <div className="my-3 h-px bg-[#F0F2F5]" />
 
@@ -179,6 +212,12 @@ export default function DetailClient({
             }
           />
           <ServiceTag icon="ti-cup" label="Bar nel centro" available={Boolean(activity.centerHasBar)} />
+          <ServiceTag
+            icon="ti-bus"
+            label="Servizio navetta"
+            available={activity.shuttlePrice > 0}
+            detail={activity.shuttlePrice > 0 ? `+€${activity.shuttlePrice}/sett` : undefined}
+          />
         </div>
         <div className="my-3 h-px bg-[#F0F2F5]" />
 
@@ -209,7 +248,7 @@ export default function DetailClient({
           <div className="text-[11px] text-ink-2">per settimana</div>
         </div>
         <Link
-          href={`/booking/${activity.id}`}
+          href={bookingHref}
           className="rounded-lg bg-sky px-7 py-3.5 text-[15px] font-bold text-white transition-all hover:scale-[0.97] hover:bg-[#3A9FDC]"
         >
           Prenota ora

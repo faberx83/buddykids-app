@@ -1,10 +1,12 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
-import ActivityCard from "@/components/ActivityCard";
-import CategoryChip from "@/components/CategoryChip";
-import { Activity, Tag } from "@/lib/types";
+import PlannerView from "@/components/PlannerView";
+import PerBambinoView from "@/components/PerBambinoView";
+import { Activity, Kid, Tag } from "@/lib/types";
+import { PlannerData } from "@/lib/data/planner";
+import { KidBookingEntry } from "@/lib/data/kid-bookings";
 import { haversineKm } from "@/lib/geo";
 
 type GeoState =
@@ -14,6 +16,7 @@ type GeoState =
   | { status: "error"; message: string };
 
 const GEO_STORAGE_KEY = "bk_last_geo";
+const HOME_VIEW_KEY = "bk_home_view";
 
 function readStoredGeo(): { lat: number; lng: number } | null {
   if (typeof window === "undefined") return null;
@@ -28,15 +31,29 @@ function readStoredGeo(): { lat: number; lng: number } | null {
   return null;
 }
 
+type HomeView = "planner" | "perBambino";
+
+function readStoredView(): HomeView {
+  if (typeof window === "undefined") return "planner";
+  const stored = localStorage.getItem(HOME_VIEW_KEY);
+  return stored === "perBambino" ? "perBambino" : "planner";
+}
+
 export default function HomeFeed({
   activities,
   categories,
+  kids,
+  planner,
+  bookingsByKid,
 }: {
   activities: Activity[];
   categories: Tag[];
+  kids: Kid[];
+  planner: PlannerData;
+  bookingsByKid: Record<string, KidBookingEntry[]>;
 }) {
   const router = useRouter();
-  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+  const [view, setView] = useState<HomeView>(() => readStoredView());
   // Se la posizione era già stata rilevata in questa sessione del browser
   // (es. tornando da Cerca), la recuperiamo invece di far ricliccare l'utente
   // su "Usa posizione" ad ogni navigazione.
@@ -49,23 +66,20 @@ export default function HomeFeed({
     return { status: "done", lat: stored.lat, lng: stored.lng, nearbyCount };
   });
 
-  const filtered = useMemo(
-    () =>
-      selectedCategory ? activities.filter((a) => a.tagIds.includes(selectedCategory)) : activities,
-    [activities, selectedCategory]
-  );
+  function selectView(next: HomeView) {
+    setView(next);
+    try {
+      localStorage.setItem(HOME_VIEW_KEY, next);
+    } catch {
+      // storage non disponibile: la scelta vale solo per questa sessione
+    }
+  }
 
-  // "Popolari" — interim: ordiniamo per rating e numero recensioni reali
-  // (unico segnale di popolarità già presente nei dati oggi) invece di
-  // prendere semplicemente le prime due della lista. La definizione
-  // definitiva (es. basata su prenotazioni reali) resta da chiarire.
-  const sortedByPopularity = useMemo(
-    () =>
-      [...filtered].sort((a, b) => b.rating - a.rating || b.reviewsCount - a.reviewsCount),
-    [filtered]
-  );
-  const popular = sortedByPopularity.slice(0, 2);
-  const recommended = sortedByPopularity.slice(2, 3);
+  // Suggerimenti per riempire la prossima settimana scoperta nel Planner:
+  // le 4 attività con rating migliore, indipendentemente dalla categoria.
+  const plannerSuggestions = [...activities]
+    .sort((a, b) => b.rating - a.rating || b.reviewsCount - a.reviewsCount)
+    .slice(0, 4);
 
   function locateMe() {
     if (!("geolocation" in navigator)) {
@@ -107,56 +121,41 @@ export default function HomeFeed({
 
   return (
     <>
-      <div className="px-5 pt-4">
-        <div className="mb-3 flex items-center justify-between">
-          <span className="text-[15px] font-bold text-ink">Categorie</span>
-          <span
-            onClick={() => setSelectedCategory(null)}
-            className={`cursor-pointer text-[13px] font-medium ${
-              selectedCategory === null ? "text-sky" : "text-ink-3"
+      <div className="px-5 pt-3.5">
+        <div className="flex gap-2 rounded-[14px] bg-bg p-[5px]">
+          <button
+            onClick={() => selectView("planner")}
+            className={`flex-1 rounded-[10px] py-2.5 text-[13px] transition-colors ${
+              view === "planner"
+                ? "bg-white font-bold text-ink shadow-[0_1px_4px_rgba(0,0,0,0.08)]"
+                : "font-medium text-ink-3"
             }`}
           >
-            Tutte
-          </span>
-        </div>
-        <div className="no-scrollbar flex gap-2.5 overflow-x-auto pb-1">
-          {categories.map((cat) => (
-            <CategoryChip
-              key={cat.id}
-              emoji={cat.emoji}
-              label={cat.label}
-              bg={cat.bg}
-              selected={selectedCategory === cat.id}
-              onClick={() => setSelectedCategory((prev) => (prev === cat.id ? null : cat.id))}
-            />
-          ))}
+            Planner
+          </button>
+          <button
+            onClick={() => selectView("perBambino")}
+            className={`flex-1 rounded-[10px] py-2.5 text-[13px] transition-colors ${
+              view === "perBambino"
+                ? "bg-white font-bold text-ink shadow-[0_1px_4px_rgba(0,0,0,0.08)]"
+                : "font-medium text-ink-3"
+            }`}
+          >
+            Per bambino
+          </button>
         </div>
       </div>
 
-      <div className="px-5 pt-4">
-        <div className="mb-3 flex items-center justify-between">
-          <span className="text-[15px] font-bold text-ink">
-            {selectedCategory ? "🔥 Attività in questa categoria" : "🔥 Popolari vicino a te"}
-          </span>
-        </div>
-        {popular.map((a) => (
-          <ActivityCard key={a.id} activity={a} />
-        ))}
-        {popular.length === 0 && (
-          <p className="mb-3 text-sm text-ink-2">Nessuna attività trovata in questa categoria.</p>
-        )}
-
-        {recommended.length > 0 && (
-          <>
-            <div className="mb-3 mt-1 flex items-center justify-between">
-              <span className="text-[15px] font-bold text-ink">⭐ Consigliati per te</span>
-            </div>
-            {recommended.map((a) => (
-              <ActivityCard key={a.id} activity={a} />
-            ))}
-          </>
-        )}
-      </div>
+      {view === "planner" ? (
+        <PlannerView planner={planner} suggestions={plannerSuggestions} kids={kids} />
+      ) : (
+        <PerBambinoView
+          kids={kids}
+          activities={activities}
+          categories={categories}
+          bookingsByKid={bookingsByKid}
+        />
+      )}
 
       <div
         onClick={openMap}

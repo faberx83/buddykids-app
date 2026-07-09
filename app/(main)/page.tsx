@@ -1,7 +1,12 @@
 import Link from "next/link";
 import HomeFeed from "@/components/HomeFeed";
+import HomeProfilePrompt from "@/components/HomeProfilePrompt";
 import { categories } from "@/lib/mock-data";
 import { getActivities } from "@/lib/data/activities";
+import { getKidsForUser } from "@/lib/data/kids";
+import { getPlannerData } from "@/lib/data/planner";
+import { getBookingsByKid } from "@/lib/data/kid-bookings";
+import { isParentProfileIncomplete } from "@/lib/data/profile";
 import { createClient } from "@/lib/supabase/server";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
 
@@ -38,8 +43,18 @@ async function getDisplayIdentity() {
 }
 
 export default async function HomePage() {
-  const activities = await getActivities();
-  const { displayName, initials } = await getDisplayIdentity();
+  const [activities, { displayName, initials }, kids, planner, profileIncomplete, bookingsByKidMap] =
+    await Promise.all([
+      getActivities(),
+      getDisplayIdentity(),
+      getKidsForUser(),
+      getPlannerData(),
+      isParentProfileIncomplete(),
+      getBookingsByKid(),
+    ]);
+  // I Server Component possono passare ai Client Component solo dati
+  // serializzabili: una Map non lo è, la convertiamo in un oggetto piano.
+  const bookingsByKid = Object.fromEntries(bookingsByKidMap);
 
   return (
     <div className="animate-fade-in">
@@ -74,7 +89,15 @@ export default async function HomePage() {
         </Link>
       </div>
 
-      <HomeFeed activities={activities} categories={categories} />
+      <HomeProfilePrompt profileIncomplete={profileIncomplete} hasKids={kids.length > 0} />
+
+      <HomeFeed
+        activities={activities}
+        categories={categories}
+        kids={kids}
+        planner={planner}
+        bookingsByKid={bookingsByKid}
+      />
       <div className="h-5" />
     </div>
   );

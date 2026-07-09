@@ -33,6 +33,31 @@ export async function updateSession(request: NextRequest) {
   return response;
 }
 
+// Legge SOLO se c'è un utente loggato (per il gate del dominio famiglie in
+// proxy.ts, dove non serve conoscere il ruolo) senza propagare Set-Cookie —
+// la sessione è già stata rinfrescata da updateSession() nella stessa
+// richiesta. Più leggera di getRequestRole: non fa la query su "profiles".
+export async function getRequestUserId(request: NextRequest): Promise<string | null> {
+  if (!isSupabaseConfigured) return null;
+
+  const supabase = createServerClient(supabaseUrl, supabaseAnonKey, {
+    cookieOptions: cookieDomain ? { domain: cookieDomain } : undefined,
+    cookies: {
+      getAll() {
+        return request.cookies.getAll();
+      },
+      setAll() {
+        // sola lettura: non serve propagare Set-Cookie da questa chiamata.
+      },
+    },
+  });
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  return user?.id ?? null;
+}
+
 // Legge SOLO il ruolo dell'utente loggato (per il gate multi-tenant dei
 // sottodomini partner.*/admin.* in proxy.ts) senza propagare Set-Cookie — la
 // sessione è già stata rinfrescata da updateSession() nella stessa richiesta.

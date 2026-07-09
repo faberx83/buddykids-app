@@ -12,7 +12,11 @@ const cells = [
   ...Array.from({ length: 30 }, (_, i) => ({ day: i + 1 })),
 ];
 
-const tabs = ["I miei impegni", "Calendari centri"];
+const tabs = ["La mia agenda", "Disponibilità centri"];
+const tabSubtitles = [
+  "Tutti i tuoi impegni, in ordine di data",
+  "Giorni aperti, pieni o in promo per ogni attività",
+];
 
 export default function CalendarClient({
   events,
@@ -48,6 +52,7 @@ export default function CalendarClient({
             </div>
           ))}
         </div>
+        <p className="mt-2 text-[11px] text-ink-3">{tabSubtitles[tab]}</p>
       </div>
 
       {tab === 0 && (
