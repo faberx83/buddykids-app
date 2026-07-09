@@ -12,21 +12,41 @@ npx playwright test                 # locale, dati mock (nessuna chiave Supabase
 npx playwright show-report          # apre il report HTML
 ```
 
-Contro un deploy reale (Supabase configurato):
+### Preparazione (una tantum) — centro/attività di test dedicati
 
+I test di scrittura (prenotazione, gruppi, inviti...) girano contro il
+database di produzione con gli account di `.env.test`: serve un centro e
+un'attività "sandbox" isolati dai dati reali, così i test non toccano mai
+clienti veri. Vedi `supabase/seed-test-data.sql`: crea/promuove tutto il
+necessario (centro `[TEST]`, attività `[TEST]` con 13 settimane prenotabili,
+ruoli `center_admin`/`platform_admin`, un bambino di test) — è idempotente,
+si può rilanciare quando serve. Precondizione: i 3 account devono già
+esistere (registrati via app), lo script promuove solo i ruoli.
+
+Prima di ogni run, `test-deploy.sh` lancia anche
+`tests/cleanup-test-data.mjs`, che ripulisce prenotazioni/gruppi/inviti/
+attività extra generati dai test precedenti (tenendo il centro/attività/
+bambino "seed" intatti), così i run ripetuti non accumulano dati sporchi.
+Richiede `SUPABASE_SERVICE_ROLE_KEY` in `.env.test` (vedi
+`.env.test.example`) — se assente viene semplicemente saltata.
+
+### Contro il deploy reale — subito dopo ogni deploy
+
+`bash deploy.sh` lancia la suite in automatico appena finito di pubblicare
+(vedi `test-deploy.sh`), usando le credenziali in `.env.test` (copia
+`.env.test.example`, compilalo una volta con account di TEST dedicati — non
+i tuoi account reali, vedi il file per i motivi). Se `.env.test` manca, i
+test che richiedono login reale vengono saltati/falliscono, ma il deploy non
+si blocca comunque.
+
+Per saltare i test su un deploy (es. una modifica piccola, vuoi essere
+rapido): `SKIP_TESTS=1 bash deploy.sh`.
+
+Per rilanciarli a mano in qualsiasi momento, senza rideployare:
 ```bash
-TEST_BASE_URL=https://buddykids-app.vercel.app \
-TEST_PARENT_EMAIL=... TEST_PARENT_PASSWORD=... \
-TEST_CENTER_ADMIN_EMAIL=... TEST_CENTER_ADMIN_PASSWORD=... \
-TEST_PLATFORM_ADMIN_EMAIL=... TEST_PLATFORM_ADMIN_PASSWORD=... \
-npx playwright test
+bash test-deploy.sh                                   # contro l'URL di produzione
+bash test-deploy.sh https://un-altro-url.vercel.app    # contro un altro URL (es. preview)
 ```
-
-Il workflow `.github/workflows/playwright.yml` fa gia' girare tutto ad ogni
-push/PR (modalita' mock) e pubblica il report come artifact scaricabile.
-Per farlo girare anche contro il deploy reale, aggiungi le stesse variabili
-come Secrets del repo e lancialo manualmente (workflow_dispatch) passando
-`base_url`.
 
 ## Cosa e' davvero implementato oggi
 
@@ -36,20 +56,28 @@ Chromium) — il codice e' stato scritto leggendo i sorgenti reali del repo
 (selettori, testi, route), ma va verificato con una prima esecuzione vera
 prima di fidarsene in CI.
 
-- **~28 test completamente implementati** (asserzioni + interazioni reali),
-  in `tests/genitori/home.spec.ts`, `cerca.spec.ts`, `attivita.spec.ts`,
-  `gruppi.spec.ts`, `tests/gestore/dashboard.spec.ts`, `attivita.spec.ts`,
+- **~50 test completamente implementati** (asserzioni + interazioni reali),
+  in `tests/genitori/home.spec.ts`, `home-planner.spec.ts`, `cerca.spec.ts`,
+  `attivita.spec.ts`, `prenotazione.spec.ts` (parziale), `gruppi.spec.ts`,
+  `tests/gestore/dashboard.spec.ts`, `attivita.spec.ts`,
   `tests/admin/dashboard.spec.ts`, `gestione.spec.ts`.
-- **~37 test "scaffold"** (`test.fixme`, saltati di default): un blocco per
-  ogni TC-ID rimanente, con precondizioni/passi/risultato atteso presi
-  parola per parola dalla tua matrice come commento, pronti da completare
+- **Aggiornamento**: i test che risultavano "PENDING: funzionalità non
+  presente nel repo GitHub ispezionato" (Planner/Per bambino, week-lock,
+  formato date, redesign dashboard v6a, condividi/calendario) sono stati
+  verificati contro il codice attuale — la funzionalità *è* presente, quel
+  commento era ormai superato — e i test sono stati implementati per davvero
+  in `home-planner.spec.ts`, `prenotazione.spec.ts` (TC-108/109/110/111/112)
+  e `gestore/dashboard.spec.ts` (TC-119/120/121). Nel farlo, TC-072 è stato
+  anche corretto: asseriva ancora "Le tue attività" e "Promozioni attive",
+  testi che il redesign ha sostituito con "Attività recente" e "Promo
+  attive" — sarebbe rimasto verde per il posto sbagliato.
+- **~25 test rimasti "scaffold"** (`test.fixme`, saltati di default): un
+  blocco per ogni TC-ID rimanente, con precondizioni/passi/risultato atteso
+  presi parola per parola dalla matrice come commento, pronti da completare
   seguendo lo stesso pattern degli esempi sopra.
-- **~28 test esplicitamente esclusi** (`test.fixme` con motivo commentato):
-  richiedono SQL Editor Supabase, domini/alias non pubblicati, un secondo
-  account genitore reale, o dipendono da funzionalita' che risultano non
-  ancora presenti nel repo GitHub ispettato (Planner/Per bambino, upload
-  immagini, redesign dashboard v6a — probabilmente sviluppate in una sessione
-  locale non ancora pushata: verificarle dopo il push).
+- **Test esplicitamente esclusi** (`test.fixme` con motivo commentato):
+  richiedono SQL Editor Supabase, domini/alias non pubblicati, o un secondo
+  account genitore reale (es. TC-107 multi-bambino end-to-end).
 - **3 casi** (TC-098/099/100, area "Fuori scope attuale") non hanno alcun
   test: la funzionalita' non esiste, per tua stessa nota nella matrice.
 

@@ -3,6 +3,11 @@ node_modules
 out
 .env
 .env.local
+.env.test
 .DS_Store
 npm-debug.log*
 .vercel
+
+# Output generato dai test Playwright (tests/) — mai da versionare/deployare
+playwright-report
+test-results

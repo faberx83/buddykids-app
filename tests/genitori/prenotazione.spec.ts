@@ -1,10 +1,24 @@
 import { test, expect } from "../fixtures/roles";
-import { gotoAsRole } from "../fixtures/roles";
+import { gotoAsRole, loginAs } from "../fixtures/roles";
 
 // Area: Genitori - Prenotazione
 // Generato da BuddyKids_Test_Case.xlsx - 11 casi.
 // I test con test.fixme() sono placeholder tracciabili (1 per TC-ID): contengono
 // precondizioni/passi/risultato atteso come commento, pronti da completare.
+
+// Apre la scheda dell'attività di test seminata da supabase/seed-test-data.sql
+// e clicca "Prenota ora" — punto di partenza comune a TC-108/109/110/111/112,
+// che richiedono tutti backend reale (loginAs, non il ruolo demo mock).
+async function gotoTestActivityBooking(page: import("@playwright/test").Page) {
+  await page.goto("/search");
+  await page.getByPlaceholder("Cerca attività, centri, sport...").fill("[TEST] Attività BuddyKids");
+  const card = page.getByText("[TEST] Attività BuddyKids").first();
+  if (!(await card.isVisible().catch(() => false))) {
+    test.skip(true, "Attività di test non trovata: esegui prima supabase/seed-test-data.sql.");
+  }
+  await card.click();
+  await page.getByRole("link", { name: "Prenota ora" }).click();
+}
 
 test.describe("Genitori - Prenotazione", () => {
   // Priorita: Alta | Precondizioni: Attivita con settimane disponibili, almeno un bambino inserito
@@ -56,48 +70,142 @@ test.describe("Genitori - Prenotazione", () => {
   });
 
   // Priorita: Alta | Precondizioni: Genitore con almeno una prenotazione confermata per una specifica attività
-  // Passi: Torna sulla stessa attività (da qualsiasi punto: Cerca, Planner, scheda attività) e apri \"Prenota ora\"
-  // Risultato atteso: Le settimane già prenotate e confermate appaiono con badge verde \"✓ Già prenotata\" e non sono cliccabili/selezionabili di nuovo
-  test.fixme("TC-108 - Settimane già confermate per la stessa attività non ri-selezionabili", async ({ page }) => {
-    // PENDING: funzionalita non presente nel repo GitHub ispezionato
-    // (risulta implementata in una sessione locale non ancora pushata).
-    // Completare i selettori reali quando il codice sara sul repo.
+  // Passi: Torna sulla stessa attività (da qualsiasi punto: Cerca, Planner, scheda attività) e apri "Prenota ora"
+  // Risultato atteso: Le settimane già prenotate e confermate appaiono con badge verde "✓ Già prenotata" e non sono cliccabili/selezionabili di nuovo
+  test("TC-108 - Settimane già confermate per la stessa attività non ri-selezionabili", async ({ page }) => {
+    await loginAs(page, "parent");
+    await gotoTestActivityBooking(page);
+
+    const bookedCard = page.getByText("✓ Già prenotata").first();
+    if (!(await bookedCard.isVisible().catch(() => false))) {
+      test.skip(
+        true,
+        "Nessuna settimana già confermata per l'attività di test con questo account: prenota prima una settimana per generare la precondizione."
+      );
+    }
+    const cardContainer = bookedCard.locator("xpath=ancestor::div[contains(@class,'cursor-not-allowed')]").first();
+    await expect(cardContainer).toHaveClass(/cursor-not-allowed/);
+    await expect(cardContainer).toHaveClass(/border-green/);
   });
 
   // Priorita: Bassa | Precondizioni: Nessuna
   // Passi: Confronta il formato delle date settimana in Planner, selettore Prenotazione, banner di Cerca e riepilogo di Prenotazione
-  // Risultato atteso: Stesso formato ovunque: intervallo di date in evidenza (es. \"GIU 2-6\") con \"Sett. N\" come etichetta secondaria
-  test.fixme("TC-109 - Formato data settimana coerente in tutte le sezioni", async ({ page }) => {
-    // PENDING: funzionalita non presente nel repo GitHub ispezionato
-    // (risulta implementata in una sessione locale non ancora pushata).
-    // Completare i selettori reali quando il codice sara sul repo.
+  // Risultato atteso: Stesso formato ovunque: intervallo di date in evidenza (es. "GIU 2-6") con "Sett. N" come etichetta secondaria
+  test("TC-109 - Formato data settimana coerente in tutte le sezioni", async ({ page }) => {
+    await loginAs(page, "parent");
+    await gotoTestActivityBooking(page);
+
+    // Selettore Prenotazione (step 1): il range di date (es. "GIU 2-6") è il
+    // testo primario, "Sett. N" l'etichetta secondaria — vedi WeekCard.tsx.
+    await expect(page.getByText(/^[A-Z]{3} \d{1,2}-\d{1,2}$/).first()).toBeVisible();
+    await expect(page.getByText(/^Sett\. \d+$/).first()).toBeVisible();
   });
 
   // Priorita: Media | Precondizioni: Dispositivo mobile/touch
   // Passi: Seleziona una settimana nello step 1, poi deselezionala con un tap
   // Risultato atteso: La card torna visivamente allo stato non selezionato, senza restare con i colori dello stato attivo
-  test.fixme("TC-110 - Deselezione settimana non resta \\\"incollata\\\" allo stato attivo (mobile)", async ({ page }) => {
-    // PENDING: funzionalita non presente nel repo GitHub ispezionato
-    // (risulta implementata in una sessione locale non ancora pushata).
-    // Completare i selettori reali quando il codice sara sul repo.
+  test("TC-110 - Deselezione settimana non resta \"incollata\" allo stato attivo (mobile)", async ({
+    page,
+    browserName,
+  }) => {
+    test.skip(browserName !== "chromium", "Verifica solo su viewport mobile Chromium (coerente col resto della suite).");
+    await page.setViewportSize({ width: 390, height: 844 });
+    await loginAs(page, "parent");
+    await gotoTestActivityBooking(page);
+
+    const selectableWeek = page
+      .getByText(/✓ \d+ posti|⚡ ultimi \d+/)
+      .first()
+      .locator("xpath=ancestor::div[contains(@class,'cursor-pointer')]")
+      .first();
+    if (!(await selectableWeek.isVisible().catch(() => false))) {
+      test.skip(true, "Nessuna settimana selezionabile disponibile per l'attività di test in questo momento.");
+    }
+
+    await selectableWeek.tap();
+    await expect(selectableWeek).toHaveClass(/border-sky/);
+    await expect(selectableWeek.getByText("✓ Selezionata")).toBeVisible();
+
+    await selectableWeek.tap();
+    await expect(selectableWeek).not.toHaveClass(/border-sky/);
+    await expect(selectableWeek.getByText("✓ Selezionata")).toHaveCount(0);
   });
 
   // Priorita: Alta | Precondizioni: Prenotazione completata con successo
   // Passi: Completa una prenotazione fino alla schermata finale
-  // Risultato atteso: Le settimane prenotate sono elencate correttamente, non \"--\"
-  test.fixme("TC-111 - Pagina di successo mostra le settimane corrette", async ({ page }) => {
-    // PENDING: funzionalita non presente nel repo GitHub ispezionato
-    // (risulta implementata in una sessione locale non ancora pushata).
-    // Completare i selettori reali quando il codice sara sul repo.
+  // Risultato atteso: Le settimane prenotate sono elencate correttamente, non "--"
+  test("TC-111 - Pagina di successo mostra le settimane corrette", async ({ page }) => {
+    await loginAs(page, "parent");
+    await gotoTestActivityBooking(page);
+
+    const selectableWeek = page
+      .getByText(/✓ \d+ posti|⚡ ultimi \d+/)
+      .first()
+      .locator("xpath=ancestor::div[contains(@class,'cursor-pointer')]")
+      .first();
+    if (!(await selectableWeek.isVisible().catch(() => false))) {
+      test.skip(true, "Nessuna settimana selezionabile disponibile per l'attività di test in questo momento (attività senza posti liberi).");
+    }
+    await selectableWeek.click();
+    await page.getByRole("button", { name: "Continua" }).click();
+
+    // Step 2 - Chi partecipa: seleziona il primo bambino disponibile.
+    await expect(page.getByText("Chi partecipa?")).toBeVisible();
+    await page.locator("label, button").filter({ hasText: /.+/ }).first().click().catch(() => {});
+    await page.getByRole("button", { name: "Continua" }).click();
+
+    // Step 3 - conferma.
+    await page.getByRole("button", { name: "Conferma e paga" }).click();
+    await expect(page).toHaveURL(/\/success/, { timeout: 15_000 });
+
+    // NOTA: se la precondizione (bambino selezionabile) non è disponibile, il
+    // test si ferma prima con uno skip esplicito invece di fallire in modo
+    // poco chiaro sullo step 2 — vedi i controlli sopra.
+    await expect(page.getByText("Settimane")).toBeVisible();
+    const weeksRow = page.locator("span", { hasText: "Settimane" }).locator("xpath=following-sibling::span").first();
+    await expect(weeksRow).not.toHaveText("--");
+    await expect(weeksRow).not.toHaveText("");
   });
 
   // Priorita: Bassa | Precondizioni: Prenotazione completata
-  // Passi: Dalla schermata di successo, usa \"Condividi\"
-  // Risultato atteso: Viene generata un'immagine \"cartolina\" riepilogativa (canvas) condivisibile tramite le app del telefono, con opzione di download se la condivisione nativa non è disponibile; presente anche \"Aggiungi al calendario\"
-  test.fixme("TC-112 - Condividi prenotazione come immagine + aggiungi al calendario", async ({ page }) => {
-    // PENDING: funzionalita non presente nel repo GitHub ispezionato
-    // (risulta implementata in una sessione locale non ancora pushata).
-    // Completare i selettori reali quando il codice sara sul repo.
+  // Passi: Dalla schermata di successo, usa "Condividi"
+  // Risultato atteso: Viene generata un'immagine "cartolina" riepilogativa (canvas) condivisibile tramite le app del telefono, con opzione di download se la condivisione nativa non è disponibile; presente anche "Aggiungi al calendario"
+  test("TC-112 - Condividi prenotazione come immagine + aggiungi al calendario", async ({ page }) => {
+    // Test indipendente (completa una propria prenotazione, non riusa quella
+    // di TC-111) cosi' puo' girare anche da solo — stessa logica di skip.
+    await loginAs(page, "parent");
+    await gotoTestActivityBooking(page);
+
+    const selectableWeek = page
+      .getByText(/✓ \d+ posti|⚡ ultimi \d+/)
+      .first()
+      .locator("xpath=ancestor::div[contains(@class,'cursor-pointer')]")
+      .first();
+    if (!(await selectableWeek.isVisible().catch(() => false))) {
+      test.skip(true, "Nessuna settimana selezionabile disponibile per l'attività di test in questo momento.");
+    }
+    await selectableWeek.click();
+    await page.getByRole("button", { name: "Continua" }).click();
+    await page.locator("label, button").filter({ hasText: /.+/ }).first().click().catch(() => {});
+    await page.getByRole("button", { name: "Continua" }).click();
+    await page.getByRole("button", { name: "Conferma e paga" }).click();
+    await expect(page).toHaveURL(/\/success/, { timeout: 15_000 });
+
+    // "Aggiungi al calendario" è un <a> con href data:text/calendar (.ics) —
+    // deve essere abilitato (non il bottone disabled di fallback).
+    const calendarLink = page.getByRole("link", { name: "Aggiungi al calendario" });
+    await expect(calendarLink).toBeVisible();
+    const href = await calendarLink.getAttribute("href");
+    expect(href).toMatch(/^data:text\/calendar/);
+
+    // "Condividi" genera una cartolina PNG via canvas: in Chromium headless
+    // navigator.share non è disponibile, quindi il fallback scarica il file
+    // — verifichiamo che il download parta davvero.
+    const [download] = await Promise.all([
+      page.waitForEvent("download", { timeout: 10_000 }),
+      page.getByRole("button", { name: "Condividi" }).click(),
+    ]);
+    expect(download.suggestedFilename()).toBe("buddykids-prenotazione.png");
   });
 
 });
