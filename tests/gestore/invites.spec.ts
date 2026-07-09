@@ -17,8 +17,15 @@ test.describe("Gestore - Inviti", () => {
   // Passi: Apri 'Inviti', compila nome/email contatto, imposta sconto % e scadenza, invia
   // Risultato atteso: L'invito viene creato con un codice univoco; se è configurato l'invio email (Resend), parte automaticamente un'email con link+codice, altrimenti viene mostrato il link da copiare
   test("TC-122 - Creazione invito singolo con contatto email", async ({ page }) => {
-    const uniqueEmail = `test.invite.${Date.now()}@buddykids.it`;
-    await page.getByPlaceholder("Es. Maria Rossi").fill("Famiglia di Prova");
+    // Nome ed email univoci per run: la suite gira su più browser/progetti
+    // (chromium, mobile-chrome) senza pulizia tra un progetto e l'altro,
+    // quindi un nome fisso ("Famiglia di Prova") creava righe duplicate in
+    // tabella e getByText falliva con "strict mode violation" dal secondo
+    // progetto in poi.
+    const uniqueId = Date.now();
+    const uniqueName = `Famiglia di Prova ${uniqueId}`;
+    const uniqueEmail = `test.invite.${uniqueId}@buddykids.it`;
+    await page.getByPlaceholder("Es. Maria Rossi").fill(uniqueName);
     await page.getByPlaceholder("mamma@esempio.it").fill(uniqueEmail);
     await page.getByRole("button", { name: /^Crea invito$/ }).click();
 
@@ -29,7 +36,7 @@ test.describe("Gestore - Inviti", () => {
     });
     await expect(page.locator('input[readonly]')).toHaveValue(/\/auth\/login\?invite=/);
     // La riga appena creata compare in tabella col nuovo contatto.
-    await expect(page.getByText("Famiglia di Prova")).toBeVisible();
+    await expect(page.getByText(uniqueName)).toBeVisible();
   });
 
   // Priorita: Media | Precondizioni: Login Gestore centro, file CSV/TXT con nome,email,telefono per riga

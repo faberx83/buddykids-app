@@ -98,6 +98,21 @@ ritornano `{ error: "Supabase non configurato" }` — vedi ad es.
   ruolo demo, con account di test gia' promossi ai ruoli giusti (vedi sezione
   README principale "Promuovere un utente").
 
+**Conseguenza pratica**: contro un deploy reale (`test-deploy.sh`, sempre con
+Supabase configurato) i test basati su `gotoAsRole()` non troveranno mai
+niente di significativo — cercano dati mock che in produzione non esistono.
+Da quando è stato scoperto (prima esecuzione vera contro produzione, con ~37
+test falliti "a vuoto" su questo), `gotoAsRole()` in `tests/fixtures/roles.ts`
+si auto-salta (`test.skip`) quando rileva `TEST_BASE_URL` puntato a un URL
+reale (non `localhost`) — quindi nel report li vedrai come **skipped**, non
+più **failed**, quando giri contro produzione. Restano eseguibili normalmente
+in locale (`npx playwright test` senza `TEST_BASE_URL`, dove Supabase non è
+configurato). Se un test ti serve anche contro un deploy reale, va riscritto
+per usare `loginAs()` + dati seminati da `supabase/seed-test-data.sql` invece
+di `gotoAsRole()` — è il pattern seguito da tutti i test aggiunti dopo questa
+scoperta (`home-planner.spec.ts`, TC-108+ in `prenotazione.spec.ts`,
+`gestore/invites.spec.ts`).
+
 ## Struttura
 
 ```

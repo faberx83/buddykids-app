@@ -26,7 +26,22 @@ export async function setDemoRole(page: Page, role: Role) {
   }, role);
 }
 
+// Vero solo quando TEST_BASE_URL punta a un deploy reale (non il dev server
+// locale) — test-deploy.sh lo imposta sempre a un URL https pubblico. Contro
+// un deploy reale Supabase è sempre configurato, quindi il RoleSwitcher demo
+// è disattivato lato app (vedi components/RoleSwitcher.tsx) e gotoAsRole()
+// non ha alcun effetto: i test che lo usano andrebbero a cercare dati mock
+// (es. "Summer Camp Acquatico") che in produzione non esistono, fallendo a
+// vuoto ad ogni run invece di segnalare qualcosa di realmente rotto.
+export const isRealDeployment = Boolean(
+  process.env.TEST_BASE_URL && !/localhost|127\.0\.0\.1/.test(process.env.TEST_BASE_URL)
+);
+
 export async function gotoAsRole(page: Page, role: Role, path?: string) {
+  base.skip(
+    isRealDeployment,
+    "Ruolo demo disponibile solo senza Supabase configurato — non eseguibile contro un deploy reale (vedi tests/README.md)."
+  );
   await setDemoRole(page, role);
   await page.goto(path ?? ROLE_HOME[role]);
 }
