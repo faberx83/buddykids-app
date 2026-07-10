@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import Link from "next/link";
 import { ParentInquiry, InquiryStatus } from "@/lib/data/inquiries";
 import { markInquiriesReadAction } from "@/app/actions/inquiries";
@@ -16,6 +16,26 @@ const STATUS_CLASS: Record<InquiryStatus, string> = {
   risposta: "bg-green-light text-green",
   chiusa: "bg-bg text-ink-3",
 };
+
+const MONTH_LABELS_IT = [
+  "Gennaio",
+  "Febbraio",
+  "Marzo",
+  "Aprile",
+  "Maggio",
+  "Giugno",
+  "Luglio",
+  "Agosto",
+  "Settembre",
+  "Ottobre",
+  "Novembre",
+  "Dicembre",
+];
+
+function monthLabel(iso: string): string {
+  const d = new Date(iso);
+  return `${MONTH_LABELS_IT[d.getUTCMonth()]} ${d.getUTCFullYear()}`;
+}
 
 // Segnalazione di Fabrizio: vuole un pallino/notifica quando arriva una
 // risposta, e la possibilità di selezionare tutte le richieste e segnarle
@@ -57,6 +77,23 @@ export default function RichiesteGenitoreClient({
     setSelected(new Set());
   }
 
+  // Raggruppamento per mese (segnalazione di Fabrizio: "vanno anche quelle
+  // raggruppate con la stessa logica del registro" — stesso principio di
+  // AttendanceClient.tsx, qui sul mese di creazione della richiesta). Le
+  // richieste arrivano già ordinate per data decrescente (più recenti prima):
+  // i bucket restano quindi in ordine cronologico decrescente.
+  const monthBuckets = useMemo(() => {
+    const buckets = new Map<string, { label: string; items: ParentInquiry[] }>();
+    for (const inq of inquiries) {
+      const monthKey = inq.createdAt.slice(0, 7);
+      if (!buckets.has(monthKey)) buckets.set(monthKey, { label: monthLabel(inq.createdAt), items: [] });
+      buckets.get(monthKey)!.items.push(inq);
+    }
+    return Array.from(buckets.entries())
+      .sort(([a], [b]) => b.localeCompare(a))
+      .map(([, v]) => v);
+  }, [inquiries]);
+
   return (
     <div className="px-5 py-4">
       {inquiries.length === 0 && (
@@ -93,34 +130,43 @@ export default function RichiesteGenitoreClient({
         </div>
       )}
 
-      <div className="flex flex-col gap-2.5">
-        {inquiries.map((inq) => (
-          <div key={inq.id} className="flex gap-2.5 rounded-lg border border-[#E8EBF0] bg-white p-3.5">
-            <input
-              type="checkbox"
-              checked={selected.has(inq.id)}
-              onChange={() => toggleOne(inq.id)}
-              className="mt-0.5 h-4 w-4 flex-shrink-0"
-            />
-            <div className="min-w-0 flex-1">
-              <div className="mb-1.5 flex items-center justify-between gap-2">
-                <Link href={`/activity/${inq.activityId}`} className="flex items-center gap-1.5 text-[13px] font-bold text-ink">
-                  {!inq.readByParent && (
-                    <span className="h-2 w-2 flex-shrink-0 rounded-full bg-[#FF6B6B]" aria-label="Non letta" />
-                  )}
-                  {inq.activityName}
-                </Link>
-                <span className={`flex-shrink-0 rounded-full px-2.5 py-1 text-[10px] font-bold ${STATUS_CLASS[inq.status]}`}>
-                  {STATUS_LABEL[inq.status]}
-                </span>
-              </div>
-              <p className="mb-2 text-xs text-ink-2">{inq.message}</p>
-              {inq.reply && (
-                <div className="rounded-md bg-sky-light p-2.5 text-xs text-ink">
-                  <div className="mb-0.5 font-semibold text-sky">Risposta del centro</div>
-                  {inq.reply}
+      <div className="flex flex-col gap-3">
+        {monthBuckets.map((bucket) => (
+          <div key={bucket.label}>
+            <div className="mb-1.5 px-1 text-[10.5px] font-bold uppercase tracking-wide text-ink-3">
+              {bucket.label}
+            </div>
+            <div className="flex flex-col gap-2.5">
+              {bucket.items.map((inq) => (
+                <div key={inq.id} className="flex gap-2.5 rounded-lg border border-[#E8EBF0] bg-white p-3.5">
+                  <input
+                    type="checkbox"
+                    checked={selected.has(inq.id)}
+                    onChange={() => toggleOne(inq.id)}
+                    className="mt-0.5 h-4 w-4 flex-shrink-0"
+                  />
+                  <div className="min-w-0 flex-1">
+                    <div className="mb-1.5 flex items-center justify-between gap-2">
+                      <Link href={`/activity/${inq.activityId}`} className="flex items-center gap-1.5 text-[13px] font-bold text-ink">
+                        {!inq.readByParent && (
+                          <span className="h-2 w-2 flex-shrink-0 rounded-full bg-[#FF6B6B]" aria-label="Non letta" />
+                        )}
+                        {inq.activityName}
+                      </Link>
+                      <span className={`flex-shrink-0 rounded-full px-2.5 py-1 text-[10px] font-bold ${STATUS_CLASS[inq.status]}`}>
+                        {STATUS_LABEL[inq.status]}
+                      </span>
+                    </div>
+                    <p className="mb-2 text-xs text-ink-2">{inq.message}</p>
+                    {inq.reply && (
+                      <div className="rounded-md bg-sky-light p-2.5 text-xs text-ink">
+                        <div className="mb-0.5 font-semibold text-sky">Risposta del centro</div>
+                        {inq.reply}
+                      </div>
+                    )}
+                  </div>
                 </div>
-              )}
+              ))}
             </div>
           </div>
         ))}

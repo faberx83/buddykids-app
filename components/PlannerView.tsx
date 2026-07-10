@@ -254,6 +254,17 @@ export default function PlannerView({
           const riempiHref = selectedKidId
             ? `/search?week=${w.startDate}&kid=${selectedKidId}`
             : `/search?week=${w.startDate}`;
+          // Domanda di Fabrizio: "se due bambini della stessa famiglia nella
+          // stessa settimana hanno 2 campus diversi cosa succede?" — il dato
+          // era già tutto in coveredKids (per bambino), ma la vista aggregata
+          // mostrava solo il nome della PRIMA attività trovata, nascondendo
+          // silenziosamente il campo diverso del fratello/sorella. Solo in
+          // vista "Tutti" (per-bambino non serve: è già filtrato su un solo
+          // figlio) segnaliamo quando i bambini coperti questa settimana NON
+          // sono tutti nello stesso campo.
+          const distinctActivityNames =
+            selectedKidId === null ? new Set(w.coveredKids.map((c) => c.activityName)) : new Set<string>();
+          const hasDifferentCamps = selectedKidId === null && distinctActivityNames.size > 1;
 
           return (
             <div key={w.index} className={`rounded-2xl p-3.5 ${rowBg}`}>
@@ -267,7 +278,12 @@ export default function PlannerView({
                         dentro un altro <a> non è valido) — vedi sotto. */}
                     <Link
                       href={w.viewActivitySlug ? `/activity/${w.viewActivitySlug}` : "#"}
-                      className="flex min-w-0 flex-1 items-center gap-2.5"
+                      // Segnalazione di Fabrizio: "manca un pò la UX che fa
+                      // percepire il click che porta alla pagina di
+                      // dettaglio del camp" — aggiunto hover/active feedback
+                      // (oltre alla chevron già presente più sotto) così la
+                      // riga si "sente" cliccabile anche prima del chevron.
+                      className="flex min-w-0 flex-1 items-center gap-2.5 rounded-xl transition-colors hover:bg-black/[0.03] active:bg-black/[0.06]"
                     >
                       <div className="flex h-[42px] w-[42px] flex-shrink-0 items-center justify-center rounded-xl bg-white/60">
                         <i className={`ti ti-calendar-check text-lg ${TINT_TEXT_CLASSES[color]}`} />
@@ -281,6 +297,7 @@ export default function PlannerView({
                           {isPartial && ` · manca per ${w.partialForKids.map((k) => k.name).join(", ")}`}
                         </div>
                       </div>
+                      <i className="ti ti-chevron-right flex-shrink-0 text-base text-ink-3" />
                     </Link>
                     {isPartial ? (
                       <i className="ti ti-alert-circle-filled flex-shrink-0 text-[19px] text-yellow" />
@@ -351,6 +368,24 @@ export default function PlannerView({
                       + Aggiungi {k.name}
                     </Link>
                   ))}
+                </div>
+              )}
+              {/* Risposta alla domanda di Fabrizio: "se due bambini della
+                  stessa famiglia nella stessa settimana hanno 2 campus
+                  diversi cosa succede?" — succedeva già correttamente (ogni
+                  bambino resta prenotato al proprio campo, coveredKids lo
+                  traccia per bambino), ma la vista aggregata lo nascondeva
+                  mostrando solo il nome della prima attività trovata. Ora lo
+                  segnaliamo esplicitamente. */}
+              {hasDifferentCamps && (
+                <div className="mt-1.5 flex items-start gap-1.5 pl-[50px] text-[11px] text-ink-2">
+                  <i className="ti ti-info-circle mt-[1px] flex-shrink-0 text-ink-3" />
+                  <span>
+                    Campi diversi questa settimana:{" "}
+                    {w.coveredKids
+                      .map((c) => `${kids.find((k) => k.id === c.kidId)?.name ?? "?"} → ${c.activityName}`)
+                      .join(" · ")}
+                  </span>
                 </div>
               )}
             </div>

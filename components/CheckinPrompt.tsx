@@ -12,11 +12,25 @@ import type { CheckinStatus, TodayCheckin } from "@/lib/data/checkin";
 // geolocalizzazione/notifica push automatica (scope MVP concordato con
 // Fabrizio: l'infrastruttura per farlo in automatico in background non è
 // affidabile su web/iOS senza un investimento dedicato).
+// Etichette compatte per il riepilogo dopo la risposta (card ridotta).
+const STATUS_SUMMARY: Record<CheckinStatus, { label: string; cls: string; icon: string }> = {
+  presente: { label: "Presente", cls: "bg-partner text-white", icon: "ti-check" },
+  in_ritardo: { label: "In ritardo", cls: "bg-orange text-white", icon: "ti-clock" },
+  assente: { label: "Assente", cls: "bg-ink text-white", icon: "ti-x" },
+};
+
 export default function CheckinPrompt({ items }: { items: TodayCheckin[] }) {
   const [statuses, setStatuses] = useState<Record<string, CheckinStatus | null>>(
     Object.fromEntries(items.map((i) => [`${i.kidId}:${i.weekId}`, i.status]))
   );
   const [savingKey, setSavingKey] = useState<string | null>(null);
+  // Segnalazione di Fabrizio: dopo aver risposto, la card deve ridursi a un
+  // riepilogo compatto (info di massima) invece di restare grande — ma deve
+  // rimanere gestibile: un tocco sul riepilogo la riespande per correggere
+  // un errore di selezione. Un set esplicito di chiavi "espanse" tiene
+  // traccia di quali card, pur avendo già una risposta, l'utente ha
+  // riaperto per modificarla.
+  const [expanded, setExpanded] = useState<Set<string>>(new Set());
 
   if (items.length === 0) return null;
 
@@ -25,7 +39,15 @@ export default function CheckinPrompt({ items }: { items: TodayCheckin[] }) {
     const previous = statuses[key] ?? null;
     setStatuses((prev) => ({ ...prev, [key]: status }));
 
-    if (!isSupabaseConfigured) return; // demo: solo stato locale
+    if (!isSupabaseConfigured) {
+      // demo: solo stato locale — ridurre comunque la card dopo la risposta
+      setExpanded((prev) => {
+        const next = new Set(prev);
+        next.delete(key);
+        return next;
+      });
+      return;
+    }
 
     setSavingKey(key);
     const result = await parentCheckinAction({
@@ -38,7 +60,24 @@ export default function CheckinPrompt({ items }: { items: TodayCheckin[] }) {
     setSavingKey(null);
     if (result.error) {
       setStatuses((prev) => ({ ...prev, [key]: previous }));
+      return;
     }
+    // Risposta salvata con successo: richiudiamo la card a riepilogo (anche
+    // se era stata riaperta per correggere una risposta precedente).
+    setExpanded((prev) => {
+      const next = new Set(prev);
+      next.delete(key);
+      return next;
+    });
+  }
+
+  function toggleExpanded(key: string) {
+    setExpanded((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
   }
 
   return (
@@ -47,6 +86,31 @@ export default function CheckinPrompt({ items }: { items: TodayCheckin[] }) {
         const key = `${item.kidId}:${item.weekId}`;
         const status = statuses[key];
         const saving = savingKey === key;
+        const isCollapsed = !!status && !expanded.has(key);
+
+        if (isCollapsed) {
+          const summary = STATUS_SUMMARY[status];
+          return (
+            <button
+              key={key}
+              type="button"
+              onClick={() => toggleExpanded(key)}
+              className="flex items-center gap-2.5 rounded-xl border border-[#E3F0FB] bg-sky-light px-3.5 py-2.5 text-left"
+            >
+              <span className={`flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full ${summary.cls}`}>
+                <i className={`ti ${summary.icon} text-xs`} />
+              </span>
+              <span className="min-w-0 flex-1 truncate text-xs font-semibold text-ink">
+                {item.kidName} · {item.activityName}
+              </span>
+              <span className="flex-shrink-0 text-[10.5px] font-bold uppercase tracking-wide text-sky">
+                {summary.label}
+              </span>
+              <i className="ti ti-pencil flex-shrink-0 text-xs text-ink-3" aria-label="Modifica risposta" />
+            </button>
+          );
+        }
+
         return (
           <div
             key={key}

@@ -13,6 +13,11 @@ export type Gender = "M" | "F" | "altro";
 export type Language = "it" | "en";
 export type Theme = "light" | "dark";
 export type AccountStatus = "active" | "deactivated" | "deletion_requested";
+// Segnalazione di Fabrizio: nella scheda profilo PERSONALE del gestore ("Il
+// mio account") genere/data di nascita non servono — meglio un ruolo
+// aziendale. Rilevante SOLO lato gestore (vedi ProfileHeaderClient,
+// showBusinessRole).
+export type BusinessRole = "titolare" | "responsabile" | "amministrazione" | "staff";
 
 export interface ParentProfile {
   fullName: string;
@@ -23,6 +28,7 @@ export interface ParentProfile {
   phone: string;
   dateOfBirth: string | null; // ISO (yyyy-mm-dd)
   gender: Gender | null;
+  businessRole: BusinessRole | null; // solo lato gestore
   // Preferenze
   language: Language;
   theme: Theme;
@@ -43,6 +49,7 @@ const DEMO_PROFILE: ParentProfile = {
   phone: "",
   dateOfBirth: null,
   gender: null,
+  businessRole: null,
   language: "it",
   theme: "light",
   notifyEmail: true,
@@ -54,7 +61,7 @@ const DEMO_PROFILE: ParentProfile = {
 };
 
 const PROFILE_SELECT =
-  "full_name, email, parent_role, avatar_url, phone, date_of_birth, gender, language, theme, notify_email, notify_push, notify_sms, marketing_consent, account_status, deletion_requested_at";
+  "full_name, email, parent_role, avatar_url, phone, date_of_birth, gender, business_role, language, theme, notify_email, notify_push, notify_sms, marketing_consent, account_status, deletion_requested_at";
 
 interface RawProfileRow {
   full_name: string | null;
@@ -64,6 +71,7 @@ interface RawProfileRow {
   phone: string | null;
   date_of_birth: string | null;
   gender: Gender | null;
+  business_role: BusinessRole | null;
   language: Language | null;
   theme: Theme | null;
   notify_email: boolean | null;
@@ -83,6 +91,7 @@ function mapProfileRow(data: RawProfileRow | null, fallbackEmail: string): Paren
     phone: data?.phone?.trim() || "",
     dateOfBirth: data?.date_of_birth ?? null,
     gender: data?.gender ?? null,
+    businessRole: data?.business_role ?? null,
     language: data?.language ?? "it",
     theme: data?.theme ?? "light",
     notifyEmail: data?.notify_email ?? true,
@@ -122,6 +131,7 @@ export async function getGestoreAccountProfile(): Promise<ParentProfile> {
     fullName: "Marco Bianchi",
     email: "marco.bianchi@centrolido.it",
     parentRole: null,
+    businessRole: "titolare",
   };
   if (!isSupabaseConfigured) return demoGestore;
 

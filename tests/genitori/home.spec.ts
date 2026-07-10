@@ -13,6 +13,34 @@ test.describe("Genitori - Home", () => {
     await page.goto("/");
   });
 
+  // Segnalazione di Fabrizio: "dopo il click però dovrebbero chiudersi in
+  // una finestra piccola con le info di massima e sparire..deve rimanere
+  // gestibile perchè magari uno sbaglia a selelzionare..però si deve
+  // ridurre" — se la card di check-in è già stata risposta in un run
+  // precedente, si presenta già collassata (riepilogo compatto,
+  // components/CheckinPrompt.tsx). Questo helper la riespande cliccando sul
+  // riepilogo, cosi i test che seguono possono contare sui pulsanti
+  // Sì/Siamo in ritardo/No indipendentemente dallo stato lasciato dal run
+  // precedente.
+  async function ensureCheckinPromptExpanded(page: import("@playwright/test").Page): Promise<boolean> {
+    const fullVisible = await page
+      .getByText(/è arrivato\/a a/)
+      .first()
+      .isVisible()
+      .catch(() => false);
+    if (fullVisible) return true;
+
+    const collapsedVisible = await page
+      .locator('[aria-label="Modifica risposta"]')
+      .first()
+      .isVisible()
+      .catch(() => false);
+    if (!collapsedVisible) return false;
+
+    await page.locator('[aria-label="Modifica risposta"]').first().click();
+    return true;
+  }
+
   // TC-013 - Filtro categoria in Home
   // NOTA (aggiornato): la vecchia Home "🔥 Popolari vicino a te" con filtro
   // categoria in cima è stata sostituita dal toggle Planner/Per bambino
@@ -144,25 +172,65 @@ test.describe("Genitori - Home", () => {
     await loginAs(page, "parent");
     await page.goto("/");
 
-    const promptVisible = await page
-      .getByText(/è arrivato\/a a/)
-      .first()
-      .isVisible()
-      .catch(() => false);
+    const expanded = await ensureCheckinPromptExpanded(page);
     test.skip(
-      !promptVisible,
+      !expanded,
       "Nessuna settimana seminata copre la data odierna (vedi tests/cleanup-test-data.mjs) — check-in non mostrato oggi."
     );
 
     await page.getByRole("button", { name: "Siamo in ritardo" }).click();
     await expect(page.getByText("Il centro è stato avvisato del ritardo.")).toBeVisible();
 
+    // TC-179 copre nel dettaglio il collasso a riepilogo dopo la risposta —
+    // qui basta riespandere per continuare ad asserire lo stato del bottone.
+    await page.locator('[aria-label="Modifica risposta"]').first().click();
     await page.reload();
+    await page.locator('[aria-label="Modifica risposta"]').first().click();
     await expect(page.getByRole("button", { name: "Siamo in ritardo" })).toHaveClass(/bg-orange/);
 
     // Ripristino a "Sì" per non alterare i run successivi.
     await page.getByRole("button", { name: "Sì", exact: true }).click();
     await expect(page.getByRole("button", { name: "Sì", exact: true })).toHaveClass(/bg-partner/);
+  });
+
+  // Segnalazione di Fabrizio: "dopo il click però dovrebbero chiudersi in
+  // una finestra piccola con le info di massima e sparire..deve rimanere
+  // gestibile perchè magari uno sbaglia a selelzionare..però si deve
+  // ridurre". Verifica il collasso a riepilogo dopo la risposta e la
+  // riapertura per correggere un errore di selezione.
+  // Priorita: Media | Precondizioni: Prenotazione con settimana che copre oggi
+  test("TC-179 - la card di check-in si riduce a riepilogo dopo la risposta e si riapre per correggerla", async ({
+    page,
+  }) => {
+    test.skip(!isRealDeployment, "Richiede un deploy con Supabase configurato e l'account genitore di test.");
+    await loginAs(page, "parent");
+    await page.goto("/");
+
+    const expanded = await ensureCheckinPromptExpanded(page);
+    test.skip(
+      !expanded,
+      "Nessuna settimana seminata copre la data odierna (vedi tests/cleanup-test-data.mjs) — check-in non mostrato oggi."
+    );
+
+    await page.getByRole("button", { name: "Sì", exact: true }).click();
+    // Dopo la risposta la card si riduce: il pulsante grande "Sì" sparisce,
+    // resta solo il riepilogo compatto con l'esito.
+    await expect(page.getByRole("button", { name: "Sì", exact: true })).toHaveCount(0);
+    await expect(page.getByText("Presente", { exact: true })).toBeVisible();
+
+    // Un tocco sul riepilogo la riapre per correggere un'eventuale selezione
+    // sbagliata.
+    await page.locator('[aria-label="Modifica risposta"]').first().click();
+    await expect(page.getByRole("button", { name: "Sì", exact: true })).toBeVisible();
+
+    // Corregge la risposta: si richiude di nuovo con il nuovo esito.
+    await page.getByRole("button", { name: "No", exact: true }).click();
+    await expect(page.getByRole("button", { name: "No", exact: true })).toHaveCount(0);
+    await expect(page.getByText("Assente", { exact: true })).toBeVisible();
+
+    // Ripristino a "Sì" per non alterare i run successivi.
+    await page.locator('[aria-label="Modifica risposta"]').first().click();
+    await page.getByRole("button", { name: "Sì", exact: true }).click();
   });
 
   // Segnalazione di Fabrizio: "forse nella home bisogna evidenziare il camp
@@ -176,13 +244,9 @@ test.describe("Genitori - Home", () => {
     await loginAs(page, "parent");
     await page.goto("/");
 
-    const promptVisible = await page
-      .getByText(/è arrivato\/a a/)
-      .first()
-      .isVisible()
-      .catch(() => false);
+    const expanded = await ensureCheckinPromptExpanded(page);
     test.skip(
-      !promptVisible,
+      !expanded,
       "Nessuna settimana seminata copre la data odierna (vedi tests/cleanup-test-data.mjs) — check-in non mostrato oggi."
     );
 

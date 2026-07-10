@@ -134,4 +134,37 @@ test.describe("Gestore - Le mie richieste", () => {
     await expect(page.getByText(/Da rispondere \(\d+\)/)).toBeVisible();
     await expect(page.getByText(/Storico \(\d+\)/)).toBeVisible();
   });
+
+  // Segnalazione di Fabrizio: "ne 'le mie richieste' vanno anche quelle
+  // raggruppate con la stessa logica del registro" — stesso raggruppamento
+  // per mese già introdotto in Registro presenze (AttendanceClient.tsx),
+  // applicato qui sia lato gestore (RichiesteClient.tsx) sia lato genitore
+  // (RichiesteGenitoreClient.tsx).
+  // Priorita: Bassa | Precondizioni: Almeno una richiesta esistente
+  test("TC-184 - 'Le mie richieste' mostra un'intestazione di mese sopra le richieste (gestore e genitore)", async ({
+    page,
+  }) => {
+    test.skip(!isRealDeployment, "Richiede un deploy con Supabase configurato e gli account Genitore/Gestore di test.");
+
+    await loginAs(page, "center_admin");
+    await page.goto("/center/richieste");
+    const anyGestoreRow = page.getByText(/Da rispondere \(\d+\)|Storico \(\d+\)/).first();
+    await expect(anyGestoreRow).toBeVisible();
+    const hasGestoreRequests = (await page.getByText(/Da rispondere \(0\)/).count()) === 0 || (await page.getByText(/Storico \(0\)/).count()) === 0;
+    if (hasGestoreRequests) {
+      // L'etichetta di mese è in maiuscolo (es. "LUGLIO 2026") sopra il
+      // gruppo di richieste dello stesso mese — stesso pattern del Registro.
+      await expect(page.getByText(/^[A-ZÀ-Ù]+ \d{4}$/).first()).toBeVisible();
+    }
+
+    await loginAs(page, "parent");
+    await page.goto("/richieste");
+    const hasParentRequests = !(await page
+      .getByText("Non hai ancora contattato nessun centro.")
+      .isVisible()
+      .catch(() => false));
+    if (hasParentRequests) {
+      await expect(page.getByText(/^[A-ZÀ-Ù]+ \d{4}$/).first()).toBeVisible();
+    }
+  });
 });

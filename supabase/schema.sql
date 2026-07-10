@@ -1065,6 +1065,11 @@ create trigger on_auth_user_created
 alter table public.profiles add column if not exists phone text;
 alter table public.profiles add column if not exists date_of_birth date;
 alter table public.profiles add column if not exists gender text check (gender in ('M', 'F', 'altro'));
+-- Segnalazione di Fabrizio: nella scheda profilo PERSONALE del gestore ("Il
+-- mio account") genere e data di nascita non sono informazioni utili lato
+-- business — meglio un ruolo aziendale. Colonna nullable, pensata SOLO per
+-- il lato gestore (i genitori continuano a non vederla/valorizzarla).
+alter table public.profiles add column if not exists business_role text check (business_role in ('titolare', 'responsabile', 'amministrazione', 'staff'));
 alter table public.profiles add column if not exists language text default 'it' check (language in ('it', 'en'));
 alter table public.profiles add column if not exists theme text default 'light' check (theme in ('light', 'dark'));
 alter table public.profiles add column if not exists notify_email boolean default true;

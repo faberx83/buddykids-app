@@ -27,7 +27,13 @@ export default async function GestoreAccountPage() {
           initialPhone={profile.phone}
           initialDateOfBirth={profile.dateOfBirth}
           initialGender={profile.gender}
+          initialBusinessRole={profile.businessRole}
           showRoleSelector={false}
+          // Segnalazione di Fabrizio: genere/data di nascita non sono
+          // informazioni utili nel profilo di lavoro del gestore — al loro
+          // posto un ruolo in azienda (vedi businessRoleLabels).
+          showPersonalDetails={false}
+          showBusinessRole={true}
         />
       </div>
 

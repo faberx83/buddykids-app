@@ -16,6 +16,12 @@ export interface MyBooking {
   emoji: string;
   imgGradient: string;
   weeksLabel: string;
+  // Data ISO della prima settimana prenotata (null se per qualche motivo non
+  // c'è nessuna settimana associata) — serve solo per l'ordinamento "per
+  // settimana" lato client (weeksLabel è già formattata per la UI e non è
+  // comoda da riordinare). Segnalazione di Fabrizio: la lista va ordinata/
+  // filtrata per settimana, bambino, campus.
+  firstWeekStart: string | null;
   kidNames: string[];
   status: BookingStatus;
   totalAmount: number;
@@ -98,6 +104,7 @@ export async function getMyBookingsForParent(): Promise<MyBooking[]> {
       emoji: activity?.emoji || "🏫",
       imgGradient: activity?.img_gradient || "linear-gradient(135deg,#E8F6FD,#E3F9F5)",
       weeksLabel,
+      firstWeekStart: weekRows[0]?.start_date ?? null,
       kidNames,
       status: row.status,
       totalAmount: row.total_amount,

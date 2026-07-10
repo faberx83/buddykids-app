@@ -219,4 +219,36 @@ test.describe("Genitori - Home (Planner/Per Bambino)", () => {
     // l'etichetta di stato (stesso formato delle settimane coperte).
     await expect(page.getByText(/Settimana \d+ · [A-Z]{3}/).first()).toBeVisible();
   });
+
+  // Segnalazione di Fabrizio: "nella selelzione nel pllanner delle settimane
+  // già prenotate manca un pò la UX che fa percepire il click che porta alla
+  // pagina di dettaglio del camp" — aggiunta una chevron esplicita + stile
+  // hover/active sulla riga (PlannerView.tsx).
+  // Priorita: Bassa | Precondizioni: Almeno una settimana coperta nel Planner
+  test("TC-180 - La riga di una settimana coperta mostra una chevron che indica che è cliccabile", async ({ page }) => {
+    await page.getByRole("button", { name: "Planner", exact: true }).click();
+    const checkIcon = page.locator("i.ti-circle-check-filled, i.ti-alert-circle-filled").first();
+    if (!(await checkIcon.isVisible().catch(() => false))) {
+      test.skip(true, "Nessuna settimana coperta per l'account di test in questo momento.");
+    }
+    await expect(page.locator("i.ti-chevron-right").first()).toBeVisible();
+  });
+
+  // Risposta alla domanda di Fabrizio: "se due bambini della stessa famiglia
+  // nella stessa settimana hanno 2 campus diversi cosa succede?" — succedeva
+  // già correttamente (ogni bambino resta iscritto al proprio campo), ma la
+  // vista aggregata del Planner lo nascondeva mostrando solo la prima
+  // attività trovata. Richiede un secondo bambino iscritto a un'attività
+  // diversa nella stessa settimana del primo — stessa lacuna di dati di test
+  // già segnalata in TC-107 (dati di test più ricchi, vedi
+  // supabase/seed-test-data.sql).
+  test.fixme(
+    "TC-181 - Vista 'Tutti' del Planner segnala quando i fratelli hanno campi diversi la stessa settimana",
+    async () => {
+      // TODO: richiede un secondo bambino iscritto a un'attività diversa
+      // nella stessa settimana di camp del primo bambino sull'account di
+      // test — vedi PlannerView.tsx `hasDifferentCamps` per la logica già
+      // implementata (nota "Campi diversi questa settimana: ...").
+    }
+  );
 });

@@ -262,4 +262,26 @@ test.describe("Genitori - Prenotazione", () => {
     }
   });
 
+  // Segnalazione di Fabrizio: "nel tab 'le mie prenotazioni' va bene la
+  // lista ma va fatta un pò di ordinamento..per settimana per bambino per
+  // campus..una serie di filtri per raggruappare". Aggiunto un ordinamento
+  // a scelta (Settimana/Bambino/Campus) — vedi PrenotazioniClient.tsx.
+  // Priorita: Media | Precondizioni: Almeno una prenotazione
+  test("TC-182 - 'Le mie prenotazioni' permette di ordinare per settimana/bambino/campus", async ({ page }) => {
+    test.skip(!isRealDeployment, "Richiede un deploy con Supabase configurato e l'account genitore di test.");
+    await loginAs(page, "parent");
+    await page.goto("/prenotazioni");
+
+    const sortLabel = page.getByText("Ordina per:");
+    if (!(await sortLabel.isVisible().catch(() => false))) {
+      test.skip(true, "Nessuna prenotazione per l'account di test: i controlli di ordinamento non vengono mostrati.");
+    }
+    await expect(sortLabel).toBeVisible();
+    await page.getByRole("button", { name: "Bambino", exact: true }).click();
+    await page.getByRole("button", { name: "Campus", exact: true }).click();
+    await page.getByRole("button", { name: "Settimana", exact: true }).click();
+    // Non deve andare in errore con nessuno dei tre criteri.
+    await expect(page.locator("body")).not.toContainText("Application error");
+  });
+
 });

@@ -70,4 +70,31 @@ test.describe("Gestore - Il mio account", () => {
     await page.locator('a[aria-label="Vai al tuo account"]:visible').click();
     await expect(page).toHaveURL(/\/center\/account/);
   });
+
+  // Segnalazione di Fabrizio: "nella scheda profilo gestore forse non serve
+  // avere genere e data di nascita ma altre info più legate al business" —
+  // ProfileHeaderClient ora nasconde Genere/Data di nascita lato gestore
+  // (showPersonalDetails={false}) e mostra "Ruolo in azienda" al loro posto
+  // (showBusinessRole={true}), mentre il profilo genitore resta invariato.
+  // Priorita: Media | Precondizioni: Nessuna
+  test("TC-183 - Il profilo personale del gestore mostra 'Ruolo in azienda' invece di genere/data di nascita", async ({
+    page,
+  }) => {
+    test.skip(!isRealDeployment, "Richiede un deploy con Supabase configurato e l'account Gestore di test.");
+    await loginAs(page, "center_admin");
+    await page.goto("/center/account");
+
+    await page.getByRole("button", { name: "Modifica" }).click();
+    await expect(page.getByText("Ruolo in azienda")).toBeVisible();
+    await expect(page.getByText("Genere", { exact: true })).toHaveCount(0);
+    await expect(page.locator("#profile-dob")).toHaveCount(0);
+
+    await page.getByRole("button", { name: "Responsabile struttura" }).click();
+    await page.getByRole("button", { name: "Salva" }).click();
+    await expect(page.getByText(/Salvo…|Salvato/)).toBeVisible().catch(() => {});
+
+    await page.reload();
+    await page.getByRole("button", { name: "Modifica" }).click();
+    await expect(page.getByRole("button", { name: "Responsabile struttura" })).toHaveClass(/bg-sky/);
+  });
 });

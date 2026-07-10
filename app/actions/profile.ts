@@ -2,7 +2,7 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
-import { ParentRole, Gender, Language, Theme } from "@/lib/data/profile";
+import { ParentRole, Gender, BusinessRole, Language, Theme } from "@/lib/data/profile";
 import { revalidatePath } from "next/cache";
 
 // Percorsi da rigenerare dopo una modifica al profilo — entrambe le sezioni
@@ -19,6 +19,9 @@ export async function updateParentProfileAction(input: {
   phone?: string;
   dateOfBirth?: string;
   gender?: Gender;
+  // Solo lato gestore (vedi ProfileHeaderClient, showBusinessRole) — non
+  // pertinente per il genitore, che non lo invia mai.
+  businessRole?: BusinessRole;
 }): Promise<{ error?: string }> {
   if (!isSupabaseConfigured) return { error: "Supabase non configurato" };
   if (!input.fullName.trim()) return { error: "Inserisci nome e cognome" };
@@ -37,6 +40,7 @@ export async function updateParentProfileAction(input: {
       phone: input.phone?.trim() || null,
       date_of_birth: input.dateOfBirth || null,
       gender: input.gender || null,
+      ...(input.businessRole !== undefined ? { business_role: input.businessRole || null } : {}),
     })
     .eq("id", user.id);
 
