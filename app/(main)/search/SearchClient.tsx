@@ -2,13 +2,13 @@
 
 import { useMemo, useState } from "react";
 import dynamic from "next/dynamic";
-import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import ActivityCardHorizontal from "@/components/ActivityCardHorizontal";
-import { Activity } from "@/lib/types";
-import { ComingSoonBadge } from "@/components/StatusBadge";
+import { Activity, Kid } from "@/lib/types";
+import { categories } from "@/lib/mock-data";
 import { haversineKm } from "@/lib/geo";
 import { getSeasonWeekRanges, isoDate, formatShortRange } from "@/lib/season-weeks";
+import { isSupabaseConfigured } from "@/lib/supabase/env";
 
 // Leaflet usa `window`, quindi la mappa va caricata solo lato client.
 const ActivityMap = dynamic(() => import("@/components/ActivityMap"), {
@@ -20,7 +20,7 @@ const ActivityMap = dynamic(() => import("@/components/ActivityMap"), {
   ),
 });
 
-type FilterPanel = "eta" | "prezzo" | "zona" | "servizi" | null;
+type FilterPanel = "eta" | "prezzo" | "zona" | "servizi" | "data" | null;
 type ViewMode = "lista" | "mappa";
 
 interface ServiceFilters {
@@ -64,6 +64,8 @@ function readStoredGeo(): { lat: number; lng: number } | null {
 export default function SearchClient({
   initialActivities,
   seasonYear,
+  kids,
+  availabilityByWeek,
 }: {
   initialActivities: Activity[];
   // Anno "di stagione" condiviso da tutta l'app (lib/data/season-year.ts) —
@@ -72,6 +74,16 @@ export default function SearchClient({
   // di un anno diverso mostrava un intervallo di date sbagliato (anche se il
   // numero di settimana restava corretto).
   seasonYear: number;
+  // Bambini del genitore loggato — servono a risolvere ?kid= in un bambino
+  // reale e applicare il filtro "preferenze bambino" (kid.interests).
+  kids: Kid[];
+  // Per ciascuna delle 13 settimane stagionali (chiave: data ISO di inizio),
+  // gli id (dbId) delle attività con ALMENO un activity_week con posti
+  // liberi che si sovrappone a quella settimana — calcolato lato server
+  // (lib/data/activities.ts#getActivityAvailabilityByWeek) perché richiede
+  // di interrogare "activity_weeks", non disponibile nell'oggetto Activity
+  // (che ha solo uno "spotsLeft" aggregato, non per-settimana).
+  availabilityByWeek: Record<string, string[]>;
 }) {
   const searchParams = useSearchParams();
   const latParam = searchParams.get("lat");
@@ -84,13 +96,34 @@ export default function SearchClient({
   // Se in Home era selezionato un bambino specifico, lo portiamo avanti fino
   // alla Prenotazione (vedi ActivityCardHorizontal/DetailClient/BookingClient).
   const kidParam = searchParams.get("kid");
-  const requestedWeekLabel = useMemo(() => {
-    if (!weekParam) return null;
-    const ranges = getSeasonWeekRanges(seasonYear);
-    const match = ranges.find((r) => isoDate(r.start) === weekParam);
+
+  const seasonWeekRanges = useMemo(() => getSeasonWeekRanges(seasonYear), [seasonYear]);
+
+  // Filtro DATE reale (prima era un chip "Prossimamente" senza alcun
+  // effetto): stato selezionabile a mano dal pannello "Date" E pre-applicato
+  // quando si arriva dal Planner ("Riempi") con ?week= in query — in
+  // entrambi i casi filtra i risultati alle attività con reale disponibilità
+  // (activity_weeks.spots_left > 0) per quella settimana, vedi filteredList.
+  const [selectedWeekStart, setSelectedWeekStart] = useState<string | null>(weekParam);
+  const selectedWeekInfo = useMemo(() => {
+    if (!selectedWeekStart) return null;
+    const match = seasonWeekRanges.find((r) => isoDate(r.start) === selectedWeekStart);
     if (!match) return null;
-    return `Settimana ${match.index} (${formatShortRange(match.start, match.end)})`;
-  }, [weekParam, seasonYear]);
+    return { index: match.index, label: `Settimana ${match.index} (${formatShortRange(match.start, match.end)})` };
+  }, [selectedWeekStart, seasonWeekRanges]);
+  const requestedWeekLabel = selectedWeekInfo?.label ?? null;
+
+  // Filtro "preferenze bambino" (kid.interests, impostate nel profilo) —
+  // pre-applicato quando si arriva dal Planner con ?kid=. Gli interessi sono
+  // salvati come stringa "emoji Etichetta" (vedi ProfileKidsSection.tsx):
+  // li traduciamo negli id di categoria confrontabili con activity.tagIds.
+  const [kidFilterDismissed, setKidFilterDismissed] = useState(false);
+  const targetKid = useMemo(() => kids.find((k) => k.id === kidParam) ?? null, [kids, kidParam]);
+  const kidInterestTagIds = useMemo(() => {
+    if (!targetKid?.interests?.length) return [];
+    return categories.filter((c) => targetKid.interests!.includes(`${c.emoji} ${c.label}`)).map((c) => c.id);
+  }, [targetKid]);
+  const activeKidFilter = !kidFilterDismissed && kidInterestTagIds.length > 0 ? targetKid : null;
 
   // Se non arriviamo da Home con lat/lng nell'URL, riusiamo comunque
   // un'eventuale posizione già rilevata in questa sessione del browser,
@@ -190,6 +223,8 @@ export default function SearchClient({
     (maxPrice < 500 ? 1 : 0) +
     (zone.trim() ? 1 : 0) +
     (hasGeo ? 1 : 0) +
+    (selectedWeekStart ? 1 : 0) +
+    (activeKidFilter ? 1 : 0) +
     Object.values(services).filter(Boolean).length;
 
   const withDistance = useMemo(() => {
@@ -208,6 +243,12 @@ export default function SearchClient({
   // in base alla distanza: chi cerca vicino al lavoro invece che a casa
   // deve poter vedere comunque le attività più lontane, solo separate.
   const filteredList = useMemo(() => {
+    // Attività con disponibilità reale per la settimana selezionata (solo se
+    // Supabase è collegato: i dati mock non hanno un dbId da confrontare con
+    // activity_weeks, quindi il filtro non si applica in demo).
+    const availableIdsForWeek =
+      selectedWeekStart && isSupabaseConfigured ? new Set(availabilityByWeek[selectedWeekStart] ?? []) : null;
+
     return withDistance.filter(({ activity: a }) => {
       if (!a.name.toLowerCase().includes(query.toLowerCase())) return false;
       const [ageMin, ageMax] = parseAgeRange(a.ageRange);
@@ -220,9 +261,23 @@ export default function SearchClient({
       if (services.pranzo && a.mealOption !== "included" && a.mealOption !== "packed") return false;
       if (services.bar && !a.centerHasBar) return false;
       if (services.attivitaExtra && a.badges.length === 0) return false;
+      if (availableIdsForWeek && a.dbId && !availableIdsForWeek.has(a.dbId)) return false;
+      if (activeKidFilter && !a.tagIds.some((id) => kidInterestTagIds.includes(id))) return false;
       return true;
     });
-  }, [withDistance, query, minAge, maxAge, maxPrice, zone, services]);
+  }, [
+    withDistance,
+    query,
+    minAge,
+    maxAge,
+    maxPrice,
+    zone,
+    services,
+    selectedWeekStart,
+    availabilityByWeek,
+    activeKidFilter,
+    kidInterestTagIds,
+  ]);
 
   // Se c'e' una posizione, dividiamo in "Nella tua zona" / "Fuori dalla
   // tua zona" invece di far sparire del tutto le attività fuori raggio:
@@ -249,6 +304,8 @@ export default function SearchClient({
     setServices(EMPTY_SERVICES);
     setOpenPanel(null);
     clearGeo();
+    setSelectedWeekStart(null);
+    setKidFilterDismissed(true);
   }
 
   const mapItems = useMemo(
@@ -264,6 +321,7 @@ export default function SearchClient({
     { key: "prezzo", icon: "ti-coin-euro", label: "Prezzo" },
     { key: "zona", icon: "ti-map-pin", label: hasGeo ? "Zona (vicino a te)" : "Zona" },
     { key: "servizi", icon: "ti-adjustments-horizontal", label: "Servizi" },
+    { key: "data", icon: "ti-calendar", label: selectedWeekInfo ? `Settimana ${selectedWeekInfo.index}` : "Date" },
   ];
 
   return (
@@ -309,13 +367,20 @@ export default function SearchClient({
                     }`}
                   />
                 )}
+                {f.key === "data" && selectedWeekStart && (
+                  <span
+                    role="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setSelectedWeekStart(null);
+                    }}
+                    className={`ti ti-x flex h-3.5 w-3.5 items-center justify-center rounded-full text-[10px] ${
+                      openPanel === f.key ? "bg-white/25" : "bg-ink-3/20"
+                    }`}
+                  />
+                )}
               </div>
             ))}
-            <div className="flex flex-shrink-0 cursor-pointer items-center gap-1.5 rounded-full border-[1.5px] border-[#E8EBF0] bg-[#F4F6FA] px-3 py-1.5 text-xs font-medium text-ink-2 opacity-70">
-              <i className="ti ti-calendar text-[13px]" />
-              Date
-              <ComingSoonBadge />
-            </div>
           </div>
           <button
             onClick={clearAllFilters}
@@ -472,17 +537,70 @@ export default function SearchClient({
             />
           </div>
         )}
+
+        {/* Filtro Date: prima era un chip "Prossimamente" senza alcun
+            effetto — ora seleziona una delle 13 settimane stagionali e
+            filtra i risultati a chi ha REALMENTE posti liberi in
+            quell'intervallo (activity_weeks.spots_left > 0), non solo
+            un'etichetta informativa. */}
+        {openPanel === "data" && (
+          <div className="mt-3 max-h-64 overflow-y-auto rounded-lg border border-[#E8EBF0] bg-bg p-3">
+            <div className="mb-2 text-xs font-semibold text-ink-2">Settimana di camp</div>
+            <div className="space-y-1.5">
+              <button
+                type="button"
+                onClick={() => setSelectedWeekStart(null)}
+                className={`block w-full rounded-md px-3 py-2 text-left text-xs font-semibold transition-colors ${
+                  selectedWeekStart === null ? "bg-sky text-white" : "bg-white text-ink-2"
+                }`}
+              >
+                Qualsiasi settimana
+              </button>
+              {seasonWeekRanges.map((r) => {
+                const start = isoDate(r.start);
+                const active = selectedWeekStart === start;
+                return (
+                  <button
+                    key={start}
+                    type="button"
+                    onClick={() => setSelectedWeekStart(active ? null : start)}
+                    className={`block w-full rounded-md px-3 py-2 text-left text-xs font-semibold transition-colors ${
+                      active ? "bg-sky text-white" : "bg-white text-ink-2"
+                    }`}
+                  >
+                    Settimana {r.index} · {formatShortRange(r.start, r.end)}
+                  </button>
+                );
+              })}
+            </div>
+            {!isSupabaseConfigured && (
+              <p className="mt-2 text-[11px] text-ink-3">
+                In questo ambiente demo il filtro seleziona la settimana ma non riduce i risultati
+                (i dati di esempio non hanno una disponibilità reale per settimana).
+              </p>
+            )}
+          </div>
+        )}
       </div>
 
-      {requestedWeekLabel && (
+      {(requestedWeekLabel || activeKidFilter) && (
         <div className="mx-5 mt-3 flex items-center justify-between gap-2 rounded-lg border border-[#E3F0FB] bg-sky-light px-3.5 py-2.5">
           <span className="text-xs font-semibold text-ink">
             <i className="ti ti-calendar-event mr-1 text-sky" />
-            Stai cercando per la {requestedWeekLabel}
+            {requestedWeekLabel && `Stai cercando per la ${requestedWeekLabel}`}
+            {requestedWeekLabel && activeKidFilter && " · "}
+            {activeKidFilter && `preferenze di ${activeKidFilter.name}`}
           </span>
-          <Link href="/search" className="flex-shrink-0 text-xs font-semibold text-sky">
+          <button
+            type="button"
+            onClick={() => {
+              setSelectedWeekStart(null);
+              setKidFilterDismissed(true);
+            }}
+            className="flex-shrink-0 text-xs font-semibold text-sky"
+          >
             Rimuovi
-          </Link>
+          </button>
         </div>
       )}
 

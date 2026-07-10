@@ -10,10 +10,18 @@ import BookingClient from "./BookingClient";
 
 export default async function BookingPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>;
+  searchParams: Promise<{ kid?: string }>;
 }) {
   const { id } = await params;
+  // ?kid= (arrivato da "Aggiungi [bambino]" nel Planner, o dal genitore
+  // selezionato in Home/Cerca): se presente, "già prenotata" è calcolato
+  // SOLO per questo bambino (vedi getBookedWeekIdsForActivity) — altrimenti
+  // una settimana già coperta per UN fratello risulterebbe bloccata anche
+  // per l'altro che invece va aggiunto.
+  const { kid: requestedKidId } = await searchParams;
 
   // Prenotare scrive davvero su Supabase (bookings/booking_weeks/booking_kids)
   // legato all'utente autenticato: qui, a differenza del dettaglio attività,
@@ -32,7 +40,9 @@ export default async function BookingPage({
   const [weeks, kids, bookedWeekIdsSet, inviteDiscount] = await Promise.all([
     getWeeksForActivity(activity),
     getKidsForUser(),
-    activity.dbId ? getBookedWeekIdsForActivity(activity.dbId) : Promise.resolve(new Set<string>()),
+    activity.dbId
+      ? getBookedWeekIdsForActivity(activity.dbId, requestedKidId)
+      : Promise.resolve(new Set<string>()),
     getEligibleInviteDiscount(),
   ]);
   const bookedWeekIds = Array.from(bookedWeekIdsSet);

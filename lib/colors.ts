@@ -19,3 +19,17 @@ export const lightBgClasses: Record<PillColor, string> = {
   sky: "bg-sky-light",
   green: "bg-green-light",
 };
+
+// Sfondo pieno (colore "DEFAULT", non pastello) + testo bianco — usato per
+// elementi selezionati/attivi che devono richiamare il colore accento di un
+// bambino (kid.accentColor), es. il chip di selezione bambino nel Planner:
+// prima era sempre nero (bg-ink) per qualunque bambino, incoerente con gli
+// altri colori per-bambino già usati altrove nell'app (anello avatar in "Per
+// bambino", badge match%).
+export const solidBgClasses: Record<PillColor, string> = {
+  aqua: "bg-aqua text-white",
+  orange: "bg-orange text-white",
+  purple: "bg-purple text-white",
+  sky: "bg-sky text-white",
+  green: "bg-green text-white",
+};

@@ -6,7 +6,8 @@ import { Activity, Kid, PillColor } from "@/lib/types";
 import { PlannerData, SeasonWeek } from "@/lib/data/planner";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
 import { toggleWeekDismissedAction } from "@/app/actions/profile";
-import { lightBgClasses } from "@/lib/colors";
+import { lightBgClasses, solidBgClasses } from "@/lib/colors";
+import { categories } from "@/lib/mock-data";
 
 // Colore testo/icona pieno per categoria (thumbnail settimana coperta) —
 // stessi colori di lib/colors.ts pillClasses, qui separati dallo sfondo.
@@ -18,12 +19,15 @@ const TINT_TEXT_CLASSES: Record<PillColor, string> = {
   green: "text-[#2d8f52]",
 };
 
+const DEFAULT_KID_COLOR: PillColor = "sky";
+
 // Vista "risolta" di una settimana per la modalità corrente (aggregata o per
 // un bambino specifico) — calcolata da SeasonWeek + il filtro attivo.
 interface ResolvedWeek extends SeasonWeek {
   viewCovered: boolean;
   viewActivityName?: string;
   viewActivityTagColor?: PillColor;
+  viewActivitySlug?: string;
   // Solo in vista aggregata con più bambini: la settimana è coperta ma non
   // per TUTTI — utile a non far credere al genitore che sia a posto quando
   // in realtà manca ancora un figlio.
@@ -32,11 +36,21 @@ interface ResolvedWeek extends SeasonWeek {
 
 export default function PlannerView({
   planner,
-  suggestions,
+  activities,
+  availabilityByWeek,
   kids,
 }: {
   planner: PlannerData;
-  suggestions: Activity[];
+  // Tutte le attività (non solo un top-4 precotto): il filtro per
+  // disponibilità/preferenze bambino ora avviene QUI, perché dipende dalla
+  // settimana prioritaria e dal bambino selezionato, entrambi stato interno
+  // di questo componente.
+  activities: Activity[];
+  // Per ciascuna delle 13 settimane stagionali (chiave: data ISO di inizio),
+  // gli id delle attività con posti liberi che si sovrappongono — vedi
+  // lib/data/activities.ts#getActivityAvailabilityByWeek (stessa funzione
+  // usata dal filtro Date di Cerca).
+  availabilityByWeek: Record<string, string[]>;
   kids: Kid[];
 }) {
   const [weeks, setWeeks] = useState<SeasonWeek[]>(planner.weeks);
@@ -60,6 +74,7 @@ export default function PlannerView({
           viewCovered: w.covered,
           viewActivityName: w.activityName,
           viewActivityTagColor: w.activityTagColor,
+          viewActivitySlug: w.activitySlug,
           partialForKids,
         };
       }
@@ -69,24 +84,80 @@ export default function PlannerView({
         viewCovered: Boolean(entry),
         viewActivityName: entry?.activityName,
         viewActivityTagColor: entry?.activityTagColor,
+        viewActivitySlug: entry?.activitySlug,
         partialForKids: [],
       };
     });
   }, [weeks, selectedKidId, kids, showKidFilter]);
 
-  const { coveredCount, neededCount, totalCount, firstUncoveredIndex } = useMemo(() => {
+  const { coveredCount, neededCount, totalCount, priorityIndex } = useMemo(() => {
     const covered = resolvedWeeks.filter((w) => w.viewCovered).length;
     const needed = resolvedWeeks.filter((w) => !w.dismissed).length;
-    const firstUncovered = resolvedWeeks.find((w) => !w.viewCovered && !w.dismissed);
+    const neededUncovered = resolvedWeeks.filter((w) => !w.viewCovered && !w.dismissed);
+
+    // "Settimana prioritaria" da riempire (richiesto da Fabrizio): prima si
+    // prendeva sempre e solo la prima scoperta in ordine cronologico. Ora si
+    // preferisce un "buco" — una settimana scoperta con almeno una coperta
+    // PRIMA e almeno una coperta DOPO nell'intera stagione — perché
+    // interrompe una continuità già prenotata ed è la più urgente da
+    // sistemare. Se non c'è nessun buco del genere, si torna al
+    // comportamento storico (prima scoperta/necessaria in ordine).
+    let priority: number | null = null;
+    if (neededUncovered.length > 0) {
+      const coveredBefore = (idx: number) => resolvedWeeks.some((w) => w.index < idx && w.viewCovered);
+      const coveredAfter = (idx: number) => resolvedWeeks.some((w) => w.index > idx && w.viewCovered);
+      const gap = neededUncovered.find((w) => coveredBefore(w.index) && coveredAfter(w.index));
+      priority = (gap ?? neededUncovered[0]).index;
+    }
+
     return {
       coveredCount: covered,
       neededCount: needed,
       totalCount: resolvedWeeks.length,
-      firstUncoveredIndex: firstUncovered?.index ?? null,
+      priorityIndex: priority,
     };
   }, [resolvedWeeks]);
 
   const progressPercent = neededCount > 0 ? Math.round((coveredCount / neededCount) * 100) : 0;
+
+  const priorityWeek = useMemo(
+    () => resolvedWeeks.find((w) => w.index === priorityIndex) ?? null,
+    [resolvedWeeks, priorityIndex]
+  );
+
+  // Preferenze del bambino selezionato (kid.interests, impostate nel
+  // profilo) — salvate come stringa "emoji Etichetta" (vedi
+  // ProfileKidsSection.tsx), tradotte negli id di categoria confrontabili
+  // con activity.tagIds. Solo in vista per-bambino: in aggregato ("Tutti")
+  // non c'è un singolo set di preferenze da applicare.
+  const kidInterestTagIds = useMemo(() => {
+    const kid = selectedKidId ? kids.find((k) => k.id === selectedKidId) : null;
+    if (!kid?.interests?.length) return [];
+    return categories.filter((c) => kid.interests!.includes(`${c.emoji} ${c.label}`)).map((c) => c.id);
+  }, [selectedKidId, kids]);
+
+  // Suggerimenti per riempire la settimana prioritaria: SOLO attività con
+  // disponibilità reale in quella settimana (activity_weeks.spots_left > 0)
+  // e, se un bambino specifico è selezionato, che rientrano nelle sue
+  // preferenze — prima erano semplicemente le 4 attività con rating
+  // migliore, senza alcun filtro (potevano non avere posti, o non
+  // interessare affatto quel bambino).
+  const suggestions = useMemo(() => {
+    if (!priorityWeek) return [];
+    const availableIds =
+      isSupabaseConfigured && availabilityByWeek[priorityWeek.startDate]
+        ? new Set(availabilityByWeek[priorityWeek.startDate])
+        : null;
+
+    return [...activities]
+      .filter((a) => {
+        if (availableIds && a.dbId && !availableIds.has(a.dbId)) return false;
+        if (kidInterestTagIds.length > 0 && !a.tagIds.some((id) => kidInterestTagIds.includes(id))) return false;
+        return true;
+      })
+      .sort((a, b) => b.rating - a.rating || b.reviewsCount - a.reviewsCount)
+      .slice(0, 4);
+  }, [activities, priorityWeek, availabilityByWeek, kidInterestTagIds]);
 
   async function toggleDismissed(week: SeasonWeek) {
     const nextDismissed = !week.dismissed;
@@ -118,8 +189,13 @@ export default function PlannerView({
               key={k.id}
               type="button"
               onClick={() => setSelectedKidId(k.id)}
+              // BUG CORRETTO (segnalato da Fabrizio): il chip selezionato era
+              // sempre nero (bg-ink) per qualunque bambino — incoerente con
+              // il colore accento già usato altrove per lo stesso bambino
+              // (anello avatar in "Per bambino", badge match%). Ora usa
+              // kid.accentColor.
               className={`flex-shrink-0 rounded-full px-3.5 py-1.5 text-[12.5px] font-semibold transition-colors ${
-                selectedKidId === k.id ? "bg-ink text-white" : "bg-white text-ink-2"
+                selectedKidId === k.id ? solidBgClasses[k.accentColor ?? DEFAULT_KID_COLOR] : "bg-white text-ink-2"
               }`}
             >
               {k.emoji} {k.name}
@@ -147,7 +223,13 @@ export default function PlannerView({
       <div className="mb-4 space-y-2.5">
         {resolvedWeeks.map((w) => {
           const color = w.viewActivityTagColor ?? "sky";
-          const rowBg = w.viewCovered ? lightBgClasses[color] : "bg-white";
+          // Copertura parziale (aggregato, manca almeno un bambino): sfondo
+          // distinto (giallo/arancio tenue) invece della tinta di categoria
+          // usata per le settimane pienamente coperte — richiesto da
+          // Fabrizio ("qui devo avere una colorazione diversa"), perché
+          // altrimenti sembrava una riga "a posto" identica alle altre.
+          const isPartial = w.partialForKids.length > 0;
+          const rowBg = w.viewCovered ? (isPartial ? "bg-yellow-light" : lightBgClasses[color]) : "bg-white";
           const riempiHref = selectedKidId
             ? `/search?week=${w.startDate}&kid=${selectedKidId}`
             : `/search?week=${w.startDate}`;
@@ -165,11 +247,31 @@ export default function PlannerView({
                     </div>
                     <div className="mt-0.5 truncate text-[11.5px] text-ink-2">
                       Settimana {w.index} · {w.dateRange}
-                      {w.partialForKids.length > 0 &&
-                        ` · manca per ${w.partialForKids.map((k) => k.name).join(", ")}`}
+                      {isPartial && ` · manca per ${w.partialForKids.map((k) => k.name).join(", ")}`}
                     </div>
+                    {/* CTA "Aggiungi [bambino]" per ogni figlio non ancora
+                        coperto — prima c'era solo un'icona di warning senza
+                        alcuna azione. Punta direttamente alla prenotazione
+                        della STESSA attività/settimana già scelta per gli
+                        altri fratelli (non a Cerca): se quel bambino ha già
+                        una prenotazione DIVERSA per questa settimana, la
+                        settimana risulta comunque bloccata come "già
+                        prenotata" in Prenotazione, per design. */}
+                    {isPartial && w.viewActivitySlug && (
+                      <div className="mt-1.5 flex flex-wrap gap-1.5">
+                        {w.partialForKids.map((k) => (
+                          <Link
+                            key={k.id}
+                            href={`/booking/${w.viewActivitySlug}?week=${w.startDate}&kid=${k.id}`}
+                            className="rounded-full bg-white px-2.5 py-1 text-[11px] font-bold text-[#9a6b00] shadow-[0_1px_3px_rgba(0,0,0,0.08)]"
+                          >
+                            + Aggiungi {k.name}
+                          </Link>
+                        ))}
+                      </div>
+                    )}
                   </div>
-                  {w.partialForKids.length > 0 ? (
+                  {isPartial ? (
                     <i className="ti ti-alert-circle-filled flex-shrink-0 text-[19px] text-yellow" />
                   ) : (
                     <i className="ti ti-circle-check-filled flex-shrink-0 text-[19px] text-green" />
@@ -215,25 +317,28 @@ export default function PlannerView({
         })}
       </div>
 
-      {firstUncoveredIndex !== null && suggestions.length > 0 && (
+      {priorityIndex !== null && suggestions.length > 0 && (
         <div className="mb-2">
-          <div className="mb-2.5 text-sm font-bold text-ink">
-            Per riempire la settimana {firstUncoveredIndex}
-          </div>
+          <Link href={`/search?week=${priorityWeek?.startDate}${selectedKidId ? `&kid=${selectedKidId}` : ""}`}>
+            <div className="mb-2.5 flex items-center gap-1 text-sm font-bold text-ink">
+              Per riempire la settimana {priorityIndex}
+              <i className="ti ti-chevron-right text-sm text-ink-3" />
+            </div>
+          </Link>
           <div className="grid grid-cols-2 gap-3">
             {suggestions.map((a) => {
               const color = a.tags[0]?.color ?? "sky";
               return (
                 <Link
                   key={a.id}
-                  href={`/activity/${a.id}`}
+                  href={`/activity/${a.id}?week=${priorityWeek?.startDate}${selectedKidId ? `&kid=${selectedKidId}` : ""}`}
                   className={`overflow-hidden rounded-2xl p-2.5 transition-transform hover:scale-[0.985] ${lightBgClasses[color]}`}
                 >
                   <div
-                    className="flex h-11 items-center justify-center rounded-xl text-2xl"
-                    style={{ background: a.imgGradient }}
+                    className="flex h-11 items-center justify-center overflow-hidden rounded-xl bg-cover bg-center text-2xl"
+                    style={a.coverImageUrl ? { backgroundImage: `url(${a.coverImageUrl})` } : { background: a.imgGradient }}
                   >
-                    {a.emoji}
+                    {!a.coverImageUrl && a.emoji}
                   </div>
                   <div className="mt-2 truncate text-xs font-bold text-ink">{a.name}</div>
                   <div className="text-[11px] text-ink-2">€{a.pricePerWeek}</div>

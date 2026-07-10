@@ -208,4 +208,34 @@ test.describe("Genitori - Prenotazione", () => {
     expect(download.suggestedFilename()).toBe("buddykids-prenotazione.png");
   });
 
+  // Segnalazione di Fabrizio: "manca una CTA tipo 'X' per annullare nelle
+  // varie fasi che riporti alla scheda precedente". Invece di aggiungere un
+  // pulsante separato, la freccia indietro dell'header ora fa da "annulla di
+  // step" quando si è oltre lo step 1 (torna allo step precedente restando
+  // in Prenotazione), e solo dal primo step esce davvero dal flusso — vedi
+  // BookingClient.tsx#handleBack.
+  // Priorita: Alta | Precondizioni: Attività di test con almeno una settimana selezionabile
+  test("TC-159 - La freccia indietro annulla lo step corrente senza uscire dal flusso di prenotazione", async ({ page }) => {
+    await loginAs(page, "parent");
+    await gotoTestActivityBooking(page);
+
+    const selectableWeek = page
+      .getByText(/✓ \d+ posti|⚡ ultimi \d+/)
+      .first()
+      .locator("xpath=ancestor::div[contains(@class,'cursor-pointer')]")
+      .first();
+    if (!(await selectableWeek.isVisible().catch(() => false))) {
+      test.skip(true, "Nessuna settimana selezionabile disponibile per l'attività di test in questo momento.");
+    }
+    await selectableWeek.click();
+    await page.getByRole("button", { name: "Continua" }).click();
+
+    // Siamo allo step 2 ("Chi partecipa?"): la freccia indietro deve
+    // riportare allo step 1 restando su /booking/[id], non uscire dal flusso.
+    await expect(page.getByText("Chi partecipa?")).toBeVisible();
+    await page.getByLabel("Indietro").click();
+    await expect(page.getByText("Scegli le settimane")).toBeVisible();
+    await expect(page).toHaveURL(/\/booking\//);
+  });
+
 });

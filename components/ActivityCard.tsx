@@ -20,12 +20,22 @@ export default function ActivityCard({
       className="mb-3 block cursor-pointer overflow-hidden rounded-lg border border-[#F0F2F5] bg-white transition-transform hover:scale-[0.985] hover:shadow-md"
     >
       <div
-        className="relative flex h-[140px] items-end justify-center overflow-hidden"
-        style={{ background: activity.imgGradient }}
+        className="relative flex h-[140px] items-end justify-center overflow-hidden bg-cover bg-center"
+        style={
+          activity.coverImageUrl
+            ? { backgroundImage: `url(${activity.coverImageUrl})` }
+            : { background: activity.imgGradient }
+        }
       >
-        <span className="absolute inset-0 flex items-center justify-center text-7xl">
-          {activity.emoji}
-        </span>
+        {/* Foto reale caricata dal gestore (se presente) invece
+            dell'emoji/gradiente decorativo — BUG CORRETTO: questa card non
+            mostrava MAI la copertina, nemmeno quando c'era (es. attività di
+            test "Test" con foto caricata nel profilo centro). */}
+        {!activity.coverImageUrl && (
+          <span className="absolute inset-0 flex items-center justify-center text-7xl">
+            {activity.emoji}
+          </span>
+        )}
         {matchPercent !== undefined && (
           <div className="absolute left-2.5 top-2.5 z-[1] rounded-full bg-purple px-2.5 py-1 text-[11px] font-bold text-white">
             Match {matchPercent}%

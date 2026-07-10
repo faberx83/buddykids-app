@@ -45,12 +45,17 @@ export default function HomeFeed({
   kids,
   planner,
   bookingsByKid,
+  availabilityByWeek,
 }: {
   activities: Activity[];
   categories: Tag[];
   kids: Kid[];
   planner: PlannerData;
   bookingsByKid: Record<string, KidBookingEntry[]>;
+  // Per ciascuna delle 13 settimane stagionali, gli id delle attività con
+  // posti liberi — passato al Planner per filtrare i suggerimenti "Per
+  // riempire la settimana N" a chi ha davvero disponibilità.
+  availabilityByWeek: Record<string, string[]>;
 }) {
   const router = useRouter();
   const [view, setView] = useState<HomeView>(() => readStoredView());
@@ -74,12 +79,6 @@ export default function HomeFeed({
       // storage non disponibile: la scelta vale solo per questa sessione
     }
   }
-
-  // Suggerimenti per riempire la prossima settimana scoperta nel Planner:
-  // le 4 attività con rating migliore, indipendentemente dalla categoria.
-  const plannerSuggestions = [...activities]
-    .sort((a, b) => b.rating - a.rating || b.reviewsCount - a.reviewsCount)
-    .slice(0, 4);
 
   function locateMe() {
     if (!("geolocation" in navigator)) {
@@ -147,7 +146,12 @@ export default function HomeFeed({
       </div>
 
       {view === "planner" ? (
-        <PlannerView planner={planner} suggestions={plannerSuggestions} kids={kids} />
+        <PlannerView
+          planner={planner}
+          activities={activities}
+          availabilityByWeek={availabilityByWeek}
+          kids={kids}
+        />
       ) : (
         <PerBambinoView
           kids={kids}

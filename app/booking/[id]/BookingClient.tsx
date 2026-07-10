@@ -183,9 +183,30 @@ export default function BookingClient({
     [kids, selectedKids]
   );
 
+  // BUG CORRETTO (segnalato da Fabrizio): l'header usava sempre
+  // "backHref" -> router.push(`/activity/${activity.id}`), che ad OGNI
+  // step (anche il 2°/3°) faceva un push verso il dettaglio invece di
+  // tornare allo step precedente. Questo push aggiungeva una voce
+  // DUPLICATA di "/activity/[id]" nella cronologia del browser subito
+  // DOPO "/booking/[id]" — così, tornando poi sul dettaglio e cliccando LA
+  // SUA freccia indietro (che usa correttamente router.back()), si
+  // arrivava di nuovo sulla pagina di Prenotazione invece che alla
+  // schermata precedente al dettaglio (Cerca/Home). Ora l'header: se lo
+  // step è > 1 torna semplicemente allo step precedente (la "X annulla"
+  // richiesta) invece di uscire dal flusso; solo dal primo step esce
+  // davvero, con router.back() (nessuna voce duplicata, perché è arrivati
+  // qui con un push da un <Link>, quindi "indietro" è sempre il dettaglio).
+  function handleBack() {
+    if (step > 1) {
+      setStep((s) => (s - 1) as 1 | 2 | 3);
+      return;
+    }
+    router.back();
+  }
+
   return (
     <div className="flex h-full min-h-screen flex-col sm:min-h-0 sm:flex-1">
-      <PageHeader title="Prenota il tuo posto" backHref={`/activity/${activity.id}`} />
+      <PageHeader title="Prenota il tuo posto" onBack={handleBack} />
       <StepIndicator step={step} />
 
       <div ref={scrollRef} className="no-scrollbar flex-1 overflow-y-auto px-5 py-[18px]">

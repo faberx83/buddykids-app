@@ -5,6 +5,7 @@ import { isSupabaseConfigured } from "@/lib/supabase/env";
 import { Role } from "@/lib/types";
 import { getGroupRequestsForCenter } from "@/lib/data/group-requests";
 import { getGestoreAccountProfile } from "@/lib/data/profile";
+import { getOpenInquiriesCountForCenter } from "@/lib/data/inquiries";
 
 export default async function CenterLayout({ children }: { children: React.ReactNode }) {
   // Con Supabase collegato, il ruolo reale (da profiles.role) sostituisce del
@@ -34,6 +35,11 @@ export default async function CenterLayout({ children }: { children: React.React
     (r) => r.status === "pending"
   ).length;
 
+  // Badge rosso su "Le mie richieste" (ticketing "Contatta il gestore") col
+  // numero di richieste ancora senza risposta — stesso pattern del badge
+  // sopra per le Richieste Gruppo.
+  const openInquiries = await getOpenInquiriesCountForCenter();
+
   // Badge profilo in alto a destra (coerente con l'app genitore) — vedi
   // AccountBadge in components/dashboard/DashboardLayout.tsx.
   const gestoreProfile = await getGestoreAccountProfile();
@@ -62,6 +68,13 @@ export default async function CenterLayout({ children }: { children: React.React
       label: "Registro presenze",
       icon: "ti-clipboard-check",
       sectionLabel: "Gestione",
+    },
+    {
+      href: "/center/richieste",
+      label: "Le mie richieste",
+      icon: "ti-message-circle-2",
+      sectionLabel: "Gestione",
+      badgeCount: openInquiries,
     },
     {
       href: "/center/servizi-consigliati",

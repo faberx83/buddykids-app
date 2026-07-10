@@ -121,7 +121,19 @@ export async function getWeeksForActivity(activity: Activity): Promise<Week[]> {
 // "Confermata" qui vuol dire semplicemente non cancellata: oggi ogni
 // prenotazione creata ha già status "confirmed" (non c'e' ancora un vero
 // step di pagamento/conferma separato, vedi task pagamenti reali).
-export async function getBookedWeekIdsForActivity(activityDbId: string): Promise<Set<string>> {
+// "onlyForKidId": se indicato, considera "già prenotata" una settimana SOLO
+// se è QUEL bambino ad essere già iscritto — non basta che la famiglia
+// abbia una qualunque prenotazione su quella settimana. Serve al flusso
+// "Aggiungi [bambino]" del Planner (copertura parziale: un fratello ha già
+// il camp quella settimana, l'altro no): senza questo parametro, la
+// settimana risultava sempre bloccata come "già prenotata" anche per il
+// bambino che invece andava aggiunto, perché booking_kids/booking_weeks non
+// sono incrociati per bambino di default (booking_kids si applica a TUTTE
+// le settimane della stessa prenotazione).
+export async function getBookedWeekIdsForActivity(
+  activityDbId: string,
+  onlyForKidId?: string
+): Promise<Set<string>> {
   const empty = new Set<string>();
   if (!isSupabaseConfigured) return empty;
 
@@ -133,7 +145,7 @@ export async function getBookedWeekIdsForActivity(activityDbId: string): Promise
 
   const { data, error } = await supabase
     .from("bookings")
-    .select("booking_weeks ( week_id )")
+    .select("booking_weeks ( week_id ), booking_kids ( kid_id )")
     .eq("activity_id", activityDbId)
     .eq("parent_id", user.id)
     .neq("status", "cancelled");
@@ -141,7 +153,14 @@ export async function getBookedWeekIdsForActivity(activityDbId: string): Promise
   if (error || !data) return empty;
 
   const ids = new Set<string>();
-  for (const row of data as { booking_weeks: { week_id: string }[] | null }[]) {
+  for (const row of data as {
+    booking_weeks: { week_id: string }[] | null;
+    booking_kids: { kid_id: string }[] | null;
+  }[]) {
+    if (onlyForKidId) {
+      const kidIds = (row.booking_kids ?? []).map((bk) => bk.kid_id);
+      if (!kidIds.includes(onlyForKidId)) continue; // questa prenotazione non riguarda il bambino richiesto
+    }
     for (const bw of row.booking_weeks ?? []) {
       ids.add(bw.week_id);
     }

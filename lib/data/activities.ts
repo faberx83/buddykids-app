@@ -7,6 +7,7 @@ import { Activity, Promotion } from "@/lib/types";
 import { activities as mockActivities, promotions as mockPromotions } from "@/lib/mock-data";
 import { createClient } from "@/lib/supabase/server";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
+import { getSeasonWeekRanges, isoDate, overlaps } from "@/lib/season-weeks";
 
 const SELECT_COLUMNS = `
   id, slug, name, emoji, address, latitude, longitude, age_min, age_max,
@@ -126,6 +127,39 @@ export async function getActivities(): Promise<Activity[]> {
   }
 
   return data.map(mapRow);
+}
+
+// Per ciascuna delle 13 settimane stagionali (chiave: data ISO di inizio
+// settimana), gli id (activities.id, cioè Activity.dbId) delle attività con
+// ALMENO un activity_week con posti liberi che si sovrappone a quella
+// settimana. Serve al filtro Date di Cerca (SearchClient) — l'oggetto
+// Activity ha solo uno "spotsLeft" aggregato, non per-settimana, quindi va
+// interrogata "activity_weeks" a parte (stessa tabella usata da Prenotazione
+// e dal Planner in Home).
+export async function getActivityAvailabilityByWeek(seasonYear: number): Promise<Record<string, string[]>> {
+  const ranges = getSeasonWeekRanges(seasonYear);
+  const result: Record<string, string[]> = {};
+  for (const r of ranges) result[isoDate(r.start)] = [];
+
+  if (!isSupabaseConfigured) return result; // demo: nessuna attività ha un dbId da confrontare
+
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("activity_weeks")
+    .select("activity_id, start_date, end_date")
+    .gt("spots_left", 0);
+
+  if (error || !data) return result;
+
+  for (const row of data as { activity_id: string; start_date: string; end_date: string }[]) {
+    for (const r of ranges) {
+      const startIso = isoDate(r.start);
+      if (overlaps(startIso, isoDate(r.end), row.start_date, row.end_date)) {
+        result[startIso].push(row.activity_id);
+      }
+    }
+  }
+  return result;
 }
 
 // Attività di UN centro specifico — usata dalla dashboard Gestore centro.

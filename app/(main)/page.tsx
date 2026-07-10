@@ -3,12 +3,13 @@ import HomeFeed from "@/components/HomeFeed";
 import HomeProfilePrompt from "@/components/HomeProfilePrompt";
 import CheckinPrompt from "@/components/CheckinPrompt";
 import { categories } from "@/lib/mock-data";
-import { getActivities } from "@/lib/data/activities";
+import { getActivities, getActivityAvailabilityByWeek } from "@/lib/data/activities";
 import { getKidsForUser } from "@/lib/data/kids";
 import { getPlannerData } from "@/lib/data/planner";
 import { getBookingsByKid } from "@/lib/data/kid-bookings";
 import { isParentProfileIncomplete } from "@/lib/data/profile";
 import { getTodayCheckinsForParent } from "@/lib/data/checkin";
+import { getSeasonYear } from "@/lib/data/season-year";
 import { createClient } from "@/lib/supabase/server";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
 
@@ -53,6 +54,7 @@ export default async function HomePage() {
     profileIncomplete,
     bookingsByKidMap,
     todayCheckins,
+    seasonYear,
   ] = await Promise.all([
     getActivities(),
     getDisplayIdentity(),
@@ -61,10 +63,15 @@ export default async function HomePage() {
     isParentProfileIncomplete(),
     getBookingsByKid(),
     getTodayCheckinsForParent(),
+    getSeasonYear(),
   ]);
   // I Server Component possono passare ai Client Component solo dati
   // serializzabili: una Map non lo è, la convertiamo in un oggetto piano.
   const bookingsByKid = Object.fromEntries(bookingsByKidMap);
+  // Disponibilità reale per settimana (per i suggerimenti "Per riempire la
+  // settimana N" del Planner) — richiede seasonYear, quindi in una seconda
+  // query dopo, non nel Promise.all sopra.
+  const availabilityByWeek = await getActivityAvailabilityByWeek(seasonYear);
 
   return (
     <div className="animate-fade-in">
@@ -123,6 +130,7 @@ export default async function HomePage() {
         kids={kids}
         planner={planner}
         bookingsByKid={bookingsByKid}
+        availabilityByWeek={availabilityByWeek}
       />
       <div className="h-5" />
     </div>

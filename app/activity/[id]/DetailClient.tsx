@@ -6,6 +6,7 @@ import Link from "next/link";
 import { Activity, Promotion } from "@/lib/types";
 import { badgeClasses } from "@/lib/colors";
 import ImageLightbox from "@/components/ImageLightbox";
+import ContactCenterButton from "@/components/ContactCenterButton";
 
 const weekdayLabels = ["lunedì", "martedì", "mercoledì", "giovedì", "venerdì"];
 
@@ -89,6 +90,10 @@ export default function DetailClient({
             <i className="ti ti-star-filled text-sm text-yellow" />
             <span className="text-sm font-bold text-ink">{activity.rating}</span>
           </div>
+        </div>
+
+        <div className="mb-3">
+          <ContactCenterButton activityDbId={activity.dbId} />
         </div>
 
         <div className="mb-3 flex flex-wrap gap-2.5">

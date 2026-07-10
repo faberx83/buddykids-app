@@ -23,6 +23,11 @@ export interface KidCoverage {
   kidId: string;
   activityName: string;
   activityTagColor?: PillColor;
+  // Slug dell'attività (Activity.id) — serve alla CTA "Aggiungi [bambino]"
+  // del Planner per costruire un link diretto a /booking/{slug}, senza
+  // passare da Cerca (si conosce già l'attività: è quella prenotata per il
+  // fratello/sorella che ha coperto questa settimana).
+  activitySlug?: string;
 }
 
 export interface SeasonWeek {
@@ -34,6 +39,7 @@ export interface SeasonWeek {
   covered: boolean; // almeno un bambino ha una prenotazione questa settimana
   activityName?: string; // vista aggregata: nome della PRIMA attività trovata per questa settimana
   activityTagColor?: PillColor; // colore della prima categoria dell'attività, per la tinta della card in Home
+  activitySlug?: string; // vista aggregata: slug della PRIMA attività trovata (per "Aggiungi [bambino]")
   coveredKids: KidCoverage[]; // dettaglio per bambino — per capire se la copertura è parziale o per chi
   dismissed: boolean; // il genitore l'ha segnata "non mi serve" (ferie, nonni, ecc.)
 }
@@ -45,9 +51,15 @@ export interface PlannerData {
   firstUncoveredIndex: number | null; // index (1-based) della prima settimana scoperta
 }
 
+interface RawActivityRef {
+  slug: string;
+  name: string;
+  pills: { color: PillColor }[] | null;
+}
+
 interface RawBookingRow {
   status: string | null;
-  activities: { name: string; pills: { color: PillColor }[] | null } | { name: string; pills: { color: PillColor }[] | null }[] | null;
+  activities: RawActivityRef | RawActivityRef[] | null;
   booking_weeks: { activity_weeks: { start_date: string; end_date: string } | { start_date: string; end_date: string }[] | null }[] | null;
   booking_kids: { kid_id: string }[] | null;
 }
@@ -101,7 +113,7 @@ export async function getPlannerData(): Promise<PlannerData> {
   const { data, error } = await supabase
     .from("bookings")
     .select(
-      "status, activities ( name, pills ), booking_weeks ( activity_weeks ( start_date, end_date ) ), booking_kids ( kid_id )"
+      "status, activities ( slug, name, pills ), booking_weeks ( activity_weeks ( start_date, end_date ) ), booking_kids ( kid_id )"
     )
     .eq("parent_id", user.id)
     .neq("status", "cancelled");
@@ -124,6 +136,7 @@ export async function getPlannerData(): Promise<PlannerData> {
     const activity = firstOf(row.activities);
     const activityName = activity?.name;
     const activityTagColor = activity?.pills?.[0]?.color;
+    const activitySlug = activity?.slug;
     const kidIds = (row.booking_kids ?? []).map((bk) => bk.kid_id);
     if (kidIds.length === 0 || !activityName) continue;
 
@@ -141,10 +154,11 @@ export async function getPlannerData(): Promise<PlannerData> {
           if (!seasonWeek.activityName) {
             seasonWeek.activityName = activityName;
             seasonWeek.activityTagColor = activityTagColor;
+            seasonWeek.activitySlug = activitySlug;
           }
           for (const kidId of kidIds) {
             if (!seasonWeek.coveredKids.some((c) => c.kidId === kidId)) {
-              seasonWeek.coveredKids.push({ kidId, activityName, activityTagColor });
+              seasonWeek.coveredKids.push({ kidId, activityName, activityTagColor, activitySlug });
             }
           }
         }

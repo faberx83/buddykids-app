@@ -87,7 +87,17 @@ export default async function ProfilePage({
         <div className="mb-2 text-[11px] font-bold uppercase tracking-wide text-ink-3">
           Supporto
         </div>
-        <MenuItem icon="ti-message-circle" iconBg="#F4F6FA" iconColor="#6B7280" main="Chat con organizzatori" sub="Rispondiamo in 2 ore" comingSoon />
+        {/* Sostituisce il precedente "Chat con organizzatori" (ComingSoon,
+            mai implementato) con il ticketing reale — vedi
+            ContactCenterButton nella scheda attività e lib/data/inquiries.ts. */}
+        <MenuItem
+          icon="ti-message-circle"
+          iconBg="#F4F6FA"
+          iconColor="#6B7280"
+          main="Le mie richieste"
+          sub="Messaggi ai centri e risposte ricevute"
+          href="/richieste"
+        />
         <MenuItem icon="ti-file-invoice" iconBg="#F4F6FA" iconColor="#6B7280" main="Ricevute e fatture" comingSoon />
       </div>
 

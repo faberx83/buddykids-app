@@ -688,6 +688,62 @@ create policy "Carpool requests: un genitore gestisce solo la propria richiesta"
   using (auth.uid() = parent_id)
   with check (auth.uid() = parent_id and public.is_group_member(group_id));
 
+-- Richieste dei genitori al Gestore ("Contatta il gestore" nella scheda
+-- attività) — ticketing semplice: il genitore scrive un messaggio legato a
+-- un'attività, il centro lo vede in /center/richieste e risponde una volta
+-- (reply/replied_by/replied_at), la risposta torna visibile al genitore in
+-- "Le mie richieste" (/richieste). Niente chat multi-messaggio: un
+-- messaggio, una risposta, come un ticket — se serve altro il genitore ne
+-- apre uno nuovo.
+create table if not exists public.activity_inquiries (
+  id uuid primary key default gen_random_uuid(),
+  activity_id uuid references public.activities(id) on delete cascade not null,
+  parent_id uuid references public.profiles(id) on delete cascade not null,
+  message text not null,
+  status text not null default 'aperta' check (status in ('aperta', 'risposta', 'chiusa')),
+  reply text,
+  replied_by uuid references public.profiles(id) on delete set null,
+  replied_at timestamptz,
+  created_at timestamptz default now()
+);
+
+alter table public.activity_inquiries enable row level security;
+
+create policy "Richieste: il genitore vede/crea le proprie"
+  on public.activity_inquiries for select
+  using (auth.uid() = parent_id);
+
+create policy "Richieste: il genitore crea solo le proprie"
+  on public.activity_inquiries for insert
+  with check (auth.uid() = parent_id);
+
+create policy "Richieste: il centro vede/risponde a quelle delle proprie attività"
+  on public.activity_inquiries for select
+  using (
+    public.is_platform_admin() or exists (
+      select 1 from public.activities a
+      where a.id = activity_inquiries.activity_id and a.center_id = public.current_center_id()
+    )
+  );
+
+create policy "Richieste: il centro aggiorna (risponde) quelle delle proprie attività"
+  on public.activity_inquiries for update
+  using (
+    public.is_platform_admin() or exists (
+      select 1 from public.activities a
+      where a.id = activity_inquiries.activity_id and a.center_id = public.current_center_id()
+    )
+  )
+  with check (
+    public.is_platform_admin() or exists (
+      select 1 from public.activities a
+      where a.id = activity_inquiries.activity_id and a.center_id = public.current_center_id()
+    )
+  );
+
+create index if not exists idx_inquiries_activity on public.activity_inquiries (activity_id);
+create index if not exists idx_inquiries_parent on public.activity_inquiries (parent_id);
+
 -- ─────────────────────────────────────────────
 -- REVIEWS
 -- ─────────────────────────────────────────────

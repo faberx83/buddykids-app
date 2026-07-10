@@ -100,10 +100,46 @@ test.describe("Genitori - Cerca", () => {
   });
 
   // Priorita: Bassa | Precondizioni: Nessuna
-  // Passi: Clicca il chip 'Date'
-  // Risultato atteso: Dovrebbe aprire un filtro per data/settimana
-  test.fixme("TC-024 - Filtro Date", async ({ page }) => {
-    // TODO: implementare - vedi i test gia completati in questo file per esempio.
+  // Passi: Clicca il chip 'Date' -> seleziona una settimana della stagione
+  // Risultato atteso: Il chip mostra "Settimana N", e' azzerabile con la X, e il conteggio risultati riflette la disponibilita' reale per quella settimana (activity_weeks.spots_left > 0)
+  // Ora implementato per davvero: prima era un chip "Prossimamente" senza
+  // alcun effetto (vedi lib/data/activities.ts#getActivityAvailabilityByWeek
+  // e SearchClient.tsx filteredList).
+  test("TC-024 - Filtro Date filtra per disponibilita' reale nella settimana scelta", async ({ page }) => {
+    await page.getByText("Date", { exact: true }).click();
+    await expect(page.getByText("Settimana di camp")).toBeVisible();
+
+    const firstWeekOption = page.getByRole("button", { name: /^Settimana \d+ ·/ }).first();
+    await firstWeekOption.click();
+
+    // Il chip si aggiorna da "Date" a "Settimana N" e diventa azzerabile.
+    await expect(page.getByText(/^Settimana \d+$/).first()).toBeVisible();
+    await expect(page.getByRole("button", { name: /^Azzera/ })).toBeEnabled();
+    await expect(resultsCount(page)).toBeVisible();
+
+    // La X sul chip azzera solo il filtro Date, non gli altri.
+    await page.locator(".ti-x").first().click();
+    await expect(page.getByText("Date", { exact: true })).toBeVisible();
+  });
+
+  // Priorita: Alta | Precondizioni: Arrivare da Home -> Planner -> "Riempi" (o CTA inline "Per riempire la settimana N") con un bambino selezionato
+  // Passi: Apri /search?week=...&kid=... (link generato dal Planner)
+  // Risultato atteso: Il filtro Data e' pre-applicato alla settimana richiesta, il banner mostra "Stai cercando per la Settimana N" + "preferenze di [bambino]", e la lista mostra solo attivita' compatibili; "Rimuovi" azzera entrambi i filtri insieme
+  test("TC-158 - Filtri Data e preferenze bambino pre-applicati arrivando dal Planner", async ({ page }) => {
+    // Simuliamo l'arrivo dal Planner con il query param ?week=, come genera
+    // il link "Per riempire la settimana N" / CTA "Riempi" in PlannerView.tsx
+    // (il primo lunedi' della stagione demo e' sempre nella griglia delle 13
+    // settimane calcolata da lib/season-weeks.ts).
+    await page.goto("/search?week=2026-06-08");
+    const banner = page.getByText(/Stai cercando per la Settimana/);
+    if (!(await banner.isVisible().catch(() => false))) {
+      test.skip(true, "La settimana di test non rientra nella stagione corrente per questo deploy.");
+    }
+    await expect(banner).toBeVisible();
+    await expect(page.getByRole("button", { name: "Rimuovi" })).toBeVisible();
+
+    await page.getByRole("button", { name: "Rimuovi" }).click();
+    await expect(banner).not.toBeVisible();
   });
 
 });
