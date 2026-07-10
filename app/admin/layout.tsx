@@ -4,6 +4,11 @@ import { createClient } from "@/lib/supabase/server";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
 import { Role } from "@/lib/types";
 
+// Segnalazione di Fabrizio: cosa manca lato Admin tra le nuove funzionalità
+// (ticketing, presenze/check-in, preferiti)? Ho proposto e costruito 3
+// pannelli cross-centro (SLA Richieste, confronto Presenze, Preferiti come
+// segnale di domanda) — vedi lib/data/admin-inquiries.ts,
+// lib/data/admin-attendance.ts, lib/data/admin-favorites.ts.
 const navItems = [
   { href: "/admin", label: "Dashboard", icon: "ti-layout-dashboard" },
   { href: "/admin/analytics", label: "Analisi", icon: "ti-chart-bar" },
@@ -12,6 +17,9 @@ const navItems = [
   { href: "/admin/tags", label: "Tag", icon: "ti-tags" },
   { href: "/admin/bookings", label: "Prenotazioni", icon: "ti-ticket" },
   { href: "/admin/group-requests", label: "Richieste Gruppo", icon: "ti-users-group" },
+  { href: "/admin/richieste", label: "Richieste (SLA)", icon: "ti-message-circle-2" },
+  { href: "/admin/presenze", label: "Presenze", icon: "ti-clipboard-check" },
+  { href: "/admin/preferiti", label: "Preferiti", icon: "ti-heart" },
   { href: "/admin/partner-offers", label: "Fornitori", icon: "ti-truck-delivery" },
 ];
 
