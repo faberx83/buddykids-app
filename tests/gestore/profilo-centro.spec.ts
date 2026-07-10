@@ -1,5 +1,5 @@
 import { test, expect } from "../fixtures/roles";
-import { gotoAsRole } from "../fixtures/roles";
+import { gotoAsRole, loginAs, isRealDeployment } from "../fixtures/roles";
 
 // Area: Gestore - Profilo Centro
 // Generato da BuddyKids_Test_Case.xlsx - 3 casi.
@@ -30,4 +30,20 @@ test.describe("Gestore - Profilo Centro", () => {
     // ESCLUSO dall'automazione: richiede lo snippet SQL Storage applicato su Supabase prima del test
   });
 
+  // Domanda di Fabrizio: "il processo di eventuale annullamento della
+  // prenotazione: entro quanto si può fare? può essere una variabile
+  // gestibile da ciascun centro estivo?" — risposta: sì, campo
+  // centers.cancellation_window_days (default 3 giorni), modificabile qui.
+  // Priorita: Alta | Precondizioni: Account collegato a un centro
+  test("TC-192 - Il centro può configurare i giorni di preavviso per annullo/modifica prenotazione", async ({ page }) => {
+    test.skip(!isRealDeployment, "Richiede un deploy con Supabase configurato e l'account gestore di test.");
+    await loginAs(page, "center_admin");
+    await page.goto("/center/profile");
+
+    await expect(page.getByText("Cancellazioni e modifiche")).toBeVisible();
+    const field = page.locator("input[type='number']").last();
+    await field.fill("5");
+    await page.getByRole("button", { name: /Salva/ }).first().click();
+    await expect(page.locator("body")).not.toContainText("Application error");
+  });
 });

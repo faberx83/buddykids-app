@@ -266,10 +266,12 @@ test.describe("Genitori - Prenotazione", () => {
   // lista ma va fatta un pò di ordinamento..per settimana per bambino per
   // campus..una serie di filtri per raggruappare" — poi precisato: "le
   // vorrei raggruppate per filtro..ed ordinate sempre in ordine
-  // cronologico". Il criterio scelto (Settimana/Bambino/Campus) crea vere
-  // intestazioni di gruppo — vedi PrenotazioniClient.tsx.
+  // cronologico". AGGIORNATO per il redesign "dashboard familiare": ora
+  // Raggruppamento (Settimana/Mese/Figlio/Attività/Centro/Stato) e
+  // Ordinamento (Data/Prezzo/Nome attività/Luogo) sono due controlli
+  // separati — vedi PrenotazioniClient.tsx.
   // Priorita: Media | Precondizioni: Almeno una prenotazione
-  test("TC-182 - 'Le mie prenotazioni' raggruppa per settimana/bambino/campus, sempre in ordine cronologico", async ({
+  test("TC-182 - 'Le mie prenotazioni' raggruppa per settimana/figlio/attività, sempre in ordine cronologico nel gruppo", async ({
     page,
   }) => {
     test.skip(!isRealDeployment, "Richiede un deploy con Supabase configurato e l'account genitore di test.");
@@ -281,32 +283,122 @@ test.describe("Genitori - Prenotazione", () => {
       test.skip(true, "Nessuna prenotazione per l'account di test: i controlli di raggruppamento non vengono mostrati.");
     }
     await expect(groupLabel).toBeVisible();
-    await page.getByRole("button", { name: "Bambino", exact: true }).click();
+    await expect(page.getByText("Ordina per:")).toBeVisible();
+    await page.getByRole("button", { name: "Figlio", exact: true }).click();
     await expect(page.locator("body")).not.toContainText("Application error");
-    await page.getByRole("button", { name: "Campus", exact: true }).click();
+    await page.getByRole("button", { name: "Attività", exact: true }).click();
+    await expect(page.locator("body")).not.toContainText("Application error");
+    await page.getByRole("button", { name: "Centro", exact: true }).click();
     await expect(page.locator("body")).not.toContainText("Application error");
     await page.getByRole("button", { name: "Settimana", exact: true }).click();
     await expect(page.locator("body")).not.toContainText("Application error");
   });
 
-  // BUG DI UX CORRETTO (segnalato da Fabrizio: "il filtro per bambino va
-  // bene uno solo non due volte"): prima c'erano due controlli diversi
-  // legati al bambino sulla stessa pagina (il pulsante "Bambino" tra i
-  // criteri di raggruppamento E una riga di chip filtro separata) — rimossa
-  // la riga di chip, resta solo "Raggruppa per: Bambino".
-  // Priorita: Bassa | Precondizioni: Nessuna
-  test("TC-185 - 'Le mie prenotazioni' ha un solo controllo per il bambino, non due", async ({ page }) => {
+  // AGGIORNATO (superseduto da nuova richiesta esplicita di Fabrizio): il
+  // vecchio TC-185 verificava che la riga di chip "Tutti i bambini/nome"
+  // fosse stata RIMOSSA (era un doppione del pulsante di raggruppamento).
+  // Fabrizio ha poi chiesto esplicitamente di reintrodurla come filtro
+  // indipendente dal raggruppamento: "quando si sceglie la visualizzazione
+  // per bambino bisogna visualizzare dei sotto filtri 'tutti i bambini',
+  // 'piero', 'franca'". Ora verifica l'opposto: la riga chip C'È (quando ci
+  // sono 2+ bambini con prenotazioni) ed è un controllo INDIPENDENTE dal
+  // raggruppamento "Figlio" (nessun doppione: filtra invece di raggruppare).
+  // Priorita: Bassa | Precondizioni: 2+ bambini con prenotazioni
+  test("TC-185 - Filtro rapido per bambino (chip) indipendente dal raggruppamento", async ({ page }) => {
     test.skip(!isRealDeployment, "Richiede un deploy con Supabase configurato e l'account genitore di test.");
     await loginAs(page, "parent");
     await page.goto("/prenotazioni");
 
-    const groupLabel = page.getByText("Raggruppa per:");
-    if (!(await groupLabel.isVisible().catch(() => false))) {
-      test.skip(true, "Nessuna prenotazione per l'account di test: i controlli non vengono mostrati.");
+    const chipAll = page.getByRole("button", { name: "Tutti i bambini" });
+    if (!(await chipAll.isVisible().catch(() => false))) {
+      test.skip(true, "Servono almeno 2 bambini con prenotazioni per questo test.");
     }
-    // Non deve più esistere una riga di chip "Tutti i bambini" separata.
-    await expect(page.getByText("Tutti i bambini")).toHaveCount(0);
-    // "Bambino" compare una sola volta (il pulsante di raggruppamento).
-    await expect(page.getByRole("button", { name: "Bambino", exact: true })).toHaveCount(1);
+    await expect(chipAll).toBeVisible();
+    // Il raggruppamento "Figlio" resta un controllo separato e diverso.
+    await expect(page.getByRole("button", { name: "Figlio", exact: true })).toBeVisible();
+  });
+
+  // Nuova dashboard "Le mie prenotazioni" (richiesta di Fabrizio: "Ridisegna
+  // completamente la schermata... trasformandola in una dashboard di
+  // pianificazione familiare"): Vista/Raggruppamento/Ordinamento separati,
+  // striscia di copertura in cima, statistiche sintetiche.
+  // Priorita: Alta | Precondizioni: Nessuna (gestisce anche account senza prenotazioni)
+  test("TC-188 - Dashboard prenotazioni: vista Elenco/Copertura/Calendario + copertura + statistiche", async ({ page }) => {
+    test.skip(!isRealDeployment, "Richiede un deploy con Supabase configurato e l'account genitore di test.");
+    await loginAs(page, "parent");
+    await page.goto("/prenotazioni");
+
+    await expect(page.getByText("Copertura dell'estate")).toBeVisible();
+    await expect(page.getByText("Attività prenotate")).toBeVisible();
+    await expect(page.getByText("Speso finora")).toBeVisible();
+    await expect(page.getByText("Prossimo impegno")).toBeVisible();
+
+    await page.getByRole("button", { name: "Copertura" }).click();
+    await expect(page.locator("body")).not.toContainText("Application error");
+
+    await page.getByRole("button", { name: /Calendario/ }).click();
+    await expect(page.getByText("Vista calendario in arrivo")).toBeVisible();
+
+    await page.getByRole("button", { name: "Elenco" }).click();
+    await expect(page.locator("body")).not.toContainText("Application error");
+  });
+
+  // Segnalazione di Fabrizio: "secondo me nella pagina home sezione 'per
+  // bambino' i record sotto 'Già prenotato per Franca' devono linkare a 'le
+  // mie prenotazioni' con i filtri per il bambino selezionato". Verifica il
+  // deep-link ?kid= che preseleziona il filtro.
+  // Priorita: Alta | Precondizioni: Almeno un bambino con una prenotazione
+  test("TC-189 - Home 'Già prenotato per [bambino]' apre Le mie prenotazioni filtrata su quel bambino", async ({ page }) => {
+    test.skip(!isRealDeployment, "Richiede un deploy con Supabase configurato e l'account genitore di test.");
+    await loginAs(page, "parent");
+    await page.goto("/");
+    await page.getByText("Per bambino").click().catch(() => {});
+
+    const bookedLink = page.locator("a[href^='/prenotazioni?kid=']").first();
+    if (!(await bookedLink.isVisible().catch(() => false))) {
+      test.skip(true, "Nessun bambino con prenotazione già presente per l'account di test.");
+    }
+    await bookedLink.click();
+    await expect(page).toHaveURL(/\/prenotazioni\?kid=/);
+  });
+
+  // Domanda di Fabrizio: "entro quanto si può fare l'annullamento? può
+  // essere una variabile gestibile da ciascun centro estivo?" — sì, vedi
+  // centers.cancellation_window_days (default 3) configurabile in "Il mio
+  // centro" lato Gestore, e applicato qui lato genitore.
+  // Priorita: Alta | Precondizioni: Prenotazione confermata entro la finestra di preavviso
+  test("TC-190 - Azioni rapide Modifica/Annulla rispettano la finestra di preavviso del centro", async ({ page }) => {
+    test.skip(!isRealDeployment, "Richiede un deploy con Supabase configurato e l'account genitore di test.");
+    await loginAs(page, "parent");
+    await page.goto("/prenotazioni");
+
+    const modifica = page.getByRole("link", { name: /Modifica/ }).first();
+    const fuoriFinestra = page.getByText(/giorni di preavviso — contatta il centro/).first();
+    const somethingVisible =
+      (await modifica.isVisible().catch(() => false)) || (await fuoriFinestra.isVisible().catch(() => false));
+    if (!somethingVisible) {
+      test.skip(true, "Nessuna prenotazione attiva per l'account di test.");
+    }
+    // Le azioni "Dettagli" e "Contatta il gestore" restano sempre visibili.
+    await expect(page.getByText("Dettagli").first()).toBeVisible();
+  });
+
+  // Richiesta esplicita di Fabrizio: "SOLO PER TESTARE la possibilità di
+  // modificare una prenotazione così posso verificare cosa succede lato
+  // gestore" — non è un placeholder, scrive davvero su booking_weeks e
+  // ricalcola il totale.
+  // Priorita: Alta | Precondizioni: Prenotazione modificabile (entro la finestra di preavviso)
+  test("TC-191 - Pagina Modifica prenotazione permette di cambiare le settimane e ricalcola il totale", async ({ page }) => {
+    test.skip(!isRealDeployment, "Richiede un deploy con Supabase configurato e l'account genitore di test.");
+    await loginAs(page, "parent");
+    await page.goto("/prenotazioni");
+
+    const modifica = page.getByRole("link", { name: /Modifica/ }).first();
+    if (!(await modifica.isVisible().catch(() => false))) {
+      test.skip(true, "Nessuna prenotazione modificabile per l'account di test in questo momento.");
+    }
+    await modifica.click();
+    await expect(page).toHaveURL(/\/prenotazioni\/.+\/modifica/);
+    await expect(page.getByText("Nuovo totale stimato")).toBeVisible();
   });
 });

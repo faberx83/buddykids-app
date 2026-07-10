@@ -1,19 +1,29 @@
-import PageHeader from "@/components/PageHeader";
 import { getMyBookingsForParent } from "@/lib/data/my-bookings";
+import { getPlannerData } from "@/lib/data/planner";
+import { getKidsForUser } from "@/lib/data/kids";
 import PrenotazioniClient from "./PrenotazioniClient";
 
-// "Le mie prenotazioni" (richiesta da Fabrizio per la v1): elenco reale,
-// sola lettura — niente ancora cancellazione/modifica. Ordinamento e filtri
-// (per settimana/bambino/campus) sono gestiti da PrenotazioniClient.
-export default async function PrenotazioniPage() {
-  const bookings = await getMyBookingsForParent();
+// "Le mie prenotazioni" — trasformata da Fabrizio in una dashboard di
+// pianificazione familiare (non più un semplice elenco): copertura del
+// periodo, prossime attività e statistiche sintetiche, con Vista/
+// Raggruppamento/Ordinamento separati e azioni rapide (Modifica, Annulla,
+// Dettagli, Contatta) su ogni prenotazione. "?kid=" (arrivato da "Già
+// prenotato per [bambino]" in Home) preseleziona il filtro bambino.
+export default async function PrenotazioniPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ kid?: string }>;
+}) {
+  const { kid } = await searchParams;
+  const [bookings, planner, kids] = await Promise.all([
+    getMyBookingsForParent(),
+    getPlannerData(),
+    getKidsForUser(),
+  ]);
 
   return (
     <div className="animate-fade-in">
-      <PageHeader title="Le mie prenotazioni" backHref="/profile" />
-      <div className="px-5 py-4">
-        <PrenotazioniClient bookings={bookings} />
-      </div>
+      <PrenotazioniClient bookings={bookings} planner={planner} kids={kids} initialKidFilter={kid ?? null} />
     </div>
   );
 }

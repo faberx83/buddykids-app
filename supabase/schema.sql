@@ -28,6 +28,12 @@ create table if not exists public.centers (
   multiweek_discount_percent numeric(4,1), -- sconto se il genitore prenota 2+ settimane (default storico: 5%)
   family_discount_tiers jsonb, -- [2°figlio%, 3°figlio%, 4°+figlio%], default storico: [10,15,20]
   group_discount_tiers jsonb, -- [{minKids,percent}], default storico: 5+:5%, 8+:10%, 12+:15%
+  -- Entro quanti giorni PRIMA dell'inizio della settimana il genitore può
+  -- annullare/modificare una prenotazione senza dover contattare il centro
+  -- (domanda di Fabrizio: "entro quanto si può fare? può essere una
+  -- variabile gestibile da ciascun centro estivo?" — sì, è per-centro, con
+  -- un default ragionevole se il gestore non lo personalizza).
+  cancellation_window_days integer not null default 3,
   created_at timestamptz default now()
 );
 
@@ -854,6 +860,7 @@ alter table public.activities add column if not exists show_exact_spots boolean 
 alter table public.centers add column if not exists multiweek_discount_percent numeric(4,1);
 alter table public.centers add column if not exists family_discount_tiers jsonb;
 alter table public.centers add column if not exists group_discount_tiers jsonb;
+alter table public.centers add column if not exists cancellation_window_days integer not null default 3;
 alter table public.profiles add column if not exists parent_role text check (parent_role in ('padre', 'madre', 'tutore'));
 alter table public.profiles add column if not exists dismissed_weeks jsonb default '[]';
 

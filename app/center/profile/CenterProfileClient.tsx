@@ -24,6 +24,7 @@ export default function CenterProfileClient({ center, dbId }: { center: Center; 
     multiweekDiscountPercent: center.multiweekDiscountPercent ?? 5,
     familyDiscountTiers: center.familyDiscountTiers ?? DEFAULT_FAMILY_TIERS,
     groupDiscountTiers: center.groupDiscountTiers ?? GROUP_DISCOUNT_TIERS.map((t) => ({ ...t })),
+    cancellationWindowDays: center.cancellationWindowDays ?? 3,
   });
   const [saved, setSaved] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -88,6 +89,7 @@ export default function CenterProfileClient({ center, dbId }: { center: Center; 
             familyDiscountTiers: form.familyDiscountTiers,
             groupDiscountTiers: form.groupDiscountTiers,
             logoUrl: form.logoUrl,
+            cancellationWindowDays: form.cancellationWindowDays,
           });
           setSaving(false);
           if (result.error) {
@@ -262,6 +264,30 @@ export default function CenterProfileClient({ center, dbId }: { center: Center; 
               ))}
             </div>
           </div>
+        </div>
+
+        <div className="my-2 h-px bg-[#F0F2F5]" />
+
+        <div>
+          <div className="mb-1 text-sm font-bold text-ink">Cancellazioni e modifiche</div>
+          <p className="mb-3 text-xs text-ink-2">
+            Entro quanti giorni prima dell&apos;inizio della settimana un genitore può annullare o
+            modificare una prenotazione in autonomia dall&apos;app. Oltre questo termine, il pulsante
+            resta visibile ma disabilitato e invita il genitore a contattare direttamente il centro.
+          </p>
+          <Field label="Giorni di preavviso richiesti">
+            <div className="flex items-center gap-2">
+              <input
+                type="number"
+                min={0}
+                max={60}
+                value={form.cancellationWindowDays}
+                onChange={(e) => update("cancellationWindowDays", Number(e.target.value))}
+                className="w-24 rounded-md border border-[#E8EBF0] bg-bg px-3 py-2 text-sm outline-none focus:border-sky"
+              />
+              <span className="text-sm text-ink-2">giorni prima dell&apos;inizio settimana</span>
+            </div>
+          </Field>
         </div>
 
         <div className="flex items-center gap-3 pt-2">

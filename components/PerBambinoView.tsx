@@ -125,9 +125,14 @@ export default function PerBambinoView({
           </div>
           <div className="flex flex-col gap-2">
             {bookingsByKid[selectedKid.id].map((b, i) => (
+              // BUG CORRETTO (segnalato da Fabrizio): questo link portava alla
+              // scheda campus (sola consultazione, niente azioni). Il genitore
+              // che vede "già prenotato" vuole invece GESTIRE la prenotazione
+              // (annullare, modificare) — ora porta a "Le mie prenotazioni"
+              // già filtrata sul bambino selezionato.
               <Link
                 key={`${b.activityId}-${i}`}
-                href={`/activity/${b.activityId}`}
+                href={`/prenotazioni?kid=${selectedKid.id}`}
                 className="flex items-center gap-2.5 rounded-lg border border-green-light bg-green-light px-3.5 py-3"
               >
                 <i className="ti ti-circle-check-filled text-lg text-green" />

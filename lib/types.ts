@@ -252,6 +252,10 @@ export interface Center {
   // Logo/foto reale del centro (Supabase Storage) — se assente si mostra
   // l'emoji + gradiente come prima.
   logoUrl?: string;
+  // Giorni di preavviso richiesti per annullare/modificare una prenotazione
+  // in autonomia (default 3) — domanda di Fabrizio: "entro quanto si può
+  // fare? può essere una variabile gestibile da ciascun centro estivo?".
+  cancellationWindowDays?: number;
 }
 
 // Disponibilità di un singolo giorno per un'attività — pensata per una

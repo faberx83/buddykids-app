@@ -273,6 +273,9 @@ export interface CenterProfileUpdateInput {
   familyDiscountTiers: number[]; // [2°figlio%, 3°figlio%, 4°+figlio%]
   groupDiscountTiers: { minKids: number; percent: number }[];
   logoUrl?: string | null;
+  // Giorni di preavviso per annullare/modificare una prenotazione in
+  // autonomia (domanda di Fabrizio sulla policy di cancellazione).
+  cancellationWindowDays: number;
 }
 
 export async function updateCenterProfileAction(
@@ -299,6 +302,7 @@ export async function updateCenterProfileAction(
       multiweek_discount_percent: input.multiweekDiscountPercent,
       family_discount_tiers: input.familyDiscountTiers,
       group_discount_tiers: input.groupDiscountTiers,
+      cancellation_window_days: input.cancellationWindowDays,
       ...(input.logoUrl !== undefined ? { logo_url: input.logoUrl } : {}),
     })
     .eq("id", input.centerDbId);

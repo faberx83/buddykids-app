@@ -62,6 +62,7 @@ interface RawCenterRow {
   family_discount_tiers: number[] | null;
   group_discount_tiers: { minKids: number; percent: number }[] | null;
   logo_url: string | null;
+  cancellation_window_days: number | null;
 }
 
 function mapCenterRow(row: RawCenterRow): Center {
@@ -84,6 +85,7 @@ function mapCenterRow(row: RawCenterRow): Center {
     familyDiscountTiers: row.family_discount_tiers ?? undefined,
     groupDiscountTiers: row.group_discount_tiers ?? undefined,
     logoUrl: row.logo_url ?? undefined,
+    cancellationWindowDays: row.cancellation_window_days ?? 3,
   };
 }
 
@@ -99,7 +101,7 @@ export async function getMyCenter(): Promise<{ center: Center; dbId: string | nu
   const { data, error } = await supabase
     .from("centers")
     .select(
-      "id, slug, name, emoji, gradient, city, address, description, contact_email, contact_phone, social_links, has_bar, multiweek_discount_percent, family_discount_tiers, group_discount_tiers, logo_url"
+      "id, slug, name, emoji, gradient, city, address, description, contact_email, contact_phone, social_links, has_bar, multiweek_discount_percent, family_discount_tiers, group_discount_tiers, logo_url, cancellation_window_days"
     )
     .eq("id", centerDbId)
     .single();
