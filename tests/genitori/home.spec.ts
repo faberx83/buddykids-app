@@ -1,22 +1,35 @@
-import { test, expect, gotoAsRole } from "../fixtures/roles";
+import { test, expect, loginAs, isRealDeployment } from "../fixtures/roles";
 
 // Area: Genitori - Home
 // Test implementati (selettori presi da app/(main)/page.tsx e components/HomeFeed.tsx).
+//
+// Convertiti da gotoAsRole a loginAs: Home reindirizza a /auth/login se
+// Supabase è configurato e non c'è sessione reale.
 
 test.describe("Genitori - Home", () => {
   test.beforeEach(async ({ page }) => {
-    await gotoAsRole(page, "parent", "/");
+    test.skip(!isRealDeployment, "Richiede un deploy con Supabase configurato e l'account genitore di test.");
+    await loginAs(page, "parent");
+    await page.goto("/");
   });
 
   // TC-013 - Filtro categoria in Home
+  // NOTA (aggiornato): la vecchia Home "🔥 Popolari vicino a te" con filtro
+  // categoria in cima è stata sostituita dal toggle Planner/Per bambino
+  // (vedi HomeFeed.tsx) — le "Categorie" ora vivono dentro "Per bambino"
+  // (PerBambinoView.tsx), senza un cambio di titolo dedicato: verifichiamo
+  // quindi che il chip si selezioni/deselezioni visivamente invece del
+  // vecchio titolo "🔥 Attività in questa categoria" che non esiste più.
   test("TC-013 - selezionare una categoria filtra le card, 'Tutte' ripristina", async ({ page }) => {
-    await expect(page.getByText("🔥 Popolari vicino a te")).toBeVisible();
+    await page.getByRole("button", { name: "Per bambino", exact: true }).click();
+    await expect(page.getByText("Categorie")).toBeVisible();
 
-    await page.getByText("Sport", { exact: true }).click();
-    await expect(page.getByText("🔥 Attività in questa categoria")).toBeVisible();
+    const sportChip = page.getByText("Sport", { exact: true }).locator("xpath=ancestor::div[contains(@class,'cursor-pointer')]").first();
+    await sportChip.click();
+    await expect(sportChip).toHaveClass(/border-sky/);
 
     await page.getByText("Tutte", { exact: true }).click();
-    await expect(page.getByText("🔥 Popolari vicino a te")).toBeVisible();
+    await expect(sportChip).not.toHaveClass(/border-sky/);
   });
 
   // TC-014 - Geolocalizzazione Home (permesso concesso)

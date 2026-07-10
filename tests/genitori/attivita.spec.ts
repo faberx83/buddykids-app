@@ -1,16 +1,25 @@
-import { test, expect, gotoAsRole } from "../fixtures/roles";
+import { test, expect, loginAs, isRealDeployment } from "../fixtures/roles";
 
 // Area: Genitori - Attivita
-// ID attivita reale preso da lib/mock-data.ts (dati demo).
-const DEMO_ACTIVITY_ID = "summer-camp-acquatico";
+// Convertiti da gotoAsRole a loginAs (Home/dettaglio richiedono sessione
+// reale contro un deploy con Supabase configurato). Attività seminata da
+// supabase/seed-test-data.sql, slug usato direttamente come "id" di rotta.
+const TEST_ACTIVITY_SLUG = "attivita-test-buddykids";
 
 test.describe("Genitori - Attivita", () => {
   // TC-025 - Apertura scheda attivita
   test("TC-025 - aprire una card da Home porta al dettaglio con dati reali", async ({ page }) => {
-    await gotoAsRole(page, "parent", "/");
-    await page.getByText("Summer Camp Acquatico").first().click();
+    test.skip(!isRealDeployment, "Richiede un deploy con Supabase configurato e l'attività di test seminata.");
+    await loginAs(page, "parent");
+    // Passiamo da Cerca invece che dal feed "Popolari" di Home: quel feed è
+    // curato per rating/recensioni e non garantisce di mostrare l'attività
+    // di test — Cerca la trova sempre, stesso componente ActivityCard/link
+    // di dettaglio usato da Home.
+    await page.goto("/search");
+    await page.getByPlaceholder("Cerca attività, centri, sport...").fill("[TEST] Attività BuddyKids");
+    await page.getByText("[TEST] Attività BuddyKids").first().click();
 
-    await expect(page).toHaveURL(new RegExp(`/activity/${DEMO_ACTIVITY_ID}`));
+    await expect(page).toHaveURL(new RegExp(`/activity/${TEST_ACTIVITY_SLUG}`));
     await expect(page.getByText("Servizi disponibili")).toBeVisible();
     await expect(page.getByRole("link", { name: "Prenota ora" })).toBeVisible();
   });
@@ -20,7 +29,9 @@ test.describe("Genitori - Attivita", () => {
   test("TC-026 - il preferito NON persiste dopo reload (comportamento noto, vedi FUNCTIONAL-TC-026)", async ({
     page,
   }) => {
-    await gotoAsRole(page, "parent", `/activity/${DEMO_ACTIVITY_ID}`);
+    test.skip(!isRealDeployment, "Richiede un deploy con Supabase configurato e l'attività di test seminata.");
+    await loginAs(page, "parent");
+    await page.goto(`/activity/${TEST_ACTIVITY_SLUG}`);
     const heart = page.locator(".ti-heart, .ti-heart-filled").first();
     await heart.click();
     await page.reload();

@@ -1,9 +1,14 @@
-import { test, expect, gotoAsRole } from "../fixtures/roles";
+import { test, expect, loginAs, isRealDeployment } from "../fixtures/roles";
 
 // Area: Gestore - Dashboard
 // NOTA: la dashboard e' "volutamente demo" (task #19 nel roadmap del team) -
 // mostra sempre i dati di lib/mock-data.ts anche con Supabase configurato.
 // Il test verifica quindi la struttura/i KPI, non dati "reali" per design.
+//
+// Convertiti da gotoAsRole a loginAs: /center richiede una sessione reale
+// (app/center/layout.tsx reindirizza a /auth/login se Supabase è configurato
+// e non c'è un utente autenticato — il ruolo demo da solo non basta più a
+// superare questo redirect contro un deploy reale).
 
 test.describe("Gestore - Dashboard", () => {
   // TC-072 - Dashboard Gestore carica KPI e sezioni chiave
@@ -11,7 +16,9 @@ test.describe("Gestore - Dashboard", () => {
   // "Le tue attività" è stata sostituita dal feed "Attività recente" — vedi
   // app/center/page.tsx. Il test è stato allineato al markup attuale.
   test("TC-072 - /center mostra KPI, occupazione settimanale e feed attività recente", async ({ page }) => {
-    await gotoAsRole(page, "center_admin", "/center");
+    test.skip(!isRealDeployment, "Richiede un deploy con Supabase configurato e l'account Gestore di test.");
+    await loginAs(page, "center_admin");
+    await page.goto("/center");
 
     await expect(page.getByText("Attività", { exact: true })).toBeVisible();
     await expect(page.getByText("Prenotazioni", { exact: true })).toBeVisible();
@@ -24,7 +31,9 @@ test.describe("Gestore - Dashboard", () => {
   // Passi: Apri /center, osserva il menu laterale
   // Risultato atteso: Le voci di menu sono raggruppate sotto intestazioni ("Oggi"/"Gestione"); la voce "Richieste Gruppo" mostra un badge rosso col numero di richieste in sospeso
   test("TC-119 - Nuova navigazione con raggruppamento sezioni e badge richieste in sospeso", async ({ page }) => {
-    await gotoAsRole(page, "center_admin", "/center");
+    test.skip(!isRealDeployment, "Richiede un deploy con Supabase configurato e l'account Gestore di test.");
+    await loginAs(page, "center_admin");
+    await page.goto("/center");
 
     await expect(page.getByText("Oggi", { exact: true })).toBeVisible();
     await expect(page.getByText("Gestione", { exact: true })).toBeVisible();
@@ -38,7 +47,9 @@ test.describe("Gestore - Dashboard", () => {
   // Passi: Apri /center
   // Risultato atteso: In cima alla dashboard compaiono banner dedicati per le settimane scariche e per le richieste in sospeso, prima delle metriche KPI
   test("TC-120 - Banner settimane scariche / richieste gruppo in sospeso", async ({ page }) => {
-    await gotoAsRole(page, "center_admin", "/center");
+    test.skip(!isRealDeployment, "Richiede un deploy con Supabase configurato e l'account Gestore di test.");
+    await loginAs(page, "center_admin");
+    await page.goto("/center");
 
     const weakWeeksBanner = page.getByText(/sotto il 40% di occupazione/);
     const pendingRequestsBanner = page.getByText(/richiest[ae] gruppo in attesa/);
@@ -61,7 +72,9 @@ test.describe("Gestore - Dashboard", () => {
   // Passi: Apri /center, osserva la colonna destra
   // Risultato atteso: Al posto della vecchia lista "Le tue attività" compare un feed cronologico che unisce settimane scariche, richieste gruppo, prenotazioni e promozioni
   test("TC-121 - Feed attività unificato \"Attività recente\"", async ({ page }) => {
-    await gotoAsRole(page, "center_admin", "/center");
+    test.skip(!isRealDeployment, "Richiede un deploy con Supabase configurato e l'account Gestore di test.");
+    await loginAs(page, "center_admin");
+    await page.goto("/center");
 
     await expect(page.getByText("Attività recente")).toBeVisible();
     // La vecchia lista statica "Le tue attività" non deve più esistere in questa colonna.

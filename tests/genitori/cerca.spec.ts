@@ -1,11 +1,16 @@
-import { test, expect, gotoAsRole } from "../fixtures/roles";
+import { test, expect, loginAs, isRealDeployment } from "../fixtures/roles";
 
 // Area: Genitori - Cerca
 // Test implementati (selettori presi da app/(main)/search/SearchClient.tsx).
+// Convertiti da gotoAsRole a loginAs: /search richiede sessione reale contro
+// un deploy con Supabase configurato; l'attività di test seminata garantisce
+// almeno un risultato su cui i filtri possano operare.
 
 test.describe("Genitori - Cerca", () => {
   test.beforeEach(async ({ page }) => {
-    await gotoAsRole(page, "parent", "/search");
+    test.skip(!isRealDeployment, "Richiede un deploy con Supabase configurato e l'account genitore di test.");
+    await loginAs(page, "parent");
+    await page.goto("/search");
   });
 
   function resultsCount(page: import("@playwright/test").Page) {

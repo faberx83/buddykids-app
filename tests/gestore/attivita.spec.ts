@@ -1,23 +1,37 @@
-import { test, expect, gotoAsRole } from "../fixtures/roles";
+import { test, expect, loginAs, isRealDeployment } from "../fixtures/roles";
 
 // Area: Gestore - Attivita
+//
+// TC-073/TC-074 convertiti da "Ruolo demo" (gotoAsRole) a login reale
+// (loginAs) — contro produzione il ruolo demo è disattivato e i dati mock
+// ("Summer Camp Acquatico") non esistono; usiamo invece l'attività seminata
+// da supabase/seed-test-data.sql ("[TEST] Attività BuddyKids").
 
 test.describe("Gestore - Attivita", () => {
-  // TC-073 - Elenco attivita del centro (lettura, funziona anche in mock mode)
+  // TC-073 - Elenco attivita del centro
   test("TC-073 - /center/activities mostra le attività del centro collegato", async ({ page }) => {
-    await gotoAsRole(page, "center_admin", "/center/activities");
-    // Il centro demo (demoCenterAdminCenterId) ha almeno l'attivita' "Summer Camp Acquatico".
-    await expect(page.getByText("Summer Camp Acquatico")).toBeVisible();
+    test.skip(!isRealDeployment, "Richiede un deploy con Supabase configurato e l'account Gestore di test collegato al centro.");
+    await loginAs(page, "center_admin");
+    await page.goto("/center/activities");
+    await expect(page.getByText("[TEST] Attività BuddyKids")).toBeVisible();
   });
 
   // TC-074 - Creazione nuova attivita (richiede Supabase configurato)
   test("TC-074 - creare una nuova attività la salva e reindirizza alla modifica", async ({ page }) => {
     test.skip(
-      !process.env.TEST_BASE_URL,
+      !isRealDeployment,
       "Richiede un deploy con Supabase configurato (scrittura reale su Supabase)."
     );
+    await loginAs(page, "center_admin");
     await page.goto("/center/activities/new");
-    // TODO: compilare il form reale una volta verificati i campi su un deploy configurato.
+
+    const name = `[TEST] Attività auto ${Date.now()}`;
+    await page.getByPlaceholder("Es. Laboratorio Arti Creative").fill(name);
+    await page.locator('input[type="number"]').fill("100");
+    await page.getByRole("button", { name: "Crea attività" }).click();
+
+    await expect(page).toHaveURL(/\/center\/activities\/.+/, { timeout: 15_000 });
+    await expect(page.getByText(name)).toBeVisible();
   });
   // Priorita: Alta | Precondizioni: Attivita esistente
   // Passi: Apri un'attivita -> modifica prezzo/eta/servizi/tag -> salva

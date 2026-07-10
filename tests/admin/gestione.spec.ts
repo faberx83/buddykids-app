@@ -1,19 +1,30 @@
-import { test, expect, gotoAsRole } from "../fixtures/roles";
+import { test, expect, loginAs, isRealDeployment } from "../fixtures/roles";
 
 // Area: Admin - Gestione
+// Convertiti da gotoAsRole a loginAs: /admin reindirizza a /auth/login se
+// Supabase è configurato e non c'è sessione reale.
 
 test.describe("Admin - Gestione", () => {
   // TC-083 - Elenco attivita (tutte) - noto FUNCTIONAL: dati sempre mock (task #19)
   test("TC-083 - /admin/activities elenca le attività (oggi: dati demo)", async ({ page }) => {
-    await gotoAsRole(page, "platform_admin", "/admin/activities");
+    test.skip(!isRealDeployment, "Richiede un deploy con Supabase configurato e l'account Admin di test.");
+    await loginAs(page, "platform_admin");
+    await page.goto("/admin/activities");
     await expect(page.getByText("Summer Camp Acquatico")).toBeVisible();
   });
 
   // TC-088 - Gestione tag piattaforma (richiede Supabase configurato per la scrittura)
   test("TC-088 - creare un tag lo rende subito selezionabile", async ({ page }) => {
-    test.skip(!process.env.TEST_BASE_URL, "Richiede Supabase configurato (scrittura reale).");
+    test.skip(!isRealDeployment, "Richiede Supabase configurato (scrittura reale).");
+    await loginAs(page, "platform_admin");
     await page.goto("/admin/tags");
-    // TODO: compilare una volta verificati i campi reali del form su un deploy configurato.
+
+    await page.getByRole("button", { name: "+ Nuovo tag" }).click();
+    const label = `Test ${Date.now()}`;
+    await page.getByPlaceholder("Es. Avventura").fill(label);
+    await page.getByRole("button", { name: "Crea tag" }).click();
+
+    await expect(page.getByText(label)).toBeVisible({ timeout: 10_000 });
   });
   // Priorita: Media | Precondizioni: Nessuna
   // Passi: Apri /admin/bookings

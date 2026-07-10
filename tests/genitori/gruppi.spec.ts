@@ -1,4 +1,4 @@
-import { test, expect, gotoAsRole } from "../fixtures/roles";
+import { test, expect, loginAs, isRealDeployment } from "../fixtures/roles";
 
 // Area: Genitori - Gruppi
 // NOTA IMPORTANTE: le azioni di scrittura (createGroupAction e simili in
@@ -10,25 +10,38 @@ import { test, expect, gotoAsRole } from "../fixtures/roles";
 // Supabase configurato + un utente autenticato reale (usare loginAs() invece
 // di gotoAsRole per quei test, con TEST_BASE_URL puntato a un deploy vero).
 
-const DEMO_GROUP_ID = "camp-acquatico-2025"; // da lib/mock-data.ts
-
 test.describe("Genitori - Gruppi", () => {
-  // TC-036 - Apertura dettaglio gruppo (lettura, funziona anche in mock mode)
+  // TC-036 - Apertura dettaglio gruppo
+  // Convertito da gotoAsRole (leggeva il gruppo mock "camp-acquatico-2025",
+  // che contro produzione non esiste) a un test autosufficiente: crea un
+  // proprio gruppo di test (stesso flusso di TC-035) e ne apre il dettaglio.
   test("TC-036 - aprire un gruppo mostra nome, invito, tab bambini e accompagnamento", async ({
     page,
   }) => {
-    await gotoAsRole(page, "parent", `/groups/${DEMO_GROUP_ID}`);
-    await expect(page.getByText("Camp Acquatico — Estate 2025")).toBeVisible();
+    test.skip(!isRealDeployment, "Richiede un deploy con Supabase configurato e l'account genitore di test.");
+    await loginAs(page, "parent");
+    await page.goto("/groups");
+    await page.getByRole("button", { name: "+ Nuovo" }).click();
+    const name = `Gruppo test dettaglio ${Date.now()}`;
+    await page.getByPlaceholder("Nome del gruppo").fill(name);
+    await page.getByRole("button", { name: "Crea gruppo" }).click();
+    await expect(page).toHaveURL(/\/groups\/.+/);
+
+    await expect(page.getByText(name)).toBeVisible();
     await expect(page.getByText(/Invita famiglie/i)).toBeVisible();
   });
 
   // TC-035 - Creazione gruppo (richiede Supabase configurato + login reale)
   test("TC-035 - creare un nuovo gruppo lo aggiunge a 'I miei gruppi'", async ({ page }) => {
     test.skip(
-      !process.env.TEST_BASE_URL,
+      !isRealDeployment,
       "Richiede un deploy con Supabase configurato: imposta TEST_BASE_URL e le credenziali di test (vedi tests/fixtures/roles.ts)."
     );
-    // In un ambiente reale: sostituire gotoAsRole con loginAs(page, "parent") prima di questo goto.
+    // BUG TROVATO+CORRETTO: il TODO diceva di sostituire gotoAsRole con
+    // loginAs prima di questo goto, ma non era mai stato fatto — il test
+    // navigava su /groups senza sessione, quindi "+ Nuovo" non compariva mai
+    // (timeout). Corretto aggiungendo il login reale.
+    await loginAs(page, "parent");
     await page.goto("/groups");
     await page.getByRole("button", { name: "+ Nuovo" }).click();
     const name = `Gruppo test ${Date.now()}`;
