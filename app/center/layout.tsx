@@ -70,6 +70,12 @@ export default async function CenterLayout({ children }: { children: React.React
       sectionLabel: "Gestione",
     },
     {
+      href: "/center/report-presenze",
+      label: "Report presenze",
+      icon: "ti-chart-bar",
+      sectionLabel: "Gestione",
+    },
+    {
       href: "/center/richieste",
       label: "Le mie richieste",
       icon: "ti-message-circle-2",
