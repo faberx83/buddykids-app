@@ -2,6 +2,9 @@ import MenuItem from "@/components/MenuItem";
 import LogoutButton from "@/components/LogoutButton";
 import ProfileKidsSection from "@/components/ProfileKidsSection";
 import ProfileHeaderClient from "@/components/ProfileHeaderClient";
+import ProfileSecuritySection from "@/components/ProfileSecuritySection";
+import ProfilePreferencesSection from "@/components/ProfilePreferencesSection";
+import ProfilePrivacySection from "@/components/ProfilePrivacySection";
 import { getKidsForUser } from "@/lib/data/kids";
 import { getParentProfile } from "@/lib/data/profile";
 import { DemoBadge } from "@/components/StatusBadge";
@@ -11,11 +14,12 @@ export default async function ProfilePage({
 }: {
   searchParams: Promise<{ complete?: string; addKid?: string }>;
 }) {
-  const [{ fullName, email, parentRole, avatarUrl }, kids, params] = await Promise.all([
+  const [profile, kids, params] = await Promise.all([
     getParentProfile(),
     getKidsForUser(),
     searchParams,
   ]);
+  const { fullName, email, parentRole, avatarUrl } = profile;
   const autoOpenEdit = params.complete === "1";
   const autoOpenAddKid = params.addKid === "1";
 
@@ -33,6 +37,9 @@ export default async function ProfilePage({
           initialAvatarUrl={avatarUrl}
           email={email}
           autoOpenEdit={autoOpenEdit}
+          initialPhone={profile.phone}
+          initialDateOfBirth={profile.dateOfBirth}
+          initialGender={profile.gender}
         />
         <div className="mb-1.5 flex justify-end">
           <DemoBadge label="Numeri demo" />
@@ -59,14 +66,6 @@ export default async function ProfilePage({
           comingSoon
         />
         <MenuItem
-          icon="ti-bell"
-          iconBg="#FFF0EA"
-          iconColor="#FF8C5A"
-          main="Notifiche"
-          sub="Non ancora attive"
-          comingSoon
-        />
-        <MenuItem
           icon="ti-heart"
           iconBg="#FFF8E7"
           iconColor="#c49a00"
@@ -86,11 +85,40 @@ export default async function ProfilePage({
 
       <div className="px-5 pt-3">
         <div className="mb-2 text-[11px] font-bold uppercase tracking-wide text-ink-3">
+          Sicurezza
+        </div>
+        <ProfileSecuritySection />
+      </div>
+
+      <div className="px-5 pt-3">
+        <div className="mb-2 text-[11px] font-bold uppercase tracking-wide text-ink-3">
+          Preferenze
+        </div>
+        <ProfilePreferencesSection
+          initialLanguage={profile.language}
+          initialTheme={profile.theme}
+          initialNotifyEmail={profile.notifyEmail}
+          initialNotifyPush={profile.notifyPush}
+          initialNotifySms={profile.notifySms}
+        />
+      </div>
+
+      <div className="px-5 pt-3">
+        <div className="mb-2 text-[11px] font-bold uppercase tracking-wide text-ink-3">
+          Privacy e account
+        </div>
+        <ProfilePrivacySection
+          initialMarketingConsent={profile.marketingConsent}
+          initialAccountStatus={profile.accountStatus}
+        />
+      </div>
+
+      <div className="px-5 pt-3">
+        <div className="mb-2 text-[11px] font-bold uppercase tracking-wide text-ink-3">
           Supporto
         </div>
         <MenuItem icon="ti-message-circle" iconBg="#F4F6FA" iconColor="#6B7280" main="Chat con organizzatori" sub="Rispondiamo in 2 ore" comingSoon />
         <MenuItem icon="ti-file-invoice" iconBg="#F4F6FA" iconColor="#6B7280" main="Ricevute e fatture" comingSoon />
-        <MenuItem icon="ti-language" iconBg="#F4F6FA" iconColor="#6B7280" main="Lingua" sub="Italiano · English" comingSoon />
       </div>
 
       <LogoutButton />

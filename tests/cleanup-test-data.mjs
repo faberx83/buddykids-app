@@ -78,7 +78,22 @@ async function main() {
     invites: 0,
     extraKids: 0,
     extraActivities: 0,
+    accountStatusReset: 0,
   };
+
+  // Riporta account_status a 'active' per gli account di test — TC-136/TC-137
+  // (tests/genitori/profilo.spec.ts) disattivano/richiedono la cancellazione
+  // dell'account di test durante il test stesso: senza questo reset, i run
+  // successivi troverebbero l'account già "deactivated"/"deletion_requested".
+  const idsToReset = [parent?.id, gestore?.id].filter(Boolean);
+  if (idsToReset.length > 0) {
+    const { data: resetRows } = await supabase
+      .from("profiles")
+      .update({ account_status: "active", deletion_requested_at: null })
+      .in("id", idsToReset)
+      .select("id");
+    removed.accountStatusReset = resetRows?.length || 0;
+  }
 
   if (parent) {
     // Prenotazioni del genitore di test (cascade -> booking_weeks, booking_kids)
@@ -138,6 +153,61 @@ async function main() {
   }
 
   console.log("✅ Pulizia completata:", removed);
+
+  // ─────────────────────────────────────────────
+  // Ricrea una prenotazione "fixture" per il Registro presenze del Gestore
+  // (tests/gestore/attendance.spec.ts, TC-139/TC-140): il bambino di test
+  // iscritto alla prima settimana dell'attività di test. Va ricreata ad ogni
+  // run perché la pulizia sopra elimina TUTTE le prenotazioni del genitore di
+  // test, fixture inclusa — è economico e idempotente (nessun rischio di
+  // duplicati "sporchi" perché ripartiamo sempre da zero).
+  // ─────────────────────────────────────────────
+  if (parent && seedActivity) {
+    const { data: testKid } = await supabase
+      .from("kids")
+      .select("id")
+      .eq("parent_id", parent.id)
+      .eq("name", SEED_KID_NAME)
+      .maybeSingle();
+
+    const { data: firstWeek } = await supabase
+      .from("activity_weeks")
+      .select("id")
+      .eq("activity_id", seedActivity.id)
+      .order("start_date", { ascending: true })
+      .limit(1)
+      .maybeSingle();
+
+    const { data: activityRow } = await supabase
+      .from("activities")
+      .select("price_per_week")
+      .eq("id", seedActivity.id)
+      .maybeSingle();
+
+    if (testKid && firstWeek) {
+      const { data: booking, error: bookingError } = await supabase
+        .from("bookings")
+        .insert({
+          parent_id: parent.id,
+          activity_id: seedActivity.id,
+          status: "confirmed",
+          payment_method: "card",
+          total_amount: activityRow?.price_per_week ?? 120,
+          discount_amount: 0,
+          shuttle_included: false,
+        })
+        .select("id")
+        .single();
+
+      if (!bookingError && booking) {
+        await supabase.from("booking_weeks").insert({ booking_id: booking.id, week_id: firstWeek.id });
+        await supabase.from("booking_kids").insert({ booking_id: booking.id, kid_id: testKid.id });
+        console.log("✅ Prenotazione fixture ricreata per il Registro presenze (Settimana 1).");
+      } else if (bookingError) {
+        console.warn("⚠️  Impossibile ricreare la prenotazione fixture:", bookingError.message);
+      }
+    }
+  }
 }
 
 main().catch((err) => {

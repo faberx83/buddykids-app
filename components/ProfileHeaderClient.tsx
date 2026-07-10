@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { ParentRole } from "@/lib/data/profile";
+import type { ParentRole, Gender } from "@/lib/data/profile";
 import { updateParentProfileAction, updateParentAvatarAction } from "@/app/actions/profile";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
 import AvatarUploadButton from "@/components/AvatarUploadButton";
@@ -12,22 +12,41 @@ const roleLabels: Record<ParentRole, string> = {
   tutore: "Tutore/tutrice",
 };
 
+const genderLabels: Record<Gender, string> = {
+  M: "Uomo",
+  F: "Donna",
+  altro: "Altro",
+};
+
 export default function ProfileHeaderClient({
   initialFullName,
   initialParentRole,
   initialAvatarUrl,
   email,
   autoOpenEdit,
+  initialPhone = "",
+  initialDateOfBirth = null,
+  initialGender = null,
+  showRoleSelector = true,
 }: {
   initialFullName: string;
   initialParentRole: ParentRole | null;
   initialAvatarUrl?: string | null;
   email: string;
   autoOpenEdit?: boolean;
+  initialPhone?: string;
+  initialDateOfBirth?: string | null;
+  initialGender?: Gender | null;
+  // La selezione "Sei: Padre/Madre/Tutore" ha senso solo per il profilo
+  // genitore — nella pagina "Il mio account" del gestore viene nascosta.
+  showRoleSelector?: boolean;
 }) {
   const [editing, setEditing] = useState(Boolean(autoOpenEdit));
   const [fullName, setFullName] = useState(initialFullName);
   const [parentRole, setParentRole] = useState<ParentRole | "">(initialParentRole ?? "");
+  const [phone, setPhone] = useState(initialPhone);
+  const [dateOfBirth, setDateOfBirth] = useState(initialDateOfBirth ?? "");
+  const [gender, setGender] = useState<Gender | "">(initialGender ?? "");
   const [displayName, setDisplayName] = useState(initialFullName || email.split("@")[0]);
   const [savedRole, setSavedRole] = useState(initialParentRole);
   const [avatarUrl, setAvatarUrl] = useState(initialAvatarUrl ?? null);
@@ -51,25 +70,31 @@ export default function ProfileHeaderClient({
 
   async function handleSave() {
     setError(null);
-    if (!fullName.trim() || !parentRole) {
-      setError("Inserisci nome e cognome e scegli un ruolo");
+    if (!fullName.trim() || (showRoleSelector && !parentRole)) {
+      setError(showRoleSelector ? "Inserisci nome e cognome e scegli un ruolo" : "Inserisci nome e cognome");
       return;
     }
     if (!isSupabaseConfigured) {
       setDisplayName(fullName.trim());
-      setSavedRole(parentRole);
+      setSavedRole(parentRole || null);
       setEditing(false);
       return;
     }
     setSaving(true);
-    const result = await updateParentProfileAction({ fullName, parentRole });
+    const result = await updateParentProfileAction({
+      fullName,
+      parentRole: parentRole || undefined,
+      phone,
+      dateOfBirth: dateOfBirth || undefined,
+      gender: gender || undefined,
+    });
     setSaving(false);
     if (result.error) {
       setError(result.error);
       return;
     }
     setDisplayName(fullName.trim());
-    setSavedRole(parentRole);
+    setSavedRole(parentRole || null);
     setEditing(false);
   }
 
@@ -113,21 +138,66 @@ export default function ProfileHeaderClient({
             onChange={(e) => setFullName(e.target.value)}
             className="mb-3 w-full rounded-md border border-[#E8EBF0] bg-bg px-3 py-2 text-sm outline-none focus:border-sky"
           />
-          <label className="mb-1.5 block text-xs font-semibold text-ink-2">Sei</label>
+
+          {showRoleSelector && (
+            <>
+              <label className="mb-1.5 block text-xs font-semibold text-ink-2">Sei</label>
+              <div className="mb-3 flex gap-2">
+                {(Object.keys(roleLabels) as ParentRole[]).map((r) => (
+                  <button
+                    key={r}
+                    type="button"
+                    onClick={() => setParentRole(r)}
+                    className={`rounded-full border px-3 py-1.5 text-xs font-semibold transition-colors ${
+                      parentRole === r ? "border-sky bg-sky text-white" : "border-[#E8EBF0] bg-bg text-ink-2"
+                    }`}
+                  >
+                    {roleLabels[r]}
+                  </button>
+                ))}
+              </div>
+            </>
+          )}
+
+          <label htmlFor="profile-phone" className="mb-1.5 block text-xs font-semibold text-ink-2">
+            Telefono
+          </label>
+          <input
+            id="profile-phone"
+            type="tel"
+            value={phone}
+            onChange={(e) => setPhone(e.target.value)}
+            placeholder="Es. 333 1234567"
+            className="mb-3 w-full rounded-md border border-[#E8EBF0] bg-bg px-3 py-2 text-sm outline-none focus:border-sky"
+          />
+
+          <label htmlFor="profile-dob" className="mb-1.5 block text-xs font-semibold text-ink-2">
+            Data di nascita
+          </label>
+          <input
+            id="profile-dob"
+            type="date"
+            value={dateOfBirth}
+            onChange={(e) => setDateOfBirth(e.target.value)}
+            className="mb-3 w-full rounded-md border border-[#E8EBF0] bg-bg px-3 py-2 text-sm outline-none focus:border-sky"
+          />
+
+          <label className="mb-1.5 block text-xs font-semibold text-ink-2">Genere</label>
           <div className="mb-3 flex gap-2">
-            {(Object.keys(roleLabels) as ParentRole[]).map((r) => (
+            {(Object.keys(genderLabels) as Gender[]).map((g) => (
               <button
-                key={r}
+                key={g}
                 type="button"
-                onClick={() => setParentRole(r)}
+                onClick={() => setGender(g)}
                 className={`rounded-full border px-3 py-1.5 text-xs font-semibold transition-colors ${
-                  parentRole === r ? "border-sky bg-sky text-white" : "border-[#E8EBF0] bg-bg text-ink-2"
+                  gender === g ? "border-sky bg-sky text-white" : "border-[#E8EBF0] bg-bg text-ink-2"
                 }`}
               >
-                {roleLabels[r]}
+                {genderLabels[g]}
               </button>
             ))}
           </div>
+
           {error && <p className="mb-2 text-xs font-medium text-orange">{error}</p>}
           <button
             type="button"

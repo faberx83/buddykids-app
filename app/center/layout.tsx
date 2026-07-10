@@ -46,6 +46,12 @@ export default async function CenterLayout({ children }: { children: React.React
       badgeCount: pendingGroupRequests,
     },
     {
+      href: "/center/attendance",
+      label: "Registro presenze",
+      icon: "ti-clipboard-check",
+      sectionLabel: "Gestione",
+    },
+    {
       href: "/center/servizi-consigliati",
       label: "Servizi consigliati",
       icon: "ti-map-2",
@@ -56,6 +62,12 @@ export default async function CenterLayout({ children }: { children: React.React
       label: "Inviti",
       icon: "ti-user-plus",
       sectionLabel: "Gestione",
+    },
+    {
+      href: "/center/account",
+      label: "Il mio account",
+      icon: "ti-user-circle",
+      sectionLabel: "Account",
     },
   ];
 
