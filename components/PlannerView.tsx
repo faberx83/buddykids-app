@@ -220,6 +220,27 @@ export default function PlannerView({
         </div>
       </div>
 
+      {/* Legenda colori (segnalazione di Fabrizio: "non ho capito la legenda
+          colori arancio giallo verde delle settimane"). Il colore delle
+          righe coperte segue la categoria dell'attività (sky/aqua/viola/
+          verde/arancio come nel resto dell'app, vedi lib/colors.ts) — solo
+          bianco/giallo hanno un significato di STATO fisso, per questo sono
+          gli unici due spiegati qui esplicitamente. */}
+      <div className="mb-3 flex flex-wrap items-center gap-x-4 gap-y-1.5 text-[11px] text-ink-2">
+        <span className="flex items-center gap-1.5">
+          <span className="h-2.5 w-2.5 flex-shrink-0 rounded-full border border-[#D8DEE8] bg-white" />
+          Da riempire
+        </span>
+        <span className="flex items-center gap-1.5">
+          <span className="h-2.5 w-2.5 flex-shrink-0 rounded-full bg-yellow-light" />
+          Manca un bambino
+        </span>
+        <span className="flex items-center gap-1.5">
+          <span className="h-2.5 w-2.5 flex-shrink-0 rounded-full bg-sky-light" />
+          Coperta (colore = categoria attività)
+        </span>
+      </div>
+
       <div className="mb-4 space-y-2.5">
         {resolvedWeeks.map((w) => {
           const color = w.viewActivityTagColor ?? "sky";
@@ -235,89 +256,102 @@ export default function PlannerView({
             : `/search?week=${w.startDate}`;
 
           return (
-            <div key={w.index} className={`flex items-center gap-2.5 rounded-2xl p-3.5 ${rowBg}`}>
-              {w.viewCovered ? (
-                <>
-                  <div className="flex h-[42px] w-[42px] flex-shrink-0 items-center justify-center rounded-xl bg-white/60">
-                    <i className={`ti ti-calendar-check text-lg ${TINT_TEXT_CLASSES[color]}`} />
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <div className="truncate text-[13.5px] font-bold text-ink">
-                      {w.viewActivityName ?? "Prenotata"}
-                    </div>
-                    <div className="mt-0.5 truncate text-[11.5px] text-ink-2">
-                      Settimana {w.index} · {w.dateRange}
-                      {isPartial && ` · manca per ${w.partialForKids.map((k) => k.name).join(", ")}`}
-                    </div>
-                    {/* CTA "Aggiungi [bambino]" per ogni figlio non ancora
-                        coperto — prima c'era solo un'icona di warning senza
-                        alcuna azione. Punta direttamente alla prenotazione
-                        della STESSA attività/settimana già scelta per gli
-                        altri fratelli (non a Cerca): se quel bambino ha già
-                        una prenotazione DIVERSA per questa settimana, la
-                        settimana risulta comunque bloccata come "già
-                        prenotata" in Prenotazione, per design. */}
-                    {isPartial && w.viewActivitySlug && (
-                      <div className="mt-1.5 flex flex-wrap gap-1.5">
-                        {w.partialForKids.map((k) => (
-                          <Link
-                            key={k.id}
-                            href={`/booking/${w.viewActivitySlug}?week=${w.startDate}&kid=${k.id}`}
-                            className="rounded-full bg-white px-2.5 py-1 text-[11px] font-bold text-[#9a6b00] shadow-[0_1px_3px_rgba(0,0,0,0.08)]"
-                          >
-                            + Aggiungi {k.name}
-                          </Link>
-                        ))}
+            <div key={w.index} className={`rounded-2xl p-3.5 ${rowBg}`}>
+              <div className="flex items-center gap-2.5">
+                {w.viewCovered ? (
+                  <>
+                    {/* Segnalazione di Fabrizio: il click su una settimana
+                        coperta non portava da nessuna parte — ora apre la
+                        scheda dell'attività (thumbnail + testo cliccabili). Le
+                        chip "+ Aggiungi" restano fuori dal link (un <a>
+                        dentro un altro <a> non è valido) — vedi sotto. */}
+                    <Link
+                      href={w.viewActivitySlug ? `/activity/${w.viewActivitySlug}` : "#"}
+                      className="flex min-w-0 flex-1 items-center gap-2.5"
+                    >
+                      <div className="flex h-[42px] w-[42px] flex-shrink-0 items-center justify-center rounded-xl bg-white/60">
+                        <i className={`ti ti-calendar-check text-lg ${TINT_TEXT_CLASSES[color]}`} />
                       </div>
+                      <div className="min-w-0 flex-1">
+                        <div className="truncate text-[13.5px] font-bold text-ink">
+                          {w.viewActivityName ?? "Prenotata"}
+                        </div>
+                        <div className="mt-0.5 truncate text-[11.5px] text-ink-2">
+                          Settimana {w.index} · {w.dateRange}
+                          {isPartial && ` · manca per ${w.partialForKids.map((k) => k.name).join(", ")}`}
+                        </div>
+                      </div>
+                    </Link>
+                    {isPartial ? (
+                      <i className="ti ti-alert-circle-filled flex-shrink-0 text-[19px] text-yellow" />
+                    ) : (
+                      <i className="ti ti-circle-check-filled flex-shrink-0 text-[19px] text-green" />
                     )}
-                  </div>
-                  {isPartial ? (
-                    <i className="ti ti-alert-circle-filled flex-shrink-0 text-[19px] text-yellow" />
-                  ) : (
-                    <i className="ti ti-circle-check-filled flex-shrink-0 text-[19px] text-green" />
-                  )}
-                </>
-              ) : w.dismissed ? (
-                <>
-                  {/* Segnalazione di Fabrizio: le settimane escluse/scoperte
-                      devono avere la stessa naming convention delle coperte
-                      ("Settimana N · intervallo date"), non un'etichetta di
-                      stato al posto della data — lo stato ("non ti serve")
-                      resta ma come riga secondaria, non sostituisce la data. */}
-                  <div className="flex-1">
-                    <div className="text-[13px] font-medium text-ink-2">Settimana {w.index} · {w.dateRange}</div>
-                    <div className="mt-0.5 text-[11px] text-ink-3">non ti serve</div>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => toggleDismissed(w)}
-                    disabled={saving === w.startDate}
-                    className="flex-shrink-0 text-xs font-semibold text-sky disabled:opacity-60"
-                  >
-                    Ripristina
-                  </button>
-                </>
-              ) : (
-                <>
-                  <div className="flex-1">
-                    <div className="text-[13px] font-bold text-ink-3">Settimana {w.index} · {w.dateRange}</div>
-                    <div className="mt-0.5 text-[11px] text-ink-3">scoperta</div>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => toggleDismissed(w)}
-                    disabled={saving === w.startDate}
-                    className="flex-shrink-0 text-[11px] font-medium text-ink-3 underline disabled:opacity-60"
-                  >
-                    Non mi serve
-                  </button>
-                  <Link
-                    href={riempiHref}
-                    className="flex-shrink-0 rounded-full bg-orange px-3.5 py-[7px] text-[11.5px] font-bold text-white"
-                  >
-                    Riempi
-                  </Link>
-                </>
+                  </>
+                ) : w.dismissed ? (
+                  <>
+                    {/* Segnalazione di Fabrizio: le settimane escluse/scoperte
+                        devono avere la stessa naming convention delle coperte
+                        ("Settimana N · intervallo date"), non un'etichetta di
+                        stato al posto della data — lo stato ("non ti serve")
+                        resta ma come riga secondaria, non sostituisce la data. */}
+                    <div className="flex-1">
+                      <div className="text-[13px] font-medium text-ink-2">Settimana {w.index} · {w.dateRange}</div>
+                      <div className="mt-0.5 text-[11px] text-ink-3">non ti serve</div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => toggleDismissed(w)}
+                      disabled={saving === w.startDate}
+                      className="flex-shrink-0 text-xs font-semibold text-sky disabled:opacity-60"
+                    >
+                      Ripristina
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <div className="flex-1">
+                      <div className="text-[13px] font-bold text-ink-3">Settimana {w.index} · {w.dateRange}</div>
+                      <div className="mt-0.5 text-[11px] text-ink-3">scoperta</div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => toggleDismissed(w)}
+                      disabled={saving === w.startDate}
+                      className="flex-shrink-0 text-[11px] font-medium text-ink-3 underline disabled:opacity-60"
+                    >
+                      Non mi serve
+                    </button>
+                    <Link
+                      href={riempiHref}
+                      className="flex-shrink-0 rounded-full bg-orange px-3.5 py-[7px] text-[11.5px] font-bold text-white"
+                    >
+                      Riempi
+                    </Link>
+                  </>
+                )}
+              </div>
+              {/* CTA "Aggiungi [bambino]" per ogni figlio non ancora coperto —
+                  prima c'era solo un'icona di warning senza alcuna azione.
+                  Punta direttamente alla prenotazione della STESSA
+                  attività/settimana già scelta per gli altri fratelli (non a
+                  Cerca): se quel bambino ha già una prenotazione DIVERSA per
+                  questa settimana, la settimana risulta comunque bloccata
+                  come "già prenotata" in Prenotazione, per design. Spostata
+                  fuori dal link della card (vedi sopra) per non annidare due
+                  <a> uno dentro l'altro. */}
+              {w.viewCovered && isPartial && w.viewActivitySlug && (
+                <div className="mt-1.5 flex flex-wrap gap-1.5 pl-[50px]">
+                  {w.partialForKids.map((k) => (
+                    <Link
+                      key={k.id}
+                      href={`/booking/${w.viewActivitySlug}?week=${w.startDate}&kid=${k.id}`}
+                      className="rounded-full bg-white px-2.5 py-1 text-[11px] font-bold text-[#9a6b00] shadow-[0_1px_3px_rgba(0,0,0,0.08)]"
+                    >
+                      + Aggiungi {k.name}
+                    </Link>
+                  ))}
+                </div>
               )}
             </div>
           );

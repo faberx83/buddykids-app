@@ -107,10 +107,17 @@ export async function getInquiriesForCenter(): Promise<CenterInquiry[]> {
     if (activityIds.length === 0) return [];
   }
 
+  // BUG TROVATO+CORRETTO (segnalato da Fabrizio: richiesta inviata dal
+  // genitore visibile in "Le mie richieste" ma non in /center/richieste):
+  // activity_inquiries ha DUE foreign key verso profiles (parent_id E
+  // replied_by), quindi un embed "profiles ( ... )" senza indicazione era
+  // ambiguo per PostgREST ("more than one relationship was found") — la
+  // query falliva con errore, e "error || !data" lo trasformava in [] senza
+  // segnalarlo. L'hint "!parent_id" indica esplicitamente quale FK seguire.
   let query = supabase
     .from("activity_inquiries")
     .select(
-      "id, message, status, reply, created_at, activities ( slug, name ), profiles ( full_name, email )"
+      "id, message, status, reply, created_at, activities ( slug, name ), profiles!parent_id ( full_name, email )"
     )
     .order("created_at", { ascending: false });
 

@@ -51,49 +51,61 @@ export default async function CenterLayout({ children }: { children: React.React
       .slice(0, 2)
       .toUpperCase() || "?";
 
+  // Segnalazione di Fabrizio: "nidifichiamo un po' il menu... report e
+  // registro presenze insieme va benone!". Il vecchio unico gruppo
+  // "Gestione" (7 voci) è stato diviso in sotto-gruppi tematici (stesso
+  // meccanismo di intestazioni già esistente in DashboardLayout, solo
+  // applicato con più granularità): "Attività" (anagrafica/offerta),
+  // "Presenze" (Registro + Report, la coppia che Fabrizio ha approvato come
+  // esempio), "Richieste" (Gruppo + ticketing genitori, stesso concetto).
   const navItems = [
     { href: "/center", label: "Dashboard", icon: "ti-layout-dashboard", sectionLabel: "Oggi" },
-    { href: "/center/profile", label: "Il mio centro", icon: "ti-building", sectionLabel: "Gestione" },
-    { href: "/center/activities", label: "Attività", icon: "ti-list-details", sectionLabel: "Gestione" },
-    { href: "/center/promotions", label: "Promozioni", icon: "ti-discount-2", sectionLabel: "Gestione" },
+
+    { href: "/center/profile", label: "Il mio centro", icon: "ti-building", sectionLabel: "Attività" },
+    { href: "/center/activities", label: "Attività", icon: "ti-list-details", sectionLabel: "Attività" },
+    { href: "/center/promotions", label: "Promozioni", icon: "ti-discount-2", sectionLabel: "Attività" },
     {
-      href: "/center/group-requests",
-      label: "Richieste Gruppo",
-      icon: "ti-users-group",
-      sectionLabel: "Gestione",
-      badgeCount: pendingGroupRequests,
+      href: "/center/servizi-consigliati",
+      label: "Servizi consigliati",
+      icon: "ti-map-2",
+      sectionLabel: "Attività",
     },
+
     {
       href: "/center/attendance",
       label: "Registro presenze",
       icon: "ti-clipboard-check",
-      sectionLabel: "Gestione",
+      sectionLabel: "Presenze",
     },
     {
       href: "/center/report-presenze",
       label: "Report presenze",
       icon: "ti-chart-bar",
-      sectionLabel: "Gestione",
+      sectionLabel: "Presenze",
+    },
+
+    {
+      href: "/center/group-requests",
+      label: "Richieste Gruppo",
+      icon: "ti-users-group",
+      sectionLabel: "Richieste",
+      badgeCount: pendingGroupRequests,
     },
     {
       href: "/center/richieste",
       label: "Le mie richieste",
       icon: "ti-message-circle-2",
-      sectionLabel: "Gestione",
+      sectionLabel: "Richieste",
       badgeCount: openInquiries,
     },
-    {
-      href: "/center/servizi-consigliati",
-      label: "Servizi consigliati",
-      icon: "ti-map-2",
-      sectionLabel: "Gestione",
-    },
+
     {
       href: "/center/invites",
       label: "Inviti",
       icon: "ti-user-plus",
-      sectionLabel: "Gestione",
+      sectionLabel: "Team",
     },
+
     {
       href: "/center/account",
       label: "Il mio account",

@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useDemoRole } from "@/components/DemoRoleProvider";
@@ -146,6 +147,17 @@ export default function DashboardLayout({
   const { role: demoRole } = useDemoRole();
   const usingRealAuth = realRole !== undefined;
   const effectiveRole = usingRealAuth ? realRole : demoRole;
+
+  // Menu mobile: segnalazione di Fabrizio ("da mobile lo metterei con il
+  // classico menu laterale che si apre con le 3 lineette..com'è ora è un po'
+  // difficile da navigare") — prima era una barra di pillole orizzontali
+  // scorrevoli sotto l'header, ora è un cassetto laterale (drawer) con la
+  // STESSA lista di voci/intestazioni di sezione della sidebar desktop. Si
+  // chiude cliccando una voce, il retro (backdrop) o la X — niente effect
+  // per sincronizzarlo col pathname: ogni Link del cassetto lo chiude già
+  // esplicitamente in onClick (vedi renderNavItem), che basta ed evita
+  // setState sincroni dentro un effect.
+  const [drawerOpen, setDrawerOpen] = useState(false);
   // L'Admin piattaforma è un ruolo "superset": può entrare anche nelle
   // sezioni riservate al Gestore centro (utile anche per un unico account
   // che gestisce tutto in questa fase). Il Gestore centro resta invece
@@ -157,6 +169,49 @@ export default function DashboardLayout({
   }
 
   const isAdmin = variant === "admin";
+
+  // Voce di navigazione con intestazione di sezione — condivisa tra la
+  // sidebar desktop e il cassetto mobile (prima erano due liste JSX
+  // duplicate). "onNavigate" chiude il cassetto mobile dopo un click; è
+  // undefined nella sidebar desktop, dove non serve.
+  function renderNavItem(item: NavItem, i: number, onNavigate?: () => void) {
+    const active = isNavItemActive(pathname, item.href, navItems[0]?.href ?? item.href);
+    const showSectionHeader = item.sectionLabel && item.sectionLabel !== navItems[i - 1]?.sectionLabel;
+    return (
+      <div key={item.href}>
+        {showSectionHeader && (
+          <div
+            className={`px-3 pb-1 text-[10.5px] font-bold uppercase tracking-wide ${
+              isAdmin ? "text-navy-text2/70" : "text-ink-3"
+            } ${i > 0 ? "pt-3.5" : ""}`}
+          >
+            {item.sectionLabel}
+          </div>
+        )}
+        <Link
+          href={item.href}
+          onClick={onNavigate}
+          className={`flex items-center gap-3 rounded-md px-3 py-2.5 text-sm font-medium transition-colors ${
+            isAdmin
+              ? active
+                ? "bg-navy-3 text-white"
+                : "text-navy-text2 hover:bg-navy-3/60 hover:text-white"
+              : active
+              ? "bg-partner-light text-partner"
+              : "text-ink-2 hover:bg-bg hover:text-ink"
+          }`}
+        >
+          <i className={`ti ${item.icon} text-lg`} />
+          <span className="flex-1">{item.label}</span>
+          {Boolean(item.badgeCount) && (
+            <span className="flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-[#FF6B6B] px-1 text-[10px] font-bold text-white">
+              {item.badgeCount}
+            </span>
+          )}
+        </Link>
+      </div>
+    );
+  }
 
   return (
     <div className={isAdmin ? "min-h-screen bg-navy" : "min-h-screen bg-bg"}>
@@ -186,44 +241,7 @@ export default function DashboardLayout({
             )}
           </div>
           <nav className="flex flex-1 flex-col gap-1">
-            {navItems.map((item, i) => {
-              const active = isNavItemActive(pathname, item.href, navItems[0]?.href ?? item.href);
-              const showSectionHeader =
-                item.sectionLabel && item.sectionLabel !== navItems[i - 1]?.sectionLabel;
-              return (
-                <div key={item.href}>
-                  {showSectionHeader && (
-                    <div
-                      className={`px-3 pb-1 text-[10.5px] font-bold uppercase tracking-wide ${
-                        isAdmin ? "text-navy-text2/70" : "text-ink-3"
-                      } ${i > 0 ? "pt-3.5" : ""}`}
-                    >
-                      {item.sectionLabel}
-                    </div>
-                  )}
-                  <Link
-                    href={item.href}
-                    className={`flex items-center gap-3 rounded-md px-3 py-2.5 text-sm font-medium transition-colors ${
-                      isAdmin
-                        ? active
-                          ? "bg-navy-3 text-white"
-                          : "text-navy-text2 hover:bg-navy-3/60 hover:text-white"
-                        : active
-                        ? "bg-partner-light text-partner"
-                        : "text-ink-2 hover:bg-bg hover:text-ink"
-                    }`}
-                  >
-                    <i className={`ti ${item.icon} text-lg`} />
-                    <span className="flex-1">{item.label}</span>
-                    {Boolean(item.badgeCount) && (
-                      <span className="flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-[#FF6B6B] px-1 text-[10px] font-bold text-white">
-                        {item.badgeCount}
-                      </span>
-                    )}
-                  </Link>
-                </div>
-              );
-            })}
+            {navItems.map((item, i) => renderNavItem(item, i))}
           </nav>
           <Link
             href="/"
@@ -240,9 +258,11 @@ export default function DashboardLayout({
         </aside>
 
         <div className="min-w-0 flex-1">
-          {/* sticky: su mobile la barra (logo + pillole di navigazione) resta
-              visibile in cima durante lo scroll invece di scorrere via con
-              il contenuto della pagina (task #24). */}
+          {/* sticky: su mobile l'header resta visibile in cima durante lo
+              scroll (task #24). Segnalazione di Fabrizio: la barra di
+              pillole orizzontali era "un po' difficile da navigare" — ora è
+              un pulsante hamburger che apre un cassetto laterale con la
+              STESSA lista/organizzazione a sezioni della sidebar desktop. */}
           <div className={`sticky top-0 z-30 md:hidden ${isAdmin ? "bg-navy-2" : "bg-white"}`}>
             <header
               className={`flex items-center justify-between border-b px-5 py-3 ${
@@ -250,6 +270,16 @@ export default function DashboardLayout({
               }`}
             >
               <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setDrawerOpen(true)}
+                  aria-label="Apri il menu"
+                  className={`-ml-1.5 flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-md ${
+                    isAdmin ? "text-navy-text2 hover:bg-navy-3" : "text-ink-2 hover:bg-bg"
+                  }`}
+                >
+                  <i className="ti ti-menu-2 text-xl" />
+                </button>
                 <span className="text-xl">{brandEmoji}</span>
                 <span className={`text-sm font-bold ${isAdmin ? "text-white" : "text-ink"}`}>
                   {brand}
@@ -266,39 +296,57 @@ export default function DashboardLayout({
                 <DashboardLogoutButton isAdmin={isAdmin} compact />
               )}
             </header>
-            <nav
-              className={`flex gap-1 overflow-x-auto border-b px-3 py-2 ${
-                isAdmin ? "border-navy-3 bg-navy-2" : "border-[#E8EBF0] bg-white"
-              }`}
-            >
-              {navItems.map((item) => {
-                const active = isNavItemActive(pathname, item.href, navItems[0]?.href ?? item.href);
-                return (
-                  <Link
-                    key={item.href}
-                    href={item.href}
-                    className={`flex flex-shrink-0 items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium transition-colors ${
-                      isAdmin
-                        ? active
-                          ? "bg-navy-3 text-white"
-                          : "bg-navy text-navy-text2"
-                        : active
-                        ? "bg-partner text-white"
-                        : "bg-bg text-ink-2"
+          </div>
+
+          {drawerOpen && (
+            <div className="fixed inset-0 z-40 md:hidden">
+              <div
+                className="absolute inset-0 bg-black/50"
+                onClick={() => setDrawerOpen(false)}
+                aria-hidden="true"
+              />
+              <aside
+                className={`absolute left-0 top-0 flex h-full w-72 max-w-[80vw] flex-col overflow-y-auto px-4 py-5 ${
+                  isAdmin ? "bg-navy-2" : "bg-white"
+                }`}
+              >
+                <div className="mb-6 flex items-center justify-between gap-2 px-2">
+                  <div className="flex items-center gap-2">
+                    <span className="text-2xl">{brandEmoji}</span>
+                    <span className={`text-base font-bold ${isAdmin ? "text-white" : "text-ink"}`}>
+                      {brand}
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setDrawerOpen(false)}
+                    aria-label="Chiudi il menu"
+                    className={`flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full ${
+                      isAdmin ? "text-navy-text2 hover:bg-navy-3" : "text-ink-2 hover:bg-bg"
                     }`}
                   >
-                    <i className={`ti ${item.icon} text-sm`} />
-                    {item.label}
-                    {Boolean(item.badgeCount) && (
-                      <span className="flex h-[15px] min-w-[15px] items-center justify-center rounded-full bg-[#FF6B6B] px-1 text-[9px] font-bold text-white">
-                        {item.badgeCount}
-                      </span>
-                    )}
-                  </Link>
-                );
-              })}
-            </nav>
-          </div>
+                    <i className="ti ti-x text-lg" />
+                  </button>
+                </div>
+                <nav className="flex flex-1 flex-col gap-1">
+                  {navItems.map((item, i) => renderNavItem(item, i, () => setDrawerOpen(false)))}
+                </nav>
+                <Link
+                  href="/"
+                  onClick={() => setDrawerOpen(false)}
+                  className={`flex items-center gap-3 rounded-md px-3 py-2.5 text-sm font-medium transition-colors ${
+                    isAdmin
+                      ? "text-navy-text2 hover:bg-navy-3/60 hover:text-white"
+                      : "text-ink-2 hover:bg-bg hover:text-ink"
+                  }`}
+                >
+                  <i className="ti ti-arrow-back-up text-lg" />
+                  Torna all&apos;app
+                </Link>
+                {!accountHref && <DashboardLogoutButton isAdmin={isAdmin} />}
+              </aside>
+            </div>
+          )}
           <div
             className={`flex items-center gap-2 border-b px-5 py-2 md:px-8 ${
               isAdmin ? "border-navy-3 bg-navy-2" : "border-[#F0E6C8] bg-[#FFFBF0]"

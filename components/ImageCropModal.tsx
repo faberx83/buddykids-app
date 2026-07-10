@@ -149,6 +149,18 @@ export default function ImageCropModal({
             style={{
               width: displayedW,
               height: displayedH,
+              // BUG TROVATO+CORRETTO (segnalato da Fabrizio: "il
+              // ritaglio/zoom non funziona" — l'immagine non riempiva mai il
+              // cerchio, restava più piccola con uno spazio grigio a lato).
+              // Il reset globale di Tailwind applica "img { max-width: 100%;
+              // height: auto }" — con l'anteprima (relative, 260px) come
+              // blocco di riferimento, "max-width: 100%" tagliava la
+              // larghezza calcolata (pensata per SFORARE lo stage e coprirlo
+              // sempre) a 260px al massimo, rompendo lo zoom/pan per ogni
+              // immagine più larga che alta. maxWidth/maxHeight "none"
+              // disattivano quel reset solo qui.
+              maxWidth: "none",
+              maxHeight: "none",
               left: STAGE / 2 - displayedW / 2 + pos.x,
               top: STAGE / 2 - displayedH / 2 + pos.y,
             }}
