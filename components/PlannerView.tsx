@@ -279,8 +279,14 @@ export default function PlannerView({
                 </>
               ) : w.dismissed ? (
                 <>
-                  <div className="flex-1 text-[13px] font-medium text-ink-2">
-                    Settimana {w.index} · non ti serve
+                  {/* Segnalazione di Fabrizio: le settimane escluse/scoperte
+                      devono avere la stessa naming convention delle coperte
+                      ("Settimana N · intervallo date"), non un'etichetta di
+                      stato al posto della data — lo stato ("non ti serve")
+                      resta ma come riga secondaria, non sostituisce la data. */}
+                  <div className="flex-1">
+                    <div className="text-[13px] font-medium text-ink-2">Settimana {w.index} · {w.dateRange}</div>
+                    <div className="mt-0.5 text-[11px] text-ink-3">non ti serve</div>
                   </div>
                   <button
                     type="button"
@@ -293,8 +299,9 @@ export default function PlannerView({
                 </>
               ) : (
                 <>
-                  <div className="flex-1 text-[13px] font-bold text-ink-3">
-                    Settimana {w.index} · scoperta
+                  <div className="flex-1">
+                    <div className="text-[13px] font-bold text-ink-3">Settimana {w.index} · {w.dateRange}</div>
+                    <div className="mt-0.5 text-[11px] text-ink-3">scoperta</div>
                   </div>
                   <button
                     type="button"

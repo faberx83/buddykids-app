@@ -7,15 +7,21 @@ import { Activity, Promotion } from "@/lib/types";
 import { badgeClasses } from "@/lib/colors";
 import ImageLightbox from "@/components/ImageLightbox";
 import ContactCenterButton from "@/components/ContactCenterButton";
+import { toggleFavoriteAction } from "@/app/actions/favorites";
+import { isSupabaseConfigured } from "@/lib/supabase/env";
 
 const weekdayLabels = ["lunedì", "martedì", "mercoledì", "giovedì", "venerdì"];
 
 export default function DetailClient({
   activity,
   promotions,
+  initialFavorite,
 }: {
   activity: Activity;
   promotions: Promotion[];
+  // Prima era sempre useState(true) (mai persistito, vedi
+  // FUNCTIONAL-TC-026) — ora arriva dal database (lib/data/favorites.ts).
+  initialFavorite: boolean;
 }) {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -34,7 +40,7 @@ export default function DetailClient({
     const query = params.toString();
     return query ? `/booking/${activity.id}?${query}` : `/booking/${activity.id}`;
   })();
-  const [fav, setFav] = useState(true);
+  const [fav, setFav] = useState(initialFavorite);
   const activePromotions = promotions.filter((p) => p.active);
   // Copertina + galleria in un unico carosello (ImageLightbox) — prima erano
   // semplici <img> senza onClick, restavano "solo anteprima".
@@ -70,7 +76,13 @@ export default function DetailClient({
         <button
           onClick={(e) => {
             e.stopPropagation();
-            setFav((f) => !f);
+            const next = !fav;
+            setFav(next); // aggiornamento ottimistico
+            if (activity.dbId && isSupabaseConfigured) {
+              toggleFavoriteAction(activity.dbId, next).then((result) => {
+                if (result.error) setFav(!next); // rollback se la scrittura fallisce
+              });
+            }
           }}
           className="absolute right-[18px] top-[18px] z-10 flex h-[38px] w-[38px] items-center justify-center rounded-full bg-white/90 text-lg text-orange backdrop-blur-sm transition-transform hover:scale-110"
         >

@@ -199,4 +199,24 @@ test.describe("Genitori - Home (Planner/Per Bambino)", () => {
     const count = await suggestionLinks.count();
     expect(count).toBeLessThanOrEqual(4);
   });
+
+  // Segnalazione di Fabrizio: "le settimane ripristinate o escluse devono
+  // avere la stessa naming convention" delle settimane coperte (che
+  // mostrano l'intervallo di date, non solo "Settimana N"). Ora "scoperta" e
+  // "non ti serve" sono etichette secondarie sotto "Settimana N · date",
+  // non sostituiscono più la data.
+  // Priorita: Bassa | Precondizioni: Almeno una settimana scoperta o esclusa nel Planner
+  test("TC-168 - Le settimane scoperte/escluse mostrano l'intervallo di date come le coperte", async ({ page }) => {
+    await page.getByRole("button", { name: "Planner", exact: true }).click();
+    const scoperta = page.getByText("scoperta", { exact: true }).first();
+    const nonServe = page.getByText("non ti serve", { exact: true }).first();
+    const scopertaVisible = await scoperta.isVisible().catch(() => false);
+    const nonServeVisible = await nonServe.isVisible().catch(() => false);
+    if (!scopertaVisible && !nonServeVisible) {
+      test.skip(true, "Nessuna settimana scoperta o esclusa per l'account di test in questo momento.");
+    }
+    // In entrambi i casi, la riga "Settimana N · <intervallo date>" precede
+    // l'etichetta di stato (stesso formato delle settimane coperte).
+    await expect(page.getByText(/Settimana \d+ · [A-Z]{3}/).first()).toBeVisible();
+  });
 });

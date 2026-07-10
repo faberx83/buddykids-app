@@ -67,9 +67,16 @@ export default function ActivityMap({
   return (
     <div className="h-[440px] w-full overflow-hidden rounded-lg border border-[#E8EBF0]">
       <MapContainer center={center} zoom={12} scrollWheelZoom style={{ height: "100%", width: "100%" }}>
+        {/* Stile "light" (richiesto da Fabrizio: "le mappe si possono
+            mettere in versione light... per alleggerire la vista") — tile
+            CartoDB Positron invece dello standard OpenStreetMap: stessa
+            fonte dati, molto meno saturo/colorato, nessuna chiave API
+            richiesta (gratuito, come OSM). */}
         <TileLayer
-          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
+          url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png"
+          subdomains="abcd"
+          maxZoom={19}
         />
         <FitBounds points={points} />
         {items.map((it) => (

@@ -20,7 +20,7 @@ const ActivityMap = dynamic(() => import("@/components/ActivityMap"), {
   ),
 });
 
-type FilterPanel = "eta" | "prezzo" | "zona" | "servizi" | "data" | null;
+type FilterPanel = "eta" | "prezzo" | "zona" | "tag" | "servizi" | "data" | null;
 type ViewMode = "lista" | "mappa";
 
 interface ServiceFilters {
@@ -113,17 +113,27 @@ export default function SearchClient({
   }, [selectedWeekStart, seasonWeekRanges]);
   const requestedWeekLabel = selectedWeekInfo?.label ?? null;
 
-  // Filtro "preferenze bambino" (kid.interests, impostate nel profilo) —
-  // pre-applicato quando si arriva dal Planner con ?kid=. Gli interessi sono
-  // salvati come stringa "emoji Etichetta" (vedi ProfileKidsSection.tsx):
-  // li traduciamo negli id di categoria confrontabili con activity.tagIds.
-  const [kidFilterDismissed, setKidFilterDismissed] = useState(false);
+  // Bambino target di ?kid= (se presente) — usato solo per l'etichetta nel
+  // banner "preferenze di [nome]", il filtro vero e proprio ora vive in
+  // selectedTagIds qui sotto (così l'utente può vederlo/modificarlo come
+  // filtro "Tipo attività" invece che come effetto invisibile).
   const targetKid = useMemo(() => kids.find((k) => k.id === kidParam) ?? null, [kids, kidParam]);
-  const kidInterestTagIds = useMemo(() => {
-    if (!targetKid?.interests?.length) return [];
-    return categories.filter((c) => targetKid.interests!.includes(`${c.emoji} ${c.label}`)).map((c) => c.id);
-  }, [targetKid]);
-  const activeKidFilter = !kidFilterDismissed && kidInterestTagIds.length > 0 ? targetKid : null;
+
+  // Filtro "Tipo attività" (richiesto da Fabrizio: le preferenze del
+  // bambino, impostate nel profilo, erano applicate ma invisibili — ora sono
+  // un filtro esplicito per categoria/tag, pre-selezionato con le preferenze
+  // del bambino quando si arriva da "Per riempire la settimana N" con ?kid=,
+  // ma modificabile a mano come gli altri filtri. Gli interessi sono
+  // salvati come stringa "emoji Etichetta" (vedi ProfileKidsSection.tsx): li
+  // traduciamo negli id di categoria confrontabili con activity.tagIds.
+  const [selectedTagIds, setSelectedTagIds] = useState<string[]>(() => {
+    const kid = kids.find((k) => k.id === kidParam);
+    if (!kid?.interests?.length) return [];
+    return categories.filter((c) => kid.interests!.includes(`${c.emoji} ${c.label}`)).map((c) => c.id);
+  });
+  function toggleTag(tagId: string) {
+    setSelectedTagIds((prev) => (prev.includes(tagId) ? prev.filter((id) => id !== tagId) : [...prev, tagId]));
+  }
 
   // Se non arriviamo da Home con lat/lng nell'URL, riusiamo comunque
   // un'eventuale posizione già rilevata in questa sessione del browser,
@@ -224,7 +234,7 @@ export default function SearchClient({
     (zone.trim() ? 1 : 0) +
     (hasGeo ? 1 : 0) +
     (selectedWeekStart ? 1 : 0) +
-    (activeKidFilter ? 1 : 0) +
+    (selectedTagIds.length > 0 ? 1 : 0) +
     Object.values(services).filter(Boolean).length;
 
   const withDistance = useMemo(() => {
@@ -262,7 +272,7 @@ export default function SearchClient({
       if (services.bar && !a.centerHasBar) return false;
       if (services.attivitaExtra && a.badges.length === 0) return false;
       if (availableIdsForWeek && a.dbId && !availableIdsForWeek.has(a.dbId)) return false;
-      if (activeKidFilter && !a.tagIds.some((id) => kidInterestTagIds.includes(id))) return false;
+      if (selectedTagIds.length > 0 && !a.tagIds.some((id) => selectedTagIds.includes(id))) return false;
       return true;
     });
   }, [
@@ -275,8 +285,7 @@ export default function SearchClient({
     services,
     selectedWeekStart,
     availabilityByWeek,
-    activeKidFilter,
-    kidInterestTagIds,
+    selectedTagIds,
   ]);
 
   // Se c'e' una posizione, dividiamo in "Nella tua zona" / "Fuori dalla
@@ -305,7 +314,7 @@ export default function SearchClient({
     setOpenPanel(null);
     clearGeo();
     setSelectedWeekStart(null);
-    setKidFilterDismissed(true);
+    setSelectedTagIds([]);
   }
 
   const mapItems = useMemo(
@@ -320,6 +329,11 @@ export default function SearchClient({
     { key: "eta", icon: "ti-users", label: "Età" },
     { key: "prezzo", icon: "ti-coin-euro", label: "Prezzo" },
     { key: "zona", icon: "ti-map-pin", label: hasGeo ? "Zona (vicino a te)" : "Zona" },
+    {
+      key: "tag",
+      icon: "ti-category-2",
+      label: selectedTagIds.length > 0 ? `Tipo attività (${selectedTagIds.length})` : "Tipo attività",
+    },
     { key: "servizi", icon: "ti-adjustments-horizontal", label: "Servizi" },
     { key: "data", icon: "ti-calendar", label: selectedWeekInfo ? `Settimana ${selectedWeekInfo.index}` : "Date" },
   ];
@@ -373,6 +387,18 @@ export default function SearchClient({
                     onClick={(e) => {
                       e.stopPropagation();
                       setSelectedWeekStart(null);
+                    }}
+                    className={`ti ti-x flex h-3.5 w-3.5 items-center justify-center rounded-full text-[10px] ${
+                      openPanel === f.key ? "bg-white/25" : "bg-ink-3/20"
+                    }`}
+                  />
+                )}
+                {f.key === "tag" && selectedTagIds.length > 0 && (
+                  <span
+                    role="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setSelectedTagIds([]);
                     }}
                     className={`ti ti-x flex h-3.5 w-3.5 items-center justify-center rounded-full text-[10px] ${
                       openPanel === f.key ? "bg-white/25" : "bg-ink-3/20"
@@ -508,6 +534,39 @@ export default function SearchClient({
           </div>
         )}
 
+        {/* Filtro "Tipo attività" (richiesto da Fabrizio, rinominato da "tag"
+            interno a un'etichetta comprensibile): categorie/sport, la stessa
+            tassonomia già usata per activity.tagIds. Pre-selezionato con le
+            preferenze del bambino quando si arriva da "Per riempire la
+            settimana N" (?kid=), ma modificabile liberamente qui. */}
+        {openPanel === "tag" && (
+          <div className="mt-3 max-h-64 overflow-y-auto rounded-lg border border-[#E8EBF0] bg-bg p-3">
+            <div className="mb-2 text-xs font-semibold text-ink-2">Tipo attività</div>
+            <div className="flex flex-wrap gap-1.5">
+              {categories.map((c) => {
+                const active = selectedTagIds.includes(c.id);
+                return (
+                  <button
+                    key={c.id}
+                    type="button"
+                    onClick={() => toggleTag(c.id)}
+                    className={`rounded-full border-[1.5px] px-3 py-1.5 text-xs font-medium transition-colors ${
+                      active ? "border-sky bg-sky text-white" : "border-[#E8EBF0] bg-white text-ink-2"
+                    }`}
+                  >
+                    {c.emoji} {c.label}
+                  </button>
+                );
+              })}
+            </div>
+            {targetKid && selectedTagIds.length > 0 && (
+              <p className="mt-2.5 text-[11px] text-ink-3">
+                Pre-selezionato dalle preferenze di {targetKid.name} — puoi modificarlo liberamente.
+              </p>
+            )}
+          </div>
+        )}
+
         {openPanel === "servizi" && (
           <div className="mt-3 space-y-1.5 rounded-lg border border-[#E8EBF0] bg-bg p-3">
             <ServiceCheckbox
@@ -583,19 +642,19 @@ export default function SearchClient({
         )}
       </div>
 
-      {(requestedWeekLabel || activeKidFilter) && (
+      {(requestedWeekLabel || (targetKid && selectedTagIds.length > 0)) && (
         <div className="mx-5 mt-3 flex items-center justify-between gap-2 rounded-lg border border-[#E3F0FB] bg-sky-light px-3.5 py-2.5">
           <span className="text-xs font-semibold text-ink">
             <i className="ti ti-calendar-event mr-1 text-sky" />
             {requestedWeekLabel && `Stai cercando per la ${requestedWeekLabel}`}
-            {requestedWeekLabel && activeKidFilter && " · "}
-            {activeKidFilter && `preferenze di ${activeKidFilter.name}`}
+            {requestedWeekLabel && targetKid && selectedTagIds.length > 0 && " · "}
+            {targetKid && selectedTagIds.length > 0 && `preferenze di ${targetKid.name}`}
           </span>
           <button
             type="button"
             onClick={() => {
               setSelectedWeekStart(null);
-              setKidFilterDismissed(true);
+              setSelectedTagIds([]);
             }}
             className="flex-shrink-0 text-xs font-semibold text-sky"
           >

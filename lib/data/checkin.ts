@@ -17,7 +17,12 @@ export type CheckinStatus = "presente" | "assente" | "in_ritardo";
 export interface TodayCheckin {
   activityId: string;
   activityName: string;
+  activitySlug: string;
+  activityEmoji: string;
+  activityImgGradient: string;
+  coverImageUrl: string | null;
   weekId: string;
+  weekLabel: string;
   kidId: string;
   kidName: string;
   date: string;
@@ -30,11 +35,27 @@ function firstOf<T>(value: T | T[] | null | undefined): T | null {
   return Array.isArray(value) ? (value[0] ?? null) : value;
 }
 
+interface RawActivityRef {
+  id: string;
+  name: string;
+  slug: string | null;
+  emoji: string | null;
+  img_gradient: string | null;
+  cover_image_url: string | null;
+}
+
+interface RawWeekRef {
+  id: string;
+  label: string;
+  start_date: string;
+  end_date: string;
+}
+
 interface RawBookingRow {
-  activities: { id: string; name: string } | { id: string; name: string }[] | null;
+  activities: RawActivityRef | RawActivityRef[] | null;
   booking_kids: { kid_id: string; kids: { id: string; name: string } | { id: string; name: string }[] | null }[] | null;
   booking_weeks: {
-    activity_weeks: { id: string; start_date: string; end_date: string } | { id: string; start_date: string; end_date: string }[] | null;
+    activity_weeks: RawWeekRef | RawWeekRef[] | null;
   }[] | null;
 }
 
@@ -52,7 +73,7 @@ export async function getTodayCheckinsForParent(): Promise<TodayCheckin[]> {
   const { data, error } = await supabase
     .from("bookings")
     .select(
-      "activities ( id, name ), booking_kids ( kid_id, kids ( id, name ) ), booking_weeks ( activity_weeks ( id, start_date, end_date ) )"
+      "activities ( id, name, slug, emoji, img_gradient, cover_image_url ), booking_kids ( kid_id, kids ( id, name ) ), booking_weeks ( activity_weeks ( id, label, start_date, end_date ) )"
     )
     .eq("parent_id", user.id)
     .neq("status", "cancelled");
@@ -77,7 +98,12 @@ export async function getTodayCheckinsForParent(): Promise<TodayCheckin[]> {
         map.set(key, {
           activityId: activity.id,
           activityName: activity.name,
+          activitySlug: activity.slug ?? activity.id,
+          activityEmoji: activity.emoji || "🏫",
+          activityImgGradient: activity.img_gradient || "linear-gradient(135deg,#E8F6FD,#E3F9F5)",
+          coverImageUrl: activity.cover_image_url,
           weekId: week.id,
+          weekLabel: week.label,
           kidId: kid.id,
           kidName: kid.name,
           date: today,

@@ -6,6 +6,12 @@ import { test, expect, loginAs, isRealDeployment } from "../fixtures/roles";
 // supabase/seed-test-data.sql, slug usato direttamente come "id" di rotta.
 const TEST_ACTIVITY_SLUG = "attivita-test-buddykids";
 
+// "serial": TC-026 e TC-173 leggono/scrivono lo stesso stato preferito
+// condiviso sull'attività di test — con l'esecuzione parallela di default
+// potrebbero sovrascriversi a vicenda in modo intermittente (stesso
+// principio già applicato in tests/gestore/attendance.spec.ts).
+test.describe.configure({ mode: "serial" });
+
 test.describe("Genitori - Attivita", () => {
   // TC-025 - Apertura scheda attivita
   test("TC-025 - aprire una card da Home porta al dettaglio con dati reali", async ({ page }) => {
@@ -24,30 +30,58 @@ test.describe("Genitori - Attivita", () => {
     await expect(page.getByRole("link", { name: "Prenota ora" })).toBeVisible();
   });
 
-  // TC-026 - Preferiti (cuore) - noto FUNCTIONAL/gap: non persiste al reload (useState locale).
-  // BUG DI TEST TROVATO+CORRETTO (run reale): app/activity/[id]/DetailClient.tsx
-  // inizializza "fav" con useState(true) — il cuore parte SEMPRE pieno ad ogni
-  // caricamento/reload, indipendentemente da eventuali click precedenti. Il
-  // test originale assumeva (erroneamente) che lo stato di default fosse
-  // "non preferito" e si aspettava il cuore vuoto dopo il reload; in realtà
-  // torna sempre pieno (stato iniziale hardcoded), quindi l'assert falliva
-  // sempre contro un deploy reale. Corretto per riflettere il comportamento
-  // reale: il gap di persistenza resta (nessun salvataggio vero), ma il
-  // valore a cui si torna dopo reload è "preferito", non il contrario.
-  test("TC-026 - il click sul preferito NON persiste dopo reload (comportamento noto, vedi FUNCTIONAL-TC-026)", async ({
-    page,
-  }) => {
+  // TC-026 - Preferiti (cuore) - ORA PERSISTE DAVVERO (era FUNCTIONAL-TC-026).
+  // Prima app/activity/[id]/DetailClient.tsx inizializzava "fav" con
+  // useState(true) fisso: il cuore tornava sempre pieno dopo reload,
+  // indipendentemente dai click. Corretto con una tabella dedicata
+  // (supabase/schema.sql#favorites, vedi lib/data/favorites.ts,
+  // app/actions/favorites.ts): il click salva/rimuove davvero e lo stato
+  // iniziale ora riflette il database, non più un valore hardcoded.
+  test("TC-026 - il click sul preferito persiste davvero dopo reload", async ({ page }) => {
     test.skip(!isRealDeployment, "Richiede un deploy con Supabase configurato e l'attività di test seminata.");
     await loginAs(page, "parent");
     await page.goto(`/activity/${TEST_ACTIVITY_SLUG}`);
-    // Stato di default reale: pieno (useState(true) in DetailClient.tsx).
-    await expect(page.locator(".ti-heart-filled").first()).toHaveCount(1);
+
     const heart = page.locator(".ti-heart, .ti-heart-filled").first();
+    const wasFavorited = (await page.locator(".ti-heart-filled").count()) > 0;
+
     await heart.click();
-    await expect(page.locator(".ti-heart").first()).toHaveCount(1); // svuotato localmente
+    if (wasFavorited) {
+      await expect(page.locator(".ti-heart").first()).toHaveCount(1);
+    } else {
+      await expect(page.locator(".ti-heart-filled").first()).toHaveCount(1);
+    }
+
     await page.reload();
-    // Il reload NON persiste il click: torna allo stato iniziale hardcoded (pieno).
-    await expect(page.locator(".ti-heart-filled").first()).toHaveCount(1);
+    if (wasFavorited) {
+      await expect(page.locator(".ti-heart").first()).toHaveCount(1);
+    } else {
+      await expect(page.locator(".ti-heart-filled").first()).toHaveCount(1);
+    }
+
+    // Ripristino allo stato di partenza per non alterare i run successivi.
+    await page.locator(".ti-heart, .ti-heart-filled").first().click();
+  });
+
+  // Priorita: Media | Precondizioni: Almeno un'attività salvata nei Preferiti (vedi TC-026)
+  // Passi: Salva un'attività dal cuore, poi apri Profilo -> Preferiti
+  // Risultato atteso: L'attività salvata compare nella lista "Preferiti"; se nessuna attività è salvata, mostra lo stato vuoto invece di una lista bianca
+  test("TC-173 - 'Preferiti' nel profilo elenca le attività salvate", async ({ page }) => {
+    test.skip(!isRealDeployment, "Richiede un deploy con Supabase configurato e l'attività di test seminata.");
+    await loginAs(page, "parent");
+    await page.goto(`/activity/${TEST_ACTIVITY_SLUG}`);
+
+    // Ci assicuriamo che l'attività di test sia tra i preferiti (click solo
+    // se non lo è già), per rendere il test indipendente dallo stato lasciato
+    // da TC-026.
+    const isFavorited = (await page.locator(".ti-heart-filled").count()) > 0;
+    if (!isFavorited) {
+      await page.locator(".ti-heart, .ti-heart-filled").first().click();
+      await expect(page.locator(".ti-heart-filled").first()).toHaveCount(1);
+    }
+
+    await page.goto("/preferiti");
+    await expect(page.getByText("[TEST] Attività BuddyKids").first()).toBeVisible();
   });
   // Priorita: Media | Precondizioni: Attivita con prenotazioni concluse
   // Passi: Apri il dettaglio di un'attivita

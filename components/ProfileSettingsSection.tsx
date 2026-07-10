@@ -26,21 +26,16 @@ export default function ProfileSettingsSection({ basePath }: { basePath: string 
         sub="Password, accesso rapido"
         href={`${basePath}/sicurezza`}
       />
+      {/* Notifiche unite qui dentro (richiesto da Fabrizio: "le notifiche le
+          metterei dentro le preferenze") — non è più una voce separata,
+          /notifiche ora reindirizza qui per eventuali link vecchi. */}
       <MenuItem
         icon="ti-adjustments"
         iconBg="#FFF3E6"
         iconColor="#E08A2D"
         main="Preferenze"
-        sub="Lingua, tema"
+        sub="Lingua, tema, notifiche"
         href={`${basePath}/preferenze`}
-      />
-      <MenuItem
-        icon="ti-bell"
-        iconBg="#F0EEFC"
-        iconColor="#7B61FF"
-        main="Notifiche"
-        sub="Email, push, SMS"
-        href={`${basePath}/notifiche`}
       />
       {/* comingSoon: nessun metodo di pagamento reale è ancora integrato
           (nessun provider tipo Stripe collegato) — placeholder inerte, stessa

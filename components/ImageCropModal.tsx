@@ -8,16 +8,25 @@ const OUTPUT = 480; // risoluzione (px) dell'immagine quadrata esportata
 // Modale di ritaglio/centratura per foto profilo — nessuna libreria esterna:
 // canvas + drag (pan) + slider (zoom). Mostra un cerchio guida (l'avatar è
 // sempre circolare), esporta un JPEG quadrato via canvas.toBlob.
+//
+// "source" accetta sia un File appena scelto (upload nuovo) sia una stringa
+// URL (richiesta da Fabrizio: poter ri-centrare/zoomare una foto GIA'
+// caricata, non solo al momento dell'upload — vedi il pulsante "Ritaglia di
+// nuovo" in AvatarUploadButton.tsx). Con un URL remoto serve crossOrigin
+// "anonymous" sull'<img>, altrimenti canvas.toBlob fallisce per sicurezza
+// (canvas "tainted") — funziona perché Supabase Storage pubblico invia già
+// gli header CORS necessari.
 export default function ImageCropModal({
-  file,
+  source,
   onCancel,
   onConfirm,
 }: {
-  file: File;
+  source: File | string;
   onCancel: () => void;
   onConfirm: (croppedFile: File) => void;
 }) {
-  const objectUrl = useMemo(() => URL.createObjectURL(file), [file]);
+  const isRemoteUrl = typeof source === "string";
+  const objectUrl = useMemo(() => (isRemoteUrl ? source : URL.createObjectURL(source)), [source, isRemoteUrl]);
   const imgRef = useRef<HTMLImageElement>(null);
   const [naturalSize, setNaturalSize] = useState<{ w: number; h: number } | null>(null);
   const [zoom, setZoom] = useState(1);
@@ -26,8 +35,9 @@ export default function ImageCropModal({
   const [exporting, setExporting] = useState(false);
 
   useEffect(() => {
+    if (isRemoteUrl) return; // nessun object URL locale da rilasciare
     return () => URL.revokeObjectURL(objectUrl);
-  }, [objectUrl]);
+  }, [objectUrl, isRemoteUrl]);
 
   const baseScale = naturalSize ? Math.max(STAGE / naturalSize.w, STAGE / naturalSize.h) : 1;
   const scale = baseScale * zoom;
@@ -97,7 +107,8 @@ export default function ImageCropModal({
         (blob) => {
           setExporting(false);
           if (!blob) return;
-          const croppedFile = new File([blob], file.name.replace(/\.\w+$/, "") + "-ritagliata.jpg", {
+          const baseName = isRemoteUrl ? "avatar" : source.name.replace(/\.\w+$/, "");
+          const croppedFile = new File([blob], `${baseName}-ritagliata.jpg`, {
             type: "image/jpeg",
           });
           onConfirm(croppedFile);
@@ -129,6 +140,7 @@ export default function ImageCropModal({
             src={objectUrl}
             alt=""
             draggable={false}
+            crossOrigin={isRemoteUrl ? "anonymous" : undefined}
             onLoad={(e) => {
               const el = e.currentTarget;
               setNaturalSize({ w: el.naturalWidth, h: el.naturalHeight });

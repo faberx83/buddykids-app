@@ -142,4 +142,37 @@ test.describe("Genitori - Cerca", () => {
     await expect(banner).not.toBeVisible();
   });
 
+  // Segnalazione di Fabrizio: le preferenze del bambino filtravano già i
+  // risultati, ma in modo invisibile — voleva un filtro esplicito "Tipo
+  // attività" (categoria/tag), pre-selezionato con le preferenze del
+  // bambino ma modificabile a mano, come gli altri filtri.
+  // Priorita: Media | Precondizioni: Nessuna
+  test("TC-169 - Filtro 'Tipo attività' selezionabile a mano e azzerabile con la X", async ({ page }) => {
+    await page.getByText("Tipo attività", { exact: true }).click();
+    const sportChip = page.getByRole("button", { name: "⚽ Sport" });
+    await expect(sportChip).toBeVisible();
+
+    await sportChip.click();
+    await expect(page.getByText("Tipo attività (1)")).toBeVisible();
+    await expect(page.getByRole("button", { name: /^Azzera/ })).toBeEnabled();
+
+    // La X sul chip azzera solo questo filtro.
+    await page.locator(".ti-x").first().click();
+    await expect(page.getByText("Tipo attività", { exact: true })).toBeVisible();
+  });
+
+  // Priorita: Bassa | Precondizioni: Nessuna
+  // Passi: Passa alla vista "Mappa"
+  // Risultato atteso: Le tile della mappa sono in stile "light" (CartoDB Positron), non lo standard OpenStreetMap colorato — richiesto da Fabrizio per "alleggerire la vista"
+  test("TC-170 - La vista Mappa usa uno stile 'light' invece dello standard OSM", async ({ page }) => {
+    // Le tile CartoDB Positron vengono caricate da basemaps.cartocdn.com —
+    // verifichiamo che almeno un tile richiesto punti a quel dominio invece
+    // che a tile.openstreetmap.org. La promise va impostata PRIMA del click,
+    // altrimenti la richiesta può partire prima che iniziamo ad ascoltare.
+    const tileRequestPromise = page.waitForRequest(/basemaps\.cartocdn\.com/, { timeout: 10_000 }).catch(() => null);
+    await page.getByRole("button", { name: "Mappa" }).click();
+    const req = await tileRequestPromise;
+    expect(req).not.toBeNull();
+  });
+
 });

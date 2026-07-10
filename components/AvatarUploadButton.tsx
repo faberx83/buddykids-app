@@ -33,7 +33,10 @@ export default function AvatarUploadButton({
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
-  const [pendingFile, setPendingFile] = useState<File | null>(null);
+  // File appena scelto (nuovo upload) O la foto già caricata (stringa URL,
+  // richiesta da Fabrizio: poter ri-centrare/zoomare una foto esistente senza
+  // doverla ricaricare da capo) — entrambi aprono lo stesso ImageCropModal.
+  const [pendingSource, setPendingSource] = useState<File | string | null>(null);
 
   async function handleFile(file: File) {
     setError(null);
@@ -50,7 +53,7 @@ export default function AvatarUploadButton({
   function handleFileSelected(file: File | undefined) {
     setMenuOpen(false);
     if (!file) return;
-    setPendingFile(file); // apre il modale di ritaglio
+    setPendingSource(file); // apre il modale di ritaglio
   }
 
   return (
@@ -107,6 +110,22 @@ export default function AvatarUploadButton({
             >
               <i className="ti ti-photo text-sm" /> Scegli dalla galleria
             </button>
+            {/* Richiesto da Fabrizio: poter modificare zoom/centratura della
+                foto già caricata, non solo al momento dell'upload — riapre
+                lo stesso ImageCropModal partendo dall'URL esistente invece
+                che da un File nuovo. */}
+            {currentUrl && (
+              <button
+                type="button"
+                onClick={() => {
+                  setMenuOpen(false);
+                  setPendingSource(currentUrl);
+                }}
+                className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs font-medium text-ink hover:bg-bg"
+              >
+                <i className="ti ti-crop text-sm" /> Modifica ritaglio
+              </button>
+            )}
           </div>
         </>
       )}
@@ -133,12 +152,12 @@ export default function AvatarUploadButton({
         }}
       />
 
-      {pendingFile && (
+      {pendingSource && (
         <ImageCropModal
-          file={pendingFile}
-          onCancel={() => setPendingFile(null)}
+          source={pendingSource}
+          onCancel={() => setPendingSource(null)}
           onConfirm={(croppedFile) => {
-            setPendingFile(null);
+            setPendingSource(null);
             handleFile(croppedFile);
           }}
         />

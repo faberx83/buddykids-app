@@ -745,6 +745,28 @@ create index if not exists idx_inquiries_activity on public.activity_inquiries (
 create index if not exists idx_inquiries_parent on public.activity_inquiries (parent_id);
 
 -- ─────────────────────────────────────────────
+-- PREFERITI (richiesto da Fabrizio per la v1: il cuore nella scheda
+-- attività prima era solo uno useState locale, non persisteva mai — vedi
+-- FUNCTIONAL-TC-026). Una riga = un'attività salvata da un genitore.
+-- ─────────────────────────────────────────────
+create table if not exists public.favorites (
+  id uuid primary key default gen_random_uuid(),
+  parent_id uuid references public.profiles(id) on delete cascade not null,
+  activity_id uuid references public.activities(id) on delete cascade not null,
+  created_at timestamptz default now(),
+  unique (parent_id, activity_id)
+);
+
+alter table public.favorites enable row level security;
+
+create policy "Preferiti: il genitore gestisce i propri"
+  on public.favorites for all
+  using (auth.uid() = parent_id)
+  with check (auth.uid() = parent_id);
+
+create index if not exists idx_favorites_parent on public.favorites (parent_id);
+
+-- ─────────────────────────────────────────────
 -- REVIEWS
 -- ─────────────────────────────────────────────
 create table if not exists public.reviews (

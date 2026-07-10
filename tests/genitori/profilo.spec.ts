@@ -61,21 +61,26 @@ test.describe("Genitori - Profilo", () => {
     await expect(page.getByText(uniqueName)).toBeVisible();
   });
 
-  // Voci menu in arrivo — AGGIORNATO: "Notifiche" e "Preferenze" sono voci
-  // REALI del menu "Impostazioni" (righe cliccabili che aprono una
-  // sotto-pagina, vedi ProfileSettingsSection), non più ComingSoon. Restano
-  // ComingSoon: Le mie prenotazioni, Preferiti, Navetta, Chat con
-  // organizzatori, Ricevute e fatture, Metodi di pagamento.
+  // Voci menu in arrivo — AGGIORNATO ANCORA: "Le mie prenotazioni" e
+  // "Preferiti" sono ora reali (v1, richiesta da Fabrizio) — vedi TC-172/173.
+  // "Notifiche" non è più una voce separata: è stata unita dentro
+  // "Preferenze" (Fabrizio: "le notifiche le metterei dentro le
+  // preferenze"). Restano ComingSoon: Navetta, Ricevute e fatture, Metodi di
+  // pagamento.
   test("TC-070 - le voci non ancora implementate mostrano il badge ComingSoon", async ({ page }) => {
     test.skip(!isRealDeployment, "Richiede un deploy con Supabase configurato e l'account genitore di test.");
     await loginAs(page, "parent");
     await page.goto("/profile");
 
-    for (const label of ["Le mie prenotazioni", "Preferiti", "Navetta", "Metodi di pagamento"]) {
+    for (const label of ["Navetta", "Metodi di pagamento", "Ricevute e fatture"]) {
       await expect(page.getByText(label, { exact: true })).toBeVisible();
     }
-    // "Notifiche" è ora un link reale verso /profile/notifiche, non una voce inerte.
-    await expect(page.getByRole("link", { name: /Notifiche/ })).toHaveAttribute("href", "/profile/notifiche");
+    // "Le mie prenotazioni" e "Preferiti" sono link reali, non più ComingSoon.
+    await expect(page.getByRole("link", { name: /Le mie prenotazioni/ })).toHaveAttribute("href", "/prenotazioni");
+    await expect(page.getByRole("link", { name: /Preferiti/ })).toHaveAttribute("href", "/preferiti");
+    // "Notifiche" non è più una riga a sé: "Preferenze" ora la include.
+    await expect(page.getByRole("link", { name: "Notifiche", exact: true })).toHaveCount(0);
+    await expect(page.getByText("Lingua, tema, notifiche")).toBeVisible();
   });
 
   // TC-148 - Le voci del menu "Impostazioni" aprono ciascuna la propria sotto-pagina
@@ -125,6 +130,27 @@ test.describe("Genitori - Profilo", () => {
       expect(box.x).toBeGreaterThanOrEqual(0);
       expect(box.x + box.width).toBeLessThanOrEqual(375);
     }
+  });
+
+  // Segnalazione di Fabrizio: "nelle foto profilo deve essere possibile
+  // modificare anche la foto già caricata..zoom e centratura principalmente".
+  // Prima ImageCropModal si apriva solo scegliendo un file nuovo; ora un
+  // menu "Modifica ritaglio" lo riapre partendo dalla foto già caricata
+  // (URL remoto invece di un File) — vedi AvatarUploadButton.tsx.
+  // Priorita: Media | Precondizioni: Genitore con una foto profilo già caricata (vedi TC-113)
+  test("TC-171 - 'Modifica ritaglio' riapre il crop sulla foto già caricata", async ({ page }) => {
+    test.skip(!isRealDeployment, "Richiede un deploy con Supabase configurato e una foto profilo già caricata.");
+    await loginAs(page, "parent");
+    await page.goto("/profile");
+
+    await page.getByRole("button", { name: "Cambia foto" }).first().click();
+    const modificaRitaglio = page.getByRole("button", { name: "Modifica ritaglio" });
+    if (!(await modificaRitaglio.isVisible().catch(() => false))) {
+      test.skip(true, "Nessuna foto profilo già caricata per l'account di test in questo momento.");
+    }
+    await modificaRitaglio.click();
+    await expect(page.getByText("Centra e ritaglia la foto")).toBeVisible();
+    await page.getByRole("button", { name: "Annulla" }).click();
   });
 
   // TC-071 - Logout da Profilo
@@ -221,12 +247,16 @@ test.describe("Genitori - Profilo", () => {
   });
 
   // TC-147 - Notifiche (email/push/SMS) persistono
-  // ASSORBE la parte "notifiche" del vecchio TC-134, ora su sotto-pagina
-  // separata (/profile/notifiche).
+  // AGGIORNATO ANCORA: /profile/notifiche ora fa redirect() a
+  // /profile/preferenze (le notifiche sono state unite li dentro, richiesta
+  // di Fabrizio) — il test resta invariato perché il redirect è trasparente
+  // e i toggle sono gli stessi (ProfileNotificheSection -> ora dentro
+  // ProfilePreferencesSection).
   test("TC-147 - attivare 'Notifiche SMS' salva subito e persiste dopo reload", async ({ page }) => {
     test.skip(!isRealDeployment, "Richiede un deploy con Supabase configurato e l'account genitore di test.");
     await loginAs(page, "parent");
     await page.goto("/profile/notifiche");
+    await expect(page).toHaveURL(/\/profile\/preferenze/);
 
     await page.getByLabel("Notifiche SMS").check();
     await page.reload();
@@ -234,6 +264,20 @@ test.describe("Genitori - Profilo", () => {
 
     // Ripristino ai valori di default per non alterare i run successivi.
     await page.getByLabel("Notifiche SMS").uncheck();
+  });
+
+  // Segnalazione di Fabrizio: "le preferenze lingua/tema non fanno alcuna
+  // modifica" — restano salvabili (si scrivono davvero nel profilo) ma ora
+  // mostrano un badge "Non ancora attivo" per essere espliciti che non
+  // cambiano ancora nulla a video (nessuna traduzione/tema scuro reali).
+  // Priorita: Bassa | Precondizioni: Nessuna
+  test("TC-174 - Lingua e Tema mostrano il badge 'Non ancora attivo' in Preferenze", async ({ page }) => {
+    test.skip(!isRealDeployment, "Richiede un deploy con Supabase configurato e l'account genitore di test.");
+    await loginAs(page, "parent");
+    await page.goto("/profile/preferenze");
+
+    const badges = page.getByText("Non ancora attivo");
+    await expect(badges).toHaveCount(2); // una per Lingua, una per Tema
   });
 
   // TC-135 - Consenso marketing attivabile/disattivabile

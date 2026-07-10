@@ -1,5 +1,5 @@
 import { test, expect } from "../fixtures/roles";
-import { gotoAsRole, loginAs } from "../fixtures/roles";
+import { gotoAsRole, loginAs, isRealDeployment } from "../fixtures/roles";
 
 // Area: Genitori - Prenotazione
 // Generato da BuddyKids_Test_Case.xlsx - 11 casi.
@@ -236,6 +236,30 @@ test.describe("Genitori - Prenotazione", () => {
     await page.getByLabel("Indietro").click();
     await expect(page.getByText("Scegli le settimane")).toBeVisible();
     await expect(page).toHaveURL(/\/booking\//);
+  });
+
+  // Segnalazione di Fabrizio: "le mie prenotazioni" era un MenuItem
+  // "comingSoon" nel Profilo, senza alcuna pagina dietro. Ora è una lista
+  // reale (sola lettura, niente cancellazione per la v1) — vedi
+  // lib/data/my-bookings.ts e app/(main)/prenotazioni/page.tsx.
+  // Priorita: Alta | Precondizioni: Nessuna (gestisce anche lo stato vuoto)
+  test("TC-172 - 'Le mie prenotazioni' mostra l'elenco reale o lo stato vuoto", async ({ page }) => {
+    test.skip(!isRealDeployment, "Richiede un deploy con Supabase configurato e l'account genitore di test.");
+    await loginAs(page, "parent");
+    await page.goto("/profile");
+    await page.getByText("Le mie prenotazioni", { exact: true }).click();
+    await expect(page).toHaveURL(/\/prenotazioni/);
+
+    const emptyState = page.getByText("Non hai ancora nessuna prenotazione.");
+    const isEmpty = await emptyState.isVisible().catch(() => false);
+    if (isEmpty) {
+      await expect(emptyState).toBeVisible();
+    } else {
+      // Almeno una card prenotazione con stato e settimane indicati.
+      await expect(
+        page.getByText(/In attesa di conferma|Confermata|Annullata/).first()
+      ).toBeVisible();
+    }
   });
 
 });

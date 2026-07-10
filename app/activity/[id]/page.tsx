@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 import { getActivityBySlug, getPromotionsForActivity } from "@/lib/data/activities";
+import { getFavoriteActivityIds } from "@/lib/data/favorites";
 import PhoneShell from "@/components/PhoneShell";
 import DetailClient from "./DetailClient";
 
@@ -11,11 +12,15 @@ export default async function ActivityDetailPage({
   const { id } = await params;
   const activity = await getActivityBySlug(id);
   if (!activity) return notFound();
-  const promotions = await getPromotionsForActivity(activity);
+  const [promotions, favoriteIds] = await Promise.all([
+    getPromotionsForActivity(activity),
+    getFavoriteActivityIds(),
+  ]);
+  const initialFavorite = Boolean(activity.dbId && favoriteIds.has(activity.dbId));
 
   return (
     <PhoneShell>
-      <DetailClient activity={activity} promotions={promotions} />
+      <DetailClient activity={activity} promotions={promotions} initialFavorite={initialFavorite} />
     </PhoneShell>
   );
 }

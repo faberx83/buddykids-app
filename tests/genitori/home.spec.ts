@@ -164,4 +164,31 @@ test.describe("Genitori - Home", () => {
     await page.getByRole("button", { name: "Sì", exact: true }).click();
     await expect(page.getByRole("button", { name: "Sì", exact: true })).toHaveClass(/bg-partner/);
   });
+
+  // Segnalazione di Fabrizio: "forse nella home bisogna evidenziare il camp
+  // della settimana in corso in maniera più evidente". La card di check-in
+  // ora mostra anche la foto/copertina dell'attività e un'etichetta
+  // "Questa settimana · Settimana N", non solo la domanda in una striscia
+  // di testo semplice — vedi CheckinPrompt.tsx e lib/data/checkin.ts.
+  // Priorita: Bassa | Precondizioni: Prenotazione con settimana che copre oggi
+  test("TC-167 - La card di check-in mostra la foto/copertina e la settimana in corso", async ({ page }) => {
+    test.skip(!isRealDeployment, "Richiede un deploy con Supabase configurato e l'account genitore di test.");
+    await loginAs(page, "parent");
+    await page.goto("/");
+
+    const promptVisible = await page
+      .getByText(/è arrivato\/a a/)
+      .first()
+      .isVisible()
+      .catch(() => false);
+    test.skip(
+      !promptVisible,
+      "Nessuna settimana seminata copre la data odierna (vedi tests/cleanup-test-data.mjs) — check-in non mostrato oggi."
+    );
+
+    await expect(page.getByText(/Questa settimana · Settimana \d+/).first()).toBeVisible();
+    // Link verso il dettaglio attività (foto/nome cliccabili) — il thumbnail
+    // ha sempre un href anche senza copertina reale (fallback emoji/gradiente).
+    await expect(page.locator('a[href^="/activity/"]').first()).toBeVisible();
+  });
 });

@@ -1,21 +1,9 @@
-import PageHeader from "@/components/PageHeader";
-import ProfileNotificheSection from "@/components/ProfileNotificheSection";
-import { getParentProfile } from "@/lib/data/profile";
+import { redirect } from "next/navigation";
 
-// Sotto-pagina dedicata "Notifiche" (dentro Impostazioni).
-export default async function ProfileNotifichePage() {
-  const profile = await getParentProfile();
-
-  return (
-    <div className="animate-fade-in">
-      <PageHeader title="Notifiche" backHref="/profile" />
-      <div className="px-5 py-4">
-        <ProfileNotificheSection
-          initialNotifyEmail={profile.notifyEmail}
-          initialNotifyPush={profile.notifyPush}
-          initialNotifySms={profile.notifySms}
-        />
-      </div>
-    </div>
-  );
+// Le notifiche sono state unite dentro "Preferenze" (richiesto da Fabrizio:
+// "le notifiche le metterei dentro le preferenze", vedi
+// ProfileSettingsSection.tsx e ProfilePreferencesSection.tsx) — questa
+// pagina resta solo per non rompere eventuali link/segnalibri vecchi.
+export default function ProfileNotifichePage() {
+  redirect("/profile/preferenze");
 }

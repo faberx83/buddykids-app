@@ -55,21 +55,26 @@ export default async function ProfilePage({
         <div className="mb-2 text-[11px] font-bold uppercase tracking-wide text-ink-3">
           Attività
         </div>
+        {/* Ora reale (v1, richiesta da Fabrizio): sola lista, senza ancora
+            cancellazione/modifica — vedi lib/data/my-bookings.ts. */}
         <MenuItem
           icon="ti-ticket"
           iconBg="#E8F6FD"
           iconColor="#4DAFEF"
           main="Le mie prenotazioni"
-          sub="Elenco prenotazioni in arrivo"
-          comingSoon
+          sub="Elenco delle tue prenotazioni"
+          href="/prenotazioni"
         />
+        {/* Ora reale (v1, richiesta da Fabrizio): il cuore nella scheda
+            attività salva davvero (prima era solo useState locale, vedi
+            FUNCTIONAL-TC-026) — vedi lib/data/favorites.ts. */}
         <MenuItem
           icon="ti-heart"
           iconBg="#FFF8E7"
           iconColor="#c49a00"
           main="Preferiti"
-          sub="Non ancora attivi"
-          comingSoon
+          sub="Attività salvate"
+          href="/preferiti"
         />
         <MenuItem
           icon="ti-bus"
