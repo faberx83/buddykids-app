@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import PhoneShell from "@/components/PhoneShell";
 import InstallPrompt from "@/components/InstallPrompt";
 import NextgenBottomNav from "@/components/nextgen/NextgenBottomNav";
+import { NextgenToastProvider } from "@/components/nextgen/NextgenToastProvider";
 import { createClient } from "@/lib/supabase/server";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
 
@@ -49,10 +50,12 @@ export default async function NextgenLayout({ children }: { children: React.Reac
 
   return (
     <PhoneShell>
-      <div className="flex h-full min-h-0 flex-col">
-        <div className="no-scrollbar flex-1 overflow-y-auto">{children}</div>
-        <NextgenBottomNav />
-      </div>
+      <NextgenToastProvider>
+        <div className="flex h-full min-h-0 flex-col">
+          <div className="no-scrollbar flex-1 overflow-y-auto">{children}</div>
+          <NextgenBottomNav />
+        </div>
+      </NextgenToastProvider>
       {/* Istanza DEDICATA a NEXTGEN: appName diverso ("BuddyKids NextGen" vs
           "BuddyKids") -> chiave di dismiss separata in localStorage, e nessun
           routeExclude (è già scoped a /nextgen dal punto in cui è mountata).

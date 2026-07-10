@@ -92,3 +92,34 @@ body {
 .animate-pop-in {
   animation: popIn 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
+
+/* SPRINT CORRETTIVO (NEXTGEN) — richiesta di Fabrizio: la V2 "ha perso parte
+   della personalità e del coinvolgimento emotivo della V1", niente effetto
+   "dashboard aziendale". Classi NUOVE e additive, usate solo dentro /nextgen
+   (HomeDashboardClient, NextgenCheckinCard): non toccano nessuno stile
+   esistente di LEGACY. Palette calda solo per gli elementi "cuore"
+   dell'esperienza (Hero, Check-in), il resto del design system (lib/colors.ts,
+   i colori categoria) resta invariato. */
+.nextgen-hero-bg {
+  background: linear-gradient(135deg, #fff3e6 0%, #ffe9ec 45%, #eee6ff 100%);
+}
+.nextgen-hero-shadow {
+  box-shadow: 0 12px 32px rgba(91, 79, 233, 0.1);
+}
+.nextgen-warm-shadow {
+  box-shadow: 0 8px 24px rgba(212, 98, 42, 0.08);
+}
+
+@keyframes toastIn {
+  from {
+    transform: translateY(10px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+.animate-toast-in {
+  animation: toastIn 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+}

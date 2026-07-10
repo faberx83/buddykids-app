@@ -4,6 +4,7 @@ import { getPlannerData } from "@/lib/data/planner";
 import { getMyBookingsForParent } from "@/lib/data/my-bookings";
 import { getKidsForUser } from "@/lib/data/kids";
 import { getActivities } from "@/lib/data/activities";
+import { getTodayCheckinsForParent } from "@/lib/data/checkin";
 import { computeMatchesForKid } from "@/lib/matching";
 import HomeDashboardClient from "./HomeDashboardClient";
 
@@ -27,11 +28,12 @@ export default async function NextgenHomePage() {
     data: { user },
   } = await supabase.auth.getUser();
 
-  const [planner, bookings, kids, activities] = await Promise.all([
+  const [planner, bookings, kids, activities, todayCheckins] = await Promise.all([
     getPlannerData(),
     getMyBookingsForParent(),
     getKidsForUser(),
     getActivities(),
+    getTodayCheckinsForParent(),
   ]);
 
   let fullName: string | null = null;
@@ -72,6 +74,7 @@ export default async function NextgenHomePage() {
       planner={planner}
       bookings={bookings}
       recommendations={recommendations}
+      todayCheckins={todayCheckins}
     />
   );
 }

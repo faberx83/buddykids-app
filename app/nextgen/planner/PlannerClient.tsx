@@ -67,7 +67,11 @@ export default function PlannerClient({
         </div>
 
         {/* 1. Copertura — stessa domanda guida della Dashboard ("la mia
-            famiglia è organizzata?"), qui con il dettaglio completo. */}
+            famiglia è organizzata?"), qui con il dettaglio completo.
+            SPRINT CORRETTIVO: aggiunta una riga di rassicurazione quando non
+            manca nulla — prima, a copertura completa, questa card restava
+            puramente informativa (solo numeri), senza mai "dire" che va
+            tutto bene. */}
         <div className="mb-4 rounded-2xl bg-white p-4">
           <div className="flex items-center justify-between text-[13px] font-semibold text-ink-2">
             <span>{planner.coveredCount} di {neededCount} settimane coperte</span>
@@ -81,6 +85,12 @@ export default function PlannerClient({
               style={{ width: `${progressPercent}%` }}
             />
           </div>
+          {progressPercent >= 100 && (
+            <p className="mt-2.5 flex items-center gap-1.5 text-[12.5px] font-semibold text-green">
+              <i className="ti ti-circle-check-filled text-[14px]" />
+              Tutto sotto controllo per questa estate.
+            </p>
+          )}
         </div>
 
         {/* 2. Sovrapposizioni — segnale di rischio reale, non decorativo:
@@ -122,8 +132,8 @@ export default function PlannerClient({
 
               return (
                 <div key={w.index} className={`flex items-center gap-3 rounded-xl p-3 ${rowBg}`}>
-                  <div className="w-[64px] flex-shrink-0">
-                    <div className="text-[12.5px] font-bold text-ink">Sett. {w.index}</div>
+                  <div className="w-[84px] flex-shrink-0">
+                    <div className="text-[12.5px] font-bold text-ink">Settimana {w.index}</div>
                     <div className="text-[10.5px] text-ink-2">{w.dateRange}</div>
                   </div>
                   <div className="min-w-0 flex-1">
@@ -184,7 +194,7 @@ export default function PlannerClient({
         {recommendations.length > 0 && (
           <div>
             <div className="mb-2.5 flex items-center gap-1 text-sm font-bold text-ink">
-              {priorityWeek ? `Per riempire ${priorityWeek.label.replace("SETT", "la settimana")}` : "Consigliate per te"}
+              {priorityWeek ? `Per riempire la Settimana ${priorityWeek.index}` : "Consigliate per te"}
             </div>
             <div className="flex flex-col gap-1">
               {recommendations.map((m) => (

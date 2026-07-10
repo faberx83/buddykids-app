@@ -2,21 +2,41 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { PlannerData } from "@/lib/data/planner";
 import { MyBooking, BookingStatus } from "@/lib/data/my-bookings";
 import { Activity } from "@/lib/types";
+import { TodayCheckin } from "@/lib/data/checkin";
 import ActivityCard from "@/components/ActivityCard";
 import NextgenBadge from "@/components/nextgen/NextgenBadge";
+import NextgenCheckinCard from "@/components/nextgen/NextgenCheckinCard";
+import BookingVisualCard from "@/components/nextgen/BookingVisualCard";
 
 // SPRINT 1 (NEXTGEN) — Dashboard Genitore come "Family Operating System":
 // la schermata risponde a "la mia famiglia è organizzata per le prossime
-// settimane?", non più "quali prenotazioni ho?". Ordine dei contenuti
-// deciso con Fabrizio: 1) copertura, 2) prossimi impegni, 3) attività in
-// evidenza, 4) stato/riepilogo sintetico. L'elenco completo (con Vista/
-// Raggruppamento/Ordinamento) resta in fondo, volutamente secondario — non
-// deve competere visivamente con la sintesi (vedi nota nel brief: "le
-// prenotazioni non sono più il contenuto principale ma una conseguenza
-// della pianificazione").
+// settimane?", non più "quali prenotazioni ho?".
+//
+// SPRINT CORRETTIVO — raffinamento, non redesign: la V2 era diventata "più
+// razionale ma meno umana" (parole di Fabrizio). Stessa logica dati e stessi
+// componenti riusati di Sprint 1/2/3 (getPlannerData, getMyBookingsForParent,
+// computeMatchesForKid, getTodayCheckinsForParent — tutti invariati), cambia
+// SOLO l'orchestrazione visiva:
+//   1) Hero Card "Stato della famiglia" — prima era una card come le altre,
+//      ora occupa ~30% dello schermo, sfondo caldo distinto, comunica lo
+//      stato con parole (non solo una percentuale)
+//   2) Check-in di oggi (se presente) — prima assente in NEXTGEN
+//   3) Prossimo appuntamento (singolare — prima erano "prossimi impegni", una
+//      lista di 3: qui la Home mostra solo il più imminente, il resto resta
+//      nell'elenco completo in fondo, per ridurre le decisioni da prendere)
+//   4) Suggerimenti personalizzati
+//   5) Planner sintetico (mini timeline, invariata nel dato, upgrade solo
+//      visivo) -> apre /nextgen/planner
+//   6) Prenotazioni (righe upgradate a BookingVisualCard: foto, figlio,
+//      periodo, badge stato, un'unica azione — non più righe di solo testo)
+//   7) Statistiche — spostate in fondo e ridotte (erano a metà pagina, con
+//      lo stesso peso visivo della Hero Card: ora sono l'ultima cosa, più
+//      piccole, perché sono un riepilogo per chi vuole approfondire, non la
+//      prima risposta alla domanda "come sto andando?")
 
 type Recommendation = { activity: Activity; kidName: string; matchPercent: number };
 
@@ -34,6 +54,8 @@ const MONTH_LABELS_IT = [
   "Luglio", "Agosto", "Settembre", "Ottobre", "Novembre", "Dicembre",
 ];
 
+const WEEKDAY_IT = ["domenica", "lunedì", "martedì", "mercoledì", "giovedì", "venerdì", "sabato"];
+
 function monthLabel(monthKey: string): string {
   const [y, m] = monthKey.split("-").map(Number);
   if (!y || !m) return "Senza data";
@@ -44,17 +66,30 @@ function netPrice(b: MyBooking): number {
   return b.totalAmount - b.discountAmount;
 }
 
+// "lunedì 14 luglio" — usato solo nella frase del prossimo impegno nella
+// Hero Card, per essere leggibile come una frase e non come una data ISO.
+function friendlyDate(iso: string): string {
+  const d = new Date(iso + "T00:00:00Z");
+  const weekday = WEEKDAY_IT[d.getUTCDay()];
+  const day = d.getUTCDate();
+  const month = MONTH_LABELS_IT[d.getUTCMonth()].toLowerCase();
+  return `${weekday} ${day} ${month}`;
+}
+
 export default function HomeDashboardClient({
   firstName,
   planner,
   bookings,
   recommendations,
+  todayCheckins,
 }: {
   firstName: string | null;
   planner: PlannerData;
   bookings: MyBooking[];
   recommendations: Recommendation[];
+  todayCheckins: TodayCheckin[];
 }) {
+  const router = useRouter();
   const todayIso = useMemo(() => new Date().toISOString().slice(0, 10), []);
   const active = useMemo(() => bookings.filter((b) => b.status !== "cancelled"), [bookings]);
 
@@ -62,10 +97,14 @@ export default function HomeDashboardClient({
     () =>
       active
         .filter((b) => b.firstWeekStart && b.firstWeekStart >= todayIso)
-        .sort((a, b) => (a.firstWeekStart ?? "").localeCompare(b.firstWeekStart ?? ""))
-        .slice(0, 3),
+        .sort((a, b) => (a.firstWeekStart ?? "").localeCompare(b.firstWeekStart ?? "")),
     [active, todayIso]
   );
+  const nextAppointment = upcoming[0] ?? null;
+  // Righe da mostrare in "Prenotazioni": le prossime, esclusa quella già
+  // mostrata come "Prossimo appuntamento" — evita di ripetere la stessa
+  // informazione due volte nella stessa schermata.
+  const upcomingForList = upcoming.slice(1, 4);
 
   const totalSpent = useMemo(() => active.reduce((sum, b) => sum + netPrice(b), 0), [active]);
   const statusCounts = useMemo(() => {
@@ -74,14 +113,21 @@ export default function HomeDashboardClient({
     return counts;
   }, [bookings]);
 
-  const gaps = planner.weeks.filter((w) => !w.covered && !w.dismissed).length;
-  const headline = gaps === 0
-    ? "La tua famiglia è organizzata per tutta l'estate"
-    : `Organizzati per ${planner.coveredCount} settimane su ${planner.totalCount} — ${gaps} ancora da coprire`;
+  const neededCount = planner.weeks.filter((w) => !w.dismissed).length;
+  const percent = neededCount > 0 ? Math.round((planner.coveredCount / neededCount) * 100) : 0;
+  const gaps = planner.weeks.filter((w) => !w.covered && !w.dismissed);
+  const statusEmoji = percent >= 80 ? "🟢" : percent >= 40 ? "🟡" : "🟠";
+
+  const missingWeeksText = useMemo(() => {
+    if (gaps.length === 0) return null;
+    const names = gaps.slice(0, 2).map((w) => `Settimana ${w.index}`);
+    const rest = gaps.length - names.length;
+    return names.join(", ") + (rest > 0 ? ` e altre ${rest}` : "");
+  }, [gaps]);
 
   // Sezione secondaria "Tutte le prenotazioni": Vista/Raggruppamento/
-  // Ordinamento tenuti separati come richiesto, ma volutamente in fondo e
-  // con peso visivo ridotto rispetto alla sintesi sopra.
+  // Ordinamento tenuti separati come richiesto, in fondo e con peso visivo
+  // ridotto rispetto alla sintesi sopra.
   const [showAll, setShowAll] = useState(false);
   const [groupBy, setGroupBy] = useState<GroupKey>("week");
   const [sortKey, setSortKey] = useState<SortKey>("date");
@@ -115,7 +161,7 @@ export default function HomeDashboardClient({
   }, [bookings, groupBy, sortKey]);
 
   return (
-    <div className="flex flex-col gap-5 px-5 py-6">
+    <div className="flex flex-col gap-9 px-5 py-6">
       <div className="flex items-center justify-between">
         <h1 className="text-xl font-bold text-ink">
           Ciao{firstName ? ` ${firstName}` : ""} 👋
@@ -123,83 +169,76 @@ export default function HomeDashboardClient({
         <NextgenBadge />
       </div>
 
-      {/* 1) Copertura — la prima domanda a cui rispondere */}
-      <div className="rounded-2xl border border-[#E8EBF0] bg-white p-5 shadow-[0_1px_3px_rgba(16,24,40,0.04)]">
-        <div className="mb-3 flex items-center justify-between gap-3">
-          <div className="text-[15px] font-bold text-ink">{headline}</div>
-          <div className="flex flex-shrink-0 gap-1.5">
-            <Link
-              href="/nextgen/search"
-              className="rounded-full bg-bg px-3 py-1.5 text-[11px] font-semibold text-ink-2"
-            >
-              Scopri attività
-            </Link>
-          </div>
+      {/* 1) HERO CARD — "quanto è organizzata la mia famiglia?" deve essere
+          leggibile in meno di 3 secondi. Sfondo caldo distinto (non bianco
+          come il resto della pagina), radius 22px, ombra diffusa, ~30-35%
+          dello schermo iniziale. L'elemento grafico discreto (i due cerchi
+          sfumati) la rende riconoscibile a colpo d'occhio, senza essere
+          un'illustrazione invadente. */}
+      <div className="nextgen-hero-bg nextgen-hero-shadow relative overflow-hidden rounded-[22px] p-6">
+        <div
+          aria-hidden
+          className="pointer-events-none absolute -right-8 -top-10 h-36 w-36 rounded-full bg-white/30"
+        />
+        <div aria-hidden className="pointer-events-none absolute -bottom-12 -right-2 h-24 w-24 rounded-full bg-white/20" />
+        <div className="relative">
+          <p className="mb-1.5 text-sm font-semibold text-ink-2">La tua estate</p>
+          <h2 className="mb-3 text-[30px] font-bold leading-tight text-ink">
+            {statusEmoji} Organizzata al {percent}%
+          </h2>
+          {missingWeeksText ? (
+            <p className="mb-1 text-base text-ink-2">
+              Mancano ancora: <span className="font-semibold text-ink">{missingWeeksText}</span>
+            </p>
+          ) : (
+            <p className="mb-1 text-base text-ink-2">Tutte le settimane utili sono coperte.</p>
+          )}
+          {nextAppointment && (
+            <p className="mb-4 text-base text-ink-2">
+              Prossimo impegno:{" "}
+              <span className="font-semibold text-ink">
+                {nextAppointment.activityName}
+                {nextAppointment.firstWeekStart ? `, ${friendlyDate(nextAppointment.firstWeekStart)}` : ""}
+              </span>
+            </p>
+          )}
+          <button
+            type="button"
+            onClick={() => router.push("/nextgen/planner")}
+            className="rounded-full bg-ink px-5 py-3 text-sm font-bold text-white"
+          >
+            Continua a pianificare
+          </button>
         </div>
-        {/* SPRINT 3 — la striscia di copertura ora porta al Planner completo
-            (timeline, sovrapposizioni, budget): qui resta solo l'anteprima,
-            il Planner diventa la destinazione "cuore dell'esperienza". */}
-        <Link href="/nextgen/planner" className="block">
-          <div className="flex gap-1">
-            {planner.weeks.map((w) => (
-              <div
-                key={w.index}
-                title={`${w.label} · ${w.dateRange}`}
-                className={`h-2.5 flex-1 rounded-full ${
-                  w.covered ? "bg-green" : w.dismissed ? "bg-[#E8EBF0]" : "bg-orange-mid/50"
-                }`}
-              />
-            ))}
-          </div>
-          <div className="mt-2 flex items-center gap-1 text-[11.5px] font-semibold text-[#5B4FE9]">
-            Apri il planner completo
-            <i className="ti ti-chevron-right text-[13px]" />
-          </div>
-        </Link>
       </div>
 
-      {/* 2) Prossimi impegni */}
-      {upcoming.length > 0 && (
+      {/* 2) Check-in di oggi — momento fondamentale, non una funzione
+          secondaria: prima non compariva affatto in NEXTGEN. */}
+      {todayCheckins.length > 0 && (
         <div>
-          <div className="mb-2 text-[13px] font-bold uppercase tracking-wide text-ink-3">
-            Prossimi impegni
-          </div>
-          <div className="flex flex-col gap-2.5">
-            {upcoming.map((b) => (
-              <Link
-                key={b.id}
-                href={`/activity/${b.activityId}`}
-                className="flex items-center gap-3 rounded-xl border border-[#E8EBF0] bg-white p-3.5"
-              >
-                <div
-                  className="flex h-12 w-12 flex-shrink-0 items-center justify-center overflow-hidden rounded-lg bg-cover bg-center text-xl"
-                  style={b.coverImageUrl ? { backgroundImage: `url(${b.coverImageUrl})` } : { background: b.imgGradient }}
-                >
-                  {!b.coverImageUrl && b.emoji}
-                </div>
-                <div className="min-w-0 flex-1">
-                  <div className="truncate text-[13px] font-bold text-ink">{b.activityName}</div>
-                  <div className="truncate text-[12px] text-ink-2">
-                    {b.weeksLabel} {b.kidNames.length > 0 ? `· ${b.kidNames.join(", ")}` : ""}
-                  </div>
-                </div>
-                <i className="ti ti-chevron-right text-ink-3" />
-              </Link>
-            ))}
-          </div>
+          <div className="mb-3 text-[21px] font-semibold text-ink">Oggi</div>
+          <NextgenCheckinCard items={todayCheckins} />
         </div>
       )}
 
-      {/* 3) Attività in evidenza — solo se ci sono buchi da riempire */}
+      {/* 3) Prossimo appuntamento — un solo elemento, non una lista: il resto
+          è nell'elenco "Prenotazioni" più sotto, per non dover valutare 3
+          card diverse nella stessa schermata. */}
+      {nextAppointment && (
+        <div>
+          <div className="mb-3 text-[21px] font-semibold text-ink">Prossimo appuntamento</div>
+          <BookingVisualCard booking={nextAppointment} />
+        </div>
+      )}
+
+      {/* 4) Suggerimenti personalizzati — solo se ci sono buchi da riempire */}
       {recommendations.length > 0 && (
         <div>
-          <div className="mb-2 text-[13px] font-bold uppercase tracking-wide text-ink-3">
-            Consigliati per voi
-          </div>
+          <div className="mb-3 text-[21px] font-semibold text-ink">Consigliati per voi</div>
           <div className="flex flex-col gap-1">
             {recommendations.map((r) => (
               <div key={r.activity.id}>
-                <div className="mb-1 px-1 text-[11px] font-semibold text-ink-2">Per {r.kidName}</div>
+                <div className="mb-1 px-1 text-sm font-semibold text-ink-2">Per {r.kidName}</div>
                 <ActivityCard activity={r.activity} matchPercent={r.matchPercent} />
               </div>
             ))}
@@ -207,34 +246,49 @@ export default function HomeDashboardClient({
         </div>
       )}
 
-      {/* 4) Stato prenotazioni + riepilogo pianificazione, sintetico */}
-      <div className="grid grid-cols-3 gap-2.5">
-        <div className="rounded-xl border border-[#E8EBF0] bg-white p-3">
-          <div className="text-[17px] font-bold text-ink">{statusCounts.confirmed}</div>
-          <div className="text-[10.5px] leading-tight text-ink-2">Confermate</div>
+      {/* 5) Planner sintetico — mini timeline, tocco -> planner completo.
+          Stesso dato di sempre (planner.weeks), qui solo come anteprima
+          visiva: il Planner (Sprint 3) resta il posto per il dettaglio. */}
+      <Link href="/nextgen/planner" className="block">
+        <div className="mb-3 flex items-center justify-between">
+          <div className="text-[21px] font-semibold text-ink">Planner</div>
+          <span className="flex items-center gap-1 text-sm font-semibold text-[#5B4FE9]">
+            Vedi tutto
+            <i className="ti ti-chevron-right text-[13px]" />
+          </span>
         </div>
-        <div className="rounded-xl border border-[#E8EBF0] bg-white p-3">
-          <div className="text-[17px] font-bold text-ink">{statusCounts.pending}</div>
-          <div className="text-[10.5px] leading-tight text-ink-2">In attesa</div>
+        <div className="flex gap-1">
+          {planner.weeks.map((w) => (
+            <div
+              key={w.index}
+              title={`${w.label} · ${w.dateRange}`}
+              className={`h-2.5 flex-1 rounded-full ${
+                w.covered ? "bg-green" : w.dismissed ? "bg-[#E8EBF0]" : "bg-orange-mid/50"
+              }`}
+            />
+          ))}
         </div>
-        <div className="rounded-xl border border-[#E8EBF0] bg-white p-3">
-          <div className="text-[17px] font-bold text-ink">€{totalSpent}</div>
-          <div className="text-[10.5px] leading-tight text-ink-2">Speso finora</div>
-        </div>
-      </div>
+      </Link>
 
-      {/* Sezione secondaria, volutamente in fondo e a basso peso visivo:
-          l'elenco completo con Vista/Raggruppamento/Ordinamento separati —
-          esiste perché richiesto esplicitamente, ma non compete con la
-          sintesi sopra. Le azioni di modifica/annullo restano per ora in
-          "Le mie prenotazioni" (LEGACY): questo sprint è sulla sintesi, non
-          sulla gestione transazionale. */}
+      {/* 6) Prenotazioni — righe visuali (foto, figlio, periodo, badge stato,
+          un'azione), non più solo testo. Elenco completo con Raggruppa/
+          Ordina resta disponibile ma collassato, volutamente secondario. */}
       {bookings.length > 0 && (
-        <div className="mt-2 border-t border-[#F0F2F5] pt-4">
+        <div>
+          <div className="mb-3 text-[21px] font-semibold text-ink">Prenotazioni</div>
+
+          {upcomingForList.length > 0 && (
+            <div className="mb-3 flex flex-col gap-2">
+              {upcomingForList.map((b) => (
+                <BookingVisualCard key={b.id} booking={b} compact />
+              ))}
+            </div>
+          )}
+
           <button
             type="button"
             onClick={() => setShowAll((v) => !v)}
-            className="flex w-full items-center justify-between text-[12.5px] font-semibold text-ink-2"
+            className="flex w-full items-center justify-between text-sm font-semibold text-ink-2"
           >
             Tutte le prenotazioni ({bookings.length})
             <i className={`ti ti-chevron-${showAll ? "up" : "down"}`} />
@@ -287,35 +341,46 @@ export default function HomeDashboardClient({
                 ))}
               </div>
 
-              <div className="flex flex-col gap-3">
+              <div className="flex flex-col gap-4">
                 {groups.map((g) => (
                   <div key={g.label}>
-                    <div className="mb-1 px-1 text-[10px] font-bold uppercase tracking-wide text-ink-3">
+                    <div className="mb-1.5 px-1 text-[10px] font-bold uppercase tracking-wide text-ink-3">
                       {g.label}
                     </div>
-                    <div className="flex flex-col gap-1.5">
+                    <div className="flex flex-col gap-2">
                       {g.items.map((b) => (
-                        <Link
-                          key={b.id}
-                          href={`/activity/${b.activityId}`}
-                          className="flex items-center justify-between rounded-lg border border-[#F0F2F5] bg-white px-3 py-2 text-[12px]"
-                        >
-                          <span className="truncate text-ink">{b.activityName}</span>
-                          <span className="flex-shrink-0 text-ink-3">€{netPrice(b)}</span>
-                        </Link>
+                        <BookingVisualCard key={b.id} booking={b} compact />
                       ))}
                     </div>
                   </div>
                 ))}
               </div>
 
-              <Link href="/prenotazioni" className="mt-3 inline-block text-[12px] font-semibold text-sky">
+              <Link href="/prenotazioni" className="mt-4 inline-block text-sm font-semibold text-[#5B4FE9]">
                 Gestisci (modifica/annulla) →
               </Link>
             </div>
           )}
         </div>
       )}
+
+      {/* 7) Statistiche — in fondo, ridotte: un riepilogo per chi vuole
+          approfondire, non la prima risposta della schermata (quella è la
+          Hero Card). Prima erano a metà pagina con lo stesso peso della Hero. */}
+      <div className="grid grid-cols-3 gap-2">
+        <div className="rounded-xl bg-bg p-2.5 text-center">
+          <div className="text-sm font-bold text-ink">{statusCounts.confirmed}</div>
+          <div className="text-[10px] leading-tight text-ink-3">Confermate</div>
+        </div>
+        <div className="rounded-xl bg-bg p-2.5 text-center">
+          <div className="text-sm font-bold text-ink">{statusCounts.pending}</div>
+          <div className="text-[10px] leading-tight text-ink-3">In attesa</div>
+        </div>
+        <div className="rounded-xl bg-bg p-2.5 text-center">
+          <div className="text-sm font-bold text-ink">€{totalSpent}</div>
+          <div className="text-[10px] leading-tight text-ink-3">Speso finora</div>
+        </div>
+      </div>
     </div>
   );
 }

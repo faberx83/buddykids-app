@@ -15,8 +15,8 @@ test.describe("NEXTGEN - Planner (Sprint 3)", () => {
 
     await expect(page.getByText(/settimane coperte/)).toBeVisible();
     await expect(page.getByText("Timeline della stagione")).toBeVisible();
-    await expect(page.getByText("Sett. 1")).toBeVisible();
-    await expect(page.getByText("Sett. 13")).toBeVisible();
+    await expect(page.getByText("Settimana 1", { exact: true })).toBeVisible();
+    await expect(page.getByText("Settimana 13", { exact: true })).toBeVisible();
     await expect(page.locator("body")).not.toContainText("Application error");
   });
 

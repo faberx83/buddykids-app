@@ -7,15 +7,20 @@ import { loginAs, isRealDeployment } from "../fixtures/roles";
 // stato/riepilogo. L'elenco completo (Vista/Raggruppamento/Ordinamento)
 // resta secondario, collassato di default. Cartella separata da
 // tests/nextgen/smoke.spec.ts (Sprint 0) e da tests/genitori (LEGACY).
+//
+// SPRINT CORRETTIVO: TC-N07 aggiornato al nuovo testo della Hero Card
+// ("Organizzata al N%" sostituisce "organizzato per N settimane su M") — vedi
+// tests/nextgen/home-refinement.spec.ts per i nuovi casi (Hero Card,
+// check-in, prenotazioni visuali).
 
 test.describe("NEXTGEN - Dashboard Genitore (Sprint 1)", () => {
-  test("TC-N07 - La copertura dell'estate è il primo contenuto mostrato", async ({ page }) => {
+  test("TC-N07 - La copertura dell'estate è il primo contenuto mostrato (Hero Card)", async ({ page }) => {
     test.skip(!isRealDeployment, "Richiede un deploy con Supabase configurato e l'account genitore di test.");
     await loginAs(page, "parent");
     await page.goto("/nextgen");
 
-    // La card di copertura precede sia "Prossimi impegni" sia le statistiche.
-    const coverageText = page.getByText(/organizzat[ao] per|settimane su/);
+    // La Hero Card precede sia "Prossimo appuntamento" sia le statistiche.
+    const coverageText = page.getByText(/Organizzata al \d+%/);
     await expect(coverageText.first()).toBeVisible();
     await expect(page.locator("body")).not.toContainText("Application error");
   });
