@@ -9,6 +9,8 @@
 import { createClient } from "@/lib/supabase/server";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
 import { getCenterContext } from "@/lib/data/center-admin";
+import { getSeasonWeekRanges, overlaps } from "@/lib/season-weeks";
+import { getSeasonYear } from "@/lib/data/season-year";
 
 export interface AttendanceKid {
   kidId: string;
@@ -27,6 +29,13 @@ export interface AttendanceWeekGroup {
   startDate: string;
   endDate: string;
   kids: AttendanceKid[];
+  // Vero se la data ODIERNA rientra in questa settimana — usato dal client
+  // per selezionare di default la settimana giusta invece della prima in
+  // ordine alfabetico/data (segnalazione di Fabrizio: il check-in del
+  // genitore non si vedeva perché il gestore si trovava di default su una
+  // settimana diversa da quella di oggi) e per mostrare un indicatore
+  // "Oggi" nella sidebar.
+  isCurrentWeek: boolean;
 }
 
 function firstOf<T>(value: T | T[] | null | undefined): T | null {
@@ -76,6 +85,20 @@ export async function getParticipantsForCenter(): Promise<AttendanceWeekGroup[]>
   const { data, error } = await query;
   if (error || !data) return [];
 
+  // BUG TROVATO+CORRETTO (segnalato da Fabrizio: il check-in del genitore
+  // "non si aggiorna lato gestore") — il vero problema era che questo
+  // "Settimana N" veniva preso dal testo grezzo salvato su activity_weeks
+  // (potenzialmente scritto a mano dal gestore, incoerente), esattamente
+  // come il bug già trovato+corretto in lib/data/checkin.ts. Il gestore
+  // vedeva quindi un'etichetta diversa da quella usata da Home/Planner per
+  // la STESSA settimana reale, e finiva per selezionare a mano la
+  // settimana sbagliata (quella che sembrava "quella giusta" per nome, ma
+  // in realtà copriva date diverse da quelle del check-in). Ricalcoliamo
+  // l'indice canonico dalla data reale, come planner.ts/checkin.ts.
+  const seasonYear = await getSeasonYear();
+  const seasonWeeks = getSeasonWeekRanges(seasonYear);
+  const todayIso = new Date().toISOString().slice(0, 10);
+
   // 2) Gruppo (facoltativo) per bambino+attività — best effort: se la query
   // fallisce (es. RLS non ancora applicata) i badge gruppo restano vuoti,
   // senza bloccare il resto della lista partecipanti.
@@ -109,14 +132,18 @@ export async function getParticipantsForCenter(): Promise<AttendanceWeekGroup[]>
 
       const key = `${activity.id}:${week.id}`;
       if (!groupsMap.has(key)) {
+        const canonicalWeek = seasonWeeks.find((sw) =>
+          overlaps(week.start_date, week.end_date, sw.start.toISOString().slice(0, 10), sw.end.toISOString().slice(0, 10))
+        );
         groupsMap.set(key, {
           activityId: activity.id,
           activityName: activity.name,
           weekId: week.id,
-          weekLabel: week.label,
+          weekLabel: canonicalWeek ? `Settimana ${canonicalWeek.index}` : week.label,
           startDate: week.start_date,
           endDate: week.end_date,
           kids: [],
+          isCurrentWeek: todayIso >= week.start_date && todayIso <= week.end_date,
         });
       }
       const weekGroup = groupsMap.get(key)!;
@@ -174,6 +201,40 @@ export async function getAttendanceForWeek(weekId: string): Promise<AttendanceDa
     status: r.status as AttendanceStatusValue,
     checkedInByParent: r.checked_in_by === "parent",
   }));
+}
+
+// Conteggio dei check-in fatti dal genitore (Home) e non ancora
+// confermati/corretti dal gestore — badge di notifica nel nav "Registro
+// presenze" (Fabrizio: "ci vuole il badge delle notifiche come sulle
+// richieste su tutte le sezioni che prevedono una notifica da una parte
+// all'altra"). Un record resta "da confermare" finché il gestore non tocca
+// esplicitamente lo stato (setAttendanceAction rimette checked_in_by a
+// "center", vedi app/actions/attendance.ts).
+export async function getUnconfirmedParentCheckinsCount(): Promise<number> {
+  if (!isSupabaseConfigured) return 0;
+
+  const { centerDbId, isPlatformAdmin } = await getCenterContext();
+  if (!centerDbId && !isPlatformAdmin) return 0;
+
+  const supabase = await createClient();
+
+  let activityIds: string[] | null = null;
+  if (centerDbId) {
+    const { data: acts } = await supabase.from("activities").select("id").eq("center_id", centerDbId);
+    activityIds = (acts ?? []).map((a) => a.id as string);
+    if (activityIds.length === 0) return 0;
+  }
+
+  let query = supabase
+    .from("attendance_records")
+    .select("id", { count: "exact", head: true })
+    .eq("checked_in_by", "parent");
+
+  if (activityIds) query = query.in("activity_id", activityIds);
+
+  const { count, error } = await query;
+  if (error || count === null) return 0;
+  return count;
 }
 
 // Elenco dei giorni (lun-ven) coperti da una settimana, per costruire le

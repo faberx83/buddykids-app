@@ -6,6 +6,7 @@ import { Role } from "@/lib/types";
 import { getGroupRequestsForCenter } from "@/lib/data/group-requests";
 import { getGestoreAccountProfile } from "@/lib/data/profile";
 import { getUnreadCountForCenter } from "@/lib/data/inquiries";
+import { getUnconfirmedParentCheckinsCount } from "@/lib/data/attendance";
 
 export default async function CenterLayout({ children }: { children: React.ReactNode }) {
   // Con Supabase collegato, il ruolo reale (da profiles.role) sostituisce del
@@ -40,6 +41,13 @@ export default async function CenterLayout({ children }: { children: React.React
   // Fabrizio: vuole essere avvisato dell'arrivo di un messaggio, anche se
   // poi la lascia aperta per rispondere più tardi).
   const openInquiries = await getUnreadCountForCenter();
+
+  // Badge rosso su "Registro presenze" col numero di check-in fatti dal
+  // genitore (Home) e non ancora confermati/corretti dal gestore —
+  // segnalazione di Fabrizio: vuole lo stesso trattamento di notifica già
+  // fatto per "Le mie richieste" su ogni sezione con un avviso da una
+  // parte all'altra.
+  const unconfirmedCheckins = await getUnconfirmedParentCheckinsCount();
 
   // Badge profilo in alto a destra (coerente con l'app genitore) — vedi
   // AccountBadge in components/dashboard/DashboardLayout.tsx.
@@ -77,6 +85,7 @@ export default async function CenterLayout({ children }: { children: React.React
       label: "Registro presenze",
       icon: "ti-clipboard-check",
       sectionLabel: "Presenze",
+      badgeCount: unconfirmedCheckins,
     },
     {
       href: "/center/report-presenze",

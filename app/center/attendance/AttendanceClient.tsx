@@ -16,6 +16,28 @@ const STATUS_LABEL: Record<AttendanceStatus, string> = {
 };
 
 const DAY_LABELS_IT = ["Dom", "Lun", "Mar", "Mer", "Gio", "Ven", "Sab"];
+const MONTH_LABELS_IT = [
+  "Gennaio",
+  "Febbraio",
+  "Marzo",
+  "Aprile",
+  "Maggio",
+  "Giugno",
+  "Luglio",
+  "Agosto",
+  "Settembre",
+  "Ottobre",
+  "Novembre",
+  "Dicembre",
+];
+
+// Segnalazione di Fabrizio: "non si capisce i giorni di che mese siano..
+// sulla sinistra bisogna avere un raggruppamento per mese..e deve essere
+// leggibile anche nel registro presenze giornaliero sulla destra".
+function monthLabel(iso: string): string {
+  const d = new Date(iso + "T00:00:00Z");
+  return `${MONTH_LABELS_IT[d.getUTCMonth()]} ${d.getUTCFullYear()}`;
+}
 
 // Elenco dei giorni coperti da una settimana (di solito lun-ven) — duplica
 // volutamente la logica di lib/data/attendance.ts#daysInWeek in una versione
@@ -42,8 +64,19 @@ export default function AttendanceClient({
   weekGroups: AttendanceWeekGroup[];
   attendanceByWeek: Record<string, AttendanceDayStatus[]>;
 }) {
+  // BUG TROVATO+CORRETTO (segnalato da Fabrizio: "faccio il check-in lato
+  // genitori ma non si aggiorna lato gestore"): la settimana selezionata di
+  // default era semplicemente la prima in ordine alfabetico+data
+  // (weekGroups[0]), quasi mai quella che copre OGGI — il gestore si
+  // ritrovava quindi a guardare una settimana diversa da quella in cui il
+  // genitore aveva appena fatto il check-in, e la presenza sembrava "non
+  // registrata" mentre in realtà era semplicemente altrove. Ora si
+  // preferisce la prima settimana che copre la data odierna (isCurrentWeek,
+  // calcolato in lib/data/attendance.ts), con fallback al comportamento
+  // precedente se nessuna attività ha una settimana per oggi.
+  const defaultGroup = weekGroups.find((g) => g.isCurrentWeek) ?? weekGroups[0] ?? null;
   const [selectedKey, setSelectedKey] = useState<string | null>(
-    weekGroups.length > 0 ? `${weekGroups[0].activityId}:${weekGroups[0].weekId}` : null
+    defaultGroup ? `${defaultGroup.activityId}:${defaultGroup.weekId}` : null
   );
 
   const { initialAttendance, initialParentReport } = useMemo(() => {
@@ -63,9 +96,32 @@ export default function AttendanceClient({
   const [selectedDay, setSelectedDay] = useState<string | null>(null);
   const [savingKey, setSavingKey] = useState<string | null>(null);
 
+  // Raggruppamento per mese in sidebar (segnalazione di Fabrizio): weekGroups
+  // arriva ordinato per attività+settimana (vedi lib/data/attendance.ts), non
+  // in ordine cronologico — qui si ricostruiscono i "bucket" per mese, in
+  // ordine cronologico, mantenendo l'ordine relativo originale all'interno
+  // di ciascun mese.
+  const monthBuckets = useMemo(() => {
+    const buckets = new Map<string, { label: string; items: AttendanceWeekGroup[] }>();
+    for (const g of weekGroups) {
+      const monthKey = g.startDate.slice(0, 7); // "YYYY-MM", ordinabile come stringa
+      if (!buckets.has(monthKey)) buckets.set(monthKey, { label: monthLabel(g.startDate), items: [] });
+      buckets.get(monthKey)!.items.push(g);
+    }
+    return Array.from(buckets.entries())
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([, v]) => v);
+  }, [weekGroups]);
+
   const selectedGroup = weekGroups.find((g) => `${g.activityId}:${g.weekId}` === selectedKey) ?? null;
   const days = selectedGroup ? daysInWeekClient(selectedGroup.startDate, selectedGroup.endDate) : [];
-  const activeDay = selectedDay && days.includes(selectedDay) ? selectedDay : days[0];
+  // Se oggi rientra nella settimana selezionata, parte da lì di default
+  // (altrimenti si rischia di guardare Lunedì e non vedere un check-in del
+  // genitore fatto oggi, magari di Giovedì — segnalazione di Fabrizio: "non
+  // si vede l'info del check-in").
+  const todayIso = new Date().toISOString().slice(0, 10);
+  const defaultDay = days.includes(todayIso) ? todayIso : days[0];
+  const activeDay = selectedDay && days.includes(selectedDay) ? selectedDay : defaultDay;
 
   // Riepilogo "arrivati su prenotati" per il giorno attivo (richiesto da
   // Fabrizio) — un bambino conta come presente solo se esplicitamente
@@ -140,32 +196,52 @@ export default function AttendanceClient({
         <div className="flex flex-col gap-4 md:flex-row">
           <div className="w-full flex-shrink-0 rounded-lg border border-[#E8EBF0] bg-white md:w-64">
             <div className="divide-y divide-[#F0F2F5]">
-              {weekGroups.map((g) => {
-                const key = `${g.activityId}:${g.weekId}`;
-                return (
-                  <button
-                    key={key}
-                    onClick={() => {
-                      setSelectedKey(key);
-                      setSelectedDay(null);
-                    }}
-                    className={`block w-full px-4 py-3 text-left text-sm transition-colors ${
-                      selectedKey === key ? "bg-partner-light font-semibold text-partner" : "text-ink"
-                    }`}
-                  >
-                    <div>{g.activityName}</div>
-                    <div className="text-xs text-ink-2">
-                      {g.weekLabel} · {g.kids.length} bambini
-                    </div>
-                  </button>
-                );
-              })}
+              {monthBuckets.map((bucket) => (
+                <div key={bucket.label}>
+                  <div className="bg-bg px-4 py-1.5 text-[10.5px] font-bold uppercase tracking-wide text-ink-3">
+                    {bucket.label}
+                  </div>
+                  {bucket.items.map((g) => {
+                    const key = `${g.activityId}:${g.weekId}`;
+                    return (
+                      <button
+                        key={key}
+                        onClick={() => {
+                          setSelectedKey(key);
+                          setSelectedDay(null);
+                        }}
+                        className={`block w-full px-4 py-3 text-left text-sm transition-colors ${
+                          selectedKey === key ? "bg-partner-light font-semibold text-partner" : "text-ink"
+                        }`}
+                      >
+                        <div className="flex items-center gap-1.5">
+                          {g.activityName}
+                          {g.isCurrentWeek && (
+                            <span className="rounded-full bg-partner-light px-1.5 py-0.5 text-[9px] font-bold uppercase text-partner">
+                              Oggi
+                            </span>
+                          )}
+                        </div>
+                        <div className="text-xs text-ink-2">
+                          {g.weekLabel} · {g.kids.length} bambini
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              ))}
             </div>
           </div>
 
           <div className="flex-1 rounded-lg border border-[#E8EBF0] bg-white p-4">
             {selectedGroup && (
               <>
+                {/* Mese leggibile sopra le tab dei giorni (segnalazione di
+                    Fabrizio) — quasi sempre uno solo, ma una settimana può
+                    a cavallo di due mesi (es. 29 giu - 3 lug). */}
+                <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-ink-3">
+                  {Array.from(new Set(days.map(monthLabel))).join(" – ")}
+                </div>
                 <div className="mb-3 flex flex-wrap gap-2">
                   {days.map((d) => (
                     <button

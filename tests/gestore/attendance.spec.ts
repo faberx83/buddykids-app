@@ -191,4 +191,88 @@ test.describe("Gestore - Registro presenze", () => {
       await gestoreContext.close();
     }
   });
+
+  // BUG TROVATO+CORRETTO (segnalato da Fabrizio: "faccio il check-in lato
+  // genitori ma non si aggiorna lato gestore") — la vera causa era che la
+  // settimana selezionata di default nel Registro non era necessariamente
+  // quella che copre OGGI (era semplicemente la prima per nome+data), e il
+  // "Settimana N" mostrato usava un'etichetta grezza a volte diversa da
+  // quella canonica usata da Home/Planner — il gestore finiva a guardare
+  // una settimana diversa da quella del check-in. Ora la settimana di oggi
+  // è selezionata di default e ha un badge "Oggi" nella sidebar.
+  // Priorita: Alta | Precondizioni: Prenotazione con settimana che copre oggi
+  test("TC-186 - la settimana di oggi è selezionata di default e ha il badge 'Oggi'", async ({ page }) => {
+    test.skip(
+      !isRealDeployment,
+      "Richiede un deploy con Supabase configurato, l'account Gestore di test e una settimana che copre oggi (vedi tests/cleanup-test-data.mjs)."
+    );
+    await loginAs(page, "center_admin");
+    await page.goto("/center/attendance");
+
+    const oggiBadge = page.getByText("Oggi", { exact: true });
+    const hasCurrentWeek = await oggiBadge.isVisible().catch(() => false);
+    test.skip(
+      !hasCurrentWeek,
+      "Nessuna settimana seminata copre la data odierna in questo momento (vedi tests/cleanup-test-data.mjs)."
+    );
+
+    // Il bottone-gruppo con il badge "Oggi" deve già essere quello attivo
+    // (evidenziato) senza bisogno di cliccarlo.
+    const oggiGroupButton = page.locator("button").filter({ has: oggiBadge });
+    await expect(oggiGroupButton).toHaveClass(/bg-partner-light/);
+  });
+
+  // Segnalazione di Fabrizio: "ci vuole il badge delle notifiche come sulle
+  // richieste su tutte le sezioni che prevedono una notifica da una parte
+  // all'altra" — aggiunto un badge su "Registro presenze" col numero di
+  // check-in fatti dal genitore e non ancora confermati/corretti dal
+  // gestore (stesso pattern del badge non-letto di "Le mie richieste").
+  // Priorita: Media | Precondizioni: Almeno un check-in fatto dal genitore
+  test("TC-187 - 'Registro presenze' nel menu mostra un badge per i check-in del genitore da confermare", async ({
+    page,
+    browser,
+  }) => {
+    test.skip(
+      !isRealDeployment,
+      "Richiede un deploy con Supabase configurato e gli account Genitore/Gestore di test."
+    );
+
+    // 1) Genitore: fa un check-in (se disponibile oggi).
+    await loginAs(page, "parent");
+    await page.goto("/");
+    const promptVisible = await page
+      .getByText(/è arrivato\/a a/)
+      .first()
+      .isVisible()
+      .catch(() => false);
+    const alreadyCollapsed = await page
+      .locator('[aria-label="Modifica risposta"]')
+      .first()
+      .isVisible()
+      .catch(() => false);
+    test.skip(
+      !promptVisible && !alreadyCollapsed,
+      "Nessuna settimana seminata copre la data odierna — check-in non disponibile oggi."
+    );
+    if (promptVisible) {
+      await page.getByRole("button", { name: "Siamo in ritardo" }).click();
+    }
+
+    // 2) Gestore (context separato): il badge su "Registro presenze" è > 0.
+    const gestoreContext = await browser.newContext();
+    const gestorePage = await gestoreContext.newPage();
+    try {
+      await loginAs(gestorePage, "center_admin");
+      await gestorePage.goto("/center");
+      const navItem = gestorePage.locator("a", { hasText: "Registro presenze" }).first();
+      await expect(navItem).toBeVisible();
+      // Il badge è un elemento figlio col conteggio — verifichiamo solo che
+      // non sia assente del tutto (>=1), non un numero esatto (altri run
+      // potrebbero aver lasciato check-in non confermati precedenti).
+      const badge = navItem.locator("span").filter({ hasText: /^\d+$/ });
+      await expect(badge.first()).toBeVisible();
+    } finally {
+      await gestoreContext.close();
+    }
+  });
 });
