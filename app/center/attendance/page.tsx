@@ -1,10 +1,10 @@
 import AttendanceClient from "./AttendanceClient";
-import { getParticipantsForCenter, getAttendanceForWeek } from "@/lib/data/attendance";
+import { getParticipantsForCenter, getAttendanceForWeek, type AttendanceDayStatus } from "@/lib/data/attendance";
 
 export default async function AttendancePage() {
   const weekGroups = await getParticipantsForCenter();
 
-  const attendanceByWeek: Record<string, { kidId: string; date: string; status: "presente" | "assente" }[]> = {};
+  const attendanceByWeek: Record<string, AttendanceDayStatus[]> = {};
   await Promise.all(
     weekGroups.map(async (g) => {
       attendanceByWeek[g.weekId] = await getAttendanceForWeek(g.weekId);

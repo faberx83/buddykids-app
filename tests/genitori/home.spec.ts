@@ -129,4 +129,39 @@ test.describe("Genitori - Home", () => {
     const kidButton = page.getByRole("button", { name: "[TEST] Bimbo Prova" });
     await expect(kidButton.locator("img")).toBeVisible();
   });
+
+  // TC-151 - Check-in MVP dalla Home ("è arrivato/a?")
+  // NUOVA FUNZIONALITÀ (richiesta da Fabrizio, scope MVP concordato: risposta
+  // manuale del genitore in app, NIENTE geolocalizzazione/notifica push
+  // automatica — non affidabili su web/iOS senza un'infrastruttura dedicata
+  // non ancora presente in questo stack). Precondizione: tests/cleanup-test-data.mjs
+  // estende la prenotazione fixture con la settimana di camp che copre la
+  // data ODIERNA (se ne esiste una tra le 13 seminate) — se il run avviene
+  // fuori dalla stagione seminata, la card non compare e il test si
+  // auto-salta (soft-skip a runtime, non è un fallimento).
+  test("TC-151 - rispondere al check-in salva subito e persiste dopo reload", async ({ page }) => {
+    test.skip(!isRealDeployment, "Richiede un deploy con Supabase configurato e l'account genitore di test.");
+    await loginAs(page, "parent");
+    await page.goto("/");
+
+    const promptVisible = await page
+      .getByText(/è arrivato\/a a/)
+      .first()
+      .isVisible()
+      .catch(() => false);
+    test.skip(
+      !promptVisible,
+      "Nessuna settimana seminata copre la data odierna (vedi tests/cleanup-test-data.mjs) — check-in non mostrato oggi."
+    );
+
+    await page.getByRole("button", { name: "Siamo in ritardo" }).click();
+    await expect(page.getByText("Il centro è stato avvisato del ritardo.")).toBeVisible();
+
+    await page.reload();
+    await expect(page.getByRole("button", { name: "Siamo in ritardo" })).toHaveClass(/bg-orange/);
+
+    // Ripristino a "Sì" per non alterare i run successivi.
+    await page.getByRole("button", { name: "Sì", exact: true }).click();
+    await expect(page.getByRole("button", { name: "Sì", exact: true })).toHaveClass(/bg-partner/);
+  });
 });

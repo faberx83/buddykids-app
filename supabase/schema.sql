@@ -1068,3 +1068,27 @@ create policy "Attendance: il centro gestisce le presenze delle proprie attivit�
   );
 
 create index if not exists idx_attendance_activity_week on public.attendance_records (activity_id, week_id);
+
+-- Check-in MVP lato genitore (richiesto da Fabrizio): il genitore conferma
+-- l'arrivo del bambino con un tasto in app ("Sì"/"Siamo in ritardo"/"No"),
+-- nessuna geolocalizzazione automatica in background né notifica push (non
+-- affidabili su web/iOS senza un'infrastruttura dedicata — vedi discussione).
+-- "in_ritardo" è uno stato transitorio che il Gestore vede e può confermare/
+-- correggere in "presente"/"assente" dal registro presenze.
+alter table public.attendance_records drop constraint if exists attendance_records_status_check;
+alter table public.attendance_records add constraint attendance_records_status_check
+  check (status in ('presente', 'assente', 'in_ritardo'));
+alter table public.attendance_records add column if not exists checked_in_by text check (checked_in_by in ('parent', 'center'));
+alter table public.attendance_records add column if not exists checkin_at timestamptz;
+
+-- Policy AGGIUNTIVA (permissive, si somma in OR a quella del centro sopra):
+-- il genitore può scrivere/leggere SOLO le presenze dei propri bambini.
+drop policy if exists "Attendance: il genitore fa il check-in dei propri bambini" on public.attendance_records;
+create policy "Attendance: il genitore fa il check-in dei propri bambini"
+  on public.attendance_records for all
+  using (
+    exists (select 1 from public.kids k where k.id = attendance_records.kid_id and k.parent_id = auth.uid())
+  )
+  with check (
+    exists (select 1 from public.kids k where k.id = attendance_records.kid_id and k.parent_id = auth.uid())
+  );

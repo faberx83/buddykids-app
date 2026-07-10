@@ -8,7 +8,12 @@ import { test, expect, loginAs, isRealDeployment } from "../fixtures/roles";
 
 test.describe("Gestore - Il mio account", () => {
   // TC-138 - Pagina profilo personale distinta dal profilo del centro
-  test("TC-138 - '/center/account' mostra dati personali/sicurezza/preferenze/privacy del gestore", async ({
+  // AGGIORNATO: Sicurezza/Preferenze/Notifiche/Privacy e account sono ora
+  // voci di un menu "Impostazioni" (righe cliccabili) che aprono ciascuna
+  // una sotto-pagina dedicata sotto /center/account/... — non più sezioni
+  // inline sulla stessa pagina (stessa struttura del profilo genitore, vedi
+  // tests/genitori/profilo.spec.ts TC-148).
+  test("TC-138 - '/center/account' mostra il menu Impostazioni e apre la sotto-pagina Sicurezza", async ({
     page,
   }) => {
     test.skip(!isRealDeployment, "Richiede un deploy con Supabase configurato e l'account Gestore di test.");
@@ -24,17 +29,21 @@ test.describe("Gestore - Il mio account", () => {
     // Privacy e account (ProfileSettingsSection, componente condiviso).
     await expect(page.getByRole("button", { name: "Modifica" })).toBeVisible();
     await expect(page.getByText("Impostazioni", { exact: true })).toBeVisible();
-    await expect(page.getByText("Sicurezza", { exact: true })).toBeVisible();
-    await expect(page.getByText("Preferenze", { exact: true })).toBeVisible();
-    await expect(page.getByText("Notifiche", { exact: true })).toBeVisible();
-    await expect(page.getByText("Privacy e account", { exact: true })).toBeVisible();
-    await expect(page.locator("#security-new-password")).toBeVisible();
+    await expect(page.getByRole("link", { name: /Sicurezza/ })).toBeVisible();
+    await expect(page.getByRole("link", { name: /Preferenze/ })).toBeVisible();
+    await expect(page.getByRole("link", { name: /Notifiche/ })).toBeVisible();
+    await expect(page.getByRole("link", { name: /Privacy e account/ })).toBeVisible();
 
     // Il selettore "Sei: Padre/Madre/Tutore" non ha senso per un gestore.
     await expect(page.getByRole("button", { name: "Madre" })).toHaveCount(0);
 
     // L'uscita dall'account vive SOLO qui.
     await expect(page.getByRole("button", { name: /Esci dall.?account/i })).toBeVisible();
+
+    // La voce "Sicurezza" apre la sotto-pagina dedicata.
+    await page.getByRole("link", { name: /Sicurezza/ }).click();
+    await expect(page).toHaveURL(/\/center\/account\/sicurezza/);
+    await expect(page.locator("#security-new-password")).toBeVisible();
   });
 
   // TC-144 - Badge profilo in alto a destra (coerenza con l'app genitore) e

@@ -81,15 +81,7 @@ export default async function ProfilePage({
         />
       </div>
 
-      <ProfileSettingsSection
-        language={profile.language}
-        theme={profile.theme}
-        notifyEmail={profile.notifyEmail}
-        notifyPush={profile.notifyPush}
-        notifySms={profile.notifySms}
-        marketingConsent={profile.marketingConsent}
-        accountStatus={profile.accountStatus}
-      />
+      <ProfileSettingsSection basePath="/profile" />
 
       <div className="px-5 pt-3">
         <div className="mb-2 text-[11px] font-bold uppercase tracking-wide text-ink-3">

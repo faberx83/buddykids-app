@@ -61,20 +61,70 @@ test.describe("Genitori - Profilo", () => {
     await expect(page.getByText(uniqueName)).toBeVisible();
   });
 
-  // Voci menu in arrivo — AGGIORNATO: "Notifiche" e "Lingua" non sono più
-  // ComingSoon in questo elenco: sono ora "Preferenze"/"Sicurezza"/"Privacy e
-  // account" reali (vedi TC-133..137). Restano ComingSoon solo: Le mie
-  // prenotazioni, Preferiti, Navetta, Chat con organizzatori, Ricevute e fatture.
+  // Voci menu in arrivo — AGGIORNATO: "Notifiche" e "Preferenze" sono voci
+  // REALI del menu "Impostazioni" (righe cliccabili che aprono una
+  // sotto-pagina, vedi ProfileSettingsSection), non più ComingSoon. Restano
+  // ComingSoon: Le mie prenotazioni, Preferiti, Navetta, Chat con
+  // organizzatori, Ricevute e fatture, Metodi di pagamento.
   test("TC-070 - le voci non ancora implementate mostrano il badge ComingSoon", async ({ page }) => {
     test.skip(!isRealDeployment, "Richiede un deploy con Supabase configurato e l'account genitore di test.");
     await loginAs(page, "parent");
     await page.goto("/profile");
 
-    for (const label of ["Le mie prenotazioni", "Preferiti", "Navetta"]) {
+    for (const label of ["Le mie prenotazioni", "Preferiti", "Navetta", "Metodi di pagamento"]) {
       await expect(page.getByText(label, { exact: true })).toBeVisible();
     }
-    // "Notifiche"/"Lingua" come voci ComingSoon non devono più esistere in questa vista.
-    await expect(page.getByText("Notifiche", { exact: true })).toHaveCount(0);
+    // "Notifiche" è ora un link reale verso /profile/notifiche, non una voce inerte.
+    await expect(page.getByRole("link", { name: /Notifiche/ })).toHaveAttribute("href", "/profile/notifiche");
+  });
+
+  // TC-148 - Le voci del menu "Impostazioni" aprono ciascuna la propria sotto-pagina
+  // NUOVA FUNZIONALITÀ: prima tutte le sottosezioni erano visibili in linea
+  // sulla stessa pagina /profile; ora ogni voce (Sicurezza/Preferenze/
+  // Notifiche/Privacy e account) è una riga di menu che apre una sotto-pagina
+  // dedicata, con back-button (PageHeader) verso /profile — richiesto da
+  // Fabrizio ("io farei una sezione dedicata, non tutti i sottomenu visibili").
+  test("TC-148 - le voci di Impostazioni aprono le sotto-pagine e il back-button riporta a /profile", async ({
+    page,
+  }) => {
+    test.skip(!isRealDeployment, "Richiede un deploy con Supabase configurato e l'account genitore di test.");
+    await loginAs(page, "parent");
+    await page.goto("/profile");
+
+    await page.getByRole("link", { name: /Sicurezza/ }).click();
+    await expect(page).toHaveURL(/\/profile\/sicurezza/);
+    await expect(page.locator("#security-new-password")).toBeVisible();
+
+    await page.getByRole("button", { name: "Indietro" }).click(); // back-button (PageHeader)
+    await expect(page).toHaveURL(/\/profile$/);
+  });
+
+  // TC-150 - Il menu "Scatta foto"/"Scegli dalla galleria" resta nel viewport
+  // BUG DI TEST TROVATO+CORRETTO (segnalato da Fabrizio con screenshot): il
+  // dropdown in AvatarUploadButton.tsx non aveva left/right espliciti, quindi
+  // la sua "static position" orizzontale poteva farlo sporgere/tagliarsi sul
+  // bordo della card. Corretto con "left-0" esplicito (vedi componente). Qui
+  // verifichiamo che il riquadro del menu resti interamente entro i confini
+  // orizzontali del viewport mobile (boundingBox: coordinate di LAYOUT, non
+  // rilevano il ritaglio visivo di un overflow-hidden ancestor, ma
+  // catturano esattamente la regressione di posizionamento corretta qui).
+  test("TC-150 - il menu foto resta interamente nel viewport", async ({ page }) => {
+    test.skip(!isRealDeployment, "Richiede un deploy con Supabase configurato e l'account genitore di test.");
+    await page.setViewportSize({ width: 375, height: 700 });
+    await loginAs(page, "parent");
+    await page.goto("/profile");
+
+    // .first(): sia l'avatar del genitore sia quello di ogni bambino (sotto,
+    // in ProfileKidsSection) usano lo stesso AvatarUploadButton/aria-label —
+    // qui interessa solo il primo (quello del genitore, in alto).
+    await page.getByRole("button", { name: "Cambia foto" }).first().click();
+    const menu = page.getByText("Scegli dalla galleria").locator("..");
+    const box = await menu.boundingBox();
+    expect(box).not.toBeNull();
+    if (box) {
+      expect(box.x).toBeGreaterThanOrEqual(0);
+      expect(box.x + box.width).toBeLessThanOrEqual(375);
+    }
   });
 
   // TC-071 - Logout da Profilo
@@ -125,13 +175,15 @@ test.describe("Genitori - Profilo", () => {
   // NOTA: il test cambia la password e la RIPORTA subito a quella originale
   // (env TEST_PARENT_PASSWORD) prima di terminare, per non rompere il login
   // degli altri test che riusano lo stesso account condiviso.
+  // AGGIORNATO: "Sicurezza" è ora una sotto-pagina dedicata (/profile/sicurezza),
+  // non più una sezione inline su /profile (vedi TC-148).
   test("TC-133 - la nuova password aggiorna l'account e permette il login", async ({ page }) => {
     test.skip(!isRealDeployment, "Richiede un deploy con Supabase configurato e l'account genitore di test.");
     const originalPassword = process.env.TEST_PARENT_PASSWORD;
     test.skip(!originalPassword, "TEST_PARENT_PASSWORD non impostata.");
 
     await loginAs(page, "parent");
-    await page.goto("/profile");
+    await page.goto("/profile/sicurezza");
 
     const tempPassword = `TempPwd!${Date.now()}`;
     await page.locator("#security-new-password").fill(tempPassword);
@@ -146,34 +198,50 @@ test.describe("Genitori - Profilo", () => {
     await expect(page.getByText("Password aggiornata.")).toBeVisible();
   });
 
-  // TC-134 - Preferenze (lingua/tema/notifiche) persistono
-  test("TC-134 - cambiare lingua/tema/notifiche salva subito e persiste dopo reload", async ({
+  // TC-134 - Preferenze (lingua/tema) persistono
+  // AGGIORNATO: "Preferenze" è ora una sotto-pagina dedicata (/profile/preferenze),
+  // separata da "Notifiche" (vedi TC-147) — prima erano sulla stessa pagina.
+  test("TC-134 - cambiare lingua/tema salva subito e persiste dopo reload", async ({
     page,
   }) => {
     test.skip(!isRealDeployment, "Richiede un deploy con Supabase configurato e l'account genitore di test.");
     await loginAs(page, "parent");
-    await page.goto("/profile");
+    await page.goto("/profile/preferenze");
 
     await page.getByRole("button", { name: "English" }).click();
     await page.getByRole("button", { name: "Scuro" }).click();
-    await page.getByLabel("Notifiche SMS").check();
 
     await page.reload();
     await expect(page.getByRole("button", { name: "English" })).toHaveClass(/bg-sky/);
     await expect(page.getByRole("button", { name: "Scuro" })).toHaveClass(/bg-sky/);
-    await expect(page.getByLabel("Notifiche SMS")).toBeChecked();
 
     // Ripristino ai valori di default per non alterare i run successivi.
     await page.getByRole("button", { name: "Italiano" }).click();
     await page.getByRole("button", { name: "Chiaro" }).click();
+  });
+
+  // TC-147 - Notifiche (email/push/SMS) persistono
+  // ASSORBE la parte "notifiche" del vecchio TC-134, ora su sotto-pagina
+  // separata (/profile/notifiche).
+  test("TC-147 - attivare 'Notifiche SMS' salva subito e persiste dopo reload", async ({ page }) => {
+    test.skip(!isRealDeployment, "Richiede un deploy con Supabase configurato e l'account genitore di test.");
+    await loginAs(page, "parent");
+    await page.goto("/profile/notifiche");
+
+    await page.getByLabel("Notifiche SMS").check();
+    await page.reload();
+    await expect(page.getByLabel("Notifiche SMS")).toBeChecked();
+
+    // Ripristino ai valori di default per non alterare i run successivi.
     await page.getByLabel("Notifiche SMS").uncheck();
   });
 
   // TC-135 - Consenso marketing attivabile/disattivabile
+  // AGGIORNATO: "Privacy e account" è ora una sotto-pagina dedicata (/profile/privacy).
   test("TC-135 - il consenso marketing si salva e persiste dopo reload", async ({ page }) => {
     test.skip(!isRealDeployment, "Richiede un deploy con Supabase configurato e l'account genitore di test.");
     await loginAs(page, "parent");
-    await page.goto("/profile");
+    await page.goto("/profile/privacy");
 
     const consentCheckbox = page.getByLabel("Consenso a comunicazioni marketing");
     await consentCheckbox.check();
@@ -191,7 +259,7 @@ test.describe("Genitori - Profilo", () => {
   test("TC-136 - disattivare l'account termina la sessione", async ({ page }) => {
     test.skip(!isRealDeployment, "Richiede un deploy con Supabase configurato e l'account genitore di test.");
     await loginAs(page, "parent");
-    await page.goto("/profile");
+    await page.goto("/profile/privacy");
 
     await page.getByRole("button", { name: "Disattiva account temporaneamente" }).click();
     await page.getByRole("button", { name: "Conferma disattivazione" }).click();
@@ -207,7 +275,7 @@ test.describe("Genitori - Profilo", () => {
   test("TC-137 - richiedere la cancellazione marca l'account come 'in attesa'", async ({ page }) => {
     test.skip(!isRealDeployment, "Richiede un deploy con Supabase configurato e l'account genitore di test.");
     await loginAs(page, "parent");
-    await page.goto("/profile");
+    await page.goto("/profile/privacy");
 
     await page.getByRole("button", { name: "Richiedi cancellazione account" }).click();
     await page.getByRole("button", { name: "Conferma richiesta" }).click();

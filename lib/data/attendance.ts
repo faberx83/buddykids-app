@@ -143,10 +143,17 @@ export async function getParticipantsForCenter(): Promise<AttendanceWeekGroup[]>
   );
 }
 
+export type AttendanceStatusValue = "presente" | "assente" | "in_ritardo";
+
 export interface AttendanceDayStatus {
   kidId: string;
   date: string;
-  status: "presente" | "assente";
+  status: AttendanceStatusValue;
+  // true se l'ULTIMA scrittura è stata il check-in del genitore (Home,
+  // vedi app/actions/checkin.ts) e non ancora confermata/corretta dal
+  // gestore — usato da AttendanceClient per mostrare un badge "segnalato
+  // dal genitore".
+  checkedInByParent: boolean;
 }
 
 // Presenze già registrate per una specifica settimana (tutti i giorni),
@@ -157,11 +164,16 @@ export async function getAttendanceForWeek(weekId: string): Promise<AttendanceDa
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("attendance_records")
-    .select("kid_id, date, status")
+    .select("kid_id, date, status, checked_in_by")
     .eq("week_id", weekId);
 
   if (error || !data) return [];
-  return data.map((r) => ({ kidId: r.kid_id as string, date: r.date as string, status: r.status as "presente" | "assente" }));
+  return data.map((r) => ({
+    kidId: r.kid_id as string,
+    date: r.date as string,
+    status: r.status as AttendanceStatusValue,
+    checkedInByParent: r.checked_in_by === "parent",
+  }));
 }
 
 // Elenco dei giorni (lun-ven) coperti da una settimana, per costruire le

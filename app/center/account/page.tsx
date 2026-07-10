@@ -31,15 +31,7 @@ export default async function GestoreAccountPage() {
         />
       </div>
 
-      <ProfileSettingsSection
-        language={profile.language}
-        theme={profile.theme}
-        notifyEmail={profile.notifyEmail}
-        notifyPush={profile.notifyPush}
-        notifySms={profile.notifySms}
-        marketingConsent={profile.marketingConsent}
-        accountStatus={profile.accountStatus}
-      />
+      <ProfileSettingsSection basePath="/center/account" />
 
       <div className="mt-4">
         <LogoutButton />

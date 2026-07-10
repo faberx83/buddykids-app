@@ -1,12 +1,19 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import type { AttendanceWeekGroup } from "@/lib/data/attendance";
+import type { AttendanceWeekGroup, AttendanceDayStatus, AttendanceStatusValue } from "@/lib/data/attendance";
 import { setAttendanceAction } from "@/app/actions/attendance";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
 
-type AttendanceStatus = "presente" | "assente";
+type AttendanceStatus = AttendanceStatusValue;
 type AttendanceMap = Record<string, AttendanceStatus>; // key: `${kidId}:${date}`
+type ParentReportMap = Record<string, boolean>; // key: `${kidId}:${date}` -> checked_in_by === "parent"
+
+const STATUS_LABEL: Record<AttendanceStatus, string> = {
+  presente: "Presente",
+  in_ritardo: "In ritardo",
+  assente: "Assente",
+};
 
 const DAY_LABELS_IT = ["Dom", "Lun", "Mar", "Mer", "Gio", "Ven", "Sab"];
 
@@ -33,21 +40,26 @@ export default function AttendanceClient({
   attendanceByWeek,
 }: {
   weekGroups: AttendanceWeekGroup[];
-  attendanceByWeek: Record<string, { kidId: string; date: string; status: AttendanceStatus }[]>;
+  attendanceByWeek: Record<string, AttendanceDayStatus[]>;
 }) {
   const [selectedKey, setSelectedKey] = useState<string | null>(
     weekGroups.length > 0 ? `${weekGroups[0].activityId}:${weekGroups[0].weekId}` : null
   );
 
-  const initialAttendance = useMemo(() => {
+  const { initialAttendance, initialParentReport } = useMemo(() => {
     const map: AttendanceMap = {};
+    const parentMap: ParentReportMap = {};
     for (const records of Object.values(attendanceByWeek)) {
-      for (const r of records) map[`${r.kidId}:${r.date}`] = r.status;
+      for (const r of records) {
+        map[`${r.kidId}:${r.date}`] = r.status;
+        parentMap[`${r.kidId}:${r.date}`] = r.checkedInByParent;
+      }
     }
-    return map;
+    return { initialAttendance: map, initialParentReport: parentMap };
   }, [attendanceByWeek]);
 
   const [attendance, setAttendance] = useState<AttendanceMap>(initialAttendance);
+  const [parentReport, setParentReport] = useState<ParentReportMap>(initialParentReport);
   const [selectedDay, setSelectedDay] = useState<string | null>(null);
   const [savingKey, setSavingKey] = useState<string | null>(null);
 
@@ -55,13 +67,34 @@ export default function AttendanceClient({
   const days = selectedGroup ? daysInWeekClient(selectedGroup.startDate, selectedGroup.endDate) : [];
   const activeDay = selectedDay && days.includes(selectedDay) ? selectedDay : days[0];
 
-  async function toggleAttendance(kidId: string, date: string) {
+  // Riepilogo "arrivati su prenotati" per il giorno attivo (richiesto da
+  // Fabrizio) — un bambino conta come presente solo se esplicitamente
+  // marcato tale: lo stato di default (nessun record) è "assente", quindi
+  // il conteggio "assenti" include sia chi è stato marcato assente sia chi
+  // non è ancora stato spuntato per niente.
+  const bookedCount = selectedGroup?.kids.length ?? 0;
+  const presentKids = selectedGroup
+    ? selectedGroup.kids.filter((k) => attendance[`${k.kidId}:${activeDay}`] === "presente")
+    : [];
+  const lateKids = selectedGroup
+    ? selectedGroup.kids.filter((k) => attendance[`${k.kidId}:${activeDay}`] === "in_ritardo")
+    : [];
+  const absentKids = selectedGroup
+    ? selectedGroup.kids.filter((k) => (attendance[`${k.kidId}:${activeDay}`] ?? "assente") === "assente")
+    : [];
+
+  // Il gestore può impostare direttamente uno dei 3 stati (non più solo un
+  // toggle presente/assente) — copre anche la conferma/correzione di
+  // "in_ritardo" segnalato dal check-in del genitore (Home).
+  async function setStatus(kidId: string, date: string, next: AttendanceStatus) {
     if (!selectedGroup) return;
     const key = `${kidId}:${date}`;
     const current = attendance[key] ?? "assente";
-    const next: AttendanceStatus = current === "presente" ? "assente" : "presente";
+    const currentParentReport = parentReport[key] ?? false;
+    if (current === next) return;
 
     setAttendance((prev) => ({ ...prev, [key]: next }));
+    setParentReport((prev) => ({ ...prev, [key]: false })); // scrittura del gestore: non più "auto-segnalato"
 
     if (!isSupabaseConfigured) return; // demo: solo stato locale
 
@@ -77,6 +110,7 @@ export default function AttendanceClient({
     if (result.error) {
       // rollback in caso di errore
       setAttendance((prev) => ({ ...prev, [key]: current }));
+      setParentReport((prev) => ({ ...prev, [key]: currentParentReport }));
     }
   }
 
@@ -148,36 +182,73 @@ export default function AttendanceClient({
                   ))}
                 </div>
 
+                {/* Riepilogo arrivati/prenotati del giorno attivo. */}
+                <div className="mb-3 flex items-center justify-between rounded-md bg-bg px-3.5 py-2.5">
+                  <div className="text-sm font-semibold text-ink">
+                    <span className="text-partner">{presentKids.length}</span> presenti su {bookedCount}{" "}
+                    prenotati
+                    {lateKids.length > 0 && (
+                      <span className="ml-2 font-normal text-orange">· {lateKids.length} in ritardo</span>
+                    )}
+                  </div>
+                  {absentKids.length > 0 && (
+                    <div className="max-w-[60%] truncate text-right text-xs text-ink-2">
+                      Assenti: {absentKids.map((k) => k.kidName).join(", ")}
+                    </div>
+                  )}
+                </div>
+
                 <div className="divide-y divide-[#F0F2F5]">
                   {selectedGroup.kids.map((kid) => {
                     const key = `${kid.kidId}:${activeDay}`;
                     const status = attendance[key] ?? "assente";
-                    const present = status === "presente";
+                    const fromParent = parentReport[key] ?? false;
                     return (
-                      <div key={kid.kidId} className="flex items-center justify-between gap-3 py-2.5">
-                        <div className="min-w-0">
-                          <div className="text-sm font-semibold text-ink">
-                            {kid.kidName}
-                            {kid.groupName && (
-                              <span className="ml-1.5 rounded-full bg-bg px-2 py-0.5 text-[10px] font-medium text-ink-2">
-                                {kid.groupName}
-                              </span>
-                            )}
-                          </div>
-                          <div className="text-xs text-ink-2">
-                            {kid.parentName || "Genitore"}
-                            {kid.parentPhone && ` · ${kid.parentPhone}`}
+                      <div key={kid.kidId} className="flex flex-col gap-2 py-2.5">
+                        <div className="flex items-center justify-between gap-3">
+                          <div className="min-w-0">
+                            <div className="text-sm font-semibold text-ink">
+                              {kid.kidName}
+                              {kid.groupName && (
+                                <span className="ml-1.5 rounded-full bg-bg px-2 py-0.5 text-[10px] font-medium text-ink-2">
+                                  {kid.groupName}
+                                </span>
+                              )}
+                              {/* Segnala che l'ULTIMO stato arriva dal check-in del genitore
+                                  (Home), non da una spunta del gestore — utile soprattutto per
+                                  "in ritardo", che il gestore può poi confermare/correggere. */}
+                              {fromParent && (
+                                <span className="ml-1.5 rounded-full bg-sky-light px-2 py-0.5 text-[10px] font-medium text-sky">
+                                  Segnalato dal genitore
+                                </span>
+                              )}
+                            </div>
+                            <div className="text-xs text-ink-2">
+                              {kid.parentName || "Genitore"}
+                              {kid.parentPhone && ` · ${kid.parentPhone}`}
+                            </div>
                           </div>
                         </div>
-                        <button
-                          onClick={() => toggleAttendance(kid.kidId, activeDay)}
-                          disabled={savingKey === key}
-                          className={`flex-shrink-0 rounded-md px-3.5 py-2 text-xs font-bold transition-colors disabled:opacity-60 ${
-                            present ? "bg-partner text-white" : "border border-[#E8EBF0] text-ink-2"
-                          }`}
-                        >
-                          {present ? "Presente" : "Assente"}
-                        </button>
+                        <div className="flex gap-1.5">
+                          {(["presente", "in_ritardo", "assente"] as const).map((s) => (
+                            <button
+                              key={s}
+                              onClick={() => setStatus(kid.kidId, activeDay, s)}
+                              disabled={savingKey === key}
+                              className={`flex-1 rounded-md px-3 py-1.5 text-xs font-bold transition-colors disabled:opacity-60 ${
+                                status === s
+                                  ? s === "presente"
+                                    ? "bg-partner text-white"
+                                    : s === "in_ritardo"
+                                      ? "bg-orange text-white"
+                                      : "bg-ink text-white"
+                                  : "border border-[#E8EBF0] text-ink-2"
+                              }`}
+                            >
+                              {STATUS_LABEL[s]}
+                            </button>
+                          ))}
+                        </div>
                       </div>
                     );
                   })}

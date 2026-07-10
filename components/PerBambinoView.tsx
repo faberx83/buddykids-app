@@ -64,8 +64,16 @@ export default function PerBambinoView({
             ring stava sul cerchio con l'emoji/colore e la foto non veniva
             proprio mostrata; ora l'avatar reale (kid.avatarUrl) è renderizzato
             in un cerchio interno con overflow-hidden, mentre il ring vive sul
-            contenitore esterno senza tagliare nulla. */}
-        <div className="no-scrollbar -mx-1 flex gap-3 overflow-x-auto px-1 pb-2">
+            contenitore esterno senza tagliare nulla.
+            BUG CORRETTO (persisteva): "overflow-x-auto" per spec CSS forza il
+            valore calcolato di overflow-y a "auto" quando non è dichiarato
+            esplicitamente "visible" — quindi il contenitore, pur scrollando
+            solo in orizzontale, taglia comunque in verticale qualunque cosa
+            sporga oltre la sua altezza. Il ring (ring-[3px] + ring-offset-2)
+            del bambino selezionato sporgeva SOPRA senza che ci fosse spazio
+            (solo pb-2 in basso, zero in alto): pt-1.5 dà lo spazio mancante,
+            simmetrico al trattamento già fatto in orizzontale. */}
+        <div className="no-scrollbar -mx-1 flex gap-3 overflow-x-auto px-1 pb-2 pt-1.5">
           {kids.map((kid) => (
             <button
               key={kid.id}

@@ -203,6 +203,30 @@ async function main() {
         await supabase.from("booking_weeks").insert({ booking_id: booking.id, week_id: firstWeek.id });
         await supabase.from("booking_kids").insert({ booking_id: booking.id, kid_id: testKid.id });
         console.log("✅ Prenotazione fixture ricreata per il Registro presenze (Settimana 1).");
+
+        // Aggiunge ANCHE la settimana di camp che copre la data ODIERNA (se
+        // esiste tra le 13 seminate) alla STESSA prenotazione — serve al
+        // check-in MVP lato genitore (tests/genitori/home.spec.ts,
+        // CheckinPrompt), che mostra la card solo per prenotazioni la cui
+        // settimana include "oggi". "Settimana 1" da sola non basta: è fissa
+        // alla prima settimana di giugno dell'anno del seed, quasi mai
+        // coincidente con la data di un run reale. Non tocca TC-139/TC-140
+        // (che continuano a trovare "Settimana 1" invariata).
+        const today = new Date().toISOString().slice(0, 10);
+        const { data: todayWeek } = await supabase
+          .from("activity_weeks")
+          .select("id")
+          .eq("activity_id", seedActivity.id)
+          .lte("start_date", today)
+          .gte("end_date", today)
+          .maybeSingle();
+
+        if (todayWeek && todayWeek.id !== firstWeek.id) {
+          await supabase.from("booking_weeks").insert({ booking_id: booking.id, week_id: todayWeek.id });
+          console.log("✅ Prenotazione fixture estesa alla settimana corrente (check-in MVP).");
+        } else if (!todayWeek) {
+          console.log("ℹ️  Nessuna settimana seminata copre la data odierna: i test di check-in verranno saltati.");
+        }
       } else if (bookingError) {
         console.warn("⚠️  Impossibile ricreare la prenotazione fixture:", bookingError.message);
       }
