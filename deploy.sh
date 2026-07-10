@@ -9,6 +9,10 @@
 
 set -e
 
+echo "📤 Push su GitHub (origin/main)..."
+git push origin main || echo "⚠️  Push saltato/fallito (magari non c'è nulla di nuovo da inviare, o va autenticato la prima volta) — continuo comunque col deploy."
+
+echo ""
 echo "🚀 Deploy in produzione su Vercel..."
 npx vercel --prod
 
