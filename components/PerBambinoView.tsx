@@ -58,7 +58,13 @@ export default function PerBambinoView({
             all'avatar sporge un po' oltre il suo bordo — senza questo
             margine interno, il contenitore con scroll orizzontale lo
             tagliava sul primo/ultimo bambino della riga. Il -mx-1 compensa
-            cosi l'allineamento visivo resta lo stesso di prima. */}
+            cosi l'allineamento visivo resta lo stesso di prima.
+            NOTA (bug corretto): l'anello va su un wrapper ESTERNO, non sullo
+            stesso elemento che ritaglia la foto (overflow-hidden) — prima il
+            ring stava sul cerchio con l'emoji/colore e la foto non veniva
+            proprio mostrata; ora l'avatar reale (kid.avatarUrl) è renderizzato
+            in un cerchio interno con overflow-hidden, mentre il ring vive sul
+            contenitore esterno senza tagliare nulla. */}
         <div className="no-scrollbar -mx-1 flex gap-3 overflow-x-auto px-1 pb-2">
           {kids.map((kid) => (
             <button
@@ -67,12 +73,21 @@ export default function PerBambinoView({
               className="flex min-w-[64px] flex-shrink-0 flex-col items-center gap-1"
             >
               <div
-                className={`flex h-14 w-14 items-center justify-center rounded-full text-2xl transition-all ${
+                className={`flex h-14 w-14 items-center justify-center rounded-full p-0.5 transition-all ${
                   selectedKidId === kid.id ? "ring-[3px] ring-ink ring-offset-2" : "opacity-70"
                 }`}
-                style={{ background: kid.color }}
               >
-                {kid.emoji}
+                <div
+                  className="flex h-full w-full items-center justify-center overflow-hidden rounded-full text-2xl"
+                  style={{ background: kid.color }}
+                >
+                  {kid.avatarUrl ? (
+                    // eslint-disable-next-line @next/next/no-img-element -- URL Supabase Storage, non ottimizzabile senza config extra
+                    <img src={kid.avatarUrl} alt="" className="h-full w-full object-cover" />
+                  ) : (
+                    kid.emoji
+                  )}
+                </div>
               </div>
               <span
                 className={`text-[11px] ${

@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
 import { Role } from "@/lib/types";
 import { getGroupRequestsForCenter } from "@/lib/data/group-requests";
+import { getGestoreAccountProfile } from "@/lib/data/profile";
 
 export default async function CenterLayout({ children }: { children: React.ReactNode }) {
   // Con Supabase collegato, il ruolo reale (da profiles.role) sostituisce del
@@ -32,6 +33,17 @@ export default async function CenterLayout({ children }: { children: React.React
   const pendingGroupRequests = (await getGroupRequestsForCenter()).filter(
     (r) => r.status === "pending"
   ).length;
+
+  // Badge profilo in alto a destra (coerente con l'app genitore) — vedi
+  // AccountBadge in components/dashboard/DashboardLayout.tsx.
+  const gestoreProfile = await getGestoreAccountProfile();
+  const accountInitials =
+    (gestoreProfile.fullName || gestoreProfile.email.split("@")[0] || "?")
+      .split(/\s+/)
+      .map((part) => part[0])
+      .join("")
+      .slice(0, 2)
+      .toUpperCase() || "?";
 
   const navItems = [
     { href: "/center", label: "Dashboard", icon: "ti-layout-dashboard", sectionLabel: "Oggi" },
@@ -79,6 +91,9 @@ export default async function CenterLayout({ children }: { children: React.React
       requiredRole="center_admin"
       realRole={realRole}
       variant="partner"
+      accountHref="/center/account"
+      accountInitials={accountInitials}
+      accountAvatarUrl={gestoreProfile.avatarUrl}
     >
       {children}
     </DashboardLayout>

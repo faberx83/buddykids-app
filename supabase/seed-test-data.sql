@@ -129,14 +129,31 @@ where email = 'faberx83@gmail.com';
 -- ─────────────────────────────────────────────
 -- STEP 6 — Bambino di test per faberx83+test-genitore@gmail.com (serve per i test
 -- di prenotazione/gruppi lato genitore) — solo se non ne ha già uno.
+-- avatar_url: una piccola SVG inline (data URI, nessuna dipendenza da rete
+-- esterna) — serve a testare che l'avatar in "Per bambino" mostri la FOTO
+-- reale invece dell'emoji, senza dover automatizzare l'intero flusso di
+-- upload+ritaglio (vedi tests/genitori/home.spec.ts TC-143).
 -- ─────────────────────────────────────────────
-insert into public.kids (parent_id, name, birth_date, avatar_emoji)
-select p.id, '[TEST] Bimbo Prova', make_date(extract(year from current_date)::int - 7, 6, 15), '🧪'
+insert into public.kids (parent_id, name, birth_date, avatar_emoji, avatar_url)
+select
+  p.id,
+  '[TEST] Bimbo Prova',
+  make_date(extract(year from current_date)::int - 7, 6, 15),
+  '🧪',
+  'data:image/svg+xml,%3Csvg xmlns=''http://www.w3.org/2000/svg'' width=''100'' height=''100''%3E%3Ccircle cx=''50'' cy=''50'' r=''50'' fill=''%234DAFEF''/%3E%3C/svg%3E'
 from public.profiles p
 where p.email = 'faberx83+test-genitore@gmail.com'
   and not exists (
     select 1 from public.kids k where k.parent_id = p.id and k.name = '[TEST] Bimbo Prova'
   );
+
+-- Se il bambino di test esiste già da prima di questa modifica, aggiorna
+-- comunque il suo avatar_url (idempotente, non duplica righe).
+update public.kids
+set avatar_url = 'data:image/svg+xml,%3Csvg xmlns=''http://www.w3.org/2000/svg'' width=''100'' height=''100''%3E%3Ccircle cx=''50'' cy=''50'' r=''50'' fill=''%234DAFEF''/%3E%3C/svg%3E'
+where name = '[TEST] Bimbo Prova'
+  and avatar_url is null
+  and parent_id = (select id from public.profiles where email = 'faberx83+test-genitore@gmail.com');
 
 
 -- ─────────────────────────────────────────────

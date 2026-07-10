@@ -48,6 +48,50 @@ function DashboardLogoutButton({ isAdmin, compact }: { isAdmin: boolean; compact
   );
 }
 
+// Badge circolare in alto a destra (iniziali o foto profilo) che porta alla
+// pagina account del ruolo — coerente con il badge della Home genitore.
+// Sostituisce il logout persistente in sidebar/header: l'uscita dall'account
+// vive dentro quella pagina (vedi app/center/account/page.tsx).
+function AccountBadge({
+  href,
+  initials,
+  avatarUrl,
+  isAdmin,
+}: {
+  href: string;
+  initials?: string;
+  avatarUrl?: string | null;
+  isAdmin: boolean;
+}) {
+  return (
+    <Link
+      href={href}
+      aria-label="Vai al tuo account"
+      className={`flex h-8 w-8 flex-shrink-0 items-center justify-center overflow-hidden rounded-full text-xs font-bold ${
+        isAdmin ? "bg-navy-3 text-white" : "bg-partner-light text-partner"
+      }`}
+    >
+      {avatarUrl ? (
+        // eslint-disable-next-line @next/next/no-img-element -- URL Supabase Storage, non ottimizzabile senza config extra
+        <img src={avatarUrl} alt="" className="h-full w-full object-cover" />
+      ) : (
+        initials || "?"
+      )}
+    </Link>
+  );
+}
+
+// Attivo su corrispondenza esatta OPPURE su sotto-rotte (es.
+// /center/activities/[id] deve evidenziare "Attività" come
+// /center/activities) — tranne per la voce "radice" della sezione (Dashboard,
+// primo item dell'array), che altrimenti risulterebbe SEMPRE attiva insieme a
+// qualunque altra voce (ogni altra rotta comincia per forza con lo stesso
+// prefisso "/center/", "/admin/", ecc.).
+function isNavItemActive(pathname: string, href: string, rootHref: string): boolean {
+  if (href === rootHref) return pathname === href;
+  return pathname === href || pathname.startsWith(`${href}/`);
+}
+
 interface NavItem {
   href: string;
   label: string;
@@ -74,6 +118,9 @@ export default function DashboardLayout({
   requiredRole,
   realRole,
   variant = "partner",
+  accountHref,
+  accountInitials,
+  accountAvatarUrl,
   children,
 }: {
   brand: string;
@@ -86,6 +133,13 @@ export default function DashboardLayout({
   // precedenza sul ruolo demo: con account reali il selettore demo non conta.
   realRole?: Role | null;
   variant?: DashboardVariant;
+  // Badge profilo in alto a destra (coerente con l'app genitore) — se
+  // presente, sostituisce i pulsanti di logout in sidebar/header: l'uscita
+  // dall'account vive dentro la pagina di destinazione (es. /center/account),
+  // non più come azione sempre visibile in giro per l'app.
+  accountHref?: string;
+  accountInitials?: string;
+  accountAvatarUrl?: string | null;
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
@@ -115,15 +169,25 @@ export default function DashboardLayout({
               : "border-r border-[#E8EBF0] bg-white"
           }`}
         >
-          <div className="mb-6 flex items-center gap-2 px-2">
-            <span className="text-2xl">{brandEmoji}</span>
-            <span className={`text-base font-bold ${isAdmin ? "text-white" : "text-ink"}`}>
-              {brand}
-            </span>
+          <div className="mb-6 flex items-center justify-between gap-2 px-2">
+            <div className="flex items-center gap-2">
+              <span className="text-2xl">{brandEmoji}</span>
+              <span className={`text-base font-bold ${isAdmin ? "text-white" : "text-ink"}`}>
+                {brand}
+              </span>
+            </div>
+            {accountHref && (
+              <AccountBadge
+                href={accountHref}
+                initials={accountInitials}
+                avatarUrl={accountAvatarUrl}
+                isAdmin={isAdmin}
+              />
+            )}
           </div>
           <nav className="flex flex-1 flex-col gap-1">
             {navItems.map((item, i) => {
-              const active = pathname === item.href;
+              const active = isNavItemActive(pathname, item.href, navItems[0]?.href ?? item.href);
               const showSectionHeader =
                 item.sectionLabel && item.sectionLabel !== navItems[i - 1]?.sectionLabel;
               return (
@@ -172,7 +236,7 @@ export default function DashboardLayout({
             <i className="ti ti-arrow-back-up text-lg" />
             Torna all&apos;app
           </Link>
-          <DashboardLogoutButton isAdmin={isAdmin} />
+          {!accountHref && <DashboardLogoutButton isAdmin={isAdmin} />}
         </aside>
 
         <div className="min-w-0 flex-1">
@@ -191,7 +255,16 @@ export default function DashboardLayout({
                   {brand}
                 </span>
               </div>
-              <DashboardLogoutButton isAdmin={isAdmin} compact />
+              {accountHref ? (
+                <AccountBadge
+                  href={accountHref}
+                  initials={accountInitials}
+                  avatarUrl={accountAvatarUrl}
+                  isAdmin={isAdmin}
+                />
+              ) : (
+                <DashboardLogoutButton isAdmin={isAdmin} compact />
+              )}
             </header>
             <nav
               className={`flex gap-1 overflow-x-auto border-b px-3 py-2 ${
@@ -199,7 +272,7 @@ export default function DashboardLayout({
               }`}
             >
               {navItems.map((item) => {
-                const active = pathname === item.href;
+                const active = isNavItemActive(pathname, item.href, navItems[0]?.href ?? item.href);
                 return (
                   <Link
                     key={item.href}

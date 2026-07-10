@@ -33,11 +33,39 @@ test.describe("Gestore - Attivita", () => {
     await expect(page).toHaveURL(/\/center\/activities\/.+/, { timeout: 15_000 });
     await expect(page.getByText(name)).toBeVisible();
   });
-  // Priorita: Alta | Precondizioni: Attivita esistente
-  // Passi: Apri un'attivita -> modifica prezzo/eta/servizi/tag -> salva
-  // Risultato atteso: I dati si aggiornano su Supabase, log azione registrato
-  test.fixme("TC-075 - Modifica attivita", async ({ page }) => {
-    // TODO: implementare - vedi i test gia completati in questo file per esempio.
+  // TC-075 - Modifica attivita
+  // Include anche la verifica di due fix di coerenza UI recenti:
+  // - la voce di nav "Attività" resta evidenziata anche sulla sotto-rotta di
+  //   modifica (prima solo su corrispondenza esatta con /center/activities,
+  //   vedi components/dashboard/DashboardLayout.tsx);
+  // - il bottone "Usa posizione attuale" nella sezione "Posizione" compila
+  //   lat/lng dal geolocation del browser (stessa logica del filtro Home
+  //   genitore, vedi HomeFeed.tsx).
+  test("TC-075 - aprire e modificare un'attività aggiorna i dati e la posizione", async ({
+    page,
+    context,
+  }) => {
+    test.skip(!isRealDeployment, "Richiede un deploy con Supabase configurato e l'account Gestore di test.");
+    await loginAs(page, "center_admin");
+    await page.goto("/center/activities");
+
+    // Selettore preciso della card (combo di classi usata SOLO dalle card
+    // attività in questa pagina — evita di prendere un div ancestor/discendente
+    // qualsiasi che contenga lo stesso testo, vedi app/center/activities/page.tsx).
+    const card = page.locator("div.rounded-lg.border").filter({ hasText: "[TEST] Attività BuddyKids" });
+    await card.getByRole("link", { name: "Modifica scheda" }).click();
+    await expect(page).toHaveURL(/\/center\/activities\/[^/]+$/);
+
+    // Nav "Attività" evidenziata anche sulla sotto-rotta di modifica.
+    await expect(page.getByRole("link", { name: /^\s*Attività$/ }).first()).toHaveClass(/bg-partner-light|bg-partner\b/);
+
+    // Geolocalizzazione: stesso pattern del filtro Home genitore.
+    await context.grantPermissions(["geolocation"]);
+    await context.setGeolocation({ latitude: 45.4642, longitude: 9.19 }); // Milano
+    await page.getByRole("button", { name: /Usa posizione attuale/ }).click();
+    await expect(page.locator('input[type="number"][step="0.0001"]').first()).toHaveValue("45.4642", {
+      timeout: 10_000,
+    });
   });
 
   // Priorita: Media | Precondizioni: Attivita esistente

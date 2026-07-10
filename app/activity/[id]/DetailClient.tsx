@@ -5,6 +5,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { Activity, Promotion } from "@/lib/types";
 import { badgeClasses } from "@/lib/colors";
+import ImageLightbox from "@/components/ImageLightbox";
 
 const weekdayLabels = ["lunedì", "martedì", "mercoledì", "giovedì", "venerdì"];
 
@@ -34,6 +35,13 @@ export default function DetailClient({
   })();
   const [fav, setFav] = useState(true);
   const activePromotions = promotions.filter((p) => p.active);
+  // Copertina + galleria in un unico carosello (ImageLightbox) — prima erano
+  // semplici <img> senza onClick, restavano "solo anteprima".
+  const carouselImages = [
+    ...(activity.coverImageUrl ? [activity.coverImageUrl] : []),
+    ...(activity.galleryUrls ?? []),
+  ];
+  const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
 
   return (
     <div className="flex h-full min-h-screen flex-col sm:min-h-0 sm:flex-1">
@@ -44,16 +52,25 @@ export default function DetailClient({
             ? { backgroundImage: `url(${activity.coverImageUrl})` }
             : { background: activity.imgGradient }
         }
+        onClick={() => activity.coverImageUrl && setLightboxIndex(0)}
+        role={activity.coverImageUrl ? "button" : undefined}
+        aria-label={activity.coverImageUrl ? "Apri la copertina a schermo intero" : undefined}
       >
         {!activity.coverImageUrl && <span className="relative z-[1] text-8xl">{activity.emoji}</span>}
         <button
-          onClick={() => router.back()}
+          onClick={(e) => {
+            e.stopPropagation();
+            router.back();
+          }}
           className="absolute left-[18px] top-[18px] z-10 flex h-[38px] w-[38px] items-center justify-center rounded-full bg-white/90 text-lg text-ink backdrop-blur-sm transition-transform hover:scale-110"
         >
           <i className="ti ti-arrow-left" />
         </button>
         <button
-          onClick={() => setFav((f) => !f)}
+          onClick={(e) => {
+            e.stopPropagation();
+            setFav((f) => !f);
+          }}
           className="absolute right-[18px] top-[18px] z-10 flex h-[38px] w-[38px] items-center justify-center rounded-full bg-white/90 text-lg text-orange backdrop-blur-sm transition-transform hover:scale-110"
         >
           <i className={fav ? "ti ti-heart-filled" : "ti ti-heart"} />
@@ -93,16 +110,27 @@ export default function DetailClient({
 
         {activity.galleryUrls && activity.galleryUrls.length > 0 && (
           <div className="no-scrollbar mb-4 flex gap-2 overflow-x-auto">
-            {activity.galleryUrls.map((url) => (
-              // eslint-disable-next-line @next/next/no-img-element -- URL Supabase Storage, non ottimizzabile senza config extra
-              <img
+            {activity.galleryUrls.map((url, i) => (
+              <button
                 key={url}
-                src={url}
-                alt=""
-                className="h-20 w-28 flex-shrink-0 rounded-md object-cover"
-              />
+                type="button"
+                onClick={() => setLightboxIndex(carouselImages.indexOf(url))}
+                className="flex-shrink-0"
+                aria-label={`Apri foto ${i + 1} a schermo intero`}
+              >
+                {/* eslint-disable-next-line @next/next/no-img-element -- URL Supabase Storage, non ottimizzabile senza config extra */}
+                <img src={url} alt="" className="h-20 w-28 rounded-md object-cover" />
+              </button>
             ))}
           </div>
+        )}
+
+        {lightboxIndex !== null && (
+          <ImageLightbox
+            images={carouselImages}
+            initialIndex={lightboxIndex}
+            onClose={() => setLightboxIndex(null)}
+          />
         )}
 
         <div className="mb-4 flex flex-wrap gap-1.5">

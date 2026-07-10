@@ -2,9 +2,7 @@ import MenuItem from "@/components/MenuItem";
 import LogoutButton from "@/components/LogoutButton";
 import ProfileKidsSection from "@/components/ProfileKidsSection";
 import ProfileHeaderClient from "@/components/ProfileHeaderClient";
-import ProfileSecuritySection from "@/components/ProfileSecuritySection";
-import ProfilePreferencesSection from "@/components/ProfilePreferencesSection";
-import ProfilePrivacySection from "@/components/ProfilePrivacySection";
+import ProfileSettingsSection from "@/components/ProfileSettingsSection";
 import { getKidsForUser } from "@/lib/data/kids";
 import { getParentProfile } from "@/lib/data/profile";
 import { DemoBadge } from "@/components/StatusBadge";
@@ -83,35 +81,15 @@ export default async function ProfilePage({
         />
       </div>
 
-      <div className="px-5 pt-3">
-        <div className="mb-2 text-[11px] font-bold uppercase tracking-wide text-ink-3">
-          Sicurezza
-        </div>
-        <ProfileSecuritySection />
-      </div>
-
-      <div className="px-5 pt-3">
-        <div className="mb-2 text-[11px] font-bold uppercase tracking-wide text-ink-3">
-          Preferenze
-        </div>
-        <ProfilePreferencesSection
-          initialLanguage={profile.language}
-          initialTheme={profile.theme}
-          initialNotifyEmail={profile.notifyEmail}
-          initialNotifyPush={profile.notifyPush}
-          initialNotifySms={profile.notifySms}
-        />
-      </div>
-
-      <div className="px-5 pt-3">
-        <div className="mb-2 text-[11px] font-bold uppercase tracking-wide text-ink-3">
-          Privacy e account
-        </div>
-        <ProfilePrivacySection
-          initialMarketingConsent={profile.marketingConsent}
-          initialAccountStatus={profile.accountStatus}
-        />
-      </div>
+      <ProfileSettingsSection
+        language={profile.language}
+        theme={profile.theme}
+        notifyEmail={profile.notifyEmail}
+        notifyPush={profile.notifyPush}
+        notifySms={profile.notifySms}
+        marketingConsent={profile.marketingConsent}
+        accountStatus={profile.accountStatus}
+      />
 
       <div className="px-5 pt-3">
         <div className="mb-2 text-[11px] font-bold uppercase tracking-wide text-ink-3">

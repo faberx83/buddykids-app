@@ -4,11 +4,13 @@ import { useState } from "react";
 import { changePasswordAction } from "@/app/actions/profile";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
 
-// Sezione "Sicurezza" del profilo personale — condivisa tra genitore e
-// gestore centro (entrambi usano la stessa auth.users/profiles). Oggi copre
-// il cambio password; 2FA e gestione dispositivi/sessioni attive sono
-// rimandate a una fase successiva (richiedono integrazioni più ampie con
-// Supabase Auth MFA).
+// Sottosezione "Sicurezza" (dentro Impostazioni) — condivisa tra genitore e
+// gestore centro (entrambi usano la stessa auth.users/profiles). Copre il
+// cambio password; l'accesso con dati biometrici (Face ID/impronta, via
+// WebAuthn/passkey) è mostrato come "Prossimamente": richiede
+// un'integrazione più ampia con Supabase Auth (MFA/passkey) non ancora
+// presente — 2FA e gestione dispositivi/sessioni attive restano nella
+// stessa fase successiva.
 export default function ProfileSecuritySection() {
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -78,6 +80,16 @@ export default function ProfileSecuritySection() {
       >
         {saving ? "Salvo…" : "Aggiorna password"}
       </button>
+
+      <div className="mt-3.5 flex items-center justify-between border-t border-[#E8EBF0] pt-3.5">
+        <div>
+          <div className="text-sm text-ink">Accesso con Face ID / impronta</div>
+          <div className="text-[11px] text-ink-2">Accesso rapido senza password</div>
+        </div>
+        <span className="rounded-full bg-bg px-2.5 py-1 text-[10px] font-semibold text-ink-2">
+          Prossimamente
+        </span>
+      </div>
     </div>
   );
 }

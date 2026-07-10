@@ -7,27 +7,20 @@ import { isSupabaseConfigured } from "@/lib/supabase/env";
 
 const languageLabels: Record<Language, string> = { it: "Italiano", en: "English" };
 
-// Sezione "Preferenze" del profilo personale — lingua, tema, notifiche.
-// Ogni toggle salva subito (nessun pulsante "Salva" separato), coerente con
-// il pattern già usato altrove nell'app per le impostazioni rapide.
+// Sezione "Preferenze" (dentro Impostazioni) — solo lingua e tema. Le
+// notifiche sono una sottosezione separata (vedi ProfileNotificheSection),
+// per coerenza con la struttura Impostazioni > Sicurezza/Preferenze/
+// Notifiche/Privacy e account. Ogni scelta salva subito (nessun pulsante
+// "Salva" separato).
 export default function ProfilePreferencesSection({
   initialLanguage,
   initialTheme,
-  initialNotifyEmail,
-  initialNotifyPush,
-  initialNotifySms,
 }: {
   initialLanguage: Language;
   initialTheme: Theme;
-  initialNotifyEmail: boolean;
-  initialNotifyPush: boolean;
-  initialNotifySms: boolean;
 }) {
   const [language, setLanguage] = useState(initialLanguage);
   const [theme, setTheme] = useState(initialTheme);
-  const [notifyEmail, setNotifyEmail] = useState(initialNotifyEmail);
-  const [notifyPush, setNotifyPush] = useState(initialNotifyPush);
-  const [notifySms, setNotifySms] = useState(initialNotifySms);
   const [error, setError] = useState<string | null>(null);
 
   async function save(update: Parameters<typeof updatePreferencesAction>[0]) {
@@ -60,7 +53,7 @@ export default function ProfilePreferencesSection({
         </div>
       </div>
 
-      <div className="mb-3">
+      <div className="mb-1">
         <div className="mb-1.5 text-xs font-semibold text-ink-2">Tema</div>
         <div className="flex gap-2">
           {(["light", "dark"] as Theme[]).map((t) => (
@@ -81,57 +74,7 @@ export default function ProfilePreferencesSection({
         </div>
       </div>
 
-      <div className="mb-1">
-        <div className="mb-1.5 text-xs font-semibold text-ink-2">Notifiche</div>
-        <ToggleRow
-          label="Notifiche email"
-          checked={notifyEmail}
-          onChange={(v) => {
-            setNotifyEmail(v);
-            save({ notifyEmail: v });
-          }}
-        />
-        <ToggleRow
-          label="Notifiche push"
-          checked={notifyPush}
-          onChange={(v) => {
-            setNotifyPush(v);
-            save({ notifyPush: v });
-          }}
-        />
-        <ToggleRow
-          label="Notifiche SMS"
-          checked={notifySms}
-          onChange={(v) => {
-            setNotifySms(v);
-            save({ notifySms: v });
-          }}
-        />
-      </div>
-
       {error && <p className="mt-2 text-xs font-medium text-orange">{error}</p>}
     </div>
-  );
-}
-
-function ToggleRow({
-  label,
-  checked,
-  onChange,
-}: {
-  label: string;
-  checked: boolean;
-  onChange: (v: boolean) => void;
-}) {
-  return (
-    <label className="flex items-center justify-between py-1.5 text-sm text-ink">
-      <span>{label}</span>
-      <input
-        type="checkbox"
-        checked={checked}
-        onChange={(e) => onChange(e.target.checked)}
-        className="h-4 w-4 accent-sky"
-      />
-    </label>
   );
 }

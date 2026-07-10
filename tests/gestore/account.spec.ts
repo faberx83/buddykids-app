@@ -19,14 +19,46 @@ test.describe("Gestore - Il mio account", () => {
     await expect(page.getByText("Il mio centro")).toHaveCount(0);
     await expect(page.getByText("Nome del centro")).toHaveCount(0);
 
-    // Sezioni del profilo personale, condivise con il profilo genitore.
+    // Sezioni del profilo personale, condivise con il profilo genitore —
+    // raggruppate sotto "Impostazioni" > Sicurezza/Preferenze/Notifiche/
+    // Privacy e account (ProfileSettingsSection, componente condiviso).
     await expect(page.getByRole("button", { name: "Modifica" })).toBeVisible();
+    await expect(page.getByText("Impostazioni", { exact: true })).toBeVisible();
     await expect(page.getByText("Sicurezza", { exact: true })).toBeVisible();
     await expect(page.getByText("Preferenze", { exact: true })).toBeVisible();
+    await expect(page.getByText("Notifiche", { exact: true })).toBeVisible();
     await expect(page.getByText("Privacy e account", { exact: true })).toBeVisible();
     await expect(page.locator("#security-new-password")).toBeVisible();
 
     // Il selettore "Sei: Padre/Madre/Tutore" non ha senso per un gestore.
     await expect(page.getByRole("button", { name: "Madre" })).toHaveCount(0);
+
+    // L'uscita dall'account vive SOLO qui.
+    await expect(page.getByRole("button", { name: /Esci dall.?account/i })).toBeVisible();
+  });
+
+  // TC-144 - Badge profilo in alto a destra (coerenza con l'app genitore) e
+  // logout non più persistente in sidebar/header.
+  // NUOVA FUNZIONALITÀ: prima il gestore non aveva alcun badge verso il
+  // proprio account, e il logout era sempre visibile in sidebar (desktop) e
+  // header (mobile) — ora vive solo dentro "Il mio account", come nell'app
+  // genitore (vedi components/dashboard/DashboardLayout.tsx: AccountBadge).
+  test("TC-144 - il badge profilo porta a 'Il mio account'; il logout non è più in sidebar/header", async ({
+    page,
+  }) => {
+    test.skip(!isRealDeployment, "Richiede un deploy con Supabase configurato e l'account Gestore di test.");
+    await loginAs(page, "center_admin");
+    await page.goto("/center");
+
+    // Nessun logout persistente fuori da "Il mio account".
+    await expect(page.getByRole("button", { name: /Esci dall.?account/i })).toHaveCount(0);
+
+    // Esistono DUE badge nel DOM (sidebar desktop + header mobile, sempre
+    // entrambi presenti — solo nascosti via CSS a seconda del viewport, vedi
+    // DashboardLayout.tsx): ":visible" seleziona quello effettivamente
+    // interagibile nel viewport corrente, invece di un .first()/.last() che
+    // romperebbe su uno dei due progetti Playwright (chromium/mobile-chrome).
+    await page.locator('a[aria-label="Vai al tuo account"]:visible').click();
+    await expect(page).toHaveURL(/\/center\/account/);
   });
 });

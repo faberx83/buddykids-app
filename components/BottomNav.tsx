@@ -11,6 +11,14 @@ const items = [
   { href: "/profile", icon: "ti-user", label: "Profilo" },
 ];
 
+// Attivo su corrispondenza esatta OPPURE su sotto-rotte (es. /groups/[id]
+// deve evidenziare "Gruppi" come /groups) — "/" fa eccezione: con il prefisso
+// vuoto matcherebbe SEMPRE, quindi per Home serve la corrispondenza esatta.
+function isActive(pathname: string, href: string): boolean {
+  if (href === "/") return pathname === "/";
+  return pathname === href || pathname.startsWith(`${href}/`);
+}
+
 export default function BottomNav() {
   const pathname = usePathname();
 
@@ -22,7 +30,7 @@ export default function BottomNav() {
       style={{ paddingBottom: "calc(1.25rem + env(safe-area-inset-bottom))" }}
     >
       {items.map((item) => {
-        const active = pathname === item.href;
+        const active = isActive(pathname, item.href);
         return (
           <Link
             key={item.href}

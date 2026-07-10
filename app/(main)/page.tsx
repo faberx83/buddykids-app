@@ -12,18 +12,18 @@ import { isSupabaseConfigured } from "@/lib/supabase/env";
 
 async function getDisplayIdentity() {
   if (!isSupabaseConfigured) {
-    return { displayName: "Sofia", initials: "SF" };
+    return { displayName: "Sofia", initials: "SF", avatarUrl: null as string | null };
   }
 
   const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  if (!user) return { displayName: "Sofia", initials: "SF" };
+  if (!user) return { displayName: "Sofia", initials: "SF", avatarUrl: null as string | null };
 
   const { data: profile } = await supabase
     .from("profiles")
-    .select("full_name, email")
+    .select("full_name, email, avatar_url")
     .eq("id", user.id)
     .single();
 
@@ -39,11 +39,11 @@ async function getDisplayIdentity() {
       .slice(0, 2)
       .toUpperCase() || "?";
 
-  return { displayName, initials };
+  return { displayName, initials, avatarUrl: (profile?.avatar_url as string | null) ?? null };
 }
 
 export default async function HomePage() {
-  const [activities, { displayName, initials }, kids, planner, profileIncomplete, bookingsByKidMap] =
+  const [activities, { displayName, initials, avatarUrl }, kids, planner, profileIncomplete, bookingsByKidMap] =
     await Promise.all([
       getActivities(),
       getDisplayIdentity(),
@@ -71,10 +71,25 @@ export default async function HomePage() {
               Cosa facciamo questa estate?
             </p>
           </div>
-          <div className="relative flex h-[42px] w-[42px] items-center justify-center rounded-full bg-orange-mid text-[15px] font-bold text-orange">
-            {initials}
-            <div className="absolute -right-0.5 -top-0.5 h-3.5 w-3.5 rounded-full border-2 border-white bg-[#FF6B6B]" />
-          </div>
+          {/* Badge avatar: porta al profilo. Il pallino rosso NON è decorativo:
+              compare solo se il profilo è incompleto (nome/ruolo mancanti,
+              vedi isParentProfileIncomplete in lib/data/profile.ts), come
+              promemoria a completarlo — sparisce da solo una volta fatto. */}
+          <Link
+            href="/profile"
+            aria-label="Vai al profilo"
+            className="relative flex h-[42px] w-[42px] flex-shrink-0 items-center justify-center overflow-hidden rounded-full bg-orange-mid text-[15px] font-bold text-orange"
+          >
+            {avatarUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element -- URL Supabase Storage, non ottimizzabile senza config extra
+              <img src={avatarUrl} alt="" className="h-full w-full object-cover" />
+            ) : (
+              initials
+            )}
+            {profileIncomplete && (
+              <div className="absolute -right-0.5 -top-0.5 h-3.5 w-3.5 rounded-full border-2 border-white bg-[#FF6B6B]" />
+            )}
+          </Link>
         </div>
         <Link
           href="/search"

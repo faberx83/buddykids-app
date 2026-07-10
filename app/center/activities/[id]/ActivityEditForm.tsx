@@ -46,6 +46,35 @@ export default function ActivityEditForm({
   const [saved, setSaved] = useState(false);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
+  const [locating, setLocating] = useState(false);
+  const [locateError, setLocateError] = useState<string | null>(null);
+
+  // Stessa logica del "Usa posizione" della Home genitore (components/HomeFeed.tsx):
+  // navigator.geolocation.getCurrentPosition, nessuna dipendenza esterna.
+  // Qui riempie direttamente lat/lng dell'attività (l'anteprima mappa sotto
+  // si aggiorna di conseguenza); l'indirizzo testuale resta modificabile a mano.
+  function useMyLocation() {
+    if (!("geolocation" in navigator)) {
+      setLocateError("Il browser non supporta la geolocalizzazione.");
+      return;
+    }
+    setLocating(true);
+    setLocateError(null);
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        setLocating(false);
+        update("lat", Number(pos.coords.latitude.toFixed(4)));
+        update("lng", Number(pos.coords.longitude.toFixed(4)));
+      },
+      () => {
+        setLocating(false);
+        setLocateError(
+          "Posizione non disponibile: il browser non permette di richiederla di nuovo dopo un rifiuto. Vai nelle impostazioni del sito per riabilitarla."
+        );
+      },
+      { enableHighAccuracy: false, timeout: 8000 }
+    );
+  }
 
   function update<K extends keyof typeof form>(key: K, value: (typeof form)[K]) {
     setForm((f) => ({ ...f, [key]: value }));
@@ -369,7 +398,19 @@ export default function ActivityEditForm({
         </div>
 
         <div className="space-y-3 rounded-lg border border-[#E8EBF0] bg-white p-5">
-          <div className="text-sm font-bold text-ink">Posizione</div>
+          <div className="flex items-center justify-between">
+            <div className="text-sm font-bold text-ink">Posizione</div>
+            <button
+              type="button"
+              onClick={useMyLocation}
+              disabled={locating}
+              className="flex items-center gap-1.5 rounded-full border border-[#E8EBF0] px-3 py-1.5 text-xs font-semibold text-ink disabled:opacity-60"
+            >
+              <i className={`ti ${locating ? "ti-loader-2 animate-spin" : "ti-map-pin"} text-sm`} />
+              {locating ? "Localizzo…" : "Usa posizione attuale"}
+            </button>
+          </div>
+          {locateError && <p className="text-[11px] text-orange">{locateError}</p>}
           <Field label="Indirizzo">
             <input
               value={form.address}

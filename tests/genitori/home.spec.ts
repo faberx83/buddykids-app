@@ -86,4 +86,47 @@ test.describe("Genitori - Home", () => {
     // TODO: implementare - vedi i test gia completati in questo file per esempio.
   });
 
+  // TC-141 - Il badge avatar in alto a destra porta al profilo
+  // NUOVA FUNZIONALITÀ: prima era un div inerte, senza onClick/Link — solo
+  // decorativo (vedi app/(main)/page.tsx).
+  test("TC-141 - il badge avatar in Home porta a /profile", async ({ page }) => {
+    await page.getByRole("link", { name: "Vai al profilo" }).click();
+    await expect(page).toHaveURL(/\/profile/);
+  });
+
+  // TC-142 - Il pallino sul badge avatar riflette il profilo incompleto
+  // NUOVA FUNZIONALITÀ: prima era un pallino rosso statico, sempre presente,
+  // senza alcun significato (nessuna logica lo pilotava). Ora compare SOLO
+  // se il profilo è incompleto (isParentProfileIncomplete, stessa logica già
+  // usata da HomeProfilePrompt per il link "Nome, cognome e ruolo").
+  test("TC-142 - il pallino rosso è coerente con lo stato 'profilo incompleto'", async ({ page }) => {
+    const incompleteLinkVisible = await page
+      .getByText("Nome, cognome e ruolo (padre/madre/tutore)")
+      .isVisible()
+      .catch(() => false);
+    // Il pallino è l'unico <div> figlio del badge (l'eventuale foto profilo è
+    // un <img>, le iniziali sono testo): contarlo evita di dover fare
+    // l'escaping CSS della classe arbitraria "bg-[#FF6B6B]".
+    const dot = page.getByRole("link", { name: "Vai al profilo" }).locator("div");
+    if (incompleteLinkVisible) {
+      await expect(dot).toHaveCount(1);
+    } else {
+      await expect(dot).toHaveCount(0);
+    }
+  });
+
+  // TC-143 - Gli avatar bambino in "Per bambino" mostrano la foto reale
+  // BUG DI TEST TROVATO+CORRETTO nell'app (segnalato da Fabrizio): PerBambinoView.tsx
+  // mostrava SOLO emoji+colore, mai la foto caricata (kid.avatarUrl) — l'anello
+  // di selezione stava per di più sullo stesso elemento senza overflow-hidden,
+  // quindi anche aggiungendo la foto sarebbe stata tagliata male. Corretto:
+  // foto in un cerchio interno con overflow-hidden, anello su un wrapper
+  // esterno separato. Il bambino di test ha un avatar_url seminato (SVG
+  // inline, vedi supabase/seed-test-data.sql STEP 6) per poter verificare
+  // questo senza automatizzare l'intero flusso di upload+ritaglio.
+  test("TC-143 - l'avatar del bambino di test mostra la foto, non l'emoji", async ({ page }) => {
+    await page.getByRole("button", { name: "Per bambino", exact: true }).click();
+    const kidButton = page.getByRole("button", { name: "[TEST] Bimbo Prova" });
+    await expect(kidButton.locator("img")).toBeVisible();
+  });
 });

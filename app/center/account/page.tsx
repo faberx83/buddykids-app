@@ -1,7 +1,5 @@
 import ProfileHeaderClient from "@/components/ProfileHeaderClient";
-import ProfileSecuritySection from "@/components/ProfileSecuritySection";
-import ProfilePreferencesSection from "@/components/ProfilePreferencesSection";
-import ProfilePrivacySection from "@/components/ProfilePrivacySection";
+import ProfileSettingsSection from "@/components/ProfileSettingsSection";
 import LogoutButton from "@/components/LogoutButton";
 import { getGestoreAccountProfile } from "@/lib/data/profile";
 
@@ -9,12 +7,18 @@ import { getGestoreAccountProfile } from "@/lib/data/profile";
 // nascita, password, preferenze, privacy). Distinto da /center/profile, che
 // è il profilo del CENTRO (business: nome attività, indirizzo, contatti
 // pubblici, sconti) — non va confuso con questa pagina.
+//
+// La struttura "Impostazioni" (Sicurezza/Preferenze/Notifiche/Privacy e
+// account) è lo STESSO componente condiviso usato dal profilo genitore
+// (ProfileSettingsSection) — per restare sempre coerenti tra le due app.
+// L'uscita dall'account vive SOLO qui (non più nella sidebar/header del
+// pannello Gestore, per coerenza con l'app genitore).
 export default async function GestoreAccountPage() {
   const profile = await getGestoreAccountProfile();
 
   return (
-    <div className="animate-fade-in px-5 py-5">
-      <div className="mb-4 rounded-lg bg-white p-3.5">
+    <div className="animate-fade-in py-5">
+      <div className="mx-5 mb-4 rounded-lg bg-white p-3.5">
         <ProfileHeaderClient
           initialFullName={profile.fullName}
           initialParentRole={null}
@@ -27,33 +31,19 @@ export default async function GestoreAccountPage() {
         />
       </div>
 
-      <div className="mb-2 text-[11px] font-bold uppercase tracking-wide text-ink-3">Sicurezza</div>
-      <div className="mb-4">
-        <ProfileSecuritySection />
-      </div>
+      <ProfileSettingsSection
+        language={profile.language}
+        theme={profile.theme}
+        notifyEmail={profile.notifyEmail}
+        notifyPush={profile.notifyPush}
+        notifySms={profile.notifySms}
+        marketingConsent={profile.marketingConsent}
+        accountStatus={profile.accountStatus}
+      />
 
-      <div className="mb-2 text-[11px] font-bold uppercase tracking-wide text-ink-3">Preferenze</div>
-      <div className="mb-4">
-        <ProfilePreferencesSection
-          initialLanguage={profile.language}
-          initialTheme={profile.theme}
-          initialNotifyEmail={profile.notifyEmail}
-          initialNotifyPush={profile.notifyPush}
-          initialNotifySms={profile.notifySms}
-        />
+      <div className="mt-4">
+        <LogoutButton />
       </div>
-
-      <div className="mb-2 text-[11px] font-bold uppercase tracking-wide text-ink-3">
-        Privacy e account
-      </div>
-      <div className="mb-4">
-        <ProfilePrivacySection
-          initialMarketingConsent={profile.marketingConsent}
-          initialAccountStatus={profile.accountStatus}
-        />
-      </div>
-
-      <LogoutButton />
     </div>
   );
 }

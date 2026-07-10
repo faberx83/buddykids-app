@@ -66,6 +66,10 @@ test.describe("Genitori - Attivita", () => {
   // Priorita: Bassa | Precondizioni: Attività con copertina/galleria caricate dal Gestore (vedi TC-116)
   // Passi: Apri il dettaglio di un'attività con foto caricate
   // Risultato atteso: L'header mostra la copertina reale (non il gradiente) e sotto ai badge compare una striscia orizzontale scorrevole con le foto della galleria
+  // AGGIORNATO (TC-145 assorbito qui, stessa precondizione): le foto ora si
+  // aprono in un visualizzatore a schermo intero stile carosello
+  // (components/ImageLightbox.tsx — frecce prev/next, swipe, puntini) invece
+  // di restare semplici anteprime statiche non cliccabili.
   test.fixme("TC-115 - Galleria foto e copertina personalizzata nel dettaglio attività", async ({ page }) => {
     // ESCLUSO dall'automazione: dipende da TC-116 (upload immagini) non ancora testabile
   });
