@@ -1,54 +1,77 @@
-import { createClient } from "@/lib/supabase/server";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
+import { createClient } from "@/lib/supabase/server";
+import { getPlannerData } from "@/lib/data/planner";
+import { getMyBookingsForParent } from "@/lib/data/my-bookings";
 import { getKidsForUser } from "@/lib/data/kids";
-import NextgenBadge from "@/components/nextgen/NextgenBadge";
+import { getActivities } from "@/lib/data/activities";
+import { computeMatchesForKid } from "@/lib/matching";
+import HomeDashboardClient from "./HomeDashboardClient";
 
-// SPRINT 0 — placeholder che dimostra il plumbing condiviso con LEGACY:
-// stessa autenticazione (guard in layout.tsx) e stesso layer dati
-// (lib/data/kids.ts, la STESSA funzione usata da Home/Profilo in LEGACY,
-// non una copia) senza scrivere nessuna UI definitiva — quella arriva dallo
-// Sprint 1 (Dashboard Genitore).
+// SPRINT 1 (NEXTGEN) — Dashboard Genitore: "la mia famiglia è organizzata per
+// le prossime settimane?" sostituisce "quali prenotazioni ho?" come domanda
+// guida. Nessuna nuova logica dati: orchestra funzioni già esistenti e già
+// testate in LEGACY (getPlannerData, getMyBookingsForParent, getKidsForUser,
+// getActivities, computeMatchesForKid) — stesso DB, stesso layer, zero
+// duplicazione.
 export default async function NextgenHomePage() {
-  let fullName: string | null = null;
-  let kidsCount = 0;
-
-  if (isSupabaseConfigured) {
-    const supabase = await createClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-    if (user) {
-      const { data: profile } = await supabase
-        .from("profiles")
-        .select("full_name")
-        .eq("id", user.id)
-        .single();
-      fullName = profile?.full_name ?? null;
-    }
-    kidsCount = (await getKidsForUser()).length;
+  if (!isSupabaseConfigured) {
+    return (
+      <div className="px-5 py-8 text-sm text-ink-2">
+        Modalità demo: collega Supabase per vedere la Dashboard Genitore NEXTGEN con dati reali.
+      </div>
+    );
   }
 
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  const [planner, bookings, kids, activities] = await Promise.all([
+    getPlannerData(),
+    getMyBookingsForParent(),
+    getKidsForUser(),
+    getActivities(),
+  ]);
+
+  let fullName: string | null = null;
+  if (user) {
+    const { data: profile } = await supabase.from("profiles").select("full_name").eq("id", user.id).single();
+    fullName = profile?.full_name ?? null;
+  }
+
+  // Suggerimenti "per riempire i buchi": solo se ci sono settimane scoperte
+  // (altrimenti la famiglia è già organizzata, niente da consigliare — vedi
+  // la logica di rassicurazione richiesta). Match aggregato multi-bambino:
+  // per ogni attività prendiamo il punteggio migliore tra i bambini, così un
+  // consiglio adatto anche a un solo figlio non viene scartato. Nessun filtro
+  // di disponibilità per-settimana qui (limite noto: lib/matching.ts non ha
+  // ancora un concetto di "libera proprio in quella settimana scoperta" —
+  // buon candidato per raffinare nello Sprint 2 "Ricerca e scoperta").
+  const hasGaps = planner.firstUncoveredIndex !== null;
+  const recommendations = hasGaps
+    ? Array.from(
+        activities
+          .flatMap((a) =>
+            kids.map((kid) => ({ activity: a, kidName: kid.name, matchPercent: computeMatchesForKid(kid, [a])[0].matchPercent }))
+          )
+          .reduce((map, entry) => {
+            const existing = map.get(entry.activity.id);
+            if (!existing || existing.matchPercent < entry.matchPercent) map.set(entry.activity.id, entry);
+            return map;
+          }, new Map<string, { activity: (typeof activities)[number]; kidName: string; matchPercent: number }>())
+          .values()
+      )
+        .sort((a, b) => b.matchPercent - a.matchPercent)
+        .slice(0, 3)
+    : [];
+
   return (
-    <div className="flex flex-col gap-4 px-5 py-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-xl font-bold text-ink">BuddyKids</h1>
-        <NextgenBadge />
-      </div>
-      <div className="rounded-2xl border border-[#E8EBF0] bg-white p-5">
-        <p className="text-sm text-ink-2">
-          Ciao{fullName ? ` ${fullName.split(" ")[0]}` : ""} — questa è l&apos;area NEXTGEN, in
-          costruzione sprint dopo sprint.
-        </p>
-        <p className="mt-2 text-xs text-ink-3">
-          Verifica plumbing: {kidsCount} bambin{kidsCount === 1 ? "o" : "i"} trovat
-          {kidsCount === 1 ? "o" : "i"} tramite lo stesso layer dati di LEGACY (nessuna
-          duplicazione).
-        </p>
-      </div>
-      <p className="text-xs text-ink-3">
-        La Dashboard Genitore vera arriva nello Sprint 1. Questa pagina esiste solo per
-        provare che routing, autenticazione e dati condivisi funzionano nel nuovo namespace.
-      </p>
-    </div>
+    <HomeDashboardClient
+      firstName={fullName?.split(" ")[0] ?? null}
+      planner={planner}
+      bookings={bookings}
+      recommendations={recommendations}
+    />
   );
 }
