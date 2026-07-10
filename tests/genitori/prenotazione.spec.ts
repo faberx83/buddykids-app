@@ -264,24 +264,49 @@ test.describe("Genitori - Prenotazione", () => {
 
   // Segnalazione di Fabrizio: "nel tab 'le mie prenotazioni' va bene la
   // lista ma va fatta un pò di ordinamento..per settimana per bambino per
-  // campus..una serie di filtri per raggruappare". Aggiunto un ordinamento
-  // a scelta (Settimana/Bambino/Campus) — vedi PrenotazioniClient.tsx.
+  // campus..una serie di filtri per raggruappare" — poi precisato: "le
+  // vorrei raggruppate per filtro..ed ordinate sempre in ordine
+  // cronologico". Il criterio scelto (Settimana/Bambino/Campus) crea vere
+  // intestazioni di gruppo — vedi PrenotazioniClient.tsx.
   // Priorita: Media | Precondizioni: Almeno una prenotazione
-  test("TC-182 - 'Le mie prenotazioni' permette di ordinare per settimana/bambino/campus", async ({ page }) => {
+  test("TC-182 - 'Le mie prenotazioni' raggruppa per settimana/bambino/campus, sempre in ordine cronologico", async ({
+    page,
+  }) => {
     test.skip(!isRealDeployment, "Richiede un deploy con Supabase configurato e l'account genitore di test.");
     await loginAs(page, "parent");
     await page.goto("/prenotazioni");
 
-    const sortLabel = page.getByText("Ordina per:");
-    if (!(await sortLabel.isVisible().catch(() => false))) {
-      test.skip(true, "Nessuna prenotazione per l'account di test: i controlli di ordinamento non vengono mostrati.");
+    const groupLabel = page.getByText("Raggruppa per:");
+    if (!(await groupLabel.isVisible().catch(() => false))) {
+      test.skip(true, "Nessuna prenotazione per l'account di test: i controlli di raggruppamento non vengono mostrati.");
     }
-    await expect(sortLabel).toBeVisible();
+    await expect(groupLabel).toBeVisible();
     await page.getByRole("button", { name: "Bambino", exact: true }).click();
+    await expect(page.locator("body")).not.toContainText("Application error");
     await page.getByRole("button", { name: "Campus", exact: true }).click();
+    await expect(page.locator("body")).not.toContainText("Application error");
     await page.getByRole("button", { name: "Settimana", exact: true }).click();
-    // Non deve andare in errore con nessuno dei tre criteri.
     await expect(page.locator("body")).not.toContainText("Application error");
   });
 
+  // BUG DI UX CORRETTO (segnalato da Fabrizio: "il filtro per bambino va
+  // bene uno solo non due volte"): prima c'erano due controlli diversi
+  // legati al bambino sulla stessa pagina (il pulsante "Bambino" tra i
+  // criteri di raggruppamento E una riga di chip filtro separata) — rimossa
+  // la riga di chip, resta solo "Raggruppa per: Bambino".
+  // Priorita: Bassa | Precondizioni: Nessuna
+  test("TC-185 - 'Le mie prenotazioni' ha un solo controllo per il bambino, non due", async ({ page }) => {
+    test.skip(!isRealDeployment, "Richiede un deploy con Supabase configurato e l'account genitore di test.");
+    await loginAs(page, "parent");
+    await page.goto("/prenotazioni");
+
+    const groupLabel = page.getByText("Raggruppa per:");
+    if (!(await groupLabel.isVisible().catch(() => false))) {
+      test.skip(true, "Nessuna prenotazione per l'account di test: i controlli non vengono mostrati.");
+    }
+    // Non deve più esistere una riga di chip "Tutti i bambini" separata.
+    await expect(page.getByText("Tutti i bambini")).toHaveCount(0);
+    // "Bambino" compare una sola volta (il pulsante di raggruppamento).
+    await expect(page.getByRole("button", { name: "Bambino", exact: true })).toHaveCount(1);
+  });
 });

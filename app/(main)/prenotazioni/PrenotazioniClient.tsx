@@ -53,19 +53,18 @@ interface BookingGroup {
 // sempre in ordine cronologico (per data della prima settimana prenotata),
 // mai alfabetico, cosi' la lista si legge come un calendario anche quando è
 // raggruppata per bambino o per campus.
+//
+// BUG DI UX CORRETTO (segnalato da Fabrizio: "il filtro per bambino va bene
+// uno solo non due volte"): prima c'erano DUE controlli diversi legati al
+// bambino sulla stessa pagina — il pulsante "Bambino" tra i criteri di
+// raggruppamento E una riga separata di chip filtro "Tutti i bambini/Nome"
+// che faceva la stessa cosa in un altro modo. Rimossa la riga di chip:
+// scegliere "Raggruppa per: Bambino" è l'unico modo per organizzare la
+// lista per bambino, niente più doppio controllo.
 export default function PrenotazioniClient({ bookings }: { bookings: MyBooking[] }) {
   const [sortKey, setSortKey] = useState<SortKey>("week");
-  const [kidFilter, setKidFilter] = useState<string | null>(null);
-
-  const allKidNames = useMemo(() => {
-    const names = new Set<string>();
-    for (const b of bookings) for (const n of b.kidNames) names.add(n);
-    return Array.from(names).sort((a, b) => a.localeCompare(b));
-  }, [bookings]);
 
   const groups: BookingGroup[] = useMemo(() => {
-    const list = kidFilter ? bookings.filter((b) => b.kidNames.includes(kidFilter)) : bookings;
-
     function groupKeyFor(b: MyBooking): string {
       if (sortKey === "week") return b.firstWeekStart ? b.firstWeekStart.slice(0, 7) : "9999-99";
       if (sortKey === "kid") return b.kidNames[0] ?? "—";
@@ -73,7 +72,7 @@ export default function PrenotazioniClient({ bookings }: { bookings: MyBooking[]
     }
 
     const buckets = new Map<string, MyBooking[]>();
-    for (const b of list) {
+    for (const b of bookings) {
       const key = groupKeyFor(b);
       if (!buckets.has(key)) buckets.set(key, []);
       buckets.get(key)!.push(b);
@@ -99,9 +98,7 @@ export default function PrenotazioniClient({ bookings }: { bookings: MyBooking[]
       label: sortKey === "week" ? monthLabelFromKey(key) : key,
       items: buckets.get(key)!,
     }));
-  }, [bookings, sortKey, kidFilter]);
-
-  const filtered = groups.flatMap((g) => g.items);
+  }, [bookings, sortKey]);
 
   if (bookings.length === 0) {
     return (
@@ -134,38 +131,6 @@ export default function PrenotazioniClient({ bookings }: { bookings: MyBooking[]
           </button>
         ))}
       </div>
-
-      {allKidNames.length > 1 && (
-        <div className="no-scrollbar mb-4 flex gap-2 overflow-x-auto pb-0.5">
-          <button
-            type="button"
-            onClick={() => setKidFilter(null)}
-            className={`flex-shrink-0 rounded-full px-3.5 py-1.5 text-[12.5px] font-semibold transition-colors ${
-              kidFilter === null ? "bg-sky text-white" : "bg-white text-ink-2"
-            }`}
-          >
-            Tutti i bambini
-          </button>
-          {allKidNames.map((name) => (
-            <button
-              key={name}
-              type="button"
-              onClick={() => setKidFilter(name)}
-              className={`flex-shrink-0 rounded-full px-3.5 py-1.5 text-[12.5px] font-semibold transition-colors ${
-                kidFilter === name ? "bg-sky text-white" : "bg-white text-ink-2"
-              }`}
-            >
-              {name}
-            </button>
-          ))}
-        </div>
-      )}
-
-      {filtered.length === 0 && (
-        <p className="rounded-lg border border-dashed border-[#D8DEE8] bg-white p-5 text-center text-sm text-ink-2">
-          Nessuna prenotazione per questo filtro.
-        </p>
-      )}
 
       <div className="flex flex-col gap-3">
         {groups.map((group) => (
