@@ -18,14 +18,23 @@ test.describe("Genitori - Cerca", () => {
   }
 
   // TC-016 - Ricerca testuale
-  test("TC-016 - digitare il nome di un'attività filtra la lista", async ({ page }) => {
+  // BUG DI TEST TROVATO+CORRETTO (run reale): l'assert finale era invertita —
+  // usava ".not.toHaveText(before)" aspettandosi che il conteggio DOPO aver
+  // svuotato la ricerca fosse DIVERSO da quello iniziale. In realtà svuotare
+  // la casella di ricerca deve ripristinare la STESSA lista non filtrata di
+  // partenza, quindi il conteggio deve tornare UGUALE a "before", non diverso
+  // — contro un deploy reale (conteggio stabile, es. "6 attività trovate" sia
+  // prima che dopo) l'assert invertita falliva sempre.
+  test("TC-016 - digitare il nome di un'attività filtra la lista, svuotare la ripristina", async ({
+    page,
+  }) => {
     const before = await resultsCount(page).textContent();
     const searchBox = page.getByPlaceholder("Cerca attività, centri, sport...");
     await searchBox.fill("zzzznonexistentzzzz");
     await expect(page.getByText("0 attività trovate")).toBeVisible();
 
     await searchBox.fill("");
-    await expect(resultsCount(page)).not.toHaveText(before ?? "");
+    await expect(resultsCount(page)).toHaveText(before ?? "");
   });
 
   // TC-018 - Filtro Prezzo

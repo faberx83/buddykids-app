@@ -38,7 +38,16 @@ test.describe("Setup", () => {
     await page.getByLabel(/email/i).fill("indirizzo-che-non-esiste-di-sicuro@esempio.it");
     await page.getByLabel(/password/i).fill("password-sbagliata-123");
     await page.getByRole("button", { name: /accedi|login/i }).click();
-    await expect(page.getByText(/non corrette|errat[ao]|invalid/i)).toBeVisible({ timeout: 10_000 });
+    // La suite fa molti login reali in parallelo (fullyParallel: true): questo
+    // tentativo deliberatamente errato può occasionalmente incappare nel rate
+    // limit genuino di Supabase Auth invece di "credenziali non corrette" (vedi
+    // lib/auth-errors.ts) — osservato un fallimento sporadico su mobile-chrome
+    // dove il messaggio non compariva entro 10s. La regex ora copre anche quel
+    // messaggio, così il test resta valido in entrambi i casi (in ogni caso,
+    // niente accesso: si resta sulla pagina di login).
+    await expect(
+      page.getByText(/non corrette|errat[ao]|invalid|troppi tentativi/i)
+    ).toBeVisible({ timeout: 15_000 });
     // Nessun accesso: restiamo sulla pagina di login.
     await expect(page).toHaveURL(/\/auth\/login/);
   });

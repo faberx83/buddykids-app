@@ -25,18 +25,29 @@ test.describe("Genitori - Attivita", () => {
   });
 
   // TC-026 - Preferiti (cuore) - noto FUNCTIONAL/gap: non persiste al reload (useState locale).
-  // Il test verifica lo stato ATTUALE noto (fallisce quando il gap verra' risolto: aggiornare allora).
-  test("TC-026 - il preferito NON persiste dopo reload (comportamento noto, vedi FUNCTIONAL-TC-026)", async ({
+  // BUG DI TEST TROVATO+CORRETTO (run reale): app/activity/[id]/DetailClient.tsx
+  // inizializza "fav" con useState(true) — il cuore parte SEMPRE pieno ad ogni
+  // caricamento/reload, indipendentemente da eventuali click precedenti. Il
+  // test originale assumeva (erroneamente) che lo stato di default fosse
+  // "non preferito" e si aspettava il cuore vuoto dopo il reload; in realtà
+  // torna sempre pieno (stato iniziale hardcoded), quindi l'assert falliva
+  // sempre contro un deploy reale. Corretto per riflettere il comportamento
+  // reale: il gap di persistenza resta (nessun salvataggio vero), ma il
+  // valore a cui si torna dopo reload è "preferito", non il contrario.
+  test("TC-026 - il click sul preferito NON persiste dopo reload (comportamento noto, vedi FUNCTIONAL-TC-026)", async ({
     page,
   }) => {
     test.skip(!isRealDeployment, "Richiede un deploy con Supabase configurato e l'attività di test seminata.");
     await loginAs(page, "parent");
     await page.goto(`/activity/${TEST_ACTIVITY_SLUG}`);
+    // Stato di default reale: pieno (useState(true) in DetailClient.tsx).
+    await expect(page.locator(".ti-heart-filled").first()).toHaveCount(1);
     const heart = page.locator(".ti-heart, .ti-heart-filled").first();
     await heart.click();
+    await expect(page.locator(".ti-heart").first()).toHaveCount(1); // svuotato localmente
     await page.reload();
-    // Stato atteso oggi: torna non-preferito (useState locale, non salvato).
-    await expect(page.locator(".ti-heart-filled").first()).toHaveCount(0);
+    // Il reload NON persiste il click: torna allo stato iniziale hardcoded (pieno).
+    await expect(page.locator(".ti-heart-filled").first()).toHaveCount(1);
   });
   // Priorita: Media | Precondizioni: Attivita con prenotazioni concluse
   // Passi: Apri il dettaglio di un'attivita

@@ -20,16 +20,26 @@ test.describe("Genitori - Home", () => {
   // (PerBambinoView.tsx), senza un cambio di titolo dedicato: verifichiamo
   // quindi che il chip si selezioni/deselezioni visivamente invece del
   // vecchio titolo "🔥 Attività in questa categoria" che non esiste più.
+  //
+  // BUG DI TEST TROVATO+CORRETTO (run reale): la regex /border-sky/ matcha
+  // ANCHE la classe statica "hover:border-sky" presente nel chip NON
+  // selezionato (components/CategoryChip.tsx: stato non selezionato =
+  // "border-[#EDF0F4] bg-white hover:border-sky hover:bg-sky"), quindi
+  // l'assert ".not.toHaveClass(/border-sky/)" falliva SEMPRE (falso positivo
+  // di selezione). Corretta con un lookbehind negativo che esclude il prefisso
+  // "hover:", così la regex riconosce solo la classe reale dello stato
+  // selezionato ("border-sky bg-sky", senza prefisso).
   test("TC-013 - selezionare una categoria filtra le card, 'Tutte' ripristina", async ({ page }) => {
+    const selectedClass = /(?<!hover:)border-sky\b/;
     await page.getByRole("button", { name: "Per bambino", exact: true }).click();
     await expect(page.getByText("Categorie")).toBeVisible();
 
     const sportChip = page.getByText("Sport", { exact: true }).locator("xpath=ancestor::div[contains(@class,'cursor-pointer')]").first();
     await sportChip.click();
-    await expect(sportChip).toHaveClass(/border-sky/);
+    await expect(sportChip).toHaveClass(selectedClass);
 
     await page.getByText("Tutte", { exact: true }).click();
-    await expect(sportChip).not.toHaveClass(/border-sky/);
+    await expect(sportChip).not.toHaveClass(selectedClass);
   });
 
   // TC-014 - Geolocalizzazione Home (permesso concesso)

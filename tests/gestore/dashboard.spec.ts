@@ -11,6 +11,18 @@ import { test, expect, loginAs, isRealDeployment } from "../fixtures/roles";
 // superare questo redirect contro un deploy reale).
 
 test.describe("Gestore - Dashboard", () => {
+  // Il testo "Attività" da solo è ambiguo su questa pagina: compare nel link
+  // di nav della sidebar, nella pillola di nav mobile (entrambe SEMPRE nel DOM,
+  // solo nascoste via CSS a seconda del viewport — vedi DashboardLayout.tsx),
+  // nella card KPI e nell'intestazione colonna della tabella "Prenotazioni
+  // recenti" — 4 elementi in tutto (BUG DI TEST TROVATO+CORRETTO nel run
+  // reale: "getByText" senza scoping va in strict-mode violation). Scoping
+  // alla griglia KPI (classi uniche "grid grid-cols-2 gap-3", vedi
+  // app/center/page.tsx) isola la sola card statistica.
+  function kpiAttivita(page: import("@playwright/test").Page) {
+    return page.locator(".grid.grid-cols-2.gap-3").getByText("Attività", { exact: true });
+  }
+
   // TC-072 - Dashboard Gestore carica KPI e sezioni chiave
   // NOTA (aggiornato): col redesign v6a (TC-119/120/121) la colonna destra
   // "Le tue attività" è stata sostituita dal feed "Attività recente" — vedi
@@ -20,7 +32,7 @@ test.describe("Gestore - Dashboard", () => {
     await loginAs(page, "center_admin");
     await page.goto("/center");
 
-    await expect(page.getByText("Attività", { exact: true })).toBeVisible();
+    await expect(kpiAttivita(page)).toBeVisible();
     await expect(page.getByText("Prenotazioni", { exact: true })).toBeVisible();
     await expect(page.getByText("Promo attive")).toBeVisible();
     await expect(page.getByText("Fatturato confermato")).toBeVisible();
@@ -30,8 +42,15 @@ test.describe("Gestore - Dashboard", () => {
   // Priorita: Media | Precondizioni: Login Gestore, almeno una Richiesta Gruppo in sospeso
   // Passi: Apri /center, osserva il menu laterale
   // Risultato atteso: Le voci di menu sono raggruppate sotto intestazioni ("Oggi"/"Gestione"); la voce "Richieste Gruppo" mostra un badge rosso col numero di richieste in sospeso
+  // BUG DI TEST TROVATO+CORRETTO (run reale, solo mobile-chrome): le intestazioni
+  // di sezione ("Oggi"/"Gestione") esistono SOLO nella sidebar desktop
+  // (DashboardLayout.tsx: <aside className="hidden ... md:flex">) — su mobile
+  // la sidebar è "display:none" per design, sostituita da una pillola di nav
+  // orizzontale SENZA intestazioni di sezione. Forziamo un viewport desktop:
+  // la funzionalità testata (raggruppamento sezioni) è intrinsecamente desktop.
   test("TC-119 - Nuova navigazione con raggruppamento sezioni e badge richieste in sospeso", async ({ page }) => {
     test.skip(!isRealDeployment, "Richiede un deploy con Supabase configurato e l'account Gestore di test.");
+    await page.setViewportSize({ width: 1280, height: 800 });
     await loginAs(page, "center_admin");
     await page.goto("/center");
 
@@ -64,7 +83,7 @@ test.describe("Gestore - Dashboard", () => {
       ? weakWeeksBanner
       : pendingRequestsBanner;
     const bannerY = (await bannerBox.boundingBox())?.y ?? Infinity;
-    const kpiY = (await page.getByText("Attività", { exact: true }).boundingBox())?.y ?? 0;
+    const kpiY = (await kpiAttivita(page).boundingBox())?.y ?? 0;
     expect(bannerY).toBeLessThan(kpiY);
   });
 
