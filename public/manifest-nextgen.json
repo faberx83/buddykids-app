@@ -1,0 +1,17 @@
+{
+  "id": "/nextgen",
+  "name": "BuddyKids NextGen",
+  "short_name": "BuddyKids+",
+  "description": "La nuova esperienza BuddyKids: planner familiare, copertura settimane e consigli su misura.",
+  "start_url": "/nextgen",
+  "scope": "/nextgen",
+  "display": "standalone",
+  "background_color": "#5B4FE9",
+  "theme_color": "#5B4FE9",
+  "icons": [
+    { "src": "/icon-nextgen-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/icon-nextgen-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/icon-nextgen-192.png", "sizes": "192x192", "type": "image/png", "purpose": "maskable" },
+    { "src": "/icon-nextgen-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

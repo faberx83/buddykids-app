@@ -37,6 +37,15 @@ export interface MyBooking {
   // uuid delle settimane attualmente prenotate — usato per precompilare il
   // selettore nella pagina "Modifica prenotazione".
   weekIds: string[];
+  // SPRINT 3 (NEXTGEN) — dettaglio COMPLETO delle settimane prenotate (non
+  // solo la prima, vedi firstWeekLabel sotto): serve al Planner NEXTGEN per
+  // etichettare le sovrapposizioni ("settimana N") a partire da un weekId
+  // (lib/nextgen/planner-insights.ts#computeKidOverlaps lavora sui weekId
+  // grezzi, che da soli non dicono a quale "Settimana N" corrispondono).
+  // Campo puramente ADDITIVO: calcolato dagli stessi weekRows già letti
+  // sotto, nessuna nuova query — non tocca nessun campo esistente né i
+  // consumer LEGACY che non lo leggono.
+  weeks: { id: string; label: string; startDate: string; endDate: string }[];
   // Etichetta canonica "Settimana N" della PRIMA settimana prenotata,
   // ricalcolata dalla data reale (vedi lib/season-weeks.ts) invece che dal
   // testo grezzo di activity_weeks.label — stesso bug (e stessa correzione)
@@ -180,6 +189,12 @@ export async function getMyBookingsForParent(): Promise<MyBooking[]> {
       weeksLabel,
       firstWeekStart,
       weekIds: weekRows.map((w) => w.id),
+      weeks: weekRows.map((w) => ({
+        id: w.id,
+        label: canonicalLabel(w),
+        startDate: w.start_date,
+        endDate: w.end_date,
+      })),
       firstWeekLabel,
       kidIds,
       kidNames,

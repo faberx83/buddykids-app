@@ -67,7 +67,11 @@ export default async function RootLayout({
         <DemoRoleProvider>
           {children}
           <RoleSwitcher />
-          <InstallPrompt appName={appName} themeColor={config.themeColor} />
+          {/* SPRINT 3 (NEXTGEN): questa istanza non deve comparire sotto
+              /nextgen — lì c'è la sua, con manifest/tema/nome dedicati (vedi
+              app/nextgen/layout.tsx) — altrimenti i due banner "Installa" si
+              sovrapporrebbero. */}
+          <InstallPrompt appName={appName} themeColor={config.themeColor} routeExclude="/nextgen" />
         </DemoRoleProvider>
       </body>
     </html>

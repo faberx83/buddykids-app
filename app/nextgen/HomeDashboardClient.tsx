@@ -127,24 +127,35 @@ export default function HomeDashboardClient({
       <div className="rounded-2xl border border-[#E8EBF0] bg-white p-5 shadow-[0_1px_3px_rgba(16,24,40,0.04)]">
         <div className="mb-3 flex items-center justify-between gap-3">
           <div className="text-[15px] font-bold text-ink">{headline}</div>
-          <Link
-            href="/nextgen/search"
-            className="flex-shrink-0 rounded-full bg-bg px-3 py-1.5 text-[11px] font-semibold text-ink-2"
-          >
-            Scopri attività
-          </Link>
+          <div className="flex flex-shrink-0 gap-1.5">
+            <Link
+              href="/nextgen/search"
+              className="rounded-full bg-bg px-3 py-1.5 text-[11px] font-semibold text-ink-2"
+            >
+              Scopri attività
+            </Link>
+          </div>
         </div>
-        <div className="flex gap-1">
-          {planner.weeks.map((w) => (
-            <div
-              key={w.index}
-              title={`${w.label} · ${w.dateRange}`}
-              className={`h-2.5 flex-1 rounded-full ${
-                w.covered ? "bg-green" : w.dismissed ? "bg-[#E8EBF0]" : "bg-orange-mid/50"
-              }`}
-            />
-          ))}
-        </div>
+        {/* SPRINT 3 — la striscia di copertura ora porta al Planner completo
+            (timeline, sovrapposizioni, budget): qui resta solo l'anteprima,
+            il Planner diventa la destinazione "cuore dell'esperienza". */}
+        <Link href="/nextgen/planner" className="block">
+          <div className="flex gap-1">
+            {planner.weeks.map((w) => (
+              <div
+                key={w.index}
+                title={`${w.label} · ${w.dateRange}`}
+                className={`h-2.5 flex-1 rounded-full ${
+                  w.covered ? "bg-green" : w.dismissed ? "bg-[#E8EBF0]" : "bg-orange-mid/50"
+                }`}
+              />
+            ))}
+          </div>
+          <div className="mt-2 flex items-center gap-1 text-[11.5px] font-semibold text-[#5B4FE9]">
+            Apri il planner completo
+            <i className="ti ti-chevron-right text-[13px]" />
+          </div>
+        </Link>
       </div>
 
       {/* 2) Prossimi impegni */}
