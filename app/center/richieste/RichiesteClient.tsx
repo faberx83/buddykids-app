@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { CenterInquiry, InquiryStatus } from "@/lib/data/inquiries";
-import { replyToInquiryAction } from "@/app/actions/inquiries";
+import { replyToInquiryAction, markInquiriesReadAction } from "@/app/actions/inquiries";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
 
 const STATUS_LABEL: Record<InquiryStatus, { label: string; cls: string }> = {
@@ -23,6 +23,10 @@ export default function RichiesteClient({
   const [drafts, setDrafts] = useState<Record<string, string>>({});
   const [busyId, setBusyId] = useState<string | null>(null);
   const [errorId, setErrorId] = useState<string | null>(null);
+  // Selezione multipla + segna come letta/da leggere (segnalazione di
+  // Fabrizio, stesso trattamento lato Genitore in RichiesteGenitoreClient.tsx).
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [bulkBusy, setBulkBusy] = useState(false);
 
   async function sendReply(id: string) {
     const reply = (drafts[id] ?? "").trim();
@@ -39,12 +43,39 @@ export default function RichiesteClient({
       return;
     }
     setInquiries((prev) =>
-      prev.map((i) => (i.id === id ? { ...i, status: "risposta", reply } : i))
+      prev.map((i) => (i.id === id ? { ...i, status: "risposta", reply, readByCenter: true } : i))
     );
+  }
+
+  function toggleOne(id: string) {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+
+  function toggleAll() {
+    setSelected((prev) =>
+      prev.size === inquiries.length ? new Set() : new Set(inquiries.map((i) => i.id))
+    );
+  }
+
+  async function markSelected(read: boolean) {
+    if (selected.size === 0) return;
+    setBulkBusy(true);
+    const ids = Array.from(selected);
+    const result = await markInquiriesReadAction({ ids, side: "center", read });
+    setBulkBusy(false);
+    if (result.error) return;
+    setInquiries((prev) => prev.map((i) => (ids.includes(i.id) ? { ...i, readByCenter: read } : i)));
+    setSelected(new Set());
   }
 
   const open = inquiries.filter((i) => i.status === "aperta");
   const answered = inquiries.filter((i) => i.status !== "aperta");
+  const allSelected = inquiries.length > 0 && selected.size === inquiries.length;
 
   return (
     <div>
@@ -63,43 +94,83 @@ export default function RichiesteClient({
         </div>
       )}
 
+      {inquiries.length > 0 && (
+        <div className="mb-4 flex items-center justify-between gap-2">
+          <label className="flex items-center gap-2 text-xs font-medium text-ink-2">
+            <input type="checkbox" checked={allSelected} onChange={toggleAll} className="h-4 w-4" />
+            Seleziona tutte
+          </label>
+          {selected.size > 0 && (
+            <div className="flex gap-2">
+              <button
+                onClick={() => markSelected(true)}
+                disabled={bulkBusy}
+                className="rounded-full bg-white px-3 py-1.5 text-[11px] font-bold text-ink-2 shadow-[0_1px_3px_rgba(0,0,0,0.08)] disabled:opacity-60"
+              >
+                Segna come lette
+              </button>
+              <button
+                onClick={() => markSelected(false)}
+                disabled={bulkBusy}
+                className="rounded-full bg-white px-3 py-1.5 text-[11px] font-bold text-ink-2 shadow-[0_1px_3px_rgba(0,0,0,0.08)] disabled:opacity-60"
+              >
+                Segna come da leggere
+              </button>
+            </div>
+          )}
+        </div>
+      )}
+
       <div className="mb-5 rounded-lg border border-[#E8EBF0] bg-white">
         <div className="border-b border-[#E8EBF0] px-4 py-3 text-sm font-bold text-ink">
           Da rispondere ({open.length})
         </div>
         <div className="divide-y divide-[#F0F2F5]">
           {open.map((inq) => (
-            <div key={inq.id} className="px-4 py-3.5">
-              <div className="mb-1 flex flex-wrap items-center justify-between gap-2">
-                <div className="text-sm font-semibold text-ink">{inq.activityName}</div>
-                <span className={`rounded-full px-2.5 py-1 text-[11px] font-semibold ${STATUS_LABEL[inq.status].cls}`}>
-                  {STATUS_LABEL[inq.status].label}
-                </span>
-              </div>
-              <div className="mb-2 text-xs text-ink-2">
-                {inq.parentName}
-                {inq.parentEmail ? ` · ${inq.parentEmail}` : ""}
-              </div>
-              <p className="mb-2.5 rounded-md bg-bg p-2.5 text-xs text-ink">{inq.message}</p>
-              <textarea
-                value={drafts[inq.id] ?? ""}
-                onChange={(e) => setDrafts((d) => ({ ...d, [inq.id]: e.target.value }))}
-                rows={2}
-                placeholder="Scrivi la tua risposta…"
-                className="mb-2 w-full resize-none rounded-md border border-[#E8EBF0] px-3 py-2 text-sm outline-none focus:border-sky"
+            <div key={inq.id} className="flex gap-2.5 px-4 py-3.5">
+              <input
+                type="checkbox"
+                checked={selected.has(inq.id)}
+                onChange={() => toggleOne(inq.id)}
+                className="mt-0.5 h-4 w-4 flex-shrink-0"
               />
-              {errorId === inq.id && (
-                <p className="mb-2 text-xs font-medium text-orange">
-                  Scrivi una risposta prima di inviare.
-                </p>
-              )}
-              <button
-                onClick={() => sendReply(inq.id)}
-                disabled={busyId === inq.id}
-                className="rounded-md bg-partner px-3.5 py-2 text-xs font-bold text-white disabled:opacity-60"
-              >
-                {busyId === inq.id ? "Invio…" : "Invia risposta"}
-              </button>
+              <div className="min-w-0 flex-1">
+                <div className="mb-1 flex flex-wrap items-center justify-between gap-2">
+                  <div className="flex items-center gap-1.5 text-sm font-semibold text-ink">
+                    {!inq.readByCenter && (
+                      <span className="h-2 w-2 flex-shrink-0 rounded-full bg-[#FF6B6B]" aria-label="Non letta" />
+                    )}
+                    {inq.activityName}
+                  </div>
+                  <span className={`rounded-full px-2.5 py-1 text-[11px] font-semibold ${STATUS_LABEL[inq.status].cls}`}>
+                    {STATUS_LABEL[inq.status].label}
+                  </span>
+                </div>
+                <div className="mb-2 text-xs text-ink-2">
+                  {inq.parentName}
+                  {inq.parentEmail ? ` · ${inq.parentEmail}` : ""}
+                </div>
+                <p className="mb-2.5 rounded-md bg-bg p-2.5 text-xs text-ink">{inq.message}</p>
+                <textarea
+                  value={drafts[inq.id] ?? ""}
+                  onChange={(e) => setDrafts((d) => ({ ...d, [inq.id]: e.target.value }))}
+                  rows={2}
+                  placeholder="Scrivi la tua risposta…"
+                  className="mb-2 w-full resize-none rounded-md border border-[#E8EBF0] px-3 py-2 text-sm outline-none focus:border-sky"
+                />
+                {errorId === inq.id && (
+                  <p className="mb-2 text-xs font-medium text-orange">
+                    Scrivi una risposta prima di inviare.
+                  </p>
+                )}
+                <button
+                  onClick={() => sendReply(inq.id)}
+                  disabled={busyId === inq.id}
+                  className="rounded-md bg-partner px-3.5 py-2 text-xs font-bold text-white disabled:opacity-60"
+                >
+                  {busyId === inq.id ? "Invio…" : "Invia risposta"}
+                </button>
+              </div>
             </div>
           ))}
           {open.length === 0 && (
@@ -116,21 +187,34 @@ export default function RichiesteClient({
         </div>
         <div className="divide-y divide-[#F0F2F5]">
           {answered.map((inq) => (
-            <div key={inq.id} className="px-4 py-3.5">
-              <div className="mb-1 flex flex-wrap items-center justify-between gap-2">
-                <div className="text-sm font-semibold text-ink">{inq.activityName}</div>
-                <span className={`rounded-full px-2.5 py-1 text-[11px] font-semibold ${STATUS_LABEL[inq.status].cls}`}>
-                  {STATUS_LABEL[inq.status].label}
-                </span>
-              </div>
-              <div className="mb-2 text-xs text-ink-2">{inq.parentName}</div>
-              <p className="mb-2 rounded-md bg-bg p-2.5 text-xs text-ink">{inq.message}</p>
-              {inq.reply && (
-                <div className="rounded-md bg-sky-light p-2.5 text-xs text-ink">
-                  <div className="mb-0.5 font-semibold text-sky">La tua risposta</div>
-                  {inq.reply}
+            <div key={inq.id} className="flex gap-2.5 px-4 py-3.5">
+              <input
+                type="checkbox"
+                checked={selected.has(inq.id)}
+                onChange={() => toggleOne(inq.id)}
+                className="mt-0.5 h-4 w-4 flex-shrink-0"
+              />
+              <div className="min-w-0 flex-1">
+                <div className="mb-1 flex flex-wrap items-center justify-between gap-2">
+                  <div className="flex items-center gap-1.5 text-sm font-semibold text-ink">
+                    {!inq.readByCenter && (
+                      <span className="h-2 w-2 flex-shrink-0 rounded-full bg-[#FF6B6B]" aria-label="Non letta" />
+                    )}
+                    {inq.activityName}
+                  </div>
+                  <span className={`rounded-full px-2.5 py-1 text-[11px] font-semibold ${STATUS_LABEL[inq.status].cls}`}>
+                    {STATUS_LABEL[inq.status].label}
+                  </span>
                 </div>
-              )}
+                <div className="mb-2 text-xs text-ink-2">{inq.parentName}</div>
+                <p className="mb-2 rounded-md bg-bg p-2.5 text-xs text-ink">{inq.message}</p>
+                {inq.reply && (
+                  <div className="rounded-md bg-sky-light p-2.5 text-xs text-ink">
+                    <div className="mb-0.5 font-semibold text-sky">La tua risposta</div>
+                    {inq.reply}
+                  </div>
+                )}
+              </div>
             </div>
           ))}
           {answered.length === 0 && (

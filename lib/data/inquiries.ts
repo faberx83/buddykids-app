@@ -18,6 +18,10 @@ export interface ParentInquiry {
   reply: string | null;
   repliedAt: string | null;
   createdAt: string;
+  // "Letta" dal punto di vista del genitore — vero finché il centro non
+  // risponde (poi torna false: c'è una risposta nuova da vedere). Segnalato
+  // da Fabrizio: vuole un pallino/notifica quando arriva una risposta.
+  readByParent: boolean;
 }
 
 export interface CenterInquiry {
@@ -30,6 +34,10 @@ export interface CenterInquiry {
   status: InquiryStatus;
   reply: string | null;
   createdAt: string;
+  // "Letta" dal punto di vista del centro — falso per una richiesta nuova
+  // non ancora aperta/segnata, vero dopo (anche prima di rispondere, se il
+  // gestore la segna esplicitamente come letta).
+  readByCenter: boolean;
 }
 
 function firstOf<T>(value: T | T[] | null | undefined): T | null {
@@ -44,6 +52,7 @@ interface RawParentRow {
   reply: string | null;
   replied_at: string | null;
   created_at: string;
+  read_by_parent: boolean;
   activities: { slug: string; name: string } | { slug: string; name: string }[] | null;
 }
 
@@ -58,7 +67,7 @@ export async function getInquiriesForParent(): Promise<ParentInquiry[]> {
 
   const { data, error } = await supabase
     .from("activity_inquiries")
-    .select("id, message, status, reply, replied_at, created_at, activities ( slug, name )")
+    .select("id, message, status, reply, replied_at, created_at, read_by_parent, activities ( slug, name )")
     .eq("parent_id", user.id)
     .order("created_at", { ascending: false });
 
@@ -75,6 +84,7 @@ export async function getInquiriesForParent(): Promise<ParentInquiry[]> {
       reply: row.reply,
       repliedAt: row.replied_at,
       createdAt: row.created_at,
+      readByParent: row.read_by_parent,
     };
   });
 }
@@ -85,6 +95,7 @@ interface RawCenterRow {
   status: InquiryStatus;
   reply: string | null;
   created_at: string;
+  read_by_center: boolean;
   activities: { slug: string; name: string } | { slug: string; name: string }[] | null;
   profiles: { full_name: string | null; email: string | null } | { full_name: string | null; email: string | null }[] | null;
 }
@@ -117,7 +128,7 @@ export async function getInquiriesForCenter(): Promise<CenterInquiry[]> {
   let query = supabase
     .from("activity_inquiries")
     .select(
-      "id, message, status, reply, created_at, activities ( slug, name ), profiles!parent_id ( full_name, email )"
+      "id, message, status, reply, created_at, read_by_center, activities ( slug, name ), profiles!parent_id ( full_name, email )"
     )
     .order("created_at", { ascending: false });
 
@@ -139,6 +150,7 @@ export async function getInquiriesForCenter(): Promise<CenterInquiry[]> {
       status: row.status,
       reply: row.reply,
       createdAt: row.created_at,
+      readByCenter: row.read_by_center,
     };
   });
 }
@@ -148,4 +160,22 @@ export async function getInquiriesForCenter(): Promise<CenterInquiry[]> {
 export async function getOpenInquiriesCountForCenter(): Promise<number> {
   const all = await getInquiriesForCenter();
   return all.filter((i) => i.status === "aperta").length;
+}
+
+// Conteggio richieste non lette dal centro (badge — segnalato da Fabrizio:
+// "deve essere notificato... l'arrivo di un messaggio"). A differenza del
+// conteggio sopra (basato sullo status), questo riflette anche una richiesta
+// aperta che il gestore ha già visto/segnato come letta senza ancora
+// rispondere: più preciso per un "hai qualcosa di nuovo da guardare?".
+export async function getUnreadCountForCenter(): Promise<number> {
+  const all = await getInquiriesForCenter();
+  return all.filter((i) => !i.readByCenter).length;
+}
+
+// Conteggio risposte non lette dal genitore (badge lato genitore — stessa
+// segnalazione di Fabrizio, ma sull'altro verso: quando il centro risponde
+// il genitore deve accorgersene).
+export async function getUnreadRepliesCountForParent(): Promise<number> {
+  const all = await getInquiriesForParent();
+  return all.filter((i) => !i.readByParent).length;
 }

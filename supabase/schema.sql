@@ -704,7 +704,15 @@ create table if not exists public.activity_inquiries (
   reply text,
   replied_by uuid references public.profiles(id) on delete set null,
   replied_at timestamptz,
-  created_at timestamptz default now()
+  created_at timestamptz default now(),
+  -- Letta/non letta per lato (Fabrizio: "deve essere notificato da entrambe
+  -- le parti l'arrivo di un messaggio..con un pallino"). read_by_parent
+  -- parte true (il genitore l'ha appena scritta, niente da leggere) e viene
+  -- rimesso a false quando il centro risponde (replyToInquiryAction);
+  -- read_by_center parte false (nuova richiesta da smaltire) e diventa true
+  -- quando il centro apre/segna come letta o risponde.
+  read_by_parent boolean not null default true,
+  read_by_center boolean not null default false
 );
 
 alter table public.activity_inquiries enable row level security;
@@ -715,6 +723,15 @@ create policy "Richieste: il genitore vede/crea le proprie"
 
 create policy "Richieste: il genitore crea solo le proprie"
   on public.activity_inquiries for insert
+  with check (auth.uid() = parent_id);
+
+-- BUG TROVATO+CORRETTO: mancava una policy di update per il genitore — senza
+-- questa non poteva segnare come letta/da leggere la propria richiesta (solo
+-- select+insert erano coperte). Non tocca "message"/"status" del centro:
+-- l'app aggiorna solo read_by_parent lato genitore, per costruzione.
+create policy "Richieste: il genitore segna come letta la propria"
+  on public.activity_inquiries for update
+  using (auth.uid() = parent_id)
   with check (auth.uid() = parent_id);
 
 create policy "Richieste: il centro vede/risponde a quelle delle proprie attività"
@@ -763,6 +780,16 @@ create policy "Preferiti: il genitore gestisce i propri"
   on public.favorites for all
   using (auth.uid() = parent_id)
   with check (auth.uid() = parent_id);
+
+-- BUG TROVATO+CORRETTO (segnalato da Fabrizio: "i preferiti dei genitori
+-- lato admin non si aggiornano..ce ne sono due ma non le vedo"): a
+-- differenza di ogni altra tabella di questo schema, la policy sopra non
+-- aveva un bypass "or is_platform_admin()" — l'Admin piattaforma non è mai
+-- il parent_id di nessuna riga, quindi la RLS bloccava TUTTE le righe in
+-- silenzio per lui (vedi lib/data/admin-favorites.ts, /admin/preferiti).
+create policy "Preferiti: l'admin piattaforma legge tutti"
+  on public.favorites for select
+  using (public.is_platform_admin());
 
 create index if not exists idx_favorites_parent on public.favorites (parent_id);
 

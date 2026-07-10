@@ -11,6 +11,8 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
+import { getSeasonWeekRanges, overlaps } from "@/lib/season-weeks";
+import { getSeasonYear } from "@/lib/data/season-year";
 
 export type CheckinStatus = "presente" | "assente" | "in_ritardo";
 
@@ -70,6 +72,18 @@ export async function getTodayCheckinsForParent(): Promise<TodayCheckin[]> {
 
   const today = new Date().toISOString().slice(0, 10);
 
+  // BUG TROVATO+CORRETTO (segnalato da Fabrizio: la card di check-in
+  // mostrava "Settimana 3" mentre il Registro presenze/Planner per la
+  // STESSA settimana mostravano "Settimana 6"): qui si usava il testo
+  // "label" salvato sulla riga activity_weeks, che il gestore può aver
+  // scritto a mano quando ha creato le settimane della sua attività — non è
+  // detto corrisponda al numero "canonico" calcolato da getSeasonWeekRanges
+  // (la stessa griglia lun-ven usata da Planner/Prenotazione/Registro). Ora
+  // ricalcoliamo l'indice dalla data reale, come fa lib/data/planner.ts, così
+  // il numero di settimana è sempre coerente in tutta l'app.
+  const seasonYear = await getSeasonYear();
+  const seasonWeeks = getSeasonWeekRanges(seasonYear);
+
   const { data, error } = await supabase
     .from("bookings")
     .select(
@@ -90,6 +104,14 @@ export async function getTodayCheckinsForParent(): Promise<TodayCheckin[]> {
       if (!week) continue;
       if (today < week.start_date || today > week.end_date) continue; // non è oggi la settimana di camp
 
+      const canonicalWeek = seasonWeeks.find((sw) =>
+        overlaps(week.start_date, week.end_date, sw.start.toISOString().slice(0, 10), sw.end.toISOString().slice(0, 10))
+      );
+      // Solo "Settimana N" (senza intervallo date): il chiamante (Home)
+      // premette già "Questa settimana · ", ripetere anche le date qui
+      // sarebbe ridondante ("Questa settimana · Settimana 6 · LUG 6-10").
+      const weekLabel = canonicalWeek ? `Settimana ${canonicalWeek.index}` : week.label;
+
       for (const bk of booking.booking_kids ?? []) {
         const kid = firstOf(bk.kids);
         if (!kid) continue;
@@ -103,7 +125,7 @@ export async function getTodayCheckinsForParent(): Promise<TodayCheckin[]> {
           activityImgGradient: activity.img_gradient || "linear-gradient(135deg,#E8F6FD,#E3F9F5)",
           coverImageUrl: activity.cover_image_url,
           weekId: week.id,
-          weekLabel: week.label,
+          weekLabel,
           kidId: kid.id,
           kidName: kid.name,
           date: today,

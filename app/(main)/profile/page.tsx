@@ -5,6 +5,7 @@ import ProfileHeaderClient from "@/components/ProfileHeaderClient";
 import ProfileSettingsSection from "@/components/ProfileSettingsSection";
 import { getKidsForUser } from "@/lib/data/kids";
 import { getParentProfile } from "@/lib/data/profile";
+import { getUnreadRepliesCountForParent } from "@/lib/data/inquiries";
 import { DemoBadge } from "@/components/StatusBadge";
 
 export default async function ProfilePage({
@@ -12,10 +13,11 @@ export default async function ProfilePage({
 }: {
   searchParams: Promise<{ complete?: string; addKid?: string }>;
 }) {
-  const [profile, kids, params] = await Promise.all([
+  const [profile, kids, params, unreadReplies] = await Promise.all([
     getParentProfile(),
     getKidsForUser(),
     searchParams,
+    getUnreadRepliesCountForParent(),
   ]);
   const { fullName, email, parentRole, avatarUrl } = profile;
   const autoOpenEdit = params.complete === "1";
@@ -102,6 +104,7 @@ export default async function ProfilePage({
           main="Le mie richieste"
           sub="Messaggi ai centri e risposte ricevute"
           href="/richieste"
+          badge={unreadReplies}
         />
         <MenuItem icon="ti-file-invoice" iconBg="#F4F6FA" iconColor="#6B7280" main="Ricevute e fatture" comingSoon />
       </div>

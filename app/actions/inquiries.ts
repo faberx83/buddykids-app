@@ -53,11 +53,49 @@ export async function replyToInquiryAction(input: {
       replied_by: user.id,
       replied_at: new Date().toISOString(),
       status: "risposta",
+      // Segnalazione di Fabrizio: il genitore deve accorgersi che è
+      // arrivata una risposta ("un pallino, un pop-up") — read_by_parent
+      // torna a false qui, il centro invece l'ha appena scritta quindi per
+      // lui è già "letta".
+      read_by_parent: false,
+      read_by_center: true,
     })
     .eq("id", input.inquiryId);
 
   if (error) return { error: error.message };
 
   revalidatePath("/center/richieste");
+  revalidatePath("/richieste");
+  return {};
+}
+
+// Segna una o più richieste come lette/da leggere, da un lato o dall'altro
+// (checkbox + "seleziona tutte" richiesti da Fabrizio su entrambi i lati).
+// La RLS fa già rispettare i confini (un genitore aggiorna solo le proprie,
+// un centro solo quelle delle proprie attività) — qui basta scegliere quale
+// colonna toccare in base al lato.
+export async function markInquiriesReadAction(input: {
+  ids: string[];
+  side: "parent" | "center";
+  read: boolean;
+}): Promise<{ error?: string }> {
+  if (!isSupabaseConfigured) return { error: "Supabase non configurato" };
+  if (input.ids.length === 0) return {};
+
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { error: "Non autenticato" };
+
+  const column = input.side === "parent" ? "read_by_parent" : "read_by_center";
+  const { error } = await supabase
+    .from("activity_inquiries")
+    .update({ [column]: input.read })
+    .in("id", input.ids);
+
+  if (error) return { error: error.message };
+
+  revalidatePath(input.side === "parent" ? "/richieste" : "/center/richieste");
   return {};
 }
