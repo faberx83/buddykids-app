@@ -125,7 +125,15 @@ export default function HomeDashboardClient({
 
       {/* 1) Copertura — la prima domanda a cui rispondere */}
       <div className="rounded-2xl border border-[#E8EBF0] bg-white p-5 shadow-[0_1px_3px_rgba(16,24,40,0.04)]">
-        <div className="mb-3 text-[15px] font-bold text-ink">{headline}</div>
+        <div className="mb-3 flex items-center justify-between gap-3">
+          <div className="text-[15px] font-bold text-ink">{headline}</div>
+          <Link
+            href="/nextgen/search"
+            className="flex-shrink-0 rounded-full bg-bg px-3 py-1.5 text-[11px] font-semibold text-ink-2"
+          >
+            Scopri attività
+          </Link>
+        </div>
         <div className="flex gap-1">
           {planner.weeks.map((w) => (
             <div
