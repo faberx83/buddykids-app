@@ -57,8 +57,11 @@ export default async function NextgenLayout({ children }: { children: React.Reac
           "BuddyKids") -> chiave di dismiss separata in localStorage, e nessun
           routeExclude (è già scoped a /nextgen dal punto in cui è mountata).
           Quella "storica" in app/layout.tsx si autoesclude qui (routeExclude),
-          quindi non appare mai insieme a questa. */}
-      <InstallPrompt appName="BuddyKids NextGen" themeColor="#5B4FE9" />
+          quindi non appare mai insieme a questa. swScope="/nextgen" (BUG FIX):
+          registra il service worker su uno scope diverso da quello di LEGACY
+          ("/"), altrimenti Chrome unifica le due app sotto un'unica identità
+          installata (vedi commento in components/InstallPrompt.tsx). */}
+      <InstallPrompt appName="BuddyKids NextGen" themeColor="#5B4FE9" swScope="/nextgen" />
     </PhoneShell>
   );
 }

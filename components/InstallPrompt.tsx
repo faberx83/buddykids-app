@@ -20,6 +20,22 @@ import { usePathname } from "next/navigation";
 // /nextgen comparirebbero DUE banner "Installa" insieme (questo e quello
 // NEXTGEN): niente di nuovo per LEGACY (stesso comportamento su ogni altra
 // rotta), solo un self-check di percorso.
+//
+// BUG TROVATO E CORRETTO (segnalato da Fabrizio: "su Chrome desktop appare
+// 'Open in app' invece di 'Installa BuddyKids NextGen', su Android resta un
+// semplice collegamento a una pagina web"): il service worker veniva
+// registrato SEMPRE con navigator.serviceWorker.register("/sw.js") SENZA
+// scope esplicito, quindi finiva sempre sullo scope di default "/" — anche
+// per l'istanza NEXTGEN. Con UN SOLO service worker a scope "/" che copre
+// tutto il dominio, Chrome unifica LEGACY e NEXTGEN sotto un'unica identità
+// "app installata", indipendentemente dal fatto che i due manifest siano
+// diversi: per essere riconosciute come due PWA realmente distinte, ciascuna
+// deve avere anche il proprio service worker registrato sul proprio scope
+// (stessa regola per cui i due manifest hanno scope diversi). Ora l'istanza
+// NEXTGEN registra "/sw.js" con {scope:"/nextgen"} — stesso file, ma
+// registrazione separata, che copre SOLO le pagine sotto /nextgen. L'istanza
+// LEGACY continua a registrare con lo scope di default "/", esattamente
+// come prima (nessuna modifica al suo comportamento).
 interface BeforeInstallPromptEvent extends Event {
   prompt: () => Promise<void>;
   userChoice: Promise<{ outcome: "accepted" | "dismissed" }>;
@@ -52,10 +68,16 @@ export default function InstallPrompt({
   // quella NEXTGEN non la passa, perché è già scoped a /nextgen dal punto in
   // cui è mountata.
   routeExclude,
+  // Scope con cui registrare il service worker — "/" (default, LEGACY) o
+  // "/nextgen" (vedi bug corretto sopra): due scope diversi = due
+  // registrazioni SW indipendenti, necessarie perché Chrome riconosca le due
+  // app come installabili separatamente.
+  swScope = "/",
 }: {
   appName: string;
   themeColor: string;
   routeExclude?: string;
+  swScope?: string;
 }) {
   // Nessuno stato "dismissed" separato: il banner parte nascosto di default
   // (deferredEvent null, showIosHint false) e viene mostrato SOLO se
@@ -71,7 +93,7 @@ export default function InstallPrompt({
     if (excluded) return; // rotta gestita da un'altra istanza (vedi routeExclude)
 
     if ("serviceWorker" in navigator) {
-      navigator.serviceWorker.register("/sw.js").catch(() => {});
+      navigator.serviceWorker.register("/sw.js", { scope: swScope }).catch(() => {});
     }
 
     if (isStandalone()) return; // già installata: niente banner
@@ -94,7 +116,7 @@ export default function InstallPrompt({
 
     window.addEventListener("beforeinstallprompt", onBeforeInstallPrompt);
     return () => window.removeEventListener("beforeinstallprompt", onBeforeInstallPrompt);
-  }, [appName, excluded]);
+  }, [appName, excluded, swScope]);
 
   function dismiss() {
     localStorage.setItem(dismissKey(appName), "1");
