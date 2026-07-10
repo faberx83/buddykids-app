@@ -5,7 +5,6 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useDemoRole } from "@/components/DemoRoleProvider";
 import { Role } from "@/lib/types";
-import { DemoBadge } from "@/components/StatusBadge";
 import PageLoadIndicator from "@/components/PageLoadIndicator";
 import { createClient } from "@/lib/supabase/client";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
@@ -347,17 +346,16 @@ export default function DashboardLayout({
               </aside>
             </div>
           )}
-          <div
-            className={`flex items-center gap-2 border-b px-5 py-2 md:px-8 ${
-              isAdmin ? "border-navy-3 bg-navy-2" : "border-[#F0E6C8] bg-[#FFFBF0]"
-            }`}
-          >
-            <DemoBadge label="Dati demo" />
-            <span className={`text-xs ${isAdmin ? "text-navy-text2" : "text-ink-2"}`}>
-              Dashboard, grafici e form di questa area sono ancora collegati a dati di esempio —
-              le scritture reali arrivano nel prossimo step.
-            </span>
-          </div>
+          {/* BUG TROVATO+CORRETTO (parte del "punto della situazione" chiesto
+              da Fabrizio): questo banner "Dati demo" era mostrato in modo
+              indiscriminato su OGNI pagina Gestore/Admin, anche su quelle
+              ormai reali (Richieste, Registro/Report presenze, i nuovi
+              pannelli Admin...) — diventando un'affermazione falsa e
+              fuorviante. Le pagine ancora davvero collegate a dati di
+              esempio (Centri/Tag/Fornitori Admin, Inviti, Profilo centro,
+              Promozioni, calendario disponibilità) mostrano già il proprio
+              DemoBadge locale nel punto preciso in cui serve — il banner
+              generico qui non aggiunge più informazione corretta. */}
           <main className="p-5 md:p-8">{children}</main>
         </div>
       </div>
