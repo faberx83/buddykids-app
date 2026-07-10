@@ -131,6 +131,20 @@ export default function HomeDashboardClient({
   const [showAll, setShowAll] = useState(false);
   const [groupBy, setGroupBy] = useState<GroupKey>("week");
   const [sortKey, setSortKey] = useState<SortKey>("date");
+  // SEGNALAZIONE DI FABRIZIO: "mi piacerebbe ci fosse modo per comprimere i
+  // gruppi o espanderli" — ogni gruppo (Settimana/Mese/Figlio/...) ora si
+  // può chiudere singolarmente, non solo l'intera sezione. Nessun gruppo
+  // collassato di default: comprimere è un'azione esplicita, non lo stato
+  // iniziale (altrimenti si perderebbe la vista d'insieme al primo tocco).
+  const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
+  function toggleGroupCollapsed(label: string) {
+    setCollapsedGroups((prev) => {
+      const next = new Set(prev);
+      if (next.has(label)) next.delete(label);
+      else next.add(label);
+      return next;
+    });
+  }
 
   const groups = useMemo(() => {
     function keyFor(b: MyBooking): { key: string; label: string } {
@@ -183,25 +197,44 @@ export default function HomeDashboardClient({
         <div aria-hidden className="pointer-events-none absolute -bottom-12 -right-2 h-24 w-24 rounded-full bg-white/20" />
         <div className="relative">
           <p className="mb-1.5 text-sm font-semibold text-ink-2">La tua estate</p>
-          <h2 className="mb-3 text-[30px] font-bold leading-tight text-ink">
+          {/* SEGNALAZIONE DI FABRIZIO: "sistemare le dimensioni font perché
+              vanno a capo" — 28px (era 30px) resta nel range richiesto
+              (28-32px) ma lascia più margine sugli schermi stretti. */}
+          <h2 className="mb-3 text-[28px] font-bold leading-tight text-ink">
             {statusEmoji} Organizzata al {percent}%
           </h2>
-          {missingWeeksText ? (
-            <p className="mb-1 text-base text-ink-2">
-              Mancano ancora: <span className="font-semibold text-ink">{missingWeeksText}</span>
-            </p>
-          ) : (
-            <p className="mb-1 text-base text-ink-2">Tutte le settimane utili sono coperte.</p>
-          )}
-          {nextAppointment && (
-            <p className="mb-4 text-base text-ink-2">
-              Prossimo impegno:{" "}
-              <span className="font-semibold text-ink">
-                {nextAppointment.activityName}
-                {nextAppointment.firstWeekStart ? `, ${friendlyDate(nextAppointment.firstWeekStart)}` : ""}
-              </span>
-            </p>
-          )}
+          {/* "Mancano ancora"/"Prossimo impegno" ristrutturate da frase unica
+              (rischio di andare a capo a metà) a blocchi etichetta+valore,
+              ciascuno con una piccola icona distintiva (richiesta di
+              Fabrizio: "ci vuole una iconcina distintiva?"). */}
+          <div className="mb-3.5 flex flex-col gap-2.5">
+            {missingWeeksText ? (
+              <div className="flex items-start gap-2">
+                <i className="ti ti-calendar-exclamation mt-0.5 flex-shrink-0 text-base text-[#d4622a]" />
+                <div className="min-w-0">
+                  <div className="text-[11px] font-bold uppercase tracking-wide text-ink-3">Mancano ancora</div>
+                  <div className="text-base font-semibold text-ink">{missingWeeksText}</div>
+                </div>
+              </div>
+            ) : (
+              <div className="flex items-start gap-2">
+                <i className="ti ti-circle-check-filled mt-0.5 flex-shrink-0 text-base text-green" />
+                <div className="text-base font-semibold text-ink">Tutte le settimane utili sono coperte.</div>
+              </div>
+            )}
+            {nextAppointment && (
+              <div className="flex items-start gap-2">
+                <i className="ti ti-map-pin-filled mt-0.5 flex-shrink-0 text-base text-[#5B4FE9]" />
+                <div className="min-w-0">
+                  <div className="text-[11px] font-bold uppercase tracking-wide text-ink-3">Prossimo impegno</div>
+                  <div className="truncate text-base font-semibold text-ink">
+                    {nextAppointment.activityName}
+                    {nextAppointment.firstWeekStart ? `, ${friendlyDate(nextAppointment.firstWeekStart)}` : ""}
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
           <button
             type="button"
             onClick={() => router.push("/nextgen/planner")}
@@ -342,18 +375,30 @@ export default function HomeDashboardClient({
               </div>
 
               <div className="flex flex-col gap-4">
-                {groups.map((g) => (
-                  <div key={g.label}>
-                    <div className="mb-1.5 px-1 text-[10px] font-bold uppercase tracking-wide text-ink-3">
-                      {g.label}
+                {groups.map((g) => {
+                  const collapsed = collapsedGroups.has(g.label);
+                  return (
+                    <div key={g.label}>
+                      <button
+                        type="button"
+                        onClick={() => toggleGroupCollapsed(g.label)}
+                        className="mb-1.5 flex w-full items-center justify-between px-1 text-[10px] font-bold uppercase tracking-wide text-ink-3"
+                      >
+                        <span>
+                          {g.label} · {g.items.length}
+                        </span>
+                        <i className={`ti ti-chevron-${collapsed ? "down" : "up"} text-[13px]`} />
+                      </button>
+                      {!collapsed && (
+                        <div className="flex flex-col gap-2">
+                          {g.items.map((b) => (
+                            <BookingVisualCard key={b.id} booking={b} compact />
+                          ))}
+                        </div>
+                      )}
                     </div>
-                    <div className="flex flex-col gap-2">
-                      {g.items.map((b) => (
-                        <BookingVisualCard key={b.id} booking={b} compact />
-                      ))}
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
 
               <Link href="/prenotazioni" className="mt-4 inline-block text-sm font-semibold text-[#5B4FE9]">

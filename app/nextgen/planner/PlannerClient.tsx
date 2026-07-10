@@ -132,9 +132,16 @@ export default function PlannerClient({
 
               return (
                 <div key={w.index} className={`flex items-center gap-3 rounded-xl p-3 ${rowBg}`}>
-                  <div className="w-[84px] flex-shrink-0">
-                    <div className="text-[12.5px] font-bold text-ink">Settimana {w.index}</div>
-                    <div className="text-[10.5px] text-ink-2">{w.dateRange}</div>
+                  {/* SEGNALAZIONE DI FABRIZIO: "settimana 12 e 13 vanno a capo" —
+                      con una larghezza fissa (84px) "Settimana 12"/"Settimana 13"
+                      (12 caratteri, più larghi di "Settimana 1".."Settimana 9")
+                      arrivavano al limite e andavano a capo. whitespace-nowrap
+                      + larghezza automatica (solo flex-shrink-0, nessun width
+                      fisso): la colonna si allarga quanto serve, il testo non
+                      va mai a capo, qualunque sia il numero della settimana. */}
+                  <div className="flex-shrink-0">
+                    <div className="whitespace-nowrap text-[12.5px] font-bold text-ink">Settimana {w.index}</div>
+                    <div className="whitespace-nowrap text-[10.5px] text-ink-2">{w.dateRange}</div>
                   </div>
                   <div className="min-w-0 flex-1">
                     {w.dismissed ? (
