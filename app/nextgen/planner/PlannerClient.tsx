@@ -377,6 +377,16 @@ export default function PlannerClient({
           📍 Indirizzi di famiglia
         </Link>
 
+        {/* SPRINT 5.5 — Profilo Famiglia multi-genitore: invita l'altro
+            genitore (account separato) a condividere Indirizzi/"Chi fa
+            cosa?"/Condivisione Piano. */}
+        <Link
+          href="/nextgen/planner/famiglia"
+          className="mt-2 block text-center text-[12.5px] font-semibold text-[#5B4FE9]"
+        >
+          👨‍👩‍👧 Famiglia
+        </Link>
+
         <Link href="/prenotazioni" className="mt-2 block text-center text-[12.5px] font-semibold text-[#5B4FE9]">
           Gestisci prenotazioni (annulla/modifica) →
         </Link>

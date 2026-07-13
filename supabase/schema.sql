@@ -1537,4 +1537,197 @@ begin
 end;
 $$;
 
+-- ─────────────────────────────────────────────
+-- SPRINT 5.5 (NEXTGEN) — Profilo Famiglia multi-genitore
+-- ─────────────────────────────────────────────
+-- Richiesta di Fabrizio (dopo revisione scope: opzione 3 delle 3 proposte):
+-- più genitori con ACCOUNT SEPARATI (es. mamma e papà, o genitori separati)
+-- possono condividere lettura/scrittura sui 3 strumenti di coordinamento del
+-- Planner introdotti in 5.3 — Indirizzi (parent_addresses), "Chi fa cosa?"
+-- (week_responsibilities), Condivisione Piano (plan_shares) — SENZA toccare
+-- la proprietà di bambini/prenotazioni (kids/bookings restano a genitore
+-- singolo, RLS invariata: zero rischio sulle funzionalità core, che
+-- continuano a mostrare solo i propri dati). Stesso pattern già collaudato
+-- per le Community (creatore/admin/membro + invite_code, funzioni security
+-- definer per evitare la "infinite recursion" RLS, fallback "or created_by"
+-- per evitare il bug INSERT...RETURNING), qui riapplicato 1:1.
+--
+-- PUNTO DELICATO (segnalato esplicitamente a Fabrizio prima di procedere):
+-- questa fase condivide la SCRITTURA sulle 3 tabelle di coordinamento, ma NON
+-- unisce ancora la vista Calendario/"Chi fa cosa" con i bambini/prenotazioni
+-- dell'ALTRO genitore (che restano visibili solo a chi li ha prenotati). Un
+-- secondo genitore che si unisce alla famiglia vede/gestisce da subito
+-- Indirizzi, Condivisione Piano e può leggere le assegnazioni "Chi fa cosa"
+-- già inserite dal primo, ma non vede ancora nel proprio Calendario le
+-- settimane/bambini prenotati dal primo genitore per assegnarvi nuove righe:
+-- questo richiede un secondo passo (aggregare bookings/kids fra i membri
+-- della famiglia in sola lettura) che resta backlog per il prossimo sprint,
+-- per non introdurre in un colpo solo un cambiamento cosi esteso sui dati
+-- "core" dell'app.
+--
+-- EVOLUZIONE FUTURA (annotata da Fabrizio, non ancora implementata): un
+-- modello "multitenant" più granulare (permessi per singola risorsa/ruolo
+-- avanzato, oltre il semplice creatore/admin/membro) potrebbe sostituire
+-- questo member-list in una fase successiva, se emergesse il bisogno di
+-- famiglie molto numerose o ruoli più fini.
+
+create table if not exists public.families (
+  id uuid primary key default gen_random_uuid(),
+  name text not null,
+  invite_code text unique not null,
+  created_by uuid references public.profiles(id) on delete set null,
+  created_at timestamptz default now()
+);
+
+create index if not exists idx_families_invite_code on public.families(invite_code);
+
+-- Ruolo del genitore dentro la famiglia: Creatore (solo chi l'ha fondata,
+-- immutabile), Admin (può gestire i membri), Membro (default).
+create table if not exists public.family_members (
+  family_id uuid references public.families(id) on delete cascade not null,
+  parent_id uuid references public.profiles(id) on delete cascade not null,
+  role text not null default 'membro' check (role in ('creatore', 'admin', 'membro')),
+  joined_at timestamptz default now(),
+  primary key (family_id, parent_id)
+);
+
+alter table public.families enable row level security;
+alter table public.family_members enable row level security;
+
+-- Funzione "security definer": stesso pattern di is_community_member(), per
+-- non ricadere nella stessa "infinite recursion" già affrontata su
+-- group_members/community_members.
+create or replace function public.is_family_member(fid uuid)
+returns boolean
+language sql security definer stable
+as $$
+  select exists (
+    select 1 from public.family_members
+    where family_id = fid and parent_id = auth.uid()
+  );
+$$;
+
+create or replace function public.is_family_admin(fid uuid)
+returns boolean
+language sql security definer stable
+as $$
+  select exists (
+    select 1 from public.family_members
+    where family_id = fid and parent_id = auth.uid() and role in ('creatore', 'admin')
+  );
+$$;
+
+-- Elenco degli id-profilo della famiglia del chiamante — se non fa parte di
+-- nessuna famiglia, restituisce solo il proprio id (cosi le policy
+-- family-aware qui sotto restano equivalenti al comportamento precedente
+-- "parent_id = auth.uid()" per chi non ha ancora una famiglia).
+create or replace function public.get_family_member_ids()
+returns uuid[]
+language sql security definer stable
+as $$
+  select coalesce(
+    (
+      select array_agg(fm2.parent_id)
+      from public.family_members fm1
+      join public.family_members fm2 on fm2.family_id = fm1.family_id
+      where fm1.parent_id = auth.uid()
+    ),
+    array[auth.uid()]
+  );
+$$;
+
+-- FIX: stesso fallback già usato per "communities" ("... or created_by =
+-- auth.uid()") — subito dopo l'insert il creatore non è ancora "membro" (la
+-- riga in family_members viene creata in una query separata, successiva):
+-- senza questo fallback la RETURNING della insert() fallirebbe con "new row
+-- violates row-level security policy".
+drop policy if exists "Families: lettura per i membri" on public.families;
+create policy "Families: lettura per i membri"
+  on public.families for select
+  using (public.is_family_member(id) or created_by = auth.uid());
+
+drop policy if exists "Families: creazione da utenti autenticati" on public.families;
+create policy "Families: creazione da utenti autenticati"
+  on public.families for insert
+  with check (auth.uid() = created_by);
+
+drop policy if exists "Family members: visibili solo ai membri della famiglia" on public.family_members;
+create policy "Family members: visibili solo ai membri della famiglia"
+  on public.family_members for select
+  using (public.is_family_member(family_id));
+
+-- Chiunque conosca il codice invito può aggiungersi da solo (join-by-code),
+-- come per community_members: il codice stesso è il "controllo accessi".
+drop policy if exists "Family members: un utente può aggiungersi da solo" on public.family_members;
+create policy "Family members: un utente può aggiungersi da solo"
+  on public.family_members for insert
+  with check (auth.uid() = parent_id);
+
+drop policy if exists "Family members: gli admin gestiscono i ruoli" on public.family_members;
+create policy "Family members: gli admin gestiscono i ruoli"
+  on public.family_members for update
+  using (public.is_family_admin(family_id))
+  with check (public.is_family_admin(family_id));
+
+-- "Esci dalla famiglia": un utente può sempre rimuovere se stesso (nessun
+-- utente resta "prigioniero" di una famiglia).
+drop policy if exists "Family members: un utente può uscire da solo" on public.family_members;
+create policy "Family members: un utente può uscire da solo"
+  on public.family_members for delete
+  using (auth.uid() = parent_id);
+
+-- Elenco membri con nome/email — profiles resta a lettura solo-proprietario
+-- (RLS invariata), quindi l'unico modo per un genitore di vedere il nome
+-- degli altri membri della propria famiglia è questa funzione security
+-- definer, che espone SOLO nome/email/ruolo (stesso principio di
+-- get_shared_plan_meta(): mai importi o dati sensibili non necessari).
+create or replace function public.get_family_members()
+returns table (parent_id uuid, full_name text, email text, role text, joined_at timestamptz)
+language plpgsql security definer
+as $$
+declare
+  v_family_id uuid;
+begin
+  select fm.family_id into v_family_id
+  from public.family_members fm
+  where fm.parent_id = auth.uid()
+  limit 1;
+
+  if v_family_id is null then
+    return;
+  end if;
+
+  return query
+    select fm.parent_id, p.full_name, p.email, fm.role, fm.joined_at
+    from public.family_members fm
+    join public.profiles p on p.id = fm.parent_id
+    where fm.family_id = v_family_id
+    order by fm.joined_at;
+end;
+$$;
+
+grant execute on function public.get_family_members() to authenticated;
+
+-- Le 3 tabelle di coordinamento diventano leggibili/scrivibili da TUTTI i
+-- membri della stessa famiglia (get_family_member_ids() include comunque
+-- solo il proprio id per chi non ha famiglia, quindi nessuna regressione per
+-- chi non usa questa funzionalità).
+drop policy if exists "Indirizzi: il genitore gestisce i propri" on public.parent_addresses;
+create policy "Indirizzi: la famiglia gestisce i propri"
+  on public.parent_addresses for all
+  using (parent_id = any(public.get_family_member_ids()))
+  with check (parent_id = any(public.get_family_member_ids()));
+
+drop policy if exists "Chi fa cosa: il genitore gestisce le proprie assegnazioni" on public.week_responsibilities;
+create policy "Chi fa cosa: la famiglia gestisce le proprie assegnazioni"
+  on public.week_responsibilities for all
+  using (parent_id = any(public.get_family_member_ids()))
+  with check (parent_id = any(public.get_family_member_ids()));
+
+drop policy if exists "Plan shares: il genitore gestisce i propri link" on public.plan_shares;
+create policy "Plan shares: la famiglia gestisce i propri link"
+  on public.plan_shares for all
+  using (parent_id = any(public.get_family_member_ids()))
+  with check (parent_id = any(public.get_family_member_ids()));
+
 grant execute on function public.get_shared_plan(text) to anon, authenticated;
