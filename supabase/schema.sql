@@ -1269,24 +1269,29 @@ as $$
   );
 $$;
 
+drop policy if exists "Communities: lettura per i membri" on public.communities;
 create policy "Communities: lettura per i membri"
   on public.communities for select
   using (public.is_community_member(id));
 
+drop policy if exists "Communities: creazione da utenti autenticati" on public.communities;
 create policy "Communities: creazione da utenti autenticati"
   on public.communities for insert
   with check (auth.uid() = created_by);
 
+drop policy if exists "Community members: visibili solo ai membri della community" on public.community_members;
 create policy "Community members: visibili solo ai membri della community"
   on public.community_members for select
   using (public.is_community_member(community_id));
 
 -- Chiunque conosca il codice invito può aggiungersi da solo (join-by-code),
 -- come per group_members: il codice stesso è il "controllo accessi".
+drop policy if exists "Community members: un utente può aggiungersi da solo" on public.community_members;
 create policy "Community members: un utente può aggiungersi da solo"
   on public.community_members for insert
   with check (auth.uid() = parent_id);
 
+drop policy if exists "Community members: gli admin gestiscono i ruoli" on public.community_members;
 create policy "Community members: gli admin gestiscono i ruoli"
   on public.community_members for update
   using (public.is_community_admin(community_id))
@@ -1306,10 +1311,12 @@ create table if not exists public.community_activity_proposals (
 
 alter table public.community_activity_proposals enable row level security;
 
+drop policy if exists "Community proposals: visibili ai membri della community" on public.community_activity_proposals;
 create policy "Community proposals: visibili ai membri della community"
   on public.community_activity_proposals for select
   using (public.is_community_member(community_id));
 
+drop policy if exists "Community proposals: creabili dai membri della community" on public.community_activity_proposals;
 create policy "Community proposals: creabili dai membri della community"
   on public.community_activity_proposals for insert
   with check (public.is_community_member(community_id) and auth.uid() = proposed_by);
@@ -1326,6 +1333,7 @@ create table if not exists public.community_activity_interest (
 
 alter table public.community_activity_interest enable row level security;
 
+drop policy if exists "Community interest: visibile ai membri della community" on public.community_activity_interest;
 create policy "Community interest: visibile ai membri della community"
   on public.community_activity_interest for select
   using (
@@ -1335,6 +1343,7 @@ create policy "Community interest: visibile ai membri della community"
     )
   );
 
+drop policy if exists "Community interest: un membro esprime il proprio interesse" on public.community_activity_interest;
 create policy "Community interest: un membro esprime il proprio interesse"
   on public.community_activity_interest for insert
   with check (
@@ -1344,6 +1353,7 @@ create policy "Community interest: un membro esprime il proprio interesse"
     )
   );
 
+drop policy if exists "Community interest: un membro ritira il proprio interesse" on public.community_activity_interest;
 create policy "Community interest: un membro ritira il proprio interesse"
   on public.community_activity_interest for delete
   using (auth.uid() = parent_id);
