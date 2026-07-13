@@ -19,7 +19,11 @@ import {
   WEEKDAYS,
   MOMENTS,
 } from "@/lib/nextgen/responsibility-options";
-import { setResponsibilityAction, clearResponsibilityAction } from "@/app/actions/responsibilities";
+import {
+  setResponsibilityAction,
+  clearResponsibilityAction,
+  setWeekBulkResponsibilityAction,
+} from "@/app/actions/responsibilities";
 import type { PlanShare } from "@/lib/data/plan-shares";
 import { createPlanShareAction, revokePlanShareAction } from "@/app/actions/plan-shares";
 import { useNextgenToast } from "@/components/nextgen/NextgenToastProvider";
@@ -152,6 +156,62 @@ export default function PlannerCalendarView({
       return next;
     });
     setAssigningKey(null);
+  }
+
+  // FEEDBACK DI FABRIZIO: "bisogna aggiungere qualcosa che permetta di
+  // applicare rapidamente l'assegnazione su tutta la settimana ed
+  // eventualmente applicarla anche ai due figli — non è detto che siano da
+  // gestire diversamente o insieme". Di default tutti i bambini della
+  // settimana sono INCLUSI (il caso più comune, "gestiti insieme"): si
+  // tracciano solo le ESCLUSIONI esplicite, cosi un genitore con un solo
+  // figlio non vede alcun controllo in più.
+  const [bulkKidExcluded, setBulkKidExcluded] = useState<Record<string, boolean>>({});
+  const [bulkAssigningAltro, setBulkAssigningAltro] = useState(false);
+  const [bulkAltroText, setBulkAltroText] = useState("");
+  const [bulkBusy, setBulkBusy] = useState(false);
+
+  function toggleBulkKid(kidId: string) {
+    setBulkKidExcluded((prev) => ({ ...prev, [kidId]: !prev[kidId] }));
+  }
+
+  async function handleBulkAssign(value: ResponsibleValue, label?: string) {
+    if (!selectedDay || !selectedDay.weekStartDate) return;
+    const weekStartDate = selectedDay.weekStartDate;
+    const kidIds = selectedDay.kids.map((k) => k.kidId).filter((id) => !bulkKidExcluded[id]);
+    if (kidIds.length === 0) {
+      showToast("Seleziona almeno un bambino");
+      return;
+    }
+    setBulkBusy(true);
+    const res = await setWeekBulkResponsibilityAction(kidIds, weekStartDate, value, label);
+    setBulkBusy(false);
+    if (res.error) {
+      showToast(res.error);
+      return;
+    }
+    setLocalResp((prev) => {
+      const next = { ...prev };
+      for (const kidId of kidIds) {
+        for (const wd of WEEKDAYS) {
+          for (const mo of MOMENTS) {
+            const key = respKey(kidId, weekStartDate, wd.value, mo.value);
+            next[key] = {
+              kidId,
+              weekStartDate,
+              weekday: wd.value,
+              moment: mo.value,
+              responsible: value,
+              responsibleLabel: value === "altro" ? label ?? null : null,
+            };
+          }
+        }
+      }
+      return next;
+    });
+    setAssigningKey(null);
+    setBulkAssigningAltro(false);
+    setBulkAltroText("");
+    showToast(kidIds.length > 1 ? "Assegnato a tutta la settimana per entrambi i bambini!" : "Assegnato a tutta la settimana!");
   }
 
   // SPRINT 5.3 — "Condivisione Piano": link pubblico di sola lettura per il
@@ -488,6 +548,79 @@ export default function PlannerCalendarView({
             <p className="text-[12.5px] text-ink-2">Segnata come &quot;non ti serve&quot;.</p>
           ) : selectedDay.kids.length > 0 ? (
             <div className="flex flex-col gap-3">
+              {/* FEEDBACK DI FABRIZIO — applicazione rapida a tutta la
+                  settimana (5 giorni × andata/ritorno) in un colpo solo,
+                  opzionalmente su più bambini insieme: "non è detto che
+                  siano da gestire diversamente o insieme". Un solo upsert
+                  multiplo (setWeekBulkResponsibilityAction), non 10-20
+                  chiamate singole. */}
+              {selectedDay.weekStartDate && (
+                <div className="rounded-xl bg-[#F5F2FF] p-3">
+                  <div className="mb-1.5 flex items-center gap-1.5 text-[11.5px] font-bold text-[#5B4FE9]">
+                    <i className="ti ti-bolt text-[13px]" />
+                    Applica a tutta la settimana
+                  </div>
+                  {selectedDay.kids.length > 1 && (
+                    <div className="mb-2 flex flex-wrap gap-2">
+                      {selectedDay.kids.map((k) => {
+                        const included = !bulkKidExcluded[k.kidId];
+                        return (
+                          <button
+                            key={k.kidId}
+                            type="button"
+                            onClick={() => toggleBulkKid(k.kidId)}
+                            className={`flex items-center gap-1.5 rounded-full bg-white px-2.5 py-1 text-[11px] font-semibold ${
+                              included ? "text-ink" : "text-ink-3 line-through"
+                            }`}
+                          >
+                            <span className={`h-2 w-2 rounded-full ${DOT_BG[k.accentColor]}`} />
+                            {k.kidName}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
+                  <div className="flex flex-wrap gap-1.5">
+                    {RESPONSIBLE_OPTIONS.map((opt) => (
+                      <button
+                        key={opt.value}
+                        type="button"
+                        disabled={bulkBusy}
+                        onClick={() => {
+                          if (opt.value === "altro") {
+                            setBulkAssigningAltro(true);
+                            return;
+                          }
+                          handleBulkAssign(opt.value);
+                        }}
+                        className="rounded-full bg-white px-2.5 py-1 text-[11px] font-semibold text-ink-2 disabled:opacity-50"
+                      >
+                        {opt.emoji} {opt.label}
+                      </button>
+                    ))}
+                  </div>
+                  {bulkAssigningAltro && (
+                    <div className="mt-2 flex items-center gap-1.5">
+                      <input
+                        type="text"
+                        value={bulkAltroText}
+                        onChange={(e) => setBulkAltroText(e.target.value)}
+                        placeholder="Altro: scrivi chi (es. Zia Carla)"
+                        className="min-w-0 flex-1 rounded-lg border border-[#E8EBF0] bg-white px-2.5 py-1.5 text-[11.5px] text-ink"
+                      />
+                      <button
+                        type="button"
+                        disabled={bulkBusy || !bulkAltroText.trim()}
+                        onClick={() => handleBulkAssign("altro", bulkAltroText)}
+                        className="flex-shrink-0 rounded-lg bg-ink px-2.5 py-1.5 text-[11px] font-bold text-white disabled:opacity-40"
+                      >
+                        OK
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )}
+
               {selectedDay.kids.map((k) => {
                 const weekStartDate = selectedDay.weekStartDate;
 

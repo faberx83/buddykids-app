@@ -149,6 +149,48 @@ test.describe("NEXTGEN - Family Planner Sprint 5.3 (Logistica/Chi fa cosa/Condiv
     await expect(page.locator('button[title="Nonno"]').first()).toBeVisible();
   });
 
+  test("TC-N70 - 'Applica a tutta la settimana' assegna tutte le celle (5 giorni × andata/ritorno) in un colpo solo", async ({ page }) => {
+    test.skip(!isRealDeployment, "Richiede un deploy con Supabase configurato e un account genitore di test con almeno una settimana coperta.");
+    await loginAs(page, "parent");
+    await page.goto("/nextgen/planner");
+    await page.getByRole("button", { name: "Calendario" }).click();
+
+    const coveredDay = page.locator("button:has(span.rounded-full)").first();
+    if (!(await coveredDay.isVisible().catch(() => false))) {
+      test.skip(true, "Nessuna settimana coperta nel mese corrente per l'account di test.");
+    }
+    await coveredDay.click();
+
+    await expect(page.getByText("Applica a tutta la settimana")).toBeVisible();
+    await page.getByRole("button", { name: /Nonna/ }).first().click();
+    await expect(page.getByText(/Assegnato a tutta la settimana/)).toBeVisible();
+
+    // Nessuna cella dovrebbe restare "Nessuno assegnato" dopo l'applicazione rapida.
+    await expect(page.locator('button[title="Nessuno assegnato"]')).toHaveCount(0);
+  });
+
+  test("TC-N71 - 'Applica a tutta la settimana': deselezionare un bambino lo esclude dall'assegnazione rapida", async ({ page }) => {
+    test.skip(!isRealDeployment, "Richiede un deploy con Supabase configurato e un account genitore di test con almeno 2 bambini e una settimana coperta per entrambi.");
+    await loginAs(page, "parent");
+    await page.goto("/nextgen/planner");
+    await page.getByRole("button", { name: "Calendario" }).click();
+
+    const coveredDay = page.locator("button:has(span.rounded-full)").first();
+    if (!(await coveredDay.isVisible().catch(() => false))) {
+      test.skip(true, "Nessuna settimana coperta nel mese corrente per l'account di test.");
+    }
+    await coveredDay.click();
+
+    const kidChips = page.locator("div.bg-\\[\\#F5F2FF\\] button:has(span.rounded-full)");
+    if ((await kidChips.count()) < 2) {
+      test.skip(true, "Meno di 2 bambini coperti questa settimana per l'account di test — il selettore bambini non è mostrato.");
+    }
+    // Deseleziona il secondo bambino, poi applica solo al primo.
+    await kidChips.nth(1).click();
+    await page.getByRole("button", { name: /Tata/ }).first().click();
+    await expect(page.getByText("Assegnato a tutta la settimana!")).toBeVisible();
+  });
+
   test("TC-N62 - Vista Mese: 'Condividi {mese}' apre il pannello di creazione link e mostra l'URL dopo la conferma", async ({ page }) => {
     test.skip(!isRealDeployment, "Richiede un deploy con Supabase configurato e l'account genitore di test.");
     await loginAs(page, "parent");
