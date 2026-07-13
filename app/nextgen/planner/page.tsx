@@ -5,6 +5,8 @@ import { getKidsForUser } from "@/lib/data/kids";
 import { getActivities, getActivityAvailabilityByWeek } from "@/lib/data/activities";
 import { getSeasonYear } from "@/lib/data/season-year";
 import { getParentProfile } from "@/lib/data/profile";
+import { getResponsibilitiesForParent } from "@/lib/data/responsibilities";
+import { getPlanSharesForParent } from "@/lib/data/plan-shares";
 import { computeSmartMatches } from "@/lib/nextgen/smart-search";
 import { computeKidOverlaps, computeBudgetSummary, computePriorityWeekIndex } from "@/lib/nextgen/planner-insights";
 import { computeMissions } from "@/lib/nextgen/missions";
@@ -30,13 +32,15 @@ export default async function NextgenPlannerPage() {
   }
 
   const seasonYear = await getSeasonYear();
-  const [planner, bookings, kids, activities, availabilityByWeek, profile] = await Promise.all([
+  const [planner, bookings, kids, activities, availabilityByWeek, profile, responsibilities, existingShares] = await Promise.all([
     getPlannerData(),
     getMyBookingsForParent(),
     getKidsForUser(),
     getActivities(),
     getActivityAvailabilityByWeek(seasonYear),
     getParentProfile(),
+    getResponsibilitiesForParent(),
+    getPlanSharesForParent(),
   ]);
 
   const overlaps = computeKidOverlaps(bookings);
@@ -62,6 +66,8 @@ export default async function NextgenPlannerPage() {
       recommendations={recommendations}
       missions={missions}
       seasonBudgetTarget={profile.seasonBudgetTarget}
+      responsibilities={responsibilities}
+      existingShares={existingShares}
     />
   );
 }

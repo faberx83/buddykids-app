@@ -1378,3 +1378,152 @@ alter table public.groups add column if not exists community_id uuid references 
 -- Colonna nullable su profiles: nessun valore finché il genitore non lo
 -- imposta esplicitamente (nessun tetto finto/precompilato).
 alter table public.profiles add column if not exists season_budget_target numeric(10, 2);
+
+-- ─────────────────────────────────────────────
+-- SPRINT 5.3 (NEXTGEN) — Family Planner: Logistica leggera, "Chi fa cosa?",
+-- Condivisione Piano
+-- ─────────────────────────────────────────────
+
+-- Indirizzi salvati dal genitore (Logistica leggera) — solo testo libero,
+-- nessuna geocodifica: il pulsante "Apri in Maps" della UI costruisce un
+-- link diretto (Google/Apple Maps) senza bisogno di alcuna API a pagamento.
+-- La vera distanza/tempo stimato (che richiede una API mappe) resta stubbata
+-- fino alla fase 5.4.
+create table if not exists public.parent_addresses (
+  parent_id uuid not null references public.profiles(id) on delete cascade,
+  kind text not null check (kind in ('casa', 'lavoro_genitore1', 'lavoro_genitore2', 'altro')),
+  label text, -- solo per kind='altro' (es. "Casa dei nonni")
+  address text not null,
+  updated_at timestamptz not null default now(),
+  primary key (parent_id, kind)
+);
+
+alter table public.parent_addresses enable row level security;
+
+drop policy if exists "Indirizzi: il genitore gestisce i propri" on public.parent_addresses;
+create policy "Indirizzi: il genitore gestisce i propri"
+  on public.parent_addresses for all
+  using (parent_id = auth.uid())
+  with check (parent_id = auth.uid());
+
+-- "Chi fa cosa?" (versione LEGGERA, richiesta esplicita di Fabrizio: SENZA il
+-- sistema multi-genitore vero, che resta la fase dedicata 5.5): un'etichetta
+-- libera di responsabile per bambino e settimana stagionale. week_start_date
+-- è la stessa chiave già usata da profiles.dismissed_weeks (SeasonWeek.
+-- startDate) — nessun nuovo concetto di "settimana" da introdurre.
+create table if not exists public.week_responsibilities (
+  id uuid primary key default gen_random_uuid(),
+  parent_id uuid not null references public.profiles(id) on delete cascade,
+  kid_id uuid not null references public.kids(id) on delete cascade,
+  week_start_date date not null,
+  responsible text not null check (responsible in ('io', 'partner', 'nonno', 'nonna', 'tata', 'altro')),
+  responsible_label text, -- solo per responsible='altro' (testo libero)
+  updated_at timestamptz not null default now(),
+  unique (parent_id, kid_id, week_start_date)
+);
+
+alter table public.week_responsibilities enable row level security;
+
+drop policy if exists "Chi fa cosa: il genitore gestisce le proprie assegnazioni" on public.week_responsibilities;
+create policy "Chi fa cosa: il genitore gestisce le proprie assegnazioni"
+  on public.week_responsibilities for all
+  using (parent_id = auth.uid())
+  with check (parent_id = auth.uid());
+
+-- Condivisione Piano: link pubblico di sola lettura per un periodo scelto
+-- (settimana/mese/personalizzato), SENZA login — per nonni/tata/altri
+-- genitori. La tabella resta privata (solo il genitore proprietario la
+-- legge/gestisce): l'accesso pubblico passa SEMPRE dalle funzioni
+-- get_shared_plan()/get_shared_plan_meta() qui sotto, che restituiscono solo
+-- campi non sensibili (mai importi, indirizzi o dati di contatto) — stesso
+-- pattern già usato per get_invite_preview() (inviti, pagina di
+-- registrazione pubblica).
+create table if not exists public.plan_shares (
+  id uuid primary key default gen_random_uuid(),
+  parent_id uuid not null references public.profiles(id) on delete cascade,
+  token text not null unique,
+  label text, -- es. "Settimana 12" o "Luglio 2026", mostrato nella pagina pubblica
+  scope_start date not null,
+  scope_end date not null,
+  created_at timestamptz not null default now(),
+  revoked_at timestamptz
+);
+
+alter table public.plan_shares enable row level security;
+
+drop policy if exists "Plan shares: il genitore gestisce i propri link" on public.plan_shares;
+create policy "Plan shares: il genitore gestisce i propri link"
+  on public.plan_shares for all
+  using (parent_id = auth.uid())
+  with check (parent_id = auth.uid());
+
+create index if not exists idx_plan_shares_token on public.plan_shares(token);
+
+-- Metadati del link (etichetta, periodo, validità) — usati dalla pagina
+-- pubblica per l'intestazione, separati dal contenuto vero e proprio.
+create or replace function public.get_shared_plan_meta(p_token text)
+returns table (label text, scope_start date, scope_end date, valid boolean)
+language plpgsql security definer
+as $$
+begin
+  return query
+    select
+      ps.label,
+      ps.scope_start,
+      ps.scope_end,
+      (ps.revoked_at is null) as valid
+    from public.plan_shares ps
+    where ps.token = p_token;
+end;
+$$;
+
+grant execute on function public.get_shared_plan_meta(text) to anon, authenticated;
+
+-- Contenuto del link: SOLO nome bambino, nome attività, date della
+-- settimana e stato — MAI importi/indirizzi/contatti. Se il token non
+-- esiste o è stato revocato, non restituisce righe (la pagina pubblica
+-- mostra "Link non disponibile").
+create or replace function public.get_shared_plan(p_token text)
+returns table (
+  kid_name text,
+  activity_name text,
+  week_start_date date,
+  week_end_date date,
+  status text
+)
+language plpgsql security definer
+as $$
+declare
+  v_share record;
+begin
+  select * into v_share
+  from public.plan_shares
+  where token = p_token
+    and revoked_at is null;
+
+  if not found then
+    return;
+  end if;
+
+  return query
+    select
+      k.name,
+      a.name,
+      aw.start_date,
+      aw.end_date,
+      b.status
+    from public.bookings b
+    join public.booking_kids bk on bk.booking_id = b.id
+    join public.kids k on k.id = bk.kid_id
+    join public.booking_weeks bw on bw.booking_id = b.id
+    join public.activity_weeks aw on aw.id = bw.week_id
+    join public.activities a on a.id = b.activity_id
+    where b.parent_id = v_share.parent_id
+      and b.status <> 'cancelled'
+      and aw.start_date <= v_share.scope_end
+      and aw.end_date >= v_share.scope_start
+    order by aw.start_date, k.name;
+end;
+$$;
+
+grant execute on function public.get_shared_plan(text) to anon, authenticated;

@@ -6,6 +6,8 @@ import { PlannerData } from "@/lib/data/planner";
 import { KidOverlap, BudgetSummary, computePerKidCoverage } from "@/lib/nextgen/planner-insights";
 import { Mission } from "@/lib/nextgen/missions";
 import { SmartMatch } from "@/lib/nextgen/smart-search";
+import { WeekResponsibility } from "@/lib/data/responsibilities";
+import { PlanShare } from "@/lib/data/plan-shares";
 import { Kid } from "@/lib/types";
 import { lightBgClasses } from "@/lib/colors";
 import ActivityCard from "@/components/ActivityCard";
@@ -45,6 +47,8 @@ export default function PlannerClient({
   recommendations,
   missions,
   seasonBudgetTarget,
+  responsibilities,
+  existingShares,
 }: {
   planner: PlannerData;
   kids: Kid[];
@@ -54,6 +58,8 @@ export default function PlannerClient({
   recommendations: SmartMatch[];
   missions: Mission[];
   seasonBudgetTarget: number | null;
+  responsibilities: WeekResponsibility[];
+  existingShares: PlanShare[];
 }) {
   const router = useRouter();
   const [mode, setMode] = useState<PlannerMode>("organizzazione");
@@ -88,7 +94,15 @@ export default function PlannerClient({
 
         <PlannerModeTabs mode={mode} onChange={setMode} />
 
-        {mode === "calendario" && <PlannerCalendarView weeks={planner.weeks} kids={kids} overlaps={overlaps} />}
+        {mode === "calendario" && (
+          <PlannerCalendarView
+            weeks={planner.weeks}
+            kids={kids}
+            overlaps={overlaps}
+            responsibilities={responsibilities}
+            existingShares={existingShares}
+          />
+        )}
 
         {mode === "mappa" && (
           <PlannerComingSoon
@@ -320,6 +334,16 @@ export default function PlannerClient({
         )}
         </>
         )}
+
+        {/* SPRINT 5.3 — "Logistica leggera": indirizzi di famiglia, sempre
+            raggiungibili da qui indipendentemente dalla modalità attiva,
+            stesso trattamento del link "Gestisci prenotazioni" sotto. */}
+        <Link
+          href="/nextgen/planner/indirizzi"
+          className="mt-4 block text-center text-[12.5px] font-semibold text-[#5B4FE9]"
+        >
+          📍 Indirizzi di famiglia
+        </Link>
 
         <Link href="/prenotazioni" className="mt-2 block text-center text-[12.5px] font-semibold text-[#5B4FE9]">
           Gestisci prenotazioni (annulla/modifica) →

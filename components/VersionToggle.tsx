@@ -39,7 +39,11 @@ function isStandaloneDisplay(): boolean {
   );
 }
 
-const HIDDEN_PREFIXES = ["/center", "/admin", "/nextgen/center", "/nextgen/admin", "/auth"];
+// SPRINT 5.3 — "/share" aggiunto: pagina pubblica di sola lettura (link di
+// Condivisione Piano), aperta anche da chi non ha mai installato/usato
+// l'app (nonni, tata) — non deve mostrare il toggle LEGACY/NEXTGEN né
+// tentare redirect di preferenza versione.
+const HIDDEN_PREFIXES = ["/center", "/admin", "/nextgen/center", "/nextgen/admin", "/auth", "/share"];
 
 export default function VersionToggle() {
   const pathname = usePathname() ?? "/";

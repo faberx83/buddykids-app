@@ -85,7 +85,10 @@ export default function InstallPrompt({
   // controllo "l'utente l'aveva già chiuso in passato" può uscire subito
   // dall'effetto senza dover "resettare" nessuno stato via setState.
   const pathname = usePathname();
-  const excluded = Boolean(routeExclude && pathname?.startsWith(routeExclude));
+  // SPRINT 5.3 — "/share" (Condivisione Piano, pagina pubblica) escluso
+  // sempre, indipendentemente da routeExclude: chi apre un link condiviso
+  // (nonni, tata) non deve vedere un banner "Installa l'app".
+  const excluded = Boolean((routeExclude && pathname?.startsWith(routeExclude)) || pathname?.startsWith("/share"));
   const [deferredEvent, setDeferredEvent] = useState<BeforeInstallPromptEvent | null>(null);
   const [showIosHint, setShowIosHint] = useState(false);
 
