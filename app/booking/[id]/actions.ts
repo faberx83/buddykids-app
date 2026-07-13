@@ -2,6 +2,8 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
+import { getSeasonWeekRanges, overlaps } from "@/lib/season-weeks";
+import { getSeasonYear } from "@/lib/data/season-year";
 
 export interface CreateBookingInput {
   activityDbId: string;
@@ -16,11 +18,121 @@ export interface CreateBookingInput {
   // volta, via RPC security definer redeem_invite_discount — vedi schema.sql)
   // così non può essere applicato di nuovo a una prenotazione successiva.
   inviteId?: string;
+  // Richiesta di Fabrizio: "bisogna aggiungere un controllo sulle
+  // prenotazioni per evitare di farne multiple su diverse attività nella
+  // stessa settimana". Avviso con conferma (non bloccante): la prima
+  // chiamata (confirmOverlap assente/false) restituisce eventuali conflitti
+  // SENZA creare la prenotazione; se il genitore conferma comunque, il
+  // client richiama l'azione con confirmOverlap:true per procedere davvero
+  // (alcune famiglie vogliono più attività nella stessa settimana, es.
+  // mattina/pomeriggio — per questo non è un blocco rigido).
+  confirmOverlap?: boolean;
+}
+
+export interface BookingWeekConflict {
+  kidName: string;
+  otherActivityName: string;
+  weekLabel: string;
+}
+
+function isUuid(v: string): boolean {
+  return /^[0-9a-f-]{36}$/i.test(v);
+}
+
+// Cerca, tra le prenotazioni ATTIVE del genitore su ALTRE attività, eventuali
+// bambini già impegnati in una settimana che si sovrappone a quelle appena
+// scelte — nessuna nuova tabella, solo lettura incrociata di bookings/
+// booking_kids/booking_weeks già esistenti (stesso principio già usato per
+// "famiglie già iscritte" nelle Community).
+async function findWeekOverlapConflicts(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  userId: string,
+  activityDbId: string,
+  weekIds: string[],
+  kidIds: string[]
+): Promise<BookingWeekConflict[]> {
+  const realWeekIds = weekIds.filter(isUuid);
+  const realKidIds = kidIds.filter(isUuid);
+  if (realWeekIds.length === 0 || realKidIds.length === 0) return [];
+
+  const { data: newWeeksData } = await supabase
+    .from("activity_weeks")
+    .select("id, start_date, end_date")
+    .in("id", realWeekIds);
+  const newWeekRanges = (newWeeksData ?? []) as { id: string; start_date: string; end_date: string }[];
+  if (newWeekRanges.length === 0) return [];
+
+  const { data: otherBookings } = await supabase
+    .from("bookings")
+    .select(
+      "id, activities ( name ), booking_kids ( kid_id, kids ( name ) ), booking_weeks ( activity_weeks ( start_date, end_date ) )"
+    )
+    .eq("parent_id", userId)
+    .neq("status", "cancelled")
+    .neq("activity_id", activityDbId);
+  if (!otherBookings || otherBookings.length === 0) return [];
+
+  function firstOf<T>(value: T | T[] | null | undefined): T | null {
+    if (!value) return null;
+    return Array.isArray(value) ? (value[0] ?? null) : value;
+  }
+
+  const seasonWeeks = getSeasonWeekRanges(await getSeasonYear());
+  function canonicalLabel(startDate: string, endDate: string): string {
+    const match = seasonWeeks.find((sw) =>
+      overlaps(startDate, endDate, sw.start.toISOString().slice(0, 10), sw.end.toISOString().slice(0, 10))
+    );
+    return match ? `Settimana ${match.index}` : "";
+  }
+
+  interface RawOtherBooking {
+    id: string;
+    activities: { name: string } | { name: string }[] | null;
+    booking_kids: { kid_id: string; kids: { name: string } | { name: string }[] | null }[] | null;
+    booking_weeks: { activity_weeks: { start_date: string; end_date: string } | { start_date: string; end_date: string }[] | null }[] | null;
+  }
+
+  const conflicts: BookingWeekConflict[] = [];
+  const seen = new Set<string>();
+
+  for (const row of otherBookings as unknown as RawOtherBooking[]) {
+    const sharedKidRows = (row.booking_kids ?? []).filter((bk) => realKidIds.includes(bk.kid_id));
+    if (sharedKidRows.length === 0) continue;
+
+    const otherWeekRanges = (row.booking_weeks ?? [])
+      .map((bw) => firstOf(bw.activity_weeks))
+      .filter((w): w is { start_date: string; end_date: string } => Boolean(w));
+
+    for (const newWeek of newWeekRanges) {
+      const overlappingOtherWeek = otherWeekRanges.find((ow) =>
+        overlaps(newWeek.start_date, newWeek.end_date, ow.start_date, ow.end_date)
+      );
+      if (!overlappingOtherWeek) continue;
+
+      const activity = firstOf(row.activities);
+      const weekLabel = canonicalLabel(overlappingOtherWeek.start_date, overlappingOtherWeek.end_date);
+
+      for (const bk of sharedKidRows) {
+        const kid = firstOf(bk.kids);
+        const kidName = kid?.name || "Il bambino";
+        const dedupeKey = `${bk.kid_id}:${activity?.name}:${weekLabel}`;
+        if (seen.has(dedupeKey)) continue;
+        seen.add(dedupeKey);
+        conflicts.push({
+          kidName,
+          otherActivityName: activity?.name || "un'altra attività",
+          weekLabel: weekLabel || "questa settimana",
+        });
+      }
+    }
+  }
+
+  return conflicts;
 }
 
 export async function createBookingAction(
   input: CreateBookingInput
-): Promise<{ bookingId?: string; error?: string }> {
+): Promise<{ bookingId?: string; error?: string; conflicts?: BookingWeekConflict[] }> {
   if (!isSupabaseConfigured) return { error: "Supabase non configurato" };
 
   const supabase = await createClient();
@@ -28,6 +140,17 @@ export async function createBookingAction(
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) return { error: "Non autenticato" };
+
+  if (!input.confirmOverlap) {
+    const conflicts = await findWeekOverlapConflicts(
+      supabase,
+      user.id,
+      input.activityDbId,
+      input.weekIds,
+      input.kidIds
+    );
+    if (conflicts.length > 0) return { conflicts };
+  }
 
   const { data: booking, error } = await supabase
     .from("bookings")

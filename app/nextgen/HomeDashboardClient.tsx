@@ -139,12 +139,17 @@ export default function HomeDashboardClient({
   // può chiudere singolarmente, non solo l'intera sezione. Nessun gruppo
   // collassato di default: comprimere è un'azione esplicita, non lo stato
   // iniziale (altrimenti si perderebbe la vista d'insieme al primo tocco).
+  // FIX: la chiave è prefissata con il criterio di raggruppamento (groupBy),
+  // non solo l'etichetta — altrimenti cambiare "Raggruppa per" poteva far
+  // apparire un gruppo già collassato per coincidenza di etichetta (es. un
+  // nome attività uguale a un'etichetta di stato), dando l'impressione che
+  // "il raggruppamento non funzioni".
   const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
-  function toggleGroupCollapsed(label: string) {
+  function toggleGroupCollapsed(groupKey: string) {
     setCollapsedGroups((prev) => {
       const next = new Set(prev);
-      if (next.has(label)) next.delete(label);
-      else next.add(label);
+      if (next.has(groupKey)) next.delete(groupKey);
+      else next.add(groupKey);
       return next;
     });
   }
@@ -398,12 +403,13 @@ export default function HomeDashboardClient({
 
               <div className="flex flex-col gap-4">
                 {groups.map((g) => {
-                  const collapsed = collapsedGroups.has(g.label);
+                  const groupKey = `${groupBy}:${g.label}`;
+                  const collapsed = collapsedGroups.has(groupKey);
                   return (
-                    <div key={g.label}>
+                    <div key={groupKey}>
                       <button
                         type="button"
-                        onClick={() => toggleGroupCollapsed(g.label)}
+                        onClick={() => toggleGroupCollapsed(groupKey)}
                         className="mb-1.5 flex w-full items-center justify-between px-1 text-[10px] font-bold uppercase tracking-wide text-ink-3"
                       >
                         <span>

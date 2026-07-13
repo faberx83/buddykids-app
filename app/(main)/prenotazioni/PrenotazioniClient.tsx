@@ -139,6 +139,20 @@ export default function PrenotazioniClient({
   const [confirmCancelId, setConfirmCancelId] = useState<string | null>(null);
   const [cancellingId, setCancellingId] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
+  // Gruppi comprimibili (segnalazione di Fabrizio: la stessa funzionalità
+  // esisteva solo nella Home NEXTGEN — qui non c'era proprio, per questo
+  // sembrava "non funzionare"). Chiave prefissata con il criterio di
+  // raggruppamento (non solo l'etichetta) per evitare collisioni quando si
+  // cambia "Raggruppa per" (es. un'attività e un centro con lo stesso nome).
+  const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
+  function toggleGroupCollapsed(groupKey: string) {
+    setCollapsedGroups((prev) => {
+      const next = new Set(prev);
+      if (next.has(groupKey)) next.delete(groupKey);
+      else next.add(groupKey);
+      return next;
+    });
+  }
 
   const todayIso = useMemo(() => new Date().toISOString().slice(0, 10), []);
 
@@ -314,26 +328,39 @@ export default function PrenotazioniClient({
               </p>
             ) : (
               <div className="mt-4 flex flex-col gap-4">
-                {groups.map((group) => (
-                  <div key={group.label}>
-                    <div className="mb-1.5 px-1 text-[10.5px] font-bold uppercase tracking-wide text-ink-3">
-                      {group.label}
+                {groups.map((group) => {
+                  const groupKey = `${groupBy}:${group.label}`;
+                  const collapsed = collapsedGroups.has(groupKey);
+                  return (
+                    <div key={groupKey}>
+                      <button
+                        type="button"
+                        onClick={() => toggleGroupCollapsed(groupKey)}
+                        className="mb-1.5 flex w-full items-center justify-between px-1 text-[10.5px] font-bold uppercase tracking-wide text-ink-3"
+                      >
+                        <span>
+                          {group.label} · {group.items.length}
+                        </span>
+                        <i className={`ti ti-chevron-${collapsed ? "down" : "up"} text-[13px]`} />
+                      </button>
+                      {!collapsed && (
+                        <div className="flex flex-col gap-2.5">
+                          {group.items.map((b) => (
+                            <BookingCard
+                              key={b.id}
+                              booking={b}
+                              confirming={confirmCancelId === b.id}
+                              cancelling={cancellingId === b.id}
+                              onAskCancel={() => setConfirmCancelId(b.id)}
+                              onCancelConfirmed={() => handleCancel(b.id)}
+                              onCancelAbort={() => setConfirmCancelId(null)}
+                            />
+                          ))}
+                        </div>
+                      )}
                     </div>
-                    <div className="flex flex-col gap-2.5">
-                      {group.items.map((b) => (
-                        <BookingCard
-                          key={b.id}
-                          booking={b}
-                          confirming={confirmCancelId === b.id}
-                          cancelling={cancellingId === b.id}
-                          onAskCancel={() => setConfirmCancelId(b.id)}
-                          onCancelConfirmed={() => handleCancel(b.id)}
-                          onCancelAbort={() => setConfirmCancelId(null)}
-                        />
-                      ))}
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </>

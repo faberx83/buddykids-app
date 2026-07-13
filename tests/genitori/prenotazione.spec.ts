@@ -401,4 +401,42 @@ test.describe("Genitori - Prenotazione", () => {
     await expect(page).toHaveURL(/\/prenotazioni\/.+\/modifica/);
     await expect(page.getByText("Nuovo totale stimato")).toBeVisible();
   });
+
+  // Segnalazione di Fabrizio: "il raggruppamento non funziona" -> il
+  // comprimi/espandi gruppo esisteva già nella Home NEXTGEN ma non qui: era
+  // la causa più probabile ("non sono sicuro" su quale schermata). Ora la
+  // stessa funzionalità è presente anche in "Le mie prenotazioni" (LEGACY).
+  // Priorita: Media | Precondizioni: Almeno 2 prenotazioni in gruppi diversi
+  test("TC-193 - 'Le mie prenotazioni' (LEGACY): i gruppi si comprimono/espandono singolarmente", async ({ page }) => {
+    test.skip(!isRealDeployment, "Richiede un deploy con Supabase configurato e l'account genitore di test.");
+    await loginAs(page, "parent");
+    await page.goto("/prenotazioni");
+
+    const groupHeader = page.locator("button").filter({ hasText: /·\s*\d+$/ }).first();
+    if (!(await groupHeader.isVisible().catch(() => false))) {
+      test.skip(true, "Nessun gruppo di prenotazioni visibile per l'account di test.");
+    }
+    await expect(groupHeader.locator("i.ti-chevron-up")).toBeVisible();
+    await groupHeader.click();
+    await expect(groupHeader.locator("i.ti-chevron-down")).toBeVisible();
+    await groupHeader.click();
+    await expect(groupHeader.locator("i.ti-chevron-up")).toBeVisible();
+  });
+
+  // Richiesta di Fabrizio: "bisogna aggiungere un controllo sulle
+  // prenotazioni per evitare di farne multiple su diverse attività nella
+  // stessa settimana..un pop up di alert sarebbe ottimo". Avviso non
+  // bloccante (scelta confermata da Fabrizio: "Avviso con conferma"): non
+  // impedisce la prenotazione, ma avvisa e chiede conferma esplicita.
+  // Priorita: Alta | Precondizioni: Il bambino ha già una prenotazione attiva su un'altra attività in una settimana che si sovrappone a quella che si sta per prenotare
+  test.fixme(
+    "TC-194 - Prenotare la stessa settimana su un'altra attività mostra un avviso non bloccante",
+    async () => {}
+  );
+
+  // Priorita: Media | Precondizioni: Come TC-194
+  test.fixme(
+    "TC-195 - 'Prosegui comunque' nell'avviso di sovrapposizione completa la prenotazione",
+    async () => {}
+  );
 });

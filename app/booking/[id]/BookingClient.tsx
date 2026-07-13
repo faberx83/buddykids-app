@@ -8,7 +8,7 @@ import WeekCard from "@/components/WeekCard";
 import KidRow from "@/components/KidRow";
 import PayMethodCard from "@/components/PayMethodCard";
 import { Activity, Kid, Week } from "@/lib/types";
-import { createBookingAction } from "./actions";
+import { createBookingAction, BookingWeekConflict } from "./actions";
 import AddKidForm from "@/components/AddKidForm";
 import { ComingSoonBadge } from "@/components/StatusBadge";
 import { buildFamilyTiers, familyDiscountAmount } from "@/lib/family-discount";
@@ -95,6 +95,12 @@ export default function BookingClient({
   const [showAddKid, setShowAddKid] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
+  // Richiesta di Fabrizio: avviso (non bloccante) se il bambino ha già
+  // un'altra attività nella stessa settimana. Se createBookingAction
+  // restituisce dei conflitti, li mostriamo qui invece di un errore — il
+  // genitore può annullare o confermare comunque (nel qual caso si
+  // richiama l'azione con confirmOverlap:true).
+  const [weekConflicts, setWeekConflicts] = useState<BookingWeekConflict[] | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   // Ogni cambio step riparte dall'inizio del contenuto: senza questo, se lo
@@ -144,6 +150,35 @@ export default function BookingClient({
       prev.includes(id) ? prev.filter((k) => k !== id) : [...prev, id]
     );
 
+  const submitBooking = async (confirmOverlap: boolean) => {
+    setSubmitting(true);
+    setSubmitError(null);
+    const result = await createBookingAction({
+      activityDbId: activity.dbId!,
+      weekIds: selectedWeeks,
+      kidIds: selectedKids,
+      totalAmount: total,
+      discountAmount: groupDiscount,
+      shuttleIncluded: activity.shuttlePrice > 0,
+      paymentMethod: paymentMethodMap[payMethod] ?? "card",
+      inviteId: inviteDiscountAmount > 0 ? inviteDiscount?.inviteId : undefined,
+      confirmOverlap,
+    });
+    setSubmitting(false);
+
+    if (result.conflicts && result.conflicts.length > 0) {
+      setWeekConflicts(result.conflicts);
+      return;
+    }
+
+    if (result.error || !result.bookingId) {
+      setSubmitError(result.error || "Qualcosa è andato storto, riprova.");
+      return;
+    }
+
+    router.push(`/booking/${activity.id}/success?bookingId=${result.bookingId}`);
+  };
+
   const handleNext = async () => {
     if (step < 3) {
       setStep((s) => (s + 1) as 1 | 2 | 3);
@@ -156,26 +191,7 @@ export default function BookingClient({
       return;
     }
 
-    setSubmitting(true);
-    setSubmitError(null);
-    const result = await createBookingAction({
-      activityDbId: activity.dbId,
-      weekIds: selectedWeeks,
-      kidIds: selectedKids,
-      totalAmount: total,
-      discountAmount: groupDiscount,
-      shuttleIncluded: activity.shuttlePrice > 0,
-      paymentMethod: paymentMethodMap[payMethod] ?? "card",
-      inviteId: inviteDiscountAmount > 0 ? inviteDiscount?.inviteId : undefined,
-    });
-    setSubmitting(false);
-
-    if (result.error || !result.bookingId) {
-      setSubmitError(result.error || "Qualcosa è andato storto, riprova.");
-      return;
-    }
-
-    router.push(`/booking/${activity.id}/success?bookingId=${result.bookingId}`);
+    await submitBooking(false);
   };
 
   const kidNames = useMemo(
@@ -378,6 +394,44 @@ export default function BookingClient({
         {submitError && (
           <p className="mb-2 text-center text-xs font-medium text-orange">{submitError}</p>
         )}
+
+        {/* Avviso (non bloccante) prenotazioni sovrapposte — richiesta di
+            Fabrizio: "evitare di farne multiple su diverse attività nella
+            stessa settimana". Non è un blocco rigido: alcune famiglie
+            vogliono davvero due attività nella stessa settimana. */}
+        {weekConflicts && weekConflicts.length > 0 && (
+          <div className="mb-3 rounded-lg border border-orange-mid bg-orange-light px-3.5 py-3 text-[12.5px] text-ink">
+            <div className="mb-1.5 flex items-center gap-1.5 font-bold text-[#9a5300]">
+              <i className="ti ti-alert-triangle text-base" />
+              Attenzione: settimana già impegnata
+            </div>
+            <ul className="mb-2.5 flex flex-col gap-1">
+              {weekConflicts.map((c, i) => (
+                <li key={i}>
+                  <b>{c.kidName}</b> ha già <b>{c.otherActivityName}</b> nella <b>{c.weekLabel}</b>
+                </li>
+              ))}
+            </ul>
+            <div className="flex gap-2">
+              <button
+                type="button"
+                disabled={submitting}
+                onClick={() => submitBooking(true)}
+                className="flex-1 rounded-lg bg-ink py-2 text-[13px] font-bold text-white disabled:opacity-50"
+              >
+                {submitting ? "Attendere…" : "Prosegui comunque"}
+              </button>
+              <button
+                type="button"
+                onClick={() => setWeekConflicts(null)}
+                className="rounded-lg bg-white px-3.5 py-2 text-[13px] font-semibold text-ink-2"
+              >
+                Annulla
+              </button>
+            </div>
+          </div>
+        )}
+
         <button
           onClick={handleNext}
           disabled={submitting || (step === 2 && selectedKids.length === 0)}
