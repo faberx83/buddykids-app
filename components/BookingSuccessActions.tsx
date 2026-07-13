@@ -31,9 +31,9 @@ export default function BookingSuccessActions({
       const blob = await buildShareCardPng({ activityName, kidNames, weeksLabel });
       if (!blob) throw new Error("canvas non disponibile");
 
-      const file = new File([blob], "buddykids-prenotazione.png", { type: "image/png" });
+      const file = new File([blob], "trama-prenotazione.png", { type: "image/png" });
       const shareData = {
-        title: "Prenotazione BuddyKids",
+        title: "Prenotazione TRAMA",
         text: `${activityName} — ${kidNames} — ${weeksLabel}`,
         files: [file],
       };
@@ -49,7 +49,7 @@ export default function BookingSuccessActions({
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = "buddykids-prenotazione.png";
+      a.download = "trama-prenotazione.png";
       a.click();
       URL.revokeObjectURL(url);
       setShareState("done");
@@ -59,7 +59,7 @@ export default function BookingSuccessActions({
       // proviamo un ultimo fallback testuale via clipboard.
       try {
         await navigator.clipboard.writeText(
-          `Ho prenotato ${activityName} per ${kidNames} — ${weeksLabel} 🎉 (via BuddyKids)`
+          `Ho prenotato ${activityName} per ${kidNames} — ${weeksLabel} 🎉 (via TRAMA)`
         );
         setShareState("done");
         setTimeout(() => setShareState("idle"), 2500);
@@ -71,7 +71,7 @@ export default function BookingSuccessActions({
 
   const icsHref = startDate && endDate
     ? buildIcsDataUrl({
-        title: `${activityName} — BuddyKids`,
+        title: `${activityName} — TRAMA`,
         description: `${kidNames} — ${weeksLabel}`,
         startDate,
         endDate,
@@ -92,7 +92,7 @@ export default function BookingSuccessActions({
       {icsHref ? (
         <a
           href={icsHref}
-          download="buddykids-prenotazione.ics"
+          download="trama-prenotazione.ics"
           className="flex items-center justify-center gap-1.5 rounded-lg border-[1.5px] border-[#E8EBF0] bg-white py-3 text-xs font-bold text-ink transition-colors hover:border-sky"
         >
           <i className="ti ti-calendar-plus text-sm" />

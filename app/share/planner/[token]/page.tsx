@@ -55,7 +55,7 @@ export default async function SharedPlannerPage({ params }: { params: Promise<{ 
       <div className="mx-auto max-w-md">
         <div className="mb-6 text-center">
           <div className="mb-1 text-[11px] font-bold uppercase tracking-wide text-ink-3">
-            Piano condiviso · BuddyKids
+            Piano condiviso · TRAMA
           </div>
           <h1 className="text-xl font-bold text-ink">{meta.label || "Il piano dell'estate"}</h1>
           <p className="mt-1 text-xs text-ink-2">
@@ -93,7 +93,7 @@ export default async function SharedPlannerPage({ params }: { params: Promise<{ 
         )}
 
         <p className="mt-6 text-center text-[11px] text-ink-3">
-          Pagina di sola lettura, condivisa da un genitore su BuddyKids.
+          Pagina di sola lettura, condivisa da un genitore su TRAMA.
         </p>
       </div>
     </div>

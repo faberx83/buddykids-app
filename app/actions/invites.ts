@@ -68,14 +68,14 @@ function buildInviteEmailHtml(params: {
   return `
     <div style="font-family: -apple-system, Helvetica, Arial, sans-serif; max-width: 480px; margin: 0 auto; padding: 24px; color:#1a2b3c;">
       <h2 style="margin: 0 0 12px;">${greeting}</h2>
-      <p>${params.centerName} ti invita a scoprire <b>BuddyKids</b>, l'app per organizzare l'estate dei tuoi figli in pochi minuti.</p>
+      <p>${params.centerName} ti invita a scoprire <b>TRAMA</b>, l'app per organizzare l'estate dei tuoi figli in pochi minuti.</p>
       <p style="background:#E3F5F1; border-radius:10px; padding:16px; font-size:15px; margin: 20px 0;">
         🎁 Hai uno sconto del <b>${params.discountPercent}%</b> sulla tua prima prenotazione${
     params.expiresLabel ? `, valido fino al ${params.expiresLabel}` : ""
   }.
       </p>
       <p style="text-align:center; margin: 24px 0;">
-        <a href="${params.link}" style="background:#1FA88E; color:#fff; padding:12px 24px; border-radius:8px; text-decoration:none; font-weight:bold; display:inline-block;">Registrati su BuddyKids</a>
+        <a href="${params.link}" style="background:#1FA88E; color:#fff; padding:12px 24px; border-radius:8px; text-decoration:none; font-weight:bold; display:inline-block;">Registrati su TRAMA</a>
       </p>
       <p style="font-size:12px; color:#888;">Se il pulsante non funziona, apri questo link: ${params.link}</p>
     </div>
@@ -141,7 +141,7 @@ export async function createInviteAction(input: CreateInviteInput): Promise<Crea
     });
     const sendResult = await sendEmail({
       to: input.contactEmail.trim(),
-      subject: `${center.name} ti invita su BuddyKids 🎉`,
+      subject: `${center.name} ti invita su TRAMA 🎉`,
       html,
     });
     if (!sendResult.error) {

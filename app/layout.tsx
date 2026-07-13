@@ -59,9 +59,12 @@ export default async function RootLayout({
           rel="stylesheet"
           href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.19.0/dist/tabler-icons.min.css"
         />
+        {/* Poppins aggiunto per il rebrand TRAMA (titoli/hero, vedi
+            tailwind.config.ts#fontFamily.poppins) — Inter resta il font di
+            default per tutto il resto, invariato. */}
         <link
           rel="stylesheet"
-          href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
+          href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Poppins:wght@500;600;700;800&display=swap"
         />
       </head>
       <body className="font-sans antialiased">

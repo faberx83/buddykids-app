@@ -10,7 +10,7 @@ export default function PartnerOffersCard({ offers }: { offers: PartnerOffer[] }
       <div className="border-b border-[#E8EBF0] px-4 py-3">
         <span className="text-sm font-bold text-ink">Servizi consigliati per il tuo centro</span>
         <p className="mt-0.5 text-xs text-ink-2">
-          Contatti selezionati da BuddyKids (es. catering) per aiutarti ad ampliare i servizi del
+          Contatti selezionati da TRAMA (es. catering) per aiutarti ad ampliare i servizi del
           tuo centro — non un elenco aperto, una selezione curata.
         </p>
       </div>

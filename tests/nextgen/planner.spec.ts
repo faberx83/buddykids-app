@@ -39,16 +39,32 @@ test.describe("NEXTGEN - Planner (Sprint 3)", () => {
     await expect(page).toHaveURL(/\/nextgen\/planner/);
   });
 
-  test("TC-N16 - NextgenBottomNav permette di raggiungere Home/Planner/Cerca in un tocco", async ({ page }) => {
+  test("TC-N16 - NextgenBottomNav permette di raggiungere Home/Planner/Scopri in un tocco", async ({ page }) => {
     test.skip(!isRealDeployment, "Richiede un deploy con Supabase configurato e l'account genitore di test.");
     await loginAs(page, "parent");
     await page.goto("/nextgen");
 
     await page.getByRole("link", { name: "Planner" }).click();
     await expect(page).toHaveURL(/\/nextgen\/planner/);
-    await page.getByRole("link", { name: "Cerca" }).click();
+    await page.getByRole("link", { name: "Scopri" }).click();
     await expect(page).toHaveURL(/\/nextgen\/search/);
     await page.getByRole("link", { name: "Home" }).click();
     await expect(page).toHaveURL(/\/nextgen$/);
+  });
+
+  // REBRAND TRAMA Sprint 1: bottom nav a 5 voci (Home/Planner/Scopri/
+  // Prenotazioni/Profilo), vedi NextgenBottomNav.tsx. Le ultime due puntano
+  // alle pagine LEGACY esistenti (fuori da /nextgen) — tradeoff accettato con
+  // Fabrizio finché non avranno una schermata NEXTGEN dedicata.
+  test("TC-N88 - NextgenBottomNav include Prenotazioni e Profilo (pagine LEGACY condivise)", async ({ page }) => {
+    test.skip(!isRealDeployment, "Richiede un deploy con Supabase configurato e l'account genitore di test.");
+    await loginAs(page, "parent");
+    await page.goto("/nextgen");
+
+    await page.getByRole("link", { name: "Prenotazioni" }).click();
+    await expect(page).toHaveURL(/\/prenotazioni/);
+    await page.goto("/nextgen");
+    await page.getByRole("link", { name: "Profilo" }).click();
+    await expect(page).toHaveURL(/\/profile/);
   });
 });

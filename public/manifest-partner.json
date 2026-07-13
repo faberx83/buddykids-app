@@ -1,7 +1,7 @@
 {
-  "name": "BuddyKids Partner",
-  "short_name": "BK Partner",
-  "description": "Gestisci attività, calendario e promozioni del tuo centro estivo su BuddyKids.",
+  "name": "TRAMA Partner",
+  "short_name": "TRAMA Partner",
+  "description": "Gestisci attività, calendario e promozioni del tuo centro estivo su TRAMA.",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#1FA88E",

@@ -1,7 +1,7 @@
 {
-  "name": "BuddyKids Admin",
-  "short_name": "BK Admin",
-  "description": "Pannello di controllo piattaforma BuddyKids: centri, attività, prenotazioni e analisi.",
+  "name": "TRAMA Admin",
+  "short_name": "TRAMA Admin",
+  "description": "Pannello di controllo piattaforma TRAMA: centri, attività, prenotazioni e analisi.",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#1A1D2E",

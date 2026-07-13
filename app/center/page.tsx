@@ -227,7 +227,7 @@ export default async function CenterDashboardPage() {
         </span>
         <div className="min-w-0 flex-1">
           <div className="text-sm font-bold text-ink">Servizi consigliati per il tuo centro</div>
-          <div className="text-xs text-ink-2">Contatti selezionati da BuddyKids (catering e altro)</div>
+          <div className="text-xs text-ink-2">Contatti selezionati da TRAMA (catering e altro)</div>
         </div>
         <i className="ti ti-chevron-right text-ink-3" />
       </Link>

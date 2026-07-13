@@ -12,6 +12,6 @@ test.describe("Admin - Dashboard", () => {
     await loginAs(page, "platform_admin");
     await page.goto("/admin");
     await expect(page.getByRole("heading", { name: "Dashboard piattaforma" })).toBeVisible();
-    await expect(page.getByText("Panoramica su tutti i centri e le attività di BuddyKids")).toBeVisible();
+    await expect(page.getByText("Panoramica su tutti i centri e le attività di TRAMA")).toBeVisible();
   });
 });

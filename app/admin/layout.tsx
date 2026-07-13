@@ -47,7 +47,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
 
   return (
     <DashboardLayout
-      brand="BuddyKids Admin"
+      brand="TRAMA Admin"
       brandEmoji="🛠️"
       navItems={navItems}
       requiredRole="platform_admin"

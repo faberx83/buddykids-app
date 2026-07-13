@@ -22,8 +22,8 @@ import { isSupabaseConfigured } from "@/lib/supabase/env";
 // app/layout.tsx (generateMetadata) SOLO per le rotte sotto /nextgen — nessuna
 // modifica al comportamento delle altre rotte.
 export const metadata: Metadata = {
-  title: "BuddyKids NextGen",
-  description: "La nuova esperienza BuddyKids: planner familiare, copertura settimane e consigli su misura.",
+  title: "TRAMA",
+  description: "La nuova esperienza TRAMA: planner familiare, copertura settimane e consigli su misura.",
   manifest: "/manifest-nextgen.json",
   icons: {
     icon: [
@@ -56,15 +56,16 @@ export default async function NextgenLayout({ children }: { children: React.Reac
           <NextgenBottomNav />
         </div>
       </NextgenToastProvider>
-      {/* Istanza DEDICATA a NEXTGEN: appName diverso ("BuddyKids NextGen" vs
-          "BuddyKids") -> chiave di dismiss separata in localStorage, e nessun
-          routeExclude (è già scoped a /nextgen dal punto in cui è mountata).
-          Quella "storica" in app/layout.tsx si autoesclude qui (routeExclude),
-          quindi non appare mai insieme a questa. swScope="/nextgen" (BUG FIX):
-          registra il service worker su uno scope diverso da quello di LEGACY
-          ("/"), altrimenti Chrome unifica le due app sotto un'unica identità
-          installata (vedi commento in components/InstallPrompt.tsx). */}
-      <InstallPrompt appName="BuddyKids NextGen" themeColor="#5B4FE9" swScope="/nextgen" />
+      {/* Istanza DEDICATA a NEXTGEN: appName diverso ("TRAMA" vs quello di
+          LEGACY, vedi lib/tenant.ts) -> chiave di dismiss separata in
+          localStorage, e nessun routeExclude (è già scoped a /nextgen dal
+          punto in cui è mountata). Quella "storica" in app/layout.tsx si
+          autoesclude qui (routeExclude), quindi non appare mai insieme a
+          questa. swScope="/nextgen" (BUG FIX): registra il service worker su
+          uno scope diverso da quello di LEGACY ("/"), altrimenti Chrome
+          unifica le due app sotto un'unica identità installata (vedi
+          commento in components/InstallPrompt.tsx). */}
+      <InstallPrompt appName="TRAMA" themeColor="#5B4FE9" swScope="/nextgen" />
     </PhoneShell>
   );
 }

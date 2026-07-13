@@ -127,7 +127,7 @@ export async function buildShareCardPng(info: ShareCardInfo): Promise<Blob | nul
   ctx.textAlign = "center";
   ctx.fillStyle = "#9AA7B4";
   ctx.font = "22px sans-serif";
-  ctx.fillText("Prenotato su BuddyKids 🏕️", WIDTH / 2, cardY + cardH - 40);
+  ctx.fillText("Prenotato su TRAMA 🏕️", WIDTH / 2, cardY + cardH - 40);
 
   return new Promise((resolve) => {
     canvas.toBlob((blob) => resolve(blob), "image/png");

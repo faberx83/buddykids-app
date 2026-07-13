@@ -5,7 +5,7 @@ export default function NextgenAdminPage() {
   return (
     <div className="mx-auto max-w-2xl px-6 py-8">
       <div className="mb-4 flex items-center justify-between">
-        <h1 className="text-xl font-bold text-ink">BuddyKids Admin</h1>
+        <h1 className="text-xl font-bold text-ink">TRAMA Admin</h1>
         <NextgenBadge />
       </div>
       <div className="rounded-2xl border border-[#E8EBF0] bg-white p-5">

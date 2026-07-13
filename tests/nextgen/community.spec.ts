@@ -9,12 +9,18 @@ import { loginAs, isRealDeployment } from "../fixtures/roles";
 // che restano legati a UNA sola attività.
 
 test.describe("NEXTGEN - Community (Sprint 4)", () => {
-  test("TC-N32 - La 4ª voce 'Community' in NextgenBottomNav porta a /nextgen/community", async ({ page }) => {
+  // REBRAND TRAMA Sprint 1: NextgenBottomNav è passata a 5 voci
+  // (Home/Planner/Scopri/Prenotazioni/Profilo, vedi NextgenBottomNav.tsx) e
+  // "Community" ne è uscita — resta raggiungibile da Planner → scheda
+  // "Gruppi" (PlannerGroupsView.tsx, link "Vedi tutte"/"Crea o entra" verso
+  // /nextgen/community), percorso aggiornato di conseguenza.
+  test("TC-N32 - Da Planner-Gruppi si raggiunge /nextgen/community", async ({ page }) => {
     test.skip(!isRealDeployment, "Richiede un deploy con Supabase configurato e l'account genitore di test.");
     await loginAs(page, "parent");
-    await page.goto("/nextgen");
+    await page.goto("/nextgen/planner");
 
-    await page.getByRole("link", { name: "Community" }).click();
+    await page.getByRole("button", { name: "Gruppi" }).click();
+    await page.getByRole("link", { name: /Vedi tutte|Crea o entra/ }).click();
     await expect(page).toHaveURL(/\/nextgen\/community$/);
     await expect(page.locator("body")).not.toContainText("Application error");
   });

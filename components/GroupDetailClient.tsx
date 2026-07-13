@@ -62,7 +62,7 @@ function buildInviteText(
     ? `per "${activityName}"${centerName ? ` (${centerName})` : ""}`
     : "per organizzarci insieme per l'estate";
   const who = inviterName ? `Ciao! Sono ${inviterName}.` : "Ciao!";
-  return `${who} Ho creato il gruppo "${groupName}" su BuddyKids ${context} — aggiungiti così organizziamo insieme le settimane, lo sconto gruppo e magari anche l'accompagnamento in auto 🙌`;
+  return `${who} Ho creato il gruppo "${groupName}" su TRAMA ${context} — aggiungiti così organizziamo insieme le settimane, lo sconto gruppo e magari anche l'accompagnamento in auto 🙌`;
 }
 
 function InviteButton({
@@ -85,7 +85,7 @@ function InviteButton({
     const text = buildInviteText(inviterName, groupName, activityName, centerName);
     try {
       if (navigator.share) {
-        await navigator.share({ title: "Unisciti al gruppo BuddyKids", text, url });
+        await navigator.share({ title: "Unisciti al gruppo TRAMA", text, url });
         return;
       }
       await navigator.clipboard.writeText(`${text}\n${url}`);

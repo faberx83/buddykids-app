@@ -162,7 +162,7 @@ export default function InvitesClient({
           {!isSupabaseConfigured && <DemoBadge />}
         </div>
         <p className="text-sm text-ink-2">
-          Invita famiglie su BuddyKids con un codice promo a scadenza — una alla volta o caricando
+          Invita famiglie su TRAMA con un codice promo a scadenza — una alla volta o caricando
           un file con più contatti.
         </p>
       </div>

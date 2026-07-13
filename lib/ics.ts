@@ -28,7 +28,7 @@ export function buildIcsDataUrl(opts: {
   const lines = [
     "BEGIN:VCALENDAR",
     "VERSION:2.0",
-    "PRODID:-//BuddyKids//IT",
+    "PRODID:-//TRAMA//IT",
     "BEGIN:VEVENT",
     `UID:${Date.now()}@buddykids.app`,
     `DTSTAMP:${stamp}`,

@@ -40,7 +40,7 @@ export interface TenantConfig {
 
 export const TENANT_CONFIG: Record<Tenant, TenantConfig> = {
   family: {
-    title: "BuddyKids — Attività per bambini",
+    title: "TRAMA — Attività per bambini",
     description: "Trova, prenota e gestisci le attività extrascolastiche per i tuoi bambini.",
     manifest: "/manifest-family.json",
     themeColor: "#4DAFEF",
@@ -49,8 +49,8 @@ export const TENANT_CONFIG: Record<Tenant, TenantConfig> = {
     appleIcon: "/apple-touch-icon.png",
   },
   partner: {
-    title: "BuddyKids Partner — Gestione centro",
-    description: "Gestisci attività, calendario e promozioni del tuo centro estivo su BuddyKids.",
+    title: "TRAMA Partner — Gestione centro",
+    description: "Gestisci attività, calendario e promozioni del tuo centro estivo su TRAMA.",
     manifest: "/manifest-partner.json",
     themeColor: "#1FA88E",
     icon192: "/icon-partner-192.png",
@@ -58,8 +58,8 @@ export const TENANT_CONFIG: Record<Tenant, TenantConfig> = {
     appleIcon: "/apple-touch-icon-partner.png",
   },
   admin: {
-    title: "BuddyKids Admin — Piattaforma",
-    description: "Pannello di controllo piattaforma BuddyKids: centri, attività, prenotazioni e analisi.",
+    title: "TRAMA Admin — Piattaforma",
+    description: "Pannello di controllo piattaforma TRAMA: centri, attività, prenotazioni e analisi.",
     manifest: "/manifest-admin.json",
     themeColor: "#1A1D2E",
     icon192: "/icon-admin-192.png",

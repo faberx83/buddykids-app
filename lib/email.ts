@@ -9,12 +9,12 @@
 // una API key, e impostare in .env.local (e nelle variabili d'ambiente di
 // Vercel):
 //   RESEND_API_KEY=re_xxxxxxxx
-//   INVITE_FROM_EMAIL="BuddyKids <inviti@tuodominio.it>"  (opzionale — senza
+//   INVITE_FROM_EMAIL="TRAMA <inviti@tuodominio.it>"  (opzionale — senza
 //   questa variabile si usa un mittente di test di Resend, valido solo per
 //   inviare a se stessi in fase di prova)
 
 const RESEND_API_KEY = process.env.RESEND_API_KEY;
-const FROM_EMAIL = process.env.INVITE_FROM_EMAIL || "BuddyKids <onboarding@resend.dev>";
+const FROM_EMAIL = process.env.INVITE_FROM_EMAIL || "TRAMA <onboarding@resend.dev>";
 
 export const isEmailConfigured = Boolean(RESEND_API_KEY);
 

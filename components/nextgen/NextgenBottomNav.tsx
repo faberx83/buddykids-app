@@ -13,11 +13,22 @@ import { usePathname } from "next/navigation";
 // stessa idea (Link + isActive su prefisso), rotte proprie.
 // SPRINT 4 — 4ª voce "Community" (Esperienze condivise): stessa idea di
 // navigazione, nessuna modifica alle 3 voci esistenti.
+// REBRAND TRAMA Sprint 1 — il mockup ("TRAMA - Dev Handoff.dc.html", sezione
+// 11.4a) mostra una bottom nav a 5 voci: Home/Planner/Scopri/Prenotazioni/
+// Profilo. "Community" esce da qui (non sparisce: dallo sprint 5.6 è già
+// raggiungibile da Planner → scheda "Gruppi", vedi PlannerGroupsView.tsx),
+// lasciando spazio a "Prenotazioni" e "Profilo". Queste ultime due puntano
+// alle pagine LEGACY esistenti (/prenotazioni, /profile — non ancora
+// duplicate sotto /nextgen): decisione presa con Fabrizio, tradeoff
+// accettato per ora è che uscendo da queste due voci si vede la bottom nav
+// LEGACY finché non avranno una schermata NEXTGEN dedicata in uno sprint
+// futuro. "Cerca" rinominata "Scopri" per coerenza col mockup, stessa rotta.
 const items = [
   { href: "/nextgen", icon: "ti-home", label: "Home" },
   { href: "/nextgen/planner", icon: "ti-calendar-event", label: "Planner" },
-  { href: "/nextgen/community", icon: "ti-users-group", label: "Community" },
-  { href: "/nextgen/search", icon: "ti-search", label: "Cerca" },
+  { href: "/nextgen/search", icon: "ti-search", label: "Scopri" },
+  { href: "/prenotazioni", icon: "ti-ticket", label: "Prenotazioni" },
+  { href: "/profile", icon: "ti-user-circle", label: "Profilo" },
 ];
 
 function isActive(pathname: string, href: string): boolean {
