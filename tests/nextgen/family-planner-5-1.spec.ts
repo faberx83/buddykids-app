@@ -16,6 +16,10 @@ import { loginAs, isRealDeployment } from "../fixtures/roles";
 // V1/LEGACY non toccata. Vedi anche tests/nextgen/dashboard.spec.ts
 // (TC-N08/TC-N09) e tests/nextgen/home-refinement.spec.ts (TC-N22/TC-N26)
 // per le regressioni evitate sulla vecchia Home.
+//
+// SPRINT 5.2: la modalità Calendario è stata implementata (non è più "in
+// arrivo") — vedi tests/nextgen/planner-calendar-5-2.spec.ts. TC-N44 qui
+// sotto aggiornato di conseguenza (solo Mappa/Gruppi restano placeholder).
 
 test.describe("NEXTGEN - Family Planner (Sprint 5.1)", () => {
   test("TC-N41 - Home mostra 'Attività da confermare' solo per le prenotazioni in stato 'pending'", async ({ page }) => {
@@ -55,13 +59,13 @@ test.describe("NEXTGEN - Family Planner (Sprint 5.1)", () => {
     }
   });
 
-  test("TC-N44 - Le modalità Calendario/Mappa/Gruppi mostrano 'in arrivo' (non ancora implementate)", async ({ page }) => {
+  // SPRINT 5.2: TC-N44 aggiornato — la modalità Calendario è stata
+  // implementata (vedi tests/nextgen/planner-calendar-5-2.spec.ts), solo
+  // Mappa/Gruppi restano "in arrivo" (fasi 5.4/5.6).
+  test("TC-N44 - Le modalità Mappa/Gruppi mostrano 'in arrivo' (non ancora implementate)", async ({ page }) => {
     test.skip(!isRealDeployment, "Richiede un deploy con Supabase configurato e l'account genitore di test.");
     await loginAs(page, "parent");
     await page.goto("/nextgen/planner");
-
-    await page.getByRole("button", { name: "Calendario" }).click();
-    await expect(page.getByText("Vista Calendario in arrivo")).toBeVisible();
 
     await page.getByRole("button", { name: "Mappa" }).click();
     await expect(page.getByText("Vista Mappa in arrivo")).toBeVisible();

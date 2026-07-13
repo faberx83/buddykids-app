@@ -14,6 +14,7 @@ import NextgenBadge from "@/components/nextgen/NextgenBadge";
 import PlannerModeTabs, { PlannerMode } from "@/components/nextgen/PlannerModeTabs";
 import PlannerComingSoon from "@/components/nextgen/PlannerComingSoon";
 import PlannerBudgetView from "@/components/nextgen/PlannerBudgetView";
+import PlannerCalendarView from "@/components/nextgen/PlannerCalendarView";
 import Link from "next/link";
 
 // SPRINT 3 (NEXTGEN) — Planner come "cuore dell'esperienza": timeline
@@ -87,13 +88,7 @@ export default function PlannerClient({
 
         <PlannerModeTabs mode={mode} onChange={setMode} />
 
-        {mode === "calendario" && (
-          <PlannerComingSoon
-            icon="ti-calendar"
-            title="Vista Calendario in arrivo"
-            description="Giorno, settimana e mese, con colori per figlio e conflitti evidenziati — per ora usa Organizzazione per lo stesso obiettivo."
-          />
-        )}
+        {mode === "calendario" && <PlannerCalendarView weeks={planner.weeks} kids={kids} overlaps={overlaps} />}
 
         {mode === "mappa" && (
           <PlannerComingSoon
