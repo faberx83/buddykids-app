@@ -11,9 +11,12 @@ import { usePathname } from "next/navigation";
 // ovunque — non il BottomNav di LEGACY (components/BottomNav.tsx, 5 voci,
 // rotte "/"), che non esiste sotto /nextgen: componente NUOVO e separato,
 // stessa idea (Link + isActive su prefisso), rotte proprie.
+// SPRINT 4 — 4ª voce "Community" (Esperienze condivise): stessa idea di
+// navigazione, nessuna modifica alle 3 voci esistenti.
 const items = [
   { href: "/nextgen", icon: "ti-home", label: "Home" },
   { href: "/nextgen/planner", icon: "ti-calendar-event", label: "Planner" },
+  { href: "/nextgen/community", icon: "ti-users-group", label: "Community" },
   { href: "/nextgen/search", icon: "ti-search", label: "Cerca" },
 ];
 

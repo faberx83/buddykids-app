@@ -5,6 +5,7 @@ import { getMyBookingsForParent } from "@/lib/data/my-bookings";
 import { getKidsForUser } from "@/lib/data/kids";
 import { getActivities } from "@/lib/data/activities";
 import { getTodayCheckinsForParent } from "@/lib/data/checkin";
+import { getCommunityHomeSignal } from "@/lib/data/communities";
 import { computeMatchesForKid } from "@/lib/matching";
 import HomeDashboardClient from "./HomeDashboardClient";
 
@@ -28,12 +29,13 @@ export default async function NextgenHomePage() {
     data: { user },
   } = await supabase.auth.getUser();
 
-  const [planner, bookings, kids, activities, todayCheckins] = await Promise.all([
+  const [planner, bookings, kids, activities, todayCheckins, communitySignal] = await Promise.all([
     getPlannerData(),
     getMyBookingsForParent(),
     getKidsForUser(),
     getActivities(),
     getTodayCheckinsForParent(),
+    getCommunityHomeSignal(),
   ]);
 
   let fullName: string | null = null;
@@ -112,6 +114,7 @@ export default async function NextgenHomePage() {
       bookings={bookings}
       recommendations={recommendations}
       todayCheckins={todayCheckins}
+      communitySignal={communitySignal}
     />
   );
 }

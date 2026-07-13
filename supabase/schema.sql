@@ -1209,3 +1209,146 @@ create policy "Attendance: il genitore fa il check-in dei propri bambini"
   with check (
     exists (select 1 from public.kids k where k.id = attendance_records.kid_id and k.parent_id = auth.uid())
   );
+
+-- ─────────────────────────────────────────────
+-- SPRINT 4 (NEXTGEN) — COMMUNITY ("Esperienze condivise")
+-- ─────────────────────────────────────────────
+-- Richiesta di Fabrizio (revisione roadmap): una community persistente e
+-- multi-attività fra famiglie, DIVERSA dai "Gruppi" esistenti sopra (che
+-- restano legati a UNA sola attività, per lo sconto/car pooling). Tabelle
+-- NUOVE e ADDITIVE: nessuna riga/colonna/policy esistente cambia
+-- comportamento. Relazione richiesta con il vecchio concetto "Gruppi": una
+-- proposta di attività della community può generare un Gruppo sconto vero e
+-- proprio (vedi community_id su public.groups più sotto), che poi segue lo
+-- stesso flusso già collaudato (Richiesta Gruppo al centro, car pooling).
+
+create table if not exists public.communities (
+  id uuid primary key default gen_random_uuid(),
+  name text not null,
+  description text,
+  image_emoji text default '🧑‍🤝‍🧑',
+  invite_code text unique not null,
+  created_by uuid references public.profiles(id) on delete set null,
+  created_at timestamptz default now()
+);
+
+create index if not exists idx_communities_invite_code on public.communities(invite_code);
+
+-- Ruolo del genitore dentro la community: Creatore (solo chi l'ha fondata,
+-- immutabile), Admin (può gestire membri/proposte), Membro (default).
+create table if not exists public.community_members (
+  community_id uuid references public.communities(id) on delete cascade not null,
+  parent_id uuid references public.profiles(id) on delete cascade not null,
+  role text not null default 'membro' check (role in ('creatore', 'admin', 'membro')),
+  joined_at timestamptz default now(),
+  primary key (community_id, parent_id)
+);
+
+alter table public.communities enable row level security;
+alter table public.community_members enable row level security;
+
+-- Funzione "security definer": stesso pattern di is_group_member(), per non
+-- ricadere nella stessa "infinite recursion" segnalata su group_members.
+create or replace function public.is_community_member(cid uuid)
+returns boolean
+language sql security definer stable
+as $$
+  select exists (
+    select 1 from public.community_members
+    where community_id = cid and parent_id = auth.uid()
+  );
+$$;
+
+create or replace function public.is_community_admin(cid uuid)
+returns boolean
+language sql security definer stable
+as $$
+  select exists (
+    select 1 from public.community_members
+    where community_id = cid and parent_id = auth.uid() and role in ('creatore', 'admin')
+  );
+$$;
+
+create policy "Communities: lettura per i membri"
+  on public.communities for select
+  using (public.is_community_member(id));
+
+create policy "Communities: creazione da utenti autenticati"
+  on public.communities for insert
+  with check (auth.uid() = created_by);
+
+create policy "Community members: visibili solo ai membri della community"
+  on public.community_members for select
+  using (public.is_community_member(community_id));
+
+-- Chiunque conosca il codice invito può aggiungersi da solo (join-by-code),
+-- come per group_members: il codice stesso è il "controllo accessi".
+create policy "Community members: un utente può aggiungersi da solo"
+  on public.community_members for insert
+  with check (auth.uid() = parent_id);
+
+create policy "Community members: gli admin gestiscono i ruoli"
+  on public.community_members for update
+  using (public.is_community_admin(community_id))
+  with check (public.is_community_admin(community_id));
+
+-- Proposta di attività condivisa dentro la community — chi propone deve
+-- essere membro; l'attività proposta è una delle attività reali già a
+-- catalogo (nessuna duplicazione dati).
+create table if not exists public.community_activity_proposals (
+  id uuid primary key default gen_random_uuid(),
+  community_id uuid references public.communities(id) on delete cascade not null,
+  activity_id uuid references public.activities(id) on delete cascade not null,
+  proposed_by uuid references public.profiles(id) on delete set null,
+  note text,
+  created_at timestamptz default now()
+);
+
+alter table public.community_activity_proposals enable row level security;
+
+create policy "Community proposals: visibili ai membri della community"
+  on public.community_activity_proposals for select
+  using (public.is_community_member(community_id));
+
+create policy "Community proposals: creabili dai membri della community"
+  on public.community_activity_proposals for insert
+  with check (public.is_community_member(community_id) and auth.uid() = proposed_by);
+
+-- Interesse/voto per una proposta — un solo segnale per genitore+proposta:
+-- unifica "interessato" e "voto" per non duplicare lo stesso concetto (come
+-- da richiesta di Fabrizio, che li cita insieme nel roadmap).
+create table if not exists public.community_activity_interest (
+  proposal_id uuid references public.community_activity_proposals(id) on delete cascade not null,
+  parent_id uuid references public.profiles(id) on delete cascade not null,
+  created_at timestamptz default now(),
+  primary key (proposal_id, parent_id)
+);
+
+alter table public.community_activity_interest enable row level security;
+
+create policy "Community interest: visibile ai membri della community"
+  on public.community_activity_interest for select
+  using (
+    exists (
+      select 1 from public.community_activity_proposals p
+      where p.id = community_activity_interest.proposal_id and public.is_community_member(p.community_id)
+    )
+  );
+
+create policy "Community interest: un membro esprime il proprio interesse"
+  on public.community_activity_interest for insert
+  with check (
+    auth.uid() = parent_id and exists (
+      select 1 from public.community_activity_proposals p
+      where p.id = community_activity_interest.proposal_id and public.is_community_member(p.community_id)
+    )
+  );
+
+create policy "Community interest: un membro ritira il proprio interesse"
+  on public.community_activity_interest for delete
+  using (auth.uid() = parent_id);
+
+-- Relazione richiesta con i "Gruppi" esistenti: quando una proposta matura,
+-- si può generare da lì un Gruppo sconto vero e proprio (community_id
+-- nullable — i gruppi creati da /groups restano invariati, valore null).
+alter table public.groups add column if not exists community_id uuid references public.communities(id) on delete set null;

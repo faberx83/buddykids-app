@@ -7,6 +7,7 @@ import { PlannerData } from "@/lib/data/planner";
 import { MyBooking, BookingStatus } from "@/lib/data/my-bookings";
 import { Activity } from "@/lib/types";
 import { TodayCheckin } from "@/lib/data/checkin";
+import { CommunityHomeSignal } from "@/lib/types";
 import ActivityCard from "@/components/ActivityCard";
 import NextgenBadge from "@/components/nextgen/NextgenBadge";
 import NextgenCheckinCard from "@/components/nextgen/NextgenCheckinCard";
@@ -82,12 +83,14 @@ export default function HomeDashboardClient({
   bookings,
   recommendations,
   todayCheckins,
+  communitySignal,
 }: {
   firstName: string | null;
   planner: PlannerData;
   bookings: MyBooking[];
   recommendations: Recommendation[];
   todayCheckins: TodayCheckin[];
+  communitySignal: CommunityHomeSignal | null;
 }) {
   const router = useRouter();
   const todayIso = useMemo(() => new Date().toISOString().slice(0, 10), []);
@@ -262,6 +265,25 @@ export default function HomeDashboardClient({
           <div className="mb-3 text-[21px] font-semibold text-ink">Prossimo appuntamento</div>
           <BookingVisualCard booking={nextAppointment} />
         </div>
+      )}
+
+      {/* SPRINT 4 — piccolo segnale sociale, solo se rilevante: "Home deve
+          mostrare piccoli elementi sociali" (richiesta di Fabrizio), non
+          invasivo (una riga, nessun popup), link diretto alla community. */}
+      {communitySignal && (
+        <Link
+          href={`/nextgen/community/${communitySignal.communityId}`}
+          className="flex items-center gap-2.5 rounded-2xl bg-[#F5F2FF] px-4 py-3"
+        >
+          <i className="ti ti-users-group flex-shrink-0 text-lg text-[#5B4FE9]" />
+          <span className="text-[13px] font-medium text-ink-2">
+            <b className="font-bold text-ink">
+              {communitySignal.interestCount} {communitySignal.interestCount === 1 ? "famiglia" : "famiglie"}
+            </b>{" "}
+            di {communitySignal.communityName} stanno valutando {communitySignal.activityName}
+          </span>
+          <i className="ti ti-chevron-right ml-auto flex-shrink-0 text-ink-3" />
+        </Link>
       )}
 
       {/* 4) Suggerimenti personalizzati — solo se ci sono buchi da riempire */}

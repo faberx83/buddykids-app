@@ -206,6 +206,73 @@ export interface GroupDetail {
   availableTags: Tag[];
 }
 
+// ─────────────────────────────────────────────
+// SPRINT 4 (NEXTGEN) — Community ("Esperienze condivise"): comunità
+// persistente e multi-attività fra famiglie, distinta dai "Gruppi" sopra
+// (che restano legati a UNA attività). Vedi lib/data/communities.ts.
+// ─────────────────────────────────────────────
+
+export type CommunityRole = "creatore" | "admin" | "membro";
+
+export interface CommunityItem {
+  id: string;
+  name: string;
+  description: string;
+  emoji: string;
+  inviteCode: string;
+  membersCount: number;
+  myRole: CommunityRole;
+  activeProposalsCount: number;
+}
+
+// Una famiglia già iscritta alla proposta (dedotta incrociando le
+// prenotazioni esistenti, nessuna tabella/duplicazione dedicata) — per
+// privacy non mostriamo mai nomi reali di ALTRE famiglie, solo un'etichetta
+// generica, stesso principio già usato in GroupDetail.
+export interface CommunityProposal {
+  id: string;
+  activityId: string; // dbId reale
+  activitySlug: string;
+  activityName: string;
+  activityEmoji: string;
+  activityGradient: string;
+  centerName: string;
+  note: string;
+  proposedByMe: boolean;
+  interestCount: number;
+  iAmInterested: boolean;
+  alreadyEnrolledCount: number; // famiglie della community già prenotate su questa attività
+  createdAt: string;
+}
+
+export interface CommunityMemberEntry {
+  parentId: string;
+  label: string; // "Tu" per l'utente loggato, altrimenti "Famiglia N"
+  isOwn: boolean;
+  role: CommunityRole;
+}
+
+export interface CommunityDetail {
+  id: string;
+  name: string;
+  description: string;
+  emoji: string;
+  inviteCode: string;
+  myRole: CommunityRole;
+  members: CommunityMemberEntry[];
+  proposals: CommunityProposal[];
+}
+
+// Piccolo segnale sociale mostrato in Home NEXTGEN (solo se esiste almeno
+// una proposta attiva in una community di cui si fa parte) — richiesta di
+// Fabrizio: "Home deve mostrare piccoli elementi sociali", non invasivo.
+export interface CommunityHomeSignal {
+  communityId: string;
+  communityName: string;
+  activityName: string;
+  interestCount: number;
+}
+
 export interface CalendarEvent {
   id: string;
   day: number;
