@@ -27,6 +27,14 @@ export interface CalendarDay {
   dayOfMonth: number;
   weekIndex: number | null;
   weekLabel: string | null;
+  // SPRINT 5.3 — chiave stabile della SeasonWeek (non il giorno toccato):
+  // serve per "Chi fa cosa?", che assegna un responsabile per bambino e
+  // settimana, non per singolo giorno. Stessa convenzione già usata da
+  // profiles.dismissed_weeks (SeasonWeek.startDate).
+  weekStartDate: string | null;
+  // SPRINT 5.3 — usata anche da "Condivisione Piano" per definire lo scope
+  // (settimana) del link pubblico.
+  weekEndDate: string | null;
   inSeason: boolean;
   covered: boolean;
   dismissed: boolean;
@@ -134,6 +142,8 @@ export function buildCalendarMonths(
           dayOfMonth: day,
           weekIndex: null,
           weekLabel: null,
+          weekStartDate: null,
+          weekEndDate: null,
           inSeason: false,
           covered: false,
           dismissed: false,
@@ -153,6 +163,8 @@ export function buildCalendarMonths(
         dayOfMonth: day,
         weekIndex: seasonWeek.index,
         weekLabel: seasonWeek.label,
+        weekStartDate: seasonWeek.startDate,
+        weekEndDate: seasonWeek.endDate,
         inSeason: true,
         covered: seasonWeek.covered,
         dismissed: seasonWeek.dismissed,
