@@ -85,6 +85,8 @@ export default function CenterProfileClient({ center, dbId }: { center: Center; 
             contactPhone: form.contactPhone,
             socialLinks: form.socialLinks,
             hasBar: Boolean(form.hasBar),
+            accessible: Boolean(form.accessible),
+            accessibleNote: form.accessibleNote ?? "",
             multiweekDiscountPercent: form.multiweekDiscountPercent,
             familyDiscountTiers: form.familyDiscountTiers,
             groupDiscountTiers: form.groupDiscountTiers,
@@ -166,6 +168,37 @@ export default function CenterProfileClient({ center, dbId }: { center: Center; 
               className="w-full rounded-md border border-[#E8EBF0] bg-bg px-3 py-2 text-sm outline-none focus:border-sky"
             />
           </Field>
+        </div>
+
+        <div className="my-2 h-px bg-[#F0F2F5]" />
+
+        <div>
+          <div className="mb-1 text-sm font-bold text-ink">Accessibilità</div>
+          <p className="mb-3 text-xs text-ink-2">
+            Indica se il centro è accessibile alle persone con disabilità: i genitori lo vedranno
+            come badge nella scheda di ogni attività ospitata qui.
+          </p>
+          <label className="flex items-start gap-2.5 rounded-md bg-bg p-3 text-sm text-ink">
+            <input
+              type="checkbox"
+              checked={Boolean(form.accessible)}
+              onChange={(e) => update("accessible", e.target.checked)}
+              className="mt-0.5"
+            />
+            <span>♿ Il centro è accessibile (rampe, bagno attrezzato, ecc.)</span>
+          </label>
+          {form.accessible && (
+            <div className="mt-3">
+              <Field label="Nota accessibilità (facoltativa)">
+                <input
+                  value={form.accessibleNote ?? ""}
+                  onChange={(e) => update("accessibleNote", e.target.value)}
+                  placeholder="Es. Rampa d'accesso, bagno attrezzato"
+                  className="w-full rounded-md border border-[#E8EBF0] bg-bg px-3 py-2 text-sm outline-none focus:border-sky"
+                />
+              </Field>
+            </div>
+          )}
         </div>
 
         <div className="my-2 h-px bg-[#F0F2F5]" />

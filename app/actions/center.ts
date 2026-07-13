@@ -158,6 +158,9 @@ export interface ActivityUpdateInput {
   spotsLeft: number;
   showExactSpots: boolean;
   hasBar: boolean;
+  accessible: boolean;
+  accessibleNote: string;
+  dietaryOptions: string[];
   tagIds: string[];
   address: string;
   lat: number;
@@ -203,6 +206,7 @@ export async function updateActivityAction(input: ActivityUpdateInput): Promise<
       latitude: input.lat,
       longitude: input.lng,
       meal_option: input.mealOption,
+      dietary_options: input.dietaryOptions,
       pre_service: input.preService,
       post_service: input.postService,
       schedule: input.schedule,
@@ -213,14 +217,19 @@ export async function updateActivityAction(input: ActivityUpdateInput): Promise<
 
   if (error) return { error: error.message };
 
-  // Il "bar/punto ristoro" è un attributo del centro (non della singola attività): lo
-  // aggiorniamo qui perché la UI lo espone dalla scheda attività per semplicità, ma
-  // nota che se un centro ha più attività questa modifica vale per TUTTE (task tracciato
-  // in roadmap come possibile sviluppo futuro: gestione per-attività o override).
+  // Il "bar/punto ristoro" e l'"accesso disabili" sono attributi del centro (non
+  // della singola attività): li aggiorniamo qui perché la UI li espone dalla scheda
+  // attività per semplicità, ma nota che se un centro ha più attività questa modifica
+  // vale per TUTTE (task tracciato in roadmap come possibile sviluppo futuro: gestione
+  // per-attività o override).
   if (beforeRow?.center_id) {
     const { error: barError } = await supabase
       .from("centers")
-      .update({ has_bar: input.hasBar })
+      .update({
+        has_bar: input.hasBar,
+        accessible: input.accessible,
+        accessible_note: input.accessibleNote,
+      })
       .eq("id", beforeRow.center_id);
     if (barError) return { error: barError.message };
   }
@@ -269,6 +278,8 @@ export interface CenterProfileUpdateInput {
   contactPhone: string;
   socialLinks: SocialLinks;
   hasBar: boolean;
+  accessible: boolean;
+  accessibleNote: string;
   multiweekDiscountPercent: number;
   familyDiscountTiers: number[]; // [2°figlio%, 3°figlio%, 4°+figlio%]
   groupDiscountTiers: { minKids: number; percent: number }[];
@@ -299,6 +310,8 @@ export async function updateCenterProfileAction(
       contact_phone: input.contactPhone,
       social_links: input.socialLinks,
       has_bar: input.hasBar,
+      accessible: input.accessible,
+      accessible_note: input.accessibleNote,
       multiweek_discount_percent: input.multiweekDiscountPercent,
       family_discount_tiers: input.familyDiscountTiers,
       group_discount_tiers: input.groupDiscountTiers,

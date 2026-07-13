@@ -263,7 +263,30 @@ export default function DetailClient({
             available={activity.shuttlePrice > 0}
             detail={activity.shuttlePrice > 0 ? `+€${activity.shuttlePrice}/sett` : undefined}
           />
+          <ServiceTag
+            icon="ti-wheelchair"
+            label="Accesso disabili"
+            available={Boolean(activity.centerAccessible)}
+            detail={activity.centerAccessible ? activity.centerAccessibleNote : undefined}
+          />
         </div>
+
+        {activity.dietaryOptions && activity.dietaryOptions.length > 0 && (
+          <>
+            <div className="mb-2.5 text-sm font-bold text-ink">Diete e intolleranze gestite</div>
+            <div className="mb-3.5 flex flex-wrap gap-2">
+              {activity.dietaryOptions.map((option) => (
+                <span
+                  key={option}
+                  className="flex items-center gap-1.5 rounded-md bg-green-light px-2.5 py-1.5 text-[11px] font-semibold text-green"
+                >
+                  <i className="ti ti-salad text-[13px]" />
+                  {option}
+                </span>
+              ))}
+            </div>
+          </>
+        )}
         <div className="my-3 h-px bg-[#F0F2F5]" />
 
         <div className="mb-2.5 text-sm font-bold text-ink">

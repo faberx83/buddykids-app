@@ -16,6 +16,19 @@ const mealLabels: Record<MealOption, string> = {
   none: "— Non fornito",
 };
 
+// Diete/intolleranze che il servizio pranzo dichiara di saper gestire — è una
+// capacità del servizio (dichiarata dal gestore), non un dato sanitario di un
+// bambino specifico: quello resta fuori scope (vedi piano Privacy/Compliance).
+const DIETARY_OPTIONS = [
+  "Senza glutine (celiachia)",
+  "Senza lattosio",
+  "Vegetariano",
+  "Vegano",
+  "Senza frutta a guscio",
+  "Halal",
+  "Kosher",
+];
+
 export default function ActivityEditForm({
   activity,
   tags = mockCategories,
@@ -32,6 +45,9 @@ export default function ActivityEditForm({
     spotsLeft: activity.spotsLeft ?? 0,
     showExactSpots: activity.showExactSpots ?? false,
     hasBar: activity.centerHasBar ?? false,
+    accessible: activity.centerAccessible ?? false,
+    accessibleNote: activity.centerAccessibleNote ?? "",
+    dietaryOptions: activity.dietaryOptions ?? [],
     tagIds: activity.tagIds,
     address: activity.address,
     lat: activity.lat ?? 45.4642,
@@ -87,6 +103,15 @@ export default function ActivityEditForm({
       form.tagIds.includes(tagId)
         ? form.tagIds.filter((t) => t !== tagId)
         : [...form.tagIds, tagId]
+    );
+  }
+
+  function toggleDietaryOption(option: string) {
+    update(
+      "dietaryOptions",
+      form.dietaryOptions.includes(option)
+        ? form.dietaryOptions.filter((o) => o !== option)
+        : [...form.dietaryOptions, option]
     );
   }
 
@@ -164,6 +189,9 @@ export default function ActivityEditForm({
             spotsLeft: form.spotsLeft,
             showExactSpots: form.showExactSpots,
             hasBar: form.hasBar,
+            accessible: form.accessible,
+            accessibleNote: form.accessibleNote,
+            dietaryOptions: form.dietaryOptions,
             tagIds: form.tagIds,
             address: form.address,
             lat: form.lat,
@@ -353,6 +381,62 @@ export default function ActivityEditForm({
               </span>
             </span>
           </label>
+
+          <label className="flex items-start gap-2.5 rounded-md bg-bg p-3 text-sm text-ink">
+            <input
+              type="checkbox"
+              checked={form.accessible}
+              onChange={(e) => update("accessible", e.target.checked)}
+              className="mt-0.5"
+            />
+            <span>
+              ♿ Il centro è accessibile alle persone con disabilità
+              <br />
+              <span className="text-xs text-ink-2">
+                Riguarda l&apos;intero centro, non solo questa attività: se il centro ha più
+                attività pubblicate, l&apos;informazione vale per tutte.
+              </span>
+            </span>
+          </label>
+          {form.accessible && (
+            <Field label="Nota accessibilità (facoltativa)">
+              <input
+                value={form.accessibleNote}
+                onChange={(e) => update("accessibleNote", e.target.value)}
+                placeholder="Es. Rampa d'accesso, bagno attrezzato"
+                className="w-full rounded-md border border-[#E8EBF0] bg-bg px-3 py-2 text-sm outline-none focus:border-sky"
+              />
+            </Field>
+          )}
+
+          <div>
+            <div className="mb-2 text-xs font-semibold text-ink-2">
+              Diete speciali / intolleranze gestite dal servizio pranzo
+            </div>
+            <p className="mb-2 text-[11px] text-ink-3">
+              Capacità dichiarata dal servizio (non un dato del singolo bambino): i genitori la
+              vedranno come badge nella scheda attività.
+            </p>
+            <div className="flex flex-wrap gap-2">
+              {DIETARY_OPTIONS.map((option) => {
+                const active = form.dietaryOptions.includes(option);
+                return (
+                  <button
+                    key={option}
+                    type="button"
+                    onClick={() => toggleDietaryOption(option)}
+                    className={`rounded-full border px-3 py-1.5 text-xs font-semibold transition-colors ${
+                      active
+                        ? "border-sky bg-sky-light text-sky"
+                        : "border-[#E8EBF0] bg-bg text-ink-2"
+                    }`}
+                  >
+                    {option}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
         </div>
 
         <div className="space-y-3 rounded-lg border border-[#E8EBF0] bg-white p-5">

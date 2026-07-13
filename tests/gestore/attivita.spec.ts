@@ -89,4 +89,39 @@ test.describe("Gestore - Attivita", () => {
     // ESCLUSO dall'automazione: richiede lo snippet SQL Storage applicato su Supabase prima del test
   });
 
+  // Richiesta di Fabrizio: "l'accesso ai disabili" (badge centro) e "diete
+  // specifiche ed intolleranze" (capacità del servizio pranzo) — "il gestore
+  // flagga, il genitore vede". Editabili qui per comodità (stesso pattern già
+  // usato per "Il centro ha un bar"), scritti su centers.accessible/
+  // accessible_note (cross-table, vedi app/actions/center.ts) e su
+  // activities.dietary_options.
+  // Priorita: Alta | Precondizioni: Account Gestore collegato a un centro
+  test("TC-198 - Il gestore può flaggare 'Accesso disabili' e le diete/intolleranze gestite", async ({ page }) => {
+    test.skip(!isRealDeployment, "Richiede un deploy con Supabase configurato e l'account Gestore di test.");
+    await loginAs(page, "center_admin");
+    await page.goto("/center/activities");
+
+    const card = page.locator("div.rounded-lg.border").filter({ hasText: "[TEST] Attività BuddyKids" });
+    await card.getByRole("link", { name: "Modifica scheda" }).click();
+    await expect(page).toHaveURL(/\/center\/activities\/[^/]+$/);
+
+    const accessibleCheckbox = page.getByText("Il centro è accessibile alle persone con disabilità").locator("..").locator("input[type='checkbox']");
+    const wasChecked = await accessibleCheckbox.isChecked();
+    await accessibleCheckbox.setChecked(true);
+    await expect(page.getByPlaceholder("Es. Rampa d'accesso, bagno attrezzato")).toBeVisible();
+
+    const dietButton = page.getByRole("button", { name: "Senza glutine (celiachia)" });
+    await dietButton.click();
+
+    await page.getByRole("button", { name: /Salva modifiche/ }).click();
+    await expect(page.getByText(/Salvato su Supabase|Salvato \(demo\)/)).toBeVisible();
+
+    // Ripristino lo stato di partenza per non alterare i run successivi.
+    if (!wasChecked) {
+      await accessibleCheckbox.setChecked(false);
+    }
+    await dietButton.click();
+    await page.getByRole("button", { name: /Salva modifiche/ }).click();
+  });
+
 });

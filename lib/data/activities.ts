@@ -11,11 +11,11 @@ import { getSeasonWeekRanges, isoDate, overlaps } from "@/lib/season-weeks";
 
 const SELECT_COLUMNS = `
   id, slug, name, emoji, address, latitude, longitude, age_min, age_max,
-  price_per_week, shuttle_price, description, schedule, meal_option,
+  price_per_week, shuttle_price, description, schedule, meal_option, dietary_options,
   pre_service, post_service, rating, reviews_count, img_gradient, days, hours,
   distance_km, spots_left, show_exact_spots, weeks_available, pills, badges, center_id,
   cover_image_url, gallery_urls,
-  centers ( slug, name, emoji, gradient, has_bar, multiweek_discount_percent, family_discount_tiers, group_discount_tiers ),
+  centers ( slug, name, emoji, gradient, has_bar, accessible, accessible_note, multiweek_discount_percent, family_discount_tiers, group_discount_tiers ),
   activity_tags ( tag_id )
 `;
 
@@ -25,6 +25,8 @@ interface RawCenterRef {
   emoji: string | null;
   gradient: string | null;
   has_bar: boolean | null;
+  accessible: boolean | null;
+  accessible_note: string | null;
   multiweek_discount_percent: number | null;
   family_discount_tiers: number[] | null;
   group_discount_tiers: { minKids: number; percent: number }[] | null;
@@ -45,6 +47,7 @@ interface RawActivityRow {
   description: string | null;
   schedule: unknown;
   meal_option: string | null;
+  dietary_options: string[] | null;
   pre_service: unknown;
   post_service: unknown;
   rating: number | null;
@@ -102,7 +105,10 @@ export function mapRow(row: RawActivityRow): Activity {
     preService: (row.pre_service as Activity["preService"]) ?? undefined,
     postService: (row.post_service as Activity["postService"]) ?? undefined,
     mealOption: (row.meal_option as Activity["mealOption"]) ?? undefined,
+    dietaryOptions: row.dietary_options ?? undefined,
     centerHasBar: Boolean(center?.has_bar),
+    centerAccessible: Boolean(center?.accessible),
+    centerAccessibleNote: center?.accessible_note ?? undefined,
     centerMultiweekDiscountPercent: center?.multiweek_discount_percent ?? undefined,
     centerFamilyDiscountTiers: center?.family_discount_tiers ?? undefined,
     centerGroupDiscountTiers: center?.group_discount_tiers ?? undefined,

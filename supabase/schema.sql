@@ -24,6 +24,12 @@ create table if not exists public.centers (
   social_links jsonb default '{}', -- { instagram, facebook, tiktok, youtube, website }
   gradient text default 'linear-gradient(135deg,#E8F6FD,#E3F9F5)', -- sfondo decorativo mostrato nell'app
   has_bar boolean default false, -- presenza di un bar/punto ristoro nel centro (usato nei filtri di ricerca)
+  -- Accesso disabili (richiesta di Fabrizio): il gestore dichiara se il
+  -- centro è accessibile (rampe, bagno attrezzato, ecc.), il genitore lo
+  -- vede come badge nella scheda attività — stesso trattamento di has_bar
+  -- (attributo del centro, non della singola attività).
+  accessible boolean default false,
+  accessible_note text, -- nota libera facoltativa, es. "Rampa d'accesso, bagno attrezzato"
   -- Sconti personalizzabili dal gestore (fallback ai valori globali storici se null):
   multiweek_discount_percent numeric(4,1), -- sconto se il genitore prenota 2+ settimane (default storico: 5%)
   family_discount_tiers jsonb, -- [2°figlio%, 3°figlio%, 4°+figlio%], default storico: [10,15,20]
@@ -163,6 +169,12 @@ create table if not exists public.activities (
   schedule jsonb default '[]', -- agenda della giornata: [{ time, label, color }]
   tags text[] default '{}', -- deprecato, non più popolato: sostituito da "pills" jsonb + activity_tags
   meal_option text default 'none' check (meal_option in ('included', 'packed', 'none')),
+  -- Diete speciali/intolleranze che il servizio pranzo di QUESTA attività è
+  -- attrezzato a gestire (richiesta di Fabrizio) — è una capacità dichiarata
+  -- dal gestore, NON un dato sanitario di un bambino specifico (quello
+  -- resta fuori scope finché non esiste un'infrastruttura di consenso
+  -- dedicata, vedi piano Privacy/Compliance).
+  dietary_options text[] default '{}',
   pre_service jsonb default '{"available": false, "time": null, "priceExtra": 0}',
   post_service jsonb default '{"available": false, "time": null, "priceExtra": 0}',
   rating numeric(2, 1) default 0,
@@ -873,6 +885,13 @@ alter table public.activities add column if not exists cover_image_url text;
 alter table public.activities add column if not exists gallery_urls text[] default '{}';
 alter table public.centers add column if not exists logo_url text;
 alter table public.partner_offers add column if not exists image_url text;
+
+-- Accesso disabili (centro) + diete/intolleranze (attività) — richiesta di
+-- Fabrizio: "il gestore flagga, il genitore vede". Stesso trattamento di
+-- has_bar/meal_option qui sopra.
+alter table public.centers add column if not exists accessible boolean default false;
+alter table public.centers add column if not exists accessible_note text;
+alter table public.activities add column if not exists dietary_options text[] default '{}';
 
 create index if not exists idx_profiles_center on public.profiles(center_id);
 create index if not exists idx_kids_parent on public.kids(parent_id);

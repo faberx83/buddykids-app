@@ -175,4 +175,25 @@ test.describe("Genitori - Attivita", () => {
     await expect(page.getByText("In attesa di risposta").first()).toBeVisible();
   });
 
+  // Richiesta di Fabrizio: "hai aggiunto come servizio l'accesso ai disabili?
+  // e per chi offre servizio di pranzo, la possibilità di gestire diete
+  // specifiche ed intolleranze? è una caratteristica che il gestore flagga e
+  // poi si vede lato genitore". Badge aggiunti in DetailClient.tsx (ServiceTag
+  // "Accesso disabili" + chips "Diete e intolleranze gestite") — mostrati solo
+  // se il gestore ha effettivamente flaggato il campo (vedi TC-198/TC-199).
+  // Priorita: Media | Precondizioni: Nessuna
+  test.fixme("TC-196 - Il dettaglio attività mostra il badge 'Accesso disabili' coerente col centro", async ({ page }) => {
+    // TODO: implementare - richiede un'attività di test il cui centro abbia
+    // centers.accessible=true (non garantito dal seed attuale). Vedi
+    // ServiceTag "Accesso disabili" in app/activity/[id]/DetailClient.tsx.
+  });
+
+  // Priorita: Media | Precondizioni: Attività con dietary_options non vuoto
+  test.fixme("TC-197 - Il dettaglio attività mostra le chips 'Diete e intolleranze gestite' quando presenti", async ({ page }) => {
+    // TODO: implementare - richiede un'attività di test con
+    // activities.dietary_options non vuoto (non garantito dal seed attuale).
+    // Vedi sezione "Diete e intolleranze gestite" in DetailClient.tsx: non
+    // deve comparire affatto se l'array è vuoto/assente.
+  });
+
 });

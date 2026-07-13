@@ -46,4 +46,22 @@ test.describe("Gestore - Profilo Centro", () => {
     await page.getByRole("button", { name: /Salva/ }).first().click();
     await expect(page.locator("body")).not.toContainText("Application error");
   });
+
+  // Richiesta di Fabrizio: badge "Accesso disabili" a livello di centro,
+  // editabile anche dal Profilo centro (oltre che dalla scheda attività, vedi
+  // TC-198) — stesso trattamento di "Il centro ha un bar / punto ristoro".
+  // Priorita: Media | Precondizioni: Account collegato a un centro
+  test("TC-199 - Il gestore può flaggare 'Accessibilità' dal Profilo centro", async ({ page }) => {
+    test.skip(!isRealDeployment, "Richiede un deploy con Supabase configurato e l'account gestore di test.");
+    await loginAs(page, "center_admin");
+    await page.goto("/center/profile");
+
+    await expect(page.getByText("Accessibilità")).toBeVisible();
+    const accessibleCheckbox = page.getByText("Il centro è accessibile (rampe, bagno attrezzato, ecc.)").locator("..").locator("input[type='checkbox']");
+    await accessibleCheckbox.setChecked(true);
+    await expect(page.getByPlaceholder("Es. Rampa d'accesso, bagno attrezzato")).toBeVisible();
+
+    await page.getByRole("button", { name: /Salva/ }).first().click();
+    await expect(page.locator("body")).not.toContainText("Application error");
+  });
 });

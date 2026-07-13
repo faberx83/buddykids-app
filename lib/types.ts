@@ -49,7 +49,12 @@ export interface Activity {
   preService?: ServiceOption; // ingresso anticipato
   postService?: ServiceOption; // uscita posticipata
   mealOption?: MealOption;
+  // Diete speciali/intolleranze che il servizio pranzo è attrezzato a
+  // gestire (capacità dichiarata dal gestore, non un dato del bambino).
+  dietaryOptions?: string[];
   centerHasBar?: boolean; // presenza di un bar/punto ristoro nel centro che ospita l'attività
+  centerAccessible?: boolean; // il centro è accessibile (rampe, bagno attrezzato, ecc.)
+  centerAccessibleNote?: string; // nota libera facoltativa sull'accessibilità
   // Sconti personalizzati dal gestore del centro che ospita l'attività
   // (fallback ai valori globali di default se assenti — vedi lib/family-discount.ts e lib/groups.ts):
   centerMultiweekDiscountPercent?: number;
@@ -313,6 +318,8 @@ export interface Center {
   ownerName: string;
   socialLinks?: SocialLinks;
   hasBar?: boolean;
+  accessible?: boolean; // accesso disabili (rampe, bagno attrezzato, ecc.)
+  accessibleNote?: string; // nota libera facoltativa
   multiweekDiscountPercent?: number;
   familyDiscountTiers?: number[]; // [2°figlio%, 3°figlio%, 4°+figlio%]
   groupDiscountTiers?: { minKids: number; percent: number }[];

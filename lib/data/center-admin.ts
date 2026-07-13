@@ -58,6 +58,8 @@ interface RawCenterRow {
   contact_phone: string | null;
   social_links: unknown;
   has_bar: boolean | null;
+  accessible: boolean | null;
+  accessible_note: string | null;
   multiweek_discount_percent: number | null;
   family_discount_tiers: number[] | null;
   group_discount_tiers: { minKids: number; percent: number }[] | null;
@@ -81,6 +83,8 @@ function mapCenterRow(row: RawCenterRow): Center {
     ownerName: "",
     socialLinks: (row.social_links as Center["socialLinks"]) ?? undefined,
     hasBar: Boolean(row.has_bar),
+    accessible: Boolean(row.accessible),
+    accessibleNote: row.accessible_note ?? undefined,
     multiweekDiscountPercent: row.multiweek_discount_percent ?? undefined,
     familyDiscountTiers: row.family_discount_tiers ?? undefined,
     groupDiscountTiers: row.group_discount_tiers ?? undefined,
@@ -101,7 +105,7 @@ export async function getMyCenter(): Promise<{ center: Center; dbId: string | nu
   const { data, error } = await supabase
     .from("centers")
     .select(
-      "id, slug, name, emoji, gradient, city, address, description, contact_email, contact_phone, social_links, has_bar, multiweek_discount_percent, family_discount_tiers, group_discount_tiers, logo_url, cancellation_window_days"
+      "id, slug, name, emoji, gradient, city, address, description, contact_email, contact_phone, social_links, has_bar, accessible, accessible_note, multiweek_discount_percent, family_discount_tiers, group_discount_tiers, logo_url, cancellation_window_days"
     )
     .eq("id", centerDbId)
     .single();
