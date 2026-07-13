@@ -16,16 +16,16 @@ import type { WeekResponsibility } from "@/lib/data/responsibilities";
 import type { PlanShare } from "@/lib/data/plan-shares";
 import type { PlannerMapPin } from "@/lib/data/planner-map";
 import type { Reminder } from "@/lib/nextgen/reminders";
-import { Kid } from "@/lib/types";
+import { Kid, CommunityItem, GroupItem } from "@/lib/types";
 import { lightBgClasses } from "@/lib/colors";
 import ActivityCard from "@/components/ActivityCard";
 import PageHeader from "@/components/PageHeader";
 import NextgenBadge from "@/components/nextgen/NextgenBadge";
 import PlannerModeTabs, { PlannerMode } from "@/components/nextgen/PlannerModeTabs";
-import PlannerComingSoon from "@/components/nextgen/PlannerComingSoon";
 import PlannerBudgetView from "@/components/nextgen/PlannerBudgetView";
 import PlannerCalendarView from "@/components/nextgen/PlannerCalendarView";
 import PlannerMapView from "@/components/nextgen/PlannerMapView";
+import PlannerGroupsView from "@/components/nextgen/PlannerGroupsView";
 import Link from "next/link";
 
 const REMINDER_TONE_CLASSES: Record<Reminder["tone"], string> = {
@@ -43,11 +43,10 @@ const REMINDER_TONE_CLASSES: Record<Reminder["tone"], string> = {
 // già esistenti altrove.
 //
 // SPRINT 5.1 (NEXTGEN) — "Family Planner" (PRD di Fabrizio): il Planner
-// diventa il centro operativo, con 5 modalità sugli stessi dati. Solo
-// Organizzazione (questa vista, arricchita con Missioni + copertura per
-// bambino) e Budget (nuova vista a schermo intero, componente dedicato) sono
-// funzionanti in questa fase — Calendario/Mappa/Gruppi restano "Presto
-// disponibile" fino alle fasi 5.2/5.4/5.6.
+// diventa il centro operativo, con 5 modalità sugli stessi dati.
+// Organizzazione, Budget, Calendario, Mappa e — da Sprint 5.6 — Gruppi (vedi
+// PlannerGroupsView, riepilogo di Community + Gruppi sconto, riuso puro dei
+// dati già letti in Sprint 4) sono ora tutte funzionanti.
 function weekIndexFromLabel(label: string): number | null {
   const m = label.match(/\d+/);
   return m ? Number(m[0]) : null;
@@ -66,6 +65,8 @@ export default function PlannerClient({
   responsibilities,
   existingShares,
   mapPins,
+  communities,
+  groups,
 }: {
   planner: PlannerData;
   kids: Kid[];
@@ -79,6 +80,8 @@ export default function PlannerClient({
   responsibilities: WeekResponsibility[];
   existingShares: PlanShare[];
   mapPins: PlannerMapPin[];
+  communities: CommunityItem[];
+  groups: GroupItem[];
 }) {
   const router = useRouter();
   const [mode, setMode] = useState<PlannerMode>("organizzazione");
@@ -125,13 +128,7 @@ export default function PlannerClient({
 
         {mode === "mappa" && <PlannerMapView pins={mapPins} />}
 
-        {mode === "gruppi" && (
-          <PlannerComingSoon
-            icon="ti-users-group"
-            title="Vista Gruppi in arrivo"
-            description="Le tue Community, le proposte e le votazioni direttamente qui — nel frattempo le trovi nella scheda Community."
-          />
-        )}
+        {mode === "gruppi" && <PlannerGroupsView communities={communities} groups={groups} />}
 
         {mode === "budget" && <PlannerBudgetView budget={budget} seasonBudgetTarget={seasonBudgetTarget} />}
 

@@ -1,11 +1,9 @@
 "use client";
 
 // SPRINT 5.1 (NEXTGEN) — "Il Planner dovrà offrire cinque modalità di
-// visualizzazione degli stessi dati" (PRD di Fabrizio, Family Planner). Solo
-// Organizzazione e Budget sono funzionanti in questa fase (5.1); Calendario,
-// Mappa e Gruppi mostrano uno stato "Presto disponibile" — arrivano nelle
-// fasi 5.2/5.4/5.6, ma il selettore è già a 5 voci per non dover rifare
-// questo componente ogni volta.
+// visualizzazione degli stessi dati" (PRD di Fabrizio, Family Planner).
+// Tutte e 5 le modalità sono ora funzionanti (Calendario 5.2, Mappa 5.4,
+// Gruppi 5.6).
 export type PlannerMode = "organizzazione" | "calendario" | "mappa" | "budget" | "gruppi";
 
 export const PLANNER_MODES: { key: PlannerMode; label: string; icon: string }[] = [

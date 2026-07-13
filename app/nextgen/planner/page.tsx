@@ -8,6 +8,8 @@ import { getParentProfile } from "@/lib/data/profile";
 import { getResponsibilitiesForParent } from "@/lib/data/responsibilities";
 import { getPlanSharesForParent } from "@/lib/data/plan-shares";
 import { getPlannerMapPins } from "@/lib/data/planner-map";
+import { getCommunitiesForUser } from "@/lib/data/communities";
+import { getGroupsForUser } from "@/lib/data/groups";
 import { computeSmartMatches } from "@/lib/nextgen/smart-search";
 import { computeKidOverlaps, computeBudgetSummary, computePriorityWeekIndex } from "@/lib/nextgen/planner-insights";
 import { computeMissions } from "@/lib/nextgen/missions";
@@ -34,18 +36,31 @@ export default async function NextgenPlannerPage() {
   }
 
   const seasonYear = await getSeasonYear();
-  const [planner, bookings, kids, activities, availabilityByWeek, profile, responsibilities, existingShares, mapPins] =
-    await Promise.all([
-      getPlannerData(),
-      getMyBookingsForParent(),
-      getKidsForUser(),
-      getActivities(),
-      getActivityAvailabilityByWeek(seasonYear),
-      getParentProfile(),
-      getResponsibilitiesForParent(),
-      getPlanSharesForParent(),
-      getPlannerMapPins(),
-    ]);
+  const [
+    planner,
+    bookings,
+    kids,
+    activities,
+    availabilityByWeek,
+    profile,
+    responsibilities,
+    existingShares,
+    mapPins,
+    communities,
+    groups,
+  ] = await Promise.all([
+    getPlannerData(),
+    getMyBookingsForParent(),
+    getKidsForUser(),
+    getActivities(),
+    getActivityAvailabilityByWeek(seasonYear),
+    getParentProfile(),
+    getResponsibilitiesForParent(),
+    getPlanSharesForParent(),
+    getPlannerMapPins(),
+    getCommunitiesForUser(),
+    getGroupsForUser(),
+  ]);
 
   const overlaps = computeKidOverlaps(bookings);
   const budget = computeBudgetSummary(bookings, activities);
@@ -76,6 +91,8 @@ export default async function NextgenPlannerPage() {
       responsibilities={responsibilities}
       existingShares={existingShares}
       mapPins={mapPins}
+      communities={communities}
+      groups={groups}
     />
   );
 }
