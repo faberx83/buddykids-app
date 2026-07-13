@@ -166,6 +166,11 @@ export default function PlannerCalendarView({
   // tracciano solo le ESCLUSIONI esplicite, cosi un genitore con un solo
   // figlio non vede alcun controllo in più.
   const [bulkKidExcluded, setBulkKidExcluded] = useState<Record<string, boolean>>({});
+  // FEEDBACK SUCCESSIVO DI FABRIZIO: "ci vuole qualcosa di flessibile" —
+  // oltre ai bambini, anche solo Andata, solo Ritorno, o entrambi (non
+  // sempre chi porta è anche chi ritira). Stessa convenzione "di default
+  // tutto incluso, si tracciano solo le esclusioni" già usata per i bambini.
+  const [bulkMomentExcluded, setBulkMomentExcluded] = useState<Record<Moment, boolean>>({} as Record<Moment, boolean>);
   const [bulkAssigningAltro, setBulkAssigningAltro] = useState(false);
   const [bulkAltroText, setBulkAltroText] = useState("");
   const [bulkBusy, setBulkBusy] = useState(false);
@@ -174,16 +179,25 @@ export default function PlannerCalendarView({
     setBulkKidExcluded((prev) => ({ ...prev, [kidId]: !prev[kidId] }));
   }
 
+  function toggleBulkMoment(moment: Moment) {
+    setBulkMomentExcluded((prev) => ({ ...prev, [moment]: !prev[moment] }));
+  }
+
   async function handleBulkAssign(value: ResponsibleValue, label?: string) {
     if (!selectedDay || !selectedDay.weekStartDate) return;
     const weekStartDate = selectedDay.weekStartDate;
     const kidIds = selectedDay.kids.map((k) => k.kidId).filter((id) => !bulkKidExcluded[id]);
+    const moments = MOMENTS.map((mo) => mo.value).filter((mo) => !bulkMomentExcluded[mo]);
     if (kidIds.length === 0) {
       showToast("Seleziona almeno un bambino");
       return;
     }
+    if (moments.length === 0) {
+      showToast("Seleziona almeno Andata o Ritorno");
+      return;
+    }
     setBulkBusy(true);
-    const res = await setWeekBulkResponsibilityAction(kidIds, weekStartDate, value, label);
+    const res = await setWeekBulkResponsibilityAction(kidIds, weekStartDate, moments, value, label);
     setBulkBusy(false);
     if (res.error) {
       showToast(res.error);
@@ -193,13 +207,13 @@ export default function PlannerCalendarView({
       const next = { ...prev };
       for (const kidId of kidIds) {
         for (const wd of WEEKDAYS) {
-          for (const mo of MOMENTS) {
-            const key = respKey(kidId, weekStartDate, wd.value, mo.value);
+          for (const moment of moments) {
+            const key = respKey(kidId, weekStartDate, wd.value, moment);
             next[key] = {
               kidId,
               weekStartDate,
               weekday: wd.value,
-              moment: mo.value,
+              moment,
               responsible: value,
               responsibleLabel: value === "altro" ? label ?? null : null,
             };
@@ -211,7 +225,13 @@ export default function PlannerCalendarView({
     setAssigningKey(null);
     setBulkAssigningAltro(false);
     setBulkAltroText("");
-    showToast(kidIds.length > 1 ? "Assegnato a tutta la settimana per entrambi i bambini!" : "Assegnato a tutta la settimana!");
+    const momentsLabel =
+      moments.length === 1 ? ` (solo ${MOMENTS.find((mo) => mo.value === moments[0])?.label})` : "";
+    showToast(
+      kidIds.length > 1
+        ? `Assegnato a tutta la settimana per entrambi i bambini${momentsLabel}!`
+        : `Assegnato a tutta la settimana${momentsLabel}!`
+    );
   }
 
   // SPRINT 5.3 — "Condivisione Piano": link pubblico di sola lettura per il
@@ -580,6 +600,27 @@ export default function PlannerCalendarView({
                       })}
                     </div>
                   )}
+                  {/* FEEDBACK SUCCESSIVO DI FABRIZIO: "ci vuole qualcosa di
+                      flessibile" — solo Andata, solo Ritorno, o entrambi
+                      (default). Stessa tecnica "chip toggle" dei bambini. */}
+                  <div className="mb-2 flex flex-wrap gap-2">
+                    {MOMENTS.map((mo) => {
+                      const included = !bulkMomentExcluded[mo.value];
+                      return (
+                        <button
+                          key={mo.value}
+                          type="button"
+                          onClick={() => toggleBulkMoment(mo.value)}
+                          className={`flex items-center gap-1 rounded-full bg-white px-2.5 py-1 text-[11px] font-semibold ${
+                            included ? "text-[#5B4FE9]" : "text-ink-3 line-through"
+                          }`}
+                        >
+                          <i className={`ti ${mo.icon} text-[11px]`} />
+                          {mo.label}
+                        </button>
+                      );
+                    })}
+                  </div>
                   <div className="flex flex-wrap gap-1.5">
                     {RESPONSIBLE_OPTIONS.map((opt) => (
                       <button

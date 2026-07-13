@@ -2,7 +2,7 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
-import { ResponsibleValue, Weekday, Moment, WEEKDAYS, MOMENTS } from "@/lib/nextgen/responsibility-options";
+import { ResponsibleValue, Weekday, Moment, WEEKDAYS } from "@/lib/nextgen/responsibility-options";
 import { revalidatePath } from "next/cache";
 
 const PLANNER_PATH = "/nextgen/planner";
@@ -83,14 +83,21 @@ export async function clearResponsibilityAction(
 // gestire diversamente o insieme". Un solo upsert multiplo (un array di
 // righe, una per bambino×giorno×momento) invece di 10-20 chiamate
 // sequenziali a setResponsibilityAction — più veloce e atomico.
+//
+// FEEDBACK SUCCESSIVO DI FABRIZIO: "ci vuole qualcosa di flessibile" — oltre
+// a scegliere i bambini, anche solo Andata, solo Ritorno, o entrambi (non
+// sempre chi porta è chi ritira). Il parametro moments sostituisce il fisso
+// MOMENTS di prima: chi chiama decide quali momenti includere.
 export async function setWeekBulkResponsibilityAction(
   kidIds: string[],
   weekStartDate: string,
+  moments: Moment[],
   responsible: ResponsibleValue,
   responsibleLabel?: string
 ): Promise<{ error?: string }> {
   if (!isSupabaseConfigured) return { error: "Supabase non configurato" };
   if (kidIds.length === 0) return { error: "Seleziona almeno un bambino" };
+  if (moments.length === 0) return { error: "Seleziona almeno Andata o Ritorno" };
   if (responsible === "altro" && !responsibleLabel?.trim()) {
     return { error: "Scrivi chi si occupa del ritiro" };
   }
@@ -104,12 +111,12 @@ export async function setWeekBulkResponsibilityAction(
   const now = new Date().toISOString();
   const rows = kidIds.flatMap((kidId) =>
     WEEKDAYS.flatMap((wd) =>
-      MOMENTS.map((mo) => ({
+      moments.map((moment) => ({
         parent_id: user.id,
         kid_id: kidId,
         week_start_date: weekStartDate,
         weekday: wd.value,
-        moment: mo.value,
+        moment,
         responsible,
         responsible_label: responsible === "altro" ? responsibleLabel!.trim() : null,
         updated_at: now,

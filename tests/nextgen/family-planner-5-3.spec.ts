@@ -191,6 +191,32 @@ test.describe("NEXTGEN - Family Planner Sprint 5.3 (Logistica/Chi fa cosa/Condiv
     await expect(page.getByText("Assegnato a tutta la settimana!")).toBeVisible();
   });
 
+  test("TC-N72 - 'Applica a tutta la settimana': deselezionando 'Ritorno' assegna solo Andata, lasciando Ritorno libero", async ({ page }) => {
+    test.skip(!isRealDeployment, "Richiede un deploy con Supabase configurato e un account genitore di test con almeno una settimana coperta e tutte le celle ancora libere.");
+    await loginAs(page, "parent");
+    await page.goto("/nextgen/planner");
+    await page.getByRole("button", { name: "Calendario" }).click();
+
+    const coveredDay = page.locator("button:has(span.rounded-full)").first();
+    if (!(await coveredDay.isVisible().catch(() => false))) {
+      test.skip(true, "Nessuna settimana coperta nel mese corrente per l'account di test.");
+    }
+    await coveredDay.click();
+
+    const unassignedBefore = await page.locator('button[title="Nessuno assegnato"]').count();
+    if (unassignedBefore === 0) {
+      test.skip(true, "Tutte le celle sono già assegnate per l'account di test.");
+    }
+
+    const bulkPanel = page.locator("div.bg-\\[\\#F5F2FF\\]").first();
+    await bulkPanel.getByRole("button", { name: "Ritorno" }).click(); // deseleziona Ritorno: resta solo Andata
+    await bulkPanel.getByRole("button", { name: /Nonno/ }).click();
+
+    await expect(page.getByText(/Assegnato a tutta la settimana.*\(solo Andata\)/)).toBeVisible();
+    // Ritorno non è stato toccato: deve restare almeno una cella "Nessuno assegnato".
+    await expect(page.locator('button[title="Nessuno assegnato"]').first()).toBeVisible();
+  });
+
   test("TC-N62 - Vista Mese: 'Condividi {mese}' apre il pannello di creazione link e mostra l'URL dopo la conferma", async ({ page }) => {
     test.skip(!isRealDeployment, "Richiede un deploy con Supabase configurato e l'account genitore di test.");
     await loginAs(page, "parent");
