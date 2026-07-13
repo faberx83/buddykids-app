@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { Fragment, useMemo, useState } from "react";
 // "import type" per SeasonWeek/PlanShare: sono usati SOLO come tipo in
 // questo componente client — con "import type" il compilatore li elimina
 // sempre dal bundle, cosi lib/data/planner.ts e lib/data/plan-shares.ts (che
@@ -14,6 +14,10 @@ import {
   WeekResponsibility,
   ResponsibleValue,
   RESPONSIBLE_OPTIONS,
+  Weekday,
+  Moment,
+  WEEKDAYS,
+  MOMENTS,
 } from "@/lib/nextgen/responsibility-options";
 import { setResponsibilityAction, clearResponsibilityAction } from "@/app/actions/responsibilities";
 import type { PlanShare } from "@/lib/data/plan-shares";
@@ -47,8 +51,26 @@ const DOT_BG: Record<string, string> = {
   green: "bg-green",
 };
 
-function respKey(kidId: string, weekStartDate: string): string {
-  return `${kidId}__${weekStartDate}`;
+// SPRINT CORRETTIVO — chiave estesa a giorno feriale + momento (vedi
+// lib/nextgen/responsibility-options.ts): persone diverse possono occuparsi
+// di andata/ritorno in giorni diversi della stessa settimana.
+function respKey(kidId: string, weekStartDate: string, weekday: Weekday, moment: Moment): string {
+  return `${kidId}__${weekStartDate}__${weekday}__${moment}`;
+}
+
+// Stessa tecnica di addDaysIso in lib/nextgen/calendar-weeks.ts, duplicata
+// qui (piccola funzione pura) per calcolare la data di Lun/Mar/Mer/Gio/Ven a
+// partire dal lunedì della settimana (weekStartDate) — serve solo per
+// etichettare le colonne della griglia "Chi fa cosa?" con la data reale.
+function addDaysIso(iso: string, days: number): string {
+  const d = new Date(iso + "T00:00:00Z");
+  d.setUTCDate(d.getUTCDate() + days);
+  return d.toISOString().slice(0, 10);
+}
+
+function formatDayMonth(iso: string): string {
+  const d = new Date(iso + "T00:00:00Z");
+  return `${d.getUTCDate()}/${d.getUTCMonth() + 1}`;
 }
 
 export default function PlannerCalendarView({
@@ -76,17 +98,24 @@ export default function PlannerCalendarView({
   // ricaricare la pagina per vedere subito il risultato.
   const [localResp, setLocalResp] = useState<Record<string, WeekResponsibility>>(() => {
     const map: Record<string, WeekResponsibility> = {};
-    for (const r of responsibilities) map[respKey(r.kidId, r.weekStartDate)] = r;
+    for (const r of responsibilities) map[respKey(r.kidId, r.weekStartDate, r.weekday, r.moment)] = r;
     return map;
   });
   const [assigningKey, setAssigningKey] = useState<string | null>(null);
   const [altroText, setAltroText] = useState("");
   const [savingKey, setSavingKey] = useState<string | null>(null);
 
-  async function handleAssign(kidId: string, weekStartDate: string, value: ResponsibleValue, label?: string) {
-    const key = respKey(kidId, weekStartDate);
+  async function handleAssign(
+    kidId: string,
+    weekStartDate: string,
+    weekday: Weekday,
+    moment: Moment,
+    value: ResponsibleValue,
+    label?: string
+  ) {
+    const key = respKey(kidId, weekStartDate, weekday, moment);
     setSavingKey(key);
-    const res = await setResponsibilityAction(kidId, weekStartDate, value, label);
+    const res = await setResponsibilityAction(kidId, weekStartDate, weekday, moment, value, label);
     setSavingKey(null);
     if (res.error) {
       showToast(res.error);
@@ -94,17 +123,24 @@ export default function PlannerCalendarView({
     }
     setLocalResp((prev) => ({
       ...prev,
-      [key]: { kidId, weekStartDate, responsible: value, responsibleLabel: value === "altro" ? label ?? null : null },
+      [key]: {
+        kidId,
+        weekStartDate,
+        weekday,
+        moment,
+        responsible: value,
+        responsibleLabel: value === "altro" ? label ?? null : null,
+      },
     }));
     setAssigningKey(null);
     setAltroText("");
     showToast("Assegnato!");
   }
 
-  async function handleClear(kidId: string, weekStartDate: string) {
-    const key = respKey(kidId, weekStartDate);
+  async function handleClear(kidId: string, weekStartDate: string, weekday: Weekday, moment: Moment) {
+    const key = respKey(kidId, weekStartDate, weekday, moment);
     setSavingKey(key);
-    const res = await clearResponsibilityAction(kidId, weekStartDate);
+    const res = await clearResponsibilityAction(kidId, weekStartDate, weekday, moment);
     setSavingKey(null);
     if (res.error) {
       showToast(res.error);
@@ -454,12 +490,6 @@ export default function PlannerCalendarView({
             <div className="flex flex-col gap-3">
               {selectedDay.kids.map((k) => {
                 const weekStartDate = selectedDay.weekStartDate;
-                const key = weekStartDate ? respKey(k.kidId, weekStartDate) : null;
-                const current = key ? localResp[key] : undefined;
-                const isAssigning = assigningKey === key;
-                const currentOption = current
-                  ? RESPONSIBLE_OPTIONS.find((o) => o.value === current.responsible)
-                  : null;
 
                 return (
                   <div key={k.kidId} className="flex flex-col gap-1.5">
@@ -469,86 +499,135 @@ export default function PlannerCalendarView({
                       <span className="text-ink-2">{selectedDay.activityName ?? "attività prenotata"}</span>
                     </div>
 
-                    {/* SPRINT 5.3 — "Chi fa cosa?": chi accompagna/ritira questo
-                        bambino questa settimana, versione leggera con
-                        etichetta libera. */}
-                    {weekStartDate && key && (
+                    {/* SPRINT CORRETTIVO — "Chi fa cosa?" per singolo giorno
+                        feriale e momento (andata/ritorno): feedback di
+                        Fabrizio, "non è detto che sia sempre la stessa
+                        persona a gestire" nell'arco della settimana. Griglia
+                        5 giorni × 2 momenti, un pannello di assegnazione
+                        condiviso sotto (una sola cella alla volta). */}
+                    {weekStartDate && (
                       <div className="ml-4 pl-0.5">
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setAssigningKey(isAssigning ? null : key);
-                            setAltroText(current?.responsible === "altro" ? current.responsibleLabel ?? "" : "");
-                          }}
-                          className={`flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-semibold ${
-                            current ? "bg-[#E8F9EE] text-[#2d8f52]" : "bg-[#FFF3E0] text-[#9a6b00]"
-                          }`}
-                        >
-                          {current ? (
-                            <>
-                              {currentOption?.emoji}{" "}
-                              {current.responsible === "altro" ? current.responsibleLabel : currentOption?.label}
-                            </>
-                          ) : (
-                            <>
-                              <i className="ti ti-alert-triangle text-[11px]" />
-                              Nessuno assegnato
-                            </>
-                          )}
-                          <i className={`ti ti-chevron-${isAssigning ? "up" : "down"} text-[10px]`} />
-                        </button>
+                        <div className="grid grid-cols-[auto_repeat(5,1fr)] items-center gap-1">
+                          <div />
+                          {WEEKDAYS.map((wd) => (
+                            <div key={wd.value} className="text-center text-[9.5px] font-bold text-ink-3">
+                              {wd.label}
+                              <div className="text-[8.5px] font-normal text-ink-3/70">
+                                {formatDayMonth(addDaysIso(weekStartDate, wd.dayOffset))}
+                              </div>
+                            </div>
+                          ))}
+                          {MOMENTS.map((mo) => (
+                            <Fragment key={mo.value}>
+                              <div className="text-[10px] font-semibold text-ink-2">
+                                {mo.label}
+                              </div>
+                              {WEEKDAYS.map((wd) => {
+                                const key = respKey(k.kidId, weekStartDate, wd.value, mo.value);
+                                const current = localResp[key];
+                                const currentOption = current
+                                  ? RESPONSIBLE_OPTIONS.find((o) => o.value === current.responsible)
+                                  : null;
+                                const isAssigning = assigningKey === key;
+                                return (
+                                  <button
+                                    key={key}
+                                    type="button"
+                                    onClick={() => {
+                                      setAssigningKey(isAssigning ? null : key);
+                                      setAltroText(
+                                        current?.responsible === "altro" ? current.responsibleLabel ?? "" : ""
+                                      );
+                                    }}
+                                    title={
+                                      current
+                                        ? current.responsible === "altro"
+                                          ? current.responsibleLabel ?? ""
+                                          : currentOption?.label
+                                        : "Nessuno assegnato"
+                                    }
+                                    className={`flex h-7 items-center justify-center rounded-lg text-[13px] ${
+                                      isAssigning
+                                        ? "bg-[#EFECFD] ring-1 ring-[#5B4FE9]"
+                                        : current
+                                          ? "bg-[#E8F9EE]"
+                                          : "bg-[#FFF3E0]"
+                                    }`}
+                                  >
+                                    {current ? currentOption?.emoji ?? "✏️" : "·"}
+                                  </button>
+                                );
+                              })}
+                            </Fragment>
+                          ))}
+                        </div>
 
-                        {isAssigning && (
-                          <div className="mt-2 flex flex-col gap-2 rounded-xl bg-bg p-2.5">
-                            <div className="flex flex-wrap gap-1.5">
-                              {RESPONSIBLE_OPTIONS.map((opt) => (
-                                <button
-                                  key={opt.value}
-                                  type="button"
-                                  disabled={savingKey === key}
-                                  onClick={() => {
-                                    if (opt.value === "altro") return; // richiede il testo sotto
-                                    handleAssign(k.kidId, weekStartDate, opt.value);
-                                  }}
-                                  className={`rounded-full px-2.5 py-1 text-[11px] font-semibold ${
-                                    current?.responsible === opt.value
-                                      ? "bg-ink text-white"
-                                      : "bg-white text-ink-2"
-                                  }`}
-                                >
-                                  {opt.emoji} {opt.label}
-                                </button>
-                              ))}
+                        {assigningKey &&
+                          WEEKDAYS.some((wd) =>
+                            MOMENTS.some((mo) => respKey(k.kidId, weekStartDate, wd.value, mo.value) === assigningKey)
+                          ) && (
+                            <div className="mt-2 flex flex-col gap-2 rounded-xl bg-bg p-2.5">
+                              {(() => {
+                                const [, , weekdayStr, momentStr] = assigningKey.split("__");
+                                const weekday = weekdayStr as Weekday;
+                                const moment = momentStr as Moment;
+                                const current = localResp[assigningKey];
+                                return (
+                                  <>
+                                    <div className="flex flex-wrap gap-1.5">
+                                      {RESPONSIBLE_OPTIONS.map((opt) => (
+                                        <button
+                                          key={opt.value}
+                                          type="button"
+                                          disabled={savingKey === assigningKey}
+                                          onClick={() => {
+                                            if (opt.value === "altro") return; // richiede il testo sotto
+                                            handleAssign(k.kidId, weekStartDate, weekday, moment, opt.value);
+                                          }}
+                                          className={`rounded-full px-2.5 py-1 text-[11px] font-semibold ${
+                                            current?.responsible === opt.value
+                                              ? "bg-ink text-white"
+                                              : "bg-white text-ink-2"
+                                          }`}
+                                        >
+                                          {opt.emoji} {opt.label}
+                                        </button>
+                                      ))}
+                                    </div>
+                                    <div className="flex items-center gap-1.5">
+                                      <input
+                                        type="text"
+                                        value={altroText}
+                                        onChange={(e) => setAltroText(e.target.value)}
+                                        placeholder="Altro: scrivi chi (es. Zia Carla)"
+                                        className="min-w-0 flex-1 rounded-lg border border-[#E8EBF0] bg-white px-2.5 py-1.5 text-[11.5px] text-ink"
+                                      />
+                                      <button
+                                        type="button"
+                                        disabled={savingKey === assigningKey || !altroText.trim()}
+                                        onClick={() =>
+                                          handleAssign(k.kidId, weekStartDate, weekday, moment, "altro", altroText)
+                                        }
+                                        className="flex-shrink-0 rounded-lg bg-ink px-2.5 py-1.5 text-[11px] font-bold text-white disabled:opacity-40"
+                                      >
+                                        OK
+                                      </button>
+                                    </div>
+                                    {current && (
+                                      <button
+                                        type="button"
+                                        disabled={savingKey === assigningKey}
+                                        onClick={() => handleClear(k.kidId, weekStartDate, weekday, moment)}
+                                        className="self-start text-[11px] font-semibold text-ink-3"
+                                      >
+                                        Rimuovi assegnazione
+                                      </button>
+                                    )}
+                                  </>
+                                );
+                              })()}
                             </div>
-                            <div className="flex items-center gap-1.5">
-                              <input
-                                type="text"
-                                value={altroText}
-                                onChange={(e) => setAltroText(e.target.value)}
-                                placeholder="Altro: scrivi chi (es. Zia Carla)"
-                                className="min-w-0 flex-1 rounded-lg border border-[#E8EBF0] bg-white px-2.5 py-1.5 text-[11.5px] text-ink"
-                              />
-                              <button
-                                type="button"
-                                disabled={savingKey === key || !altroText.trim()}
-                                onClick={() => handleAssign(k.kidId, weekStartDate, "altro", altroText)}
-                                className="flex-shrink-0 rounded-lg bg-ink px-2.5 py-1.5 text-[11px] font-bold text-white disabled:opacity-40"
-                              >
-                                OK
-                              </button>
-                            </div>
-                            {current && (
-                              <button
-                                type="button"
-                                disabled={savingKey === key}
-                                onClick={() => handleClear(k.kidId, weekStartDate)}
-                                className="self-start text-[11px] font-semibold text-ink-3"
-                              >
-                                Rimuovi assegnazione
-                              </button>
-                            )}
-                          </div>
-                        )}
+                          )}
                       </div>
                     )}
                   </div>

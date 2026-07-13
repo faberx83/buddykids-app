@@ -1,7 +1,7 @@
 import { test, expect } from "../fixtures/roles";
 import { loginAs, isRealDeployment } from "../fixtures/roles";
 
-// Area: NEXTGEN - Family Planner, Sprint 5.3
+// Area: NEXTGEN - Family Planner, Sprint 5.3 (+ correttivo "Chi fa cosa?")
 // Terza fase del PRD "Family Planner": "Logistica leggera" (indirizzi di
 // famiglia), "Chi fa cosa?" (assegnazione leggera per bambino/settimana,
 // versione a etichetta libera — NON il sistema multi-genitore completo,
@@ -10,6 +10,12 @@ import { loginAs, isRealDeployment } from "../fixtures/roles";
 // — nessun periodo personalizzato in questa fase). Nessuna nuova query
 // pesante: Indirizzi/Chi fa cosa/Condivisione riusano le stesse SeasonWeek e
 // bambini già letti da app/nextgen/planner/page.tsx.
+//
+// SPRINT CORRETTIVO (feedback di Fabrizio: "non è detto che sia sempre la
+// stessa persona a gestire"): "Chi fa cosa?" è passato da un'unica
+// assegnazione per bambino/settimana a una griglia per singolo giorno
+// feriale (Lun-Ven) e momento (Andata/Ritorno) — TC-N59/N60/N61 riscritti di
+// conseguenza, TC-N65 aggiunto per verificare l'indipendenza fra celle.
 
 test.describe("NEXTGEN - Family Planner Sprint 5.3 (Logistica/Chi fa cosa/Condivisione)", () => {
   test("TC-N56 - Il link 'Indirizzi di famiglia' è raggiungibile dal Planner e apre 4 schede indirizzo", async ({ page }) => {
@@ -50,7 +56,7 @@ test.describe("NEXTGEN - Family Planner Sprint 5.3 (Logistica/Chi fa cosa/Condiv
     await expect(page.getByPlaceholder("Via, città...").first()).toBeVisible();
   });
 
-  test("TC-N59 - Nel riepilogo settimana del Calendario, un bambino senza assegnazione mostra 'Nessuno assegnato'", async ({ page }) => {
+  test("TC-N59 - Nel riepilogo settimana del Calendario, 'Chi fa cosa?' mostra una griglia Lun-Ven × Andata/Ritorno per bambino", async ({ page }) => {
     test.skip(!isRealDeployment, "Richiede un deploy con Supabase configurato e un account genitore di test con almeno una settimana coperta.");
     await loginAs(page, "parent");
     await page.goto("/nextgen/planner");
@@ -62,10 +68,15 @@ test.describe("NEXTGEN - Family Planner Sprint 5.3 (Logistica/Chi fa cosa/Condiv
     }
     await coveredDay.click();
 
-    await expect(page.getByText("Nessuno assegnato").first()).toBeVisible();
+    // SPRINT CORRETTIVO: non più un singolo badge per bambino/settimana, ma
+    // una griglia 5 giorni × 2 momenti (feedback di Fabrizio: "non è detto
+    // che sia sempre la stessa persona a gestire").
+    await expect(page.getByText("Andata", { exact: true }).first()).toBeVisible();
+    await expect(page.getByText("Ritorno", { exact: true }).first()).toBeVisible();
+    await expect(page.locator('button[title="Nessuno assegnato"]').first()).toBeVisible();
   });
 
-  test("TC-N60 - 'Chi fa cosa?': assegnare un'opzione predefinita (es. Partner) aggiorna subito il badge", async ({ page }) => {
+  test("TC-N60 - 'Chi fa cosa?': assegnare un'opzione predefinita (es. Partner) a una singola cella giorno/momento aggiorna subito quella cella", async ({ page }) => {
     test.skip(!isRealDeployment, "Richiede un deploy con Supabase configurato e un account genitore di test con almeno una settimana coperta.");
     await loginAs(page, "parent");
     await page.goto("/nextgen/planner");
@@ -77,11 +88,11 @@ test.describe("NEXTGEN - Family Planner Sprint 5.3 (Logistica/Chi fa cosa/Condiv
     }
     await coveredDay.click();
 
-    const assignButton = page.getByText("Nessuno assegnato").first();
-    if (!(await assignButton.isVisible().catch(() => false))) {
-      test.skip(true, "Bambino già assegnato per questa settimana nell'account di test.");
+    const cell = page.locator('button[title="Nessuno assegnato"]').first();
+    if (!(await cell.isVisible().catch(() => false))) {
+      test.skip(true, "Tutte le celle già assegnate per questa settimana nell'account di test.");
     }
-    await assignButton.click();
+    await cell.click();
     await page.getByRole("button", { name: /Partner/ }).click();
 
     await expect(page.getByText("Assegnato!")).toBeVisible();
@@ -99,13 +110,43 @@ test.describe("NEXTGEN - Family Planner Sprint 5.3 (Logistica/Chi fa cosa/Condiv
     }
     await coveredDay.click();
 
-    const badge = page.locator("button", { hasText: /Nessuno assegnato|✓/ }).first();
-    await badge.click();
+    const cell = page.locator('button[title="Nessuno assegnato"]').first();
+    await cell.click();
 
     const okButton = page.getByRole("button", { name: "OK" });
     await expect(okButton).toBeDisabled();
     await page.getByPlaceholder("Altro: scrivi chi (es. Zia Carla)").fill("Zia Carla");
     await expect(okButton).toBeEnabled();
+  });
+
+  test("TC-N65 - 'Chi fa cosa?': giorni diversi della stessa settimana possono avere responsabili diversi", async ({ page }) => {
+    test.skip(!isRealDeployment, "Richiede un deploy con Supabase configurato e un account genitore di test con almeno una settimana coperta e almeno 2 celle libere.");
+    await loginAs(page, "parent");
+    await page.goto("/nextgen/planner");
+    await page.getByRole("button", { name: "Calendario" }).click();
+
+    const coveredDay = page.locator("button:has(span.rounded-full)").first();
+    if (!(await coveredDay.isVisible().catch(() => false))) {
+      test.skip(true, "Nessuna settimana coperta nel mese corrente per l'account di test.");
+    }
+    await coveredDay.click();
+
+    const cells = page.locator('button[title="Nessuno assegnato"]');
+    if ((await cells.count()) < 2) {
+      test.skip(true, "Meno di 2 celle libere per l'account di test.");
+    }
+    // Prima cella -> Partner (Andata, Lun)
+    await cells.nth(0).click();
+    await page.getByRole("button", { name: /Partner/ }).click();
+    await expect(page.getByText("Assegnato!")).toBeVisible();
+
+    // Seconda cella -> Nonno, deve restare indipendente dalla prima.
+    await cells.nth(0).click(); // ora la lista "Nessuno assegnato" è scalata di uno
+    await page.getByRole("button", { name: /Nonno/ }).click();
+    await expect(page.getByText("Assegnato!")).toBeVisible();
+
+    await expect(page.locator('button[title="Partner"]').first()).toBeVisible();
+    await expect(page.locator('button[title="Nonno"]').first()).toBeVisible();
   });
 
   test("TC-N62 - Vista Mese: 'Condividi {mese}' apre il pannello di creazione link e mostra l'URL dopo la conferma", async ({ page }) => {

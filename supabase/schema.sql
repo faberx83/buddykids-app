@@ -1408,18 +1408,29 @@ create policy "Indirizzi: il genitore gestisce i propri"
 
 -- "Chi fa cosa?" (versione LEGGERA, richiesta esplicita di Fabrizio: SENZA il
 -- sistema multi-genitore vero, che resta la fase dedicata 5.5): un'etichetta
--- libera di responsabile per bambino e settimana stagionale. week_start_date
--- è la stessa chiave già usata da profiles.dismissed_weeks (SeasonWeek.
--- startDate) — nessun nuovo concetto di "settimana" da introdurre.
+-- libera di responsabile per bambino, settimana, GIORNO FERIALE e momento
+-- (andata/ritorno). week_start_date è la stessa chiave già usata da
+-- profiles.dismissed_weeks (SeasonWeek.startDate) — nessun nuovo concetto di
+-- "settimana" da introdurre. SPRINT CORRETTIVO (feedback di Fabrizio: "non è
+-- detto che sia sempre la stessa persona a gestire"): la versione iniziale
+-- assegnava un solo responsabile per l'intera settimana; qui si scende a
+-- livello di singolo giorno (lun/mar/mer/gio/ven) e momento (andata/ritorno),
+-- per coprire il caso reale in cui persone diverse si alternano nella stessa
+-- settimana. Resta un dato dichiarato dalla famiglia per coordinamento
+-- interno, NON legato alla reale frequenza del bambino al centro (che il
+-- modello dati non traccia a livello di giorno, vedi lib/nextgen/
+-- calendar-weeks.ts).
 create table if not exists public.week_responsibilities (
   id uuid primary key default gen_random_uuid(),
   parent_id uuid not null references public.profiles(id) on delete cascade,
   kid_id uuid not null references public.kids(id) on delete cascade,
   week_start_date date not null,
+  weekday text not null check (weekday in ('lun', 'mar', 'mer', 'gio', 'ven')),
+  moment text not null check (moment in ('andata', 'ritorno')),
   responsible text not null check (responsible in ('io', 'partner', 'nonno', 'nonna', 'tata', 'altro')),
   responsible_label text, -- solo per responsible='altro' (testo libero)
   updated_at timestamptz not null default now(),
-  unique (parent_id, kid_id, week_start_date)
+  unique (parent_id, kid_id, week_start_date, weekday, moment)
 );
 
 alter table public.week_responsibilities enable row level security;

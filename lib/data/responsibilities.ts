@@ -11,20 +11,29 @@ import { isSupabaseConfigured } from "@/lib/supabase/env";
 // Tipi/costanti spostati in un modulo client-safe (niente import di
 // lib/supabase/server): vedi commento in lib/nextgen/responsibility-options.ts.
 // Ri-esportati qui per non rompere chi già importava da questo file lato server.
-import { ResponsibleValue, RESPONSIBLE_OPTIONS, WeekResponsibility } from "@/lib/nextgen/responsibility-options";
-export type { ResponsibleValue, WeekResponsibility };
+import {
+  ResponsibleValue,
+  RESPONSIBLE_OPTIONS,
+  WeekResponsibility,
+  Weekday,
+  Moment,
+} from "@/lib/nextgen/responsibility-options";
+export type { ResponsibleValue, WeekResponsibility, Weekday, Moment };
 export { RESPONSIBLE_OPTIONS };
 
 interface RawResponsibilityRow {
   kid_id: string;
   week_start_date: string;
+  weekday: string;
+  moment: string;
   responsible: string;
   responsible_label: string | null;
 }
 
 // Tutte le assegnazioni della stagione per il genitore loggato — dataset
-// piccolo (bambini x settimane coperte), nessun filtro per periodo: la UI
-// (PlannerCalendarView) cerca localmente per (kidId, weekStartDate).
+// piccolo (bambini x settimane coperte x 5 giorni x 2 momenti), nessun
+// filtro per periodo: la UI (PlannerCalendarView) cerca localmente per
+// (kidId, weekStartDate, weekday, moment).
 export async function getResponsibilitiesForParent(): Promise<WeekResponsibility[]> {
   if (!isSupabaseConfigured) return [];
 
@@ -36,7 +45,7 @@ export async function getResponsibilitiesForParent(): Promise<WeekResponsibility
 
   const { data, error } = await supabase
     .from("week_responsibilities")
-    .select("kid_id, week_start_date, responsible, responsible_label")
+    .select("kid_id, week_start_date, weekday, moment, responsible, responsible_label")
     .eq("parent_id", user.id);
 
   if (error || !data) return [];
@@ -44,6 +53,8 @@ export async function getResponsibilitiesForParent(): Promise<WeekResponsibility
   return (data as RawResponsibilityRow[]).map((r) => ({
     kidId: r.kid_id,
     weekStartDate: r.week_start_date,
+    weekday: r.weekday as Weekday,
+    moment: r.moment as Moment,
     responsible: r.responsible as ResponsibleValue,
     responsibleLabel: r.responsible_label,
   }));

@@ -18,9 +18,32 @@ export const RESPONSIBLE_OPTIONS: { value: ResponsibleValue; emoji: string; labe
   { value: "altro", emoji: "✏️", label: "Altro" },
 ];
 
+// SPRINT CORRETTIVO (feedback di Fabrizio: "non è detto che sia sempre la
+// stessa persona a gestire") — granularità per singolo giorno feriale e
+// momento (andata/ritorno), invece di un'unica assegnazione per l'intera
+// settimana: persone diverse possono alternarsi nella stessa settimana.
+export type Weekday = "lun" | "mar" | "mer" | "gio" | "ven";
+
+export const WEEKDAYS: { value: Weekday; label: string; dayOffset: number }[] = [
+  { value: "lun", label: "Lun", dayOffset: 0 },
+  { value: "mar", label: "Mar", dayOffset: 1 },
+  { value: "mer", label: "Mer", dayOffset: 2 },
+  { value: "gio", label: "Gio", dayOffset: 3 },
+  { value: "ven", label: "Ven", dayOffset: 4 },
+];
+
+export type Moment = "andata" | "ritorno";
+
+export const MOMENTS: { value: Moment; label: string; icon: string }[] = [
+  { value: "andata", label: "Andata", icon: "ti-arrow-right" },
+  { value: "ritorno", label: "Ritorno", icon: "ti-arrow-left" },
+];
+
 export interface WeekResponsibility {
   kidId: string;
   weekStartDate: string;
+  weekday: Weekday;
+  moment: Moment;
   responsible: ResponsibleValue;
   responsibleLabel: string | null; // solo per responsible="altro"
 }
