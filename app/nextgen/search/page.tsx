@@ -5,10 +5,13 @@ import { getPlannerData } from "@/lib/data/planner";
 import { getSeasonYear } from "@/lib/data/season-year";
 import SearchDiscoveryClient from "./SearchDiscoveryClient";
 
-// SPRINT 2 (NEXTGEN) — "Ricerca e scoperta": meno filtri manuali, più
-// contesto del genitore. Nessuna nuova query: riusa getActivities/
+// SPRINT 2 (NEXTGEN) — "Ricerca e scoperta": ordinamento intelligente sopra
+// il contesto del genitore. Nessuna nuova query: riusa getActivities/
 // getKidsForUser/getPlannerData/getActivityAvailabilityByWeek, già usate in
 // LEGACY (Cerca, Home, Planner) — stesso layer dati, zero duplicazione.
+//
+// SPRINT 5.7 (NEXTGEN) — seasonYear ora passato al client per calcolare le
+// 13 settimane stagionali del filtro "Data" (ripristinato da LEGACY).
 export default async function NextgenSearchPage() {
   if (!isSupabaseConfigured) {
     return (
@@ -32,6 +35,7 @@ export default async function NextgenSearchPage() {
     <SearchDiscoveryClient
       activities={activities}
       kids={kids}
+      seasonYear={seasonYear}
       uncoveredWeekStart={uncoveredWeek?.startDate ?? null}
       uncoveredWeekLabel={uncoveredWeek ? `${uncoveredWeek.label} (${uncoveredWeek.dateRange})` : null}
       availabilityByWeek={availabilityByWeek}

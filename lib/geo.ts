@@ -46,3 +46,16 @@ export function writeStoredGeo(lat: number, lng: number): void {
     // storage non disponibile (es. modalità privata): non blocchiamo l'uso
   }
 }
+
+// SPRINT 5.7 (NEXTGEN) — Ricerca: ripristino dei filtri LEGACY ("Zona" può
+// essere azzerata come gli altri filtri). Aggiunta pura (nessuna funzione
+// esistente modificata): SearchClient.tsx (LEGACY) continua a fare
+// sessionStorage.removeItem(...) inline con la propria copia della chiave,
+// invariato — questa funzione serve solo al nuovo codice NEXTGEN.
+export function clearStoredGeo(): void {
+  try {
+    sessionStorage.removeItem(GEO_STORAGE_KEY);
+  } catch {
+    // storage non disponibile, non blocchiamo l'azione
+  }
+}
