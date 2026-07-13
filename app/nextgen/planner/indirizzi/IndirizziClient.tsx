@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { ParentAddress, ADDRESS_KIND_LABELS } from "@/lib/data/addresses";
+import { ParentAddress, ADDRESS_KIND_LABELS } from "@/lib/nextgen/address-kinds";
 import { setAddressAction, deleteAddressAction } from "@/app/actions/addresses";
 import { useNextgenToast } from "@/components/nextgen/NextgenToastProvider";
 import PageHeader from "@/components/PageHeader";

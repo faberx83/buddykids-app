@@ -8,23 +8,12 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
-
-export type AddressKind = "casa" | "lavoro_genitore1" | "lavoro_genitore2" | "altro";
-
-export interface ParentAddress {
-  kind: AddressKind;
-  label: string | null; // solo per kind="altro"
-  address: string; // vuoto se non ancora impostato
-}
-
-const ADDRESS_KINDS: AddressKind[] = ["casa", "lavoro_genitore1", "lavoro_genitore2", "altro"];
-
-export const ADDRESS_KIND_LABELS: Record<AddressKind, string> = {
-  casa: "Casa",
-  lavoro_genitore1: "Lavoro Genitore 1",
-  lavoro_genitore2: "Lavoro Genitore 2",
-  altro: "Altro",
-};
+// Tipi/costanti spostati in un modulo client-safe (niente import di
+// lib/supabase/server): vedi commento in lib/nextgen/address-kinds.ts. Ri-
+// esportati qui per non rompere chi già importava da questo file lato server.
+import { AddressKind, ParentAddress, ADDRESS_KINDS, ADDRESS_KIND_LABELS } from "@/lib/nextgen/address-kinds";
+export type { AddressKind, ParentAddress };
+export { ADDRESS_KIND_LABELS };
 
 interface RawAddressRow {
   kind: string;

@@ -8,24 +8,12 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
-
-export type ResponsibleValue = "io" | "partner" | "nonno" | "nonna" | "tata" | "altro";
-
-export const RESPONSIBLE_OPTIONS: { value: ResponsibleValue; emoji: string; label: string }[] = [
-  { value: "io", emoji: "🧑", label: "Io" },
-  { value: "partner", emoji: "❤️", label: "Partner" },
-  { value: "nonno", emoji: "👴", label: "Nonno" },
-  { value: "nonna", emoji: "👵", label: "Nonna" },
-  { value: "tata", emoji: "🧑‍🍼", label: "Tata" },
-  { value: "altro", emoji: "✏️", label: "Altro" },
-];
-
-export interface WeekResponsibility {
-  kidId: string;
-  weekStartDate: string;
-  responsible: ResponsibleValue;
-  responsibleLabel: string | null; // solo per responsible="altro"
-}
+// Tipi/costanti spostati in un modulo client-safe (niente import di
+// lib/supabase/server): vedi commento in lib/nextgen/responsibility-options.ts.
+// Ri-esportati qui per non rompere chi già importava da questo file lato server.
+import { ResponsibleValue, RESPONSIBLE_OPTIONS, WeekResponsibility } from "@/lib/nextgen/responsibility-options";
+export type { ResponsibleValue, WeekResponsibility };
+export { RESPONSIBLE_OPTIONS };
 
 interface RawResponsibilityRow {
   kid_id: string;

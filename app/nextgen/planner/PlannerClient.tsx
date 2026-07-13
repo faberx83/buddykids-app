@@ -2,12 +2,18 @@
 
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { PlannerData } from "@/lib/data/planner";
+import type { PlannerData } from "@/lib/data/planner";
 import { KidOverlap, BudgetSummary, computePerKidCoverage } from "@/lib/nextgen/planner-insights";
-import { Mission } from "@/lib/nextgen/missions";
-import { SmartMatch } from "@/lib/nextgen/smart-search";
-import { WeekResponsibility } from "@/lib/data/responsibilities";
-import { PlanShare } from "@/lib/data/plan-shares";
+import type { Mission } from "@/lib/nextgen/missions";
+import type { SmartMatch } from "@/lib/nextgen/smart-search";
+// "import type": queste due sono interfacce usate SOLO come tipo (prop
+// types), mai come valore — con "import type" il compilatore le elimina
+// sempre dal bundle client, garantendo che lib/data/responsibilities.ts e
+// lib/data/plan-shares.ts (che importano lib/supabase/server) non vengano
+// mai trascinati qui per errore (stesso bug di build causato da
+// ADDRESS_KIND_LABELS/RESPONSIBLE_OPTIONS, vedi lib/nextgen/address-kinds.ts).
+import type { WeekResponsibility } from "@/lib/data/responsibilities";
+import type { PlanShare } from "@/lib/data/plan-shares";
 import { Kid } from "@/lib/types";
 import { lightBgClasses } from "@/lib/colors";
 import ActivityCard from "@/components/ActivityCard";

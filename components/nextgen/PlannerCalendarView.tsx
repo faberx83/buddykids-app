@@ -1,19 +1,25 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { SeasonWeek } from "@/lib/data/planner";
-import { KidOverlap } from "@/lib/nextgen/planner-insights";
+// "import type" per SeasonWeek/PlanShare: sono usati SOLO come tipo in
+// questo componente client — con "import type" il compilatore li elimina
+// sempre dal bundle, cosi lib/data/planner.ts e lib/data/plan-shares.ts (che
+// importano lib/supabase/server) non finiscono mai nel bundle client per
+// errore (stesso bug di build risolto per ADDRESS_KIND_LABELS/
+// RESPONSIBLE_OPTIONS, vedi lib/nextgen/address-kinds.ts).
+import type { SeasonWeek } from "@/lib/data/planner";
+import type { KidOverlap } from "@/lib/nextgen/planner-insights";
 import { buildCalendarMonths, defaultMonthKey, CalendarDay } from "@/lib/nextgen/calendar-weeks";
 import {
   WeekResponsibility,
   ResponsibleValue,
   RESPONSIBLE_OPTIONS,
-} from "@/lib/data/responsibilities";
+} from "@/lib/nextgen/responsibility-options";
 import { setResponsibilityAction, clearResponsibilityAction } from "@/app/actions/responsibilities";
-import { PlanShare } from "@/lib/data/plan-shares";
+import type { PlanShare } from "@/lib/data/plan-shares";
 import { createPlanShareAction, revokePlanShareAction } from "@/app/actions/plan-shares";
 import { useNextgenToast } from "@/components/nextgen/NextgenToastProvider";
-import { Kid } from "@/lib/types";
+import type { Kid } from "@/lib/types";
 
 // SPRINT 5.2 (NEXTGEN) — Planner, modalità Calendario: "Giorno, settimana e
 // mese, con colori per figlio e conflitti evidenziati" (PRD Family Planner).
