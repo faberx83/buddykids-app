@@ -7,9 +7,11 @@ import { getSeasonYear } from "@/lib/data/season-year";
 import { getParentProfile } from "@/lib/data/profile";
 import { getResponsibilitiesForParent } from "@/lib/data/responsibilities";
 import { getPlanSharesForParent } from "@/lib/data/plan-shares";
+import { getPlannerMapPins } from "@/lib/data/planner-map";
 import { computeSmartMatches } from "@/lib/nextgen/smart-search";
 import { computeKidOverlaps, computeBudgetSummary, computePriorityWeekIndex } from "@/lib/nextgen/planner-insights";
 import { computeMissions } from "@/lib/nextgen/missions";
+import { computeReminders } from "@/lib/nextgen/reminders";
 import PlannerClient from "./PlannerClient";
 
 // SPRINT 3 (NEXTGEN) — "trasformare il Planner nella feature principale del
@@ -32,22 +34,26 @@ export default async function NextgenPlannerPage() {
   }
 
   const seasonYear = await getSeasonYear();
-  const [planner, bookings, kids, activities, availabilityByWeek, profile, responsibilities, existingShares] = await Promise.all([
-    getPlannerData(),
-    getMyBookingsForParent(),
-    getKidsForUser(),
-    getActivities(),
-    getActivityAvailabilityByWeek(seasonYear),
-    getParentProfile(),
-    getResponsibilitiesForParent(),
-    getPlanSharesForParent(),
-  ]);
+  const [planner, bookings, kids, activities, availabilityByWeek, profile, responsibilities, existingShares, mapPins] =
+    await Promise.all([
+      getPlannerData(),
+      getMyBookingsForParent(),
+      getKidsForUser(),
+      getActivities(),
+      getActivityAvailabilityByWeek(seasonYear),
+      getParentProfile(),
+      getResponsibilitiesForParent(),
+      getPlanSharesForParent(),
+      getPlannerMapPins(),
+    ]);
 
   const overlaps = computeKidOverlaps(bookings);
   const budget = computeBudgetSummary(bookings, activities);
   const priorityIndex = computePriorityWeekIndex(planner.weeks);
   const priorityWeek = planner.weeks.find((w) => w.index === priorityIndex) ?? null;
   const missions = computeMissions(planner, bookings, activities, kids);
+  const todayIso = new Date().toISOString().slice(0, 10);
+  const reminders = computeReminders(planner, bookings, priorityIndex, overlaps, budget, profile.seasonBudgetTarget, todayIso);
 
   const recommendations = priorityWeek
     ? computeSmartMatches(activities, kids, {
@@ -65,9 +71,11 @@ export default async function NextgenPlannerPage() {
       priorityIndex={priorityIndex}
       recommendations={recommendations}
       missions={missions}
+      reminders={reminders}
       seasonBudgetTarget={profile.seasonBudgetTarget}
       responsibilities={responsibilities}
       existingShares={existingShares}
+      mapPins={mapPins}
     />
   );
 }

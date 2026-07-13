@@ -14,6 +14,8 @@ import type { SmartMatch } from "@/lib/nextgen/smart-search";
 // ADDRESS_KIND_LABELS/RESPONSIBLE_OPTIONS, vedi lib/nextgen/address-kinds.ts).
 import type { WeekResponsibility } from "@/lib/data/responsibilities";
 import type { PlanShare } from "@/lib/data/plan-shares";
+import type { PlannerMapPin } from "@/lib/data/planner-map";
+import type { Reminder } from "@/lib/nextgen/reminders";
 import { Kid } from "@/lib/types";
 import { lightBgClasses } from "@/lib/colors";
 import ActivityCard from "@/components/ActivityCard";
@@ -23,7 +25,14 @@ import PlannerModeTabs, { PlannerMode } from "@/components/nextgen/PlannerModeTa
 import PlannerComingSoon from "@/components/nextgen/PlannerComingSoon";
 import PlannerBudgetView from "@/components/nextgen/PlannerBudgetView";
 import PlannerCalendarView from "@/components/nextgen/PlannerCalendarView";
+import PlannerMapView from "@/components/nextgen/PlannerMapView";
 import Link from "next/link";
+
+const REMINDER_TONE_CLASSES: Record<Reminder["tone"], string> = {
+  urgent: "bg-[#FDECEC] text-[#B02A2A]",
+  warning: "bg-[#FFF7E8] text-[#9a6b00]",
+  info: "bg-[#F5F2FF] text-[#5B4FE9]",
+};
 
 // SPRINT 3 (NEXTGEN) — Planner come "cuore dell'esperienza": timeline
 // familiare completa (13 settimane), sovrapposizioni, settimana prioritaria
@@ -52,9 +61,11 @@ export default function PlannerClient({
   priorityIndex,
   recommendations,
   missions,
+  reminders,
   seasonBudgetTarget,
   responsibilities,
   existingShares,
+  mapPins,
 }: {
   planner: PlannerData;
   kids: Kid[];
@@ -63,9 +74,11 @@ export default function PlannerClient({
   priorityIndex: number | null;
   recommendations: SmartMatch[];
   missions: Mission[];
+  reminders: Reminder[];
   seasonBudgetTarget: number | null;
   responsibilities: WeekResponsibility[];
   existingShares: PlanShare[];
+  mapPins: PlannerMapPin[];
 }) {
   const router = useRouter();
   const [mode, setMode] = useState<PlannerMode>("organizzazione");
@@ -110,13 +123,7 @@ export default function PlannerClient({
           />
         )}
 
-        {mode === "mappa" && (
-          <PlannerComingSoon
-            icon="ti-map-pin"
-            title="Vista Mappa in arrivo"
-            description="Tutte le attività su una mappa, con distanze e tempi di percorrenza dai tuoi indirizzi salvati."
-          />
-        )}
+        {mode === "mappa" && <PlannerMapView pins={mapPins} />}
 
         {mode === "gruppi" && (
           <PlannerComingSoon
@@ -130,6 +137,25 @@ export default function PlannerClient({
 
         {mode === "organizzazione" && (
         <>
+        {/* SPRINT 5.4 — "Promemoria intelligenti" (PRD Family Planner):
+            a differenza delle Missioni sotto (positive, non urgenti), questi
+            hanno una scadenza reale e vicina — mostrati PRIMA delle Missioni
+            perché più azionabili. Calcolati in lib/nextgen/reminders.ts da
+            dati già letti (nessuna nuova query), mai più di 4. */}
+        {reminders.length > 0 && (
+          <div className="mb-4 flex flex-col gap-2">
+            {reminders.map((r) => (
+              <div
+                key={r.id}
+                className={`flex items-start gap-2.5 rounded-2xl p-3.5 ${REMINDER_TONE_CLASSES[r.tone]}`}
+              >
+                <span className="text-base leading-none">{r.emoji}</span>
+                <span className="text-[12.5px] font-medium">{r.text}</span>
+              </div>
+            ))}
+          </div>
+        )}
+
         {/* Missioni — richiesta di Fabrizio: "non gamification, messaggi che
             riducono l'ansia e danno un senso di avanzamento". Calcolate in
             lib/nextgen/missions.ts, mostrate solo se ce n'è almeno una. */}
