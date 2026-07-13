@@ -1,10 +1,10 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { PlannerData } from "@/lib/data/planner";
-import { MyBooking, BookingStatus } from "@/lib/data/my-bookings";
+import { MyBooking } from "@/lib/data/my-bookings";
 import { Activity } from "@/lib/types";
 import { TodayCheckin } from "@/lib/data/checkin";
 import { CommunityHomeSignal } from "@/lib/types";
@@ -28,27 +28,25 @@ import BookingVisualCard from "@/components/nextgen/BookingVisualCard";
 //   2) Check-in di oggi (se presente) — prima assente in NEXTGEN
 //   3) Prossimo appuntamento (singolare — prima erano "prossimi impegni", una
 //      lista di 3: qui la Home mostra solo il più imminente, il resto resta
-//      nell'elenco completo in fondo, per ridurre le decisioni da prendere)
+//      nel Planner/elenco prenotazioni completo, per ridurre le decisioni da
+//      prendere)
 //   4) Suggerimenti personalizzati
-//   5) Planner sintetico (mini timeline, invariata nel dato, upgrade solo
-//      visivo) -> apre /nextgen/planner
-//   6) Prenotazioni (righe upgradate a BookingVisualCard: foto, figlio,
-//      periodo, badge stato, un'unica azione — non più righe di solo testo)
-//   7) Statistiche — spostate in fondo e ridotte (erano a metà pagina, con
-//      lo stesso peso visivo della Hero Card: ora sono l'ultima cosa, più
-//      piccole, perché sono un riepilogo per chi vuole approfondire, non la
-//      prima risposta alla domanda "come sto andando?")
+//   5) Attività da confermare (solo status "pending" — non più l'elenco
+//      completo con raggruppa/ordina, spostato nel Planner/"/prenotazioni")
+//
+// SPRINT 5.1 (NEXTGEN) — "Home ridotta a sola sintesi" (richiesta esplicita
+// di Fabrizio, PRD Family Planner): rimossi "Planner sintetico" (mini
+// timeline) e "Statistiche" (Confermate/In attesa/Speso finora) — quel
+// dettaglio ora vive nel Planner (Organizzazione/Budget). Al loro posto,
+// una CTA "Apri Planner" unica in fondo alla pagina. Lo spec esplicito era:
+// "HOME Hero stato famiglia (copertura sintetica) Prossimo appuntamento
+// Check-in del giorno Notifiche Suggerimenti Attività da confermare CTA
+// 'Apri Planner' Stop. Niente timeline completa. Niente budget dettagliato.
+// Niente mappa. Solo sintesi." — non esiste ancora un centro notifiche
+// dedicato: il segnale Community (sotto) e le sezioni Check-in/Attività da
+// confermare assolvono per ora al ruolo "Notifiche".
 
 type Recommendation = { activity: Activity; kidName: string; matchPercent: number };
-
-type GroupKey = "kid" | "week" | "month" | "activity" | "status";
-type SortKey = "date" | "price" | "name";
-
-const STATUS_LABEL: Record<BookingStatus, string> = {
-  pending: "In attesa",
-  confirmed: "Confermata",
-  cancelled: "Annullata",
-};
 
 const MONTH_LABELS_IT = [
   "Gennaio", "Febbraio", "Marzo", "Aprile", "Maggio", "Giugno",
@@ -56,16 +54,6 @@ const MONTH_LABELS_IT = [
 ];
 
 const WEEKDAY_IT = ["domenica", "lunedì", "martedì", "mercoledì", "giovedì", "venerdì", "sabato"];
-
-function monthLabel(monthKey: string): string {
-  const [y, m] = monthKey.split("-").map(Number);
-  if (!y || !m) return "Senza data";
-  return `${MONTH_LABELS_IT[m - 1]} ${y}`;
-}
-
-function netPrice(b: MyBooking): number {
-  return b.totalAmount - b.discountAmount;
-}
 
 // "lunedì 14 luglio" — usato solo nella frase del prossimo impegno nella
 // Hero Card, per essere leggibile come una frase e non come una data ISO.
@@ -104,17 +92,17 @@ export default function HomeDashboardClient({
     [active, todayIso]
   );
   const nextAppointment = upcoming[0] ?? null;
-  // Righe da mostrare in "Prenotazioni": le prossime, esclusa quella già
-  // mostrata come "Prossimo appuntamento" — evita di ripetere la stessa
-  // informazione due volte nella stessa schermata.
-  const upcomingForList = upcoming.slice(1, 4);
 
-  const totalSpent = useMemo(() => active.reduce((sum, b) => sum + netPrice(b), 0), [active]);
-  const statusCounts = useMemo(() => {
-    const counts: Record<BookingStatus, number> = { pending: 0, confirmed: 0, cancelled: 0 };
-    for (const b of bookings) counts[b.status]++;
-    return counts;
-  }, [bookings]);
+  // SPRINT 5.1 — "Attività da confermare": solo le prenotazioni in stato
+  // "pending", niente più raggruppa/ordina/comprimi (quell'elenco completo
+  // resta in "/prenotazioni" e nel Planner).
+  const pendingBookings = useMemo(
+    () =>
+      bookings
+        .filter((b) => b.status === "pending")
+        .sort((a, b) => (a.firstWeekStart ?? "9999").localeCompare(b.firstWeekStart ?? "9999")),
+    [bookings]
+  );
 
   const neededCount = planner.weeks.filter((w) => !w.dismissed).length;
   const percent = neededCount > 0 ? Math.round((planner.coveredCount / neededCount) * 100) : 0;
@@ -127,60 +115,6 @@ export default function HomeDashboardClient({
     const rest = gaps.length - names.length;
     return names.join(", ") + (rest > 0 ? ` e altre ${rest}` : "");
   }, [gaps]);
-
-  // Sezione secondaria "Tutte le prenotazioni": Vista/Raggruppamento/
-  // Ordinamento tenuti separati come richiesto, in fondo e con peso visivo
-  // ridotto rispetto alla sintesi sopra.
-  const [showAll, setShowAll] = useState(false);
-  const [groupBy, setGroupBy] = useState<GroupKey>("week");
-  const [sortKey, setSortKey] = useState<SortKey>("date");
-  // SEGNALAZIONE DI FABRIZIO: "mi piacerebbe ci fosse modo per comprimere i
-  // gruppi o espanderli" — ogni gruppo (Settimana/Mese/Figlio/...) ora si
-  // può chiudere singolarmente, non solo l'intera sezione. Nessun gruppo
-  // collassato di default: comprimere è un'azione esplicita, non lo stato
-  // iniziale (altrimenti si perderebbe la vista d'insieme al primo tocco).
-  // FIX: la chiave è prefissata con il criterio di raggruppamento (groupBy),
-  // non solo l'etichetta — altrimenti cambiare "Raggruppa per" poteva far
-  // apparire un gruppo già collassato per coincidenza di etichetta (es. un
-  // nome attività uguale a un'etichetta di stato), dando l'impressione che
-  // "il raggruppamento non funzioni".
-  const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
-  function toggleGroupCollapsed(groupKey: string) {
-    setCollapsedGroups((prev) => {
-      const next = new Set(prev);
-      if (next.has(groupKey)) next.delete(groupKey);
-      else next.add(groupKey);
-      return next;
-    });
-  }
-
-  const groups = useMemo(() => {
-    function keyFor(b: MyBooking): { key: string; label: string } {
-      if (groupBy === "kid") return { key: b.kidNames[0] ?? "—", label: b.kidNames[0] ?? "Nessun bambino" };
-      if (groupBy === "month") {
-        const mk = b.firstWeekStart ? b.firstWeekStart.slice(0, 7) : "9999-99";
-        return { key: mk, label: monthLabel(mk) };
-      }
-      if (groupBy === "activity") return { key: b.activityName, label: b.activityName };
-      if (groupBy === "status") return { key: b.status, label: STATUS_LABEL[b.status] };
-      return { key: b.firstWeekLabel ?? "—", label: b.firstWeekLabel ?? "Senza settimana" };
-    }
-    const buckets = new Map<string, { label: string; items: MyBooking[] }>();
-    for (const b of bookings) {
-      const { key, label } = keyFor(b);
-      if (!buckets.has(key)) buckets.set(key, { label, items: [] });
-      buckets.get(key)!.items.push(b);
-    }
-    function cmp(a: MyBooking, b: MyBooking): number {
-      if (sortKey === "price") return netPrice(a) - netPrice(b);
-      if (sortKey === "name") return a.activityName.localeCompare(b.activityName);
-      return (a.firstWeekStart ?? "9999").localeCompare(b.firstWeekStart ?? "9999");
-    }
-    for (const g of buckets.values()) g.items.sort(cmp);
-    return Array.from(buckets.entries())
-      .sort(([a], [b]) => a.localeCompare(b))
-      .map(([, v]) => v);
-  }, [bookings, groupBy, sortKey]);
 
   return (
     <div className="flex flex-col gap-9 px-5 py-6">
@@ -306,154 +240,38 @@ export default function HomeDashboardClient({
         </div>
       )}
 
-      {/* 5) Planner sintetico — mini timeline, tocco -> planner completo.
-          Stesso dato di sempre (planner.weeks), qui solo come anteprima
-          visiva: il Planner (Sprint 3) resta il posto per il dettaglio. */}
-      <Link href="/nextgen/planner" className="block">
-        <div className="mb-3 flex items-center justify-between">
-          <div className="text-[21px] font-semibold text-ink">Planner</div>
-          <span className="flex items-center gap-1 text-sm font-semibold text-[#5B4FE9]">
-            Vedi tutto
-            <i className="ti ti-chevron-right text-[13px]" />
-          </span>
-        </div>
-        <div className="flex gap-1">
-          {planner.weeks.map((w) => (
-            <div
-              key={w.index}
-              title={`${w.label} · ${w.dateRange}`}
-              className={`h-2.5 flex-1 rounded-full ${
-                w.covered ? "bg-green" : w.dismissed ? "bg-[#E8EBF0]" : "bg-orange-mid/50"
-              }`}
-            />
-          ))}
-        </div>
-      </Link>
-
-      {/* 6) Prenotazioni — righe visuali (foto, figlio, periodo, badge stato,
-          un'azione), non più solo testo. Elenco completo con Raggruppa/
-          Ordina resta disponibile ma collassato, volutamente secondario. */}
-      {bookings.length > 0 && (
+      {/* 5) Attività da confermare — solo status "pending", niente più
+          raggruppa/ordina/comprimi (SPRINT 5.1: quell'elenco completo vive
+          in "/prenotazioni" e nel Planner). */}
+      {pendingBookings.length > 0 && (
         <div>
-          <div className="mb-3 text-[21px] font-semibold text-ink">Prenotazioni</div>
-
-          {upcomingForList.length > 0 && (
-            <div className="mb-3 flex flex-col gap-2">
-              {upcomingForList.map((b) => (
-                <BookingVisualCard key={b.id} booking={b} compact />
-              ))}
-            </div>
-          )}
-
-          <button
-            type="button"
-            onClick={() => setShowAll((v) => !v)}
-            className="flex w-full items-center justify-between text-sm font-semibold text-ink-2"
-          >
-            Tutte le prenotazioni ({bookings.length})
-            <i className={`ti ti-chevron-${showAll ? "up" : "down"}`} />
-          </button>
-
-          {showAll && (
-            <div className="mt-3">
-              <div className="mb-2 flex flex-wrap items-center gap-1.5">
-                <span className="text-[11px] font-semibold text-ink-3">Raggruppa:</span>
-                {(
-                  [
-                    { key: "week", label: "Settimana" },
-                    { key: "month", label: "Mese" },
-                    { key: "kid", label: "Figlio" },
-                    { key: "activity", label: "Attività" },
-                    { key: "status", label: "Stato" },
-                  ] as { key: GroupKey; label: string }[]
-                ).map((opt) => (
-                  <button
-                    key={opt.key}
-                    type="button"
-                    onClick={() => setGroupBy(opt.key)}
-                    className={`rounded-full px-2.5 py-1 text-[11px] font-semibold ${
-                      groupBy === opt.key ? "bg-ink text-white" : "bg-bg text-ink-2"
-                    }`}
-                  >
-                    {opt.label}
-                  </button>
-                ))}
-              </div>
-              <div className="mb-3 flex flex-wrap items-center gap-1.5">
-                <span className="text-[11px] font-semibold text-ink-3">Ordina:</span>
-                {(
-                  [
-                    { key: "date", label: "Data" },
-                    { key: "price", label: "Prezzo" },
-                    { key: "name", label: "Nome" },
-                  ] as { key: SortKey; label: string }[]
-                ).map((opt) => (
-                  <button
-                    key={opt.key}
-                    type="button"
-                    onClick={() => setSortKey(opt.key)}
-                    className={`rounded-full px-2.5 py-1 text-[11px] font-semibold ${
-                      sortKey === opt.key ? "bg-ink text-white" : "bg-bg text-ink-2"
-                    }`}
-                  >
-                    {opt.label}
-                  </button>
-                ))}
-              </div>
-
-              <div className="flex flex-col gap-4">
-                {groups.map((g) => {
-                  const groupKey = `${groupBy}:${g.label}`;
-                  const collapsed = collapsedGroups.has(groupKey);
-                  return (
-                    <div key={groupKey}>
-                      <button
-                        type="button"
-                        onClick={() => toggleGroupCollapsed(groupKey)}
-                        className="mb-1.5 flex w-full items-center justify-between px-1 text-[10px] font-bold uppercase tracking-wide text-ink-3"
-                      >
-                        <span>
-                          {g.label} · {g.items.length}
-                        </span>
-                        <i className={`ti ti-chevron-${collapsed ? "down" : "up"} text-[13px]`} />
-                      </button>
-                      {!collapsed && (
-                        <div className="flex flex-col gap-2">
-                          {g.items.map((b) => (
-                            <BookingVisualCard key={b.id} booking={b} compact />
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-
-              <Link href="/prenotazioni" className="mt-4 inline-block text-sm font-semibold text-[#5B4FE9]">
-                Gestisci (modifica/annulla) →
-              </Link>
-            </div>
-          )}
+          <div className="mb-3 text-[21px] font-semibold text-ink">
+            Attività da confermare ({pendingBookings.length})
+          </div>
+          <div className="flex flex-col gap-2">
+            {pendingBookings.map((b) => (
+              <BookingVisualCard key={b.id} booking={b} compact />
+            ))}
+          </div>
+          <Link href="/prenotazioni" className="mt-3 inline-block text-sm font-semibold text-[#5B4FE9]">
+            Gestisci tutte le prenotazioni →
+          </Link>
         </div>
       )}
 
-      {/* 7) Statistiche — in fondo, ridotte: un riepilogo per chi vuole
-          approfondire, non la prima risposta della schermata (quella è la
-          Hero Card). Prima erano a metà pagina con lo stesso peso della Hero. */}
-      <div className="grid grid-cols-3 gap-2">
-        <div className="rounded-xl bg-bg p-2.5 text-center">
-          <div className="text-sm font-bold text-ink">{statusCounts.confirmed}</div>
-          <div className="text-[10px] leading-tight text-ink-3">Confermate</div>
+      {/* SPRINT 5.1 — CTA "Apri Planner": sostituisce il mini-timeline
+          rimosso. La Home resta solo sintesi, il dettaglio (timeline
+          completa, budget, mappa, gruppi) vive tutto nel Planner. */}
+      <Link
+        href="/nextgen/planner"
+        className="flex items-center justify-between rounded-2xl bg-ink px-5 py-4 text-white"
+      >
+        <div>
+          <div className="text-base font-bold">Apri Planner</div>
+          <div className="text-[12.5px] text-white/70">Organizzazione, calendario, budget e altro</div>
         </div>
-        <div className="rounded-xl bg-bg p-2.5 text-center">
-          <div className="text-sm font-bold text-ink">{statusCounts.pending}</div>
-          <div className="text-[10px] leading-tight text-ink-3">In attesa</div>
-        </div>
-        <div className="rounded-xl bg-bg p-2.5 text-center">
-          <div className="text-sm font-bold text-ink">€{totalSpent}</div>
-          <div className="text-[10px] leading-tight text-ink-3">Speso finora</div>
-        </div>
-      </div>
+        <i className="ti ti-chevron-right text-lg" />
+      </Link>
     </div>
   );
 }

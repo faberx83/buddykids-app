@@ -1,15 +1,19 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { PlannerData } from "@/lib/data/planner";
-import { KidOverlap, BudgetSummary } from "@/lib/nextgen/planner-insights";
+import { KidOverlap, BudgetSummary, computePerKidCoverage } from "@/lib/nextgen/planner-insights";
+import { Mission } from "@/lib/nextgen/missions";
 import { SmartMatch } from "@/lib/nextgen/smart-search";
 import { Kid } from "@/lib/types";
 import { lightBgClasses } from "@/lib/colors";
 import ActivityCard from "@/components/ActivityCard";
 import PageHeader from "@/components/PageHeader";
 import NextgenBadge from "@/components/nextgen/NextgenBadge";
+import PlannerModeTabs, { PlannerMode } from "@/components/nextgen/PlannerModeTabs";
+import PlannerComingSoon from "@/components/nextgen/PlannerComingSoon";
+import PlannerBudgetView from "@/components/nextgen/PlannerBudgetView";
 import Link from "next/link";
 
 // SPRINT 3 (NEXTGEN) — Planner come "cuore dell'esperienza": timeline
@@ -19,6 +23,13 @@ import Link from "next/link";
 // vedi link "Gestisci prenotazioni" in fondo). Riuso: ActivityCard, PageHeader,
 // NextgenBadge, lightBgClasses — nessun componente visivo nuovo per le parti
 // già esistenti altrove.
+//
+// SPRINT 5.1 (NEXTGEN) — "Family Planner" (PRD di Fabrizio): il Planner
+// diventa il centro operativo, con 5 modalità sugli stessi dati. Solo
+// Organizzazione (questa vista, arricchita con Missioni + copertura per
+// bambino) e Budget (nuova vista a schermo intero, componente dedicato) sono
+// funzionanti in questa fase — Calendario/Mappa/Gruppi restano "Presto
+// disponibile" fino alle fasi 5.2/5.4/5.6.
 function weekIndexFromLabel(label: string): number | null {
   const m = label.match(/\d+/);
   return m ? Number(m[0]) : null;
@@ -31,6 +42,8 @@ export default function PlannerClient({
   budget,
   priorityIndex,
   recommendations,
+  missions,
+  seasonBudgetTarget,
 }: {
   planner: PlannerData;
   kids: Kid[];
@@ -38,8 +51,12 @@ export default function PlannerClient({
   budget: BudgetSummary;
   priorityIndex: number | null;
   recommendations: SmartMatch[];
+  missions: Mission[];
+  seasonBudgetTarget: number | null;
 }) {
   const router = useRouter();
+  const [mode, setMode] = useState<PlannerMode>("organizzazione");
+  const perKidCoverage = useMemo(() => computePerKidCoverage(planner, kids), [planner, kids]);
 
   const overlapsByWeekIndex = useMemo(() => {
     const map = new Map<number, KidOverlap[]>();
@@ -62,9 +79,60 @@ export default function PlannerClient({
       <PageHeader title="Planner" onBack={() => router.push("/nextgen")} />
       <div className="px-5 py-4">
         <div className="mb-4 flex items-center justify-between">
-          <p className="text-xs text-ink-2">La timeline completa della tua famiglia per l&apos;estate.</p>
+          <p className="text-xs text-ink-2">
+            {mode === "budget" ? "Quanto stai spendendo per questa estate." : "La timeline completa della tua famiglia per l'estate."}
+          </p>
           <NextgenBadge />
         </div>
+
+        <PlannerModeTabs mode={mode} onChange={setMode} />
+
+        {mode === "calendario" && (
+          <PlannerComingSoon
+            icon="ti-calendar"
+            title="Vista Calendario in arrivo"
+            description="Giorno, settimana e mese, con colori per figlio e conflitti evidenziati — per ora usa Organizzazione per lo stesso obiettivo."
+          />
+        )}
+
+        {mode === "mappa" && (
+          <PlannerComingSoon
+            icon="ti-map-pin"
+            title="Vista Mappa in arrivo"
+            description="Tutte le attività su una mappa, con distanze e tempi di percorrenza dai tuoi indirizzi salvati."
+          />
+        )}
+
+        {mode === "gruppi" && (
+          <PlannerComingSoon
+            icon="ti-users-group"
+            title="Vista Gruppi in arrivo"
+            description="Le tue Community, le proposte e le votazioni direttamente qui — nel frattempo le trovi nella scheda Community."
+          />
+        )}
+
+        {mode === "budget" && <PlannerBudgetView budget={budget} seasonBudgetTarget={seasonBudgetTarget} />}
+
+        {mode === "organizzazione" && (
+        <>
+        {/* Missioni — richiesta di Fabrizio: "non gamification, messaggi che
+            riducono l'ansia e danno un senso di avanzamento". Calcolate in
+            lib/nextgen/missions.ts, mostrate solo se ce n'è almeno una. */}
+        {missions.length > 0 && (
+          <div className="mb-4 flex flex-col gap-2">
+            {missions.map((m) => (
+              <div
+                key={m.id}
+                className={`flex items-start gap-2.5 rounded-2xl p-3.5 ${
+                  m.tone === "success" ? "bg-[#E8F9EE]" : "bg-[#F5F2FF]"
+                }`}
+              >
+                <span className="text-base leading-none">{m.emoji}</span>
+                <span className="text-[12.5px] font-medium text-ink">{m.text}</span>
+              </div>
+            ))}
+          </div>
+        )}
 
         {/* 1. Copertura — stessa domanda guida della Dashboard ("la mia
             famiglia è organizzata?"), qui con il dettaglio completo.
@@ -92,6 +160,37 @@ export default function PlannerClient({
             </p>
           )}
         </div>
+
+        {/* Copertura per bambino — "Sofia 7/8 settimane" (mockup condiviso
+            da Fabrizio): solo se c'è più di un bambino, altrimenti è un
+            doppione della card di copertura sopra. */}
+        {kids.length > 1 && (
+          <div className="mb-4 rounded-2xl bg-white p-4">
+            <div className="mb-2.5 text-[13px] font-bold text-ink">Copertura per bambino</div>
+            <div className="flex flex-col gap-2.5">
+              {perKidCoverage.map((k) => {
+                const percent = k.neededCount > 0 ? Math.round((k.coveredCount / k.neededCount) * 100) : 0;
+                const done = k.coveredCount === k.neededCount && k.neededCount > 0;
+                return (
+                  <div key={k.kidId}>
+                    <div className="mb-1 flex items-center justify-between text-[12.5px]">
+                      <span className="font-semibold text-ink">{k.kidName}</span>
+                      <span className={done ? "font-semibold text-green" : "text-ink-2"}>
+                        {done ? "Tutto organizzato! 🎉" : `${k.coveredCount}/${k.neededCount} settimane`}
+                      </span>
+                    </div>
+                    <div className="h-1.5 w-full overflow-hidden rounded-full bg-[#EEF0F4]">
+                      <div
+                        className={`h-full rounded-full ${done ? "bg-green" : "bg-orange-mid/60"}`}
+                        style={{ width: `${percent}%` }}
+                      />
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
 
         {/* 2. Sovrapposizioni — segnale di rischio reale, non decorativo:
             mostrato solo se c'è davvero qualcosa da controllare. */}
@@ -223,6 +322,8 @@ export default function PlannerClient({
               ))}
             </div>
           </div>
+        )}
+        </>
         )}
 
         <Link href="/prenotazioni" className="mt-2 block text-center text-[12.5px] font-semibold text-[#5B4FE9]">

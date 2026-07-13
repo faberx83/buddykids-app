@@ -39,6 +39,10 @@ export interface ParentProfile {
   marketingConsent: boolean;
   accountStatus: AccountStatus;
   deletionRequestedAt: string | null;
+  // SPRINT 5.1 (NEXTGEN) — Planner, modalità Budget: tetto di spesa
+  // stagionale impostabile dal genitore (null finché non lo imposta,
+  // nessun valore finto precompilato).
+  seasonBudgetTarget: number | null;
 }
 
 const DEMO_PROFILE: ParentProfile = {
@@ -58,10 +62,11 @@ const DEMO_PROFILE: ParentProfile = {
   marketingConsent: false,
   accountStatus: "active",
   deletionRequestedAt: null,
+  seasonBudgetTarget: null,
 };
 
 const PROFILE_SELECT =
-  "full_name, email, parent_role, avatar_url, phone, date_of_birth, gender, business_role, language, theme, notify_email, notify_push, notify_sms, marketing_consent, account_status, deletion_requested_at";
+  "full_name, email, parent_role, avatar_url, phone, date_of_birth, gender, business_role, language, theme, notify_email, notify_push, notify_sms, marketing_consent, account_status, deletion_requested_at, season_budget_target";
 
 interface RawProfileRow {
   full_name: string | null;
@@ -80,6 +85,7 @@ interface RawProfileRow {
   marketing_consent: boolean | null;
   account_status: AccountStatus | null;
   deletion_requested_at: string | null;
+  season_budget_target: number | null;
 }
 
 function mapProfileRow(data: RawProfileRow | null, fallbackEmail: string): ParentProfile {
@@ -100,6 +106,7 @@ function mapProfileRow(data: RawProfileRow | null, fallbackEmail: string): Paren
     marketingConsent: data?.marketing_consent ?? false,
     accountStatus: data?.account_status ?? "active",
     deletionRequestedAt: data?.deletion_requested_at ?? null,
+    seasonBudgetTarget: data?.season_budget_target ?? null,
   };
 }
 

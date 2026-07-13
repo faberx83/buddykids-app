@@ -6,7 +6,10 @@ import { loginAs, isRealDeployment } from "../fixtures/roles";
 // era diventata "più razionale ma meno umana". Stessi dati/componenti di
 // Sprint 1/2/3 (getPlannerData, getMyBookingsForParent, getTodayCheckinsForParent
 // — tutti invariati): cambia l'orchestrazione visiva (Hero Card, check-in
-// ripristinato, prenotazioni visuali, statistiche in fondo).
+// ripristinato, prenotazioni visuali).
+//
+// SPRINT 5.1: Statistiche e "Tutte le prenotazioni" rimosse da Home (vedi
+// TC-N22/TC-N26 sotto e tests/nextgen/family-planner-5-1.spec.ts).
 
 test.describe("NEXTGEN - Home (rifinitura)", () => {
   test("TC-N18 - La Hero Card comunica stato, settimane mancanti e prossimo impegno con una CTA", async ({ page }) => {
@@ -55,19 +58,24 @@ test.describe("NEXTGEN - Home (rifinitura)", () => {
     await expect(page.locator("body")).not.toContainText("Application error");
   });
 
-  test("TC-N22 - Le statistiche sintetiche sono in fondo alla pagina, dopo Prenotazioni", async ({ page }) => {
+  // SPRINT 5.1: TC-N22 aggiornato — le Statistiche sono state rimosse da Home
+  // ("Home ridotta a sola sintesi", richiesta esplicita di Fabrizio); il
+  // posto in fondo alla pagina, dopo "Attività da confermare", è ora della
+  // CTA "Apri Planner". Vedi tests/nextgen/family-planner-5-1.spec.ts.
+  test("TC-N22 - La CTA 'Apri Planner' è in fondo alla pagina, dopo Attività da confermare", async ({ page }) => {
     test.skip(!isRealDeployment, "Richiede un deploy con Supabase configurato e l'account genitore di test.");
     await loginAs(page, "parent");
     await page.goto("/nextgen");
 
-    const bookingsHeading = page.getByText("Prenotazioni", { exact: true });
-    const statsLabel = page.getByText("Speso finora");
-    if (!(await bookingsHeading.isVisible().catch(() => false))) {
-      test.skip(true, "Nessuna prenotazione per l'account di test.");
+    const pendingHeading = page.getByText(/Attività da confermare/);
+    const ctaLink = page.getByRole("link", { name: "Apri Planner" });
+    await expect(ctaLink).toBeVisible();
+    if (!(await pendingHeading.isVisible().catch(() => false))) {
+      test.skip(true, "Nessuna prenotazione in attesa per l'account di test.");
     }
-    const bookingsBox = await bookingsHeading.boundingBox();
-    const statsBox = await statsLabel.boundingBox();
-    expect(bookingsBox && statsBox && statsBox.y > bookingsBox.y).toBeTruthy();
+    const pendingBox = await pendingHeading.boundingBox();
+    const ctaBox = await ctaLink.boundingBox();
+    expect(pendingBox && ctaBox && ctaBox.y > pendingBox.y).toBeTruthy();
   });
 
   // SEGNALAZIONE DI FABRIZIO (dopo lo sprint correttivo): "sistemare
@@ -113,26 +121,18 @@ test.describe("NEXTGEN - Home (rifinitura)", () => {
     }
   });
 
-  test("TC-N26 - I gruppi in 'Tutte le prenotazioni' si possono comprimere ed espandere singolarmente", async ({ page }) => {
-    test.skip(!isRealDeployment, "Richiede un deploy con Supabase configurato e l'account genitore di test, con 2+ prenotazioni in gruppi diversi.");
+  // SPRINT 5.1: TC-N26 aggiornato — "Tutte le prenotazioni" (con
+  // Raggruppa/Ordina/comprimi-espandi) non esiste più in Home NEXTGEN,
+  // rimossa insieme alle Statistiche. La stessa funzionalità di
+  // comprimi/espandi resta testata su "/prenotazioni" (LEGACY) in
+  // tests/genitori/prenotazione.spec.ts (TC-193) e sulla pagina Community
+  // (invariata). Qui verifichiamo solo che non sia tornata per errore.
+  test("TC-N26 - Home non mostra più i controlli di raggruppamento/comprimi dell'elenco prenotazioni", async ({ page }) => {
+    test.skip(!isRealDeployment, "Richiede un deploy con Supabase configurato e l'account genitore di test.");
     await loginAs(page, "parent");
     await page.goto("/nextgen");
 
-    const toggle = page.getByText(/Tutte le prenotazioni/);
-    if (!(await toggle.isVisible().catch(() => false))) {
-      test.skip(true, "Nessuna prenotazione per l'account di test.");
-    }
-    await toggle.click();
-
-    const groupHeaders = page.locator("button i.ti-chevron-up, button i.ti-chevron-down");
-    const count = await groupHeaders.count();
-    if (count === 0) {
-      test.skip(true, "Nessun gruppo con prenotazioni per l'account di test.");
-    }
-    const firstGroupButton = page.locator("button", { has: groupHeaders.first() });
-    await firstGroupButton.click();
-    await expect(firstGroupButton.locator("i.ti-chevron-down")).toBeVisible();
-    await firstGroupButton.click();
-    await expect(firstGroupButton.locator("i.ti-chevron-up")).toBeVisible();
+    await expect(page.getByText(/Tutte le prenotazioni/)).toHaveCount(0);
+    await expect(page.locator("button i.ti-chevron-up, button i.ti-chevron-down")).toHaveCount(0);
   });
 });

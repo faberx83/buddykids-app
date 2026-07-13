@@ -1369,3 +1369,12 @@ create policy "Community interest: un membro ritira il proprio interesse"
 -- si può generare da lì un Gruppo sconto vero e proprio (community_id
 -- nullable — i gruppi creati da /groups restano invariati, valore null).
 alter table public.groups add column if not exists community_id uuid references public.communities(id) on delete set null;
+
+-- ─────────────────────────────────────────────
+-- SPRINT 5.1 (NEXTGEN) — Family Planner: Budget stagionale impostabile
+-- ─────────────────────────────────────────────
+-- "Budget pianificato" (tetto di spesa) mostrato nella modalità Budget del
+-- Planner, accanto allo speso reale (già calcolato da bookings, invariato).
+-- Colonna nullable su profiles: nessun valore finché il genitore non lo
+-- imposta esplicitamente (nessun tetto finto/precompilato).
+alter table public.profiles add column if not exists season_budget_target numeric(10, 2);

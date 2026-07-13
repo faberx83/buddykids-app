@@ -7,7 +7,7 @@ import { revalidatePath } from "next/cache";
 
 // Percorsi da rigenerare dopo una modifica al profilo — entrambe le sezioni
 // (genitore e gestore) leggono dalla stessa tabella "profiles".
-const PROFILE_PATHS = ["/profile", "/center/account", "/"];
+const PROFILE_PATHS = ["/profile", "/center/account", "/", "/nextgen/planner"];
 
 function revalidateProfilePaths() {
   for (const path of PROFILE_PATHS) revalidatePath(path);
@@ -222,5 +222,32 @@ export async function toggleWeekDismissedAction(
   if (error) return { error: error.message };
 
   revalidatePath("/");
+  return {};
+}
+
+// SPRINT 5.1 (NEXTGEN) — Planner, modalità Budget: tetto di spesa stagionale
+// impostabile dal genitore. null/vuoto = "non ancora impostato" (nessun
+// finto tetto precompilato, coerente con budget.totalSpent che è sempre
+// reale — vedi lib/nextgen/planner-insights.ts).
+export async function setSeasonBudgetTargetAction(amount: number | null): Promise<{ error?: string }> {
+  if (!isSupabaseConfigured) return { error: "Supabase non configurato" };
+  if (amount !== null && (Number.isNaN(amount) || amount < 0)) {
+    return { error: "Inserisci un importo valido" };
+  }
+
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { error: "Non autenticato" };
+
+  const { error } = await supabase
+    .from("profiles")
+    .update({ season_budget_target: amount })
+    .eq("id", user.id);
+
+  if (error) return { error: error.message };
+
+  revalidateProfilePaths();
   return {};
 }

@@ -4,8 +4,10 @@ import { getMyBookingsForParent } from "@/lib/data/my-bookings";
 import { getKidsForUser } from "@/lib/data/kids";
 import { getActivities, getActivityAvailabilityByWeek } from "@/lib/data/activities";
 import { getSeasonYear } from "@/lib/data/season-year";
+import { getParentProfile } from "@/lib/data/profile";
 import { computeSmartMatches } from "@/lib/nextgen/smart-search";
 import { computeKidOverlaps, computeBudgetSummary, computePriorityWeekIndex } from "@/lib/nextgen/planner-insights";
+import { computeMissions } from "@/lib/nextgen/missions";
 import PlannerClient from "./PlannerClient";
 
 // SPRINT 3 (NEXTGEN) — "trasformare il Planner nella feature principale del
@@ -28,18 +30,20 @@ export default async function NextgenPlannerPage() {
   }
 
   const seasonYear = await getSeasonYear();
-  const [planner, bookings, kids, activities, availabilityByWeek] = await Promise.all([
+  const [planner, bookings, kids, activities, availabilityByWeek, profile] = await Promise.all([
     getPlannerData(),
     getMyBookingsForParent(),
     getKidsForUser(),
     getActivities(),
     getActivityAvailabilityByWeek(seasonYear),
+    getParentProfile(),
   ]);
 
   const overlaps = computeKidOverlaps(bookings);
-  const budget = computeBudgetSummary(bookings);
+  const budget = computeBudgetSummary(bookings, activities);
   const priorityIndex = computePriorityWeekIndex(planner.weeks);
   const priorityWeek = planner.weeks.find((w) => w.index === priorityIndex) ?? null;
+  const missions = computeMissions(planner, bookings, activities, kids);
 
   const recommendations = priorityWeek
     ? computeSmartMatches(activities, kids, {
@@ -56,6 +60,8 @@ export default async function NextgenPlannerPage() {
       budget={budget}
       priorityIndex={priorityIndex}
       recommendations={recommendations}
+      missions={missions}
+      seasonBudgetTarget={profile.seasonBudgetTarget}
     />
   );
 }

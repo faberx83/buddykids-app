@@ -17,6 +17,8 @@
 // definizione, una sovrapposizione — nessuna nuova query al DB.
 
 import { MyBooking } from "@/lib/data/my-bookings";
+import { Activity, Kid } from "@/lib/types";
+import { PlannerData } from "@/lib/data/planner";
 
 export interface KidOverlap {
   kidId: string;
@@ -56,9 +58,24 @@ export interface KidBudget {
   amount: number;
 }
 
+// SPRINT 5.1 — dettaglio per categoria (Planner, modalità Budget): usa la
+// stessa "categoria primaria" già mostrata come badge sulle card attività
+// altrove nell'app (activity.tags[0]?.label) — nessuna nuova tassonomia.
+export interface CategoryBudget {
+  label: string;
+  amount: number;
+}
+
 export interface BudgetSummary {
   totalSpent: number;
   byKid: KidBudget[];
+  byCategory: CategoryBudget[];
+  // Speso totale diviso per il numero di settimane STAGIONALI distinte
+  // effettivamente coperte da almeno una prenotazione attiva — "quanto
+  // spendiamo in media in una settimana in cui facciamo qualcosa", non
+  // diviso per le 13 settimane totali (altrimenti la media scenderebbe
+  // artificialmente per chi ha organizzato solo poche settimane).
+  weeklyAverage: number;
 }
 
 // Nota/limite dichiarato: quando una prenotazione copre più bambini insieme
@@ -66,12 +83,17 @@ export interface BudgetSummary {
 // bambino coinvolto nel dettaglio "per bambino" — nel modello dati attuale
 // non esiste uno split del prezzo per singolo figlio all'interno di uno
 // stesso booking. totalSpent (il totale di famiglia) resta invece corretto,
-// perché somma ogni booking una sola volta.
-export function computeBudgetSummary(bookings: MyBooking[]): BudgetSummary {
+// perché somma ogni booking una sola volta. Stesso limite per "per
+// categoria": una prenotazione con più settimane/bambini conta per intero
+// nella categoria della sua attività.
+export function computeBudgetSummary(bookings: MyBooking[], activities: Activity[]): BudgetSummary {
   const active = bookings.filter((b) => b.status !== "cancelled");
   const totalSpent = active.reduce((sum, b) => sum + b.totalAmount, 0);
 
   const byKidMap = new Map<string, KidBudget>();
+  const byCategoryMap = new Map<string, CategoryBudget>();
+  const distinctWeekIds = new Set<string>();
+
   for (const b of active) {
     b.kidIds.forEach((kidId, i) => {
       const kidName = b.kidNames[i] ?? "";
@@ -79,12 +101,56 @@ export function computeBudgetSummary(bookings: MyBooking[]): BudgetSummary {
       entry.amount += b.totalAmount;
       byKidMap.set(kidId, entry);
     });
+
+    const activity = activities.find((a) => a.id === b.activityId);
+    const categoryLabel = activity?.tags?.[0]?.label || "Altro";
+    const catEntry = byCategoryMap.get(categoryLabel) ?? { label: categoryLabel, amount: 0 };
+    catEntry.amount += b.totalAmount;
+    byCategoryMap.set(categoryLabel, catEntry);
+
+    for (const w of b.weeks) distinctWeekIds.add(w.id);
   }
+
+  const weeklyAverage = distinctWeekIds.size > 0 ? Math.round(totalSpent / distinctWeekIds.size) : 0;
 
   return {
     totalSpent,
     byKid: Array.from(byKidMap.values()).sort((a, b) => b.amount - a.amount),
+    byCategory: Array.from(byCategoryMap.values()).sort((a, b) => b.amount - a.amount),
+    weeklyAverage,
   };
+}
+
+// SPRINT 5.1 — copertura per bambino (Planner, modalità Organizzazione):
+// "Sofia 7/8 settimane", "Luca 8/8 — tutto organizzato!" (vedi mockup
+// condiviso da Fabrizio). Deriva da SeasonWeek.coveredKids, già calcolato da
+// lib/data/planner.ts — nessuna nuova query.
+export interface KidCoverageSummary {
+  kidId: string;
+  kidName: string;
+  coveredCount: number;
+  neededCount: number;
+  missingIndexes: number[];
+}
+
+export function computePerKidCoverage(planner: PlannerData, kids: Kid[]): KidCoverageSummary[] {
+  const neededWeeks = planner.weeks.filter((w) => !w.dismissed);
+  return kids.map((kid) => {
+    const missingIndexes: number[] = [];
+    let coveredCount = 0;
+    for (const w of neededWeeks) {
+      const isCovered = w.coveredKids.some((c) => c.kidId === kid.id);
+      if (isCovered) coveredCount += 1;
+      else missingIndexes.push(w.index);
+    }
+    return {
+      kidId: kid.id,
+      kidName: kid.name,
+      coveredCount,
+      neededCount: neededWeeks.length,
+      missingIndexes,
+    };
+  });
 }
 
 // Stesso algoritmo "settimana prioritaria" già in components/PlannerView.tsx

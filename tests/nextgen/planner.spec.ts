@@ -28,11 +28,14 @@ test.describe("NEXTGEN - Planner (Sprint 3)", () => {
     await expect(page.getByText("Budget impegnato")).toBeVisible();
   });
 
-  test("TC-N15 - Il link 'Apri il planner completo' in Dashboard porta a /nextgen/planner", async ({ page }) => {
+  // SPRINT 5.1: TC-N15 aggiornato al testo reale della CTA in Home ("Apri
+  // Planner", non più "Apri il planner completo" — testo mai allineato al
+  // codice dopo il redesign Hero Card).
+  test("TC-N15 - La CTA 'Apri Planner' in Home porta a /nextgen/planner", async ({ page }) => {
     test.skip(!isRealDeployment, "Richiede un deploy con Supabase configurato e l'account genitore di test.");
     await loginAs(page, "parent");
     await page.goto("/nextgen");
-    await page.getByText("Apri il planner completo").click();
+    await page.getByRole("link", { name: "Apri Planner" }).click();
     await expect(page).toHaveURL(/\/nextgen\/planner/);
   });
 
