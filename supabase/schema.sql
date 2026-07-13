@@ -1269,10 +1269,17 @@ as $$
   );
 $$;
 
+-- FIX: subito dopo l'insert, il creatore non è ancora "membro" (la riga in
+-- community_members viene creata in una query SEPARATA, successiva) — senza
+-- il fallback "or created_by = auth.uid()" la RETURNING della insert()
+-- fallisce con "new row violates row-level security policy", perché
+-- PostgREST verifica anche la policy di lettura per restituire la riga
+-- appena creata. Stesso fallback già presente nella policy equivalente di
+-- "groups" (vedi sopra: "... or created_by = auth.uid()").
 drop policy if exists "Communities: lettura per i membri" on public.communities;
 create policy "Communities: lettura per i membri"
   on public.communities for select
-  using (public.is_community_member(id));
+  using (public.is_community_member(id) or created_by = auth.uid());
 
 drop policy if exists "Communities: creazione da utenti autenticati" on public.communities;
 create policy "Communities: creazione da utenti autenticati"
