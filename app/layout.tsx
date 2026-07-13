@@ -4,6 +4,7 @@ import "./globals.css";
 import { DemoRoleProvider } from "@/components/DemoRoleProvider";
 import RoleSwitcher from "@/components/RoleSwitcher";
 import InstallPrompt from "@/components/InstallPrompt";
+import VersionToggle from "@/components/VersionToggle";
 import { tenantForHost, TENANT_CONFIG } from "@/lib/tenant";
 
 async function currentTenantConfig() {
@@ -72,6 +73,13 @@ export default async function RootLayout({
               app/nextgen/layout.tsx) — altrimenti i due banner "Installa" si
               sovrapporrebbero. */}
           <InstallPrompt appName={appName} themeColor={config.themeColor} routeExclude="/nextgen" />
+          {/* Toggle LEGACY/NEXTGEN (richiesta di Fabrizio) — montato UNA sola
+              volta qui: dato che app/nextgen/layout.tsx è annidato dentro
+              questo layout radice, copre automaticamente anche tutte le
+              pagine NEXTGEN, senza doverlo duplicare lì. Si nasconde da solo
+              su /center, /admin, /nextgen/center, /nextgen/admin, /auth
+              (vedi VersionToggle.tsx). */}
+          <VersionToggle />
         </DemoRoleProvider>
       </body>
     </html>
