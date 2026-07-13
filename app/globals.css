@@ -123,3 +123,35 @@ body {
 .animate-toast-in {
   animation: toastIn 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
+
+/* REBRAND TRAMA Sprint 2 — intro animata di Login (components/TramaLoginIntro.tsx).
+   Timing da "TRAMA - Dev Handoff.dc.html" sez. 9: i fili (trama-logo-mark.png)
+   si intrecciano in 0.65s, poi wordmark/tagline/CTA entrano in fade-up
+   sequenziale con animation-delay diversi passati inline per elemento. */
+@keyframes tramaMarkIn {
+  from {
+    opacity: 0;
+    transform: scale(0.92);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+.trama-mark-in {
+  animation: tramaMarkIn 0.65s ease-out both;
+}
+
+@keyframes tramaFadeUp {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.trama-fade-up {
+  animation: tramaFadeUp 0.4s ease-out both;
+}

@@ -5,12 +5,18 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
 import PhoneShell from "@/components/PhoneShell";
+import TramaLoginIntro from "@/components/TramaLoginIntro";
 import { friendlyAuthError } from "@/lib/auth-errors";
 import { getInvitePreviewAction } from "@/app/actions/invites";
 import type { InvitePreview } from "@/lib/data/invites";
 import type { Tenant } from "@/lib/tenant";
 
 type Mode = "login" | "signup" | "reset";
+
+// REBRAND TRAMA Sprint 2 — l'intro animata (vedi TramaLoginIntro.tsx) va
+// riprodotta "una sola volta per sessione" (Dev Handoff sez. 9), non ad ogni
+// visita di /auth/login all'interno della stessa sessione browser.
+const INTRO_SESSION_KEY = "trama-login-intro-seen";
 
 export default function LoginForm({
   tenant,
@@ -39,11 +45,48 @@ export default function LoginForm({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
+  // Default SSR-safe: false (sessionStorage non è leggibile lato server, e
+  // partire da "false" sia su server che al primo render client evita un
+  // mismatch di hydration). L'effect sotto la promuove a true, se il caso,
+  // subito dopo il mount — un frame di form "vero" prima dell'intro è il
+  // trade-off accettato per non introdurre logica di sessione lato server.
+  const [showIntro, setShowIntro] = useState(false);
 
   useEffect(() => {
     if (!inviteParam || !isSupabaseConfigured) return;
     getInvitePreviewAction(inviteParam).then(setInvitePreview);
   }, [inviteParam]);
+
+  // Intro TRAMA: solo tenant "family" (il mockup 5a è la schermata di ingresso
+  // genitore), solo se si arriva in modalità "login" di base (un ?invite=
+  // porta già a "signup" con l'anteprima sconto: l'intro rallenterebbe un
+  // flusso che l'utente vuole completare in fretta, non è nel mockup). Viene
+  // marcata "vista" in sessionStorage al mount, non alla chiusura, così un
+  // refresh a metà animazione non la ripropone. Effect intenzionalmente
+  // "una tantum" (mount-only): il toggle successivo fra login/signup tramite
+  // i link in fondo al form NON deve far ricomparire l'intro.
+  useEffect(() => {
+    if (tenant !== "family" || mode !== "login" || inviteParam) return;
+    try {
+      if (sessionStorage.getItem(INTRO_SESSION_KEY)) return;
+      sessionStorage.setItem(INTRO_SESSION_KEY, "1");
+      // sessionStorage esiste solo lato client e va per forza letto qui, in
+      // questo effetto "one-shot" al mount (stesso pattern di InstallPrompt.tsx).
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setShowIntro(true);
+    } catch {
+      // sessionStorage non disponibile (es. contesto privacy molto restrittivo):
+      // niente intro, si va dritti al form — degradazione sicura.
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  function handleIntroSelect(target: "login" | "signup") {
+    setShowIntro(false);
+    setMode(target);
+    setError(null);
+    setMessage(null);
+  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -101,6 +144,21 @@ export default function LoginForm({
   const isFamily = tenant === "family";
   const isAdmin = tenant === "admin";
 
+  // showIntro implica sempre isFamily (impostato solo nell'effect sopra, che
+  // già filtra su tenant === "family"): l'intro sostituisce il form, non lo
+  // affianca, quindi in questo ramo di render il DOM contiene SOLO l'intro —
+  // niente ambiguità per Playwright (es. due bottoni "Accedi" nella pagina,
+  // uno reale e uno di scorciatoia) e nessuna interferenza con
+  // tests/fixtures/roles.ts#loginAs (che aspetta comunque, con l'auto-wait
+  // di getByLabel/getByRole, che il form reale compaia dopo l'auto-advance).
+  if (showIntro) {
+    return (
+      <PhoneShell>
+        <TramaLoginIntro onSelect={handleIntroSelect} />
+      </PhoneShell>
+    );
+  }
+
   const heading =
     mode === "login" ? `Accedi a ${appName}` : mode === "signup" ? `Crea un account ${appName}` : "Recupera la password";
 
@@ -114,7 +172,7 @@ export default function LoginForm({
         className="mb-5 flex h-16 w-16 items-center justify-center rounded-full text-3xl font-bold text-white"
         style={{ background: themeColor }}
       >
-        {isFamily ? "BK" : isAdmin ? "🛠️" : "🏫"}
+        {isFamily ? "TR" : isAdmin ? "🛠️" : "🏫"}
       </div>
       <h1 className={`mb-1 text-xl font-bold ${isAdmin ? "text-white" : "text-ink"}`}>{appName}</h1>
       <p className={`mb-7 text-sm ${isAdmin ? "text-navy-text2" : "text-ink-2"}`}>{heading}</p>
