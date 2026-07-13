@@ -393,6 +393,71 @@ create policy "Promotions: gestibili dal centro proprietario"
   );
 
 -- ─────────────────────────────────────────────
+-- ACTIVITY CERTIFICATIONS (richiesta di Fabrizio: "certificazioni del
+-- servizio esposto" — es. animatori certificati per gestione equestre,
+-- allenatrici FIG — non un elenco fisso ma un'etichetta libera per
+-- attività, verificata da un admin piattaforma prima di diventare un badge
+-- visibile ai genitori. Il gestore invia la richiesta (con un documento di
+-- supporto opzionale caricato su uno storage privato, vedi sezione STORAGE
+-- più sotto); l'admin approva/rifiuta dalla propria coda.)
+-- ─────────────────────────────────────────────
+create table if not exists public.activity_certifications (
+  id uuid primary key default gen_random_uuid(),
+  activity_id uuid references public.activities(id) on delete cascade not null,
+  center_id uuid references public.centers(id) on delete cascade not null,
+  label text not null, -- testo libero, es. "Istruttori certificati FISE per equitazione"
+  document_url text, -- percorso nel bucket privato "buddykids-certifications" (non un URL pubblico, vedi lib/storage.ts)
+  status text default 'pending' check (status in ('pending', 'approved', 'rejected')),
+  admin_note text, -- motivazione facoltativa in caso di rifiuto
+  submitted_by uuid references public.profiles(id) on delete set null,
+  reviewed_by uuid references public.profiles(id) on delete set null,
+  reviewed_at timestamptz,
+  created_at timestamptz default now()
+);
+
+alter table public.activity_certifications enable row level security;
+
+create index if not exists idx_activity_certifications_activity on public.activity_certifications(activity_id);
+create index if not exists idx_activity_certifications_center on public.activity_certifications(center_id);
+create index if not exists idx_activity_certifications_status on public.activity_certifications(status);
+
+create policy "Activity certifications: approvate pubbliche, il resto solo al centro e all'admin"
+  on public.activity_certifications for select
+  using (
+    status = 'approved'
+    or center_id = public.current_center_id()
+    or public.is_platform_admin()
+  );
+
+create policy "Activity certifications: il centro crea le proprie richieste (sempre pending)"
+  on public.activity_certifications for insert
+  with check (
+    (center_id = public.current_center_id() and submitted_by = auth.uid() and status = 'pending')
+    or public.is_platform_admin()
+  );
+
+-- Due policy separate (permissive, si combinano in OR): il centro può
+-- modificare le proprie richieste ma SOLO restando in stato "pending" (non
+-- può auto-approvarsi), l'admin piattaforma può invece impostare
+-- approved/rejected su qualunque richiesta.
+create policy "Activity certifications: il centro modifica le proprie richieste (restano pending)"
+  on public.activity_certifications for update
+  using (center_id = public.current_center_id())
+  with check (center_id = public.current_center_id() and status = 'pending');
+
+create policy "Activity certifications: l'admin approva/rifiuta qualunque richiesta"
+  on public.activity_certifications for update
+  using (public.is_platform_admin())
+  with check (public.is_platform_admin());
+
+create policy "Activity certifications: il centro elimina le proprie richieste pending, l'admin tutte"
+  on public.activity_certifications for delete
+  using (
+    (center_id = public.current_center_id() and status = 'pending')
+    or public.is_platform_admin()
+  );
+
+-- ─────────────────────────────────────────────
 -- BOOKINGS
 -- ─────────────────────────────────────────────
 create table if not exists public.bookings (
@@ -935,6 +1000,52 @@ create policy "Buddykids images: aggiornamento da utenti autenticati"
 create policy "Buddykids images: eliminazione da utenti autenticati"
   on storage.objects for delete
   using (bucket_id = 'buddykids-images' and auth.role() = 'authenticated');
+
+-- Bucket PRIVATO per i documenti di supporto delle Certificazioni servizio
+-- (richiesta di Fabrizio, vedi tabella activity_certifications qui sopra) —
+-- a differenza delle foto, un documento allegato a una richiesta di
+-- certificazione non è pensato per essere pubblico (segnalazione emersa
+-- dall'audit Privacy/Compliance sul bucket "buddykids-images" pubblico).
+-- Convenzione di path: "<center_id>/<file>" — le policy verificano che il
+-- primo segmento del percorso corrisponda al centro dell'utente autenticato
+-- (storage.foldername(name) restituisce l'array dei segmenti di cartella).
+insert into storage.buckets (id, name, public)
+values ('buddykids-certifications', 'buddykids-certifications', false)
+on conflict (id) do nothing;
+
+create policy "Certificazioni: lettura solo dal centro proprietario e dall'admin"
+  on storage.objects for select
+  using (
+    bucket_id = 'buddykids-certifications'
+    and (
+      (storage.foldername(name))[1] = public.current_center_id()::text
+      or public.is_platform_admin()
+    )
+  );
+
+create policy "Certificazioni: upload solo nella propria cartella centro"
+  on storage.objects for insert
+  with check (
+    bucket_id = 'buddykids-certifications'
+    and (storage.foldername(name))[1] = public.current_center_id()::text
+  );
+
+create policy "Certificazioni: aggiornamento solo dei propri documenti"
+  on storage.objects for update
+  using (
+    bucket_id = 'buddykids-certifications'
+    and (storage.foldername(name))[1] = public.current_center_id()::text
+  );
+
+create policy "Certificazioni: eliminazione dei propri documenti o da admin"
+  on storage.objects for delete
+  using (
+    bucket_id = 'buddykids-certifications'
+    and (
+      (storage.foldername(name))[1] = public.current_center_id()::text
+      or public.is_platform_admin()
+    )
+  );
 
 -- ─────────────────────────────────────────────
 -- INVITES (il Gestore invita potenziali nuovi genitori con un codice promo)

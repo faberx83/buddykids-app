@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import ActivityEditForm from "./ActivityEditForm";
 import { getActivityBySlug } from "@/lib/data/activities";
 import { getTags } from "@/lib/data/tags";
+import { getCertificationsForActivityGestore } from "@/lib/data/certifications";
 
 export default async function CenterActivityEditPage({
   params,
@@ -12,5 +13,7 @@ export default async function CenterActivityEditPage({
   const [activity, tags] = await Promise.all([getActivityBySlug(id), getTags()]);
   if (!activity) return notFound();
 
-  return <ActivityEditForm activity={activity} tags={tags} />;
+  const certifications = await getCertificationsForActivityGestore(activity.dbId);
+
+  return <ActivityEditForm activity={activity} tags={tags} certifications={certifications} />;
 }

@@ -19,6 +19,26 @@ export interface ServiceOption {
   priceExtra: number; // sovrapprezzo a settimana, 0 = incluso
 }
 
+// Certificazione servizio (richiesta di Fabrizio): etichetta libera per
+// attività (es. "Istruttori certificati FISE per equitazione"), non un
+// elenco fisso — verificata da un Admin piattaforma prima di diventare un
+// badge visibile ai genitori. document_url è un PATH nel bucket privato
+// "buddykids-certifications" (non un URL pubblico), risolto a un link
+// temporaneo con getCertificationDocumentUrlAction quando serve visualizzarlo.
+export type CertificationStatus = "pending" | "approved" | "rejected";
+
+export interface CertificationItem {
+  id: string;
+  activityId: string; // Activity.dbId (uuid)
+  activityName: string;
+  centerName: string;
+  label: string;
+  status: CertificationStatus;
+  documentPath?: string;
+  adminNote?: string;
+  createdAt: string;
+}
+
 export interface Activity {
   id: string;
   name: string;

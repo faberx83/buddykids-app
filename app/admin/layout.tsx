@@ -18,6 +18,7 @@ const navItems = [
   { href: "/admin/bookings", label: "Prenotazioni", icon: "ti-ticket" },
   { href: "/admin/group-requests", label: "Richieste Gruppo", icon: "ti-users-group" },
   { href: "/admin/richieste", label: "Richieste (SLA)", icon: "ti-message-circle-2" },
+  { href: "/admin/certifications", label: "Certificazioni", icon: "ti-certificate" },
   { href: "/admin/presenze", label: "Presenze", icon: "ti-clipboard-check" },
   { href: "/admin/preferiti", label: "Preferiti", icon: "ti-heart" },
   { href: "/admin/partner-offers", label: "Fornitori", icon: "ti-truck-delivery" },

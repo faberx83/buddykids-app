@@ -3,7 +3,7 @@
 import { useRouter, useSearchParams } from "next/navigation";
 import { useState } from "react";
 import Link from "next/link";
-import { Activity, Promotion } from "@/lib/types";
+import { Activity, CertificationItem, Promotion } from "@/lib/types";
 import { badgeClasses } from "@/lib/colors";
 import ImageLightbox from "@/components/ImageLightbox";
 import ContactCenterButton from "@/components/ContactCenterButton";
@@ -16,12 +16,18 @@ export default function DetailClient({
   activity,
   promotions,
   initialFavorite,
+  certifications = [],
 }: {
   activity: Activity;
   promotions: Promotion[];
   // Prima era sempre useState(true) (mai persistito, vedi
   // FUNCTIONAL-TC-026) — ora arriva dal database (lib/data/favorites.ts).
   initialFavorite: boolean;
+  // Solo quelle già approvate da un Admin piattaforma (vedi
+  // lib/data/certifications.ts#getApprovedCertificationsForActivity) —
+  // richiesta di Fabrizio: badge per certificazioni del servizio esposto
+  // (es. "Istruttori certificati FISE per equitazione").
+  certifications?: CertificationItem[];
 }) {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -217,6 +223,24 @@ export default function DetailClient({
           valueColor={activity.showExactSpots && activity.spotsLeft !== undefined ? "text-orange" : undefined}
         />
         <div className="my-3 h-px bg-[#F0F2F5]" />
+
+        {certifications.length > 0 && (
+          <>
+            <div className="mb-2.5 text-sm font-bold text-ink">Certificazioni</div>
+            <div className="mb-3.5 flex flex-wrap gap-2">
+              {certifications.map((cert) => (
+                <span
+                  key={cert.id}
+                  className="flex items-center gap-1.5 rounded-md bg-sky-light px-2.5 py-1.5 text-[11px] font-semibold text-sky"
+                >
+                  <i className="ti ti-certificate text-[13px]" />
+                  {cert.label}
+                </span>
+              ))}
+            </div>
+            <div className="my-3 h-px bg-[#F0F2F5]" />
+          </>
+        )}
 
         <div className="mb-2.5 text-sm font-bold text-ink">Servizi disponibili</div>
         <div className="mb-3.5 flex flex-wrap gap-2">

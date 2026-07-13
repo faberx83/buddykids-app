@@ -124,4 +124,36 @@ test.describe("Gestore - Attivita", () => {
     await page.getByRole("button", { name: /Salva modifiche/ }).click();
   });
 
+  // Richiesta di Fabrizio: "Certificazione centri: bisogna rendere note le
+  // certificazioni che hanno i vari centri... un bel badge sarebbe
+  // interessante" — chiarito poi che si riferisce a certificazioni del
+  // servizio esposto (es. "istruttori certificati FISE per equitazione"), non
+  // un elenco fisso, e che devono essere VERIFICATE DA UN ADMIN prima di
+  // diventare un badge visibile ai genitori (vedi TC-201/TC-202 e
+  // supabase/schema.sql#activity_certifications).
+  // Priorita: Alta | Precondizioni: Account Gestore collegato a un centro
+  test("TC-200 - Il gestore può inviare una richiesta di Certificazione servizio", async ({ page }) => {
+    test.skip(!isRealDeployment, "Richiede un deploy con Supabase configurato e l'account Gestore di test.");
+    await loginAs(page, "center_admin");
+    await page.goto("/center/activities");
+
+    const card = page.locator("div.rounded-lg.border").filter({ hasText: "[TEST] Attività BuddyKids" });
+    await card.getByRole("link", { name: "Modifica scheda" }).click();
+    await expect(page).toHaveURL(/\/center\/activities\/[^/]+$/);
+
+    await expect(page.getByText("Certificazioni servizio")).toBeVisible();
+    const label = `[TEST] Certificazione Playwright ${Date.now()}`;
+    await page.getByPlaceholder(/Istruttori certificati FISE/).fill(label);
+    await page.getByRole("button", { name: "Invia richiesta" }).click();
+
+    await expect(page.getByText(label)).toBeVisible();
+    await expect(page.getByText("In verifica").first()).toBeVisible();
+
+    // Ripristino: ritiro la richiesta di test appena creata (bottone cestino,
+    // visibile solo per le richieste ancora "pending").
+    const row = page.locator("div").filter({ hasText: label }).last();
+    await row.locator("button[title='Ritira la richiesta']").click();
+    await expect(page.getByText(label)).not.toBeVisible();
+  });
+
 });

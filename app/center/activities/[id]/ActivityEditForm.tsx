@@ -2,11 +2,23 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { Activity, MealOption, ServiceOption, Tag } from "@/lib/types";
+import { Activity, CertificationItem, MealOption, ServiceOption, Tag } from "@/lib/types";
 import { categories as mockCategories } from "@/lib/mock-data";
 import { DemoBadge } from "@/components/StatusBadge";
 import { updateActivityAction } from "@/app/actions/center";
+import {
+  deleteCertificationAction,
+  getCertificationDocumentUrlAction,
+  submitCertificationAction,
+} from "@/app/actions/certifications";
+import { uploadCertificationDocument } from "@/lib/storage";
 import CoverAndGalleryUploader from "@/components/CoverAndGalleryUploader";
+
+const CERTIFICATION_STATUS_LABEL: Record<CertificationItem["status"], { label: string; cls: string }> = {
+  pending: { label: "In verifica", cls: "bg-orange-light text-[#d4622a]" },
+  approved: { label: "Approvata", cls: "bg-green-light text-[#2d8f52]" },
+  rejected: { label: "Rifiutata", cls: "bg-[#FBEAEA] text-[#C0392B]" },
+};
 
 const scheduleColors = ["#4DAFEF", "#3ECFB2", "#FF8C5A", "#8B7CF8", "#52C87A", "#9CA3AF"];
 
@@ -32,10 +44,73 @@ const DIETARY_OPTIONS = [
 export default function ActivityEditForm({
   activity,
   tags = mockCategories,
+  certifications = [],
 }: {
   activity: Activity;
   tags?: Tag[];
+  certifications?: CertificationItem[];
 }) {
+  const [certList, setCertList] = useState(certifications);
+  const [certLabel, setCertLabel] = useState("");
+  const [certFile, setCertFile] = useState<File | null>(null);
+  const [certSaving, setCertSaving] = useState(false);
+  const [certError, setCertError] = useState<string | null>(null);
+
+  async function submitCertification() {
+    setCertError(null);
+    if (!certLabel.trim()) return;
+    if (!activity.dbId) {
+      setCertError("Disponibile solo con Supabase collegato.");
+      return;
+    }
+    setCertSaving(true);
+
+    let documentPath: string | null = null;
+    if (certFile) {
+      const upload = await uploadCertificationDocument(activity.centerId, certFile);
+      if (upload.error) {
+        setCertSaving(false);
+        setCertError(upload.error);
+        return;
+      }
+      documentPath = upload.path;
+    }
+
+    const result = await submitCertificationAction(activity.dbId, certLabel, documentPath);
+    setCertSaving(false);
+    if (result.error) {
+      setCertError(result.error);
+      return;
+    }
+    setCertList((prev) => [
+      {
+        id: `temp-${Date.now()}`,
+        activityId: activity.dbId!,
+        activityName: activity.name,
+        centerName: "",
+        label: certLabel.trim(),
+        status: "pending",
+        documentPath: documentPath ?? undefined,
+        createdAt: new Date().toISOString(),
+      },
+      ...prev,
+    ]);
+    setCertLabel("");
+    setCertFile(null);
+  }
+
+  async function removeCertification(id: string) {
+    if (!activity.dbId) return;
+    setCertList((prev) => prev.filter((c) => c.id !== id));
+    await deleteCertificationAction(activity.dbId, id);
+  }
+
+  async function viewCertificationDocument(path: string) {
+    const result = await getCertificationDocumentUrlAction(path);
+    if (result.url) window.open(result.url, "_blank", "noopener,noreferrer");
+    else setCertError(result.error || "Impossibile aprire il documento");
+  }
+
   const [form, setForm] = useState({
     name: activity.name,
     ageRange: activity.ageRange,
@@ -331,6 +406,87 @@ export default function ActivityEditForm({
               );
             })}
           </div>
+        </div>
+
+        <div className="space-y-3 rounded-lg border border-[#E8EBF0] bg-white p-5">
+          <div className="text-sm font-bold text-ink">Certificazioni servizio</div>
+          <p className="text-xs text-ink-2">
+            Certificazioni specifiche del servizio esposto (es. &quot;Istruttori certificati FISE
+            per equitazione&quot;, &quot;Allenatrici FIG&quot;) — non un elenco fisso, scrivi
+            l&apos;etichetta che descrive la certificazione. Ogni richiesta viene verificata da un
+            Admin piattaforma prima di diventare un badge visibile ai genitori.
+          </p>
+
+          <div className="space-y-2">
+            {certList.map((cert) => (
+              <div
+                key={cert.id}
+                className="flex flex-wrap items-center gap-2.5 rounded-md bg-bg p-3"
+              >
+                <div className="min-w-0 flex-1">
+                  <div className="text-sm font-semibold text-ink">{cert.label}</div>
+                  {cert.status === "rejected" && cert.adminNote && (
+                    <div className="mt-0.5 text-[11px] text-orange">Motivo: {cert.adminNote}</div>
+                  )}
+                </div>
+                {cert.documentPath && (
+                  <button
+                    type="button"
+                    onClick={() => viewCertificationDocument(cert.documentPath!)}
+                    className="text-xs font-semibold text-sky"
+                  >
+                    <i className="ti ti-file-text" /> Documento
+                  </button>
+                )}
+                <span
+                  className={`rounded-full px-2.5 py-1 text-[11px] font-semibold ${CERTIFICATION_STATUS_LABEL[cert.status].cls}`}
+                >
+                  {CERTIFICATION_STATUS_LABEL[cert.status].label}
+                </span>
+                {cert.status === "pending" && (
+                  <button
+                    type="button"
+                    onClick={() => removeCertification(cert.id)}
+                    className="text-ink-3 hover:text-orange"
+                    title="Ritira la richiesta"
+                  >
+                    <i className="ti ti-trash text-base" />
+                  </button>
+                )}
+              </div>
+            ))}
+            {certList.length === 0 && (
+              <p className="text-xs text-ink-2">Nessuna certificazione richiesta finora.</p>
+            )}
+          </div>
+
+          <div className="grid gap-2 rounded-md border border-dashed border-[#E8EBF0] p-3 sm:grid-cols-[1fr_auto_auto]">
+            <input
+              value={certLabel}
+              onChange={(e) => setCertLabel(e.target.value)}
+              placeholder="Es. Istruttori certificati FISE per equitazione"
+              className="w-full rounded-md border border-[#E8EBF0] bg-bg px-3 py-2 text-sm outline-none focus:border-sky"
+            />
+            <input
+              type="file"
+              accept="application/pdf,image/jpeg,image/png,image/webp"
+              onChange={(e) => setCertFile(e.target.files?.[0] ?? null)}
+              className="w-full max-w-[220px] text-xs text-ink-2"
+            />
+            <button
+              type="button"
+              onClick={() => submitCertification()}
+              disabled={certSaving || !certLabel.trim()}
+              className="rounded-md bg-sky px-3.5 py-2 text-xs font-bold text-white disabled:opacity-60"
+            >
+              {certSaving ? "Invio…" : "Invia richiesta"}
+            </button>
+          </div>
+          {certError && <p className="text-xs font-medium text-orange">{certError}</p>}
+          <p className="text-[11px] text-ink-3">
+            Documento facoltativo (PDF, JPG, PNG o WEBP, max 10MB) — caricato su uno storage
+            privato, visibile solo a te e all&apos;Admin durante la verifica.
+          </p>
         </div>
 
         <div className="space-y-4 rounded-lg border border-[#E8EBF0] bg-white p-5">

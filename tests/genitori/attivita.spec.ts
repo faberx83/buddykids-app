@@ -196,4 +196,12 @@ test.describe("Genitori - Attivita", () => {
     // deve comparire affatto se l'array è vuoto/assente.
   });
 
+  // Priorita: Media | Precondizioni: Attività con almeno una Certificazione servizio con status='approved' (vedi TC-200/TC-201)
+  // Passi: Apri /activity/[slug] dell'attività certificata
+  // Risultato atteso: Compare la sezione "Certificazioni" con un badge per etichetta; le richieste ancora "pending" o "rejected" NON compaiono (vedi getApprovedCertificationsForActivity in lib/data/certifications.ts)
+  test.fixme("TC-202 - Il dettaglio attività mostra solo le Certificazioni approvate", async ({ page }) => {
+    // TODO: implementare - richiede una certificazione già approvata da un
+    // admin (TC-201), non garantita dal seed attuale.
+  });
+
 });
