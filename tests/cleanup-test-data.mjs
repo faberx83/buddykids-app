@@ -79,7 +79,10 @@ async function main() {
     extraKids: 0,
     extraActivities: 0,
     accountStatusReset: 0,
+    attendanceRecords: 0,
   };
+
+  let testKid = null;
 
   // Riporta account_status a 'active' per gli account di test — TC-136/TC-137
   // (tests/genitori/profilo.spec.ts) disattivano/richiedono la cancellazione
@@ -128,6 +131,29 @@ async function main() {
       .neq("name", SEED_KID_NAME)
       .select("id");
     removed.extraKids = extraKids?.length || 0;
+
+    // Storico presenze del bambino seed. week_id e kid_id restano stabili tra
+    // un run e l'altro (il seed non viene mai ricreato), quindi uno stato
+    // "presente"/"in_ritardo" lasciato da un run precedente (fallito prima
+    // del reset finale) o da un test manuale in UI persiste indefinitamente e
+    // falsa l'assunzione "stato di default: assente" di TC-140/TC-149/TC-152.
+    // Va ripulito ad ogni run, non solo alla fine dei test.
+    const { data: testKidRow } = await supabase
+      .from("kids")
+      .select("id")
+      .eq("parent_id", parent.id)
+      .eq("name", SEED_KID_NAME)
+      .maybeSingle();
+    testKid = testKidRow;
+
+    if (testKid) {
+      const { data: attendanceRows } = await supabase
+        .from("attendance_records")
+        .delete()
+        .eq("kid_id", testKid.id)
+        .select("id");
+      removed.attendanceRecords = attendanceRows?.length || 0;
+    }
   }
 
   if (gestore) {
@@ -163,13 +189,6 @@ async function main() {
   // duplicati "sporchi" perché ripartiamo sempre da zero).
   // ─────────────────────────────────────────────
   if (parent && seedActivity) {
-    const { data: testKid } = await supabase
-      .from("kids")
-      .select("id")
-      .eq("parent_id", parent.id)
-      .eq("name", SEED_KID_NAME)
-      .maybeSingle();
-
     const { data: firstWeek } = await supabase
       .from("activity_weeks")
       .select("id")

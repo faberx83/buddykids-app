@@ -83,6 +83,19 @@ export default function ActivityCard({
             </span>
           ))}
         </div>
+        {activity.certificationBadges && activity.certificationBadges.length > 0 && (
+          <div className="mt-1.5 flex flex-wrap gap-1.5">
+            {activity.certificationBadges.map((label) => (
+              <span
+                key={label}
+                className="flex items-center gap-1 rounded-full bg-sky-light px-2.5 py-0.5 text-[10px] font-semibold text-sky"
+              >
+                <i className="ti ti-certificate text-[11px]" />
+                {label}
+              </span>
+            ))}
+          </div>
+        )}
         <div className="mt-2 flex items-center justify-between">
           <div className="text-base font-bold text-ink">
             €{activity.pricePerWeek}{" "}

@@ -132,7 +132,42 @@ export async function getActivities(): Promise<Activity[]> {
     return mockActivities;
   }
 
-  return data.map(mapRow);
+  return attachApprovedCertificationBadges(supabase, data.map(mapRow));
+}
+
+// Badge "Certificazioni" sulle card di lista/ricerca (richiesta di Fabrizio:
+// "non vedo ancora i badge di certificazione sulle schede dei centri") — fino
+// ad ora le certificazioni approvate venivano lette SOLO nel dettaglio
+// attività (DetailClient.tsx via getApprovedCertificationsForActivity, una
+// query per attività). Qui le carichiamo in blocco con UNA query sola per
+// tutte le attività della lista (niente N+1) e le agganciamo come semplici
+// etichette — le card non hanno spazio/bisogno del CertificationItem intero.
+async function attachApprovedCertificationBadges(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  activities: Activity[]
+): Promise<Activity[]> {
+  const dbIds = activities.map((a) => a.dbId).filter((id): id is string => Boolean(id));
+  if (dbIds.length === 0) return activities;
+
+  const { data, error } = await supabase
+    .from("activity_certifications")
+    .select("activity_id, label")
+    .in("activity_id", dbIds)
+    .eq("status", "approved");
+
+  if (error || !data || data.length === 0) return activities;
+
+  const labelsByActivity = new Map<string, string[]>();
+  for (const row of data as { activity_id: string; label: string }[]) {
+    const list = labelsByActivity.get(row.activity_id) ?? [];
+    list.push(row.label);
+    labelsByActivity.set(row.activity_id, list);
+  }
+
+  return activities.map((a) => {
+    const labels = a.dbId ? labelsByActivity.get(a.dbId) : undefined;
+    return labels && labels.length > 0 ? { ...a, certificationBadges: labels } : a;
+  });
 }
 
 // Per ciascuna delle 13 settimane stagionali (chiave: data ISO di inizio

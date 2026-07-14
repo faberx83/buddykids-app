@@ -195,7 +195,16 @@ test.describe("Genitori - Home (Planner/Per Bambino)", () => {
     }
     // Le card suggerite (se presenti) sono link verso /activity/[id], al
     // massimo 4, coerenti con lo slice(0, 4) in PlannerView.tsx.
-    const suggestionLinks = page.locator('a[href^="/activity/"]');
+    // Il locator va SCOPATO al contenitore dei suggerimenti (div.mb-2 con
+    // il testo "Per riempire la settimana N"): senza questo scoping, su
+    // pagine con altre sezioni contenenti link /activity/ (es. "Consigliati
+    // per te" più in basso nel Planner), il conteggio include TUTTI i link
+    // della pagina e supera erroneamente 4 — falso positivo, non un bug
+    // dell'app (PlannerView.tsx applica correttamente slice(0, 4)).
+    const suggestionsBlock = page
+      .locator("div.mb-2")
+      .filter({ hasText: /Per riempire la settimana \d+/ });
+    const suggestionLinks = suggestionsBlock.locator('a[href^="/activity/"]');
     const count = await suggestionLinks.count();
     expect(count).toBeLessThanOrEqual(4);
   });

@@ -87,6 +87,12 @@ export interface Activity {
   // mostrato nel dettaglio attività.
   coverImageUrl?: string;
   galleryUrls?: string[];
+  // Etichette delle certificazioni APPROVATE (vedi lib/data/certifications.ts)
+  // — versione leggera per le card di lista/ricerca, caricata in blocco da
+  // getActivities() con una query sola per tutte le attività. Il dettaglio
+  // attività (DetailClient.tsx) continua a usare il CertificationItem
+  // completo passato come prop separata.
+  certificationBadges?: string[];
 }
 
 export type KidGender = "M" | "F" | "altro";

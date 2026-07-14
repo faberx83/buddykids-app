@@ -204,4 +204,17 @@ test.describe("Genitori - Attivita", () => {
     // admin (TC-201), non garantita dal seed attuale.
   });
 
+  // Segnalazione di Fabrizio: "non vedo ancora i badge di certificazione
+  // sulle schede dei centri" — le certificazioni approvate erano lette SOLO
+  // dal dettaglio attività (vedi TC-202 sopra); ora getActivities()
+  // (lib/data/activities.ts) le carica in blocco per tutta la lista e
+  // ActivityCard/ActivityCardHorizontal mostrano il badge "ti-certificate".
+  // Priorita: Media | Precondizioni: Attività con almeno una Certificazione servizio con status='approved' (vedi TC-200/TC-201)
+  // Passi: Apri Cerca/Home con l'attività certificata tra i risultati
+  // Risultato atteso: La card mostra il badge di certificazione (icona + etichetta su ActivityCard, icona su ActivityCardHorizontal)
+  test.fixme("TC-208 - Le card di lista/ricerca mostrano il badge di Certificazione servizio", async ({ page }) => {
+    // TODO: implementare - come TC-202, richiede una certificazione già
+    // approvata da un admin, non garantita dal seed attuale.
+  });
+
 });

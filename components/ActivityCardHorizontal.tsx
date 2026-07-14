@@ -28,7 +28,7 @@ export default function ActivityCardHorizontal({
       className="mx-5 mb-3 flex h-[106px] cursor-pointer overflow-hidden rounded-lg border border-[#F0F2F5] bg-white transition-transform hover:scale-[0.98] hover:shadow-md"
     >
       <div
-        className="flex w-[106px] flex-shrink-0 items-center justify-center bg-cover bg-center text-5xl"
+        className="relative flex w-[106px] flex-shrink-0 items-center justify-center bg-cover bg-center text-5xl"
         style={
           activity.coverImageUrl
             ? { backgroundImage: `url(${activity.coverImageUrl})` }
@@ -38,6 +38,14 @@ export default function ActivityCardHorizontal({
         {/* Foto reale caricata dal gestore, se presente — prima questa card
             mostrava sempre e solo l'emoji/gradiente, mai la copertina. */}
         {!activity.coverImageUrl && activity.emoji}
+        {activity.certificationBadges && activity.certificationBadges.length > 0 && (
+          <div
+            title={activity.certificationBadges.join(", ")}
+            className="absolute left-1.5 top-1.5 flex h-5 w-5 items-center justify-center rounded-full bg-white/95 text-sky"
+          >
+            <i className="ti ti-certificate text-[12px]" />
+          </div>
+        )}
       </div>
       <div className="flex min-w-0 flex-1 flex-col justify-between p-2.5">
         <div className="text-[13px] font-bold text-ink">{activity.name}</div>
