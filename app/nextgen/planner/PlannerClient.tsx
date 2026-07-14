@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import type { PlannerData } from "@/lib/data/planner";
 import { KidOverlap, BudgetSummary, computePerKidCoverage } from "@/lib/nextgen/planner-insights";
 import type { Mission } from "@/lib/nextgen/missions";
@@ -21,7 +21,7 @@ import { lightBgClasses } from "@/lib/colors";
 import ActivityCard from "@/components/ActivityCard";
 import PageHeader from "@/components/PageHeader";
 import NextgenBadge from "@/components/nextgen/NextgenBadge";
-import PlannerModeTabs, { PlannerMode } from "@/components/nextgen/PlannerModeTabs";
+import PlannerModeTabs, { PlannerMode, PLANNER_MODES } from "@/components/nextgen/PlannerModeTabs";
 import PlannerBudgetView from "@/components/nextgen/PlannerBudgetView";
 import PlannerCalendarView from "@/components/nextgen/PlannerCalendarView";
 import PlannerMapView from "@/components/nextgen/PlannerMapView";
@@ -84,7 +84,16 @@ export default function PlannerClient({
   groups: GroupItem[];
 }) {
   const router = useRouter();
-  const [mode, setMode] = useState<PlannerMode>("organizzazione");
+  const searchParams = useSearchParams();
+  // SPRINT CORRETTIVO — deep-link da /nextgen/planner/logistica ("Condivisione
+  // piano" apre direttamente la modalita' Calendario, dove quella feature
+  // vive davvero, invece di lasciare l'utente in Organizzazione a cercarla).
+  // Fallback silenzioso su "organizzazione" se il valore non e' valido.
+  const initialModeParam = searchParams.get("mode");
+  const initialMode: PlannerMode = PLANNER_MODES.some((m) => m.key === initialModeParam)
+    ? (initialModeParam as PlannerMode)
+    : "organizzazione";
+  const [mode, setMode] = useState<PlannerMode>(initialMode);
   const perKidCoverage = useMemo(() => computePerKidCoverage(planner, kids), [planner, kids]);
 
   const overlapsByWeekIndex = useMemo(() => {
@@ -364,28 +373,18 @@ export default function PlannerClient({
         </>
         )}
 
-        {/* SPRINT 5.3 — "Logistica leggera": indirizzi di famiglia, sempre
-            raggiungibili da qui indipendentemente dalla modalità attiva,
-            stesso trattamento del link "Gestisci prenotazioni" sotto. */}
+        {/* SPRINT CORRETTIVO (feedback Fabrizio): "Indirizzi di Famiglia/
+            Famiglia/Gestisci prenotazioni... vanno riportate in una unica
+            pagina" — prima questi 3 link comparivano ripetuti qui sotto OGNI
+            modalità del Planner. Ora un solo link porta all'hub
+            /nextgen/planner/logistica (Indirizzi, Famiglia, Condivisione
+            piano, Le tue prenotazioni), vedi LogisticaClient.tsx. */}
         <Link
-          href="/nextgen/planner/indirizzi"
-          className="mt-4 block text-center text-[12.5px] font-semibold text-trama-violet"
+          href="/nextgen/planner/logistica"
+          className="mt-4 flex items-center justify-center gap-1.5 text-center text-[12.5px] font-semibold text-trama-violet"
         >
-          📍 Indirizzi di famiglia
-        </Link>
-
-        {/* SPRINT 5.5 — Profilo Famiglia multi-genitore: invita l'altro
-            genitore (account separato) a condividere Indirizzi/"Chi fa
-            cosa?"/Condivisione Piano. */}
-        <Link
-          href="/nextgen/planner/famiglia"
-          className="mt-2 block text-center text-[12.5px] font-semibold text-trama-violet"
-        >
-          👨‍👩‍👧 Famiglia
-        </Link>
-
-        <Link href="/prenotazioni" className="mt-2 block text-center text-[12.5px] font-semibold text-trama-violet">
-          Gestisci prenotazioni (annulla/modifica) →
+          <i className="ti ti-compass text-[15px]" />
+          Logistica &amp; Famiglia
         </Link>
       </div>
     </div>

@@ -232,7 +232,10 @@ export default function FamigliaClient({ initialFamily }: { initialFamily: Famil
 
   return (
     <div className="flex min-h-screen flex-col">
-      <PageHeader title="Famiglia" onBack={() => router.push("/nextgen/planner")} showBrandIcon />
+      {/* SPRINT CORRETTIVO — raggiungibile ora da /nextgen/planner/logistica
+          (hub "Logistica & Famiglia"), non piu' direttamente dal Planner:
+          "indietro" torna li'. */}
+      <PageHeader title="Famiglia" onBack={() => router.push("/nextgen/planner/logistica")} showBrandIcon />
       {family ? <FamilyView family={family} /> : <NoFamilyView onCreated={setCreatedFamily} />}
     </div>
   );

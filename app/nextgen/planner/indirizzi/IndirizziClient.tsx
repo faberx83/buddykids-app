@@ -148,7 +148,10 @@ export default function IndirizziClient({ addresses }: { addresses: ParentAddres
 
   return (
     <div className="flex min-h-screen flex-col">
-      <PageHeader title="Indirizzi" onBack={() => router.push("/nextgen/planner")} showBrandIcon />
+      {/* SPRINT CORRETTIVO — raggiungibile ora da /nextgen/planner/logistica
+          (hub "Logistica & Famiglia"), non piu' direttamente dal Planner:
+          "indietro" torna li'. */}
+      <PageHeader title="Indirizzi" onBack={() => router.push("/nextgen/planner/logistica")} showBrandIcon />
       <div className="flex flex-col gap-3 px-5 py-4">
         <p className="text-xs text-ink-2">
           Salva gli indirizzi di famiglia per aprirli velocemente in Maps. La distanza e il tempo di percorrenza dai
