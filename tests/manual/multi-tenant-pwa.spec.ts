@@ -76,4 +76,16 @@ test.describe("Multi-tenant / PWA", () => {
     // un browser/device reale, non simulabile in Playwright headless.
   });
 
+  // Priorita: Bassa | Precondizioni: Login Gestore o Admin, navigazione tra pagine
+  // Passi: Cambia pagina cosi' da attivare la Suspense fallback (loading.tsx)
+  // Risultato atteso: lo spinner TRAMA e' navy (non a colori) su Partner,
+  // bianco su sfondo navy su Admin (vedi TramaSpinner.tsx#tone, app/center/
+  // loading.tsx, app/admin/loading.tsx) - richiesta di Fabrizio dopo il giro
+  // loghi: lo spinner deve seguire il colore del marchio del pannello.
+  test.fixme("TC-217 - Spinner di caricamento monocromatico coerente col logo del pannello", async ({ page }) => {
+    // ESCLUSO dall'automazione: loading.tsx e' una Suspense fallback
+    // transitoria (spesso troppo rapida da catturare in modo affidabile in
+    // Playwright senza throttling di rete artificiale) - verifica visiva.
+  });
+
 });
