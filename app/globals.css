@@ -156,44 +156,65 @@ body {
   animation: tramaFadeUp 0.4s ease-out both;
 }
 
-/* TRAMA Sprint 3bis — spinner "fili che si tessono" (richiesta di Fabrizio:
-   "vorrei una animazione con i fili del logo che si muovono... ogni filo si
-   'tesse' avanti e indietro in sequenza", per richiamare letteralmente il
-   significato di trama/tessitura). Sostituisce il respiro scala+opacità
-   sull'immagine piatta (tramaPulse sotto, lasciato per compatibilità) con un
-   SVG inline (components/TramaSpinner.tsx) dove ognuno dei 5 fili è un
-   <path> separato: ogni filo oscilla su e giù (un "avanti e indietro"
-   verticale, il gesto fisico di un filo che passa sopra/sotto in un telaio),
-   con un animation-delay scalato per filo così il movimento attraversa i 5
-   fili in sequenza invece di muoversi tutti insieme. */
-@keyframes tramaThreadWeave {
+/* TRAMA Sprint 3bis (v3 — vero intreccio, non oscillazione verticale) —
+   correzione su richiesta di Fabrizio dopo la v2 (bob verticale uniforme,
+   "non oscillando... mi aspetto che la qualità sia migliore"): un vero
+   telaio non fa "respirare" tutti i fili allo stesso modo, li fa scorrere
+   avanti/indietro l'uno CONTRO l'altro. Qui: fili di indice dispari scorrono
+   lungo la propria direzione (destra+un filo di profondità), i pari
+   scorrono nel verso opposto (sinistra+profondità inversa) — stesso ciclo,
+   fasi opposte, così due fili adiacenti si "incontrano e si allontanano"
+   invece di muoversi in coppia. Il leggero scale() accompagna il movimento
+   per suggerire il passaggio sopra/sotto (il filo che si allontana rimpicciolisce
+   appena, come se passasse dietro). animation-delay scalato per filo così
+   il movimento attraversa i 5 fili in sequenza (un'onda), non tutti insieme.
+   Ciclo piu' lungo (2.4s) e una curva cubic-bezier invece del solito
+   ease-in-out per un moto piu' fluido e meno meccanico. */
+@keyframes tramaWeaveForward {
   0%,
   100% {
-    transform: translateY(0);
+    transform: translate(0, 0) scale(1);
   }
   50% {
-    transform: translateY(7px);
+    transform: translate(7px, -2px) scale(1.015);
+  }
+}
+@keyframes tramaWeaveBack {
+  0%,
+  100% {
+    transform: translate(0, 0) scale(1);
+  }
+  50% {
+    transform: translate(-7px, 2px) scale(0.985);
   }
 }
 .trama-thread {
-  animation: tramaThreadWeave 1.8s ease-in-out infinite;
   transform-box: fill-box;
   transform-origin: center;
+  animation-duration: 2.4s;
+  animation-timing-function: cubic-bezier(0.45, 0, 0.55, 1);
+  animation-iteration-count: infinite;
+}
+.trama-thread:nth-child(odd) {
+  animation-name: tramaWeaveForward;
+}
+.trama-thread:nth-child(even) {
+  animation-name: tramaWeaveBack;
 }
 .trama-thread:nth-child(1) {
   animation-delay: 0s;
 }
 .trama-thread:nth-child(2) {
-  animation-delay: 0.18s;
+  animation-delay: 0.2s;
 }
 .trama-thread:nth-child(3) {
-  animation-delay: 0.36s;
+  animation-delay: 0.4s;
 }
 .trama-thread:nth-child(4) {
-  animation-delay: 0.54s;
+  animation-delay: 0.6s;
 }
 .trama-thread:nth-child(5) {
-  animation-delay: 0.72s;
+  animation-delay: 0.8s;
 }
 
 /* TRAMA Sprint 3 — spinner di caricamento col logo (components/TramaSpinner.tsx),
