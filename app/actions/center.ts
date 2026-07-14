@@ -1,10 +1,22 @@
 "use server";
 
+import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
 import { DayAvailability, MealOption, ServiceOption, SocialLinks } from "@/lib/types";
 import { logGestoreAction } from "@/lib/data/activity-log";
 import { getCenterContext } from "@/lib/data/center-admin";
+
+// NOTA: fino ad ora questo era l'UNICO file in app/actions/ a non chiamare
+// mai revalidatePath dopo una scrittura (tutti gli altri lo fanno, vedi
+// bookings.ts, favorites.ts, checkin.ts, communities.ts, groups.ts, ecc.).
+// Segnalazione di Fabrizio: dopo "Crea attività" il redirect alla scheda
+// appena creata dava 404, e dopo aver flaggato "Il centro è accessibile" il
+// Profilo centro restava bloccato su "Salvato (demo)" — in entrambi i casi
+// una pagina server-rendered non vedeva dati appena scritti. Aggiunta qui
+// per allinearsi al resto del progetto (comunque innocua se non era la causa
+// reale — vedi anche il logging diagnostico aggiunto in
+// lib/data/center-admin.ts e lib/data/activities.ts).
 
 function firstOf<T>(value: T | T[] | null | undefined): T | null {
   if (!value) return null;
@@ -91,6 +103,9 @@ export async function createActivityAction(
     entityId: data.id,
   });
 
+  revalidatePath("/center/activities");
+  revalidatePath("/center/activities/[id]", "page");
+
   return { activitySlug: data.slug };
 }
 
@@ -141,6 +156,9 @@ export async function saveActivityDaysAction(
     entityId: activityDbId,
     meta: { daysCount: rows.length },
   });
+
+  revalidatePath("/center/activities/[id]/calendar", "page");
+  revalidatePath("/activity/[id]", "page");
 
   return {};
 }
@@ -262,6 +280,13 @@ export async function updateActivityAction(input: ActivityUpdateInput): Promise<
     },
   });
 
+  revalidatePath("/center/activities");
+  revalidatePath("/center/activities/[id]", "page");
+  revalidatePath("/activity/[id]", "page");
+  revalidatePath("/search");
+  revalidatePath("/nextgen/search");
+  revalidatePath("/");
+
   return {};
 }
 
@@ -330,6 +355,13 @@ export async function updateCenterProfileAction(
     entityId: input.centerDbId,
   });
 
+  revalidatePath("/center/profile");
+  revalidatePath("/center/activities");
+  revalidatePath("/activity/[id]", "page");
+  revalidatePath("/search");
+  revalidatePath("/nextgen/search");
+  revalidatePath("/");
+
   return {};
 }
 
@@ -384,6 +416,9 @@ export async function createPromotionAction(
     meta: { type: input.type, discountPercent: input.discountPercent },
   });
 
+  revalidatePath("/center/promotions");
+  revalidatePath("/activity/[id]", "page");
+
   return { promotionId: data.id };
 }
 
@@ -426,6 +461,9 @@ export async function togglePromotionAction(
     meta: { active },
   });
 
+  revalidatePath("/center/promotions");
+  revalidatePath("/activity/[id]", "page");
+
   return {};
 }
 
@@ -448,6 +486,9 @@ export async function deletePromotionAction(promotionId: string): Promise<{ erro
     entityType: "promotion",
     entityId: promotionId,
   });
+
+  revalidatePath("/center/promotions");
+  revalidatePath("/activity/[id]", "page");
 
   return {};
 }

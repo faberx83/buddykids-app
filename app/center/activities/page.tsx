@@ -3,6 +3,9 @@ import { getActivitiesForCenter } from "@/lib/data/activities";
 import { getCenterContext } from "@/lib/data/center-admin";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
 
+// Difensivo, vedi nota in app/center/activities/[id]/page.tsx.
+export const dynamic = "force-dynamic";
+
 export default async function CenterActivitiesPage() {
   const { centerDbId, centerSlug, isPlatformAdmin } = await getCenterContext();
   const myActivities = await getActivitiesForCenter(centerDbId, centerSlug);

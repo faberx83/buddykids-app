@@ -240,6 +240,15 @@ export async function getActivityBySlug(slug: string): Promise<Activity | null> 
     .maybeSingle();
 
   if (error || !data) {
+    // Segnalazione di Fabrizio: creare un'attività ("Crea attività") reindirizza
+    // correttamente a /center/activities/[slug appena creato], ma quella pagina
+    // dà 404 (notFound() quando questa funzione ritorna null) — nonostante
+    // l'insert sia andato a buon fine (altrimenti l'azione non avrebbe mai
+    // restituito uno slug su cui reindirizzare). Logghiamo qui per capire se è
+    // un errore Postgres/RLS reale o un problema di timing/cache.
+    if (error) {
+      console.error("[getActivityBySlug] query fallita per slug", slug, "-", error.message, `(code: ${error.code ?? "n/d"})`);
+    }
     return mockActivities.find((a) => a.id === slug) ?? null;
   }
 

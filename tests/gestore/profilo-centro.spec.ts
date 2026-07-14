@@ -44,6 +44,13 @@ test.describe("Gestore - Profilo Centro", () => {
     const field = page.locator("input[type='number']").last();
     await field.fill("5");
     await page.getByRole("button", { name: /Salva/ }).first().click();
+    // Segnalazione di Fabrizio: il salvataggio del Profilo centro restava
+    // bloccato su "Salvato (demo) — verrà scritto su Supabase quando
+    // collegato." nonostante l'account fosse correttamente collegato a un
+    // centro reale (verificato via query SQL diretta). L'assenza di questa
+    // asserzione (prima si controllava solo "niente Application error") è
+    // il motivo per cui la suite non aveva mai intercettato la regressione.
+    await expect(page.getByText("Salvato su Supabase ✓")).toBeVisible();
     await expect(page.locator("body")).not.toContainText("Application error");
   });
 
@@ -62,6 +69,9 @@ test.describe("Gestore - Profilo Centro", () => {
     await expect(page.getByPlaceholder("Es. Rampa d'accesso, bagno attrezzato")).toBeVisible();
 
     await page.getByRole("button", { name: /Salva/ }).first().click();
+    // Vedi nota in TC-192 sopra: asserzione rafforzata per intercettare la
+    // regressione "Salvato (demo)" segnalata da Fabrizio.
+    await expect(page.getByText("Salvato su Supabase ✓")).toBeVisible();
     await expect(page.locator("body")).not.toContainText("Application error");
   });
 });

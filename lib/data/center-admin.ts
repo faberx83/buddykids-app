@@ -30,11 +30,29 @@ export async function getCenterContext(): Promise<CenterContext> {
   } = await supabase.auth.getUser();
   if (!user) return { centerDbId: null, centerSlug: null, isPlatformAdmin: false };
 
-  const { data: profile } = await supabase
+  const { data: profile, error: profileError } = await supabase
     .from("profiles")
     .select("role, center_id, centers ( slug )")
     .eq("id", user.id)
     .single();
+
+  // Diagnostica: questa query alimenta sia il gate "centro collegato" (Crea
+  // attività, Profilo centro, ecc.) sia i badge di Certificazione/Accesso
+  // disabili — un errore qui degrada silenziosamente TUTTO il pannello
+  // Gestore in modalità demo, senza nessuna traccia visibile. Segnalazione
+  // di Fabrizio ("Salvato (demo)" nonostante profiles.center_id sia
+  // popolato, confermato via query SQL diretta) — logghiamo qui per vedere
+  // nei log runtime di Vercel l'errore Postgres/PostgREST reale, invece di
+  // scoprirlo solo per deduzione.
+  if (profileError) {
+    console.error(
+      "[getCenterContext] query profiles fallita per user",
+      user.id,
+      "-",
+      profileError.message,
+      profileError.code ? `(code: ${profileError.code})` : ""
+    );
+  }
 
   const center = firstOf(profile?.centers as { slug: string } | { slug: string }[] | null);
 
@@ -111,6 +129,16 @@ export async function getMyCenter(): Promise<{ center: Center; dbId: string | nu
     .single();
 
   if (error || !data) {
+    // Idem: prima cadeva in demo senza lasciare traccia. Logghiamo l'errore
+    // Postgres/PostgREST reale (o il fatto che la riga non è stata trovata
+    // nonostante centerDbId fosse valorizzato) per poter finalmente vedere
+    // nei log runtime di Vercel perché un centro con dati corretti a DB
+    // (verificato via query SQL diretta da Fabrizio) finisce comunque qui.
+    console.error(
+      "[getMyCenter] query centers fallita per centerDbId",
+      centerDbId,
+      error ? `- ${error.message} (code: ${error.code ?? "n/d"})` : "- nessun errore ma nessuna riga trovata"
+    );
     const fallback = mockCenters.find((c) => c.id === demoCenterAdminCenterId)!;
     return { center: fallback, dbId: null };
   }
