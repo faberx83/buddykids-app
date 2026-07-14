@@ -6,6 +6,7 @@ import NextgenBottomNav from "@/components/nextgen/NextgenBottomNav";
 import { NextgenToastProvider } from "@/components/nextgen/NextgenToastProvider";
 import { createClient } from "@/lib/supabase/server";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
+import { splashLinks } from "@/lib/tenant";
 
 // SPRINT 0 (NEXTGEN — V2 in parallelo a LEGACY): guscio minimo dell'area
 // genitore NEXTGEN. Stesso guard di autenticazione di app/(main)/layout.tsx
@@ -31,6 +32,9 @@ export const metadata: Metadata = {
       { url: "/icon-nextgen-512.png", sizes: "512x512", type: "image/png" },
     ],
     apple: "/apple-touch-icon-nextgen.png",
+    // Sprint correttivo: stesso splash iOS (icona a colori + claim su bianco)
+    // del tenant famiglia LEGACY — NEXTGEN e' comunque "app genitori".
+    other: splashLinks("/splash/nextgen"),
   },
 };
 

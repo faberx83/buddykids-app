@@ -77,4 +77,24 @@ test.describe("NEXTGEN - Setup (Sprint 0)", () => {
     await page.goto("/nextgen/community");
     await expect(page.locator('img[src="/brand/trama-logo-mark.png"]')).toBeVisible();
   });
+
+  // SPRINT CORRETTIVO (feedback Fabrizio): "l'icona della pwa e' piccola" +
+  // splash screen iOS personalizzato (icona+claim su bianco) prima assente
+  // per ogni tenant — vedi lib/tenant.ts#splashLinks. Qui verifichiamo solo
+  // che i tag <link rel="apple-touch-startup-image"> siano presenti nello
+  // <head> per NEXTGEN (le stesse dimensioni sono condivise da tutti i
+  // tenant, vedi SPLASH_SIZES) — non e' verificabile via Playwright come
+  // Safari sceglie/renderizza lo splash in fase di avvio da home screen.
+  test("TC-N93 - /nextgen include i tag apple-touch-startup-image per lo splash iOS", async ({ page }) => {
+    test.skip(!isRealDeployment, "Richiede un deploy con Supabase configurato e l'account genitore di test.");
+    await loginAs(page, "parent");
+    await page.goto("/nextgen");
+
+    const splashLinkCount = await page.locator('link[rel="apple-touch-startup-image"]').count();
+    expect(splashLinkCount).toBeGreaterThanOrEqual(6);
+    await expect(page.locator('link[rel="apple-touch-startup-image"]').first()).toHaveAttribute(
+      "href",
+      /\/splash\/nextgen-\d+x\d+\.png/
+    );
+  });
 });

@@ -56,4 +56,29 @@ test.describe("TRAMA - Login (header animato)", () => {
     await expect(page.getByLabel(/email/i)).toBeVisible();
     await expect(page.getByRole("button", { name: "Registrati" })).toBeVisible();
   });
+
+  // SPRINT CORRETTIVO (feedback Fabrizio): "voglio vedere l'icona, il claim
+  // ma su base bianca" — prima lo sfondo era bg-trama-page (#FDFCFA, un
+  // off-white caldo), non bianco puro. Vedi anche TC-209 (fixme) per
+  // Partner/Admin: la suite Playwright gira su un solo baseURL (tenant
+  // famiglia), non ha un modo per simulare gli host partner./admin.* — non
+  // automatizzabile senza estendere i fixture di test.
+  test("TC-208 - Lo sfondo della schermata di Login (tenant famiglia) e' bianco puro", async ({ page }) => {
+    test.skip(!isRealDeployment, "Richiede un deploy con Supabase configurato (tenant famiglia).");
+    await page.goto("/auth/login");
+
+    const bgColor = await page.evaluate(() => {
+      const el = document.querySelector("body > div, #__next > div, main, div");
+      return el ? getComputedStyle(el).backgroundColor : null;
+    });
+    // bg-white di Tailwind -> rgb(255, 255, 255)
+    expect(bgColor).toBe("rgb(255, 255, 255)");
+  });
+
+  // ESCLUSO dall'automazione: verificare lo sfondo bianco su Login Partner e
+  // la presenza del claim su Login Admin richiede due hostname diversi
+  // (partner.*/admin.*) — i fixture Playwright di questo progetto girano
+  // tutti su un solo baseURL (vedi tests/fixtures/roles.ts), nessun supporto
+  // per host multipli. Verificato invece a livello di codice (LoginForm.tsx).
+  test.fixme("TC-209 - Login Partner ha sfondo bianco, Login Admin mostra il claim su navy", async () => {});
 });

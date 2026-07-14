@@ -5,7 +5,7 @@ import { DemoRoleProvider } from "@/components/DemoRoleProvider";
 import RoleSwitcher from "@/components/RoleSwitcher";
 import InstallPrompt from "@/components/InstallPrompt";
 import VersionToggle from "@/components/VersionToggle";
-import { tenantForHost, TENANT_CONFIG } from "@/lib/tenant";
+import { tenantForHost, TENANT_CONFIG, splashLinks } from "@/lib/tenant";
 
 async function currentTenantConfig() {
   const headerList = await headers();
@@ -28,6 +28,11 @@ export async function generateMetadata(): Promise<Metadata> {
         { url: config.icon512, sizes: "512x512", type: "image/png" },
       ],
       apple: config.appleIcon,
+      // Sprint correttivo (feedback Fabrizio): splash screen iOS personalizzato
+      // (icona + wordmark + claim "Organizing childhood. Together." su sfondo
+      // bianco per genitori/partner, navy per admin) — prima non esisteva,
+      // Safari mostrava solo lo splash generato di default (icona su sfondo).
+      other: splashLinks(config.splashPrefix),
     },
   };
 }

@@ -132,10 +132,17 @@ export default function LoginForm({
       : "rounded-lg border-[#E8EBF0] bg-[#F4F6FA]"
   }`;
 
+  // Sprint correttivo (feedback Fabrizio): "voglio vedere l'icona, il claim
+  // ma su base bianca" (genitori) e "su portale partner deve esserci claim
+  // su base bianca" — prima genitori usava bg-trama-page (#FDFCFA, un
+  // off-white caldo) e partner bg-bg (#F7F9FC, grigio chiaro): nessuno dei
+  // due era bianco puro. Admin resta bg-navy (icona bianca su sfondo navy,
+  // regola di brand invariata) — il claim li' era gia' presente nel codice
+  // (vedi sotto, stesso paragrafo condiviso col ramo Partner).
   const content = (
     <div
       className={`flex min-h-screen flex-col items-center justify-center px-8 py-10 sm:min-h-0 sm:flex-1 ${
-        isFamily ? "bg-trama-page" : isAdmin ? "bg-navy" : "bg-bg"
+        isFamily ? "bg-white" : isAdmin ? "bg-navy" : "bg-white"
       }`}
     >
       {isFamily ? (
