@@ -67,4 +67,54 @@ test.describe("NEXTGEN - Planner (Sprint 3)", () => {
     await page.getByRole("link", { name: "Profilo" }).click();
     await expect(page).toHaveURL(/\/profile/);
   });
+
+  // SPRINT CORRETTIVO (feedback Fabrizio): con 5 modalità sempre presenti,
+  // "Budget" (4a) resta spesso tagliato fuori dallo schermo — l'utente non
+  // sapeva che la riga scorre. PlannerModeTabs ora mostra una sfumatura a
+  // destra quando c'è altro contenuto da scorrere, e la nasconde una volta
+  // raggiunta la fine dello scroll (vedi componente per il dettaglio).
+  test("TC-N91 - I tab del Planner mostrano una sfumatura di scroll quando 'Budget'/'Gruppi' sono fuori schermo", async ({
+    page,
+  }) => {
+    test.skip(!isRealDeployment, "Richiede un deploy con Supabase configurato e l'account genitore di test.");
+    await page.setViewportSize({ width: 375, height: 700 });
+    await loginAs(page, "parent");
+    await page.goto("/nextgen/planner");
+
+    const scrollContainer = page.locator(".no-scrollbar").first();
+    const { scrollWidth, clientWidth } = await scrollContainer.evaluate((el) => ({
+      scrollWidth: el.scrollWidth,
+      clientWidth: el.clientWidth,
+    }));
+    test.skip(scrollWidth <= clientWidth + 4, "Su questo viewport i 5 tab entrano già interamente: nulla da scorrere.");
+
+    // All'inizio (scroll a sinistra) la sfumatura destra deve essere visibile...
+    const rightFade = page.locator("div.pointer-events-none.absolute.right-0");
+    await expect(rightFade).toBeVisible();
+
+    // ...e sparire una volta scrollato fino in fondo.
+    await scrollContainer.evaluate((el) => {
+      el.scrollLeft = el.scrollWidth;
+    });
+    await expect(rightFade).toHaveCount(0);
+  });
+
+  // SPRINT CORRETTIVO (feedback Fabrizio): "se vado sopra budget direi che
+  // deve essere sul rosso" — prima usava trama-orange (stesso tono dei
+  // warning), ora red-500 per un allarme più netto e distinguibile.
+  test("TC-N92 - Modalità Budget: superare il tetto colora la barra e il testo di rosso (non più arancione)", async ({
+    page,
+  }) => {
+    test.skip(!isRealDeployment, "Richiede un deploy con Supabase configurato e un account genitore di test con spesa già sopra il tetto impostato.");
+    await loginAs(page, "parent");
+    await page.goto("/nextgen/planner");
+    await page.getByRole("button", { name: "Budget" }).click();
+
+    const overBudgetText = page.getByText(/hai superato il budget/);
+    if (!(await overBudgetText.isVisible().catch(() => false))) {
+      test.skip(true, "L'account di test non è sopra il tetto budget impostato.");
+    }
+    await expect(overBudgetText).toHaveClass(/text-red-500/);
+    await expect(overBudgetText).not.toHaveClass(/text-trama-orange/);
+  });
 });

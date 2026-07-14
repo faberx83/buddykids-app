@@ -106,14 +106,20 @@ export default function PlannerBudgetView({
                 <div className="text-[11px] text-ink-3">Speso finora</div>
               </div>
             </div>
+            {/* SPRINT CORRETTIVO (feedback Fabrizio): "se vado sopra budget
+                direi che deve essere sul rosso" — trama-orange era già usato
+                per i toni "warning" (es. sovrapposizioni settimana), qui
+                serve un segnale più netto di allarme. red-500 è lo stesso
+                rosso già usato altrove per stati di errore/pericolo (es.
+                "Esci dalla famiglia" in FamigliaClient), non un nuovo token. */}
             <div className="mt-3 h-2.5 w-full overflow-hidden rounded-full bg-[#EEF0F4]">
               <div
-                className={`h-full rounded-full transition-all ${overBudget ? "bg-trama-orange" : "bg-trama-violet"}`}
+                className={`h-full rounded-full transition-all ${overBudget ? "bg-red-500" : "bg-trama-violet"}`}
                 style={{ width: `${Math.min(100, percent ?? 0)}%` }}
               />
             </div>
             <div className="mt-2 flex items-center justify-between text-[11.5px]">
-              <span className={overBudget ? "font-semibold text-trama-orange" : "text-ink-2"}>
+              <span className={overBudget ? "font-semibold text-red-500" : "text-ink-2"}>
                 {overBudget ? `${percent}% — hai superato il budget` : `${percent}% utilizzato`}
               </span>
               <button type="button" onClick={() => setEditing(true)} className="font-semibold text-trama-violet">
