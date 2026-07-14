@@ -164,21 +164,22 @@ body {
    troppo complessi/con sotto-tratti che si comportano in modo imprevedibile
    se animati singolarmente in browser reali. Si torna quindi al logo PIENO
    (trama-logo-mark.png, un'unica immagine, zero rischio di artefatti) ma
-   centrato, più grande, con un movimento di zoom + dissolvenza più marcato
-   di quello originario (tramaPulse iniziale: scale 1→1.08, opacità 1→0.55,
-   1.1s, quasi impercettibile) — richiesta esplicita: "che zooma e va in
-   dissolvenza". */
+   centrato, più grande, con un movimento di zoom + dissolvenza — v5:
+   escursione ampliata (0.88→1.08 iniziale giudicato ancora troppo tenue da
+   Fabrizio) e leggermente più rapida per uno zoom più "sentito".
+   Nota: tone (color/navy/white, vedi TramaSpinner.tsx) non cambia questa
+   animazione, solo l'immagine sorgente. */
 @keyframes tramaZoomFade {
   0%,
   100% {
-    transform: scale(0.88);
-    opacity: 0.4;
+    transform: scale(0.7);
+    opacity: 0.3;
   }
   50% {
-    transform: scale(1.08);
+    transform: scale(1.15);
     opacity: 1;
   }
 }
 .trama-spinner {
-  animation: tramaZoomFade 1.9s ease-in-out infinite;
+  animation: tramaZoomFade 1.6s ease-in-out infinite;
 }
