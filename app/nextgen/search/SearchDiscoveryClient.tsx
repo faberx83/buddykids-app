@@ -49,6 +49,13 @@ interface ServiceFilters {
   pranzo: boolean;
   bar: boolean;
   attivitaExtra: boolean;
+  // SPRINT CORRETTIVO (feedback Fabrizio): "aggiungi flag per disabili e
+  // diete speciali (usa stessa naming ovunque)" — stesso naming/dati già
+  // usati per i badge su ActivityCard.tsx ("Accesso disabili",
+  // "Diete gestite", da activity.centerAccessible/dietaryOptions), qui come
+  // filtro invece che solo badge informativo.
+  accessoDisabili: boolean;
+  dieteGestite: boolean;
 }
 
 const EMPTY_SERVICES: ServiceFilters = {
@@ -57,6 +64,8 @@ const EMPTY_SERVICES: ServiceFilters = {
   pranzo: false,
   bar: false,
   attivitaExtra: false,
+  accessoDisabili: false,
+  dieteGestite: false,
 };
 
 const DEFAULT_RADIUS_KM = 5;
@@ -237,6 +246,8 @@ export default function SearchDiscoveryClient({
       if (services.pranzo && a.mealOption !== "included" && a.mealOption !== "packed") return false;
       if (services.bar && !a.centerHasBar) return false;
       if (services.attivitaExtra && a.badges.length === 0) return false;
+      if (services.accessoDisabili && !a.centerAccessible) return false;
+      if (services.dieteGestite && !(a.dietaryOptions && a.dietaryOptions.length > 0)) return false;
       if (availableIdsForWeek && a.dbId && !availableIdsForWeek.has(a.dbId)) return false;
       if (selectedTagIds.length > 0 && !a.tagIds.some((id) => selectedTagIds.includes(id))) return false;
       return true;
@@ -552,6 +563,20 @@ export default function SearchDiscoveryClient({
               label="🥤 Bar nel centro"
               checked={services.bar}
               onChange={(v) => setServices((s) => ({ ...s, bar: v }))}
+            />
+            {/* SPRINT 5 (feedback Fabrizio): "aggiungi flag per disabili e diete
+                speciali (usa stessa naming ovunque)" — stessa label usata da
+                ActivityCard.tsx ("Accesso disabili" / "Diete gestite"), così il
+                badge sulla card e il filtro qui usano lo stesso naming. */}
+            <ServiceCheckbox
+              label="♿ Accesso disabili"
+              checked={services.accessoDisabili}
+              onChange={(v) => setServices((s) => ({ ...s, accessoDisabili: v }))}
+            />
+            <ServiceCheckbox
+              label="🥗 Diete gestite"
+              checked={services.dieteGestite}
+              onChange={(v) => setServices((s) => ({ ...s, dieteGestite: v }))}
             />
             <ServiceCheckbox
               label="✨ Attività extra"

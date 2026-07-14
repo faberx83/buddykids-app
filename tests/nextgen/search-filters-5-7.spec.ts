@@ -76,4 +76,23 @@ test.describe("NEXTGEN - Ricerca Sprint 5.7 (filtri + Vista Mappa)", () => {
     await page.getByRole("button", { name: "Lista" }).click();
     await expect(resultsCount(page)).toBeVisible();
   });
+
+  // SPRINT 5 (feedback Fabrizio): "aggiungi flag per disabili e diete speciali
+  // (usa stessa naming ovunque)" — stesso naming del badge su ActivityCard.tsx
+  // ("Accesso disabili" / "Diete gestite"), qui applicato come filtro escludente.
+  test("TC-N103 - Il filtro Servizi 'Accesso disabili' mostra solo attività accessibili", async ({ page }) => {
+    await page.getByText("Servizi", { exact: true }).click();
+    await page.getByText("♿ Accesso disabili").click();
+
+    await expect(page.getByRole("button", { name: /^Azzera/ })).toBeEnabled();
+    await expect(resultsCount(page)).toBeVisible();
+  });
+
+  test("TC-N104 - Il filtro Servizi 'Diete gestite' mostra solo attività con opzioni dietetiche", async ({ page }) => {
+    await page.getByText("Servizi", { exact: true }).click();
+    await page.getByText("🥗 Diete gestite").click();
+
+    await expect(page.getByRole("button", { name: /^Azzera/ })).toBeEnabled();
+    await expect(resultsCount(page)).toBeVisible();
+  });
 });
