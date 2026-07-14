@@ -72,10 +72,20 @@ export async function proxy(request: NextRequest) {
     // il link su WhatsApp senza avere ancora un account veniva rimandato al
     // login e, dopo essersi registrato, atterrava sulla Home invece che
     // tornare a unirsi al gruppo.
+    // BUG TROVATO+CORRETTO (segnalato da Fabrizio: "app genitori non gira il
+    // manifest, non riesco a installarla come app"): questo gate mancava
+    // dell'esclusione per /manifest*.json e /sw.js che invece rule 3) più in
+    // basso applica correttamente per partner./admin. — quindi un utente NON
+    // ancora loggato (es. che prova a installare l'app prima di registrarsi)
+    // otteneva un redirect 302 verso /auth/login al posto del manifest JSON.
+    // Chrome, non trovando un manifest valido (riceve HTML invece di JSON),
+    // segnava la PWA come non installabile. Stessa esclusione ora anche qui.
     if (
       isSupabaseConfigured &&
       !pathname.startsWith("/auth") &&
-      !pathname.startsWith("/api")
+      !pathname.startsWith("/api") &&
+      !pathname.startsWith("/manifest") &&
+      pathname !== "/sw.js"
     ) {
       const userId = await getRequestUserId(request);
       if (!userId) {

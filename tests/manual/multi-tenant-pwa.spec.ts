@@ -67,6 +67,25 @@ test.describe("Multi-tenant / PWA", () => {
     expect(nextgenManifest).not.toBe(legacyManifest);
   });
 
+  // Priorita: Alta | Precondizioni: Nessuna (deliberatamente NON autenticato)
+  // Passi: Richiedi /manifest-family.json senza sessione (es. Chrome che
+  // valuta l'installabilita' della PWA prima che l'utente abbia un account)
+  // Risultato atteso: risposta 200 con JSON valido, NON un redirect a /auth/login
+  //
+  // BUG TROVATO+CORRETTO (segnalato da Fabrizio: "app genitori non gira il
+  // manifest, non riesco a installarla come app"): il gate di autenticazione
+  // del tenant famiglia in proxy.ts non escludeva /manifest*.json (a
+  // differenza del gate di ruolo per partner./admin., che lo fa gia') -
+  // un utente senza sessione otteneva un redirect HTML al login al posto del
+  // manifest JSON, e Chrome marcava la PWA come non installabile.
+  test("TC-219 - Il manifest famiglia resta accessibile senza sessione (installabilita' PWA)", async ({ request }) => {
+    test.skip(!isRealDeployment, "Richiede un deploy con Supabase configurato (il bug si manifesta solo li').");
+    const res = await request.get("/manifest-family.json", { maxRedirects: 0 });
+    expect(res.status()).toBe(200);
+    const body = await res.json();
+    expect(body.name).toBe("TRAMA");
+  });
+
   // Priorita: Alta | Precondizioni: Chrome Android o desktop, cache/service worker puliti
   // Passi: Installa l'app da "/" (LEGACY), poi visita "/nextgen" e installa anche quella
   // Risultato atteso: due icone separate in home screen/launcher ("BuddyKids" e
