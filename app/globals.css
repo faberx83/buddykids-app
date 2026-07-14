@@ -156,6 +156,46 @@ body {
   animation: tramaFadeUp 0.4s ease-out both;
 }
 
+/* TRAMA Sprint 3bis — spinner "fili che si tessono" (richiesta di Fabrizio:
+   "vorrei una animazione con i fili del logo che si muovono... ogni filo si
+   'tesse' avanti e indietro in sequenza", per richiamare letteralmente il
+   significato di trama/tessitura). Sostituisce il respiro scala+opacità
+   sull'immagine piatta (tramaPulse sotto, lasciato per compatibilità) con un
+   SVG inline (components/TramaSpinner.tsx) dove ognuno dei 5 fili è un
+   <path> separato: ogni filo oscilla su e giù (un "avanti e indietro"
+   verticale, il gesto fisico di un filo che passa sopra/sotto in un telaio),
+   con un animation-delay scalato per filo così il movimento attraversa i 5
+   fili in sequenza invece di muoversi tutti insieme. */
+@keyframes tramaThreadWeave {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(7px);
+  }
+}
+.trama-thread {
+  animation: tramaThreadWeave 1.8s ease-in-out infinite;
+  transform-box: fill-box;
+  transform-origin: center;
+}
+.trama-thread:nth-child(1) {
+  animation-delay: 0s;
+}
+.trama-thread:nth-child(2) {
+  animation-delay: 0.18s;
+}
+.trama-thread:nth-child(3) {
+  animation-delay: 0.36s;
+}
+.trama-thread:nth-child(4) {
+  animation-delay: 0.54s;
+}
+.trama-thread:nth-child(5) {
+  animation-delay: 0.72s;
+}
+
 /* TRAMA Sprint 3 — spinner di caricamento col logo (components/TramaSpinner.tsx),
    in sostituzione della rotellina generica (border animate-spin) usata finora
    in tutti i loading.tsx delle route. Richiesta di Fabrizio: "ogni rotellina

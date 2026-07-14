@@ -1,13 +1,16 @@
 import TramaSpinner from "@/components/TramaSpinner";
 
+// TRAMA Sprint 3bis — vedi app/(main)/loading.tsx per la nota sul perché il
+// contenitore è passato da h-64 a min-h-[60vh]; il disco bianco cresce in
+// proporzione, i fili restano leggibili su sfondo scuro.
 export default function Loading() {
   return (
-    <div className="flex h-64 items-center justify-center">
-      {/* Pannello Admin ha sfondo scuro: il mark TRAMA è pensato per sfondi
-          chiari (vedi Login), quindi qui va su un piccolo disco bianco per
-          restare leggibile senza dover indovinare i colori esatti del PNG. */}
-      <div className="flex h-14 w-14 items-center justify-center rounded-full bg-white/90 p-2">
-        <TramaSpinner size={32} />
+    <div className="flex min-h-[60vh] items-center justify-center">
+      {/* Pannello Admin ha sfondo scuro: i fili SVG sono pensati per sfondi
+          chiari (vedi Login), quindi qui vanno su un disco bianco per
+          restare leggibili. */}
+      <div className="flex h-52 w-52 items-center justify-center rounded-full bg-white/90 p-6">
+        <TramaSpinner size={140} />
       </div>
     </div>
   );
