@@ -156,6 +156,26 @@ export default function DetailClient({
           />
         )}
 
+        {/* Segnalazione di Fabrizio: i tag scelti nell'editor (Sport, Natura,
+            Lingue...) non comparivano MAI qui — questa sezione non esisteva
+            affatto (solo i "badges" free-form sotto erano renderizzati).
+            Stesso colore hex del tag reale (vedi lib/data/activities.ts). */}
+        {activity.tags.length > 0 && (
+          <div className="mb-3 flex flex-wrap gap-1.5">
+            {activity.tags.map((tag) => (
+              <span
+                key={tag.label}
+                style={tag.bg ? { backgroundColor: tag.bg } : undefined}
+                className={`rounded-full px-2.5 py-1 text-[11px] font-semibold ${
+                  tag.bg ? "text-ink" : badgeClasses[tag.color!]
+                }`}
+              >
+                {tag.label}
+              </span>
+            ))}
+          </div>
+        )}
+
         <div className="mb-4 flex flex-wrap gap-1.5">
           {activity.badges.map((b) => (
             <div

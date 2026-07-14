@@ -16,7 +16,7 @@ const SELECT_COLUMNS = `
   distance_km, spots_left, show_exact_spots, weeks_available, pills, badges, center_id,
   cover_image_url, gallery_urls,
   centers ( slug, name, emoji, gradient, has_bar, accessible, accessible_note, multiweek_discount_percent, family_discount_tiers, group_discount_tiers ),
-  activity_tags ( tag_id )
+  activity_tags ( tag_id, tags ( label, emoji, bg_color ) )
 `;
 
 interface RawCenterRef {
@@ -65,13 +65,40 @@ interface RawActivityRow {
   cover_image_url: string | null;
   gallery_urls: string[] | null;
   centers: RawCenterRef | RawCenterRef[] | null;
-  activity_tags: { tag_id: string }[] | null;
+  activity_tags:
+    | {
+        tag_id: string;
+        tags: RawTagRef | RawTagRef[] | null;
+      }[]
+    | null;
+}
+
+interface RawTagRef {
+  label: string;
+  emoji: string | null;
+  bg_color: string | null;
 }
 
 export function mapRow(row: RawActivityRow): Activity {
   const center = Array.isArray(row.centers) ? row.centers[0] : row.centers;
   const tagIds = Array.isArray(row.activity_tags)
     ? row.activity_tags.map((t) => t.tag_id)
+    : [];
+
+  // Segnalazione di Fabrizio: i pill visivi sulla card/dettaglio non
+  // riflettevano i tag scelti nell'editor — leggevano da "pills" (mai
+  // popolata per attività reali). Costruiamo i pill direttamente dai tag
+  // realmente selezionati (join activity_tags -> tags), col colore hex
+  // proprio del tag. Fallback su "pills" solo se non è stato scelto nessun
+  // tag (attività legacy con pill custom impostati direttamente via SQL).
+  const tagPills = Array.isArray(row.activity_tags)
+    ? row.activity_tags
+        .map((t) => (Array.isArray(t.tags) ? t.tags[0] : t.tags))
+        .filter((t): t is RawTagRef => Boolean(t))
+        .map((t) => ({
+          label: t.emoji ? `${t.emoji} ${t.label}` : t.label,
+          bg: t.bg_color || "#E3F9F5",
+        }))
     : [];
 
   return {
@@ -93,7 +120,7 @@ export function mapRow(row: RawActivityRow): Activity {
     days: row.days ?? undefined,
     hours: row.hours ?? undefined,
     pricePerWeek: Number(row.price_per_week ?? 0),
-    tags: (row.pills as Activity["tags"]) ?? [],
+    tags: tagPills.length > 0 ? tagPills : ((row.pills as Activity["tags"]) ?? []),
     badges: (row.badges as Activity["badges"]) ?? [],
     spotsLeft: row.spots_left ?? undefined,
     showExactSpots: Boolean(row.show_exact_spots),

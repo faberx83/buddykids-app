@@ -84,7 +84,10 @@ export default function ActivityCardHorizontal({
           {activity.tags.slice(0, 2).map((tag) => (
             <span
               key={tag.label}
-              className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${pillClasses[tag.color]}`}
+              style={tag.bg ? { backgroundColor: tag.bg } : undefined}
+              className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${
+                tag.bg ? "text-ink" : pillClasses[tag.color!]
+              }`}
             >
               {tag.label.replace(/^\S+\s/, "")}
             </span>

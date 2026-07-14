@@ -236,4 +236,19 @@ test.describe("Genitori - Attivita", () => {
     // TODO: implementare - come TC-197, richiede seed con activities.dietary_options non vuoto, non garantito dal seed attuale.
   });
 
+  // Segnalazione di Fabrizio (screenshot): i tag scelti nell'editor Gestore
+  // (es. Sport, Natura, Lingue) non comparivano né in card né in dettaglio.
+  // Causa: i pill leggevano da una colonna "pills" mai popolata per le
+  // attività reali, scollegata dal vero selettore Tag (activity_tags). Ora
+  // lib/data/activities.ts costruisce i pill dai tag realmente selezionati
+  // (join activity_tags -> tags, col colore hex proprio del tag) e
+  // DetailClient.tsx ha una sezione dedicata che prima non esisteva affatto.
+  // Priorita: Alta | Precondizioni: Login Gestore + Login Genitore (stesso account di test)
+  // Passi: Da Gestore, seleziona un tag sulla scheda attività di test e salva -> da Genitore, apri la card/dettaglio della stessa attività
+  // Risultato atteso: Il tag scelto compare come pill colorata sia sulla card (Cerca/Home) sia nel dettaglio attività
+  test.fixme("TC-211 - Un tag selezionato dal gestore compare come pill su card e dettaglio lato genitore", async ({ page }) => {
+    // TODO: implementare - richiede orchestrare due ruoli/sessioni diverse
+    // nello stesso test (stesso limite di TC-201/TC-202).
+  });
+
 });

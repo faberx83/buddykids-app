@@ -57,7 +57,14 @@ export interface Activity {
   days?: string;
   hours?: string;
   pricePerWeek: number;
-  tags: { label: string; color: PillColor }[];
+  // Segnalazione di Fabrizio: i tag selezionati nell'editor (activity_tags,
+  // vedi tagIds sopra) non comparivano né in card né in dettaglio — i pill
+  // qui leggevano da una colonna "pills" separata, mai popolata per le
+  // attività reali. Ora per le attività reali questi pill arrivano proprio
+  // dai tag selezionati (join activity_tags -> tags), col colore hex
+  // libero del tag (bg) invece della palette fissa PillColor — i dati mock
+  // continuano a usare "color" come prima (retrocompatibile).
+  tags: { label: string; color?: PillColor; bg?: string }[];
   badges: { label: string; icon: string; color: PillColor }[];
   spotsLeft?: number;
   showExactSpots?: boolean; // scelta del gestore: mostrare il numero esatto o solo "Posti disponibili" generico
