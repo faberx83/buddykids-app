@@ -4,13 +4,21 @@ import { useEffect, useRef, useState } from "react";
 
 // SPRINT 5.1 (NEXTGEN) — "Il Planner dovrà offrire cinque modalità di
 // visualizzazione degli stessi dati" (PRD di Fabrizio, Family Planner).
-// Tutte e 5 le modalità sono ora funzionanti (Calendario 5.2, Mappa 5.4,
-// Gruppi 5.6).
-export type PlannerMode = "organizzazione" | "calendario" | "mappa" | "budget" | "gruppi";
+//
+// SPRINT CORRETTIVO (feedback Fabrizio, mockup "2. Calendario"): "a questo
+// punto anche Planner-Calendario finirebbero a collassare nella stessa
+// sezione [Organizzazione]" — Organizzazione si è arricchita di una striscia
+// "Stato per settimana" + copertura per bambino cliccabile, molto vicina a
+// quello che offriva il tab Calendario a colpo d'occhio. Il tab "Calendario"
+// come modalità separata sparisce da qui: il Mese/Settimana + "Chi fa
+// cosa?" + "Condivisione piano" (PlannerCalendarView, invariato) restano
+// TUTTI raggiungibili, ma ora da un riquadro pieghevole dentro
+// Organizzazione (vedi PlannerClient.tsx) invece che da un tab a se stante —
+// una vera modalità in meno da tenere a mente, zero funzionalità perse.
+export type PlannerMode = "organizzazione" | "mappa" | "budget" | "gruppi";
 
 export const PLANNER_MODES: { key: PlannerMode; label: string; icon: string }[] = [
   { key: "organizzazione", label: "Organizzazione", icon: "ti-layout-dashboard" },
-  { key: "calendario", label: "Calendario", icon: "ti-calendar" },
   { key: "mappa", label: "Mappa", icon: "ti-map-pin" },
   { key: "budget", label: "Budget", icon: "ti-coin" },
   { key: "gruppi", label: "Gruppi", icon: "ti-users-group" },

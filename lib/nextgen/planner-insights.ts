@@ -171,3 +171,36 @@ export function computePriorityWeekIndex(
   const gap = neededUncovered.find((w) => coveredBefore(w.index) && coveredAfter(w.index));
   return (gap ?? neededUncovered[0]).index;
 }
+
+// SPRINT CORRETTIVO (feedback Fabrizio, mockup "2. Calendario") — riepilogo
+// "Stato per settimana": una striscia compatta di barre colorate, una per
+// settimana, per capire a colpo d'occhio l'andamento della stagione senza
+// scorrere l'intera Timeline. Stessa classificazione già usata (in modo
+// sparso, solo per il colore di sfondo) nella riga della Timeline di
+// PlannerClient.tsx — estratta qui come funzione pura riusabile, cosi la
+// striscia compatta e la Timeline restano sempre coerenti fra loro.
+export type WeekStatus = "dismissed" | "covered" | "partial" | "conflict" | "priority" | "uncovered";
+
+export function computeWeekStatus(
+  week: { covered: boolean; dismissed: boolean; coveredKids: { kidId: string }[] },
+  totalKids: number,
+  hasOverlap: boolean,
+  isPriority: boolean
+): WeekStatus {
+  if (week.dismissed) return "dismissed";
+  if (week.covered) {
+    if (hasOverlap) return "conflict";
+    if (totalKids > 1 && week.coveredKids.length > 0 && week.coveredKids.length < totalKids) return "partial";
+    return "covered";
+  }
+  return isPriority ? "priority" : "uncovered";
+}
+
+export const WEEK_STATUS_BAR_CLASS: Record<WeekStatus, string> = {
+  dismissed: "bg-ink-3/25",
+  covered: "bg-green",
+  partial: "bg-trama-orange",
+  conflict: "bg-[#E8543E]",
+  priority: "bg-trama-violet",
+  uncovered: "bg-[#EEF0F4]",
+};

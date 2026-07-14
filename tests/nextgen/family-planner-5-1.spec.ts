@@ -49,29 +49,44 @@ test.describe("NEXTGEN - Family Planner (Sprint 5.1)", () => {
     await expect(page.getByRole("link", { name: "Apri Planner" })).toBeVisible();
   });
 
-  test("TC-N43 - Il Planner mostra le 5 modalità Organizzazione/Calendario/Mappa/Budget/Gruppi", async ({ page }) => {
+  // SPRINT CORRETTIVO (feedback Fabrizio, mockup "2. Calendario"): "Calendario"
+  // e' passato da modalita' a se stante (tab) a riquadro pieghevole dentro
+  // Organizzazione — 4 tab invece di 5, vedi PlannerModeTabs.tsx. Il bottone
+  // "Calendario" esiste ancora (stesso testo, per non rompere i test che lo
+  // cliccano — vedi tests/nextgen/family-planner-5-3.spec.ts), solo non e'
+  // piu' nella barra dei tab.
+  test("TC-N43 - Il Planner mostra le 4 modalità Organizzazione/Mappa/Budget/Gruppi (Calendario e' collassato dentro Organizzazione)", async ({
+    page,
+  }) => {
     test.skip(!isRealDeployment, "Richiede un deploy con Supabase configurato e l'account genitore di test.");
     await loginAs(page, "parent");
     await page.goto("/nextgen/planner");
 
-    for (const label of ["Organizzazione", "Calendario", "Mappa", "Budget", "Gruppi"]) {
-      await expect(page.getByRole("button", { name: label })).toBeVisible();
+    for (const label of ["Organizzazione", "Mappa", "Budget", "Gruppi"]) {
+      await expect(page.getByRole("button", { name: label, exact: true })).toBeVisible();
     }
+    // Il riquadro pieghevole "Calendario" e' dentro Organizzazione (mode di
+    // default), non un tab della barra in alto.
+    await expect(page.getByRole("button", { name: "Calendario", exact: true })).toBeVisible();
   });
 
-  // SPRINT 5.2: TC-N44 aggiornato — la modalità Calendario è stata
-  // implementata (vedi tests/nextgen/planner-calendar-5-2.spec.ts), solo
-  // Mappa/Gruppi restano "in arrivo" (fasi 5.4/5.6).
-  test("TC-N44 - Le modalità Mappa/Gruppi mostrano 'in arrivo' (non ancora implementate)", async ({ page }) => {
+  // TEST DEBT corretto en passant: questo test era rimasto fermo alla 5.2
+  // ("Mappa/Gruppi in arrivo"), ma sono state implementate per davvero nelle
+  // fasi 5.4/5.6 (vedi family-planner-5-4.spec.ts e family-planner-5-6...
+  // ora 5.6.spec.ts) — nessuno lo aveva mai aggiornato. Notato solo perché
+  // in questo stesso file per lo sprint Calendario→Organizzazione.
+  test("TC-N44 - Le modalità Mappa/Gruppi mostrano contenuto reale (non più 'in arrivo')", async ({ page }) => {
     test.skip(!isRealDeployment, "Richiede un deploy con Supabase configurato e l'account genitore di test.");
     await loginAs(page, "parent");
     await page.goto("/nextgen/planner");
 
-    await page.getByRole("button", { name: "Mappa" }).click();
-    await expect(page.getByText("Vista Mappa in arrivo")).toBeVisible();
+    await page.getByRole("button", { name: "Mappa", exact: true }).click();
+    await expect(page.getByText("Vista Mappa in arrivo")).toHaveCount(0);
+    await expect(page.locator("body")).not.toContainText("Application error");
 
-    await page.getByRole("button", { name: "Gruppi" }).click();
-    await expect(page.getByText("Vista Gruppi in arrivo")).toBeVisible();
+    await page.getByRole("button", { name: "Gruppi", exact: true }).click();
+    await expect(page.getByText("Vista Gruppi in arrivo")).toHaveCount(0);
+    await expect(page.locator("body")).not.toContainText("Application error");
   });
 
   test("TC-N45 - Modalità Budget: senza un tetto impostato, il primo accesso forza l'inserimento (nessun valore precompilato)", async ({ page }) => {

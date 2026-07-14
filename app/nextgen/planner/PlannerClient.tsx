@@ -3,7 +3,13 @@
 import { useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import type { PlannerData } from "@/lib/data/planner";
-import { KidOverlap, BudgetSummary, computePerKidCoverage } from "@/lib/nextgen/planner-insights";
+import {
+  KidOverlap,
+  BudgetSummary,
+  computePerKidCoverage,
+  computeWeekStatus,
+  WEEK_STATUS_BAR_CLASS,
+} from "@/lib/nextgen/planner-insights";
 import type { Mission } from "@/lib/nextgen/missions";
 import type { SmartMatch } from "@/lib/nextgen/smart-search";
 // "import type": queste due sono interfacce usate SOLO come tipo (prop
@@ -96,6 +102,47 @@ export default function PlannerClient({
   const [mode, setMode] = useState<PlannerMode>(initialMode);
   const perKidCoverage = useMemo(() => computePerKidCoverage(planner, kids), [planner, kids]);
 
+  // SPRINT CORRETTIVO — Calendario non e' piu' un tab a se stante: vive qui,
+  // dentro Organizzazione, dietro un riquadro pieghevole. Se si arriva da
+  // ?mode=calendario (link "Condivisione piano" dell'hub Logistica), il
+  // riquadro parte gia' aperto invece di lasciare l'utente a cercarlo.
+  const [calendarExpanded, setCalendarExpanded] = useState(initialModeParam === "calendario");
+  // SPRINT CORRETTIVO — "Ogni barra del bambino... deve portare ad un
+  // dettaglio del piano (per bambino)": click su una barra apre/chiude un
+  // pannello inline con le singole settimane di quel bambino (copertura
+  // derivata da planner.weeks, nessuna nuova query).
+  const [expandedKidId, setExpandedKidId] = useState<string | null>(null);
+  // SPRINT CORRETTIVO — "...o lo stato per settimana deve portare ad un
+  // dettaglio del piano (per settimana)": click su una barra della striscia
+  // "Stato per settimana" scorre fino alla riga corrispondente della
+  // Timeline sotto (che e' gia' il "dettaglio" — nome attivita, stato,
+  // CTA "Riempi") e la evidenzia per un istante.
+  const [highlightedWeekIndex, setHighlightedWeekIndex] = useState<number | null>(null);
+  function jumpToWeek(index: number) {
+    setHighlightedWeekIndex(index);
+    document.getElementById(`week-row-${index}`)?.scrollIntoView({ behavior: "smooth", block: "center" });
+    window.setTimeout(() => setHighlightedWeekIndex((cur) => (cur === index ? null : cur)), 1600);
+  }
+  // SPRINT CORRETTIVO — "vorrei semplificare le notifiche, sono troppe": prima
+  // Promemoria (fino a 4) e Missioni (fino a 3) si impilavano entrambe per
+  // intero, fino a 7 banner uno sopra l'altro. Ora se ne mostra UNA sola (la
+  // piu' urgente: un Promemoria se presente, altrimenti la prima Missione),
+  // con un link "Mostra tutti" per chi vuole vedere il resto — nessun dato
+  // perso, solo meno rumore visivo di default.
+  const [showAllAlerts, setShowAllAlerts] = useState(false);
+  const allAlerts = useMemo(
+    () => [
+      ...reminders.map((r) => ({ id: r.id, emoji: r.emoji, text: r.text, className: REMINDER_TONE_CLASSES[r.tone] })),
+      ...missions.map((m) => ({
+        id: m.id,
+        emoji: m.emoji,
+        text: m.text,
+        className: m.tone === "success" ? "bg-[#E8F9EE] text-ink" : "bg-trama-lilac/20 text-ink",
+      })),
+    ],
+    [reminders, missions]
+  );
+
   const overlapsByWeekIndex = useMemo(() => {
     const map = new Map<number, KidOverlap[]>();
     for (const o of overlaps) {
@@ -125,16 +172,6 @@ export default function PlannerClient({
 
         <PlannerModeTabs mode={mode} onChange={setMode} />
 
-        {mode === "calendario" && (
-          <PlannerCalendarView
-            weeks={planner.weeks}
-            kids={kids}
-            overlaps={overlaps}
-            responsibilities={responsibilities}
-            existingShares={existingShares}
-          />
-        )}
-
         {mode === "mappa" && <PlannerMapView pins={mapPins} />}
 
         {mode === "gruppi" && <PlannerGroupsView communities={communities} groups={groups} />}
@@ -143,41 +180,25 @@ export default function PlannerClient({
 
         {mode === "organizzazione" && (
         <>
-        {/* SPRINT 5.4 — "Promemoria intelligenti" (PRD Family Planner):
-            a differenza delle Missioni sotto (positive, non urgenti), questi
-            hanno una scadenza reale e vicina — mostrati PRIMA delle Missioni
-            perché più azionabili. Calcolati in lib/nextgen/reminders.ts da
-            dati già letti (nessuna nuova query), mai più di 4. */}
-        {reminders.length > 0 && (
+        {/* SPRINT CORRETTIVO — un solo avviso mostrato di default (il più
+            urgente), "Mostra tutti" per il resto. Vedi allAlerts sopra. */}
+        {allAlerts.length > 0 && (
           <div className="mb-4 flex flex-col gap-2">
-            {reminders.map((r) => (
-              <div
-                key={r.id}
-                className={`flex items-start gap-2.5 rounded-2xl p-3.5 ${REMINDER_TONE_CLASSES[r.tone]}`}
-              >
-                <span className="text-base leading-none">{r.emoji}</span>
-                <span className="text-[12.5px] font-medium">{r.text}</span>
+            {(showAllAlerts ? allAlerts : allAlerts.slice(0, 1)).map((a) => (
+              <div key={a.id} className={`flex items-start gap-2.5 rounded-2xl p-3.5 ${a.className}`}>
+                <span className="text-base leading-none">{a.emoji}</span>
+                <span className="text-[12.5px] font-medium">{a.text}</span>
               </div>
             ))}
-          </div>
-        )}
-
-        {/* Missioni — richiesta di Fabrizio: "non gamification, messaggi che
-            riducono l'ansia e danno un senso di avanzamento". Calcolate in
-            lib/nextgen/missions.ts, mostrate solo se ce n'è almeno una. */}
-        {missions.length > 0 && (
-          <div className="mb-4 flex flex-col gap-2">
-            {missions.map((m) => (
-              <div
-                key={m.id}
-                className={`flex items-start gap-2.5 rounded-2xl p-3.5 ${
-                  m.tone === "success" ? "bg-[#E8F9EE]" : "bg-trama-lilac/20"
-                }`}
+            {allAlerts.length > 1 && (
+              <button
+                type="button"
+                onClick={() => setShowAllAlerts((v) => !v)}
+                className="self-start text-[11.5px] font-semibold text-trama-violet"
               >
-                <span className="text-base leading-none">{m.emoji}</span>
-                <span className="text-[12.5px] font-medium text-ink">{m.text}</span>
-              </div>
-            ))}
+                {showAllAlerts ? "Mostra meno" : `Mostra tutti (${allAlerts.length})`}
+              </button>
+            )}
           </div>
         )}
 
@@ -210,7 +231,10 @@ export default function PlannerClient({
 
         {/* Copertura per bambino — "Sofia 7/8 settimane" (mockup condiviso
             da Fabrizio): solo se c'è più di un bambino, altrimenti è un
-            doppione della card di copertura sopra. */}
+            doppione della card di copertura sopra.
+            SPRINT CORRETTIVO: aggiunto "Mancano Settimana X, Y" (mockup
+            "2. Calendario") + click sulla barra apre/chiude il dettaglio
+            settimana-per-settimana di quel bambino, sotto. */}
         {kids.length > 1 && (
           <div className="mb-4 rounded-2xl bg-white p-4">
             <div className="mb-2.5 font-poppins text-[13px] font-bold text-ink">Copertura per bambino</div>
@@ -218,26 +242,120 @@ export default function PlannerClient({
               {perKidCoverage.map((k) => {
                 const percent = k.neededCount > 0 ? Math.round((k.coveredCount / k.neededCount) * 100) : 0;
                 const done = k.coveredCount === k.neededCount && k.neededCount > 0;
+                const isExpanded = expandedKidId === k.kidId;
                 return (
                   <div key={k.kidId}>
-                    <div className="mb-1 flex items-center justify-between text-[12.5px]">
-                      <span className="font-semibold text-ink">{k.kidName}</span>
-                      <span className={done ? "font-semibold text-green" : "text-ink-2"}>
-                        {done ? "Tutto organizzato! 🎉" : `${k.coveredCount}/${k.neededCount} settimane`}
-                      </span>
-                    </div>
-                    <div className="h-1.5 w-full overflow-hidden rounded-full bg-[#EEF0F4]">
-                      <div
-                        className={`h-full rounded-full ${done ? "bg-green" : "bg-orange-mid/60"}`}
-                        style={{ width: `${percent}%` }}
-                      />
-                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setExpandedKidId(isExpanded ? null : k.kidId)}
+                      className="w-full text-left"
+                      aria-expanded={isExpanded}
+                    >
+                      <div className="mb-1 flex items-center justify-between text-[12.5px]">
+                        <span className="font-semibold text-ink">{k.kidName}</span>
+                        <span className={done ? "font-semibold text-green" : "text-ink-2"}>
+                          {done ? "Tutto organizzato! 🎉" : `${k.coveredCount}/${k.neededCount} settimane`}
+                        </span>
+                      </div>
+                      <div className="h-1.5 w-full overflow-hidden rounded-full bg-[#EEF0F4]">
+                        <div
+                          className={`h-full rounded-full ${done ? "bg-green" : "bg-orange-mid/60"}`}
+                          style={{ width: `${percent}%` }}
+                        />
+                      </div>
+                      {!done && k.missingIndexes.length > 0 && (
+                        <p className="mt-1 text-[11px] text-ink-3">
+                          Mancano Settimana {k.missingIndexes.join(", ")}
+                        </p>
+                      )}
+                    </button>
+                    {isExpanded && (
+                      <div className="mt-2 flex flex-wrap gap-1.5 rounded-xl bg-bg p-2.5">
+                        {planner.weeks
+                          .filter((w) => !w.dismissed)
+                          .map((w) => {
+                            const covered = w.coveredKids.some((c) => c.kidId === k.kidId);
+                            return (
+                              <span
+                                key={w.index}
+                                className={`rounded-full px-2 py-1 text-[10.5px] font-semibold ${
+                                  covered ? "bg-[#E8F9EE] text-green" : "bg-white text-ink-3"
+                                }`}
+                              >
+                                {w.index}
+                              </span>
+                            );
+                          })}
+                      </div>
+                    )}
                   </div>
                 );
               })}
             </div>
           </div>
         )}
+
+        {/* SPRINT CORRETTIVO (mockup "2. Calendario") — "Stato per settimana":
+            striscia compatta, un colpo d'occhio sull'intera stagione senza
+            scorrere la Timeline sotto. Click su una barra scorre fino alla
+            riga corrispondente della Timeline e la evidenzia (vedi
+            jumpToWeek sopra) — quella riga È il "dettaglio per settimana"
+            richiesto da Fabrizio, non serve duplicarlo. */}
+        <div className="mb-4 rounded-2xl bg-white p-4">
+          <div className="mb-2.5 font-poppins text-[13px] font-bold text-ink">Stato per settimana</div>
+          <div className="flex items-end gap-1">
+            {planner.weeks.map((w) => {
+              const hasOverlap = overlapsByWeekIndex.has(w.index);
+              const status = computeWeekStatus(w, kids.length, hasOverlap, w.index === priorityIndex);
+              return (
+                <button
+                  key={w.index}
+                  type="button"
+                  onClick={() => jumpToWeek(w.index)}
+                  title={`Settimana ${w.index}`}
+                  aria-label={`Vai al dettaglio della Settimana ${w.index}`}
+                  className="flex flex-1 flex-col items-center gap-1"
+                >
+                  <div className={`h-6 w-full rounded-full ${WEEK_STATUS_BAR_CLASS[status]}`} />
+                  <span className="text-[9px] font-semibold text-ink-3">{w.index}</span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* SPRINT CORRETTIVO (feedback Fabrizio): "anche Planner-Calendario
+            finirebbero a collassare nella stessa sezione" — Mese/Settimana +
+            "Chi fa cosa?" + "Condivisione piano" (PlannerCalendarView,
+            invariato) restano tutti raggiungibili da qui, dietro questo
+            riquadro pieghevole, invece che da un tab a sé. Bottone chiamato
+            "Calendario" di proposito: stesso testo del vecchio tab, cosi il
+            click per aprirlo resta identico a prima. */}
+        <div className="mb-4">
+          <button
+            type="button"
+            onClick={() => setCalendarExpanded((v) => !v)}
+            className="flex w-full items-center justify-between rounded-2xl bg-white p-4 text-left"
+            aria-expanded={calendarExpanded}
+          >
+            <span className="flex items-center gap-2 font-poppins text-[13px] font-bold text-ink">
+              <i className="ti ti-calendar text-[16px] text-trama-violet" />
+              Calendario
+            </span>
+            <i className={`ti ${calendarExpanded ? "ti-chevron-up" : "ti-chevron-down"} text-[16px] text-ink-3`} />
+          </button>
+          {calendarExpanded && (
+            <div className="mt-3">
+              <PlannerCalendarView
+                weeks={planner.weeks}
+                kids={kids}
+                overlaps={overlaps}
+                responsibilities={responsibilities}
+                existingShares={existingShares}
+              />
+            </div>
+          )}
+        </div>
 
         {/* 2. Sovrapposizioni — segnale di rischio reale, non decorativo:
             mostrato solo se c'è davvero qualcosa da controllare. */}
@@ -276,8 +394,18 @@ export default function PlannerClient({
                     ? "bg-trama-lilac/20"
                     : "bg-white";
 
+              // SPRINT CORRETTIVO — id + anello viola temporaneo: bersaglio
+              // dello scroll-to + evidenziazione quando si clicca la barra
+              // corrispondente in "Stato per settimana" sopra.
+              const isHighlighted = highlightedWeekIndex === w.index;
               return (
-                <div key={w.index} className={`flex items-center gap-3 rounded-xl p-3 ${rowBg}`}>
+                <div
+                  key={w.index}
+                  id={`week-row-${w.index}`}
+                  className={`flex items-center gap-3 rounded-xl p-3 transition-shadow ${rowBg} ${
+                    isHighlighted ? "ring-2 ring-trama-violet" : ""
+                  }`}
+                >
                   {/* SEGNALAZIONE DI FABRIZIO: "settimana 12 e 13 vanno a capo" —
                       con una larghezza fissa (84px) "Settimana 12"/"Settimana 13"
                       (12 caratteri, più larghi di "Settimana 1".."Settimana 9")
