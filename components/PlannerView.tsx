@@ -14,7 +14,7 @@ import { categories } from "@/lib/mock-data";
 const TINT_TEXT_CLASSES: Record<PillColor, string> = {
   sky: "text-sky",
   aqua: "text-[#1fa88e]",
-  orange: "text-[#d4622a]",
+  orange: "text-trama-orange",
   purple: "text-[#6b58d4]",
   green: "text-[#2d8f52]",
 };

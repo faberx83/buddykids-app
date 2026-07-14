@@ -29,7 +29,7 @@ export default function PlannerModeTabs({
           type="button"
           onClick={() => onChange(m.key)}
           className={`flex flex-shrink-0 items-center gap-1.5 rounded-full px-4 py-2 text-[12.5px] font-bold transition-colors ${
-            mode === m.key ? "bg-[#5B4FE9] text-white" : "bg-bg text-ink-2"
+            mode === m.key ? "bg-trama-violet text-white" : "bg-bg text-ink-2"
           }`}
         >
           <i className={`ti ${m.icon} text-[14px]`} />

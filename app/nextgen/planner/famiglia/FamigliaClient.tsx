@@ -155,7 +155,7 @@ function FamilyView({ family }: { family: Family }) {
           <button
             type="button"
             onClick={handleCopy}
-            className="rounded-full bg-[#EFECFD] px-3 py-1.5 text-[12px] font-bold text-[#5B4FE9]"
+            className="rounded-full bg-trama-lilac/20 px-3 py-1.5 text-[12px] font-bold text-trama-violet"
           >
             {copied ? "Copiato!" : "Copia"}
           </button>

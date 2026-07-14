@@ -6,7 +6,7 @@ import { respondGroupRequestAction } from "@/app/actions/groups";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
 
 const STATUS_LABEL: Record<GroupRequestItem["status"], { label: string; cls: string }> = {
-  pending: { label: "In attesa", cls: "bg-orange-light text-[#d4622a]" },
+  pending: { label: "In attesa", cls: "bg-orange-light text-trama-orange" },
   accepted: { label: "Accettata", cls: "bg-green-light text-[#2d8f52]" },
   rejected: { label: "Rifiutata", cls: "bg-[#FBEAEA] text-[#C0392B]" },
 };

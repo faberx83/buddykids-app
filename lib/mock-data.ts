@@ -340,7 +340,7 @@ export const groups: GroupItem[] = [
     dateRange: "24 giu – 12 lug",
     members: [
       { initials: "SF", color: "#2a8dc4", bg: "#B8DFF6" },
-      { initials: "LM", color: "#d4622a", bg: "#FFD0BB" },
+      { initials: "LM", color: "#F6A623", bg: "#FFD0BB" },
       { initials: "AG", color: "#1fa88e", bg: "#A8EDE2" },
     ],
     extraMembers: 4,

@@ -11,7 +11,7 @@ import { isSupabaseConfigured } from "@/lib/supabase/env";
 
 const MEMBER_PALETTE = [
   { bg: "#B8DFF6", color: "#2a8dc4" },
-  { bg: "#FFD0BB", color: "#d4622a" },
+  { bg: "#FFD0BB", color: "#F6A623" },
   { bg: "#A8EDE2", color: "#1fa88e" },
   { bg: "#E8F9EE", color: "#2d8f52" },
   { bg: "#F0EEFF", color: "#6b58d4" },

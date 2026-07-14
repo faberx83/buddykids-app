@@ -31,7 +31,7 @@ import Link from "next/link";
 const REMINDER_TONE_CLASSES: Record<Reminder["tone"], string> = {
   urgent: "bg-[#FDECEC] text-[#B02A2A]",
   warning: "bg-[#FFF7E8] text-[#9a6b00]",
-  info: "bg-[#F5F2FF] text-[#5B4FE9]",
+  info: "bg-trama-lilac/20 text-trama-violet",
 };
 
 // SPRINT 3 (NEXTGEN) — Planner come "cuore dell'esperienza": timeline
@@ -162,7 +162,7 @@ export default function PlannerClient({
               <div
                 key={m.id}
                 className={`flex items-start gap-2.5 rounded-2xl p-3.5 ${
-                  m.tone === "success" ? "bg-[#E8F9EE]" : "bg-[#F5F2FF]"
+                  m.tone === "success" ? "bg-[#E8F9EE]" : "bg-trama-lilac/20"
                 }`}
               >
                 <span className="text-base leading-none">{m.emoji}</span>
@@ -187,7 +187,7 @@ export default function PlannerClient({
           </div>
           <div className="mt-2.5 h-2.5 w-full overflow-hidden rounded-full bg-[#EEF0F4]">
             <div
-              className="h-full rounded-full bg-[#5B4FE9] transition-all"
+              className="h-full rounded-full bg-trama-violet transition-all"
               style={{ width: `${progressPercent}%` }}
             />
           </div>
@@ -264,7 +264,7 @@ export default function PlannerClient({
                     ? "bg-[#FFF7E8]"
                     : lightBgClasses[color]
                   : w.index === priorityIndex
-                    ? "bg-[#EFECFD]"
+                    ? "bg-trama-lilac/20"
                     : "bg-white";
 
               return (
@@ -298,7 +298,7 @@ export default function PlannerClient({
                   {!w.dismissed && !w.covered && (
                     <Link
                       href="/nextgen/search"
-                      className="flex-shrink-0 rounded-full bg-[#5B4FE9] px-3 py-1.5 text-[11px] font-bold text-white"
+                      className="flex-shrink-0 rounded-full bg-trama-violet px-3 py-1.5 text-[11px] font-bold text-white"
                     >
                       Riempi
                     </Link>
@@ -348,7 +348,7 @@ export default function PlannerClient({
                       {m.reasons.map((reason) => (
                         <span
                           key={reason}
-                          className="rounded-full bg-[#EFECFD] px-2 py-0.5 text-[10px] font-semibold text-[#5B4FE9]"
+                          className="rounded-full bg-trama-lilac/20 px-2 py-0.5 text-[10px] font-semibold text-trama-violet"
                         >
                           {reason}
                         </span>
@@ -369,7 +369,7 @@ export default function PlannerClient({
             stesso trattamento del link "Gestisci prenotazioni" sotto. */}
         <Link
           href="/nextgen/planner/indirizzi"
-          className="mt-4 block text-center text-[12.5px] font-semibold text-[#5B4FE9]"
+          className="mt-4 block text-center text-[12.5px] font-semibold text-trama-violet"
         >
           📍 Indirizzi di famiglia
         </Link>
@@ -379,12 +379,12 @@ export default function PlannerClient({
             cosa?"/Condivisione Piano. */}
         <Link
           href="/nextgen/planner/famiglia"
-          className="mt-2 block text-center text-[12.5px] font-semibold text-[#5B4FE9]"
+          className="mt-2 block text-center text-[12.5px] font-semibold text-trama-violet"
         >
           👨‍👩‍👧 Famiglia
         </Link>
 
-        <Link href="/prenotazioni" className="mt-2 block text-center text-[12.5px] font-semibold text-[#5B4FE9]">
+        <Link href="/prenotazioni" className="mt-2 block text-center text-[12.5px] font-semibold text-trama-violet">
           Gestisci prenotazioni (annulla/modifica) →
         </Link>
       </div>

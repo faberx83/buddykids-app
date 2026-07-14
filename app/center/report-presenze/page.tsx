@@ -64,7 +64,7 @@ export default async function ReportPresenzePage() {
               </div>
               <div className="flex flex-shrink-0 items-center gap-1.5 text-[11px] font-semibold">
                 {kid.inRitardoCount > 0 && (
-                  <span className="rounded-full bg-[#FFF3E9] px-2.5 py-1 text-[#d4622a]">
+                  <span className="rounded-full bg-trama-orange/15 px-2.5 py-1 text-trama-orange">
                     {kid.inRitardoCount} in ritardo
                   </span>
                 )}

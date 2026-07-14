@@ -47,7 +47,7 @@ export default function WeekCard({
         <div className="mt-0.5 text-[10px] font-semibold uppercase text-ink-3">
           {shortWeekLabel(week.label)}
         </div>
-        <div className="mt-1 text-[11px] font-medium text-[#d4622a]">✗ Pieno</div>
+        <div className="mt-1 text-[11px] font-medium text-trama-orange">✗ Pieno</div>
       </div>
     );
   }

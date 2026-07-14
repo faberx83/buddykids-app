@@ -317,7 +317,7 @@ export default function PrenotazioniClient({
             </div>
 
             {actionError && (
-              <p className="mt-3 rounded-md bg-orange-light px-3 py-2 text-xs font-medium text-[#d4622a]">
+              <p className="mt-3 rounded-md bg-orange-light px-3 py-2 text-xs font-medium text-trama-orange">
                 {actionError}
               </p>
             )}

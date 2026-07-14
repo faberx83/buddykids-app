@@ -56,7 +56,7 @@ export default async function AdminPreferitiPage() {
                   <td className="px-4 py-3 text-ink-2">{s.bookingsCount}</td>
                   <td className="px-4 py-3">
                     {s.bookingsCount === 0 ? (
-                      <span className="rounded-full bg-orange-light px-2.5 py-1 text-xs font-semibold text-[#d4622a]">
+                      <span className="rounded-full bg-orange-light px-2.5 py-1 text-xs font-semibold text-trama-orange">
                         Mai prenotata
                       </span>
                     ) : s.favoritesCount > s.bookingsCount * 2 ? (

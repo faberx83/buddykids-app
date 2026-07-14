@@ -422,7 +422,7 @@ function GruppoTab({
               {sg.tagId && (
                 <span
                   className={`rounded-full px-2.5 py-1 text-[11px] font-semibold ${
-                    sg.feasible ? "bg-green-light text-[#2d8f52]" : "bg-orange-light text-[#d4622a]"
+                    sg.feasible ? "bg-green-light text-[#2d8f52]" : "bg-orange-light text-trama-orange"
                   }`}
                 >
                   {sg.feasible ? "Compatibile col campo" : "Non disponibile in questo campo"}
@@ -502,7 +502,7 @@ function GruppoTab({
 
 function StatusPill({ status }: { status: "pending" | "accepted" | "rejected" }) {
   const map = {
-    pending: { label: "In attesa", cls: "bg-orange-light text-[#d4622a]" },
+    pending: { label: "In attesa", cls: "bg-orange-light text-trama-orange" },
     accepted: { label: "Accettata", cls: "bg-green-light text-[#2d8f52]" },
     rejected: { label: "Rifiutata", cls: "bg-[#FBEAEA] text-[#C0392B]" },
   } as const;

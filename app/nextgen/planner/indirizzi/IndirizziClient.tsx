@@ -114,7 +114,7 @@ function AddressCard({ initial }: { initial: ParentAddress }) {
               href={mapsUrl(saved.address)}
               target="_blank"
               rel="noopener noreferrer"
-              className="flex h-8 w-8 items-center justify-center rounded-full bg-[#EFECFD] text-[#5B4FE9]"
+              className="flex h-8 w-8 items-center justify-center rounded-full bg-trama-lilac/20 text-trama-violet"
               aria-label="Apri in Maps"
             >
               <i className="ti ti-map-pin text-[15px]" />

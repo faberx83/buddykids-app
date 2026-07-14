@@ -19,7 +19,7 @@ export default function LogoutButton() {
   return (
     <button
       onClick={handleLogout}
-      className="mx-5 my-2 flex w-[calc(100%-40px)] items-center justify-center gap-2 rounded-md bg-orange-light py-3.5 text-[13px] font-bold text-[#d4622a] transition-colors hover:bg-orange-mid"
+      className="mx-5 my-2 flex w-[calc(100%-40px)] items-center justify-center gap-2 rounded-md bg-orange-light py-3.5 text-[13px] font-bold text-trama-orange transition-colors hover:bg-orange-mid"
     >
       <i className="ti ti-logout text-base" />
       Esci dall&apos;account

@@ -144,7 +144,7 @@ export default function CommunityDetailClient({
           <button
             type="button"
             onClick={() => setShowProposeForm((v) => !v)}
-            className="text-sm font-semibold text-[#5B4FE9]"
+            className="text-sm font-semibold text-trama-violet"
           >
             <i className="ti ti-plus mr-1" />
             Proponi
@@ -214,7 +214,7 @@ export default function CommunityDetailClient({
                     disabled={busyProposalId === p.id}
                     onClick={() => toggleInterest(p.id, p.iAmInterested)}
                     className={`flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[12.5px] font-bold disabled:opacity-50 ${
-                      p.iAmInterested ? "bg-[#5B4FE9] text-white" : "bg-bg text-ink-2"
+                      p.iAmInterested ? "bg-trama-violet text-white" : "bg-bg text-ink-2"
                     }`}
                   >
                     <i className={`ti ${p.iAmInterested ? "ti-heart-filled" : "ti-heart"} text-[14px]`} />

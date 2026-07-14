@@ -173,7 +173,7 @@ export default function CommunityListClient({ initialCommunities }: { initialCom
                 </div>
               </div>
               {c.activeProposalsCount > 0 && (
-                <span className="flex-shrink-0 rounded-full bg-[#EEE6FF] px-2.5 py-1 text-[11px] font-bold text-[#5B4FE9]">
+                <span className="flex-shrink-0 rounded-full bg-trama-lilac/20 px-2.5 py-1 text-[11px] font-bold text-trama-violet">
                   {c.activeProposalsCount} {c.activeProposalsCount === 1 ? "proposta" : "proposte"}
                 </span>
               )}

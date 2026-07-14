@@ -15,7 +15,7 @@ import { uploadCertificationDocument } from "@/lib/storage";
 import CoverAndGalleryUploader from "@/components/CoverAndGalleryUploader";
 
 const CERTIFICATION_STATUS_LABEL: Record<CertificationItem["status"], { label: string; cls: string }> = {
-  pending: { label: "In verifica", cls: "bg-orange-light text-[#d4622a]" },
+  pending: { label: "In verifica", cls: "bg-orange-light text-trama-orange" },
   approved: { label: "Approvata", cls: "bg-green-light text-[#2d8f52]" },
   rejected: { label: "Rifiutata", cls: "bg-[#FBEAEA] text-[#C0392B]" },
 };

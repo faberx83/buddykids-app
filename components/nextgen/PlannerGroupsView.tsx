@@ -28,7 +28,7 @@ function CommunityCard({ community }: { community: CommunityItem }) {
       href={`/nextgen/community/${community.id}`}
       className="flex items-center gap-3 rounded-2xl bg-white p-3.5"
     >
-      <span className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-[#F5F2FF] text-lg">
+      <span className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-trama-lilac/20 text-lg">
         {community.emoji}
       </span>
       <div className="min-w-0 flex-1">
@@ -40,7 +40,7 @@ function CommunityCard({ community }: { community: CommunityItem }) {
         </div>
       </div>
       {community.activeProposalsCount > 0 && (
-        <span className="flex-shrink-0 rounded-full bg-[#EFECFD] px-2.5 py-1 text-[11px] font-bold text-[#5B4FE9]">
+        <span className="flex-shrink-0 rounded-full bg-trama-lilac/20 px-2.5 py-1 text-[11px] font-bold text-trama-violet">
           {community.activeProposalsCount} proposta{community.activeProposalsCount === 1 ? "" : "e"} pronta
           {community.activeProposalsCount === 1 ? "" : "e"} per un Gruppo
         </span>
@@ -82,7 +82,7 @@ export default function PlannerGroupsView({
       <div>
         <div className="mb-2.5 flex items-center justify-between">
           <span className="text-[13px] font-bold text-ink">Le tue Community</span>
-          <Link href="/nextgen/community" className="text-[12px] font-semibold text-[#5B4FE9]">
+          <Link href="/nextgen/community" className="text-[12px] font-semibold text-trama-violet">
             {communities.length > 0 ? "Vedi tutte" : "Crea o entra"}
           </Link>
         </div>
@@ -102,7 +102,7 @@ export default function PlannerGroupsView({
       <div>
         <div className="mb-2.5 flex items-center justify-between">
           <span className="text-[13px] font-bold text-ink">I tuoi Gruppi sconto</span>
-          <Link href="/groups" className="text-[12px] font-semibold text-[#5B4FE9]">
+          <Link href="/groups" className="text-[12px] font-semibold text-trama-violet">
             {groups.length > 0 ? "Vedi tutti" : "Scopri come"}
           </Link>
         </div>

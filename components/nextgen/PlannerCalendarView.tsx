@@ -424,9 +424,9 @@ export default function PlannerCalendarView({
                   onClick={() => setSelectedDay(isSelected ? null : cell)}
                   className={`relative flex aspect-square flex-col items-center justify-center rounded-lg text-[11px] ${
                     isSelected
-                      ? "bg-[#EFECFD] font-bold text-ink"
+                      ? "bg-trama-lilac/20 font-bold text-ink"
                       : isToday
-                        ? "border border-[#5B4FE9] font-semibold text-ink"
+                        ? "border border-trama-violet font-semibold text-ink"
                         : cell.inSeason
                           ? "text-ink"
                           : "text-ink-3/50"
@@ -454,7 +454,7 @@ export default function PlannerCalendarView({
             <button
               type="button"
               onClick={() => openShare(monthShareScope.start, monthShareScope.end, activeMonth.label)}
-              className="mt-3 flex w-full items-center justify-center gap-1.5 rounded-full bg-[#EFECFD] py-2 text-[12px] font-bold text-[#5B4FE9]"
+              className="mt-3 flex w-full items-center justify-center gap-1.5 rounded-full bg-trama-lilac/20 py-2 text-[12px] font-bold text-trama-violet"
             >
               <i className="ti ti-share text-[14px]" />
               Condividi {activeMonth.label}
@@ -498,7 +498,7 @@ export default function PlannerCalendarView({
                   )
                 }
                 className={`flex items-center gap-3 rounded-xl p-3 text-left ${
-                  isSelected ? "bg-[#EFECFD]" : w.dismissed ? "bg-bg" : "bg-white"
+                  isSelected ? "bg-trama-lilac/20" : w.dismissed ? "bg-bg" : "bg-white"
                 }`}
               >
                 <div className="w-16 flex-shrink-0 whitespace-nowrap text-[11.5px] font-bold text-ink">
@@ -556,7 +556,7 @@ export default function PlannerCalendarView({
                       selectedDay.weekLabel ?? "Settimana"
                     )
                   }
-                  className="flex items-center gap-1 rounded-full bg-[#EFECFD] px-2.5 py-1 text-[11px] font-bold text-[#5B4FE9]"
+                  className="flex items-center gap-1 rounded-full bg-trama-lilac/20 px-2.5 py-1 text-[11px] font-bold text-trama-violet"
                 >
                   <i className="ti ti-share text-[12px]" />
                   Condividi
@@ -575,8 +575,8 @@ export default function PlannerCalendarView({
                   multiplo (setWeekBulkResponsibilityAction), non 10-20
                   chiamate singole. */}
               {selectedDay.weekStartDate && (
-                <div className="rounded-xl bg-[#F5F2FF] p-3">
-                  <div className="mb-1.5 flex items-center gap-1.5 text-[11.5px] font-bold text-[#5B4FE9]">
+                <div className="rounded-xl bg-trama-lilac/20 p-3">
+                  <div className="mb-1.5 flex items-center gap-1.5 text-[11.5px] font-bold text-trama-violet">
                     <i className="ti ti-bolt text-[13px]" />
                     Applica a tutta la settimana
                   </div>
@@ -612,7 +612,7 @@ export default function PlannerCalendarView({
                           type="button"
                           onClick={() => toggleBulkMoment(mo.value)}
                           className={`flex items-center gap-1 rounded-full bg-white px-2.5 py-1 text-[11px] font-semibold ${
-                            included ? "text-[#5B4FE9]" : "text-ink-3 line-through"
+                            included ? "text-trama-violet" : "text-ink-3 line-through"
                           }`}
                         >
                           <i className={`ti ${mo.icon} text-[11px]`} />
@@ -722,7 +722,7 @@ export default function PlannerCalendarView({
                                     }
                                     className={`flex h-7 items-center justify-center rounded-lg text-[13px] ${
                                       isAssigning
-                                        ? "bg-[#EFECFD] ring-1 ring-[#5B4FE9]"
+                                        ? "bg-trama-lilac/20 ring-1 ring-trama-violet"
                                         : current
                                           ? "bg-[#E8F9EE]"
                                           : "bg-[#FFF3E0]"
@@ -850,7 +850,7 @@ export default function PlannerCalendarView({
               <button
                 type="button"
                 onClick={() => setSharingScope(null)}
-                className="self-start text-[11.5px] font-semibold text-[#5B4FE9]"
+                className="self-start text-[11.5px] font-semibold text-trama-violet"
               >
                 Fatto
               </button>

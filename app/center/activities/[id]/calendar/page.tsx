@@ -44,7 +44,7 @@ export default async function CenterActivityCalendarPage({
           {weakWeeks.length > 0 && (
             <Link
               href="/center/promotions"
-              className="flex items-center gap-1 rounded-full bg-orange-light px-2.5 py-1 text-[11px] font-semibold text-[#d4622a]"
+              className="flex items-center gap-1 rounded-full bg-orange-light px-2.5 py-1 text-[11px] font-semibold text-trama-orange"
             >
               <i className="ti ti-bolt text-xs" />
               Suggerisci promo last-minute

@@ -52,7 +52,7 @@ export default async function AdminRichiestePage() {
                   <td className="px-4 py-3 text-ink-2">{c.totalCount}</td>
                   <td className="px-4 py-3">
                     {c.openCount > 0 ? (
-                      <span className="rounded-full bg-orange-light px-2.5 py-1 text-xs font-semibold text-[#d4622a]">
+                      <span className="rounded-full bg-orange-light px-2.5 py-1 text-xs font-semibold text-trama-orange">
                         {c.openCount} in attesa
                       </span>
                     ) : (

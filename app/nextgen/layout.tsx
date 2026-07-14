@@ -35,7 +35,7 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: "#5B4FE9",
+  themeColor: "#6F63C5",
   viewportFit: "cover",
 };
 
@@ -65,7 +65,7 @@ export default async function NextgenLayout({ children }: { children: React.Reac
           uno scope diverso da quello di LEGACY ("/"), altrimenti Chrome
           unifica le due app sotto un'unica identità installata (vedi
           commento in components/InstallPrompt.tsx). */}
-      <InstallPrompt appName="TRAMA" themeColor="#5B4FE9" swScope="/nextgen" />
+      <InstallPrompt appName="TRAMA" themeColor="#6F63C5" swScope="/nextgen" />
     </PhoneShell>
   );
 }

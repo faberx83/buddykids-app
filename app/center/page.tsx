@@ -67,7 +67,7 @@ export default async function CenterDashboardPage() {
           {weakWeeks.length > 0 && (
             <div className="flex items-center gap-3 rounded-xl bg-orange-light p-3.5">
               <div className="flex h-[34px] w-[34px] flex-shrink-0 items-center justify-center rounded-[9px] bg-orange-mid">
-                <i className="ti ti-bolt text-base text-[#d4622a]" />
+                <i className="ti ti-bolt text-base text-trama-orange" />
               </div>
               <div className="min-w-0 flex-1">
                 <div className="text-[13px] font-bold text-ink">
@@ -80,7 +80,7 @@ export default async function CenterDashboardPage() {
               </div>
               <Link
                 href="/center/promotions"
-                className="flex-shrink-0 whitespace-nowrap rounded-lg bg-[#d4622a] px-3.5 py-2 text-[11.5px] font-bold text-white"
+                className="flex-shrink-0 whitespace-nowrap rounded-lg bg-trama-orange px-3.5 py-2 text-[11.5px] font-bold text-white"
               >
                 Crea promo
               </Link>

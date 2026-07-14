@@ -54,7 +54,7 @@ export function buildActivityFeed({
       id: `weak-${w.label}`,
       icon: "ti-bolt",
       iconBg: "#FFF0EA",
-      iconColor: "#d4622a",
+      iconColor: "#F6A623",
       text: `${w.label} sotto il 40%`,
       timestamp: new Date(now.getTime() - (i + 1) * 3 * 60 * 60 * 1000),
     });

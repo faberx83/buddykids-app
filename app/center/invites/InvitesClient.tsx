@@ -24,7 +24,7 @@ const STATUS_CLASSES: Record<InviteStatus, string> = {
   sent: "bg-sky-light text-sky",
   registered: "bg-green-light text-[#2d8f52]",
   redeemed: "bg-purple-light text-[#6b58d4]",
-  expired: "bg-orange-light text-[#d4622a]",
+  expired: "bg-orange-light text-trama-orange",
 };
 
 function parseContactsCsv(text: string): InviteContactInput[] {
@@ -168,7 +168,7 @@ export default function InvitesClient({
       </div>
 
       {!hasCenterId && isSupabaseConfigured && (
-        <div className="mb-5 rounded-md bg-orange-light px-4 py-3 text-sm text-[#d4622a]">
+        <div className="mb-5 rounded-md bg-orange-light px-4 py-3 text-sm text-trama-orange">
           Il tuo account non è ancora collegato a un centro — non puoi ancora creare inviti.
         </div>
       )}

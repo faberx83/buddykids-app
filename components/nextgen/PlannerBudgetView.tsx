@@ -108,7 +108,7 @@ export default function PlannerBudgetView({
             </div>
             <div className="mt-3 h-2.5 w-full overflow-hidden rounded-full bg-[#EEF0F4]">
               <div
-                className={`h-full rounded-full transition-all ${overBudget ? "bg-orange" : "bg-[#5B4FE9]"}`}
+                className={`h-full rounded-full transition-all ${overBudget ? "bg-orange" : "bg-trama-violet"}`}
                 style={{ width: `${Math.min(100, percent ?? 0)}%` }}
               />
             </div>
@@ -116,7 +116,7 @@ export default function PlannerBudgetView({
               <span className={overBudget ? "font-semibold text-orange" : "text-ink-2"}>
                 {overBudget ? `${percent}% — hai superato il budget` : `${percent}% utilizzato`}
               </span>
-              <button type="button" onClick={() => setEditing(true)} className="font-semibold text-[#5B4FE9]">
+              <button type="button" onClick={() => setEditing(true)} className="font-semibold text-trama-violet">
                 Modifica
               </button>
             </div>

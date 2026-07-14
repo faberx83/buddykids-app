@@ -14,7 +14,7 @@ function formatDate(iso: string) {
 
 function cellTone(day: DayAvailability) {
   if (!day.isOpen) return "bg-[#F4F6FA] text-ink-3 border-[#E8EBF0]";
-  if (day.spotsLeft === 0) return "bg-orange-light text-[#d4622a] border-orange-mid";
+  if (day.spotsLeft === 0) return "bg-orange-light text-trama-orange border-orange-mid";
   if (day.spotsLeft <= 3) return "bg-yellow-light text-[#9a6b00] border-yellow";
   return "bg-green-light text-[#2d8f52] border-green";
 }

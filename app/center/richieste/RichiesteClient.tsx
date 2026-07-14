@@ -6,7 +6,7 @@ import { replyToInquiryAction, markInquiriesReadAction } from "@/app/actions/inq
 import { isSupabaseConfigured } from "@/lib/supabase/env";
 
 const STATUS_LABEL: Record<InquiryStatus, { label: string; cls: string }> = {
-  aperta: { label: "Da rispondere", cls: "bg-orange-light text-[#d4622a]" },
+  aperta: { label: "Da rispondere", cls: "bg-orange-light text-trama-orange" },
   risposta: { label: "Risposto", cls: "bg-green-light text-[#2d8f52]" },
   chiusa: { label: "Chiusa", cls: "bg-bg text-ink-3" },
 };

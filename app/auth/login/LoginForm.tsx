@@ -183,7 +183,7 @@ export default function LoginForm({
             {mode === "signup" && invitePreview && (
               <div
                 className={`mb-4 rounded-lg px-3.5 py-3 text-xs font-medium ${
-                  invitePreview.valid ? "bg-green-light text-[#2d8f52]" : "bg-orange-light text-[#d4622a]"
+                  invitePreview.valid ? "bg-green-light text-[#2d8f52]" : "bg-orange-light text-trama-orange"
                 }`}
               >
                 {invitePreview.valid
