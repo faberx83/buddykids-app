@@ -37,7 +37,9 @@ export default function ActivityCard({
           </span>
         )}
         {matchPercent !== undefined && (
-          <div className="absolute left-2.5 top-2.5 z-[1] rounded-full bg-purple px-2.5 py-1 text-[11px] font-bold text-white">
+          // TRAMA Sprint 3 — bg-purple (generico) sostituito con trama-violet,
+          // il colore CTA/primario del rebrand, per coerenza con Login/Home.
+          <div className="absolute left-2.5 top-2.5 z-[1] rounded-full bg-trama-violet px-2.5 py-1 text-[11px] font-bold text-white">
             Match {matchPercent}%
           </div>
         )}

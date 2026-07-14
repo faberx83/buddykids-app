@@ -156,4 +156,21 @@ test.describe("Gestore - Attivita", () => {
     await expect(page.getByText(label)).not.toBeVisible();
   });
 
+  // BUG CORRETTO: allegando un documento la richiesta falliva sempre con
+  // "new row violates row-level security policy" — activity.centerId
+  // (passato come cartella del path nello storage) è lo SLUG del centro, non
+  // l'uuid reale richiesto dalla policy RLS del bucket "buddykids-certifications"
+  // (confronta storage.foldername(name)[1] con public.current_center_id(),
+  // un uuid). Fix: nuovo campo Activity.centerDbId (uuid reale), usato ora da
+  // ActivityEditForm al posto di centerId. ESCLUSO dall'automazione come
+  // TC-117 (upload file): richiede un browser reale per l'input file e lo
+  // snippet SQL Storage applicato su Supabase.
+  // Priorita: Alta | Precondizioni: Account Gestore collegato a un centro, bucket storage creato
+  test.fixme("TC-212 - Invio richiesta di Certificazione con documento allegato non fallisce per RLS", async ({ page }) => {
+    // TODO: implementare - allegare un file all'input "Certificazione" prima
+    // di cliccare "Invia richiesta" (vedi TC-200 sopra per il resto del
+    // flusso) e verificare che NON compaia "new row violates row-level
+    // security policy" ma il badge "In verifica" come per il testo semplice.
+  });
+
 });

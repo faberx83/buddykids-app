@@ -50,12 +50,12 @@ export default function NextgenBottomNav() {
           <Link key={item.href} href={item.href} className="flex flex-1 flex-col items-center gap-[3px]">
             <i
               className={`ti ${item.icon} text-[22px] transition-colors ${
-                active ? "text-[#5B4FE9]" : "text-ink-3"
+                active ? "text-trama-violet" : "text-ink-3"
               }`}
             />
             <span
-              className={`text-[10px] font-medium transition-colors ${
-                active ? "text-[#5B4FE9]" : "text-ink-3"
+              className={`font-poppins text-[10px] font-medium transition-colors ${
+                active ? "text-trama-violet" : "text-ink-3"
               }`}
             >
               {item.label}

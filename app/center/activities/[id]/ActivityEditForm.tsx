@@ -67,7 +67,12 @@ export default function ActivityEditForm({
 
     let documentPath: string | null = null;
     if (certFile) {
-      const upload = await uploadCertificationDocument(activity.centerId, certFile);
+      // BUG CORRETTO: activity.centerId è lo SLUG del centro (routing), non
+      // l'uuid reale richiesto dalla policy RLS dello storage bucket (che
+      // confronta il path con l'uuid vero, public.current_center_id()) — usava
+      // lo slug e falliva sempre con "new row violates row-level security
+      // policy". centerDbId è l'uuid reale (vedi lib/types.ts).
+      const upload = await uploadCertificationDocument(activity.centerDbId || activity.centerId, certFile);
       if (upload.error) {
         setCertSaving(false);
         setCertError(upload.error);

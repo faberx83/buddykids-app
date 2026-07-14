@@ -119,7 +119,7 @@ export default function HomeDashboardClient({
   return (
     <div className="flex flex-col gap-9 px-5 py-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-xl font-bold text-ink">
+        <h1 className="font-poppins text-xl font-bold text-ink">
           Ciao{firstName ? ` ${firstName}` : ""} 👋
         </h1>
         <NextgenBadge />
@@ -130,19 +130,24 @@ export default function HomeDashboardClient({
           come il resto della pagina), radius 22px, ombra diffusa, ~30-35%
           dello schermo iniziale. L'elemento grafico discreto (i due cerchi
           sfumati) la rende riconoscibile a colpo d'occhio, senza essere
-          un'illustrazione invadente. */}
-      <div className="nextgen-hero-bg nextgen-hero-shadow relative overflow-hidden rounded-[22px] p-6">
+          un'illustrazione invadente.
+          TRAMA Sprint 3 — sfondo passato dal vecchio gradiente
+          nextgen-hero-bg (arancio/rosa/viola) a un tint viola coerente col
+          resto del rebrand (violet = colore CTA/primario, vedi
+          tailwind.config.ts), CTA in trama-violet invece di bg-ink, titoli
+          in Poppins, ingresso con trama-fade-up come nel Login. */}
+      <div className="trama-fade-up relative overflow-hidden rounded-[22px] bg-trama-violet/[0.08] p-6 shadow-[0_8px_24px_rgba(111,99,197,0.12)]">
         <div
           aria-hidden
-          className="pointer-events-none absolute -right-8 -top-10 h-36 w-36 rounded-full bg-white/30"
+          className="pointer-events-none absolute -right-8 -top-10 h-36 w-36 rounded-full bg-trama-violet/10"
         />
-        <div aria-hidden className="pointer-events-none absolute -bottom-12 -right-2 h-24 w-24 rounded-full bg-white/20" />
+        <div aria-hidden className="pointer-events-none absolute -bottom-12 -right-2 h-24 w-24 rounded-full bg-trama-lilac/20" />
         <div className="relative">
           <p className="mb-1.5 text-sm font-semibold text-ink-2">La tua estate</p>
           {/* SEGNALAZIONE DI FABRIZIO: "sistemare le dimensioni font perché
               vanno a capo" — 28px (era 30px) resta nel range richiesto
               (28-32px) ma lascia più margine sugli schermi stretti. */}
-          <h2 className="mb-3 text-[28px] font-bold leading-tight text-ink">
+          <h2 className="mb-3 font-poppins text-[28px] font-bold leading-tight text-ink">
             {statusEmoji} Organizzata al {percent}%
           </h2>
           {/* "Mancano ancora"/"Prossimo impegno" ristrutturate da frase unica
@@ -152,7 +157,7 @@ export default function HomeDashboardClient({
           <div className="mb-3.5 flex flex-col gap-2.5">
             {missingWeeksText ? (
               <div className="flex items-start gap-2">
-                <i className="ti ti-calendar-exclamation mt-0.5 flex-shrink-0 text-base text-[#d4622a]" />
+                <i className="ti ti-calendar-exclamation mt-0.5 flex-shrink-0 text-base text-trama-orange" />
                 <div className="min-w-0">
                   <div className="text-[11px] font-bold uppercase tracking-wide text-ink-3">Mancano ancora</div>
                   <div className="text-base font-semibold text-ink">{missingWeeksText}</div>
@@ -160,13 +165,13 @@ export default function HomeDashboardClient({
               </div>
             ) : (
               <div className="flex items-start gap-2">
-                <i className="ti ti-circle-check-filled mt-0.5 flex-shrink-0 text-base text-green" />
+                <i className="ti ti-circle-check-filled mt-0.5 flex-shrink-0 text-base text-trama-green" />
                 <div className="text-base font-semibold text-ink">Tutte le settimane utili sono coperte.</div>
               </div>
             )}
             {nextAppointment && (
               <div className="flex items-start gap-2">
-                <i className="ti ti-map-pin-filled mt-0.5 flex-shrink-0 text-base text-[#5B4FE9]" />
+                <i className="ti ti-map-pin-filled mt-0.5 flex-shrink-0 text-base text-trama-violet" />
                 <div className="min-w-0">
                   <div className="text-[11px] font-bold uppercase tracking-wide text-ink-3">Prossimo impegno</div>
                   <div className="truncate text-base font-semibold text-ink">
@@ -180,7 +185,7 @@ export default function HomeDashboardClient({
           <button
             type="button"
             onClick={() => router.push("/nextgen/planner")}
-            className="rounded-full bg-ink px-5 py-3 text-sm font-bold text-white"
+            className="rounded-full bg-trama-violet px-5 py-3 text-sm font-bold text-white"
           >
             Continua a pianificare
           </button>
@@ -191,7 +196,7 @@ export default function HomeDashboardClient({
           secondaria: prima non compariva affatto in NEXTGEN. */}
       {todayCheckins.length > 0 && (
         <div>
-          <div className="mb-3 text-[21px] font-semibold text-ink">Oggi</div>
+          <div className="mb-3 font-poppins text-[21px] font-semibold text-ink">Oggi</div>
           <NextgenCheckinCard items={todayCheckins} />
         </div>
       )}
@@ -201,20 +206,22 @@ export default function HomeDashboardClient({
           card diverse nella stessa schermata. */}
       {nextAppointment && (
         <div>
-          <div className="mb-3 text-[21px] font-semibold text-ink">Prossimo appuntamento</div>
+          <div className="mb-3 font-poppins text-[21px] font-semibold text-ink">Prossimo appuntamento</div>
           <BookingVisualCard booking={nextAppointment} />
         </div>
       )}
 
       {/* SPRINT 4 — piccolo segnale sociale, solo se rilevante: "Home deve
           mostrare piccoli elementi sociali" (richiesta di Fabrizio), non
-          invasivo (una riga, nessun popup), link diretto alla community. */}
+          invasivo (una riga, nessun popup), link diretto alla community.
+          TRAMA Sprint 3 — colore hardcoded #F5F2FF/#5B4FE9 sostituito coi
+          token trama-lilac/trama-violet. */}
       {communitySignal && (
         <Link
           href={`/nextgen/community/${communitySignal.communityId}`}
-          className="flex items-center gap-2.5 rounded-2xl bg-[#F5F2FF] px-4 py-3"
+          className="flex items-center gap-2.5 rounded-2xl bg-trama-lilac/20 px-4 py-3"
         >
-          <i className="ti ti-users-group flex-shrink-0 text-lg text-[#5B4FE9]" />
+          <i className="ti ti-users-group flex-shrink-0 text-lg text-trama-violet" />
           <span className="text-[13px] font-medium text-ink-2">
             <b className="font-bold text-ink">
               {communitySignal.interestCount} {communitySignal.interestCount === 1 ? "famiglia" : "famiglie"}
@@ -228,7 +235,7 @@ export default function HomeDashboardClient({
       {/* 4) Suggerimenti personalizzati — solo se ci sono buchi da riempire */}
       {recommendations.length > 0 && (
         <div>
-          <div className="mb-3 text-[21px] font-semibold text-ink">Consigliati per voi</div>
+          <div className="mb-3 font-poppins text-[21px] font-semibold text-ink">Consigliati per voi</div>
           <div className="flex flex-col gap-1">
             {recommendations.map((r) => (
               <div key={r.activity.id}>
@@ -245,7 +252,7 @@ export default function HomeDashboardClient({
           in "/prenotazioni" e nel Planner). */}
       {pendingBookings.length > 0 && (
         <div>
-          <div className="mb-3 text-[21px] font-semibold text-ink">
+          <div className="mb-3 font-poppins text-[21px] font-semibold text-ink">
             Attività da confermare ({pendingBookings.length})
           </div>
           <div className="flex flex-col gap-2">
@@ -253,7 +260,7 @@ export default function HomeDashboardClient({
               <BookingVisualCard key={b.id} booking={b} compact />
             ))}
           </div>
-          <Link href="/prenotazioni" className="mt-3 inline-block text-sm font-semibold text-[#5B4FE9]">
+          <Link href="/prenotazioni" className="mt-3 inline-block text-sm font-semibold text-trama-violet">
             Gestisci tutte le prenotazioni →
           </Link>
         </div>
@@ -261,13 +268,15 @@ export default function HomeDashboardClient({
 
       {/* SPRINT 5.1 — CTA "Apri Planner": sostituisce il mini-timeline
           rimosso. La Home resta solo sintesi, il dettaglio (timeline
-          completa, budget, mappa, gruppi) vive tutto nel Planner. */}
+          completa, budget, mappa, gruppi) vive tutto nel Planner.
+          TRAMA Sprint 3 — bg-ink sostituito con trama-navy (l'equivalente
+          "primario scuro" del rebrand, vedi tailwind.config.ts). */}
       <Link
         href="/nextgen/planner"
-        className="flex items-center justify-between rounded-2xl bg-ink px-5 py-4 text-white"
+        className="flex items-center justify-between rounded-2xl bg-trama-navy px-5 py-4 text-white"
       >
         <div>
-          <div className="text-base font-bold">Apri Planner</div>
+          <div className="font-poppins text-base font-bold">Apri Planner</div>
           <div className="text-[12.5px] text-white/70">Organizzazione, calendario, budget e altro</div>
         </div>
         <i className="ti ti-chevron-right text-lg" />

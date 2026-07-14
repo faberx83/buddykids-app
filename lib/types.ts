@@ -45,6 +45,13 @@ export interface Activity {
   emoji: string;
   imgGradient: string;
   centerId: string;
+  // BUG CORRETTO (upload certificazioni con "new row violates row-level
+  // security policy"): centerId sopra è lo SLUG del centro quando presente
+  // (usato per routing/filtri), non l'uuid reale — le policy RLS dello
+  // storage bucket "buddykids-certifications" confrontano invece
+  // storage.foldername(name)[1] con l'uuid reale (public.current_center_id()).
+  // centerDbId preserva quell'uuid per chi ne ha bisogno lato codice.
+  centerDbId?: string;
   center: string;
   tagIds: string[]; // id multipli da lib/mock-data categories (sostituisce il vecchio "category")
   address: string;

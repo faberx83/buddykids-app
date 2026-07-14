@@ -118,7 +118,7 @@ export default function NextgenCheckinCard({ items }: { items: TodayCheckin[] })
               <span className="min-w-0 flex-1 truncate text-sm font-semibold text-ink">
                 {item.kidName} · {item.activityName}
               </span>
-              <span className="flex-shrink-0 text-[11px] font-bold uppercase tracking-wide text-[#d4622a]">
+              <span className="flex-shrink-0 text-[11px] font-bold uppercase tracking-wide text-trama-orange">
                 {summary.label}
               </span>
               <i className="ti ti-pencil flex-shrink-0 text-xs text-ink-3" aria-label="Modifica risposta" />
@@ -141,8 +141,8 @@ export default function NextgenCheckinCard({ items }: { items: TodayCheckin[] })
               </div>
               <div className="min-w-0 flex-1">
                 <div className="mb-0.5 flex items-center gap-1.5">
-                  <i className="ti ti-map-pin-check text-sm text-[#d4622a]" />
-                  <span className="text-[11px] font-bold uppercase tracking-wide text-[#d4622a]">
+                  <i className="ti ti-map-pin-check text-sm text-trama-orange" />
+                  <span className="text-[11px] font-bold uppercase tracking-wide text-trama-orange">
                     Oggi · {item.weekLabel}
                   </span>
                 </div>
@@ -157,7 +157,7 @@ export default function NextgenCheckinCard({ items }: { items: TodayCheckin[] })
                 scansionabile da nessuno, è un identificativo visivo pronto
                 a diventarlo. */}
             <div className="mx-4 mb-3 flex items-center gap-2.5 rounded-xl border border-dashed border-[#F0C9A0] bg-white/70 px-3 py-2.5">
-              <i className="ti ti-qrcode text-xl text-[#d4622a]" />
+              <i className="ti ti-qrcode text-xl text-trama-orange" />
               <div className="min-w-0 flex-1">
                 <div className="text-[10px] font-bold uppercase tracking-wide text-ink-3">Codice check-in</div>
                 <div className="font-mono text-sm font-bold tracking-wider text-ink">{checkinCode(item)}</div>

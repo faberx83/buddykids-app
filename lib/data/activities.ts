@@ -108,6 +108,7 @@ export function mapRow(row: RawActivityRow): Activity {
     emoji: row.emoji,
     imgGradient: row.img_gradient || "linear-gradient(135deg,#E8F6FD,#E3F9F5)",
     centerId: center?.slug || row.center_id,
+    centerDbId: row.center_id,
     center: center?.name || "",
     tagIds,
     address: row.address || "",

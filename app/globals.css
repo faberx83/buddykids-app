@@ -155,3 +155,25 @@ body {
 .trama-fade-up {
   animation: tramaFadeUp 0.4s ease-out both;
 }
+
+/* TRAMA Sprint 3 — spinner di caricamento col logo (components/TramaSpinner.tsx),
+   in sostituzione della rotellina generica (border animate-spin) usata finora
+   in tutti i loading.tsx delle route. Richiesta di Fabrizio: "ogni rotellina
+   di caricamento sull'app deve riportare una grafica del logo animata".
+   Un respiro (scala + opacità) invece di una rotazione a 360°: il logo
+   trama-logo-mark.png non è simmetrico, ruotarlo avrebbe reso irriconoscibile
+   la grafica durante l'animazione. */
+@keyframes tramaPulse {
+  0%,
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.08);
+    opacity: 0.55;
+  }
+}
+.trama-spinner {
+  animation: tramaPulse 1.1s ease-in-out infinite;
+}

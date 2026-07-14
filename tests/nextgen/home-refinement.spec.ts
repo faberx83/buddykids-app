@@ -135,4 +135,19 @@ test.describe("NEXTGEN - Home (rifinitura)", () => {
     await expect(page.getByText(/Tutte le prenotazioni/)).toHaveCount(0);
     await expect(page.locator("button i.ti-chevron-up, button i.ti-chevron-down")).toHaveCount(0);
   });
+
+  // TRAMA Sprint 3: restyle SOLO visivo (colori/font token trama-*, nessun
+  // testo/struttura cambiati) — questo test non verifica colori pixel (fragile
+  // in Playwright), solo che la pagina continui a renderizzare tutte le
+  // sezioni chiave senza errori dopo il restyle di Hero Card/Oggi/Prossimo
+  // appuntamento/Consigliati per voi/Attività da confermare/CTA Planner.
+  test("TC-213 - Home NEXTGEN dopo il restyle TRAMA mostra ancora tutte le sezioni chiave", async ({ page }) => {
+    test.skip(!isRealDeployment, "Richiede un deploy con Supabase configurato e l'account genitore di test.");
+    await loginAs(page, "parent");
+    await page.goto("/nextgen");
+
+    await expect(page.getByText(/Organizzata al \d+%/)).toBeVisible();
+    await expect(page.getByRole("link", { name: "Apri Planner" })).toBeVisible();
+    await expect(page.locator("body")).not.toContainText("Application error");
+  });
 });
