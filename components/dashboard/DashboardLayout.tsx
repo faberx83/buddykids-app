@@ -81,6 +81,27 @@ function AccountBadge({
   );
 }
 
+// BRANDING TRAMA — sostituisce l'header emoji+testo ("🏫 TRAMA Partner",
+// "🛠️ TRAMA Admin") con il vero logo del brand kit ufficiale, nella variante
+// monocromatica corretta: NAVY su sfondo chiaro (sidebar Partner) e WHITE su
+// sfondo scuro (sidebar Admin, già bg-navy). Il testo "TRAMA" resta implicito
+// nel simbolo: accanto mostriamo solo l'etichetta di ruolo ("Partner"/
+// "Admin"), altrimenti si leggerebbe "TRAMA" due volte.
+function BrandMark({ isAdmin, size = 26 }: { isAdmin: boolean; size?: number }) {
+  return (
+    <img
+      src={isAdmin ? "/brand/trama-logo-mark-white.png" : "/brand/trama-logo-mark-navy.png"}
+      alt="TRAMA"
+      style={{ height: size, width: "auto" }}
+      className="flex-shrink-0"
+    />
+  );
+}
+
+function brandRoleLabel(brand: string): string {
+  return brand.replace(/^TRAMA\s*/i, "").trim() || "TRAMA";
+}
+
 // Attivo su corrispondenza esatta OPPURE su sotto-rotte (es.
 // /center/activities/[id] deve evidenziare "Attività" come
 // /center/activities) — tranne per la voce "radice" della sezione (Dashboard,
@@ -113,7 +134,6 @@ type DashboardVariant = "partner" | "admin";
 
 export default function DashboardLayout({
   brand,
-  brandEmoji,
   navItems,
   requiredRole,
   realRole,
@@ -124,7 +144,8 @@ export default function DashboardLayout({
   children,
 }: {
   brand: string;
-  brandEmoji: string;
+  // brandEmoji rimosso: l'header ora mostra il vero simbolo TRAMA (BrandMark)
+  // invece dell'emoji placeholder — vedi commento sopra BrandMark.
   navItems: NavItem[];
   requiredRole: Role;
   // Ruolo reale verificato lato server (da Supabase). `undefined` significa
@@ -225,9 +246,9 @@ export default function DashboardLayout({
         >
           <div className="mb-6 flex items-center justify-between gap-2 px-2">
             <div className="flex items-center gap-2">
-              <span className="text-2xl">{brandEmoji}</span>
+              <BrandMark isAdmin={isAdmin} />
               <span className={`text-base font-bold ${isAdmin ? "text-white" : "text-ink"}`}>
-                {brand}
+                {brandRoleLabel(brand)}
               </span>
             </div>
             {accountHref && (
@@ -279,9 +300,9 @@ export default function DashboardLayout({
                 >
                   <i className="ti ti-menu-2 text-xl" />
                 </button>
-                <span className="text-xl">{brandEmoji}</span>
+                <BrandMark isAdmin={isAdmin} size={22} />
                 <span className={`text-sm font-bold ${isAdmin ? "text-white" : "text-ink"}`}>
-                  {brand}
+                  {brandRoleLabel(brand)}
                 </span>
               </div>
               {accountHref ? (
@@ -311,9 +332,9 @@ export default function DashboardLayout({
               >
                 <div className="mb-6 flex items-center justify-between gap-2 px-2">
                   <div className="flex items-center gap-2">
-                    <span className="text-2xl">{brandEmoji}</span>
+                    <BrandMark isAdmin={isAdmin} />
                     <span className={`text-base font-bold ${isAdmin ? "text-white" : "text-ink"}`}>
-                      {brand}
+                      {brandRoleLabel(brand)}
                     </span>
                   </div>
                   <button

@@ -10,10 +10,11 @@ export default function AdminCentersPage() {
       <div className="mb-6 flex items-start justify-between gap-4">
         <div>
           <div className="flex items-center gap-2">
-            <h1 className="text-xl font-bold text-ink">Centri</h1>
+            {/* FIX CONTRASTO ADMIN: text-ink==bg-navy, vedi analytics/page.tsx */}
+            <h1 className="text-xl font-bold text-white">Centri</h1>
             <DemoBadge label="Elenco demo" />
           </div>
-          <p className="text-sm text-ink-2">Tutti i centri estivi registrati sulla piattaforma</p>
+          <p className="text-sm text-navy-text2">Tutti i centri estivi registrati sulla piattaforma</p>
         </div>
         {isSupabaseConfigured && <NewCenterForm />}
       </div>

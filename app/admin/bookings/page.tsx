@@ -7,8 +7,9 @@ export default function AdminBookingsPage() {
   return (
     <div>
       <div className="mb-6">
-        <h1 className="text-xl font-bold text-ink">Prenotazioni</h1>
-        <p className="text-sm text-ink-2">Tutte le prenotazioni su tutti i centri</p>
+        {/* FIX CONTRASTO ADMIN: text-ink==bg-navy, vedi analytics/page.tsx */}
+        <h1 className="text-xl font-bold text-white">Prenotazioni</h1>
+        <p className="text-sm text-navy-text2">Tutte le prenotazioni su tutti i centri</p>
       </div>
 
       <div className="overflow-hidden rounded-lg border border-[#E8EBF0] bg-white">

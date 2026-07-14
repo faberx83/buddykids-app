@@ -42,8 +42,9 @@ export default function CertificationsAdminClient({
   return (
     <div>
       <div className="mb-6">
-        <h1 className="text-xl font-bold text-ink">Certificazioni servizio</h1>
-        <p className="text-sm text-ink-2">
+        {/* FIX CONTRASTO ADMIN: text-ink==bg-navy, vedi analytics/page.tsx */}
+        <h1 className="text-xl font-bold text-white">Certificazioni servizio</h1>
+        <p className="text-sm text-navy-text2">
           Richieste dei centri per certificare un servizio specifico (es. &quot;Istruttori
           certificati FISE per equitazione&quot;) — approvale solo dopo aver verificato il
           documento allegato (se presente); una volta approvate diventano un badge visibile ai

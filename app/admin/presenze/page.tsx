@@ -13,8 +13,9 @@ export default async function AdminPresenzePage() {
   return (
     <div>
       <div className="mb-6">
-        <h1 className="text-xl font-bold text-ink">Presenze — confronto tra centri</h1>
-        <p className="text-sm text-ink-2">
+        {/* FIX CONTRASTO ADMIN: text-ink==bg-navy, vedi analytics/page.tsx */}
+        <h1 className="text-xl font-bold text-white">Presenze — confronto tra centri</h1>
+        <p className="text-sm text-navy-text2">
           Tasso di assenze/ritardi per centro rispetto alla media piattaforma, calcolato sui
           giorni di camp già trascorsi.
         </p>

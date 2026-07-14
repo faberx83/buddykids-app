@@ -100,4 +100,16 @@ test.describe("Gestore - Dashboard", () => {
     await expect(page.getByText("Le tue attività")).toHaveCount(0);
   });
 
+  // TC-215 - Branding: header sidebar usa il vero logo TRAMA (variante NAVY,
+  // vedi DashboardLayout.tsx#BrandMark) al posto dell'emoji "🏫" placeholder.
+  test("TC-215 - Sidebar Partner mostra il logo NAVY invece dell'emoji", async ({ page }) => {
+    test.skip(!isRealDeployment, "Richiede un deploy con Supabase configurato e l'account Gestore di test.");
+    await page.setViewportSize({ width: 1280, height: 800 });
+    await loginAs(page, "center_admin");
+    await page.goto("/center");
+
+    await expect(page.locator('img[src="/brand/trama-logo-mark-navy.png"]').first()).toBeVisible();
+    await expect(page.getByText("Partner", { exact: true }).first()).toBeVisible();
+  });
+
 });

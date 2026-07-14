@@ -142,14 +142,29 @@ export default function LoginForm({
         <TramaLoginHeader animate={animateHeader} />
       ) : (
         <>
-          <div
-            className="mb-5 flex h-16 w-16 items-center justify-center rounded-full text-3xl font-bold text-white"
-            style={{ background: themeColor }}
-          >
-            {isAdmin ? "🛠️" : "🏫"}
+          {/* Badge emoji sostituito col vero logo TRAMA (brand kit): variante
+              NAVY su sfondo chiaro (Partner), WHITE su sfondo navy (Admin) —
+              coerente con la sidebar (DashboardLayout.tsx). */}
+          <div className="mb-4 flex flex-col items-center gap-1.5">
+            <img
+              src={isAdmin ? "/brand/trama-logo-mark-white.png" : "/brand/trama-logo-mark-navy.png"}
+              alt=""
+              aria-hidden="true"
+              className="h-12 w-auto"
+            />
+            <img
+              src={isAdmin ? "/brand/trama-wordmark-white.png" : "/brand/trama-wordmark.png"}
+              alt="TRAMA"
+              className="h-5 w-auto"
+            />
           </div>
-          <h1 className={`mb-1 text-xl font-bold ${isAdmin ? "text-white" : "text-ink"}`}>{appName}</h1>
-          <p className={`mb-7 text-sm ${isAdmin ? "text-navy-text2" : "text-ink-2"}`}>{heading}</p>
+          <h1 className={`mb-1 text-xl font-bold ${isAdmin ? "text-white" : "text-ink"}`}>
+            {appName.replace(/^TRAMA\s*/i, "").trim() || appName}
+          </h1>
+          <p className={`text-[13px] ${isAdmin ? "text-navy-text2" : "text-ink-2"}`}>
+            Organizing childhood. Together.
+          </p>
+          <p className={`mb-7 mt-3 text-sm ${isAdmin ? "text-navy-text2" : "text-ink-2"}`}>{heading}</p>
         </>
       )}
 

@@ -14,8 +14,9 @@ export default function AdminDashboardPage() {
   return (
     <div>
       <div className="mb-6">
-        <h1 className="text-xl font-bold text-ink">Dashboard piattaforma</h1>
-        <p className="text-sm text-ink-2">Panoramica su tutti i centri e le attività di TRAMA</p>
+        {/* FIX CONTRASTO ADMIN: text-ink==bg-navy, vedi analytics/page.tsx */}
+        <h1 className="text-xl font-bold text-white">Dashboard piattaforma</h1>
+        <p className="text-sm text-navy-text2">Panoramica su tutti i centri e le attività di TRAMA</p>
       </div>
 
       <div className="mb-6 grid grid-cols-2 gap-3 md:grid-cols-4">

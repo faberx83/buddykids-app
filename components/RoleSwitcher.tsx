@@ -6,10 +6,27 @@ import { useDemoRole } from "./DemoRoleProvider";
 import { Role } from "@/lib/types";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
 
-const roles: { id: Role; label: string; emoji: string; href: string }[] = [
+// BRANDING TRAMA — "parent" resta emoji (non ha una sidebar/variante logo
+// dedicata), "center_admin"/"platform_admin" usano il simbolo navy reale al
+// posto dell'emoji placeholder (coerente con sidebar/login). Questo widget è
+// solo demo/QA (sparisce con Supabase configurato), quindi un solo colore
+// (navy) è sufficiente anche per la voce Admin.
+const roles: { id: Role; label: string; emoji?: string; mark?: string; markWhite?: string; href: string }[] = [
   { id: "parent", label: "Genitore", emoji: "👨‍👩‍👧", href: "/" },
-  { id: "center_admin", label: "Gestore centro", emoji: "🏫", href: "/center" },
-  { id: "platform_admin", label: "Admin piattaforma", emoji: "🛠️", href: "/admin" },
+  {
+    id: "center_admin",
+    label: "Gestore centro",
+    mark: "/brand/trama-logo-mark-navy.png",
+    markWhite: "/brand/trama-logo-mark-white.png",
+    href: "/center",
+  },
+  {
+    id: "platform_admin",
+    label: "Admin piattaforma",
+    mark: "/brand/trama-logo-mark-navy.png",
+    markWhite: "/brand/trama-logo-mark-white.png",
+    href: "/admin",
+  },
 ];
 
 // Selettore di ruolo per la demo — permette di navigare tra vista genitore,
@@ -44,7 +61,11 @@ export default function RoleSwitcher() {
                 r.id === role ? "font-semibold text-sky" : "text-ink"
               }`}
             >
-              <span>{r.emoji}</span>
+              {r.mark ? (
+                <img src={r.mark} alt="" aria-hidden="true" className="h-4 w-auto" />
+              ) : (
+                <span>{r.emoji}</span>
+              )}
               {r.label}
               {r.id === role && <i className="ti ti-check ml-auto text-sm" />}
             </button>
@@ -55,7 +76,11 @@ export default function RoleSwitcher() {
         onClick={() => setOpen((o) => !o)}
         className="flex items-center gap-2 rounded-full bg-ink px-4 py-2.5 text-xs font-semibold text-white shadow-lg transition-transform hover:scale-105"
       >
-        <span>{current.emoji}</span>
+        {current.markWhite ? (
+          <img src={current.markWhite} alt="" aria-hidden="true" className="h-4 w-auto" />
+        ) : (
+          <span>{current.emoji}</span>
+        )}
         {current.label}
         <i className={`ti ${open ? "ti-chevron-down" : "ti-chevron-up"} text-sm`} />
       </button>

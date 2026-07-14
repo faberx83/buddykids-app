@@ -17,8 +17,9 @@ export default async function AdminGroupRequestsPage() {
   return (
     <div>
       <div className="mb-6">
-        <h1 className="text-xl font-bold text-ink">Richieste Gruppo — tutti i centri</h1>
-        <p className="text-sm text-ink-2">
+        {/* FIX CONTRASTO ADMIN: text-ink==bg-navy, vedi analytics/page.tsx */}
+        <h1 className="text-xl font-bold text-white">Richieste Gruppo — tutti i centri</h1>
+        <p className="text-sm text-navy-text2">
           Report delle richieste di sconto gruppo inviate dalle famiglie a tutti i centri della
           piattaforma. Accettare o rifiutare resta una decisione del singolo Gestore centro (vedi
           la sua sezione &quot;Richieste Gruppo&quot;) — questa vista è di sola consultazione.

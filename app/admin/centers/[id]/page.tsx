@@ -35,8 +35,9 @@ export default async function AdminCenterDetailPage({
           {center.emoji}
         </div>
         <div>
-          <h1 className="text-xl font-bold text-ink">{center.name}</h1>
-          <p className="text-sm text-ink-2">
+          {/* FIX CONTRASTO ADMIN: text-ink==bg-navy, vedi analytics/page.tsx */}
+          <h1 className="text-xl font-bold text-white">{center.name}</h1>
+          <p className="text-sm text-navy-text2">
             {center.address}, {center.city}
           </p>
         </div>

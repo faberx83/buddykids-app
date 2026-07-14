@@ -127,7 +127,6 @@ export default async function CenterLayout({ children }: { children: React.React
   return (
     <DashboardLayout
       brand="TRAMA Partner"
-      brandEmoji="🏫"
       navItems={navItems}
       requiredRole="center_admin"
       realRole={realRole}

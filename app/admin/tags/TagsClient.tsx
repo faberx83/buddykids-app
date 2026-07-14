@@ -65,10 +65,11 @@ export default function TagsClient({ initialTags }: { initialTags: Tag[] }) {
       <div className="mb-6 flex items-center justify-between">
         <div>
           <div className="flex items-center gap-2">
-            <h1 className="text-xl font-bold text-ink">Tag piattaforma</h1>
+            {/* FIX CONTRASTO ADMIN: text-ink==bg-navy, vedi analytics/page.tsx */}
+            <h1 className="text-xl font-bold text-white">Tag piattaforma</h1>
             {!isSupabaseConfigured && <DemoBadge />}
           </div>
-          <p className="text-sm text-ink-2">
+          <p className="text-sm text-navy-text2">
             Lista master dei tag che i centri possono assegnare alle proprie attività (es.
             sportivo, musica, piscina…)
           </p>

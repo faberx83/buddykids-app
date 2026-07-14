@@ -19,8 +19,13 @@ export default async function AdminAnalyticsPage() {
   return (
     <div>
       <div className="mb-6">
-        <h1 className="text-xl font-bold text-ink">Analisi piattaforma</h1>
-        <p className="text-sm text-ink-2">
+        {/* FIX CONTRASTO ADMIN — text-ink (#1A1D2E) è illeggibile qui: questo
+            titolo sta direttamente sullo sfondo bg-navy del pannello Admin
+            (stesso colore, non dentro una card bianca), a differenza del
+            resto della pagina che vive in card bg-white dove text-ink resta
+            corretto. Vedi DashboardLayout.tsx per i token navy/text2. */}
+        <h1 className="text-xl font-bold text-white">Analisi piattaforma</h1>
+        <p className="text-sm text-navy-text2">
           Andamento occupazione, composizione clienti e opportunità di cross-selling tra centri
         </p>
       </div>
