@@ -83,9 +83,30 @@ export default function ActivityCard({
             </span>
           ))}
         </div>
-        {activity.certificationBadges && activity.certificationBadges.length > 0 && (
+        {(activity.centerAccessible ||
+          (activity.dietaryOptions && activity.dietaryOptions.length > 0) ||
+          (activity.certificationBadges && activity.certificationBadges.length > 0)) && (
           <div className="mt-1.5 flex flex-wrap gap-1.5">
-            {activity.certificationBadges.map((label) => (
+            {/* Segnalazione di Fabrizio: "sul badge del centro non si vede
+                nulla nè sul badge disabili nè sul badge diete" — questi due
+                dati arrivano già popolati in Activity (centerAccessible,
+                dietaryOptions, vedi lib/data/activities.ts) e sono visibili
+                da tempo nel dettaglio (DetailClient.tsx), ma non erano mai
+                stati aggiunti a questa card di lista/ricerca — stesso gap
+                già risolto sopra per le certificazioni. */}
+            {activity.centerAccessible && (
+              <span className="flex items-center gap-1 rounded-full bg-sky-light px-2.5 py-0.5 text-[10px] font-semibold text-sky">
+                <i className="ti ti-wheelchair text-[11px]" />
+                Accesso disabili
+              </span>
+            )}
+            {activity.dietaryOptions && activity.dietaryOptions.length > 0 && (
+              <span className="flex items-center gap-1 rounded-full bg-green-light px-2.5 py-0.5 text-[10px] font-semibold text-green">
+                <i className="ti ti-salad text-[11px]" />
+                Diete gestite
+              </span>
+            )}
+            {activity.certificationBadges?.map((label) => (
               <span
                 key={label}
                 className="flex items-center gap-1 rounded-full bg-sky-light px-2.5 py-0.5 text-[10px] font-semibold text-sky"

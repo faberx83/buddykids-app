@@ -217,4 +217,23 @@ test.describe("Genitori - Attivita", () => {
     // approvata da un admin, non garantita dal seed attuale.
   });
 
+  // Segnalazione di Fabrizio (screenshot): "sul badge del centro non si vede
+  // nulla nè sul badge disabili" — stesso gap di TC-208, stessa causa (dato
+  // già presente in Activity ma mai renderizzato sulla card), stesso fix.
+  // Priorita: Media | Precondizioni: Attività il cui centro abbia accessible=true (vedi TC-196)
+  // Passi: Apri Cerca/Home con l'attività tra i risultati
+  // Risultato atteso: La card mostra il badge "Accesso disabili" (etichetta su ActivityCard, icona sedia a rotelle su ActivityCardHorizontal)
+  test.fixme("TC-209 - Le card di lista/ricerca mostrano il badge Accesso disabili", async ({ page }) => {
+    // TODO: implementare - come TC-196, richiede seed con centers.accessible=true, non garantito dal seed attuale.
+  });
+
+  // Segnalazione di Fabrizio (screenshot): "nè sul badge gestione diete
+  // speciali" — stesso gap di TC-208/TC-209.
+  // Priorita: Media | Precondizioni: Attività con dietary_options non vuoto (vedi TC-197)
+  // Passi: Apri Cerca/Home con l'attività tra i risultati
+  // Risultato atteso: La card mostra il badge "Diete gestite" (etichetta su ActivityCard, icona insalata su ActivityCardHorizontal)
+  test.fixme("TC-210 - Le card di lista/ricerca mostrano il badge Diete gestite", async ({ page }) => {
+    // TODO: implementare - come TC-197, richiede seed con activities.dietary_options non vuoto, non garantito dal seed attuale.
+  });
+
 });

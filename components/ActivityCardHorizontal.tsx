@@ -38,12 +38,39 @@ export default function ActivityCardHorizontal({
         {/* Foto reale caricata dal gestore, se presente — prima questa card
             mostrava sempre e solo l'emoji/gradiente, mai la copertina. */}
         {!activity.coverImageUrl && activity.emoji}
-        {activity.certificationBadges && activity.certificationBadges.length > 0 && (
-          <div
-            title={activity.certificationBadges.join(", ")}
-            className="absolute left-1.5 top-1.5 flex h-5 w-5 items-center justify-center rounded-full bg-white/95 text-sky"
-          >
-            <i className="ti ti-certificate text-[12px]" />
+        {/* Segnalazione di Fabrizio: né il badge disabili né quello diete
+            comparivano sulla card — stesso gap già risolto per le
+            certificazioni (dati già presenti in Activity, mancava solo il
+            rendering qui). Icone impilate nell'angolo, card troppo stretta
+            per etichette testuali complete. */}
+        {(activity.certificationBadges?.length ||
+          activity.centerAccessible ||
+          (activity.dietaryOptions && activity.dietaryOptions.length > 0)) && (
+          <div className="absolute left-1.5 top-1.5 flex flex-col gap-1">
+            {activity.certificationBadges && activity.certificationBadges.length > 0 && (
+              <div
+                title={activity.certificationBadges.join(", ")}
+                className="flex h-5 w-5 items-center justify-center rounded-full bg-white/95 text-sky"
+              >
+                <i className="ti ti-certificate text-[12px]" />
+              </div>
+            )}
+            {activity.centerAccessible && (
+              <div
+                title="Accesso disabili"
+                className="flex h-5 w-5 items-center justify-center rounded-full bg-white/95 text-sky"
+              >
+                <i className="ti ti-wheelchair text-[12px]" />
+              </div>
+            )}
+            {activity.dietaryOptions && activity.dietaryOptions.length > 0 && (
+              <div
+                title={`Diete gestite: ${activity.dietaryOptions.join(", ")}`}
+                className="flex h-5 w-5 items-center justify-center rounded-full bg-white/95 text-green"
+              >
+                <i className="ti ti-salad text-[12px]" />
+              </div>
+            )}
           </div>
         )}
       </div>
