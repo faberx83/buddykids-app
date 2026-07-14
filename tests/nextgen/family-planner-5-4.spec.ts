@@ -44,33 +44,87 @@ test.describe("NEXTGEN - Family Planner Sprint 5.4 (Mappa/Promemoria)", () => {
     await expect(emptyState).toBeVisible();
   });
 
-  test("TC-N68 - Vista Mappa: toccare un'attività nell'elenco apre la scheda attività", async ({ page }) => {
-    test.skip(!isRealDeployment, "Richiede un deploy con Supabase configurato e un account genitore di test con almeno una prenotazione attiva.");
+  // SPRINT CORRETTIVO (mockup "3. Mappa"): cliccare una riga della lista non
+  // naviga più direttamente — seleziona il pin (stessa selezione di un click
+  // sulla mappa) e mostra la scheda sintetica sotto, con "Apri scheda" e
+  // "Avvia navigazione" — vedi PlannerMapView.tsx.
+  test("TC-N68 - Vista Mappa: toccare un'attività nell'elenco mostra la scheda sintetica con 'Apri scheda'", async ({
+    page,
+  }) => {
+    test.skip(!isRealDeployment, "Richiede un deploy con Supabase configurato e un account genitore di test con almeno una prenotazione attiva con coordinate.");
     await loginAs(page, "parent");
     await page.goto("/nextgen/planner");
     await page.getByRole("button", { name: "Mappa" }).click();
 
-    const firstRow = page.getByText("Le tue attività", { exact: true }).locator("..").locator("a").first();
+    const firstRow = page.getByText("Le tue attività", { exact: true }).locator("..").locator("button").first();
     if (!(await firstRow.isVisible().catch(() => false))) {
-      test.skip(true, "Nessuna attività prenotata per l'account di test.");
+      test.skip(true, "Nessuna attività prenotata con coordinate per l'account di test.");
     }
     await firstRow.click();
+
+    const openCard = page.getByRole("link", { name: "Apri scheda" });
+    await expect(openCard).toBeVisible();
+    await openCard.click();
     await expect(page).toHaveURL(/\/activity\//);
   });
 
-  test("TC-N69 - Promemoria: quando presenti, appaiono in Organizzazione sopra le Missioni, senza superare 4 elementi", async ({ page }) => {
+  // SPRINT CORRETTIVO (Organizzazione semplificata): Promemoria e Missioni
+  // sono ora un'unica lista di "avvisi", di cui ne compare UNO solo di
+  // default (vedi tests/nextgen/planner-organizzazione-semplificata.spec.ts
+  // #TC-N97 per il dettaglio "Mostra tutti"). Qui verifichiamo solo che il
+  // rendering non si rompa, non più il limite di 4 (non più applicabile: di
+  // default ne compare al massimo 1).
+  test("TC-N69 - Avvisi (Promemoria+Missioni unificati): il rendering di Organizzazione non si rompe", async ({
+    page,
+  }) => {
     test.skip(!isRealDeployment, "Richiede un deploy con Supabase configurato e l'account genitore di test.");
     await loginAs(page, "parent");
     await page.goto("/nextgen/planner");
 
-    // I Promemoria sono condizionali (dipendono da scadenze reali vicine
-    // nell'account di test): verifichiamo solo che, se presenti, non
-    // rompano il rendering e restino entro il limite dichiarato di 4.
-    const reminderEmojis = ["⏳", "📅", "⚠️", "🔁", "💸", "💶"];
-    const found = await Promise.all(reminderEmojis.map((e) => page.getByText(e, { exact: true }).count()));
-    const totalReminders = found.reduce((sum, n) => sum + n, 0);
-
-    expect(totalReminders).toBeLessThanOrEqual(4);
     await expect(page.locator("body")).not.toContainText("Application error");
+  });
+
+  // SPRINT CORRETTIVO (mockup "3. Mappa"): scheda sintetica con "✕" per
+  // tornare alla lista, e "Avvia navigazione" solo quando l'attività ha un
+  // indirizzo salvato.
+  test("TC-N101 - Vista Mappa: la scheda sintetica ha un pulsante per tornare alla lista completa", async ({
+    page,
+  }) => {
+    test.skip(!isRealDeployment, "Richiede un deploy con Supabase configurato e un account genitore di test con almeno una prenotazione attiva con coordinate.");
+    await loginAs(page, "parent");
+    await page.goto("/nextgen/planner");
+    await page.getByRole("button", { name: "Mappa" }).click();
+
+    const firstRow = page.getByText("Le tue attività", { exact: true }).locator("..").locator("button").first();
+    if (!(await firstRow.isVisible().catch(() => false))) {
+      test.skip(true, "Nessuna attività prenotata con coordinate per l'account di test.");
+    }
+    await firstRow.click();
+    await expect(page.getByRole("link", { name: "Apri scheda" })).toBeVisible();
+
+    await page.getByLabel("Chiudi scheda").click();
+    await expect(page.getByText("Le tue attività", { exact: true })).toBeVisible();
+    await expect(page.getByRole("link", { name: "Apri scheda" })).toHaveCount(0);
+  });
+
+  test("TC-N102 - Vista Mappa: 'Avvia navigazione' compare solo se l'attività ha un indirizzo salvato", async ({
+    page,
+  }) => {
+    test.skip(!isRealDeployment, "Richiede un deploy con Supabase configurato e un account genitore di test con almeno una prenotazione attiva con indirizzo.");
+    await loginAs(page, "parent");
+    await page.goto("/nextgen/planner");
+    await page.getByRole("button", { name: "Mappa" }).click();
+
+    const firstRow = page.getByText("Le tue attività", { exact: true }).locator("..").locator("button").first();
+    if (!(await firstRow.isVisible().catch(() => false))) {
+      test.skip(true, "Nessuna attività prenotata con coordinate per l'account di test.");
+    }
+    await firstRow.click();
+
+    const navigateLink = page.getByRole("link", { name: "Avvia navigazione" });
+    if (!(await navigateLink.isVisible().catch(() => false))) {
+      test.skip(true, "L'attività selezionata non ha un indirizzo salvato nell'account di test.");
+    }
+    await expect(navigateLink).toHaveAttribute("href", /google\.com\/maps/);
   });
 });

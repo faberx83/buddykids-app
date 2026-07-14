@@ -23,6 +23,19 @@ const userIcon = L.divIcon({
   iconAnchor: [8, 8],
 });
 
+// SPRINT CORRETTIVO (feedback Fabrizio, mockup "3. Mappa" del Planner): "il
+// PIN una volta cliccato deve essere evidenziato" — pin selezionato più
+// grande e nel viola del brand, invece del marker rosso di default di
+// Leaflet. Usato SOLO quando viene passato `selectedId` (opt-in, vedi sotto):
+// LEGACY Cerca non passa questa prop, quindi il suo comportamento resta
+// identico a prima.
+const selectedIcon = L.divIcon({
+  className: "",
+  html: '<div style="width:26px;height:26px;border-radius:9999px;background:#6F63C5;border:3px solid white;box-shadow:0 2px 8px rgba(0,0,0,0.35)"></div>',
+  iconSize: [26, 26],
+  iconAnchor: [13, 13],
+});
+
 export interface MapItem {
   id: string;
   name: string;
@@ -51,10 +64,21 @@ export default function ActivityMap({
   items,
   userPosition,
   onUserPositionChange,
+  height = 440,
+  selectedId,
+  onSelect,
 }: {
   items: MapItem[];
   userPosition?: { lat: number; lng: number };
   onUserPositionChange?: (lat: number, lng: number) => void;
+  // SPRINT CORRETTIVO (Planner - Mappa) — tutti opt-in, default invariati:
+  // `height` sostituisce il fisso 440px SOLO se passato (Cerca/LEGACY non lo
+  // passa); `selectedId`/`onSelect` abilitano l'evidenziazione del pin
+  // cliccato — quando `onSelect` è assente (Cerca) il Popup di Leaflet resta
+  // il comportamento di sempre.
+  height?: number;
+  selectedId?: string;
+  onSelect?: (id: string) => void;
 }) {
   const points = useMemo(() => {
     const p: [number, number][] = items.map((it) => [it.lat, it.lng]);
@@ -65,7 +89,7 @@ export default function ActivityMap({
   const center = points[0] || MILAN_FALLBACK;
 
   return (
-    <div className="h-[440px] w-full overflow-hidden rounded-lg border border-[#E8EBF0]">
+    <div className="w-full overflow-hidden rounded-lg border border-[#E8EBF0]" style={{ height }}>
       <MapContainer center={center} zoom={12} scrollWheelZoom style={{ height: "100%", width: "100%" }}>
         {/* Stile "light" (richiesto da Fabrizio: "le mappe si possono
             mettere in versione light... per alleggerire la vista") — tile
@@ -79,19 +103,28 @@ export default function ActivityMap({
           maxZoom={19}
         />
         <FitBounds points={points} />
-        {items.map((it) => (
-          <Marker key={it.id} position={[it.lat, it.lng]}>
-            <Popup>
-              <div style={{ fontSize: 13, lineHeight: 1.5 }}>
-                <strong>
-                  {it.emoji} {it.name}
-                </strong>
-                <br />
-                <Link href={`/activity/${it.id}`}>Apri scheda →</Link>
-              </div>
-            </Popup>
-          </Marker>
-        ))}
+        {items.map((it) =>
+          onSelect ? (
+            <Marker
+              key={it.id}
+              position={[it.lat, it.lng]}
+              icon={selectedId === it.id ? selectedIcon : undefined}
+              eventHandlers={{ click: () => onSelect(it.id) }}
+            />
+          ) : (
+            <Marker key={it.id} position={[it.lat, it.lng]}>
+              <Popup>
+                <div style={{ fontSize: 13, lineHeight: 1.5 }}>
+                  <strong>
+                    {it.emoji} {it.name}
+                  </strong>
+                  <br />
+                  <Link href={`/activity/${it.id}`}>Apri scheda →</Link>
+                </div>
+              </Popup>
+            </Marker>
+          )
+        )}
         {userPosition && (
           <Marker
             position={[userPosition.lat, userPosition.lng]}
