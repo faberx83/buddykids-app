@@ -13,13 +13,6 @@ import type { Tenant } from "@/lib/tenant";
 
 type Mode = "login" | "signup" | "reset";
 
-// REBRAND TRAMA Sprint 2 — l'animazione d'ingresso dell'header (vedi
-// TramaLoginHeader.tsx) va riprodotta "una sola volta per sessione" (Dev
-// Handoff sez. 9), non ad ogni visita di /auth/login nella stessa sessione
-// browser. L'header stesso (fili+wordmark+tagline) resta sempre visibile:
-// solo l'animazione di comparsa è "una tantum", non l'header in sé.
-const INTRO_SESSION_KEY = "trama-login-intro-seen";
-
 export default function LoginForm({
   tenant,
   appName,
@@ -47,37 +40,11 @@ export default function LoginForm({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
-  // Default SSR-safe: false (sessionStorage non è leggibile lato server, e
-  // partire da "false" sia su server che al primo render client evita un
-  // mismatch di hydration). Controlla SOLO se l'header entra con l'animazione
-  // o già "a posto" — il form è sempre presente, in entrambi i casi.
-  const [animateHeader, setAnimateHeader] = useState(false);
 
   useEffect(() => {
     if (!inviteParam || !isSupabaseConfigured) return;
     getInvitePreviewAction(inviteParam).then(setInvitePreview);
   }, [inviteParam]);
-
-  // Solo tenant "family" (il mockup 5a è la schermata di ingresso genitore).
-  // Marcata "vista" in sessionStorage al mount, non alla chiusura, così un
-  // refresh a metà animazione non la ripropone. Effect intenzionalmente
-  // "una tantum" (mount-only): cambiare modalità coi link in fondo al form
-  // NON deve far ripartire l'animazione.
-  useEffect(() => {
-    if (tenant !== "family") return;
-    try {
-      if (sessionStorage.getItem(INTRO_SESSION_KEY)) return;
-      sessionStorage.setItem(INTRO_SESSION_KEY, "1");
-      // sessionStorage esiste solo lato client e va per forza letto qui, in
-      // questo effetto "one-shot" al mount (stesso pattern di InstallPrompt.tsx).
-      // eslint-disable-next-line react-hooks/set-state-in-effect
-      setAnimateHeader(true);
-    } catch {
-      // sessionStorage non disponibile (es. contesto privacy molto restrittivo):
-      // niente animazione, header statico — degradazione sicura.
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -134,6 +101,16 @@ export default function LoginForm({
 
   const isFamily = tenant === "family";
   const isAdmin = tenant === "admin";
+
+  // REBRAND TRAMA — su richiesta esplicita di Fabrizio dopo aver provato la
+  // prima versione ("vorrei l'animazione sempre all'inizio, poi la comparsa
+  // dei campi"): l'animazione riparte ad OGNI visita di /auth/login, non più
+  // una sola volta per sessione (si discosta qui dal Dev Handoff sez. 9, che
+  // indicava "una sola volta per sessione" — l'istruzione diretta del
+  // prodotto prevale). Valore derivato, non stato: niente sessionStorage,
+  // niente rischio di mismatch SSR/client, l'header entra in animazione fin
+  // dal primo render, sempre uguale a ogni caricamento della pagina.
+  const animateHeader = isFamily;
 
   const heading =
     mode === "login" ? `Accedi a ${appName}` : mode === "signup" ? `Crea un account ${appName}` : "Recupera la password";
