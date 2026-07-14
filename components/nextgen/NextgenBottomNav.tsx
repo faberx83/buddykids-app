@@ -17,18 +17,21 @@ import { usePathname } from "next/navigation";
 // 11.4a) mostra una bottom nav a 5 voci: Home/Planner/Scopri/Prenotazioni/
 // Profilo. "Community" esce da qui (non sparisce: dallo sprint 5.6 è già
 // raggiungibile da Planner → scheda "Gruppi", vedi PlannerGroupsView.tsx),
-// lasciando spazio a "Prenotazioni" e "Profilo". Queste ultime due puntano
-// alle pagine LEGACY esistenti (/prenotazioni, /profile — non ancora
-// duplicate sotto /nextgen): decisione presa con Fabrizio, tradeoff
-// accettato per ora è che uscendo da queste due voci si vede la bottom nav
-// LEGACY finché non avranno una schermata NEXTGEN dedicata in uno sprint
-// futuro. "Cerca" rinominata "Scopri" per coerenza col mockup, stessa rotta.
+// lasciando spazio a "Prenotazioni" e "Profilo". Al momento del rebrand
+// entrambe puntavano alle pagine LEGACY esistenti (/prenotazioni, /profile):
+// tradeoff accettato con Fabrizio finché non avessero una schermata NEXTGEN
+// dedicata. "Cerca" rinominata "Scopri" per coerenza col mockup, stessa rotta.
+//
+// SPRINT 6 (NEXTGEN, ultimo dei 6 sprint "punch list" di Fabrizio) — "Profilo"
+// ora punta a /nextgen/profile (nuova pagina ridisegnata, vedi
+// app/nextgen/profile/ProfileNextgenClient.tsx): il tradeoff sopra resta
+// valido SOLO per "Prenotazioni" (/prenotazioni, ancora LEGACY).
 const items = [
   { href: "/nextgen", icon: "ti-home", label: "Home" },
   { href: "/nextgen/planner", icon: "ti-calendar-event", label: "Planner" },
   { href: "/nextgen/search", icon: "ti-search", label: "Scopri" },
   { href: "/prenotazioni", icon: "ti-ticket", label: "Prenotazioni" },
-  { href: "/profile", icon: "ti-user-circle", label: "Profilo" },
+  { href: "/nextgen/profile", icon: "ti-user-circle", label: "Profilo" },
 ];
 
 function isActive(pathname: string, href: string): boolean {

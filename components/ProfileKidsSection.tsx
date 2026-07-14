@@ -11,10 +11,17 @@ import { isSupabaseConfigured } from "@/lib/supabase/env";
 export default function ProfileKidsSection({
   initialKids,
   autoOpenAddKid,
+  accent = "sky",
 }: {
   initialKids: Kid[];
   autoOpenAddKid?: boolean;
+  // SPRINT 6 (NEXTGEN) — stesso opt-in di ProfileHeaderClient.tsx: viola
+  // trama-violet per il Profilo NEXTGEN, default "sky" invariato per LEGACY.
+  accent?: "sky" | "violet";
 }) {
+  const accentText = accent === "violet" ? "text-trama-violet" : "text-sky";
+  const accentActive = accent === "violet" ? "border-trama-violet bg-trama-violet text-white" : "border-sky bg-sky text-white";
+  const accentBg = accent === "violet" ? "bg-trama-violet" : "bg-sky";
   const [kids, setKids] = useState<Kid[]>(initialKids);
   const [showAddKid, setShowAddKid] = useState(Boolean(autoOpenAddKid));
   const [editingKidId, setEditingKidId] = useState<string | null>(null);
@@ -60,7 +67,7 @@ export default function ProfileKidsSection({
         {!showAddKid && (
           <span
             onClick={() => setShowAddKid(true)}
-            className="cursor-pointer text-[13px] font-medium text-sky"
+            className={`cursor-pointer text-[13px] font-medium ${accentText}`}
           >
             + Aggiungi
           </span>
@@ -116,7 +123,7 @@ export default function ProfileKidsSection({
                   ))}
                 </div>
               ) : (
-                <span className="text-[11px] font-medium text-sky">+ Aggiungi interessi</span>
+                <span className={`text-[11px] font-medium ${accentText}`}>+ Aggiungi interessi</span>
               )}
             </div>
             <i className={`ti ${editingKidId === k.id ? "ti-chevron-up" : "ti-chevron-down"} text-lg text-ink-3`} />
@@ -138,7 +145,7 @@ export default function ProfileKidsSection({
                       type="button"
                       onClick={() => toggleInterestFor(k.id, value)}
                       className={`rounded-full border px-2.5 py-1 text-[11px] font-medium transition-colors ${
-                        active ? "border-sky bg-sky text-white" : "border-[#E8EBF0] bg-white text-ink-2"
+                        active ? accentActive : "border-[#E8EBF0] bg-white text-ink-2"
                       }`}
                     >
                       {c.emoji} {c.label}
@@ -150,7 +157,7 @@ export default function ProfileKidsSection({
                 type="button"
                 onClick={() => saveInterests(k.id)}
                 disabled={savingInterests}
-                className="rounded-md bg-sky px-4 py-2 text-xs font-bold text-white disabled:opacity-60"
+                className={`rounded-md ${accentBg} px-4 py-2 text-xs font-bold text-white disabled:opacity-60`}
               >
                 {savingInterests ? "Salvo…" : "Salva"}
               </button>

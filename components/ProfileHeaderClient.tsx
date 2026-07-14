@@ -41,6 +41,7 @@ export default function ProfileHeaderClient({
   showRoleSelector = true,
   showPersonalDetails = true,
   showBusinessRole = false,
+  accent = "sky",
 }: {
   initialFullName: string;
   initialParentRole: ParentRole | null;
@@ -60,7 +61,15 @@ export default function ProfileHeaderClient({
   // Solo lato gestore: mostra "Ruolo in azienda" al posto di genere/data di
   // nascita.
   showBusinessRole?: boolean;
+  // SPRINT 6 (NEXTGEN) — Profilo NEXTGEN usa il viola del brand (trama-violet)
+  // invece dell'azzurro "sky" di LEGACY; opt-in con default invariato così il
+  // profilo genitore LEGACY (/profile) e "Il mio account" del gestore
+  // (/center/account) restano identici a prima.
+  accent?: "sky" | "violet";
 }) {
+  const accentBorder = accent === "violet" ? "focus:border-trama-violet" : "focus:border-sky";
+  const accentActive = accent === "violet" ? "border-trama-violet bg-trama-violet text-white" : "border-sky bg-sky text-white";
+  const accentBg = accent === "violet" ? "bg-trama-violet" : "bg-sky";
   const [editing, setEditing] = useState(Boolean(autoOpenEdit));
   const [fullName, setFullName] = useState(initialFullName);
   const [parentRole, setParentRole] = useState<ParentRole | "">(initialParentRole ?? "");
@@ -158,7 +167,7 @@ export default function ProfileHeaderClient({
           <input
             value={fullName}
             onChange={(e) => setFullName(e.target.value)}
-            className="mb-3 w-full rounded-md border border-[#E8EBF0] bg-bg px-3 py-2 text-sm outline-none focus:border-sky"
+            className={`mb-3 w-full rounded-md border border-[#E8EBF0] bg-bg px-3 py-2 text-sm outline-none ${accentBorder}`}
           />
 
           {showRoleSelector && (
@@ -171,7 +180,7 @@ export default function ProfileHeaderClient({
                     type="button"
                     onClick={() => setParentRole(r)}
                     className={`rounded-full border px-3 py-1.5 text-xs font-semibold transition-colors ${
-                      parentRole === r ? "border-sky bg-sky text-white" : "border-[#E8EBF0] bg-bg text-ink-2"
+                      parentRole === r ? accentActive : "border-[#E8EBF0] bg-bg text-ink-2"
                     }`}
                   >
                     {roleLabels[r]}
@@ -190,7 +199,7 @@ export default function ProfileHeaderClient({
             value={phone}
             onChange={(e) => setPhone(e.target.value)}
             placeholder="Es. 333 1234567"
-            className="mb-3 w-full rounded-md border border-[#E8EBF0] bg-bg px-3 py-2 text-sm outline-none focus:border-sky"
+            className={`mb-3 w-full rounded-md border border-[#E8EBF0] bg-bg px-3 py-2 text-sm outline-none ${accentBorder}`}
           />
 
           {showPersonalDetails && (
@@ -203,7 +212,7 @@ export default function ProfileHeaderClient({
                 type="date"
                 value={dateOfBirth}
                 onChange={(e) => setDateOfBirth(e.target.value)}
-                className="mb-3 w-full rounded-md border border-[#E8EBF0] bg-bg px-3 py-2 text-sm outline-none focus:border-sky"
+                className={`mb-3 w-full rounded-md border border-[#E8EBF0] bg-bg px-3 py-2 text-sm outline-none ${accentBorder}`}
               />
 
               <label className="mb-1.5 block text-xs font-semibold text-ink-2">Genere</label>
@@ -214,7 +223,7 @@ export default function ProfileHeaderClient({
                     type="button"
                     onClick={() => setGender(g)}
                     className={`rounded-full border px-3 py-1.5 text-xs font-semibold transition-colors ${
-                      gender === g ? "border-sky bg-sky text-white" : "border-[#E8EBF0] bg-bg text-ink-2"
+                      gender === g ? accentActive : "border-[#E8EBF0] bg-bg text-ink-2"
                     }`}
                   >
                     {genderLabels[g]}
@@ -236,7 +245,7 @@ export default function ProfileHeaderClient({
                     type="button"
                     onClick={() => setBusinessRole(r)}
                     className={`rounded-full border px-3 py-1.5 text-xs font-semibold transition-colors ${
-                      businessRole === r ? "border-sky bg-sky text-white" : "border-[#E8EBF0] bg-bg text-ink-2"
+                      businessRole === r ? accentActive : "border-[#E8EBF0] bg-bg text-ink-2"
                     }`}
                   >
                     {businessRoleLabels[r]}
@@ -251,7 +260,7 @@ export default function ProfileHeaderClient({
             type="button"
             onClick={handleSave}
             disabled={saving}
-            className="rounded-md bg-sky px-4 py-2 text-xs font-bold text-white disabled:opacity-60"
+            className={`rounded-md ${accentBg} px-4 py-2 text-xs font-bold text-white disabled:opacity-60`}
           >
             {saving ? "Salvo…" : "Salva"}
           </button>

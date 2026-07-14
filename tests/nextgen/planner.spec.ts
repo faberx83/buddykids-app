@@ -53,10 +53,14 @@ test.describe("NEXTGEN - Planner (Sprint 3)", () => {
   });
 
   // REBRAND TRAMA Sprint 1: bottom nav a 5 voci (Home/Planner/Scopri/
-  // Prenotazioni/Profilo), vedi NextgenBottomNav.tsx. Le ultime due puntano
-  // alle pagine LEGACY esistenti (fuori da /nextgen) — tradeoff accettato con
-  // Fabrizio finché non avranno una schermata NEXTGEN dedicata.
-  test("TC-N88 - NextgenBottomNav include Prenotazioni e Profilo (pagine LEGACY condivise)", async ({ page }) => {
+  // Prenotazioni/Profilo), vedi NextgenBottomNav.tsx. Al rebrand entrambe le
+  // ultime due puntavano a pagine LEGACY (fuori da /nextgen) — tradeoff
+  // accettato con Fabrizio finché non avessero una schermata NEXTGEN
+  // dedicata. SPRINT 6: "Profilo" ora ha la sua pagina NEXTGEN dedicata
+  // (/nextgen/profile, vedi tests/nextgen/profile-6.spec.ts) — TEST DEBT
+  // corretto qui en passant: asseriva ancora /profile (LEGACY). Il tradeoff
+  // resta valido solo per "Prenotazioni".
+  test("TC-N88 - NextgenBottomNav include Prenotazioni (LEGACY) e Profilo (NEXTGEN dedicata)", async ({ page }) => {
     test.skip(!isRealDeployment, "Richiede un deploy con Supabase configurato e l'account genitore di test.");
     await loginAs(page, "parent");
     await page.goto("/nextgen");
@@ -65,7 +69,7 @@ test.describe("NEXTGEN - Planner (Sprint 3)", () => {
     await expect(page).toHaveURL(/\/prenotazioni/);
     await page.goto("/nextgen");
     await page.getByRole("link", { name: "Profilo" }).click();
-    await expect(page).toHaveURL(/\/profile/);
+    await expect(page).toHaveURL(/\/nextgen\/profile/);
   });
 
   // SPRINT CORRETTIVO (feedback Fabrizio): con 5 modalità sempre presenti,
