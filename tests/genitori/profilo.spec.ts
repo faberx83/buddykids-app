@@ -326,4 +326,22 @@ test.describe("Genitori - Profilo", () => {
 
     await expect(page.getByText(/Richiesta di cancellazione inviata/i)).toBeVisible();
   });
+
+  // TC-221 - "Le presenze" ha una sezione a sé, separata da "Attività"
+  // Segnalazione di Fabrizio ("le presenze non ha senso nelle prenotazioni,
+  // nel nuovo tab specifico"): la voce non va messa insieme a Le mie
+  // prenotazioni/Preferiti/Navetta ma in una sezione dedicata — vedi
+  // app/(main)/profile/page.tsx e app/(main)/presenze/page.tsx.
+  test("TC-221 - 'Le presenze' e' una sezione a se in Profilo e porta a /presenze", async ({ page }) => {
+    test.skip(!isRealDeployment, "Richiede un deploy con Supabase configurato e l'account genitore di test.");
+    await loginAs(page, "parent");
+    await page.goto("/profile");
+
+    await expect(page.getByText("Presenze", { exact: true })).toBeVisible();
+    await expect(page.getByText("Le presenze")).toBeVisible();
+
+    await page.getByText("Le presenze").click();
+    await expect(page).toHaveURL(/\/presenze/);
+    await expect(page.getByRole("heading", { name: "Le presenze" })).toBeVisible();
+  });
 });

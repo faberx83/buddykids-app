@@ -255,4 +255,28 @@ test.describe("Genitori - Home", () => {
     // ha sempre un href anche senza copertina reale (fallback emoji/gradiente).
     await expect(page.locator('a[href^="/activity/"]').first()).toBeVisible();
   });
+
+  // Priorita: Media | Precondizioni: Prenotazione con settimana che copre oggi, check-in già risposto
+  // Passi: Rispondi al check-in, attendi 3 ore (CHECKIN_HIDE_AFTER_HOURS in lib/data/checkin.ts), ricarica la Home
+  // Risultato atteso: la card non compare più affatto (non solo ridotta a chip) — vedi isCheckinStillVisible()
+  //
+  // Segnalazione di Fabrizio ("dopo un tot va tolto il banner"): prima la
+  // card, dopo la risposta, si riduceva a un chip compatto (TC-179) ma
+  // restava visibile per tutto il giorno. Ora getTodayCheckinsForParent()
+  // filtra via isCheckinStillVisible() gli item risposti da più di 3 ore
+  // (CHECKIN_HIDE_AFTER_HOURS), usando attendance_records.checkin_at
+  // (scritto solo da parentCheckinAction). TC-151/TC-179 restano validi:
+  // rispondono e verificano SUBITO dopo, quindi checkin_at è "adesso" — ben
+  // dentro la soglia.
+  test.fixme(
+    "TC-223 - il banner di check-in sparisce del tutto ~3 ore dopo la risposta del genitore",
+    async ({ page }) => {
+      // ESCLUSO dall'automazione: richiederebbe di aspettare 3 ore reali (o
+      // manipolare l'orologio di sistema del browser/server, non affidabile
+      // in Playwright contro un deploy reale) — la logica è nella funzione
+      // pura isCheckinStillVisible() in lib/data/checkin.ts, verificabile a
+      // colpo d'occhio nel codice; verifica manuale consigliata prima del
+      // lancio.
+    }
+  );
 });

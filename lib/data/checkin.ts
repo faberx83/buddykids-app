@@ -30,6 +30,30 @@ export interface TodayCheckin {
   date: string;
   status: CheckinStatus | null;
   checkedInByParent: boolean;
+  // Timestamp della risposta del genitore (colonna attendance_records.checkin_at,
+  // scritta solo da parentCheckinAction — vedi app/actions/checkin.ts). Resta
+  // null finché il genitore non risponde, o se lo stato è stato scritto solo
+  // dal gestore (checked_in_by "center") senza mai passare dal check-in.
+  checkinAt: string | null;
+}
+
+// Segnalazione di Fabrizio ("dopo un tot va tolto il banner"): dopo la
+// risposta il banner in Home non deve restare visibile per sempre (prima si
+// riduceva solo a un chip compatto, ma restava lì tutto il giorno) — oltre
+// questa soglia la card non viene più mostrata affatto. Chi non ha ancora
+// risposto (checkinAt null) resta sempre visibile, indipendentemente dalla
+// soglia.
+export const CHECKIN_HIDE_AFTER_HOURS = 3;
+
+// Pura (nessun I/O) per essere testabile senza Supabase: decide se una card
+// di check-in va ancora mostrata in Home.
+export function isCheckinStillVisible(
+  item: Pick<TodayCheckin, "status" | "checkinAt">,
+  now: Date = new Date()
+): boolean {
+  if (!item.status || !item.checkinAt) return true;
+  const hoursSinceAnswer = (now.getTime() - new Date(item.checkinAt).getTime()) / (1000 * 60 * 60);
+  return hoursSinceAnswer < CHECKIN_HIDE_AFTER_HOURS;
 }
 
 function firstOf<T>(value: T | T[] | null | undefined): T | null {
@@ -131,6 +155,7 @@ export async function getTodayCheckinsForParent(): Promise<TodayCheckin[]> {
           date: today,
           status: null,
           checkedInByParent: false,
+          checkinAt: null,
         });
       }
     }
@@ -141,7 +166,7 @@ export async function getTodayCheckinsForParent(): Promise<TodayCheckin[]> {
 
   const { data: existing } = await supabase
     .from("attendance_records")
-    .select("kid_id, week_id, status, checked_in_by")
+    .select("kid_id, week_id, status, checked_in_by, checkin_at")
     .eq("date", today)
     .in(
       "kid_id",
@@ -153,8 +178,9 @@ export async function getTodayCheckinsForParent(): Promise<TodayCheckin[]> {
     if (match) {
       match.status = rec.status as CheckinStatus;
       match.checkedInByParent = rec.checked_in_by === "parent";
+      match.checkinAt = (rec.checkin_at as string | null) ?? null;
     }
   }
 
-  return results;
+  return results.filter((r) => isCheckinStillVisible(r));
 }

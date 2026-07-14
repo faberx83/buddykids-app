@@ -14,7 +14,10 @@ import {
   daysInWeek,
   type AttendanceWeekGroup,
   type AttendanceDayStatus,
+  type AttendanceStatusValue,
 } from "@/lib/data/attendance";
+import { createClient } from "@/lib/supabase/server";
+import { isSupabaseConfigured } from "@/lib/supabase/env";
 
 export interface DailyAttendanceStat {
   date: string;
@@ -186,4 +189,178 @@ export function buildAttendanceReport(
     .slice(0, 10);
 
   return { byDate, byActivity, topIssues, hasPastData };
+}
+
+// ─────────────────────────────────────────────
+// Report presenze lato GENITORE ("Le presenze" in Profilo, richiesto da
+// Fabrizio insieme all'auto-hide del banner di check-in in Home) — stessa
+// idea del report Gestore sopra, ma "opportunamente rivisto": qui non ha
+// senso mostrare il tasso per attività di un intero centro né i "ritardatari
+// abituali" (quella lista serve al gestore per contattare ALTRE famiglie —
+// un genitore vede solo i propri figli, mai quelli di altri). Al suo posto,
+// un riepilogo per figlio.
+// ─────────────────────────────────────────────
+
+export interface KidAttendanceStat {
+  kidId: string;
+  kidName: string;
+  totale: number;
+  presente: number;
+  inRitardo: number;
+  assente: number;
+  presenzaRate: number; // percentuale 0-100
+}
+
+export interface ParentAttendanceReport {
+  byDate: DailyAttendanceStat[];
+  byKid: KidAttendanceStat[];
+  hasPastData: boolean;
+}
+
+function firstOf<T>(value: T | T[] | null | undefined): T | null {
+  if (!value) return null;
+  return Array.isArray(value) ? (value[0] ?? null) : value;
+}
+
+interface ExpectedDay {
+  kidId: string;
+  kidName: string;
+  date: string;
+}
+
+interface RawParentBookingRow {
+  activities: { id: string; name: string } | { id: string; name: string }[] | null;
+  booking_kids: { kid_id: string; kids: { id: string; name: string } | { id: string; name: string }[] | null }[] | null;
+  booking_weeks: {
+    activity_weeks: { id: string; start_date: string; end_date: string } | { id: string; start_date: string; end_date: string }[] | null;
+  }[] | null;
+}
+
+export async function getAttendanceReportForParent(): Promise<ParentAttendanceReport> {
+  if (!isSupabaseConfigured) return { byDate: [], byKid: [], hasPastData: false };
+
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { byDate: [], byKid: [], hasPastData: false };
+
+  const { data, error } = await supabase
+    .from("bookings")
+    .select(
+      "activities ( id, name ), booking_kids ( kid_id, kids ( id, name ) ), booking_weeks ( activity_weeks ( id, start_date, end_date ) )"
+    )
+    .eq("parent_id", user.id)
+    .neq("status", "cancelled");
+
+  if (error || !data) return { byDate: [], byKid: [], hasPastData: false };
+
+  const todayIso = new Date().toISOString().slice(0, 10);
+  const expected: ExpectedDay[] = [];
+  const kidIds = new Set<string>();
+
+  for (const booking of data as RawParentBookingRow[]) {
+    const activity = firstOf(booking.activities);
+    if (!activity) continue;
+
+    for (const bw of booking.booking_weeks ?? []) {
+      const week = firstOf(bw.activity_weeks);
+      if (!week) continue;
+      // Solo i giorni già trascorsi (oggi incluso), stesso criterio del
+      // report Gestore: il futuro non ha ancora nessuna presenza reale.
+      const days = daysInWeek(week.start_date, week.end_date).filter((d) => d <= todayIso);
+      if (days.length === 0) continue;
+
+      for (const bk of booking.booking_kids ?? []) {
+        const kid = firstOf(bk.kids);
+        if (!kid) continue;
+        kidIds.add(kid.id);
+        for (const day of days) expected.push({ kidId: kid.id, kidName: kid.name, date: day });
+      }
+    }
+  }
+
+  if (expected.length === 0) return { byDate: [], byKid: [], hasPastData: false };
+
+  const { data: records } = await supabase
+    .from("attendance_records")
+    .select("kid_id, date, status")
+    .in("kid_id", Array.from(kidIds))
+    .lte("date", todayIso);
+
+  // Nota: la chiave usata qui è kid_id+date (non kid_id+week_id+date come il
+  // vincolo unique della tabella): nel raro caso di due attività sovrapposte
+  // nello stesso giorno per lo stesso bambino (vedi avviso "prenotazioni
+  // sovrapposte" nel Planner), l'ultimo record letto vince — accettabile per
+  // un riepilogo aggregato, non è il Registro presenze puntuale del gestore.
+  const recordMap = new Map<string, AttendanceStatusValue>();
+  for (const r of records ?? []) recordMap.set(`${r.kid_id}:${r.date}`, r.status as AttendanceStatusValue);
+
+  return buildParentAttendanceReport(expected, recordMap);
+}
+
+// Pura (nessun I/O): separata da getAttendanceReportForParent per essere
+// testabile senza Supabase, stesso pattern di buildAttendanceReport sopra.
+export function buildParentAttendanceReport(
+  expected: ExpectedDay[],
+  recordMap: Map<string, AttendanceStatusValue>
+): ParentAttendanceReport {
+  const byDateMap = new Map<string, DailyAttendanceStat>();
+  const byKidMap = new Map<string, KidAttendanceStat>();
+  const seenDayKid = new Set<string>();
+
+  for (const item of expected) {
+    const key = `${item.kidId}:${item.date}`;
+    if (seenDayKid.has(key)) continue; // evita doppio conteggio, vedi nota sopra
+    seenDayKid.add(key);
+
+    const status = recordMap.get(key) ?? "assente";
+
+    if (!byDateMap.has(item.date)) {
+      byDateMap.set(item.date, {
+        date: item.date,
+        dateLabel: dateLabel(item.date),
+        presente: 0,
+        inRitardo: 0,
+        assente: 0,
+        totale: 0,
+      });
+    }
+    const dayStat = byDateMap.get(item.date)!;
+    dayStat.totale += 1;
+
+    if (!byKidMap.has(item.kidId)) {
+      byKidMap.set(item.kidId, {
+        kidId: item.kidId,
+        kidName: item.kidName,
+        totale: 0,
+        presente: 0,
+        inRitardo: 0,
+        assente: 0,
+        presenzaRate: 0,
+      });
+    }
+    const kidStat = byKidMap.get(item.kidId)!;
+    kidStat.totale += 1;
+
+    if (status === "presente") {
+      dayStat.presente += 1;
+      kidStat.presente += 1;
+    } else if (status === "in_ritardo") {
+      dayStat.inRitardo += 1;
+      kidStat.inRitardo += 1;
+    } else {
+      dayStat.assente += 1;
+      kidStat.assente += 1;
+    }
+  }
+
+  for (const stat of byKidMap.values()) {
+    stat.presenzaRate = stat.totale > 0 ? Math.round((stat.presente / stat.totale) * 100) : 0;
+  }
+
+  const byDate = Array.from(byDateMap.values()).sort((a, b) => a.date.localeCompare(b.date));
+  const byKid = Array.from(byKidMap.values()).sort((a, b) => a.kidName.localeCompare(b.kidName));
+
+  return { byDate, byKid, hasPastData: byDate.length > 0 };
 }

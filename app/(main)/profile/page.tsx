@@ -88,6 +88,25 @@ export default async function ProfilePage({
         />
       </div>
 
+      {/* Sezione a sé, separata da "Attività" (Fabrizio: "le presenze non ha
+          senso nelle prenotazioni" — le prenotazioni sono il piano futuro, le
+          presenze sono lo storico di cosa è successo davvero, meglio non
+          mescolarle nello stesso gruppo). Vedi app/(main)/presenze/page.tsx e
+          lib/data/attendance-report.ts#getAttendanceReportForParent. */}
+      <div className="px-5 pt-3">
+        <div className="mb-2 text-[11px] font-bold uppercase tracking-wide text-ink-3">
+          Presenze
+        </div>
+        <MenuItem
+          icon="ti-clipboard-check"
+          iconBg="#E3F9F5"
+          iconColor="#2DBA8C"
+          main="Le presenze"
+          sub="Storico presenze, ritardi e assenze per i tuoi bambini"
+          href="/presenze"
+        />
+      </div>
+
       <ProfileSettingsSection basePath="/profile" />
 
       <div className="px-5 pt-3">
