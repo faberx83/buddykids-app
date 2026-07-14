@@ -50,4 +50,25 @@ test.describe("NEXTGEN - Setup (Sprint 0)", () => {
     await page.goto("/nextgen");
     await expect(page).toHaveURL(/\/auth\/login/);
   });
+
+  // Segnalazione di Fabrizio ("manca il logo in alto a sinistra"): prima
+  // NESSUNA pagina NEXTGEN mostrava il marchio TRAMA — ora components/
+  // nextgen/NextgenTopBar.tsx è mountato una sola volta in app/nextgen/
+  // layout.tsx (sibling di NextgenBottomNav, fuori dall'area scrollabile),
+  // quindi copre ogni pagina automaticamente. Verifica su Home e Community:
+  // quest'ultima è quella che prima non aveva NEMMENO un header
+  // back+titolo (non usa components/PageHeader.tsx), il caso più a rischio
+  // di essere dimenticata con un fix pagina-per-pagina.
+  test("TC-N89 - Il marchio TRAMA compare in alto a sinistra su ogni pagina NEXTGEN (Home e Community)", async ({
+    page,
+  }) => {
+    test.skip(!isRealDeployment, "Richiede un deploy con Supabase configurato e l'account genitore di test.");
+    await loginAs(page, "parent");
+
+    await page.goto("/nextgen");
+    await expect(page.locator('img[src="/brand/trama-logo-mark-navy.png"]')).toBeVisible();
+
+    await page.goto("/nextgen/community");
+    await expect(page.locator('img[src="/brand/trama-logo-mark-navy.png"]')).toBeVisible();
+  });
 });
