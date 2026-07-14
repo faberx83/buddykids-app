@@ -79,7 +79,7 @@ function NoFamilyView({ onCreated }: { onCreated: (f: Family) => void }) {
             type="button"
             disabled={busyCreate}
             onClick={handleCreate}
-            className="rounded-full bg-ink px-4 py-2 text-[12.5px] font-bold text-white disabled:opacity-50"
+            className="rounded-full bg-trama-violet px-4 py-2 text-[12.5px] font-bold text-white disabled:opacity-50"
           >
             {busyCreate ? "Creo…" : "Crea famiglia"}
           </button>
@@ -232,7 +232,7 @@ export default function FamigliaClient({ initialFamily }: { initialFamily: Famil
 
   return (
     <div className="flex min-h-screen flex-col">
-      <PageHeader title="Famiglia" onBack={() => router.push("/nextgen/planner")} />
+      <PageHeader title="Famiglia" onBack={() => router.push("/nextgen/planner")} showBrandIcon />
       {family ? <FamilyView family={family} /> : <NoFamilyView onCreated={setCreatedFamily} />}
     </div>
   );

@@ -81,7 +81,7 @@ export default function PlannerGroupsView({
     <div className="flex flex-col gap-5">
       <div>
         <div className="mb-2.5 flex items-center justify-between">
-          <span className="text-[13px] font-bold text-ink">Le tue Community</span>
+          <span className="font-poppins text-[13px] font-bold text-ink">Le tue Community</span>
           <Link href="/nextgen/community" className="text-[12px] font-semibold text-trama-violet">
             {communities.length > 0 ? "Vedi tutte" : "Crea o entra"}
           </Link>
@@ -101,7 +101,7 @@ export default function PlannerGroupsView({
 
       <div>
         <div className="mb-2.5 flex items-center justify-between">
-          <span className="text-[13px] font-bold text-ink">I tuoi Gruppi sconto</span>
+          <span className="font-poppins text-[13px] font-bold text-ink">I tuoi Gruppi sconto</span>
           <Link href="/groups" className="text-[12px] font-semibold text-trama-violet">
             {groups.length > 0 ? "Vedi tutti" : "Scopri come"}
           </Link>

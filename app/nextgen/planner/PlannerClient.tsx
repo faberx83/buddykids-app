@@ -105,7 +105,7 @@ export default function PlannerClient({
 
   return (
     <div className="flex min-h-screen flex-col">
-      <PageHeader title="Planner" onBack={() => router.push("/nextgen")} />
+      <PageHeader title="Planner" onBack={() => router.push("/nextgen")} showBrandIcon />
       <div className="px-5 py-4">
         <div className="mb-4 flex items-center justify-between">
           <p className="text-xs text-ink-2">
@@ -204,7 +204,7 @@ export default function PlannerClient({
             doppione della card di copertura sopra. */}
         {kids.length > 1 && (
           <div className="mb-4 rounded-2xl bg-white p-4">
-            <div className="mb-2.5 text-[13px] font-bold text-ink">Copertura per bambino</div>
+            <div className="mb-2.5 font-poppins text-[13px] font-bold text-ink">Copertura per bambino</div>
             <div className="flex flex-col gap-2.5">
               {perKidCoverage.map((k) => {
                 const percent = k.neededCount > 0 ? Math.round((k.coveredCount / k.neededCount) * 100) : 0;
@@ -251,7 +251,7 @@ export default function PlannerClient({
 
         {/* 3. Timeline familiare — tutte le settimane della stagione. */}
         <div className="mb-4">
-          <div className="mb-2.5 text-sm font-bold text-ink">Timeline della stagione</div>
+          <div className="mb-2.5 font-poppins text-sm font-bold text-ink">Timeline della stagione</div>
           <div className="flex flex-col gap-1.5">
             {planner.weeks.map((w) => {
               const isPartial = w.covered && w.coveredKids.length > 0 && w.coveredKids.length < kids.length;
@@ -315,7 +315,7 @@ export default function PlannerClient({
         {/* 4. Budget impegnato finora — informativo (non c'è ancora un tetto
             di spesa impostabile), rotto per bambino quando utile. */}
         <div className="mb-4 rounded-2xl bg-white p-4">
-          <div className="mb-2.5 text-sm font-bold text-ink">Budget impegnato</div>
+          <div className="mb-2.5 font-poppins text-sm font-bold text-ink">Budget impegnato</div>
           <div className="text-2xl font-bold text-ink">€{budget.totalSpent}</div>
           <div className="mb-2.5 text-[11.5px] text-ink-2">Totale prenotazioni attive di questa stagione.</div>
           {budget.byKid.length > 1 && (
@@ -337,7 +337,7 @@ export default function PlannerClient({
             alla settimana prioritaria. */}
         {recommendations.length > 0 && (
           <div>
-            <div className="mb-2.5 flex items-center gap-1 text-sm font-bold text-ink">
+            <div className="mb-2.5 flex items-center gap-1 font-poppins text-sm font-bold text-ink">
               {priorityWeek ? `Per riempire la Settimana ${priorityWeek.index}` : "Consigliate per te"}
             </div>
             <div className="flex flex-col gap-1">

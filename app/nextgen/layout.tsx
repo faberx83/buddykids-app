@@ -2,7 +2,6 @@ import type { Metadata, Viewport } from "next";
 import { redirect } from "next/navigation";
 import PhoneShell from "@/components/PhoneShell";
 import InstallPrompt from "@/components/InstallPrompt";
-import NextgenTopBar from "@/components/nextgen/NextgenTopBar";
 import NextgenBottomNav from "@/components/nextgen/NextgenBottomNav";
 import { NextgenToastProvider } from "@/components/nextgen/NextgenToastProvider";
 import { createClient } from "@/lib/supabase/server";
@@ -53,7 +52,6 @@ export default async function NextgenLayout({ children }: { children: React.Reac
     <PhoneShell>
       <NextgenToastProvider>
         <div className="flex h-full min-h-0 flex-col">
-          <NextgenTopBar />
           <div className="no-scrollbar flex-1 overflow-y-auto">{children}</div>
           <NextgenBottomNav />
         </div>

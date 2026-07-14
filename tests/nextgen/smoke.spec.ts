@@ -52,23 +52,29 @@ test.describe("NEXTGEN - Setup (Sprint 0)", () => {
   });
 
   // Segnalazione di Fabrizio ("manca il logo in alto a sinistra"): prima
-  // NESSUNA pagina NEXTGEN mostrava il marchio TRAMA — ora components/
-  // nextgen/NextgenTopBar.tsx è mountato una sola volta in app/nextgen/
-  // layout.tsx (sibling di NextgenBottomNav, fuori dall'area scrollabile),
-  // quindi copre ogni pagina automaticamente. Verifica su Home e Community:
-  // quest'ultima è quella che prima non aveva NEMMENO un header
-  // back+titolo (non usa components/PageHeader.tsx), il caso più a rischio
-  // di essere dimenticata con un fix pagina-per-pagina.
-  test("TC-N89 - Il marchio TRAMA compare in alto a sinistra su ogni pagina NEXTGEN (Home e Community)", async ({
+  // NESSUNA pagina NEXTGEN mostrava il marchio TRAMA. Primo tentativo con
+  // una barra fissa in alto (NextgenTopBar) SCARTATO da Fabrizio ("non
+  // voglio un banner fisso..vorrei una icona magari di fianco a 'Ciao
+  // Nome'") — sostituito con l'icona inline accanto al titolo di ogni
+  // pagina (Home: accanto a "Ciao [Nome]" in HomeDashboardClient.tsx;
+  // Planner/Ricerca/Famiglia/Indirizzi: PageHeader.tsx#showBrandIcon;
+  // Community: inline nell'h1, non usa PageHeader).
+  //
+  // REGOLA DI COLORE (da Fabrizio, valida per tutti gli sprint successivi):
+  // icona A COLORI lato genitore (qui), navy lato gestore, bianca su navy
+  // lato admin (vedi components/dashboard/DashboardLayout.tsx#BrandMark per
+  // gli altri due tenant) — usare SEMPRE /brand/trama-logo-mark.png (non la
+  // variante -navy) in tutto ciò che è genitore/NEXTGEN.
+  test("TC-N89 - Il marchio TRAMA A COLORI compare accanto al titolo su ogni pagina NEXTGEN (Home e Community)", async ({
     page,
   }) => {
     test.skip(!isRealDeployment, "Richiede un deploy con Supabase configurato e l'account genitore di test.");
     await loginAs(page, "parent");
 
     await page.goto("/nextgen");
-    await expect(page.locator('img[src="/brand/trama-logo-mark-navy.png"]')).toBeVisible();
+    await expect(page.locator('img[src="/brand/trama-logo-mark.png"]')).toBeVisible();
 
     await page.goto("/nextgen/community");
-    await expect(page.locator('img[src="/brand/trama-logo-mark-navy.png"]')).toBeVisible();
+    await expect(page.locator('img[src="/brand/trama-logo-mark.png"]')).toBeVisible();
   });
 });

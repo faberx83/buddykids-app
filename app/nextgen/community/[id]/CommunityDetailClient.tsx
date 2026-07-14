@@ -102,7 +102,10 @@ export default function CommunityDetailClient({
           {detail.emoji}
         </div>
         <div className="min-w-0 flex-1">
-          <h1 className="truncate text-xl font-bold text-ink">{detail.name}</h1>
+          <h1 className="flex items-center gap-1.5 font-poppins text-xl font-bold text-ink">
+            <img src="/brand/trama-logo-mark.png" alt="" aria-hidden="true" className="h-5 w-auto flex-shrink-0" />
+            <span className="truncate">{detail.name}</span>
+          </h1>
           {detail.description && <p className="truncate text-[13px] text-ink-3">{detail.description}</p>}
         </div>
       </div>
@@ -126,7 +129,7 @@ export default function CommunityDetailClient({
 
       {/* Membri */}
       <div>
-        <div className="mb-3 text-[21px] font-semibold text-ink">Famiglie ({detail.members.length})</div>
+        <div className="mb-3 font-poppins text-[21px] font-semibold text-ink">Famiglie ({detail.members.length})</div>
         <div className="flex flex-col gap-2">
           {detail.members.map((m) => (
             <div key={m.parentId} className="flex items-center justify-between rounded-2xl bg-bg px-4 py-2.5">
@@ -140,7 +143,7 @@ export default function CommunityDetailClient({
       {/* Le attività della community */}
       <div>
         <div className="mb-3 flex items-center justify-between">
-          <div className="text-[21px] font-semibold text-ink">Le attività della community</div>
+          <div className="font-poppins text-[21px] font-semibold text-ink">Le attività della community</div>
           <button
             type="button"
             onClick={() => setShowProposeForm((v) => !v)}
@@ -177,7 +180,7 @@ export default function CommunityDetailClient({
               type="button"
               disabled={busyPropose}
               onClick={handlePropose}
-              className="rounded-full bg-ink px-4 py-2.5 text-sm font-bold text-white disabled:opacity-50"
+              className="rounded-full bg-trama-violet px-4 py-2.5 text-sm font-bold text-white disabled:opacity-50"
             >
               {busyPropose ? "Invio…" : "Condividi proposta"}
             </button>
@@ -230,7 +233,7 @@ export default function CommunityDetailClient({
                       type="button"
                       disabled={busyProposalId === p.id}
                       onClick={() => handleSpawnGroup(p.id)}
-                      className="ml-auto flex items-center gap-1 rounded-full bg-ink px-3 py-1.5 text-[12px] font-bold text-white disabled:opacity-50"
+                      className="ml-auto flex items-center gap-1 rounded-full bg-trama-violet px-3 py-1.5 text-[12px] font-bold text-white disabled:opacity-50"
                     >
                       <i className="ti ti-users-group text-[13px]" />
                       Genera Gruppo

@@ -75,7 +75,7 @@ export default function PlannerBudgetView({
                 type="button"
                 disabled={busy}
                 onClick={handleSave}
-                className="rounded-full bg-ink px-4 py-2 text-[13px] font-bold text-white disabled:opacity-50"
+                className="rounded-full bg-trama-violet px-4 py-2 text-[13px] font-bold text-white disabled:opacity-50"
               >
                 {busy ? "Salvo…" : "Salva budget"}
               </button>
@@ -108,12 +108,12 @@ export default function PlannerBudgetView({
             </div>
             <div className="mt-3 h-2.5 w-full overflow-hidden rounded-full bg-[#EEF0F4]">
               <div
-                className={`h-full rounded-full transition-all ${overBudget ? "bg-orange" : "bg-trama-violet"}`}
+                className={`h-full rounded-full transition-all ${overBudget ? "bg-trama-orange" : "bg-trama-violet"}`}
                 style={{ width: `${Math.min(100, percent ?? 0)}%` }}
               />
             </div>
             <div className="mt-2 flex items-center justify-between text-[11.5px]">
-              <span className={overBudget ? "font-semibold text-orange" : "text-ink-2"}>
+              <span className={overBudget ? "font-semibold text-trama-orange" : "text-ink-2"}>
                 {overBudget ? `${percent}% — hai superato il budget` : `${percent}% utilizzato`}
               </span>
               <button type="button" onClick={() => setEditing(true)} className="font-semibold text-trama-violet">
@@ -138,7 +138,7 @@ export default function PlannerBudgetView({
       {/* Per figlio */}
       {budget.byKid.length > 0 && (
         <div className="rounded-2xl bg-white p-4">
-          <div className="mb-2.5 text-[13px] font-bold text-ink">Per figlio</div>
+          <div className="mb-2.5 font-poppins text-[13px] font-bold text-ink">Per figlio</div>
           <div className="flex flex-col gap-2">
             {budget.byKid.map((k) => {
               const share = budget.totalSpent > 0 ? Math.round((k.amount / budget.totalSpent) * 100) : 0;
@@ -166,7 +166,7 @@ export default function PlannerBudgetView({
       {/* Per categoria */}
       {budget.byCategory.length > 0 && (
         <div className="rounded-2xl bg-white p-4">
-          <div className="mb-2.5 text-[13px] font-bold text-ink">Per categoria</div>
+          <div className="mb-2.5 font-poppins text-[13px] font-bold text-ink">Per categoria</div>
           <div className="flex flex-col gap-2">
             {budget.byCategory.map((c) => {
               const share = budget.totalSpent > 0 ? Math.round((c.amount / budget.totalSpent) * 100) : 0;

@@ -60,7 +60,10 @@ export default function CommunityListClient({ initialCommunities }: { initialCom
   return (
     <div className="flex flex-col gap-6 px-5 py-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-xl font-bold text-ink">Community</h1>
+        <h1 className="flex items-center gap-2 font-poppins text-xl font-bold text-ink">
+          <img src="/brand/trama-logo-mark.png" alt="" aria-hidden="true" className="h-6 w-auto flex-shrink-0" />
+          Community
+        </h1>
       </div>
 
       {mode === "none" && (
@@ -68,7 +71,7 @@ export default function CommunityListClient({ initialCommunities }: { initialCom
           <button
             type="button"
             onClick={() => setMode("create")}
-            className="flex-1 rounded-2xl bg-ink px-4 py-3 text-sm font-bold text-white"
+            className="flex-1 rounded-2xl bg-trama-violet px-4 py-3 text-sm font-bold text-white"
           >
             <i className="ti ti-plus mr-1.5" />
             Crea community
@@ -106,7 +109,7 @@ export default function CommunityListClient({ initialCommunities }: { initialCom
               type="button"
               disabled={busy}
               onClick={handleCreate}
-              className="flex-1 rounded-full bg-ink px-4 py-2.5 text-sm font-bold text-white disabled:opacity-50"
+              className="flex-1 rounded-full bg-trama-violet px-4 py-2.5 text-sm font-bold text-white disabled:opacity-50"
             >
               {busy ? "Creazione…" : "Crea"}
             </button>
@@ -136,7 +139,7 @@ export default function CommunityListClient({ initialCommunities }: { initialCom
               type="button"
               disabled={busy}
               onClick={handleJoin}
-              className="flex-1 rounded-full bg-ink px-4 py-2.5 text-sm font-bold text-white disabled:opacity-50"
+              className="flex-1 rounded-full bg-trama-violet px-4 py-2.5 text-sm font-bold text-white disabled:opacity-50"
             >
               {busy ? "Verifica…" : "Entra"}
             </button>

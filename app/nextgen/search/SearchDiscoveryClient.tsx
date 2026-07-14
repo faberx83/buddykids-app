@@ -90,7 +90,7 @@ function ResultCard({ match }: { match: SmartMatch }) {
       {match.reasons.length > 0 && (
         <div className="mb-1 flex flex-wrap gap-1 px-1">
           {match.reasons.map((reason) => (
-            <span key={reason} className="rounded-full bg-sky-light px-2 py-0.5 text-[10px] font-semibold text-sky">
+            <span key={reason} className="rounded-full bg-trama-lilac/20 px-2 py-0.5 text-[10px] font-semibold text-trama-violet">
               {reason}
             </span>
           ))}
@@ -288,7 +288,7 @@ export default function SearchDiscoveryClient({
 
   return (
     <div className="flex min-h-screen flex-col">
-      <PageHeader title="Scopri attività" onBack={() => router.push("/nextgen")} />
+      <PageHeader title="Scopri attività" onBack={() => router.push("/nextgen")} showBrandIcon />
       <div className="px-5 py-4">
         <div className="mb-3 flex items-center justify-between">
           <p className="text-xs text-ink-2">
@@ -301,7 +301,7 @@ export default function SearchDiscoveryClient({
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           placeholder="Cerca per nome…"
-          className="mb-3 w-full rounded-xl border border-[#E8EBF0] bg-white px-3.5 py-2.5 text-sm outline-none focus:border-sky"
+          className="mb-3 w-full rounded-xl border border-[#E8EBF0] bg-white px-3.5 py-2.5 text-sm outline-none focus:border-trama-violet"
         />
 
         {kids.length > 1 && (
@@ -310,7 +310,7 @@ export default function SearchDiscoveryClient({
               type="button"
               onClick={() => setSelectedKidId(null)}
               className={`rounded-full px-3 py-1.5 text-[12px] font-semibold ${
-                selectedKidId === null ? "bg-ink text-white" : "bg-bg text-ink-2"
+                selectedKidId === null ? "bg-trama-violet text-white" : "bg-bg text-ink-2"
               }`}
             >
               Tutti i bambini
@@ -321,7 +321,7 @@ export default function SearchDiscoveryClient({
                 type="button"
                 onClick={() => setSelectedKidId(k.id)}
                 className={`rounded-full px-3 py-1.5 text-[12px] font-semibold ${
-                  selectedKidId === k.id ? "bg-ink text-white" : "bg-bg text-ink-2"
+                  selectedKidId === k.id ? "bg-trama-violet text-white" : "bg-bg text-ink-2"
                 }`}
               >
                 {k.name}
@@ -341,8 +341,8 @@ export default function SearchDiscoveryClient({
                 onClick={() => setOpenPanel((prev) => (prev === f.key ? null : f.key))}
                 className={`flex flex-shrink-0 cursor-pointer items-center gap-1.5 rounded-full border-[1.5px] px-3 py-1.5 text-xs font-medium transition-colors ${
                   openPanel === f.key
-                    ? "border-sky bg-sky text-white"
-                    : "border-[#E8EBF0] bg-[#F4F6FA] text-ink-2 hover:border-sky hover:bg-sky hover:text-white"
+                    ? "border-trama-violet bg-trama-violet text-white"
+                    : "border-[#E8EBF0] bg-[#F4F6FA] text-ink-2 hover:border-trama-violet hover:bg-trama-violet hover:text-white"
                 }`}
               >
                 <i className={`ti ${f.icon} text-[13px]`} />
@@ -390,7 +390,7 @@ export default function SearchDiscoveryClient({
             type="button"
             onClick={clearAllFilters}
             disabled={activeFiltersCount === 0}
-            className="flex-shrink-0 whitespace-nowrap pl-1 text-xs font-semibold text-orange disabled:text-ink-3 disabled:opacity-50"
+            className="flex-shrink-0 whitespace-nowrap pl-1 text-xs font-semibold text-trama-orange disabled:text-ink-3 disabled:opacity-50"
           >
             Azzera{activeFiltersCount > 0 ? ` (${activeFiltersCount})` : ""}
           </button>
@@ -408,7 +408,7 @@ export default function SearchDiscoveryClient({
                   max={18}
                   value={minAge}
                   onChange={(e) => setMinAge(Math.min(Number(e.target.value), maxAge))}
-                  className="w-full rounded-md border border-[#E8EBF0] bg-white px-3 py-2 text-sm outline-none focus:border-sky"
+                  className="w-full rounded-md border border-[#E8EBF0] bg-white px-3 py-2 text-sm outline-none focus:border-trama-violet"
                 />
               </div>
               <span className="mt-4 text-ink-3">—</span>
@@ -420,7 +420,7 @@ export default function SearchDiscoveryClient({
                   max={18}
                   value={maxAge}
                   onChange={(e) => setMaxAge(Math.max(Number(e.target.value), minAge))}
-                  className="w-full rounded-md border border-[#E8EBF0] bg-white px-3 py-2 text-sm outline-none focus:border-sky"
+                  className="w-full rounded-md border border-[#E8EBF0] bg-white px-3 py-2 text-sm outline-none focus:border-trama-violet"
                 />
               </div>
               <span className="mt-4 whitespace-nowrap text-xs text-ink-2">anni</span>
@@ -450,7 +450,7 @@ export default function SearchDiscoveryClient({
               onChange={(e) => setZone(e.target.value)}
               list="zona-suggestions-nextgen"
               placeholder="Quartiere, via, città..."
-              className="w-full rounded-md border border-[#E8EBF0] bg-white px-3 py-2 text-sm outline-none focus:border-sky"
+              className="w-full rounded-md border border-[#E8EBF0] bg-white px-3 py-2 text-sm outline-none focus:border-trama-violet"
             />
             <datalist id="zona-suggestions-nextgen">
               {zoneOptions.map((opt) => (
@@ -464,13 +464,13 @@ export default function SearchDiscoveryClient({
                   type="button"
                   onClick={locateMe}
                   disabled={geoStatus === "loading"}
-                  className="flex items-center gap-1.5 rounded-md bg-sky px-3 py-2 text-xs font-bold text-white disabled:opacity-60"
+                  className="flex items-center gap-1.5 rounded-md bg-trama-violet px-3 py-2 text-xs font-bold text-white disabled:opacity-60"
                 >
                   <i className="ti ti-current-location text-sm" />
                   {geoStatus === "loading" ? "Rilevo la posizione…" : "Usa la mia posizione"}
                 </button>
                 {geoStatus === "error" && geoError && (
-                  <p className="mt-2 text-[11px] font-medium text-orange">{geoError}</p>
+                  <p className="mt-2 text-[11px] font-medium text-trama-orange">{geoError}</p>
                 )}
               </div>
             )}
@@ -481,7 +481,7 @@ export default function SearchDiscoveryClient({
                   <p className="text-[11px] text-ink-3">
                     Posizione rilevata: {geo.lat.toFixed(4)}, {geo.lng.toFixed(4)}
                   </p>
-                  <button type="button" onClick={clearGeo} className="text-[11px] font-semibold text-orange">
+                  <button type="button" onClick={clearGeo} className="text-[11px] font-semibold text-trama-orange">
                     Rimuovi posizione
                   </button>
                 </div>
@@ -520,7 +520,7 @@ export default function SearchDiscoveryClient({
                     type="button"
                     onClick={() => toggleTag(c.id)}
                     className={`rounded-full border-[1.5px] px-3 py-1.5 text-xs font-medium transition-colors ${
-                      active ? "border-sky bg-sky text-white" : "border-[#E8EBF0] bg-white text-ink-2"
+                      active ? "border-trama-violet bg-trama-violet text-white" : "border-[#E8EBF0] bg-white text-ink-2"
                     }`}
                   >
                     {c.emoji} {c.label}
@@ -569,7 +569,7 @@ export default function SearchDiscoveryClient({
                 type="button"
                 onClick={() => setSelectedWeekStart(null)}
                 className={`block w-full rounded-md px-3 py-2 text-left text-xs font-semibold transition-colors ${
-                  selectedWeekStart === null ? "bg-sky text-white" : "bg-white text-ink-2"
+                  selectedWeekStart === null ? "bg-trama-violet text-white" : "bg-white text-ink-2"
                 }`}
               >
                 Qualsiasi settimana
@@ -583,7 +583,7 @@ export default function SearchDiscoveryClient({
                     type="button"
                     onClick={() => setSelectedWeekStart(active ? null : start)}
                     className={`block w-full rounded-md px-3 py-2 text-left text-xs font-semibold transition-colors ${
-                      active ? "bg-sky text-white" : "bg-white text-ink-2"
+                      active ? "bg-trama-violet text-white" : "bg-white text-ink-2"
                     }`}
                   >
                     Settimana {r.index} · {formatShortRange(r.start, r.end)}
@@ -598,7 +598,7 @@ export default function SearchDiscoveryClient({
           <span className="text-[12.5px] text-ink-2">{matches.length} attività trovate</span>
           <div className="flex items-center gap-2">
             {hasGeo && (
-              <div className="flex items-center gap-1.5 text-xs font-medium text-sky">
+              <div className="flex items-center gap-1.5 text-xs font-medium text-trama-violet">
                 <i className="ti ti-map-pin text-sm" />
                 Posizione attiva
               </div>
@@ -608,7 +608,7 @@ export default function SearchDiscoveryClient({
                 type="button"
                 onClick={() => setViewMode("lista")}
                 className={`flex items-center gap-1 rounded-full px-2.5 py-1 transition-colors ${
-                  viewMode === "lista" ? "bg-sky text-white" : "text-ink-2"
+                  viewMode === "lista" ? "bg-trama-violet text-white" : "text-ink-2"
                 }`}
               >
                 <i className="ti ti-list text-sm" />
@@ -618,7 +618,7 @@ export default function SearchDiscoveryClient({
                 type="button"
                 onClick={() => setViewMode("mappa")}
                 className={`flex items-center gap-1 rounded-full px-2.5 py-1 transition-colors ${
-                  viewMode === "mappa" ? "bg-sky text-white" : "text-ink-2"
+                  viewMode === "mappa" ? "bg-trama-violet text-white" : "text-ink-2"
                 }`}
               >
                 <i className="ti ti-map text-sm" />

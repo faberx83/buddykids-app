@@ -119,7 +119,15 @@ export default function HomeDashboardClient({
   return (
     <div className="flex flex-col gap-9 px-5 py-6">
       <div className="flex items-center justify-between">
-        <h1 className="font-poppins text-xl font-bold text-ink">
+        {/* Segnalazione di Fabrizio: prima nessuna schermata NEXTGEN mostrava
+            il marchio TRAMA; un tentativo con una barra fissa in alto è
+            stato scartato ("non voglio un banner fisso") a favore
+            dell'icona inline accanto al saluto — regola valida da qui in
+            avanti: icona A COLORI lato genitore, navy lato gestore, bianca
+            su navy lato admin (vedi components/dashboard/DashboardLayout.tsx
+            per gli altri due tenant). */}
+        <h1 className="flex items-center gap-2 font-poppins text-xl font-bold text-ink">
+          <img src="/brand/trama-logo-mark.png" alt="" aria-hidden="true" className="h-6 w-auto flex-shrink-0" />
           Ciao{firstName ? ` ${firstName}` : ""} 👋
         </h1>
         <NextgenBadge />

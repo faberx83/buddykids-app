@@ -93,4 +93,20 @@ test.describe("NEXTGEN - Community (Sprint 4)", () => {
 
     await expect(page.getByText(/stanno valutando/)).toBeVisible();
   });
+
+  // Sprint restyle NEXTGEN — Poppins sui titoli + CTA primari migrati da
+  // bg-ink (vecchio, pre-rebrand) a bg-trama-violet, stessa palette del
+  // resto del rebrand TRAMA (Home, Planner). Community era la pagina più
+  // indietro (nessun font-poppins, CTA ancora bg-ink).
+  test("TC-N90 - I CTA primari di Community usano il colore del brand (trama-violet, non piu' bg-ink)", async ({
+    page,
+  }) => {
+    test.skip(!isRealDeployment, "Richiede un deploy con Supabase configurato e l'account genitore di test.");
+    await loginAs(page, "parent");
+    await page.goto("/nextgen/community");
+
+    const createButton = page.getByRole("button", { name: "Crea community" });
+    await expect(createButton).toHaveClass(/bg-trama-violet/);
+    await expect(createButton).not.toHaveClass(/bg-ink\b/);
+  });
 });
