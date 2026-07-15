@@ -6,8 +6,8 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
-import { Family, FamilyMember, FamilyRole } from "@/lib/nextgen/family-roles";
-export type { Family, FamilyMember, FamilyRole };
+import { Family, FamilyMember, FamilyRole, PendingFamilyInvite } from "@/lib/nextgen/family-roles";
+export type { Family, FamilyMember, FamilyRole, PendingFamilyInvite };
 
 interface RawMemberRow {
   parent_id: string;
@@ -43,6 +43,15 @@ export async function getFamilyForUser(): Promise<Family | null> {
   const { data: memberRows } = await supabase.rpc("get_family_members");
   const rows = (memberRows ?? []) as RawMemberRow[];
 
+  // Invito "vero" via email (in aggiunta al codice) — mostra all'admin quali
+  // inviti sono ancora in attesa di risposta, per non reinvitare a caso.
+  const { data: inviteRows } = await supabase
+    .from("family_invites")
+    .select("id, invited_email, status, created_at")
+    .eq("family_id", family.id)
+    .in("status", ["pending", "sent"])
+    .order("created_at", { ascending: false });
+
   return {
     id: family.id,
     name: family.name,
@@ -55,6 +64,12 @@ export async function getFamilyForUser(): Promise<Family | null> {
       role: r.role as FamilyRole,
       joinedAt: r.joined_at,
       isMe: r.parent_id === user.id,
+    })),
+    pendingInvites: (inviteRows ?? []).map((r) => ({
+      id: r.id,
+      invitedEmail: r.invited_email,
+      status: r.status as PendingFamilyInvite["status"],
+      createdAt: r.created_at,
     })),
   };
 }

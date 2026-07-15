@@ -24,10 +24,21 @@ export interface FamilyMember {
   isMe: boolean;
 }
 
+// SPRINT: invito "vero" via email (in aggiunta al codice) — un invito
+// inviato ma non ancora accettato, mostrato in UI come "In attesa di
+// risposta" così l'admin sa che non deve reinvitare a caso.
+export interface PendingFamilyInvite {
+  id: string;
+  invitedEmail: string;
+  status: "pending" | "sent";
+  createdAt: string;
+}
+
 export interface Family {
   id: string;
   name: string;
   inviteCode: string;
   myRole: FamilyRole;
   members: FamilyMember[];
+  pendingInvites: PendingFamilyInvite[];
 }

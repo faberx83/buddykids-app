@@ -89,4 +89,50 @@ test.describe("NEXTGEN - Family Planner Sprint 5.5 (Profilo Famiglia multi-genit
     await expect(page.getByText("Hai lasciato la famiglia")).toBeVisible();
     await expect(page.getByRole("button", { name: "Crea famiglia" })).toBeVisible();
   });
+
+  // SPRINT (feedback Fabrizio: "per invitare l'altro genitore ci vuole un
+  // invito vero e proprio, il solo codice non è sufficiente") — invito via
+  // email in aggiunta al codice (che resta, scelta di Fabrizio: tenere
+  // entrambe le strade). Vedi app/actions/family.ts#inviteToFamilyAction e
+  // supabase/schema.sql#family_invites.
+  test("TC-N114 - Il form 'Invita per email' è visibile per il creatore/admin della famiglia", async ({ page }) => {
+    test.skip(!isRealDeployment, "Richiede un deploy con Supabase configurato e un account genitore di test già creatore di una famiglia.");
+    await loginAs(page, "parent");
+    await page.goto("/nextgen/planner/famiglia");
+
+    const emailInput = page.getByPlaceholder("Email dell'altro genitore");
+    if (!(await emailInput.isVisible().catch(() => false))) {
+      test.skip(true, "L'account di test non è creatore/admin di una famiglia (esegui prima TC-N74).");
+    }
+    await expect(page.getByRole("button", { name: "Invia invito" })).toBeVisible();
+    // Il codice manuale resta disponibile come alternativa (Fabrizio ha
+    // scelto di tenere entrambe le strade, non solo l'email).
+    await expect(page.getByRole("button", { name: "Copia" })).toBeVisible();
+  });
+
+  test("TC-N115 - Inviare per email aggiunge la riga 'In attesa di risposta'", async ({ page }) => {
+    test.skip(!isRealDeployment, "Richiede un deploy con Supabase configurato e un account genitore di test già creatore di una famiglia.");
+    await loginAs(page, "parent");
+    await page.goto("/nextgen/planner/famiglia");
+
+    const emailInput = page.getByPlaceholder("Email dell'altro genitore");
+    if (!(await emailInput.isVisible().catch(() => false))) {
+      test.skip(true, "L'account di test non è creatore/admin di una famiglia (esegui prima TC-N74).");
+    }
+    const testEmail = `altro-genitore-${Date.now()}@example.com`;
+    await emailInput.fill(testEmail);
+    await page.getByRole("button", { name: "Invia invito" }).click();
+
+    await expect(page.getByText(/Invito (inviato|creato)/)).toBeVisible();
+    await expect(page.getByText("In attesa di risposta")).toBeVisible();
+    await expect(page.getByText(testEmail)).toBeVisible();
+  });
+
+  test("TC-N116 - Un link di invito con token non valido mostra un errore, non un crash", async ({ page }) => {
+    test.skip(!isRealDeployment, "Richiede un deploy con Supabase configurato e l'account genitore di test.");
+    await loginAs(page, "parent");
+    await page.goto("/nextgen/planner/famiglia?accept=token-inesistente-xyz");
+
+    await expect(page.getByText(/Questo invito non è \(più\) valido/)).toBeVisible();
+  });
 });

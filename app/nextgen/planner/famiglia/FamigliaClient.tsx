@@ -4,7 +4,14 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import type { Family } from "@/lib/data/family";
 import { FAMILY_ROLE_LABELS } from "@/lib/nextgen/family-roles";
-import { createFamilyAction, joinFamilyByCodeAction, leaveFamilyAction } from "@/app/actions/family";
+import {
+  createFamilyAction,
+  joinFamilyByCodeAction,
+  leaveFamilyAction,
+  inviteToFamilyAction,
+  acceptFamilyInviteAction,
+  type FamilyInvitePreview,
+} from "@/app/actions/family";
 import { useNextgenToast } from "@/components/nextgen/NextgenToastProvider";
 import PageHeader from "@/components/PageHeader";
 
@@ -16,6 +23,72 @@ import PageHeader from "@/components/PageHeader";
 // tutti i membri (RLS aggiornata in supabase/schema.sql). Bambini e
 // prenotazioni restano SEMPRE visibili solo a chi li ha creati — questa
 // pagina non cambia quello.
+// Mostrato quando si arriva dal link di un invito email (?accept=TOKEN),
+// sia che l'utente abbia già una famiglia (mostrerà l'errore "ne fai già
+// parte di una") sia che ne sia privo — sempre sopra il resto della pagina,
+// così è la prima cosa che si vede tornando dal link.
+function AcceptInviteBanner({
+  token,
+  preview,
+  onAccepted,
+}: {
+  token: string;
+  preview: FamilyInvitePreview | null;
+  onAccepted: () => void;
+}) {
+  const router = useRouter();
+  const showToast = useNextgenToast();
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [done, setDone] = useState(false);
+
+  async function handleAccept() {
+    setBusy(true);
+    setError(null);
+    const res = await acceptFamilyInviteAction(token);
+    setBusy(false);
+    if (res.error) {
+      setError(res.error);
+      return;
+    }
+    setDone(true);
+    showToast(`Ti sei unito alla famiglia "${res.familyName}"!`);
+    router.replace("/nextgen/planner/famiglia");
+    router.refresh();
+    onAccepted();
+  }
+
+  if (done) return null;
+
+  if (!preview || !preview.valid) {
+    return (
+      <div className="mx-5 mt-4 rounded-2xl bg-orange-light p-4 text-[13px] font-medium text-trama-orange">
+        Questo invito non è (più) valido — potrebbe essere già stato usato o scaduto.
+      </div>
+    );
+  }
+
+  return (
+    <div className="mx-5 mt-4 rounded-2xl bg-trama-lilac/15 p-4">
+      <p className="mb-3 text-[13.5px] font-medium text-ink">
+        <b>{preview.inviterName || "Un genitore"}</b> ti ha invitato a unirti alla famiglia &quot;
+        {preview.familyName}&quot; su TRAMA.
+      </p>
+      {error && <div className="mb-2 text-[12px] font-medium text-red-500">{error}</div>}
+      <div className="flex gap-2">
+        <button
+          type="button"
+          disabled={busy}
+          onClick={handleAccept}
+          className="rounded-full bg-trama-violet px-4 py-2 text-[12.5px] font-bold text-white disabled:opacity-50"
+        >
+          {busy ? "Accetto…" : "Accetta l'invito"}
+        </button>
+      </div>
+    </div>
+  );
+}
+
 function NoFamilyView({ onCreated }: { onCreated: (f: Family) => void }) {
   const router = useRouter();
   const showToast = useNextgenToast();
@@ -42,6 +115,7 @@ function NoFamilyView({ onCreated }: { onCreated: (f: Family) => void }) {
       inviteCode: res.inviteCode!,
       myRole: "creatore",
       members: [],
+      pendingInvites: [],
     });
   }
 
@@ -114,6 +188,77 @@ function NoFamilyView({ onCreated }: { onCreated: (f: Family) => void }) {
   );
 }
 
+// Invito "vero" via email — segnalato da Fabrizio: "il solo codice non è
+// sufficiente". Flusso principale (form sopra il box codice), che resta
+// comunque disponibile come alternativa manuale (scelta di Fabrizio: tenere
+// entrambi). Solo creatore/admin possono invitare — stesso controllo
+// lato server in inviteToFamilyAction.
+function InviteByEmailBox({ onSent }: { onSent: () => void }) {
+  const showToast = useNextgenToast();
+  const [email, setEmail] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function handleInvite() {
+    setBusy(true);
+    setError(null);
+    const res = await inviteToFamilyAction(email);
+    setBusy(false);
+    if (res.error) {
+      setError(res.error);
+      return;
+    }
+    showToast(res.emailSent ? "Invito inviato!" : "Invito creato (email non configurata — condividi il link a mano)");
+    setEmail("");
+    onSent();
+  }
+
+  return (
+    <div className="rounded-2xl bg-white p-4">
+      <div className="mb-2.5 text-[11px] font-bold uppercase tracking-wide text-ink-3">Invita per email</div>
+      <div className="flex flex-col gap-2.5">
+        <input
+          type="email"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          placeholder="Email dell'altro genitore"
+          className="rounded-xl border border-[#E8EBF0] px-3 py-2 text-[13.5px] text-ink"
+        />
+        <button
+          type="button"
+          disabled={busy || !email.trim()}
+          onClick={handleInvite}
+          className="rounded-full bg-trama-violet px-4 py-2 text-[12.5px] font-bold text-white disabled:opacity-50"
+        >
+          {busy ? "Invio…" : "Invia invito"}
+        </button>
+        {error && <div className="text-[12px] font-medium text-red-500">{error}</div>}
+      </div>
+    </div>
+  );
+}
+
+function PendingInvitesList({ invites }: { invites: Family["pendingInvites"] }) {
+  if (invites.length === 0) return null;
+  return (
+    <div className="rounded-2xl bg-white p-4">
+      <div className="mb-2.5 text-[11px] font-bold uppercase tracking-wide text-ink-3">
+        In attesa di risposta ({invites.length})
+      </div>
+      <div className="flex flex-col gap-2">
+        {invites.map((inv) => (
+          <div key={inv.id} className="flex items-center justify-between gap-2">
+            <span className="truncate text-[13px] font-medium text-ink">{inv.invitedEmail}</span>
+            <span className="flex-shrink-0 rounded-full bg-bg px-2.5 py-1 text-[11px] font-bold text-ink-2">
+              {inv.status === "sent" ? "Email inviata" : "In attesa"}
+            </span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 function FamilyView({ family }: { family: Family }) {
   const router = useRouter();
   const showToast = useNextgenToast();
@@ -121,6 +266,7 @@ function FamilyView({ family }: { family: Family }) {
   const [busyLeave, setBusyLeave] = useState(false);
   const [confirmingLeave, setConfirmingLeave] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const canInvite = family.myRole === "creatore" || family.myRole === "admin";
 
   async function handleCopy() {
     try {
@@ -148,6 +294,9 @@ function FamilyView({ family }: { family: Family }) {
 
   return (
     <div className="flex flex-col gap-4 px-5 py-4">
+      {canInvite && <InviteByEmailBox onSent={() => router.refresh()} />}
+      <PendingInvitesList invites={family.pendingInvites} />
+
       <div className="rounded-2xl bg-white p-4">
         <div className="mb-2.5 text-[11px] font-bold uppercase tracking-wide text-ink-3">{family.name}</div>
         <div className="flex items-center justify-between gap-2 rounded-xl bg-bg px-3 py-2.5">
@@ -225,9 +374,20 @@ function FamilyView({ family }: { family: Family }) {
   );
 }
 
-export default function FamigliaClient({ initialFamily }: { initialFamily: Family | null }) {
+export default function FamigliaClient({
+  initialFamily,
+  acceptToken,
+  invitePreview,
+}: {
+  initialFamily: Family | null;
+  // Invito via email (?accept=TOKEN, arrivato dal link nell'email) — vedi
+  // page.tsx per come vengono letti/passati.
+  acceptToken: string | null;
+  invitePreview: FamilyInvitePreview | null;
+}) {
   const router = useRouter();
   const [createdFamily, setCreatedFamily] = useState<Family | null>(null);
+  const [accepted, setAccepted] = useState(false);
   const family = initialFamily ?? createdFamily;
 
   return (
@@ -237,6 +397,9 @@ export default function FamigliaClient({ initialFamily }: { initialFamily: Famil
           hoc?"): Famiglia e' ora raggiungibile da Profilo (vera sezione
           Famiglia, non piu' link separato dal Planner) — "indietro" torna li'. */}
       <PageHeader title="Famiglia" onBack={() => router.push("/nextgen/profile")} showBrandIcon />
+      {acceptToken && !accepted && (
+        <AcceptInviteBanner token={acceptToken} preview={invitePreview} onAccepted={() => setAccepted(true)} />
+      )}
       {family ? <FamilyView family={family} /> : <NoFamilyView onCreated={setCreatedFamily} />}
     </div>
   );
