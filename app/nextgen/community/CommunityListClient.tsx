@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { CommunityItem, CommunityRole } from "@/lib/types";
 import { createCommunityAction, joinCommunityByCodeAction } from "@/app/actions/communities";
 import { useNextgenToast } from "@/components/nextgen/NextgenToastProvider";
+import DecorativeIntroCard from "@/components/nextgen/DecorativeIntroCard";
 
 // SPRINT 4 (NEXTGEN) — Elenco Community + creazione/adesione. Stesso tono
 // caldo/informale della Home rifinita (sprint correttivo): niente linguaggio
@@ -59,12 +60,16 @@ export default function CommunityListClient({ initialCommunities }: { initialCom
 
   return (
     <div className="flex flex-col gap-6 px-5 py-6">
-      <div className="flex items-center justify-between">
-        <h1 className="flex items-center gap-2 font-poppins text-xl font-bold text-ink">
-          <img src="/brand/trama-logo-mark.png" alt="" aria-hidden="true" className="h-6 w-auto flex-shrink-0" />
-          Community
-        </h1>
-      </div>
+      {/* SPRINT 7 — stessa texture decorativa (due cerchi) della hero card
+          di Home, vedi DecorativeIntroCard. */}
+      <DecorativeIntroCard>
+        <div className="flex items-center justify-between">
+          <h1 className="flex items-center gap-2 font-poppins text-xl font-bold text-ink">
+            <img src="/brand/trama-logo-mark.png" alt="" aria-hidden="true" className="h-6 w-auto flex-shrink-0" />
+            Community
+          </h1>
+        </div>
+      </DecorativeIntroCard>
 
       {mode === "none" && (
         <div className="flex gap-2.5">

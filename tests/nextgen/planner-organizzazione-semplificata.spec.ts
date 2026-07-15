@@ -87,4 +87,46 @@ test.describe("NEXTGEN - Planner, Organizzazione semplificata", () => {
     await toggle.click();
     await expect(toggle).toHaveAttribute("aria-expanded", "false");
   });
+
+  // SPRINT 7 — Segnalazione di Fabrizio: "troppe card di notifica, serve una
+  // X per chiuderle". Dismiss locale (solo per la sessione corrente, non
+  // persistito — vedi PlannerClient.tsx#dismissedAlertIds).
+  test("TC-N297 - La X su una card di avviso la nasconde", async ({ page }) => {
+    test.skip(!isRealDeployment, "Richiede un deploy con Supabase configurato e l'account genitore di test con almeno un avviso attivo.");
+    await loginAs(page, "parent");
+    await page.goto("/nextgen/planner");
+
+    const dismissButton = page.getByRole("button", { name: "Nascondi questo avviso" }).first();
+    if (!(await dismissButton.isVisible().catch(() => false))) {
+      test.skip(true, "Nessun avviso attivo per l'account di test.");
+    }
+    const cardText = await dismissButton
+      .locator("xpath=preceding-sibling::*[1]")
+      .textContent();
+    await dismissButton.click();
+    if (cardText) {
+      await expect(page.getByText(cardText, { exact: true })).toHaveCount(0);
+    }
+  });
+
+  // SPRINT 7 — Segnalazione di Fabrizio: "i due promemoria di doppia
+  // prenotazione non sono azionabili nonostante lo sembrino" — portavano a
+  // "scorri e evidenzia la riga della Timeline", un vicolo cieco (quella
+  // riga è solo un link alla scheda attività, non permette di annullare
+  // nulla). Ora l'azione porta a "Le mie prenotazioni", dove si può davvero
+  // annullare/modificare una delle due prenotazioni in conflitto — sia dal
+  // promemoria in cima sia dal box "Sovrapposizioni da controllare".
+  test("TC-N298 - Il box 'Sovrapposizioni da controllare' porta a 'Le mie prenotazioni'", async ({ page }) => {
+    test.skip(!isRealDeployment, "Richiede un deploy con Supabase configurato e un account genitore di test con una sovrapposizione attiva.");
+    await loginAs(page, "parent");
+    await page.goto("/nextgen/planner");
+
+    const heading = page.getByText("Sovrapposizioni da controllare", { exact: true });
+    if (!(await heading.isVisible().catch(() => false))) {
+      test.skip(true, "Nessuna sovrapposizione attiva per l'account di test.");
+    }
+    const link = page.getByRole("link", { name: "Gestisci in Le mie prenotazioni" });
+    await expect(link).toBeVisible();
+    await expect(link).toHaveAttribute("href", "/prenotazioni");
+  });
 });

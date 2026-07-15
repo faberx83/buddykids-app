@@ -11,6 +11,7 @@ import { getSeasonWeekRanges, isoDate, formatShortRange, SeasonWeekRange } from 
 import ActivityCard from "@/components/ActivityCard";
 import PageHeader from "@/components/PageHeader";
 import NextgenBadge from "@/components/nextgen/NextgenBadge";
+import DecorativeIntroCard from "@/components/nextgen/DecorativeIntroCard";
 
 // Leaflet usa `window`, quindi la mappa va caricata solo lato client — stesso
 // pattern già usato in LEGACY (app/(main)/search/SearchClient.tsx) e nel
@@ -365,12 +366,16 @@ export default function SearchDiscoveryClient({
     <div className="flex min-h-screen flex-col">
       <PageHeader title="Scopri attività" onBack={() => router.push("/nextgen")} showBrandIcon />
       <div className="px-5 py-4">
-        <div className="mb-3 flex items-center justify-between">
-          <p className="text-xs text-ink-2">
-            Ordinati per voi{uncoveredWeekLabel ? ` — priorità a chi è libero in ${uncoveredWeekLabel}` : ""}.
-          </p>
-          <NextgenBadge />
-        </div>
+        {/* SPRINT 7 — stessa texture decorativa (due cerchi) della hero
+            card di Home, vedi DecorativeIntroCard. */}
+        <DecorativeIntroCard className="mb-3">
+          <div className="flex items-center justify-between">
+            <p className="text-xs text-ink-2">
+              Ordinati per voi{uncoveredWeekLabel ? ` — priorità a chi è libero in ${uncoveredWeekLabel}` : ""}.
+            </p>
+            <NextgenBadge />
+          </div>
+        </DecorativeIntroCard>
 
         <input
           value={query}

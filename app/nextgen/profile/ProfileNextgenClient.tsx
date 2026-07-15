@@ -6,6 +6,7 @@ import LogoutButton from "@/components/LogoutButton";
 import ProfileHeaderClient from "@/components/ProfileHeaderClient";
 import ProfileKidsSection from "@/components/ProfileKidsSection";
 import HubCard from "@/components/nextgen/HubCard";
+import DecorativeIntroCard from "@/components/nextgen/DecorativeIntroCard";
 import type { ParentRole, Gender } from "@/lib/data/profile";
 import type { Kid } from "@/lib/types";
 
@@ -70,19 +71,26 @@ export default function ProfileNextgenClient({
       <PageHeader title="Profilo" onBack={() => router.push("/nextgen")} showBrandIcon />
 
       <div className="px-5 pt-4">
-        <div className="rounded-2xl bg-white p-4">
-          <ProfileHeaderClient
-            initialFullName={fullName}
-            initialParentRole={parentRole}
-            initialAvatarUrl={avatarUrl}
-            email={email}
-            autoOpenEdit={autoOpenEdit}
-            initialPhone={phone}
-            initialDateOfBirth={dateOfBirth}
-            initialGender={gender}
-            accent="violet"
-          />
-        </div>
+        {/* SPRINT 7 — stessa texture decorativa (due cerchi) della hero
+            card di Home, vedi DecorativeIntroCard: qui come "cornice"
+            attorno alla card bianca del profilo invece di sostituirla, per
+            non toccare gli stili interni di ProfileHeaderClient (pensati
+            per uno sfondo bianco). */}
+        <DecorativeIntroCard padding="p-2">
+          <div className="rounded-2xl bg-white p-4">
+            <ProfileHeaderClient
+              initialFullName={fullName}
+              initialParentRole={parentRole}
+              initialAvatarUrl={avatarUrl}
+              email={email}
+              autoOpenEdit={autoOpenEdit}
+              initialPhone={phone}
+              initialDateOfBirth={dateOfBirth}
+              initialGender={gender}
+              accent="violet"
+            />
+          </div>
+        </DecorativeIntroCard>
       </div>
 
       <ProfileKidsSection initialKids={kids} autoOpenAddKid={autoOpenAddKid} accent="violet" />

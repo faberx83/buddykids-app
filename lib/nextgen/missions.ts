@@ -57,7 +57,16 @@ function activityMatchesInterest(activity: Activity, interest: string): boolean 
 // Missione 1 — "vicino al traguardo di un mese": trova il mese della
 // stagione con ESATTAMENTE una settimana ancora scoperta (il gap più facile
 // da chiudere, non il primo in ordine cronologico).
-function computeMonthMission(planner: PlannerData): Mission | null {
+//
+// SPRINT CORRETTIVO (feedback Fabrizio: "i messaggi viola non indicano
+// chiaramente a quale bambino si riferiscono") — questa missione è a livello
+// di FAMIGLIA (SeasonWeek.covered è vero/falso per la settimana nel suo
+// complesso, non per singolo bambino: vedi lib/data/planner.ts), quindi una
+// settimana "scoperta" qui lo è per TUTTI i bambini della famiglia, non solo
+// per uno. Con un solo figlio il messaggio era già chiaro per default; con
+// più figli restava ambiguo (poteva sembrare riferito a un bambino
+// specifico). Ora, se ci sono più figli, il testo lo esplicita.
+function computeMonthMission(planner: PlannerData, kids: Kid[]): Mission | null {
   const byMonth = new Map<string, { label: string; missing: number[] }>();
   for (const w of planner.weeks) {
     if (w.dismissed) continue;
@@ -71,10 +80,11 @@ function computeMonthMission(planner: PlannerData): Mission | null {
     .find(([, v]) => v.missing.length === 1);
   if (!closest) return null;
   const [, { label, missing }] = closest;
+  const forAllKids = kids.length > 1 ? ` per ${kids.map((k) => k.name).join(" e ")}` : "";
   return {
     id: "month-gap",
     emoji: "🎯",
-    text: `Ti manca solo la Settimana ${missing[0]} per completare ${label}.`,
+    text: `Ti manca solo la Settimana ${missing[0]} per completare ${label}${forAllKids}.`,
     tone: "info",
     action: { type: "week", index: missing[0] },
   };
@@ -130,7 +140,7 @@ export function computeMissions(
   kids: Kid[]
 ): Mission[] {
   const missions: Mission[] = [];
-  const monthMission = computeMonthMission(planner);
+  const monthMission = computeMonthMission(planner, kids);
   if (monthMission) missions.push(monthMission);
   missions.push(...computeInterestMissions(bookings, activities, kids));
   return missions.slice(0, 3);

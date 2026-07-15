@@ -540,4 +540,38 @@ test.describe("Genitori - Prenotazione", () => {
     "TC-195 - 'Prosegui comunque' nell'avviso di sovrapposizione completa la prenotazione",
     async () => {}
   );
+
+  // SPRINT 7 — Segnalazione di Fabrizio: "le settimane già passate rispetto
+  // ad OGGI non devono essere selezionabili né visibili" nel selettore di
+  // Prenotazione/Modifica prenotazione. Vedi lib/data/weeks.ts#dropPastWeeks.
+  // Verifica un invariante generale (nessuna settimana visibile è già
+  // conclusa) SENZA assumere quale sia il numero della prima settimana
+  // visibile: il confronto nel codice è volutamente solo su mese-giorno (non
+  // sull'anno) proprio perché il dataset demo principale ha date fisse
+  // "congelate" a un anno che può restare indietro rispetto all'orologio
+  // reale — vedi il commento in dropPastWeeks per il perché.
+  test("TC-297 - Il selettore di prenotazione non mostra settimane già concluse", async ({ page }) => {
+    await loginAs(page, "parent");
+    await gotoTestActivityBooking(page);
+
+    const todayMonthDay = new Date().toISOString().slice(5, 10);
+    const monthIndex: Record<string, number> = {
+      GEN: 1, FEB: 2, MAR: 3, APR: 4, MAG: 5, GIU: 6,
+      LUG: 7, AGO: 8, SET: 9, OTT: 10, NOV: 11, DIC: 12,
+    };
+
+    const ranges = await page.getByText(/^[A-Z]{3} \d{1,2}-\d{1,2}$/).allTextContents();
+    if (ranges.length === 0) {
+      test.skip(true, "Nessuna settimana con data visibile per l'attività di test in questo momento.");
+    }
+    for (const range of ranges) {
+      const m = range.match(/^([A-Z]{3}) \d{1,2}-(\d{1,2})$/);
+      expect(m).not.toBeNull();
+      const [, monthAbbr, endDay] = m!;
+      const monthNum = monthIndex[monthAbbr];
+      expect(monthNum).toBeDefined();
+      const endMonthDay = `${String(monthNum).padStart(2, "0")}-${endDay.padStart(2, "0")}`;
+      expect(endMonthDay >= todayMonthDay).toBe(true);
+    }
+  });
 });

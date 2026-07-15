@@ -89,6 +89,38 @@ function seasonAlignedFromReal(rows: RawWeekRow[], year: number): Week[] {
   });
 }
 
+// Segnalazione di Fabrizio: "le settimane già passate rispetto a OGGI (data
+// di sistema) non devono essere selezionabili né visibili" — nel selettore
+// di Prenotazione/Modifica prenotazione una settimana già conclusa non ha
+// più senso ne' da prenotare ne' da mostrare.
+//
+// ATTENZIONE ANTI-REGRESSIONE — confronto SOLO su mese-giorno, MAI sull'anno
+// intero: il dataset demo principale (supabase/seed.sql) ha le
+// activity_weeks scritte con date fisse "2025-06-24".."2025-08-02", congelate
+// all'anno in cui il file è stato scritto — non rigenerate ad ogni deploy
+// (a differenza delle poche righe di supabase/seed-test-data.sql, quelle sì
+// relative a current_date). Un confronto sulla data ISO COMPLETA (come
+// todayIso >= week.start_date, lo stesso pattern di "isCurrentWeek" in
+// lib/data/attendance.ts) avrebbe funzionato solo finché l'anno reale
+// coincide con l'anno congelato nel seed: non appena l'orologio di sistema
+// supera quell'anno (esattamente la situazione attuale), TUTTE le settimane
+// di quelle 5 attività demo sarebbero risultate "passate" e sparite dal
+// selettore — prenotazione impossibile per l'intero dataset dimostrativo,
+// una regressione ben peggiore del problema da risolvere. La stagione dei
+// centri estivi ricade sempre in giu-ago di un anno qualsiasi: confrontando
+// solo "MM-DD" (confronto stringa valido perché mese/giorno sono sempre a 2
+// cifre) il filtro funziona indipendentemente da quale anno è scritto nei
+// dati, seed compreso.
+function dropPastWeeks(weeks: Week[]): Week[] {
+  const todayMonthDay = new Date().toISOString().slice(5, 10);
+  // endDate è opzionale nel tipo Week (usato anche altrove per settimane
+  // senza allineamento stagionale) — qui sia da mock sia da dati reali è
+  // SEMPRE valorizzato da seasonAlignedFromMock/seasonAlignedFromReal
+  // /placeholderWeek, quindi in pratica non è mai undefined; teniamo la
+  // settimana per sicurezza se mai lo fosse, invece di nasconderla a torto.
+  return weeks.filter((w) => !w.endDate || w.endDate.slice(5, 10) >= todayMonthDay);
+}
+
 export async function getWeeksForActivity(activity: Activity): Promise<Week[]> {
   // L'anno della griglia è quello "di stagione" condiviso da tutta l'app
   // (vedi lib/data/season-year.ts) — non quello dell'orologio di sistema né
@@ -97,7 +129,7 @@ export async function getWeeksForActivity(activity: Activity): Promise<Week[]> {
   const seasonYear = await getSeasonYear();
 
   if (!isSupabaseConfigured || !activity.dbId) {
-    return seasonAlignedFromMock(weeksByActivity[activity.id] ?? defaultWeeks, seasonYear);
+    return dropPastWeeks(seasonAlignedFromMock(weeksByActivity[activity.id] ?? defaultWeeks, seasonYear));
   }
 
   const supabase = await createClient();
@@ -108,10 +140,10 @@ export async function getWeeksForActivity(activity: Activity): Promise<Week[]> {
     .order("start_date", { ascending: true });
 
   if (error || !data || data.length === 0) {
-    return seasonAlignedFromMock(weeksByActivity[activity.id] ?? defaultWeeks, seasonYear);
+    return dropPastWeeks(seasonAlignedFromMock(weeksByActivity[activity.id] ?? defaultWeeks, seasonYear));
   }
 
-  return seasonAlignedFromReal(data as RawWeekRow[], seasonYear);
+  return dropPastWeeks(seasonAlignedFromReal(data as RawWeekRow[], seasonYear));
 }
 
 // Settimane di QUESTA attività già coperte da una prenotazione confermata

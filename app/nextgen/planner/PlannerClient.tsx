@@ -40,6 +40,7 @@ import PlannerBudgetView from "@/components/nextgen/PlannerBudgetView";
 import PlannerCalendarView from "@/components/nextgen/PlannerCalendarView";
 import PlannerMapView from "@/components/nextgen/PlannerMapView";
 import PlannerGroupsView from "@/components/nextgen/PlannerGroupsView";
+import DecorativeIntroCard from "@/components/nextgen/DecorativeIntroCard";
 import Link from "next/link";
 
 const REMINDER_TONE_CLASSES: Record<Reminder["tone"], string> = {
@@ -159,6 +160,12 @@ export default function PlannerClient({
   // con un link "Mostra tutti" per chi vuole vedere il resto — nessun dato
   // perso, solo meno rumore visivo di default.
   const [showAllAlerts, setShowAllAlerts] = useState(false);
+  // SPRINT 7 (feedback Fabrizio: "troppe card di notifica, serve una X per
+  // chiuderle") — dismiss locale (solo per la sessione corrente: sono avvisi
+  // ricalcolati ad ogni caricamento dai dati reali, non serve persistenza,
+  // altrimenti un avviso ancora vero tornerebbe comunque al refresh
+  // successivo dando l'impressione di un bug "non si chiude mai davvero").
+  const [dismissedAlertIds, setDismissedAlertIds] = useState<Set<string>>(new Set());
   // SPRINT CORRETTIVO (feedback Fabrizio: "le notifiche nascoste devono
   // avere una CTA e un routing") — ogni alert porta con sé l'azione già
   // calcolata dalla sua funzione di dominio (lib/nextgen/reminders.ts /
@@ -166,17 +173,18 @@ export default function PlannerClient({
   // (es. Budget), "link" naviga altrove. Le missioni "success" restano senza
   // action (sono solo rassicurazione, nessuna azione sensata).
   const allAlerts = useMemo(
-    () => [
-      ...reminders.map((r) => ({ id: r.id, emoji: r.emoji, text: r.text, className: REMINDER_TONE_CLASSES[r.tone], action: r.action })),
-      ...missions.map((m) => ({
-        id: m.id,
-        emoji: m.emoji,
-        text: m.text,
-        className: m.tone === "success" ? "bg-[#E8F9EE] text-ink" : "bg-trama-lilac/20 text-ink",
-        action: m.action,
-      })),
-    ],
-    [reminders, missions]
+    () =>
+      [
+        ...reminders.map((r) => ({ id: r.id, emoji: r.emoji, text: r.text, className: REMINDER_TONE_CLASSES[r.tone], action: r.action })),
+        ...missions.map((m) => ({
+          id: m.id,
+          emoji: m.emoji,
+          text: m.text,
+          className: m.tone === "success" ? "bg-[#E8F9EE] text-ink" : "bg-trama-lilac/20 text-ink",
+          action: m.action,
+        })),
+      ].filter((a) => !dismissedAlertIds.has(a.id)),
+    [reminders, missions, dismissedAlertIds]
   );
 
   const overlapsByWeekIndex = useMemo(() => {
@@ -203,12 +211,16 @@ export default function PlannerClient({
     <div className="flex min-h-screen flex-col">
       <PageHeader title="Planner" onBack={() => router.push("/nextgen")} showBrandIcon />
       <div className="px-5 py-4">
-        <div className="mb-4 flex items-center justify-between">
-          <p className="text-xs text-ink-2">
-            {mode === "budget" ? "Quanto stai spendendo per questa estate." : "La timeline completa della tua famiglia per l'estate."}
-          </p>
-          <NextgenBadge />
-        </div>
+        {/* SPRINT 7 — stessa texture decorativa (due cerchi) della hero
+            card di Home, vedi DecorativeIntroCard. */}
+        <DecorativeIntroCard className="mb-4">
+          <div className="flex items-center justify-between">
+            <p className="text-xs text-ink-2">
+              {mode === "budget" ? "Quanto stai spendendo per questa estate." : "La timeline completa della tua famiglia per l'estate."}
+            </p>
+            <NextgenBadge />
+          </div>
+        </DecorativeIntroCard>
 
         <PlannerModeTabs mode={mode} onChange={setMode} />
 
@@ -225,7 +237,9 @@ export default function PlannerClient({
         {allAlerts.length > 0 && (
           <div className="mb-4 flex flex-col gap-2">
             {(showAllAlerts ? allAlerts : allAlerts.slice(0, 1)).map((a) => {
-              const rowClass = `flex w-full items-start gap-2.5 rounded-2xl p-3.5 text-left ${a.className}`;
+              // SPRINT 7 — spazio a destra riservato alla X di dismiss, cosi'
+              // non si sovrappone al testo o alla freccina di azione.
+              const rowClass = `flex w-full items-start gap-2.5 rounded-2xl p-3.5 pr-10 text-left ${a.className}`;
               const inner = (
                 <>
                   <span className="text-base leading-none">{a.emoji}</span>
@@ -233,33 +247,60 @@ export default function PlannerClient({
                   {a.action && <i className="ti ti-chevron-right flex-shrink-0 text-base opacity-60" />}
                 </>
               );
+              // SPRINT 7 (feedback Fabrizio: "troppe notifiche, serve una X
+              // per chiuderle") — bottone di chiusura assoluto, SOPRA la
+              // card cliccabile (non dentro di essa): un <button> annidato
+              // in un altro elemento interattivo (Link/button) non è valido
+              // HTML e comunque farebbe scattare anche l'azione del
+              // genitore al click. stopPropagation, per sicurezza, se mai il
+              // markup cambiasse in futuro.
+              const dismissButton = (
+                <button
+                  type="button"
+                  aria-label="Nascondi questo avviso"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    setDismissedAlertIds((cur) => new Set(cur).add(a.id));
+                  }}
+                  className="absolute right-2.5 top-2.5 flex h-6 w-6 items-center justify-center rounded-full text-current opacity-60 active:scale-90 active:opacity-100"
+                >
+                  <i className="ti ti-x text-[14px]" />
+                </button>
+              );
               if (!a.action) {
                 return (
-                  <div key={a.id} className={rowClass}>
-                    {inner}
+                  <div key={a.id} className="relative">
+                    <div className={rowClass}>{inner}</div>
+                    {dismissButton}
                   </div>
                 );
               }
               if (a.action.type === "link") {
                 return (
-                  <Link key={a.id} href={a.action.href} className={`${rowClass} active:scale-[0.99]`}>
-                    {inner}
-                  </Link>
+                  <div key={a.id} className="relative">
+                    <Link href={a.action.href} className={`${rowClass} active:scale-[0.99]`}>
+                      {inner}
+                    </Link>
+                    {dismissButton}
+                  </div>
                 );
               }
               const action = a.action;
               return (
-                <button
-                  key={a.id}
-                  type="button"
-                  onClick={() => {
-                    if (action.type === "week") jumpToWeek(action.index);
-                    else if (action.type === "mode") setMode(action.mode);
-                  }}
-                  className={`${rowClass} active:scale-[0.99]`}
-                >
-                  {inner}
-                </button>
+                <div key={a.id} className="relative">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (action.type === "week") jumpToWeek(action.index);
+                      else if (action.type === "mode") setMode(action.mode);
+                    }}
+                    className={`${rowClass} active:scale-[0.99]`}
+                  >
+                    {inner}
+                  </button>
+                  {dismissButton}
+                </div>
               );
             })}
             {allAlerts.length > 1 && (
@@ -461,6 +502,18 @@ export default function PlannerClient({
                 );
               })}
             </div>
+            {/* SPRINT 7 (feedback Fabrizio: "non sono azionabili nonostante
+                lo sembrino") — questo box era puramente informativo, senza
+                nessun modo di risolvere il conflitto da qui. L'unico posto
+                dove si può davvero annullare/modificare una delle due
+                prenotazioni è "Le mie prenotazioni" (LEGACY). */}
+            <Link
+              href="/prenotazioni"
+              className="mt-2.5 inline-flex items-center gap-1 text-[12px] font-bold text-[#7a5400] active:scale-[0.98]"
+            >
+              Gestisci in Le mie prenotazioni
+              <i className="ti ti-chevron-right text-[13px]" />
+            </Link>
           </div>
         )}
 

@@ -10,7 +10,7 @@
 import { PlannerData } from "@/lib/data/planner";
 import { MyBooking } from "@/lib/data/my-bookings";
 import { Kid } from "@/lib/types";
-import { KidOverlap, BudgetSummary, AlertAction, weekIndexFromLabel, overlapVerb } from "@/lib/nextgen/planner-insights";
+import { KidOverlap, BudgetSummary, AlertAction, overlapVerb } from "@/lib/nextgen/planner-insights";
 
 export interface Reminder {
   id: string;
@@ -101,16 +101,23 @@ function computePriorityWeekReminder(planner: PlannerData, priorityIndex: number
 // Organizzazione: qui riproposto come promemoria azionabile.
 // BUGFIX (segnalato da Fabrizio) — "risulta prenotato" era hardcoded al
 // maschile: ora usa overlapVerb(gender) del bambino coinvolto.
+// BUGFIX (segnalato da Fabrizio: "non sono azionabili nonostante lo
+// sembrino") — l'azione portava a "week" (scroll+evidenzia la riga della
+// Timeline): quella riga, per una settimana coperta, è solo un Link alla
+// scheda ATTIVITÀ (vedi PlannerClient.tsx), che non permette di annullare
+// nessuna delle due prenotazioni in conflitto — un vicolo cieco travestito
+// da azione (freccina cliccabile che non risolve nulla). L'unico posto dove
+// si può davvero "controllare quale attività tenere" è "Le mie prenotazioni"
+// (annulla/modifica una delle due) — l'azione ora porta lì.
 function computeOverlapReminders(overlaps: KidOverlap[], kids: Kid[]): Reminder[] {
   return overlaps.slice(0, 2).map((o) => {
     const gender = kids.find((k) => k.id === o.kidId)?.gender;
-    const weekIndex = weekIndexFromLabel(o.weekLabel);
     return {
       id: `overlap-${o.kidId}-${o.weekId}`,
       emoji: "🔁",
       text: `${o.kidName} risulta ${overlapVerb(gender)} due volte in ${o.weekLabel}: controlla quale attività tenere.`,
       tone: "warning" as const,
-      action: weekIndex !== null ? { type: "week" as const, index: weekIndex } : undefined,
+      action: { type: "link" as const, href: "/prenotazioni" },
     };
   });
 }
