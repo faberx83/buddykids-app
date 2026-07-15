@@ -2005,6 +2005,15 @@ create table if not exists public.beta_feedback (
   message text not null,
   status text not null default 'nuovo' check (status in ('nuovo', 'in_gestione', 'risolto')),
   admin_note text,
+  -- SPRINT 8 — "conferma -> lavorazione automatica" (Fabrizio: "voglio che
+  -- se segnalo come confermata arrivi già qui e la metti in lavorazione").
+  -- Colonna SEPARATA da "status" sopra: quella è il dialogo Admin<->genitore
+  -- ("nuovo/in gestione/risolto"), questa è solo per il meccanismo di
+  -- pipeline verso l'automazione (vedi supabase/... e le function
+  -- list_confirmed_beta_feedback/set_beta_feedback_pipeline_status più
+  -- sotto). "confirmed" = l'admin ha deciso che va lavorata; "in_progress"
+  -- = l'automazione l'ha presa in carico; "done" = intervento committato.
+  pipeline_status text not null default 'none' check (pipeline_status in ('none', 'confirmed', 'in_progress', 'done')),
   created_at timestamptz default now(),
   updated_at timestamptz default now()
 );
@@ -2015,6 +2024,7 @@ create index if not exists idx_beta_feedback_parent on public.beta_feedback(pare
 create index if not exists idx_beta_feedback_status on public.beta_feedback(status);
 create index if not exists idx_beta_feedback_area on public.beta_feedback(area);
 create index if not exists idx_beta_feedback_app_source on public.beta_feedback(app_source);
+create index if not exists idx_beta_feedback_pipeline_status on public.beta_feedback(pipeline_status);
 
 create policy "Beta feedback: il genitore vede/crea le proprie segnalazioni"
   on public.beta_feedback for select
@@ -2028,3 +2038,58 @@ create policy "Beta feedback: solo l'admin piattaforma aggiorna stato/nota"
   on public.beta_feedback for update
   using (public.is_platform_admin())
   with check (public.is_platform_admin());
+
+-- SPRINT 8 — meccanismo di pipeline automatica: una tabella "singleton" col
+-- secret (NON la password reale di nessuno, un valore dedicato solo a
+-- questo scopo — vedi supabase/../sprint8_beta_pipeline_migration.sql per
+-- come viene generato/ruotato) e due function SECURITY DEFINER che lo
+-- verificano prima di leggere/scrivere pipeline_status. Girano coi permessi
+-- del proprietario dello schema (non del chiamante), quindi sono chiamabili
+-- con la sola chiave anon pubblica — senza il secret corretto non fanno
+-- nulla. Nessuna policy RLS su questa tabella = nessun accesso diretto da
+-- client, né anon né autenticato, solo dall'interno delle function.
+create table if not exists public.pipeline_automation_secret (
+  id boolean primary key default true,
+  secret text not null,
+  constraint pipeline_automation_secret_singleton check (id)
+);
+alter table public.pipeline_automation_secret enable row level security;
+
+create or replace function public.list_confirmed_beta_feedback(p_secret text)
+returns setof public.beta_feedback
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  if p_secret is null or p_secret <> (select secret from public.pipeline_automation_secret limit 1) then
+    raise exception 'invalid secret';
+  end if;
+  return query
+    select * from public.beta_feedback
+    where pipeline_status = 'confirmed'
+    order by created_at asc;
+end;
+$$;
+
+create or replace function public.set_beta_feedback_pipeline_status(p_secret text, p_id uuid, p_status text)
+returns void
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  if p_secret is null or p_secret <> (select secret from public.pipeline_automation_secret limit 1) then
+    raise exception 'invalid secret';
+  end if;
+  if p_status not in ('confirmed', 'in_progress', 'done') then
+    raise exception 'invalid status: %', p_status;
+  end if;
+  update public.beta_feedback
+    set pipeline_status = p_status, updated_at = now()
+    where id = p_id;
+end;
+$$;
+
+grant execute on function public.list_confirmed_beta_feedback(text) to anon, authenticated;
+grant execute on function public.set_beta_feedback_pipeline_status(text, uuid, text) to anon, authenticated;

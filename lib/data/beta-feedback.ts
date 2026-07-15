@@ -25,6 +25,7 @@ interface RawRow {
   admin_note: string | null;
   created_at: string;
   profiles?: { full_name: string | null } | { full_name: string | null }[] | null;
+  pipeline_status: "none" | "confirmed" | "in_progress" | "done";
 }
 
 function firstOf<T>(value: T | T[] | null | undefined): T | null {
@@ -43,6 +44,7 @@ function mapRow(row: RawRow): BetaFeedbackItem {
     adminNote: row.admin_note ?? undefined,
     createdAt: row.created_at,
     parentName: firstOf(row.profiles)?.full_name ?? undefined,
+    pipelineStatus: row.pipeline_status,
   };
 }
 
@@ -59,7 +61,7 @@ export async function getMyBetaFeedback(): Promise<BetaFeedbackItem[]> {
 
   const { data, error } = await supabase
     .from("beta_feedback")
-    .select("id, app_source, area, page_path, message, status, admin_note, created_at")
+    .select("id, app_source, area, page_path, message, status, admin_note, created_at, pipeline_status")
     .eq("parent_id", user.id)
     .order("created_at", { ascending: false });
 
@@ -76,7 +78,7 @@ export async function getAllBetaFeedbackForAdmin(): Promise<BetaFeedbackItem[]> 
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("beta_feedback")
-    .select("id, app_source, area, page_path, message, status, admin_note, created_at, profiles ( full_name )")
+    .select("id, app_source, area, page_path, message, status, admin_note, created_at, pipeline_status, profiles ( full_name )")
     .order("created_at", { ascending: false });
 
   if (error || !data) return [];

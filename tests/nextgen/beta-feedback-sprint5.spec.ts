@@ -124,4 +124,25 @@ test.describe("NEXTGEN Sprint 5 - Segnala un problema (BETA)", () => {
       expect(buttonBox.x + buttonBox.width).toBeLessThanOrEqual(shellBox.x + shellBox.width + 1);
     }
   });
+
+  // SPRINT 8 — "conferma -> lavorazione automatica" (Fabrizio: "voglio che
+  // se segnalo come confermata arrivi già qui e la metti in lavorazione").
+  // Il bottone imposta pipeline_status='confirmed'; il badge "In coda per
+  // la pipeline" compare al suo posto e il bottone stesso scompare (non è
+  // ripetibile — vedi item.pipelineStatus === "none" in
+  // SegnalazioniBetaAdminClient.tsx).
+  test("TC-N300 - Admin: 'Conferma e metti in pipeline' mostra il badge e nasconde il bottone", async ({ page }) => {
+    test.skip(!isRealDeployment, "Richiede un deploy con Supabase configurato, l'account Admin di test e almeno una segnalazione non ancora confermata per la pipeline.");
+    await loginAs(page, "platform_admin");
+    await page.goto("/admin/segnalazioni-beta");
+
+    const confirmButton = page.getByRole("button", { name: "Conferma e metti in pipeline" }).first();
+    if (!(await confirmButton.isVisible().catch(() => false))) {
+      test.skip(true, "Nessuna segnalazione con pipeline_status='none' per l'account di test.");
+    }
+    await confirmButton.click();
+
+    await expect(page.getByText("In coda per la pipeline", { exact: true }).first()).toBeVisible();
+    await expect(confirmButton).toHaveCount(0);
+  });
 });

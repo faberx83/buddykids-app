@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 import type { BetaFeedbackItem, BetaFeedbackStatus, BetaFeedbackSource } from "@/lib/nextgen/beta-feedback-shared";
 import { computeBetaFeedbackCounts } from "@/lib/nextgen/beta-feedback-shared";
-import { updateBetaFeedbackStatusAction } from "@/app/actions/beta-feedback";
+import { updateBetaFeedbackStatusAction, confirmBetaFeedbackForPipelineAction } from "@/app/actions/beta-feedback";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
 
 // SPRINT 5 (NEXTGEN) — coda Admin "Segnalazioni BETA". Stesso pattern di
@@ -24,6 +24,16 @@ const STATUS_LABEL: Record<BetaFeedbackStatus, { label: string; cls: string }> =
 const SOURCE_LABEL: Record<BetaFeedbackSource, { label: string; cls: string }> = {
   genitori: { label: "App genitori", cls: "bg-[#F0EEFF] text-[#6F63C5]" },
   gestore: { label: "App gestori", cls: "bg-[#E8F6FD] text-[#4DAFEF]" },
+};
+
+// SPRINT 8 — "conferma -> lavorazione automatica": pipeline_status è SEPARATO
+// dallo stato sopra (nuovo/in gestione/risolto, che resta il dialogo con il
+// genitore). "none" non mostra nessun badge (caso più comune, nessun rumore
+// visivo in più per le segnalazioni non ancora confermate).
+const PIPELINE_LABEL: Partial<Record<"confirmed" | "in_progress" | "done", { label: string; cls: string }>> = {
+  confirmed: { label: "In coda per la pipeline", cls: "bg-[#F0EEFF] text-[#6F63C5]" },
+  in_progress: { label: "In lavorazione (automatica)", cls: "bg-[#FFF7E8] text-[#9a6b00]" },
+  done: { label: "Lavorata", cls: "bg-green-light text-[#2d8f52]" },
 };
 
 type StatusFilter = BetaFeedbackStatus | "tutti";
@@ -48,6 +58,20 @@ export default function SegnalazioniBetaAdminClient({ initialItems }: { initialI
     setBusyId(null);
     if (!result.error) {
       setItems((prev) => prev.map((i) => (i.id === id ? { ...i, status, adminNote: noteDraft[id] || i.adminNote } : i)));
+    }
+  }
+
+  // SPRINT 8 — "conferma -> lavorazione automatica": segna la segnalazione
+  // come pronta per il task schedulato (ogni 15 minuti) che la prende in
+  // carico da sola. Nessuna conferma richiesta qui via dialog nativo: è
+  // un'azione facilmente reversibile (nessuna riga viene toccata finché
+  // l'automazione non parte davvero) e già visibile subito dal nuovo badge.
+  async function confirmForPipeline(id: string) {
+    setBusyId(id);
+    const result = await confirmBetaFeedbackForPipelineAction(id);
+    setBusyId(null);
+    if (!result.error) {
+      setItems((prev) => prev.map((i) => (i.id === id ? { ...i, pipelineStatus: "confirmed" } : i)));
     }
   }
 
@@ -149,6 +173,13 @@ export default function SegnalazioniBetaAdminClient({ initialItems }: { initialI
                   <span className={`rounded-full px-2 py-0.5 text-[10.5px] font-semibold ${STATUS_LABEL[item.status].cls}`}>
                     {STATUS_LABEL[item.status].label}
                   </span>
+                  {item.pipelineStatus !== "none" && (
+                    <span
+                      className={`rounded-full px-2 py-0.5 text-[10.5px] font-semibold ${PIPELINE_LABEL[item.pipelineStatus]!.cls}`}
+                    >
+                      {PIPELINE_LABEL[item.pipelineStatus]!.label}
+                    </span>
+                  )}
                 </div>
                 <div className="text-sm text-ink">{item.message}</div>
                 <div className="mt-0.5 text-[11px] text-ink-3">
@@ -167,6 +198,15 @@ export default function SegnalazioniBetaAdminClient({ initialItems }: { initialI
                 )}
               </div>
               <div className="flex flex-shrink-0 flex-col gap-1.5">
+                {item.pipelineStatus === "none" && (
+                  <button
+                    onClick={() => confirmForPipeline(item.id)}
+                    disabled={busyId === item.id}
+                    className="rounded-md bg-[#6F63C5] px-3 py-1.5 text-xs font-bold text-white disabled:opacity-60"
+                  >
+                    Conferma e metti in pipeline
+                  </button>
+                )}
                 {item.status !== "in_gestione" && (
                   <button
                     onClick={() => updateStatus(item.id, "in_gestione")}

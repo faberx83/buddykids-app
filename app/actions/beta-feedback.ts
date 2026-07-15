@@ -69,3 +69,31 @@ export async function updateBetaFeedbackStatusAction(
   revalidatePath("/admin/segnalazioni-beta");
   return {};
 }
+
+// SPRINT 8 — "conferma -> lavorazione automatica" (Fabrizio: "voglio che se
+// segnalo come confermata arrivi già qui e la metti in lavorazione"). Questo
+// bottone imposta SOLO pipeline_status = 'confirmed' — usa la stessa RLS di
+// update già esistente (solo platform_admin, vedi supabase/schema.sql), lo
+// stesso meccanismo di updateBetaFeedbackStatusAction sopra: nessuna nuova
+// autorizzazione qui, perché chi chiama questa action è già autenticato
+// come admin nella sessione del browser. Il secret/RPC "senza login" (vedi
+// migration Sprint 8) serve SOLO al task automatico esterno che legge le
+// righe 'confirmed' — non a questa action, che gira lato server con la
+// sessione reale dell'admin.
+export async function confirmBetaFeedbackForPipelineAction(id: string): Promise<{ error?: string }> {
+  if (!isSupabaseConfigured) return { error: "Supabase non configurato" };
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { error: "Non autenticato" };
+
+  const { error } = await supabase
+    .from("beta_feedback")
+    .update({ pipeline_status: "confirmed", updated_at: new Date().toISOString() })
+    .eq("id", id);
+
+  if (error) return { error: error.message };
+  revalidatePath("/admin/segnalazioni-beta");
+  return {};
+}

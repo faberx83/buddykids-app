@@ -9,6 +9,12 @@
 
 export type BetaFeedbackStatus = "nuovo" | "in_gestione" | "risolto";
 export type BetaFeedbackSource = "genitori" | "gestore";
+// SPRINT 8 — stato della pipeline di lavorazione automatica, SEPARATO da
+// BetaFeedbackStatus sopra (quello resta il dialogo Admin<->genitore).
+// "none" = non ancora confermata per la pipeline; "confirmed" = l'admin ha
+// deciso che va lavorata (in attesa che l'automazione la prenda in carico);
+// "in_progress"/"done" = aggiornati dall'automazione stessa.
+export type BetaFeedbackPipelineStatus = "none" | "confirmed" | "in_progress" | "done";
 
 export interface BetaFeedbackItem {
   id: string;
@@ -20,6 +26,7 @@ export interface BetaFeedbackItem {
   adminNote?: string;
   createdAt: string;
   parentName?: string; // solo per la vista Admin (join su profiles)
+  pipelineStatus: BetaFeedbackPipelineStatus;
 }
 
 export interface BetaFeedbackCounts {
