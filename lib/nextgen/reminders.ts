@@ -9,13 +9,18 @@
 
 import { PlannerData } from "@/lib/data/planner";
 import { MyBooking } from "@/lib/data/my-bookings";
-import { KidOverlap, BudgetSummary } from "@/lib/nextgen/planner-insights";
+import { Kid } from "@/lib/types";
+import { KidOverlap, BudgetSummary, AlertAction, weekIndexFromLabel, overlapVerb } from "@/lib/nextgen/planner-insights";
 
 export interface Reminder {
   id: string;
   emoji: string;
   text: string;
   tone: "urgent" | "warning" | "info";
+  // SPRINT CORRETTIVO (feedback Fabrizio: "le notifiche nascoste... devono
+  // avere una CTA?") — dove porta il click sul banner, se ha senso portare
+  // da qualche parte (non tutti i promemoria ce l'hanno).
+  action?: AlertAction;
 }
 
 // 1) Finestra di cancellazione in scadenza — dato reale (non stubbato):
@@ -35,6 +40,7 @@ function computeCancellationWindowReminders(bookings: MyBooking[]): Reminder[] {
             ? `Ultimo giorno per modificare o annullare ${b.activityName} in autonomia.`
             : `Hai ancora ${daysLeftInWindow} giorni per modificare o annullare ${b.activityName} prima che scada la finestra di preavviso.`,
         tone: daysLeftInWindow <= 1 ? "urgent" : "warning",
+        action: { type: "link", href: `/prenotazioni/${b.id}/modifica` },
       });
     }
   }
@@ -58,6 +64,7 @@ function computeUpcomingStartReminders(bookings: MyBooking[]): Reminder[] {
             ? `${b.activityName}${kidPart} inizia oggi.`
             : `Tra ${b.daysUntilStart} giorni inizia ${b.activityName}${kidPart}.`,
         tone: b.daysUntilStart <= 2 ? "warning" : "info",
+        action: { type: "link", href: "/prenotazioni" },
       });
     }
   }
@@ -86,18 +93,26 @@ function computePriorityWeekReminder(planner: PlannerData, priorityIndex: number
         ? `La Settimana ${week.index} inizia tra ${daysUntilStart} giorni ed è ancora scoperta.`
         : `La Settimana ${week.index} (tra ${daysUntilStart} giorni) è la prossima da organizzare.`,
     tone: daysUntilStart <= 3 ? "urgent" : "info",
+    action: { type: "week", index: week.index },
   };
 }
 
 // 4) Sovrapposizione da risolvere — dato reale, già rilevato altrove in
 // Organizzazione: qui riproposto come promemoria azionabile.
-function computeOverlapReminders(overlaps: KidOverlap[]): Reminder[] {
-  return overlaps.slice(0, 2).map((o) => ({
-    id: `overlap-${o.kidId}-${o.weekId}`,
-    emoji: "🔁",
-    text: `${o.kidName} risulta prenotato due volte in ${o.weekLabel}: controlla quale attività tenere.`,
-    tone: "warning" as const,
-  }));
+// BUGFIX (segnalato da Fabrizio) — "risulta prenotato" era hardcoded al
+// maschile: ora usa overlapVerb(gender) del bambino coinvolto.
+function computeOverlapReminders(overlaps: KidOverlap[], kids: Kid[]): Reminder[] {
+  return overlaps.slice(0, 2).map((o) => {
+    const gender = kids.find((k) => k.id === o.kidId)?.gender;
+    const weekIndex = weekIndexFromLabel(o.weekLabel);
+    return {
+      id: `overlap-${o.kidId}-${o.weekId}`,
+      emoji: "🔁",
+      text: `${o.kidName} risulta ${overlapVerb(gender)} due volte in ${o.weekLabel}: controlla quale attività tenere.`,
+      tone: "warning" as const,
+      action: weekIndex !== null ? { type: "week" as const, index: weekIndex } : undefined,
+    };
+  });
 }
 
 // 5) Budget vicino/oltre il target stagionale — dato reale (solo se il
@@ -111,6 +126,7 @@ function computeBudgetReminder(budget: BudgetSummary, seasonBudgetTarget: number
       emoji: "💸",
       text: `Hai superato il budget stagionale che avevi impostato (€${budget.totalSpent} di €${seasonBudgetTarget}).`,
       tone: "urgent",
+      action: { type: "mode", mode: "budget" },
     };
   }
   if (percent >= 90) {
@@ -119,6 +135,7 @@ function computeBudgetReminder(budget: BudgetSummary, seasonBudgetTarget: number
       emoji: "💶",
       text: `Sei al ${percent}% del budget stagionale che avevi impostato.`,
       tone: "warning",
+      action: { type: "mode", mode: "budget" },
     };
   }
   return null;
@@ -134,12 +151,13 @@ export function computeReminders(
   overlaps: KidOverlap[],
   budget: BudgetSummary,
   seasonBudgetTarget: number | null,
-  todayIso: string
+  todayIso: string,
+  kids: Kid[]
 ): Reminder[] {
   const all: Reminder[] = [
     ...computeCancellationWindowReminders(bookings),
     ...computeUpcomingStartReminders(bookings),
-    ...computeOverlapReminders(overlaps),
+    ...computeOverlapReminders(overlaps, kids),
   ];
   const priorityReminder = computePriorityWeekReminder(planner, priorityIndex, todayIso);
   if (priorityReminder) all.push(priorityReminder);

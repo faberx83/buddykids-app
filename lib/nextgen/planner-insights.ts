@@ -17,7 +17,7 @@
 // definizione, una sovrapposizione — nessuna nuova query al DB.
 
 import { MyBooking } from "@/lib/data/my-bookings";
-import { Activity, Kid } from "@/lib/types";
+import { Activity, Kid, KidGender } from "@/lib/types";
 import { PlannerData } from "@/lib/data/planner";
 
 export interface KidOverlap {
@@ -26,6 +26,43 @@ export interface KidOverlap {
   weekId: string;
   weekLabel: string;
   bookings: { bookingId: string; activityName: string }[];
+}
+
+// SPRINT CORRETTIVO (Organizzazione) — estratta da PlannerClient.tsx: serve
+// anche a lib/nextgen/reminders.ts per collegare il promemoria di
+// sovrapposizione alla stessa settimana della Timeline (azione "week").
+export function weekIndexFromLabel(label: string): number | null {
+  const m = label.match(/\d+/);
+  return m ? Number(m[0]) : null;
+}
+
+// SPRINT CORRETTIVO — azione associata a un banner (Promemoria/Missione):
+// dove porta il click, senza che PlannerClient debba conoscere i dettagli
+// di ogni singolo tipo di alert.
+export type AlertAction =
+  | { type: "week"; index: number }
+  | { type: "mode"; mode: "budget" }
+  | { type: "link"; href: string };
+
+// BUGFIX (segnalato da Fabrizio) — "risulta prenotato" era hardcoded al
+// maschile, sbagliato per una bambina. Kid.gender è opzionale: se assente o
+// "altro" si resta sul maschile (default non marcato in italiano), solo "F"
+// esplicito passa al femminile.
+export function overlapVerb(gender?: KidGender): "prenotato" | "prenotata" {
+  return gender === "F" ? "prenotata" : "prenotato";
+}
+
+// BUGFIX (segnalato da Fabrizio) — "Laboratorio Arti Creative e Laboratorio
+// Arti Creative" (due prenotazioni distinte sulla stessa attività) era
+// leggibile male: raggruppa i nomi identici con un contatore ("2× Nome").
+export function formatBookingNames(names: string[]): string {
+  const counts = new Map<string, number>();
+  const order: string[] = [];
+  for (const n of names) {
+    if (!counts.has(n)) order.push(n);
+    counts.set(n, (counts.get(n) ?? 0) + 1);
+  }
+  return order.map((n) => ((counts.get(n) ?? 1) > 1 ? `${counts.get(n)}× ${n}` : n)).join(" e ");
 }
 
 export function computeKidOverlaps(bookings: MyBooking[]): KidOverlap[] {

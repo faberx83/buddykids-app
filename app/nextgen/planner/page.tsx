@@ -68,7 +68,7 @@ export default async function NextgenPlannerPage() {
   const priorityWeek = planner.weeks.find((w) => w.index === priorityIndex) ?? null;
   const missions = computeMissions(planner, bookings, activities, kids);
   const todayIso = new Date().toISOString().slice(0, 10);
-  const reminders = computeReminders(planner, bookings, priorityIndex, overlaps, budget, profile.seasonBudgetTarget, todayIso);
+  const reminders = computeReminders(planner, bookings, priorityIndex, overlaps, budget, profile.seasonBudgetTarget, todayIso, kids);
 
   const recommendations = priorityWeek
     ? computeSmartMatches(activities, kids, {

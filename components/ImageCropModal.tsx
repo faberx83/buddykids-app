@@ -33,6 +33,13 @@ export default function ImageCropModal({
   const [pos, setPos] = useState({ x: 0, y: 0 });
   const dragRef = useRef<{ startX: number; startY: number; origX: number; origY: number } | null>(null);
   const [exporting, setExporting] = useState(false);
+  // BUGFIX (segnalato da Fabrizio: "ho provato a modificare ritaglio della
+  // foto profilo ma c'è errore") — prima, sia il fallimento del caricamento
+  // dell'<img> remota (CORS bloccato) sia il fallimento di canvas.toBlob()
+  // (canvas "tainted", o il blob nullo) restavano SILENZIOSI: il bottone
+  // "Usa questa foto" tornava semplicemente cliccabile senza che succedesse
+  // nulla, sembrando rotto. Ora entrambi i casi mostrano un messaggio.
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (isRemoteUrl) return; // nessun object URL locale da rilasciare
@@ -79,6 +86,7 @@ export default function ImageCropModal({
   async function handleConfirm() {
     if (!naturalSize) return;
     setExporting(true);
+    setError(null);
     try {
       const canvas = document.createElement("canvas");
       canvas.width = OUTPUT;
@@ -106,7 +114,10 @@ export default function ImageCropModal({
       canvas.toBlob(
         (blob) => {
           setExporting(false);
-          if (!blob) return;
+          if (!blob) {
+            setError("Non sono riuscito a salvare il ritaglio. Riprova, o carica di nuovo la foto.");
+            return;
+          }
           const baseName = isRemoteUrl ? "avatar" : source.name.replace(/\.\w+$/, "");
           const croppedFile = new File([blob], `${baseName}-ritagliata.jpg`, {
             type: "image/jpeg",
@@ -118,6 +129,7 @@ export default function ImageCropModal({
       );
     } catch {
       setExporting(false);
+      setError("Non sono riuscito a salvare il ritaglio. Riprova, o carica di nuovo la foto.");
     }
   }
 
@@ -145,6 +157,13 @@ export default function ImageCropModal({
               const el = e.currentTarget;
               setNaturalSize({ w: el.naturalWidth, h: el.naturalHeight });
             }}
+            onError={() =>
+              setError(
+                isRemoteUrl
+                  ? "Non riesco a caricare questa foto per ritagliarla di nuovo. Riprova più tardi."
+                  : "Non riesco a leggere questa immagine. Prova con un altro file."
+              )
+            }
             className="pointer-events-none absolute select-none"
             style={{
               width: displayedW,
@@ -180,6 +199,10 @@ export default function ImageCropModal({
           />
           <i className="ti ti-zoom-in text-ink-2" />
         </div>
+
+        {error && (
+          <p className="mt-3 text-center text-xs font-medium text-orange">{error}</p>
+        )}
 
         <div className="mt-4 flex gap-2">
           <button

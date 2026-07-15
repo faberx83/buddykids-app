@@ -7,6 +7,7 @@
 // client browser già esistente.
 
 import { createClient } from "@/lib/supabase/client";
+import { toFriendlyError } from "@/lib/friendly-error";
 
 export const IMAGES_BUCKET = "buddykids-images";
 
@@ -38,7 +39,7 @@ export async function uploadImage(folder: string, file: File): Promise<UploadRes
     upsert: false,
   });
 
-  if (error) return { url: null, error: error.message };
+  if (error) return { url: null, error: toFriendlyError(error.message) };
 
   const { data } = supabase.storage.from(IMAGES_BUCKET).getPublicUrl(path);
   return { url: data.publicUrl, error: null };
@@ -83,6 +84,6 @@ export async function uploadCertificationDocument(
     upsert: false,
   });
 
-  if (error) return { path: null, error: error.message };
+  if (error) return { path: null, error: toFriendlyError(error.message) };
   return { path, error: null };
 }

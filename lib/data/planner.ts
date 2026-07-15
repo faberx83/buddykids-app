@@ -47,6 +47,15 @@ export interface SeasonWeek {
 export interface PlannerData {
   weeks: SeasonWeek[];
   coveredCount: number;
+  // BUGFIX (segnalato da Fabrizio: "5 di 4 settimane coperte" — un rapporto
+  // superiore al 100%): coveredCount conta TUTTE le settimane coperte, anche
+  // quelle marcate "non mi serve" (dismissed) — una settimana può avere una
+  // prenotazione attiva E essere stata esclusa dal bisogno dichiarato (es.
+  // prenotata, poi esclusa). Il rapporto "X di Y settimane coperte" deve
+  // invece confrontare solo le settimane NECESSARIE (non dismissed): usa
+  // coveredNeededCount (mai > neededCount, per costruzione) per quel testo,
+  // non coveredCount.
+  coveredNeededCount: number;
   totalCount: number;
   firstUncoveredIndex: number | null; // index (1-based) della prima settimana scoperta
 }
@@ -171,12 +180,14 @@ export async function getPlannerData(): Promise<PlannerData> {
 
 function finalize(weeks: SeasonWeek[]): PlannerData {
   const coveredCount = weeks.filter((w) => w.covered).length;
+  const coveredNeededCount = weeks.filter((w) => w.covered && !w.dismissed).length;
   // Le settimane "non mi serve" non contano come da riempire: non suggeriamo
   // attività per una settimana che il genitore ha volutamente escluso.
   const firstUncovered = weeks.find((w) => !w.covered && !w.dismissed);
   return {
     weeks,
     coveredCount,
+    coveredNeededCount,
     totalCount: weeks.length,
     firstUncoveredIndex: firstUncovered?.index ?? null,
   };

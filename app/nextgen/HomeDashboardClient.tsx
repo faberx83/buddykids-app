@@ -105,7 +105,11 @@ export default function HomeDashboardClient({
   );
 
   const neededCount = planner.weeks.filter((w) => !w.dismissed).length;
-  const percent = neededCount > 0 ? Math.round((planner.coveredCount / neededCount) * 100) : 0;
+  // BUGFIX (stesso bug di PlannerClient.tsx: "5 di 4 settimane coperte") —
+  // planner.coveredCount conta anche settimane coperte ma "non ti servono",
+  // facendo superare il 100%: coveredNeededCount esclude le dismissed anche
+  // al numeratore, mai > neededCount.
+  const percent = neededCount > 0 ? Math.round((planner.coveredNeededCount / neededCount) * 100) : 0;
   const gaps = planner.weeks.filter((w) => !w.covered && !w.dismissed);
   const statusEmoji = percent >= 80 ? "🟢" : percent >= 40 ? "🟡" : "🟠";
 

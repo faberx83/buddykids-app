@@ -9,6 +9,9 @@ import {
   computePerKidCoverage,
   computeWeekStatus,
   WEEK_STATUS_BAR_CLASS,
+  weekIndexFromLabel,
+  overlapVerb,
+  formatBookingNames,
 } from "@/lib/nextgen/planner-insights";
 import type { Mission } from "@/lib/nextgen/missions";
 import type { SmartMatch } from "@/lib/nextgen/smart-search";
@@ -53,10 +56,8 @@ const REMINDER_TONE_CLASSES: Record<Reminder["tone"], string> = {
 // Organizzazione, Budget, Calendario, Mappa e — da Sprint 5.6 — Gruppi (vedi
 // PlannerGroupsView, riepilogo di Community + Gruppi sconto, riuso puro dei
 // dati già letti in Sprint 4) sono ora tutte funzionanti.
-function weekIndexFromLabel(label: string): number | null {
-  const m = label.match(/\d+/);
-  return m ? Number(m[0]) : null;
-}
+// weekIndexFromLabel spostato in lib/nextgen/planner-insights.ts (serve
+// anche a lib/nextgen/reminders.ts per l'azione "week" dei promemoria).
 
 export default function PlannerClient({
   planner,
@@ -130,14 +131,21 @@ export default function PlannerClient({
   // con un link "Mostra tutti" per chi vuole vedere il resto — nessun dato
   // perso, solo meno rumore visivo di default.
   const [showAllAlerts, setShowAllAlerts] = useState(false);
+  // SPRINT CORRETTIVO (feedback Fabrizio: "le notifiche nascoste devono
+  // avere una CTA e un routing") — ogni alert porta con sé l'azione già
+  // calcolata dalla sua funzione di dominio (lib/nextgen/reminders.ts /
+  // missions.ts): "week" scorre alla riga della Timeline, "mode" cambia tab
+  // (es. Budget), "link" naviga altrove. Le missioni "success" restano senza
+  // action (sono solo rassicurazione, nessuna azione sensata).
   const allAlerts = useMemo(
     () => [
-      ...reminders.map((r) => ({ id: r.id, emoji: r.emoji, text: r.text, className: REMINDER_TONE_CLASSES[r.tone] })),
+      ...reminders.map((r) => ({ id: r.id, emoji: r.emoji, text: r.text, className: REMINDER_TONE_CLASSES[r.tone], action: r.action })),
       ...missions.map((m) => ({
         id: m.id,
         emoji: m.emoji,
         text: m.text,
         className: m.tone === "success" ? "bg-[#E8F9EE] text-ink" : "bg-trama-lilac/20 text-ink",
+        action: m.action,
       })),
     ],
     [reminders, missions]
@@ -156,7 +164,11 @@ export default function PlannerClient({
   }, [overlaps]);
 
   const neededCount = planner.weeks.filter((w) => !w.dismissed).length;
-  const progressPercent = neededCount > 0 ? Math.round((planner.coveredCount / neededCount) * 100) : 0;
+  // BUGFIX (segnalato da Fabrizio: "5 di 4 settimane coperte") —
+  // planner.coveredCount conta anche settimane coperte ma "non ti servono"
+  // (dismissed), quindi il rapporto poteva superare il 100%.
+  // coveredNeededCount esclude le dismissed anche al numeratore.
+  const progressPercent = neededCount > 0 ? Math.round((planner.coveredNeededCount / neededCount) * 100) : 0;
   const priorityWeek = planner.weeks.find((w) => w.index === priorityIndex) ?? null;
 
   return (
@@ -184,12 +196,44 @@ export default function PlannerClient({
             urgente), "Mostra tutti" per il resto. Vedi allAlerts sopra. */}
         {allAlerts.length > 0 && (
           <div className="mb-4 flex flex-col gap-2">
-            {(showAllAlerts ? allAlerts : allAlerts.slice(0, 1)).map((a) => (
-              <div key={a.id} className={`flex items-start gap-2.5 rounded-2xl p-3.5 ${a.className}`}>
-                <span className="text-base leading-none">{a.emoji}</span>
-                <span className="text-[12.5px] font-medium">{a.text}</span>
-              </div>
-            ))}
+            {(showAllAlerts ? allAlerts : allAlerts.slice(0, 1)).map((a) => {
+              const rowClass = `flex w-full items-start gap-2.5 rounded-2xl p-3.5 text-left ${a.className}`;
+              const inner = (
+                <>
+                  <span className="text-base leading-none">{a.emoji}</span>
+                  <span className="flex-1 text-[12.5px] font-medium">{a.text}</span>
+                  {a.action && <i className="ti ti-chevron-right flex-shrink-0 text-base opacity-60" />}
+                </>
+              );
+              if (!a.action) {
+                return (
+                  <div key={a.id} className={rowClass}>
+                    {inner}
+                  </div>
+                );
+              }
+              if (a.action.type === "link") {
+                return (
+                  <Link key={a.id} href={a.action.href} className={rowClass}>
+                    {inner}
+                  </Link>
+                );
+              }
+              const action = a.action;
+              return (
+                <button
+                  key={a.id}
+                  type="button"
+                  onClick={() => {
+                    if (action.type === "week") jumpToWeek(action.index);
+                    else if (action.type === "mode") setMode(action.mode);
+                  }}
+                  className={rowClass}
+                >
+                  {inner}
+                </button>
+              );
+            })}
             {allAlerts.length > 1 && (
               <button
                 type="button"
@@ -210,7 +254,7 @@ export default function PlannerClient({
             tutto bene. */}
         <div className="mb-4 rounded-2xl bg-white p-4">
           <div className="flex items-center justify-between text-[13px] font-semibold text-ink-2">
-            <span>{planner.coveredCount} di {neededCount} settimane coperte</span>
+            <span>{planner.coveredNeededCount} di {neededCount} settimane coperte</span>
             {neededCount < planner.totalCount && (
               <span>{planner.totalCount - neededCount} non ti servono</span>
             )}
@@ -366,12 +410,15 @@ export default function PlannerClient({
               Sovrapposizioni da controllare
             </div>
             <div className="flex flex-col gap-1.5">
-              {overlaps.map((o) => (
-                <p key={`${o.kidId}-${o.weekId}`} className="text-[12.5px] text-[#7a5400]">
-                  <strong>{o.kidName}</strong> risulta prenotato due volte in {o.weekLabel}:{" "}
-                  {o.bookings.map((b) => b.activityName).join(" e ")}.
-                </p>
-              ))}
+              {overlaps.map((o) => {
+                const gender = kids.find((k) => k.id === o.kidId)?.gender;
+                return (
+                  <p key={`${o.kidId}-${o.weekId}`} className="text-[12.5px] text-[#7a5400]">
+                    <strong>{o.kidName}</strong> risulta {overlapVerb(gender)} due volte in {o.weekLabel}:{" "}
+                    {formatBookingNames(o.bookings.map((b) => b.activityName))}.
+                  </p>
+                );
+              })}
             </div>
           </div>
         )}
@@ -431,7 +478,14 @@ export default function PlannerClient({
                       </span>
                     )}
                   </div>
-                  {hasOverlap && <i className="ti ti-alert-triangle flex-shrink-0 text-base text-[#9a6b00]" />}
+                  {/* BUGFIX (segnalato da Fabrizio: "se non mi serve perché
+                      c'è il triangolino?") — il triangolo ignorava
+                      completamente lo stato "dismissed": una settimana
+                      "Non ti serve" con una sovrapposizione rilevata lo
+                      mostrava comunque, in contraddizione con la riga
+                      stessa. Il segnale resta comunque visibile nel box
+                      "Sovrapposizioni da controllare" sopra. */}
+                  {hasOverlap && !w.dismissed && <i className="ti ti-alert-triangle flex-shrink-0 text-base text-[#9a6b00]" />}
                   {!w.dismissed && !w.covered && (
                     <Link
                       href="/nextgen/search"
@@ -449,28 +503,12 @@ export default function PlannerClient({
           </div>
         </div>
 
-        {/* 4. Budget impegnato finora — informativo (non c'è ancora un tetto
-            di spesa impostabile), rotto per bambino quando utile. */}
-        <div className="mb-4 rounded-2xl bg-white p-4">
-          <div className="mb-2.5 font-poppins text-sm font-bold text-ink">Budget impegnato</div>
-          <div className="text-2xl font-bold text-ink">€{budget.totalSpent}</div>
-          <div className="mb-2.5 text-[11.5px] text-ink-2">Totale prenotazioni attive di questa stagione.</div>
-          {budget.byKid.length > 1 && (
-            <div className="flex flex-col gap-1.5 border-t border-[#F0F2F5] pt-2.5">
-              {budget.byKid.map((k) => (
-                <div key={k.kidId} className="flex items-center justify-between text-[12.5px]">
-                  <span className="text-ink-2">{k.kidName}</span>
-                  <span className="font-semibold text-ink">€{k.amount}</span>
-                </div>
-              ))}
-              <p className="mt-0.5 text-[10.5px] text-ink-3">
-                Le attività condivise tra più figli sono conteggiate per intero su ciascuno.
-              </p>
-            </div>
-          )}
-        </div>
+        {/* SPRINT CORRETTIVO (feedback Fabrizio: "il Budget impegnato non mi
+            interessa qui, c'è una sezione dedicata no?") — rimossa la card
+            duplicata: il riepilogo budget vive solo nel tab "Budget"
+            (PlannerBudgetView), niente più doppione qui in Organizzazione. */}
 
-        {/* 5. Consigliate — stessa logica di Ricerca (Sprint 2), qui mirata
+        {/* 4. Consigliate — stessa logica di Ricerca (Sprint 2), qui mirata
             alla settimana prioritaria. */}
         {recommendations.length > 0 && (
           <div>

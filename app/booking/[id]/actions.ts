@@ -33,6 +33,12 @@ export interface BookingWeekConflict {
   kidName: string;
   otherActivityName: string;
   weekLabel: string;
+  // SPRINT CORRETTIVO (feedback Fabrizio: "sullo stesso bambino forse va
+  // introdotto un check più stringente") — serve a costruire la scelta
+  // esplicita "Annulla l'altra e prenota questa" invece del generico
+  // "Prosegui comunque": id della prenotazione ESISTENTE in conflitto, da
+  // passare a cancelBookingAction se l'utente sceglie di sostituirla.
+  otherBookingId: string;
 }
 
 function isUuid(v: string): boolean {
@@ -122,6 +128,7 @@ async function findWeekOverlapConflicts(
           kidName,
           otherActivityName: activity?.name || "un'altra attività",
           weekLabel: weekLabel || "questa settimana",
+          otherBookingId: row.id,
         });
       }
     }

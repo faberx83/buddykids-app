@@ -9,12 +9,16 @@
 import { PlannerData } from "@/lib/data/planner";
 import { MyBooking } from "@/lib/data/my-bookings";
 import { Activity, Kid } from "@/lib/types";
+import { AlertAction } from "@/lib/nextgen/planner-insights";
 
 export interface Mission {
   id: string;
   emoji: string;
   text: string;
   tone: "success" | "info";
+  // SPRINT CORRETTIVO (feedback Fabrizio) — dove porta il click, se ha senso
+  // (le missioni "success" sono solo rassicurazione, senza azione).
+  action?: AlertAction;
 }
 
 const MONTH_LABELS_IT = [
@@ -72,6 +76,7 @@ function computeMonthMission(planner: PlannerData): Mission | null {
     emoji: "🎯",
     text: `Ti manca solo la Settimana ${missing[0]} per completare ${label}.`,
     tone: "info",
+    action: { type: "week", index: missing[0] },
   };
 }
 
@@ -107,6 +112,7 @@ function computeInterestMissions(bookings: MyBooking[], activities: Activity[], 
         emoji: "🎨",
         text: `Manca ancora un'attività di ${missing[0]} per ${kid.name}.`,
         tone: "info",
+        action: { type: "link", href: `/nextgen/search?kid=${kid.id}` },
       });
     }
     if (missions.length >= 2) break;

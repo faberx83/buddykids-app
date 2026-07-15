@@ -181,6 +181,16 @@ export default function ProfileNextgenClient({
           title="Condivisione piano"
           subtitle="Crea un link di sola lettura per mese o settimana"
         />
+        {/* SPRINT CORRETTIVO (Fabrizio, screenshot "13. Promemoria e
+            avvisi") — anteprima non ancora salvata, vedi PromemoriaClient. */}
+        <HubCard
+          href="/nextgen/planner/promemoria"
+          icon="ti-bell"
+          iconBg="#FFF3E6"
+          iconColor="#E08A2D"
+          title="Promemoria e avvisi"
+          subtitle="Avvisami prima di partire (anteprima)"
+        />
 
         <div className="mt-2 text-[11px] font-bold uppercase tracking-wide text-ink-3">Supporto</div>
         <HubCard

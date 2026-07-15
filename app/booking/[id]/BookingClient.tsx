@@ -9,6 +9,7 @@ import KidRow from "@/components/KidRow";
 import PayMethodCard from "@/components/PayMethodCard";
 import { Activity, Kid, Week } from "@/lib/types";
 import { createBookingAction, BookingWeekConflict } from "./actions";
+import { cancelBookingAction } from "@/app/actions/bookings";
 import AddKidForm from "@/components/AddKidForm";
 import { ComingSoonBadge } from "@/components/StatusBadge";
 import { buildFamilyTiers, familyDiscountAmount } from "@/lib/family-discount";
@@ -177,6 +178,31 @@ export default function BookingClient({
     }
 
     router.push(`/booking/${activity.id}/success?bookingId=${result.bookingId}`);
+  };
+
+  // SPRINT CORRETTIVO (feedback Fabrizio: "sullo stesso bambino forse va
+  // introdotto un check più stringente") — invece del generico "Prosegui
+  // comunque", una scelta esplicita: annullare TUTTE le prenotazioni
+  // esistenti in conflitto (una per bambino/attività diversa, deduplicate
+  // per id) prima di procedere con quella nuova. cancelBookingAction rispetta
+  // già da sola la finestra di cancellazione per-centro: se una delle
+  // vecchie non è più annullabile, si ferma e lo dice, senza creare
+  // comunque la nuova prenotazione (l'utente può allora scegliere "Mantieni
+  // entrambe" invece).
+  const cancelOthersAndBook = async () => {
+    if (!weekConflicts) return;
+    setSubmitting(true);
+    setSubmitError(null);
+    const otherBookingIds = Array.from(new Set(weekConflicts.map((c) => c.otherBookingId)));
+    for (const otherId of otherBookingIds) {
+      const res = await cancelBookingAction(otherId);
+      if (res.error) {
+        setSubmitting(false);
+        setSubmitError(`Non sono riuscito ad annullare una prenotazione esistente: ${res.error}`);
+        return;
+      }
+    }
+    await submitBooking(true);
   };
 
   const handleNext = async () => {
@@ -395,10 +421,14 @@ export default function BookingClient({
           <p className="mb-2 text-center text-xs font-medium text-orange">{submitError}</p>
         )}
 
-        {/* Avviso (non bloccante) prenotazioni sovrapposte — richiesta di
-            Fabrizio: "evitare di farne multiple su diverse attività nella
-            stessa settimana". Non è un blocco rigido: alcune famiglie
-            vogliono davvero due attività nella stessa settimana. */}
+        {/* Avviso prenotazioni sovrapposte — richiesta di Fabrizio: "evitare
+            di farne multiple su diverse attività nella stessa settimana".
+            Non è un blocco rigido (alcune famiglie vogliono davvero due
+            attività nella stessa settimana, es. mattina/pomeriggio), ma
+            SPRINT CORRETTIVO ("sullo stesso bambino forse va introdotto un
+            check più stringente"): niente più un generico "Prosegui
+            comunque" cliccabile senza pensarci — una scelta esplicita tra
+            tenere entrambe le prenotazioni o annullare quella vecchia. */}
         {weekConflicts && weekConflicts.length > 0 && (
           <div className="mb-3 rounded-lg border border-orange-mid bg-orange-light px-3.5 py-3 text-[12.5px] text-ink">
             <div className="mb-1.5 flex items-center gap-1.5 font-bold text-[#9a5300]">
@@ -412,21 +442,31 @@ export default function BookingClient({
                 </li>
               ))}
             </ul>
-            <div className="flex gap-2">
+            <p className="mb-2 text-[11.5px] text-[#7a5400]">Cosa vuoi fare?</p>
+            <div className="flex flex-col gap-1.5">
               <button
                 type="button"
                 disabled={submitting}
                 onClick={() => submitBooking(true)}
-                className="flex-1 rounded-lg bg-ink py-2 text-[13px] font-bold text-white disabled:opacity-50"
+                className="rounded-lg bg-white py-2 text-[13px] font-bold text-ink disabled:opacity-50"
               >
-                {submitting ? "Attendere…" : "Prosegui comunque"}
+                {submitting ? "Attendere…" : "Mantieni entrambe"}
               </button>
               <button
                 type="button"
-                onClick={() => setWeekConflicts(null)}
-                className="rounded-lg bg-white px-3.5 py-2 text-[13px] font-semibold text-ink-2"
+                disabled={submitting}
+                onClick={cancelOthersAndBook}
+                className="rounded-lg bg-ink py-2 text-[13px] font-bold text-white disabled:opacity-50"
               >
-                Annulla
+                {submitting ? "Attendere…" : "Annulla l'altra e prenota questa"}
+              </button>
+              <button
+                type="button"
+                disabled={submitting}
+                onClick={() => setWeekConflicts(null)}
+                className="py-1 text-[12.5px] font-semibold text-ink-2 disabled:opacity-50"
+              >
+                Annulla (non prenotare)
               </button>
             </div>
           </div>
