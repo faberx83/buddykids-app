@@ -151,4 +151,39 @@ test.describe("NEXTGEN - Family Planner Sprint 5.4 (Mappa/Promemoria)", () => {
     }
     await expect(navigateLink).toHaveAttribute("href", /google\.com\/maps/);
   });
+
+  // SPRINT 4 correttivo (feedback Fabrizio, mockup "3. Mappa": "va bene
+  // metter origine uno degli indirizzi, ma lasciare scelta all'utente") —
+  // se la famiglia ha almeno un indirizzo salvato, compare un selettore
+  // "Parti da" e il link "Avvia navigazione" diventa un itinerario
+  // (origin+destination), non più solo la ricerca della destinazione.
+  test("TC-N283 - Vista Mappa: con indirizzi salvati, 'Parti da' costruisce un link di itinerario (non solo destinazione)", async ({
+    page,
+  }) => {
+    test.skip(
+      !isRealDeployment,
+      "Richiede un deploy con Supabase configurato, un account genitore con una prenotazione con indirizzo e almeno un indirizzo di famiglia salvato."
+    );
+    await loginAs(page, "parent");
+    await page.goto("/nextgen/planner");
+    await page.getByRole("button", { name: "Mappa" }).click();
+
+    const firstRow = page.getByText("Le tue attività", { exact: true }).locator("..").locator("button").first();
+    if (!(await firstRow.isVisible().catch(() => false))) {
+      test.skip(true, "Nessuna attività prenotata con coordinate per l'account di test.");
+    }
+    await firstRow.click();
+
+    const originPicker = page.getByText("Parti da", { exact: true });
+    if (!(await originPicker.isVisible().catch(() => false))) {
+      test.skip(true, "Nessun indirizzo di famiglia salvato per l'account di test.");
+    }
+    await expect(originPicker).toBeVisible();
+
+    const navigateLink = page.getByRole("link", { name: "Avvia navigazione" });
+    if (!(await navigateLink.isVisible().catch(() => false))) {
+      test.skip(true, "L'attività selezionata non ha un indirizzo salvato nell'account di test.");
+    }
+    await expect(navigateLink).toHaveAttribute("href", /maps\/dir\/\?api=1&origin=/);
+  });
 });

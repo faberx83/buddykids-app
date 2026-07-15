@@ -20,13 +20,20 @@ test.describe("NEXTGEN - ex hub Logistica & Famiglia (rimosso, Sprint 7)", () =>
     await expect(page.getByRole("link", { name: /Logistica & Famiglia/ })).toHaveCount(0);
   });
 
-  test("TC-N111 - /nextgen/planner/logistica reindirizza a /nextgen/profile (non è un vicolo cieco)", async ({
+  // SPRINT 4 correttivo (audit link) — il redirect puntava ancora a
+  // /nextgen/profile da quando "Famiglia" viveva in prima pagina; dopo la
+  // consolidazione (task #236) che l'ha nascosta dietro l'hub card "Famiglia
+  // e logistica", il vecchio bookmark si fermava un click prima della
+  // destinazione reale. L'assertion ora richiede l'URL ESATTO dell'hub
+  // (prima una regex larga /\/nextgen\/profile/ avrebbe ugualmente
+  // "passato" anche il redirect corto, senza proteggere dalla regressione).
+  test("TC-N111 - /nextgen/planner/logistica reindirizza a /nextgen/profile/famiglia (non un vicolo cieco, non un hop corto)", async ({
     page,
   }) => {
     test.skip(!isRealDeployment, "Richiede un deploy con Supabase configurato e l'account genitore di test.");
     await loginAs(page, "parent");
     await page.goto("/nextgen/planner/logistica");
 
-    await expect(page).toHaveURL(/\/nextgen\/profile/);
+    await expect(page).toHaveURL(/\/nextgen\/profile\/famiglia$/);
   });
 });

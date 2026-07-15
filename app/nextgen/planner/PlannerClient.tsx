@@ -26,6 +26,10 @@ import type { WeekResponsibility } from "@/lib/data/responsibilities";
 import type { PlanShare } from "@/lib/data/plan-shares";
 import type { PlannerMapPin } from "@/lib/data/planner-map";
 import type { Reminder } from "@/lib/nextgen/reminders";
+// "import type": stesso motivo di PlannerMapPin/WeekResponsibility qui sopra
+// — ParentAddress è solo un tipo, quindi non trascina lib/data/addresses.ts
+// (che importa lib/supabase/server) nel bundle client.
+import type { ParentAddress } from "@/lib/nextgen/address-kinds";
 import { Kid, CommunityItem, GroupItem } from "@/lib/types";
 import { lightBgClasses } from "@/lib/colors";
 import ActivityCard from "@/components/ActivityCard";
@@ -75,6 +79,7 @@ export default function PlannerClient({
   mapPins,
   communities,
   groups,
+  addresses,
 }: {
   planner: PlannerData;
   kids: Kid[];
@@ -90,6 +95,7 @@ export default function PlannerClient({
   mapPins: PlannerMapPin[];
   communities: CommunityItem[];
   groups: GroupItem[];
+  addresses: ParentAddress[];
 }) {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -206,7 +212,7 @@ export default function PlannerClient({
 
         <PlannerModeTabs mode={mode} onChange={setMode} />
 
-        {mode === "mappa" && <PlannerMapView pins={mapPins} />}
+        {mode === "mappa" && <PlannerMapView pins={mapPins} addresses={addresses} />}
 
         {mode === "gruppi" && <PlannerGroupsView communities={communities} groups={groups} />}
 

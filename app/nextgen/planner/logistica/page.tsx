@@ -7,6 +7,11 @@ import { redirect } from "next/navigation";
 // separato dal Planner. Questa rotta resta come semplice redirect (non un
 // 404 secco) per non rompere eventuali link salvati/bookmark verso il
 // vecchio hub.
+// SPRINT 4 correttivo (audit link) — il target era rimasto "/nextgen/profile"
+// da quando la sezione Famiglia viveva in prima pagina; dopo la successiva
+// consolidazione (task #236, "Famiglia e logistica" nascosta dietro un hub
+// card) chi arrivava da un vecchio bookmark si fermava un click prima della
+// destinazione reale. Aggiornato per puntare direttamente all'hub attuale.
 export default function LogisticaPage() {
-  redirect("/nextgen/profile");
+  redirect("/nextgen/profile/famiglia");
 }

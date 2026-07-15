@@ -52,7 +52,11 @@ export default function PromemoriaClient({ addresses }: { addresses: ParentAddre
     return casa?.kind ?? availableAddresses[0]?.kind ?? null;
   });
   const selectedOrigin = availableAddresses.find((a) => a.kind === originKind) ?? null;
-  const originLabel = (a: ParentAddress) => (a.kind === "altro" && a.label ? a.label : ADDRESS_KIND_LABELS[a.kind]);
+  // SPRINT 4 correttivo — label personalizzata ora possibile per qualunque
+  // kind (non solo "altro", vedi lib/nextgen/address-kinds.ts), quindi
+  // l'helper non deve più distinguere per kind: usa il nome salvato se c'è,
+  // altrimenti l'etichetta di default.
+  const originLabel = (a: ParentAddress) => a.label || ADDRESS_KIND_LABELS[a.kind];
 
   return (
     <div className="flex min-h-screen flex-col">

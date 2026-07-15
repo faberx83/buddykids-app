@@ -13,7 +13,12 @@ export type AddressKind = "casa" | "lavoro_genitore1" | "lavoro_genitore2" | "al
 
 export interface ParentAddress {
   kind: AddressKind;
-  label: string | null; // solo per kind="altro"
+  // SPRINT 4 correttivo — non più riservato a kind="altro": qualunque slot
+  // può avere un nome personalizzato (es. rinominare "Lavoro Genitore 2" in
+  // "Casa della nonna"). Per "altro" resta obbligatorio (nessun default
+  // sensato); per gli altri kind, se null/vuoto la UI mostra l'etichetta
+  // fissa di ADDRESS_KIND_LABELS.
+  label: string | null;
   address: string; // vuoto se non ancora impostato
 }
 

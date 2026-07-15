@@ -27,18 +27,21 @@ function AddressCard({ initial }: { initial: ParentAddress }) {
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(initial);
 
-  const title = initial.kind === "altro" ? saved.label || "Altro" : ADDRESS_KIND_LABELS[initial.kind];
+  // SPRINT 4 correttivo (feedback Fabrizio: "label indirizzo
+  // personalizzabili") — anche i 3 kind fissi ora mostrano il nome
+  // personalizzato se presente, non solo "Altro".
+  const title = saved.label || ADDRESS_KIND_LABELS[initial.kind];
 
   async function handleSave() {
     setBusy(true);
     setError(null);
-    const res = await setAddressAction(initial.kind, address, initial.kind === "altro" ? label : undefined);
+    const res = await setAddressAction(initial.kind, address, label);
     setBusy(false);
     if (res.error) {
       setError(res.error);
       return;
     }
-    setSaved({ kind: initial.kind, label: initial.kind === "altro" ? label.trim() : null, address: address.trim() });
+    setSaved({ kind: initial.kind, label: label.trim() || null, address: address.trim() });
     setEditing(false);
     showToast("Indirizzo salvato!");
   }
@@ -64,15 +67,19 @@ function AddressCard({ initial }: { initial: ParentAddress }) {
 
       {editing ? (
         <div className="flex flex-col gap-2.5">
-          {initial.kind === "altro" && (
-            <input
-              type="text"
-              value={label}
-              onChange={(e) => setLabel(e.target.value)}
-              placeholder="Nome (es. Casa dei nonni)"
-              className="rounded-xl border border-[#E8EBF0] px-3 py-2 text-[13.5px] font-semibold text-ink"
-            />
-          )}
+          {/* SPRINT 4 correttivo — campo nome personalizzato ora disponibile
+              per TUTTI i kind, non solo "altro": per i 3 slot fissi è
+              opzionale (placeholder mostra l'etichetta di default a cui si
+              torna se lasciato vuoto), per "altro" resta obbligatorio. */}
+          <input
+            type="text"
+            value={label}
+            onChange={(e) => setLabel(e.target.value)}
+            placeholder={
+              initial.kind === "altro" ? "Nome (es. Casa dei nonni)" : `Nome personalizzato (default: ${ADDRESS_KIND_LABELS[initial.kind]})`
+            }
+            className="rounded-xl border border-[#E8EBF0] px-3 py-2 text-[13.5px] font-semibold text-ink"
+          />
           <input
             type="text"
             value={address}

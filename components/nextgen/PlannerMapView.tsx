@@ -10,6 +10,7 @@ import dynamic from "next/dynamic";
 import type { PlannerMapPin } from "@/lib/data/planner-map";
 import { estimateDistance } from "@/lib/nextgen/planner-map-estimate";
 import Link from "next/link";
+import { ADDRESS_KIND_LABELS, ParentAddress } from "@/lib/nextgen/address-kinds";
 
 // SPRINT 5.4 (NEXTGEN) — Planner, modalità Mappa: "tutte le attività su una
 // mappa, con distanze e tempi di percorrenza dai tuoi indirizzi salvati"
@@ -38,12 +39,33 @@ const ActivityMap = dynamic(() => import("@/components/ActivityMap"), {
   ),
 });
 
-function mapsUrl(address: string): string {
+// SPRINT 4 correttivo (feedback Fabrizio, mockup "3. Mappa": "va bene metter
+// origine uno degli indirizzi, ma lasciare scelta all'utente") — se è
+// selezionato un indirizzo di partenza, "Avvia navigazione" costruisce un
+// link di ITINERARIO (origin+destination) invece di una semplice ricerca
+// della destinazione (che lasciava a Google Maps l'uso della posizione GPS
+// del device, non necessariamente quella di famiglia scelta).
+function mapsUrl(address: string, origin?: string | null): string {
+  if (origin) {
+    return `https://www.google.com/maps/dir/?api=1&origin=${encodeURIComponent(origin)}&destination=${encodeURIComponent(address)}`;
+  }
   return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(address)}`;
 }
 
-export default function PlannerMapView({ pins }: { pins: PlannerMapPin[] }) {
+export default function PlannerMapView({ pins, addresses }: { pins: PlannerMapPin[]; addresses: ParentAddress[] }) {
   const [selectedId, setSelectedId] = useState<string | null>(null);
+
+  // Stesso principio già applicato in Promemoria (PromemoriaClient.tsx):
+  // solo gli indirizzi compilati sono selezionabili, default "casa" se
+  // presente altrimenti il primo compilato, nessuna selezione forzata se la
+  // famiglia non ha ancora salvato nulla.
+  const availableAddresses = addresses.filter((a) => a.address.trim() !== "");
+  const [originKind, setOriginKind] = useState<string | null>(() => {
+    const casa = availableAddresses.find((a) => a.kind === "casa");
+    return casa?.kind ?? availableAddresses[0]?.kind ?? null;
+  });
+  const selectedOrigin = availableAddresses.find((a) => a.kind === originKind) ?? null;
+  const originLabel = (a: ParentAddress) => a.label || ADDRESS_KIND_LABELS[a.kind];
 
   if (pins.length === 0) {
     return (
@@ -106,6 +128,30 @@ export default function PlannerMapView({ pins }: { pins: PlannerMapPin[] }) {
               <span className="text-[10px] font-normal text-ink-3">(stimato)</span>
             </div>
           )}
+          {/* SPRINT 4 correttivo — selettore "Parti da": stesso pattern pill
+              già usato in Promemoria, qui applicato all'itinerario che
+              "Avvia navigazione" apre in Maps. Compare solo se c'è almeno un
+              indirizzo salvato; senza indirizzi il comportamento resta
+              quello di prima (solo destinazione). */}
+          {availableAddresses.length > 0 && (
+            <div className="mb-3">
+              <div className="mb-1.5 text-[10.5px] font-semibold text-ink-3">Parti da</div>
+              <div className="no-scrollbar flex gap-1.5 overflow-x-auto">
+                {availableAddresses.map((a) => (
+                  <button
+                    key={a.kind}
+                    type="button"
+                    onClick={() => setOriginKind(a.kind)}
+                    className={`flex-shrink-0 whitespace-nowrap rounded-full px-3 py-1.5 text-[11.5px] font-semibold transition-colors ${
+                      originKind === a.kind ? "bg-trama-violet text-white" : "bg-bg text-ink-2"
+                    }`}
+                  >
+                    {originLabel(a)}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
           <div className="flex gap-2">
             <Link
               href={`/activity/${selected.activitySlug}`}
@@ -115,7 +161,7 @@ export default function PlannerMapView({ pins }: { pins: PlannerMapPin[] }) {
             </Link>
             {selected.address && (
               <a
-                href={mapsUrl(selected.address)}
+                href={mapsUrl(selected.address, selectedOrigin?.address)}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="flex-1 rounded-full bg-trama-violet py-2.5 text-center text-[12.5px] font-bold text-white"

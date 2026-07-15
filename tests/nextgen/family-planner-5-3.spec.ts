@@ -53,6 +53,34 @@ test.describe("NEXTGEN - Family Planner Sprint 5.3 (Logistica/Chi fa cosa/Condiv
     await expect(page.getByLabel("Apri in Maps").first()).toBeVisible();
   });
 
+  // SPRINT 4 correttivo (feedback Fabrizio: "label indirizzo
+  // personalizzabili") — prima solo il kind "altro" poteva avere un nome
+  // libero; ora anche i 3 slot fissi (Casa/Lavoro Genitore 1/Lavoro Genitore
+  // 2) accettano un nome personalizzato opzionale, che sostituisce
+  // l'etichetta di default ovunque venga mostrata (qui e in Promemoria).
+  test("TC-N284 - Un indirizzo a kind fisso (es. Casa) può avere un nome personalizzato che sostituisce l'etichetta di default", async ({
+    page,
+  }) => {
+    test.skip(!isRealDeployment, "Richiede un deploy con Supabase configurato e l'account genitore di test.");
+    await loginAs(page, "parent");
+    await page.goto("/nextgen/planner/indirizzi");
+
+    const casaCard = page.getByText("Casa", { exact: true }).locator("..");
+    const editButton = casaCard.getByLabel("Modifica");
+    if (await editButton.isVisible().catch(() => false)) {
+      await editButton.click();
+    }
+    await casaCard.locator('input[placeholder*="Nome personalizzato"]').fill("Casa della nonna");
+    const addressInput = casaCard.getByPlaceholder("Via, città...");
+    if (!(await addressInput.inputValue())) {
+      await addressInput.fill("Via Test 1, Milano");
+    }
+    await casaCard.getByRole("button", { name: "Salva" }).click();
+
+    await expect(page.getByText("Indirizzo salvato!")).toBeVisible();
+    await expect(page.getByText("Casa della nonna", { exact: true })).toBeVisible();
+  });
+
   test("TC-N58 - Rimuovere un indirizzo salvato torna alla modalità di modifica", async ({ page }) => {
     test.skip(!isRealDeployment, "Richiede un deploy con Supabase configurato e un account genitore di test con almeno un indirizzo già salvato.");
     await loginAs(page, "parent");

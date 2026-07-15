@@ -8,6 +8,7 @@ import { getParentProfile } from "@/lib/data/profile";
 import { getResponsibilitiesForParent } from "@/lib/data/responsibilities";
 import { getPlanSharesForParent } from "@/lib/data/plan-shares";
 import { getPlannerMapPins } from "@/lib/data/planner-map";
+import { getParentAddresses } from "@/lib/data/addresses";
 import { getCommunitiesForUser } from "@/lib/data/communities";
 import { getGroupsForUser } from "@/lib/data/groups";
 import { computeSmartMatches } from "@/lib/nextgen/smart-search";
@@ -48,6 +49,7 @@ export default async function NextgenPlannerPage() {
     mapPins,
     communities,
     groups,
+    addresses,
   ] = await Promise.all([
     getPlannerData(),
     getMyBookingsForParent(),
@@ -60,6 +62,12 @@ export default async function NextgenPlannerPage() {
     getPlannerMapPins(),
     getCommunitiesForUser(),
     getGroupsForUser(),
+    // SPRINT 4 correttivo (feedback Fabrizio, mockup Mappa: "va bene metter
+    // origine uno degli indirizzi, ma lasciare scelta all'utente") — stessi
+    // indirizzi già letti per Promemoria/Indirizzi (nessuna nuova query),
+    // qui servono per lasciare scegliere l'indirizzo di partenza in
+    // PlannerMapView invece di aprire solo la destinazione su Maps.
+    getParentAddresses(),
   ]);
 
   const overlaps = computeKidOverlaps(bookings);
@@ -93,6 +101,7 @@ export default async function NextgenPlannerPage() {
       mapPins={mapPins}
       communities={communities}
       groups={groups}
+      addresses={addresses}
     />
   );
 }
