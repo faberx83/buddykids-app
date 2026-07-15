@@ -48,15 +48,22 @@ export function computeSmartMatches(
   const results: SmartMatch[] = activities.map((activity) => {
     // Punteggio migliore tra i bambini: una raccomandazione buona anche per
     // un solo figlio non va scartata solo perché non piace agli altri.
+    // SPRINT 3 (feedback Fabrizio: "se piace a più bambini, raggruppa in
+    // 'Piacciono ai tuoi figli' invece di ripetere 'Piace a X'") — oltre al
+    // migliore (usato per lo score, invariato), teniamo traccia di TUTTI i
+    // bambini che superano la soglia, per decidere il testo del reason.
     let best: { kidName: string | null; percent: number } = { kidName: null, percent: 0 };
+    const matchingKidNames: string[] = [];
     for (const kid of kids) {
       const percent = matchPercentForKid(kid, activity);
+      if (percent >= 40) matchingKidNames.push(kid.name);
       if (percent > best.percent) best = { kidName: kid.name, percent };
     }
 
     let score = best.percent;
     const reasons: string[] = [];
-    if (best.kidName && best.percent >= 40) reasons.push(`Piace a ${best.kidName}`);
+    if (matchingKidNames.length >= 2) reasons.push("Piacciono ai tuoi figli");
+    else if (matchingKidNames.length === 1) reasons.push(`Piace a ${matchingKidNames[0]}`);
 
     if (geo && activity.lat !== undefined && activity.lng !== undefined) {
       const km = haversineKm(geo.lat, geo.lng, activity.lat, activity.lng);

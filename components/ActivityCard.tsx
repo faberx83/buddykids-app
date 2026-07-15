@@ -98,11 +98,21 @@ export default function ActivityCard({
                 dietaryOptions, vedi lib/data/activities.ts) e sono visibili
                 da tempo nel dettaglio (DetailClient.tsx), ma non erano mai
                 stati aggiunti a questa card di lista/ricerca — stesso gap
-                già risolto sopra per le certificazioni. */}
+                già risolto sopra per le certificazioni.
+                SPRINT 3 (feedback Fabrizio) — due correzioni: 1) questo
+                badge condivideva lo stesso blu della Certificazione, poco
+                distinguibile a colpo d'occhio; ora è viola (stesso token
+                "purple" già in tailwind.config.ts, non ancora usato per
+                badge), Certificazione resta blu. 2) "Accesso disabili"
+                comunicava solo "accessibilità fisica" (rampe, ecc.);
+                Fabrizio ha chiesto che comunichi "accetta senza limitazioni
+                nelle attività" — testo e icona aggiornati di conseguenza
+                (il campo dati/nome variabile centerAccessible resta
+                invariato, cambia solo cosa il genitore legge). */}
             {activity.centerAccessible && (
-              <span className="flex items-center gap-1 rounded-full bg-sky-light px-2.5 py-0.5 text-[10px] font-semibold text-sky">
-                <i className="ti ti-wheelchair text-[11px]" />
-                Accesso disabili
+              <span className="flex items-center gap-1 rounded-full bg-purple-light px-2.5 py-0.5 text-[10px] font-semibold text-purple">
+                <i className="ti ti-heart-handshake text-[11px]" />
+                Nessuna limitazione
               </span>
             )}
             {activity.dietaryOptions && activity.dietaryOptions.length > 0 && (

@@ -307,9 +307,13 @@ export default function DetailClient({
             available={activity.shuttlePrice > 0}
             detail={activity.shuttlePrice > 0 ? `+€${activity.shuttlePrice}/sett` : undefined}
           />
+          {/* SPRINT 3 (feedback Fabrizio) — stesso restyle wording di
+              ActivityCard.tsx/ActivityCardHorizontal.tsx: qui non c'era un
+              problema di colore (ServiceTag è sempre verde/grigio, uniforme
+              per tutti i servizi), solo di testo. */}
           <ServiceTag
-            icon="ti-wheelchair"
-            label="Accesso disabili"
+            icon="ti-heart-handshake"
+            label="Nessuna limitazione"
             available={Boolean(activity.centerAccessible)}
             detail={activity.centerAccessible ? activity.centerAccessibleNote : undefined}
           />

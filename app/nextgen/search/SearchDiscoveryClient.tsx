@@ -7,7 +7,7 @@ import { Activity, Kid } from "@/lib/types";
 import { computeSmartMatches, SmartMatch } from "@/lib/nextgen/smart-search";
 import { readStoredGeo, writeStoredGeo, clearStoredGeo, haversineKm } from "@/lib/geo";
 import { categories } from "@/lib/mock-data";
-import { getSeasonWeekRanges, isoDate, formatShortRange } from "@/lib/season-weeks";
+import { getSeasonWeekRanges, isoDate, formatShortRange, SeasonWeekRange } from "@/lib/season-weeks";
 import ActivityCard from "@/components/ActivityCard";
 import PageHeader from "@/components/PageHeader";
 import NextgenBadge from "@/components/nextgen/NextgenBadge";
@@ -76,6 +76,35 @@ function parseAgeRange(ageRange: string): [number, number] {
   return [Number(match[1]), Number(match[2])];
 }
 
+// SPRINT 3 (feedback Fabrizio: "il filtro settimana dovrebbe permettere
+// multi-selezione, raggruppata per mese") — piccola funzione pura duplicata
+// qui (stessa convenzione già usata altrove nel repo, es.
+// lib/nextgen/planner-insights.ts#groupWeeksByMonth): raggruppa le 13
+// SeasonWeekRange per mese di inizio, preservando l'ordine cronologico.
+const MONTH_LABELS_IT_FULL = [
+  "Gennaio", "Febbraio", "Marzo", "Aprile", "Maggio", "Giugno",
+  "Luglio", "Agosto", "Settembre", "Ottobre", "Novembre", "Dicembre",
+];
+
+interface WeekRangeMonthGroup {
+  monthLabel: string;
+  ranges: SeasonWeekRange[];
+}
+
+function groupWeekRangesByMonth(ranges: SeasonWeekRange[]): WeekRangeMonthGroup[] {
+  const groups: WeekRangeMonthGroup[] = [];
+  let lastMonth = -1;
+  for (const r of ranges) {
+    const month = r.start.getUTCMonth();
+    if (month !== lastMonth) {
+      groups.push({ monthLabel: MONTH_LABELS_IT_FULL[month], ranges: [] });
+      lastMonth = month;
+    }
+    groups[groups.length - 1].ranges.push(r);
+  }
+  return groups;
+}
+
 function ServiceCheckbox({
   label,
   checked,
@@ -137,7 +166,12 @@ export default function SearchDiscoveryClient({
   const [zone, setZone] = useState("");
   const [services, setServices] = useState<ServiceFilters>(EMPTY_SERVICES);
   const [selectedTagIds, setSelectedTagIds] = useState<string[]>([]);
-  const [selectedWeekStart, setSelectedWeekStart] = useState<string | null>(null);
+  // SPRINT 3 (feedback Fabrizio: "il filtro settimana dovrebbe permettere di
+  // selezionare più settimane, non solo una") — da singolo valore ad array;
+  // un'attività passa il filtro se disponibile in ALMENO UNA delle settimane
+  // scelte (unione, non intersezione: si sta chiedendo "quali settimane mi
+  // interessano", non "disponibile in tutte").
+  const [selectedWeekStarts, setSelectedWeekStarts] = useState<string[]>([]);
   const [radiusKm, setRadiusKm] = useState(DEFAULT_RADIUS_KM);
 
   const [geo, setGeo] = useState<{ lat: number; lng: number } | null>(() => readStoredGeo());
@@ -181,6 +215,15 @@ export default function SearchDiscoveryClient({
     setSelectedTagIds((prev) => (prev.includes(tagId) ? prev.filter((id) => id !== tagId) : [...prev, tagId]));
   }
 
+  function toggleWeek(start: string) {
+    setSelectedWeekStarts((prev) => (prev.includes(start) ? prev.filter((s) => s !== start) : [...prev, start]));
+  }
+
+  // SPRINT 3 (feedback Fabrizio: "il filtro bambino potrebbe stare nella
+  // stessa riga scorrevole") — ora che il chip bambino vive nella stessa
+  // riga di filters/Azzera, "Azzera" resetta anche la selezione bambino
+  // (torna a "Tutti i bambini"), coerente con l'idea che sia parte dello
+  // stesso set di filtri visibile in un colpo d'occhio.
   function clearAllFilters() {
     setMinAge(0);
     setMaxAge(18);
@@ -188,18 +231,14 @@ export default function SearchDiscoveryClient({
     setZone("");
     setServices(EMPTY_SERVICES);
     setSelectedTagIds([]);
-    setSelectedWeekStart(null);
+    setSelectedWeekStarts([]);
+    setSelectedKidId(null);
     setOpenPanel(null);
     clearGeo();
   }
 
   const seasonWeekRanges = useMemo(() => getSeasonWeekRanges(seasonYear), [seasonYear]);
-  const selectedWeekInfo = useMemo(() => {
-    if (!selectedWeekStart) return null;
-    const match = seasonWeekRanges.find((r) => isoDate(r.start) === selectedWeekStart);
-    if (!match) return null;
-    return { index: match.index, label: `Settimana ${match.index} (${formatShortRange(match.start, match.end)})` };
-  }, [selectedWeekStart, seasonWeekRanges]);
+  const weekRangeGroups = useMemo(() => groupWeekRangesByMonth(seasonWeekRanges), [seasonWeekRanges]);
 
   const zoneOptions = useMemo(() => {
     const set = new Set<string>();
@@ -219,8 +258,9 @@ export default function SearchDiscoveryClient({
     (maxPrice < 500 ? 1 : 0) +
     (zone.trim() ? 1 : 0) +
     (hasGeo ? 1 : 0) +
-    (selectedWeekStart ? 1 : 0) +
+    (selectedWeekStarts.length > 0 ? 1 : 0) +
     (selectedTagIds.length > 0 ? 1 : 0) +
+    (selectedKidId !== null ? 1 : 0) +
     Object.values(services).filter(Boolean).length;
 
   const selectedKids = useMemo(
@@ -232,7 +272,12 @@ export default function SearchDiscoveryClient({
   // escludono i risultati PRIMA dello scoring smart, stessa logica di
   // filteredList in LEGACY.
   const filteredActivities = useMemo(() => {
-    const availableIdsForWeek = selectedWeekStart ? new Set(availabilityByWeek[selectedWeekStart] ?? []) : null;
+    // SPRINT 3 — multi-selezione: unione dei posti disponibili su TUTTE le
+    // settimane scelte (un'attività passa se libera in almeno una).
+    const availableIdsForWeeks =
+      selectedWeekStarts.length > 0
+        ? new Set(selectedWeekStarts.flatMap((s) => availabilityByWeek[s] ?? []))
+        : null;
     const q = query.trim().toLowerCase();
 
     return activities.filter((a) => {
@@ -248,11 +293,11 @@ export default function SearchDiscoveryClient({
       if (services.attivitaExtra && a.badges.length === 0) return false;
       if (services.accessoDisabili && !a.centerAccessible) return false;
       if (services.dieteGestite && !(a.dietaryOptions && a.dietaryOptions.length > 0)) return false;
-      if (availableIdsForWeek && a.dbId && !availableIdsForWeek.has(a.dbId)) return false;
+      if (availableIdsForWeeks && a.dbId && !availableIdsForWeeks.has(a.dbId)) return false;
       if (selectedTagIds.length > 0 && !a.tagIds.some((id) => selectedTagIds.includes(id))) return false;
       return true;
     });
-  }, [activities, query, minAge, maxAge, maxPrice, zone, services, selectedTagIds, selectedWeekStart, availabilityByWeek]);
+  }, [activities, query, minAge, maxAge, maxPrice, zone, services, selectedTagIds, selectedWeekStarts, availabilityByWeek]);
 
   const matches = useMemo(
     () => computeSmartMatches(filteredActivities, selectedKids, { geo, uncoveredWeekStart, availabilityByWeek }),
@@ -294,7 +339,11 @@ export default function SearchDiscoveryClient({
       label: selectedTagIds.length > 0 ? `Tipo attività (${selectedTagIds.length})` : "Tipo attività",
     },
     { key: "servizi", icon: "ti-adjustments-horizontal", label: "Servizi" },
-    { key: "data", icon: "ti-calendar", label: selectedWeekInfo ? `Settimana ${selectedWeekInfo.index}` : "Date" },
+    {
+      key: "data",
+      icon: "ti-calendar",
+      label: selectedWeekStarts.length > 0 ? `Settimane (${selectedWeekStarts.length})` : "Date",
+    },
   ];
 
   return (
@@ -315,37 +364,43 @@ export default function SearchDiscoveryClient({
           className="mb-3 w-full rounded-xl border border-[#E8EBF0] bg-white px-3.5 py-2.5 text-sm outline-none focus:border-trama-violet"
         />
 
-        {kids.length > 1 && (
-          <div className="mb-3 flex flex-wrap items-center gap-1.5">
-            <button
-              type="button"
-              onClick={() => setSelectedKidId(null)}
-              className={`rounded-full px-3 py-1.5 text-[12px] font-semibold ${
-                selectedKidId === null ? "bg-trama-violet text-white" : "bg-bg text-ink-2"
-              }`}
-            >
-              Tutti i bambini
-            </button>
-            {kids.map((k) => (
-              <button
-                key={k.id}
-                type="button"
-                onClick={() => setSelectedKidId(k.id)}
-                className={`rounded-full px-3 py-1.5 text-[12px] font-semibold ${
-                  selectedKidId === k.id ? "bg-trama-violet text-white" : "bg-bg text-ink-2"
-                }`}
-              >
-                {k.name}
-              </button>
-            ))}
-          </div>
-        )}
-
         {/* SPRINT 5.7 — 6 pannelli filtro ripristinati da LEGACY (età, prezzo,
             zona+raggio, tipo attività, servizi, data), applicati come filtro
-            "duro" prima dello scoring smart. */}
+            "duro" prima dello scoring smart.
+            SPRINT 3 (feedback Fabrizio: "il filtro bambino potrebbe stare
+            nella stessa riga scorrevole dei filtri, invece che in un blocco
+            a parte sopra") — i chip bambino sono ora i primi elementi della
+            STESSA riga scorrevole, con un separatore verticale leggero prima
+            dei filtri veri e propri, invece di un blocco flex-wrap separato
+            sopra. */}
         <div className="mb-1 flex items-center gap-2">
           <div className="no-scrollbar flex min-w-0 flex-1 items-center gap-2 overflow-x-auto pb-1">
+            {kids.length > 1 && (
+              <>
+                <button
+                  type="button"
+                  onClick={() => setSelectedKidId(null)}
+                  className={`flex-shrink-0 whitespace-nowrap rounded-full px-3 py-1.5 text-xs font-semibold transition-colors ${
+                    selectedKidId === null ? "bg-trama-violet text-white" : "bg-bg text-ink-2"
+                  }`}
+                >
+                  Tutti i bambini
+                </button>
+                {kids.map((k) => (
+                  <button
+                    key={k.id}
+                    type="button"
+                    onClick={() => setSelectedKidId(k.id)}
+                    className={`flex-shrink-0 whitespace-nowrap rounded-full px-3 py-1.5 text-xs font-semibold transition-colors ${
+                      selectedKidId === k.id ? "bg-trama-violet text-white" : "bg-bg text-ink-2"
+                    }`}
+                  >
+                    {k.name}
+                  </button>
+                ))}
+                <div className="mx-0.5 h-5 w-px flex-shrink-0 bg-[#E8EBF0]" />
+              </>
+            )}
             {filters.map((f) => (
               <div
                 key={f.key}
@@ -370,12 +425,12 @@ export default function SearchDiscoveryClient({
                     }`}
                   />
                 )}
-                {f.key === "data" && selectedWeekStart && (
+                {f.key === "data" && selectedWeekStarts.length > 0 && (
                   <span
                     role="button"
                     onClick={(e) => {
                       e.stopPropagation();
-                      setSelectedWeekStart(null);
+                      setSelectedWeekStarts([]);
                     }}
                     className={`ti ti-x flex h-3.5 w-3.5 items-center justify-center rounded-full text-[10px] ${
                       openPanel === f.key ? "bg-white/25" : "bg-ink-3/20"
@@ -397,14 +452,19 @@ export default function SearchDiscoveryClient({
               </div>
             ))}
           </div>
-          <button
-            type="button"
-            onClick={clearAllFilters}
-            disabled={activeFiltersCount === 0}
-            className="flex-shrink-0 whitespace-nowrap pl-1 text-xs font-semibold text-trama-orange disabled:text-ink-3 disabled:opacity-50"
-          >
-            Azzera{activeFiltersCount > 0 ? ` (${activeFiltersCount})` : ""}
-          </button>
+          {/* SPRINT 3 (feedback Fabrizio: "'Azzera' dovrebbe sparire del
+              tutto quando non ci sono filtri attivi, non solo restare
+              grigio/disabilitato") — prima il bottone era sempre montato,
+              solo visivamente disabilitato. */}
+          {activeFiltersCount > 0 && (
+            <button
+              type="button"
+              onClick={clearAllFilters}
+              className="flex-shrink-0 whitespace-nowrap pl-1 text-xs font-semibold text-trama-orange"
+            >
+              Azzera ({activeFiltersCount})
+            </button>
+          )}
         </div>
 
         {openPanel === "eta" && (
@@ -566,10 +626,13 @@ export default function SearchDiscoveryClient({
             />
             {/* SPRINT 5 (feedback Fabrizio): "aggiungi flag per disabili e diete
                 speciali (usa stessa naming ovunque)" — stessa label usata da
-                ActivityCard.tsx ("Accesso disabili" / "Diete gestite"), così il
-                badge sulla card e il filtro qui usano lo stesso naming. */}
+                ActivityCard.tsx, così il badge sulla card e il filtro qui
+                restano coerenti.
+                SPRINT 3 — wording allineato al restyle badge: "Nessuna
+                limitazione" invece di "Accesso disabili" (il campo dati
+                accessoDisabili/centerAccessible resta invariato). */}
             <ServiceCheckbox
-              label="♿ Accesso disabili"
+              label="🤝 Nessuna limitazione"
               checked={services.accessoDisabili}
               onChange={(v) => setServices((s) => ({ ...s, accessoDisabili: v }))}
             />
@@ -586,35 +649,54 @@ export default function SearchDiscoveryClient({
           </div>
         )}
 
+        {/* SPRINT 3 (feedback Fabrizio: "il filtro settimana dovrebbe
+            permettere multi-selezione, con un raggruppamento mese →
+            settimana") — da singolo bottone "attivo" a multi-selezione
+            (ogni settimana si accende/spegne in modo indipendente), con le
+            13 settimane raggruppate per mese invece di una lista piatta. */}
         {openPanel === "data" && (
-          <div className="mb-3 max-h-64 overflow-y-auto rounded-lg border border-[#E8EBF0] bg-bg p-3">
-            <div className="mb-2 text-xs font-semibold text-ink-2">Settimana di camp</div>
-            <div className="space-y-1.5">
-              <button
-                type="button"
-                onClick={() => setSelectedWeekStart(null)}
-                className={`block w-full rounded-md px-3 py-2 text-left text-xs font-semibold transition-colors ${
-                  selectedWeekStart === null ? "bg-trama-violet text-white" : "bg-white text-ink-2"
-                }`}
-              >
-                Qualsiasi settimana
-              </button>
-              {seasonWeekRanges.map((r) => {
-                const start = isoDate(r.start);
-                const active = selectedWeekStart === start;
-                return (
-                  <button
-                    key={start}
-                    type="button"
-                    onClick={() => setSelectedWeekStart(active ? null : start)}
-                    className={`block w-full rounded-md px-3 py-2 text-left text-xs font-semibold transition-colors ${
-                      active ? "bg-trama-violet text-white" : "bg-white text-ink-2"
-                    }`}
-                  >
-                    Settimana {r.index} · {formatShortRange(r.start, r.end)}
-                  </button>
-                );
-              })}
+          <div className="mb-3 max-h-72 overflow-y-auto rounded-lg border border-[#E8EBF0] bg-bg p-3">
+            <div className="mb-2 flex items-center justify-between">
+              <div className="text-xs font-semibold text-ink-2">Settimane di camp</div>
+              {selectedWeekStarts.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => setSelectedWeekStarts([])}
+                  className="text-[11px] font-semibold text-trama-orange"
+                >
+                  Qualsiasi settimana
+                </button>
+              )}
+            </div>
+            <div className="space-y-3">
+              {weekRangeGroups.map((group) => (
+                <div key={group.monthLabel}>
+                  <div className="mb-1 text-[10.5px] font-bold uppercase tracking-wide text-ink-3">
+                    {group.monthLabel}
+                  </div>
+                  <div className="space-y-1.5">
+                    {group.ranges.map((r) => {
+                      const start = isoDate(r.start);
+                      const active = selectedWeekStarts.includes(start);
+                      return (
+                        <button
+                          key={start}
+                          type="button"
+                          onClick={() => toggleWeek(start)}
+                          className={`flex w-full items-center justify-between rounded-md px-3 py-2 text-left text-xs font-semibold transition-colors ${
+                            active ? "bg-trama-violet text-white" : "bg-white text-ink-2"
+                          }`}
+                        >
+                          <span>
+                            Settimana {r.index} · {formatShortRange(r.start, r.end)}
+                          </span>
+                          {active && <i className="ti ti-check text-sm" />}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              ))}
             </div>
           </div>
         )}

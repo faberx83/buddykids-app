@@ -55,12 +55,15 @@ export default function ActivityCardHorizontal({
                 <i className="ti ti-certificate text-[12px]" />
               </div>
             )}
+            {/* SPRINT 3 (feedback Fabrizio) — stesso restyle di ActivityCard.tsx:
+                viola invece di blu (distinguibile dalla certificazione),
+                testo "Nessuna limitazione" invece di "Accesso disabili". */}
             {activity.centerAccessible && (
               <div
-                title="Accesso disabili"
-                className="flex h-5 w-5 items-center justify-center rounded-full bg-white/95 text-sky"
+                title="Nessuna limitazione"
+                className="flex h-5 w-5 items-center justify-center rounded-full bg-white/95 text-purple"
               >
-                <i className="ti ti-wheelchair text-[12px]" />
+                <i className="ti ti-heart-handshake text-[12px]" />
               </div>
             )}
             {activity.dietaryOptions && activity.dietaryOptions.length > 0 && (
