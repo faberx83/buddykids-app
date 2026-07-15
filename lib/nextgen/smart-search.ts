@@ -62,7 +62,11 @@ export function computeSmartMatches(
 
     let score = best.percent;
     const reasons: string[] = [];
-    if (matchingKidNames.length >= 2) reasons.push("Piacciono ai tuoi figli");
+    // SPRINT 3 correttivo (feedback Fabrizio): "scriverei 'Piace ai tuoi
+    // figli' perché la label è per singola attività, non per un gruppo" —
+    // verbo al singolare (concorda con "questa attività piace"), non
+    // "piacciono" (che suonerebbe corretto solo per un elenco di attività).
+    if (matchingKidNames.length >= 2) reasons.push("Piace ai tuoi figli");
     else if (matchingKidNames.length === 1) reasons.push(`Piace a ${matchingKidNames[0]}`);
 
     if (geo && activity.lat !== undefined && activity.lng !== undefined) {

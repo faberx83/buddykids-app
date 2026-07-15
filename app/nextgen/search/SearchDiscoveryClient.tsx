@@ -39,7 +39,7 @@ const ActivityMap = dynamic(() => import("@/components/ActivityMap"), {
 // continua a occuparsi solo di punteggio/ordinamento/motivazioni sui
 // risultati già filtrati. Il motore stesso (lib/nextgen/smart-search.ts) non
 // viene toccato.
-type FilterPanel = "eta" | "prezzo" | "zona" | "tag" | "servizi" | "data" | null;
+type FilterPanel = "bambini" | "eta" | "prezzo" | "zona" | "tag" | "servizi" | "data" | null;
 type ViewMode = "lista" | "mappa";
 type GeoStatus = "idle" | "loading" | "error";
 
@@ -329,7 +329,22 @@ export default function SearchDiscoveryClient({
     [matches]
   );
 
+  // SPRINT 3 correttivo (feedback Fabrizio: "il filtro dovrebbe essere
+  // 'Bambini' e poi dentro la lista dei bambini, altrimenti se diventano 3?
+  // 4? simile a 'Tipo Attività' o 'Servizi'") — i pill inline (uno per
+  // figlio, sempre visibili nella riga scorrevole) non scalano a famiglie
+  // con più figli; ora è un pannello a comparsa come gli altri 6, con il
+  // nome del bambino selezionato nel label del chip stesso.
   const filters: { key: FilterPanel; icon: string; label: string }[] = [
+    ...(kids.length > 1
+      ? [
+          {
+            key: "bambini" as FilterPanel,
+            icon: "ti-user-circle",
+            label: selectedKidId ? `Bambini (${kids.find((k) => k.id === selectedKidId)?.name ?? ""})` : "Bambini",
+          },
+        ]
+      : []),
     { key: "eta", icon: "ti-users", label: "Età" },
     { key: "prezzo", icon: "ti-coin-euro", label: "Prezzo" },
     { key: "zona", icon: "ti-map-pin", label: hasGeo ? "Zona (vicino a te)" : "Zona" },
@@ -367,40 +382,15 @@ export default function SearchDiscoveryClient({
         {/* SPRINT 5.7 — 6 pannelli filtro ripristinati da LEGACY (età, prezzo,
             zona+raggio, tipo attività, servizi, data), applicati come filtro
             "duro" prima dello scoring smart.
-            SPRINT 3 (feedback Fabrizio: "il filtro bambino potrebbe stare
-            nella stessa riga scorrevole dei filtri, invece che in un blocco
-            a parte sopra") — i chip bambino sono ora i primi elementi della
-            STESSA riga scorrevole, con un separatore verticale leggero prima
-            dei filtri veri e propri, invece di un blocco flex-wrap separato
-            sopra. */}
+            SPRINT 3 correttivo (feedback Fabrizio: "il filtro dovrebbe essere
+            'Bambini' e poi dentro la lista dei bambini, altrimenti se
+            diventano 3? 4? simile a 'Tipo Attività' o 'Servizi'") — il
+            bambino non è più un blocco di pill inline: è un pannello a
+            comparsa come gli altri, primo della riga scorrevole, che scala a
+            qualunque numero di figli invece di allargare la riga con un
+            pulsante per ciascuno. */}
         <div className="mb-1 flex items-center gap-2">
           <div className="no-scrollbar flex min-w-0 flex-1 items-center gap-2 overflow-x-auto pb-1">
-            {kids.length > 1 && (
-              <>
-                <button
-                  type="button"
-                  onClick={() => setSelectedKidId(null)}
-                  className={`flex-shrink-0 whitespace-nowrap rounded-full px-3 py-1.5 text-xs font-semibold transition-colors ${
-                    selectedKidId === null ? "bg-trama-violet text-white" : "bg-bg text-ink-2"
-                  }`}
-                >
-                  Tutti i bambini
-                </button>
-                {kids.map((k) => (
-                  <button
-                    key={k.id}
-                    type="button"
-                    onClick={() => setSelectedKidId(k.id)}
-                    className={`flex-shrink-0 whitespace-nowrap rounded-full px-3 py-1.5 text-xs font-semibold transition-colors ${
-                      selectedKidId === k.id ? "bg-trama-violet text-white" : "bg-bg text-ink-2"
-                    }`}
-                  >
-                    {k.name}
-                  </button>
-                ))}
-                <div className="mx-0.5 h-5 w-px flex-shrink-0 bg-[#E8EBF0]" />
-              </>
-            )}
             {filters.map((f) => (
               <div
                 key={f.key}
@@ -449,6 +439,18 @@ export default function SearchDiscoveryClient({
                     }`}
                   />
                 )}
+                {f.key === "bambini" && selectedKidId !== null && (
+                  <span
+                    role="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setSelectedKidId(null);
+                    }}
+                    className={`ti ti-x flex h-3.5 w-3.5 items-center justify-center rounded-full text-[10px] ${
+                      openPanel === f.key ? "bg-white/25" : "bg-ink-3/20"
+                    }`}
+                  />
+                )}
               </div>
             ))}
           </div>
@@ -466,6 +468,39 @@ export default function SearchDiscoveryClient({
             </button>
           )}
         </div>
+
+        {/* SPRINT 3 correttivo — pannello "Bambini": singola selezione (il
+            punteggio/ordinamento resta legato a un bambino alla volta, come
+            prima), ma ora in un pannello a comparsa invece di pill sempre
+            visibili, cosi la riga filtri non si allunga con 3+ figli. */}
+        {openPanel === "bambini" && (
+          <div className="mb-3 rounded-lg border border-[#E8EBF0] bg-bg p-3">
+            <div className="mb-2 text-xs font-semibold text-ink-2">Bambini</div>
+            <div className="flex flex-wrap gap-1.5">
+              <button
+                type="button"
+                onClick={() => setSelectedKidId(null)}
+                className={`rounded-full border-[1.5px] px-3 py-1.5 text-xs font-medium transition-colors ${
+                  selectedKidId === null ? "border-trama-violet bg-trama-violet text-white" : "border-[#E8EBF0] bg-white text-ink-2"
+                }`}
+              >
+                Tutti i bambini
+              </button>
+              {kids.map((k) => (
+                <button
+                  key={k.id}
+                  type="button"
+                  onClick={() => setSelectedKidId(k.id)}
+                  className={`rounded-full border-[1.5px] px-3 py-1.5 text-xs font-medium transition-colors ${
+                    selectedKidId === k.id ? "border-trama-violet bg-trama-violet text-white" : "border-[#E8EBF0] bg-white text-ink-2"
+                  }`}
+                >
+                  {k.name}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
 
         {openPanel === "eta" && (
           <div className="mb-3 rounded-lg border border-[#E8EBF0] bg-bg p-3">
@@ -700,6 +735,14 @@ export default function SearchDiscoveryClient({
             </div>
           </div>
         )}
+
+        {/* SPRINT 3 correttivo (feedback Fabrizio: "quando si apre un filtro
+            con selezione multipla, deve esserci una linea separatrice
+            leggera prima di 'X attività trovate' e 'Lista/Mappa', per
+            separare visivamente l'area di selezione da quella con i
+            risultati") — divider sottile mostrato solo quando un pannello
+            filtro è aperto, non un bordo fisso sempre presente. */}
+        {openPanel !== null && <div data-testid="filter-results-divider" className="mb-3 border-t border-[#E8EBF0]" />}
 
         <div className="mb-3 flex items-center justify-between">
           <span className="text-[12.5px] text-ink-2">{matches.length} attività trovate</span>

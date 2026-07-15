@@ -112,20 +112,27 @@ test.describe("NEXTGEN - Ricerca Sprint 5.7 (filtri + Vista Mappa)", () => {
     await expect(resultsCount(page)).toBeVisible();
   });
 
-  // SPRINT 3 (feedback Fabrizio: "unifica il filtro bambino nella riga
-  // filtri scorrevole") — prima il pill del bambino era un blocco separato
-  // sopra la riga dei 6 filtri; ora vive nella STESSA riga scorrevole,
-  // separato da un divider verticale, cosi da non occupare una riga intera
-  // per un solo pulsante quando c'è un solo figlio.
-  test("TC-N278 - Il filtro bambino vive nella stessa riga scorrevole dei filtri, non in un blocco separato", async ({
+  // SPRINT 3 correttivo (feedback Fabrizio: "il filtro dovrebbe essere
+  // 'Bambini' e poi dentro la lista dei bambini, altrimenti se diventano 3?
+  // 4? simile a 'Tipo Attività' o 'Servizi'") — non più pill inline (uno per
+  // figlio, non scalabile), ma un pannello a comparsa come gli altri 6, con
+  // il nome del bambino selezionato riflesso nel label del chip stesso.
+  // Richiede un genitore di test con 2+ figli in profilo per apparire.
+  test("TC-N278 - Il filtro 'Bambini' è un pannello (come Tipo attività/Servizi), non pill inline", async ({
     page,
   }) => {
     const filterRow = page.locator(".no-scrollbar.overflow-x-auto").first();
-    await expect(filterRow.getByText("Servizi", { exact: true })).toBeVisible();
-    // Se il genitore di test ha almeno un figlio in profilo, il suo pill
-    // compare come primo elemento della stessa riga (prima del divider).
-    const kidPill = filterRow.locator("button").first();
-    await expect(kidPill).toBeVisible();
+    const bambiniChip = filterRow.getByText("Bambini", { exact: true });
+    test.skip(!(await bambiniChip.isVisible().catch(() => false)), "Richiede un genitore di test con 2+ figli.");
+
+    await bambiniChip.click();
+    await expect(page.getByText("Tutti i bambini", { exact: true })).toBeVisible();
+
+    const firstKidButton = page.locator("div.rounded-lg.border button").last();
+    const kidName = (await firstKidButton.textContent())?.trim();
+    await firstKidButton.click();
+
+    await expect(filterRow.getByText(`Bambini (${kidName})`, { exact: true })).toBeVisible();
   });
 
   // SPRINT 3 (feedback Fabrizio: "far sparire 'Azzera' del tutto quando non
@@ -143,13 +150,16 @@ test.describe("NEXTGEN - Ricerca Sprint 5.7 (filtri + Vista Mappa)", () => {
     await expect(page.getByRole("button", { name: /^Azzera/ })).toHaveCount(0);
   });
 
-  // SPRINT 3 — il raggruppamento "Piacciono ai tuoi figli" (2+ figli con
-  // match >=40%) dipende da avere almeno due bambini con interessi che
-  // matchano la stessa attività: precondizione non fixturabile in modo
-  // affidabile con l'account di test condiviso — vedi altri test.fixme()
-  // nella suite per lo stesso motivo (dati demo singolo-account).
+  // SPRINT 3 — il raggruppamento "Piace ai tuoi figli" (2+ figli con match
+  // >=40%) dipende da avere almeno due bambini con interessi che matchano la
+  // stessa attività: precondizione non fixturabile in modo affidabile con
+  // l'account di test condiviso — vedi altri test.fixme() nella suite per lo
+  // stesso motivo (dati demo singolo-account).
+  // SPRINT 3 correttivo — testo corretto da "Piacciono" a "Piace ai tuoi
+  // figli" (verbo al singolare: la label è per singola attività, non per un
+  // elenco di attività, quindi il plurale non era giustificato).
   test.fixme(
-    "TC-N280 - Quando 2+ bambini superano la soglia di match, il reason è raggruppato in 'Piacciono ai tuoi figli' invece di ripetere 'Piace a X'",
+    "TC-N280 - Quando 2+ bambini superano la soglia di match, il reason è raggruppato in 'Piace ai tuoi figli' invece di ripetere 'Piace a X'",
     async () => {}
   );
 
@@ -166,5 +176,26 @@ test.describe("NEXTGEN - Ricerca Sprint 5.7 (filtri + Vista Mappa)", () => {
     const badge = page.getByText("Nessuna limitazione", { exact: true }).first();
     await expect(badge).toBeVisible();
     await expect(badge).toHaveClass(/text-purple/);
+  });
+
+  // SPRINT 3 correttivo (feedback Fabrizio: "quando si apre un filtro con
+  // selezione multipla, deve esserci una linea separatrice leggera prima di
+  // 'X attività trovate' e 'Lista/Mappa', per separare visivamente l'area di
+  // selezione da quella con i risultati") — il divider non è un bordo fisso:
+  // appare solo quando un pannello filtro è aperto.
+  test("TC-N282 - Un divider leggero separa il pannello filtro aperto dalla riga risultati/Lista-Mappa", async ({
+    page,
+  }) => {
+    const resultsRow = page.getByText(/\d+ attività trovate/);
+    const divider = page.getByTestId("filter-results-divider");
+
+    await expect(divider).toHaveCount(0);
+
+    await page.getByText("Prezzo", { exact: true }).click();
+    await expect(resultsRow).toBeVisible();
+    await expect(divider).toBeVisible();
+
+    await page.getByText("Prezzo", { exact: true }).click();
+    await expect(divider).toHaveCount(0);
   });
 });
