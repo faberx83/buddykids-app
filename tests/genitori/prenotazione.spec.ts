@@ -402,6 +402,103 @@ test.describe("Genitori - Prenotazione", () => {
     await expect(page.getByText("Nuovo totale stimato")).toBeVisible();
   });
 
+  // Segnalazione di Fabrizio: "nella 'modifica prenotazione' deve esserci la
+  // possibilità di annullare — se nei tempi previsti dal gestore, il salva
+  // modifiche deve capire e mostrare un pop-up che dica 'vuoi annullare'
+  // oppure 'non puoi più annullare'" — vedi ModificaPrenotazioneClient.tsx.
+  // Priorita: Alta | Precondizioni: Prenotazione modificabile (entro la finestra di preavviso)
+  test("TC-292 - Deselezionare tutte le settimane e premere 'Salva modifiche' apre il pop-up di conferma annullamento", async ({
+    page,
+  }) => {
+    test.skip(!isRealDeployment, "Richiede un deploy con Supabase configurato e l'account genitore di test.");
+    await loginAs(page, "parent");
+    await page.goto("/prenotazioni");
+
+    const modifica = page.getByRole("link", { name: /Modifica/ }).first();
+    if (!(await modifica.isVisible().catch(() => false))) {
+      test.skip(true, "Nessuna prenotazione modificabile per l'account di test in questo momento.");
+    }
+    await modifica.click();
+    await expect(page).toHaveURL(/\/prenotazioni\/.+\/modifica/);
+
+    // Deseleziona tutte le settimane già selezionate.
+    const selected = page.getByText("✓ Selezionata");
+    while ((await selected.count()) > 0) {
+      await selected.first().click();
+    }
+
+    const saveButton = page.getByRole("button", { name: "Salva modifiche (annulla prenotazione)" });
+    await expect(saveButton).toBeVisible();
+    await saveButton.click();
+
+    await expect(page.getByText("Vuoi annullare la prenotazione?", { exact: true })).toBeVisible();
+    await expect(page.getByRole("button", { name: "No, mantieni" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Sì, annulla" })).toBeVisible();
+
+    // Chiudiamo senza confermare, per non alterare i dati usati da altri test.
+    await page.getByRole("button", { name: "No, mantieni" }).click();
+    await expect(page.getByText("Vuoi annullare la prenotazione?", { exact: true })).toHaveCount(0);
+  });
+
+  // Priorita: Media | Precondizioni: Prenotazione modificabile (entro la finestra di preavviso)
+  test("TC-293 - Il pulsante esplicito 'Annulla prenotazione' apre lo stesso pop-up di conferma", async ({ page }) => {
+    test.skip(!isRealDeployment, "Richiede un deploy con Supabase configurato e l'account genitore di test.");
+    await loginAs(page, "parent");
+    await page.goto("/prenotazioni");
+
+    const modifica = page.getByRole("link", { name: /Modifica/ }).first();
+    if (!(await modifica.isVisible().catch(() => false))) {
+      test.skip(true, "Nessuna prenotazione modificabile per l'account di test in questo momento.");
+    }
+    await modifica.click();
+    await expect(page).toHaveURL(/\/prenotazioni\/.+\/modifica/);
+
+    await page.getByRole("button", { name: "Annulla prenotazione", exact: true }).click();
+    await expect(page.getByText("Vuoi annullare la prenotazione?", { exact: true })).toBeVisible();
+
+    await page.getByRole("button", { name: "No, mantieni" }).click();
+    await expect(page.getByText("Vuoi annullare la prenotazione?", { exact: true })).toHaveCount(0);
+  });
+
+  // Priorita: Alta | Precondizioni: Prenotazione modificabile (entro la finestra di preavviso) —
+  // questo test la annulla per davvero, usarlo consapevoli dell'effetto sui dati seed.
+  test("TC-294 - Confermare l'annullamento nel pop-up chiama la cancellazione e torna a 'Le mie prenotazioni'", async ({
+    page,
+  }) => {
+    test.skip(
+      !isRealDeployment,
+      "Richiede un deploy con Supabase configurato e l'account genitore di test — annulla per davvero una prenotazione modificabile."
+    );
+    await loginAs(page, "parent");
+    await page.goto("/prenotazioni");
+
+    const modifica = page.getByRole("link", { name: /Modifica/ }).first();
+    if (!(await modifica.isVisible().catch(() => false))) {
+      test.skip(true, "Nessuna prenotazione modificabile per l'account di test in questo momento.");
+    }
+    await modifica.click();
+    await expect(page).toHaveURL(/\/prenotazioni\/.+\/modifica/);
+
+    await page.getByRole("button", { name: "Annulla prenotazione", exact: true }).click();
+    await page.getByRole("button", { name: "Sì, annulla" }).click();
+
+    await expect(page).toHaveURL(/\/prenotazioni$/, { timeout: 10_000 });
+  });
+
+  // Il caso "la finestra di preavviso si chiude tra il caricamento della
+  // pagina e il click di conferma" (pop-up con 'Non puoi più annullare' e il
+  // messaggio del server, vedi handleConfirmCancel in
+  // ModificaPrenotazioneClient.tsx) è una difesa server-side che
+  // richiederebbe manipolare cancellation_window_days/data della
+  // prenotazione a runtime per essere riprodotto in modo deterministico via
+  // UI — non automatizzato qui, stesso trattamento degli altri placeholder
+  // di questo file.
+  // Priorita: Bassa | Precondizioni: Finestra di preavviso chiusa tra il caricamento pagina e la conferma
+  test.fixme(
+    "TC-295 - Se la finestra di preavviso si chiude nel frattempo, il pop-up mostra 'Non puoi più annullare' con il messaggio del server",
+    async () => {}
+  );
+
   // Segnalazione di Fabrizio: "il raggruppamento non funziona" -> il
   // comprimi/espandi gruppo esisteva già nella Home NEXTGEN ma non qui: era
   // la causa più probabile ("non sono sicuro" su quale schermata). Ora la

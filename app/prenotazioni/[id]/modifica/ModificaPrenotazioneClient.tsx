@@ -7,7 +7,7 @@ import WeekCard from "@/components/WeekCard";
 import { Activity, Week } from "@/lib/types";
 import { MyBooking } from "@/lib/data/my-bookings";
 import { buildFamilyTiers, familyDiscountAmount } from "@/lib/family-discount";
-import { updateBookingWeeksAction } from "@/app/actions/bookings";
+import { updateBookingWeeksAction, cancelBookingAction } from "@/app/actions/bookings";
 
 // NOTA (limite noto, accettabile per questa funzionalità "di test"): WeekCard
 // non permette di deselezionare una settimana risultata "piena" nel
@@ -31,6 +31,23 @@ export default function ModificaPrenotazioneClient({
   const [selectedWeeks, setSelectedWeeks] = useState<string[]>(booking.weekIds);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // SPRINT (feedback Fabrizio: "nella 'modifica prenotazione' deve esserci
+  // la possibilità di annullare — se nei tempi previsti dal gestore, il
+  // salva modifiche deve capire e mostrare un pop-up che dica 'vuoi
+  // annullare' oppure 'non puoi più annullare'") — pop-up di conferma
+  // riusato in due punti: 1) pulsante esplicito "Annulla prenotazione" 2)
+  // "Salva modifiche" quando l'utente ha deselezionato TUTTE le settimane
+  // (prima mostrava solo un errore di validazione generico "Seleziona
+  // almeno una settimana", trattando l'intento di annullare come un errore
+  // di input invece che riconoscerlo). cancelBookingAction ri-verifica la
+  // finestra di preavviso lato server (stessa funzione già usata in "Le mie
+  // prenotazioni"): se nel frattempo la finestra si è chiusa, l'errore
+  // restituito ("Puoi annullare/modificare solo fino a X giorni prima...")
+  // è già il messaggio "non puoi più annullare" richiesto, mostrato dentro
+  // lo stesso pop-up invece di un caso separato.
+  const [showCancelConfirm, setShowCancelConfirm] = useState(false);
+  const [cancelling, setCancelling] = useState(false);
+  const [cancelError, setCancelError] = useState<string | null>(null);
 
   const selectedSet = useMemo(() => new Set(selectedWeeks), [selectedWeeks]);
 
@@ -62,7 +79,11 @@ export default function ModificaPrenotazioneClient({
 
   async function handleSave() {
     if (selectedWeeks.length === 0) {
-      setError("Seleziona almeno una settimana");
+      // Deselezionare tutte le settimane e premere "Salva" è, di fatto,
+      // un intento di annullare la prenotazione: invece di un errore di
+      // validazione, apriamo il pop-up di conferma annullamento.
+      setCancelError(null);
+      setShowCancelConfirm(true);
       return;
     }
     setSubmitting(true);
@@ -71,6 +92,22 @@ export default function ModificaPrenotazioneClient({
     setSubmitting(false);
     if (result.error) {
       setError(result.error);
+      return;
+    }
+    router.push("/prenotazioni");
+  }
+
+  async function handleConfirmCancel() {
+    setCancelling(true);
+    setCancelError(null);
+    const result = await cancelBookingAction(booking.id);
+    setCancelling(false);
+    if (result.error) {
+      // Il centro potrebbe aver chiuso la finestra di preavviso nel
+      // frattempo (o qualunque altro motivo di rifiuto lato server): questo
+      // è esattamente il caso "non puoi più annullare", mostrato qui invece
+      // che come stato separato.
+      setCancelError(result.error);
       return;
     }
     router.push("/prenotazioni");
@@ -137,15 +174,79 @@ export default function ModificaPrenotazioneClient({
 
         {error && <p className="mt-3 text-xs font-medium text-orange">{error}</p>}
 
+        {/* Se non è rimasta nessuna settimana selezionata, "Salva modifiche"
+            non è più disabilitato: il click apre il pop-up di conferma
+            annullamento (vedi handleSave) invece di un semplice errore di
+            validazione — l'etichetta cambia per rendere esplicito cosa
+            succederà. */}
         <button
           type="button"
           onClick={handleSave}
-          disabled={submitting || unchanged || selectedWeeks.length === 0}
+          disabled={submitting || (unchanged && selectedWeeks.length > 0)}
           className="mt-4 w-full rounded-md bg-sky px-4 py-3 text-sm font-bold text-white disabled:opacity-50"
         >
-          {submitting ? "Salvataggio…" : "Salva modifiche"}
+          {submitting ? "Salvataggio…" : selectedWeeks.length === 0 ? "Salva modifiche (annulla prenotazione)" : "Salva modifiche"}
+        </button>
+
+        {/* Possibilità esplicita di annullare, non solo deselezionando tutte
+            le settimane — stesso pop-up di conferma. */}
+        <button
+          type="button"
+          onClick={() => {
+            setCancelError(null);
+            setShowCancelConfirm(true);
+          }}
+          className="mt-2.5 w-full rounded-md border border-[#E8EBF0] px-4 py-2.5 text-[13px] font-semibold text-orange"
+        >
+          Annulla prenotazione
         </button>
       </div>
+
+      {showCancelConfirm && (
+        <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 px-4 pb-6 sm:items-center">
+          <div className="w-full max-w-sm rounded-2xl bg-white p-4">
+            <div className="mb-1 text-[15px] font-bold text-ink">
+              {cancelError ? "Non puoi più annullare" : "Vuoi annullare la prenotazione?"}
+            </div>
+            <p className="mb-3 text-[13px] text-ink-2">
+              {cancelError ??
+                `Stai per annullare "${booking.activityName}"${
+                  booking.kidNames.length > 0 ? ` per ${booking.kidNames.join(", ")}` : ""
+                }. L'operazione non si può annullare.`}
+            </p>
+            <div className="flex gap-2">
+              {cancelError ? (
+                <button
+                  type="button"
+                  onClick={() => setShowCancelConfirm(false)}
+                  className="flex-1 rounded-md bg-bg py-2.5 text-center text-[13px] font-semibold text-ink-2"
+                >
+                  Chiudi
+                </button>
+              ) : (
+                <>
+                  <button
+                    type="button"
+                    disabled={cancelling}
+                    onClick={() => setShowCancelConfirm(false)}
+                    className="flex-1 rounded-md bg-bg py-2.5 text-center text-[13px] font-semibold text-ink-2 disabled:opacity-50"
+                  >
+                    No, mantieni
+                  </button>
+                  <button
+                    type="button"
+                    disabled={cancelling}
+                    onClick={handleConfirmCancel}
+                    className="flex-1 rounded-md bg-orange py-2.5 text-center text-[13px] font-bold text-white disabled:opacity-50"
+                  >
+                    {cancelling ? "Annullo…" : "Sì, annulla"}
+                  </button>
+                </>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
