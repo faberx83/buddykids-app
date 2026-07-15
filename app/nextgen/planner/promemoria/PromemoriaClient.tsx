@@ -1,9 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import PageHeader from "@/components/PageHeader";
 import { DemoBadge } from "@/components/StatusBadge";
+import { ADDRESS_KIND_LABELS, ParentAddress } from "@/lib/nextgen/address-kinds";
 
 // SPRINT CORRETTIVO (Fabrizio, screenshot "13. PROMEMORIA E AVVISI") —
 // anteprima dell'impostazione "avvisami prima di partire" (promemoria di
@@ -29,12 +31,28 @@ const REPEAT_OPTIONS = [
   { value: "mai", label: "Mai (disattiva)" },
 ];
 
-export default function PromemoriaClient() {
+export default function PromemoriaClient({ addresses }: { addresses: ParentAddress[] }) {
   const router = useRouter();
   const [active, setActive] = useState(true);
   const [expanded, setExpanded] = useState(true);
   const [alarmMinutes, setAlarmMinutes] = useState(30);
   const [repeat, setRepeat] = useState("sempre");
+
+  // SPRINT CORRETTIVO 2 (Fabrizio: "'Partenza consigliata' deve prevedere
+  // selezione dell'indirizzo di partenza") — riusa gli stessi 4 slot di
+  // /nextgen/planner/indirizzi (Casa/Lavoro Genitore 1/Lavoro Genitore
+  // 2/Altro), filtrando quelli non ancora compilati (address vuoto). Scelta
+  // di default: "casa" se impostata, altrimenti il primo indirizzo
+  // compilato — coerente con la decisione già presa da Fabrizio per la
+  // Mappa ("va bene metter origine uno degli indirizzi, ma lasciare scelta
+  // all'utente"): qui si applica lo stesso principio.
+  const availableAddresses = useMemo(() => addresses.filter((a) => a.address.trim() !== ""), [addresses]);
+  const [originKind, setOriginKind] = useState<string | null>(() => {
+    const casa = availableAddresses.find((a) => a.kind === "casa");
+    return casa?.kind ?? availableAddresses[0]?.kind ?? null;
+  });
+  const selectedOrigin = availableAddresses.find((a) => a.kind === originKind) ?? null;
+  const originLabel = (a: ParentAddress) => (a.kind === "altro" && a.label ? a.label : ADDRESS_KIND_LABELS[a.kind]);
 
   return (
     <div className="flex min-h-screen flex-col">
@@ -57,11 +75,21 @@ export default function PromemoriaClient() {
             aria-pressed={active}
           >
             <span className="text-[14px] font-bold text-ink">Promemoria attivo</span>
+            {/* BUGFIX (segnalato da Fabrizio, screenshot: il pallino restava
+                a destra anche a interruttore spento) — al pallino mancava
+                un'ancora "left" esplicita: senza di essa il posizionamento
+                assoluto dipende dalla "static position" calcolata dal
+                browser invece che da una coordinata fissa, e in pratica
+                risultava sempre a destra, indipendentemente da "active".
+                Ora "left-0.5" fissa il punto di partenza (spento = tutto a
+                sinistra) e la classe transform sposta il pallino SOLO
+                quando è acceso ("translate-x-5" = +20px, track 44px - 2
+                margini da 2px - pallino 20px), niente più ambiguità. */}
             <span
               className={`relative h-6 w-11 flex-shrink-0 rounded-full transition-colors ${active ? "bg-green" : "bg-[#E0E3E9]"}`}
             >
               <span
-                className={`absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform ${active ? "translate-x-[22px]" : "translate-x-0.5"}`}
+                className={`absolute left-0.5 top-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform ${active ? "translate-x-5" : "translate-x-0"}`}
               />
             </span>
           </button>
@@ -84,12 +112,60 @@ export default function PromemoriaClient() {
                 </button>
 
                 {expanded && (
-                  <div className="mt-2.5 flex items-center gap-2.5 rounded-xl bg-bg p-3">
-                    <i className="ti ti-clock-hour-4 text-[22px] text-trama-violet" />
-                    <div>
-                      <div className="text-[15px] font-bold text-ink">Esempio: 16:00</div>
-                      <div className="text-[11px] text-ink-2">Calcolata sul tragitto stimato prima di partire</div>
+                  <div className="mt-2.5 flex flex-col gap-2.5">
+                    <div className="flex items-center gap-2.5 rounded-xl bg-bg p-3">
+                      <i className="ti ti-clock-hour-4 text-[22px] text-trama-violet" />
+                      <div>
+                        <div className="text-[15px] font-bold text-ink">Esempio: 16:00</div>
+                        <div className="text-[11px] text-ink-2">
+                          {selectedOrigin
+                            ? `Calcolata sul tragitto stimato da ${originLabel(selectedOrigin)}`
+                            : "Calcolata sul tragitto stimato prima di partire"}
+                        </div>
+                      </div>
                     </div>
+
+                    {/* SPRINT CORRETTIVO 2 (Fabrizio: "'Partenza consigliata'
+                        deve prevedere selezione dell'indirizzo di
+                        partenza") — stessa logica già confermata per la
+                        Mappa: si propone un indirizzo di default (Casa), ma
+                        la scelta resta sempre dell'utente. */}
+                    {availableAddresses.length > 0 ? (
+                      <div>
+                        <div className="mb-1.5 text-[11.5px] font-semibold text-ink-2">Da dove parti?</div>
+                        <div className="flex flex-wrap gap-1.5">
+                          {availableAddresses.map((a) => {
+                            const isSelected = originKind === a.kind;
+                            return (
+                              <button
+                                key={a.kind}
+                                type="button"
+                                onClick={() => setOriginKind(a.kind)}
+                                aria-pressed={isSelected}
+                                className={`rounded-full px-3 py-1.5 text-[12px] font-semibold transition-colors ${
+                                  isSelected
+                                    ? "bg-trama-violet text-white"
+                                    : "bg-bg text-ink-2 hover:bg-[#EEF0F4]"
+                                }`}
+                              >
+                                {originLabel(a)}
+                              </button>
+                            );
+                          })}
+                        </div>
+                        {selectedOrigin && (
+                          <p className="mt-1.5 truncate text-[11px] text-ink-3">{selectedOrigin.address}</p>
+                        )}
+                      </div>
+                    ) : (
+                      <p className="text-[11.5px] text-ink-2">
+                        Nessun indirizzo salvato.{" "}
+                        <Link href="/nextgen/planner/indirizzi" className="font-semibold text-trama-violet">
+                          Aggiungine uno
+                        </Link>{" "}
+                        per calcolare la partenza.
+                      </p>
+                    )}
                   </div>
                 )}
               </div>

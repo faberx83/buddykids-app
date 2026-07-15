@@ -1,3 +1,4 @@
+import { getParentAddresses } from "@/lib/data/addresses";
 import PromemoriaClient from "./PromemoriaClient";
 
 // SPRINT CORRETTIVO (Fabrizio: "non abbiamo messo da nessuna parte la
@@ -10,6 +11,16 @@ import PromemoriaClient from "./PromemoriaClient";
 // ProfileNextgenClient.tsx. Nessun dato reale da leggere: è un'anteprima
 // (DemoBadge), le preferenze restano solo in memoria finché non arriverà la
 // vera integrazione con le notifiche push.
-export default function PromemoriaPage() {
-  return <PromemoriaClient />;
+//
+// SPRINT CORRETTIVO 2 (Fabrizio: "'Partenza consigliata' deve prevedere
+// selezione dell'indirizzo di partenza") — riusa getParentAddresses() (già
+// usato da /nextgen/planner/indirizzi, INVARIATO) per far scegliere al
+// genitore DA QUALE indirizzo salvato calcolare la partenza, invece di un
+// esempio fisso senza contesto. Nessuna nuova query: stessa fonte dati,
+// stesso modello a 4 slot fissi (Casa/Lavoro Genitore 1/Lavoro Genitore
+// 2/Altro). La scelta resta solo in memoria (stesso limite dichiarato di
+// tutta questa pagina anteprima).
+export default async function PromemoriaPage() {
+  const addresses = await getParentAddresses();
+  return <PromemoriaClient addresses={addresses} />;
 }

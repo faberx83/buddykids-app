@@ -74,6 +74,38 @@ test.describe("NEXTGEN - Planner Organizzazione, sprint correttivo (feedback det
     await expect(page.locator("body")).not.toContainText("Application error");
   });
 
+  // BUGFIX (segnalato da Fabrizio con screenshot: il pallino del toggle
+  // restava visivamente a destra anche a interruttore spento) — verifica
+  // che aria-pressed rifletta lo stato dopo il click (il posizionamento
+  // visivo del pallino non è verificabile via locator testuale, ma
+  // aria-pressed cambia in sincrono con la stessa variabile "active" che
+  // guida anche le classi "translate-x-0"/"translate-x-5" del pallino).
+  test("TC-269 - Il toggle 'Promemoria attivo' cambia stato correttamente al click", async ({ page }) => {
+    test.skip(!isRealDeployment, "Richiede un deploy con Supabase configurato e l'account genitore di test.");
+    await loginAs(page, "parent");
+    await page.goto("/nextgen/planner/promemoria");
+
+    const toggle = page.getByRole("button", { name: "Promemoria attivo" });
+    const initial = await toggle.getAttribute("aria-pressed");
+    await toggle.click();
+    await expect(toggle).toHaveAttribute("aria-pressed", initial === "true" ? "false" : "true");
+  });
+
+  // Fabrizio: "'Partenza consigliata' deve prevedere selezione
+  // dell'indirizzo di partenza" — riusa gli indirizzi salvati di famiglia
+  // (Casa/Lavoro Genitore 1/Lavoro Genitore 2/Altro), stessa fonte dati di
+  // /nextgen/planner/indirizzi.
+  test("TC-270 - 'Partenza consigliata' mostra un selettore di indirizzo o un invito ad aggiungerne uno", async ({ page }) => {
+    test.skip(!isRealDeployment, "Richiede un deploy con Supabase configurato e l'account genitore di test.");
+    await loginAs(page, "parent");
+    await page.goto("/nextgen/planner/promemoria");
+
+    const hasPicker = await page.getByText("Da dove parti?").isVisible().catch(() => false);
+    const hasEmptyState = await page.getByText("Nessun indirizzo salvato.").isVisible().catch(() => false);
+    expect(hasPicker || hasEmptyState).toBe(true);
+    await expect(page.locator("body")).not.toContainText("Application error");
+  });
+
   // Fabrizio: "sullo stesso bambino forse va introdotto un check più
   // stringente" (invece del generico "Prosegui comunque").
   test.fixme(
