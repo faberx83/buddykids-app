@@ -168,6 +168,21 @@ export default function ProfileNextgenClient({
           title="Impostazioni"
           subtitle="Sicurezza, preferenze, privacy"
         />
+
+        {/* SPRINT 5 (feedback Fabrizio: "anche lato genitore ci vuole una
+            sezione 'temporanea' per la fase beta in cui rivedere
+            aggiornamenti delle segnalazioni") — sezione volutamente marcata
+            "BETA" per ricordare che va rimossa a fine fase, invece che
+            mimetizzata tra le altre come se fosse permanente. */}
+        <div className="mt-2 text-[11px] font-bold uppercase tracking-wide text-ink-3">Beta</div>
+        <HubCard
+          href="/nextgen/profile/segnalazioni"
+          icon="ti-message-report"
+          iconBg="#FFF0E9"
+          iconColor="#D4622A"
+          title="Le mie segnalazioni"
+          subtitle="Stato dei bug/suggerimenti inviati durante la BETA"
+        />
       </div>
 
       <LogoutButton />

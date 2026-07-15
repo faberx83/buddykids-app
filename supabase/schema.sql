@@ -1976,3 +1976,55 @@ end;
 $$;
 
 grant execute on function public.accept_family_invite(text) to authenticated;
+
+-- ─────────────────────────────────────────────
+-- BETA FEEDBACK (Sprint 5 NEXTGEN — floating CTA "segnala un problema")
+-- Richiesta di Fabrizio: durante la fase BETA vuole una CTA mobile presente
+-- su ogni pagina dell'app genitori NEXTGEN per raccogliere bug/suggerimenti,
+-- una coda lato Admin con contatore per area/sottosezione e stato
+-- (nuovo/in gestione/risolto), e una sezione "temporanea" lato genitore per
+-- seguire l'esito di quanto inviato.
+--
+-- app_source distingue da QUALE app arriva la segnalazione: solo "genitori"
+-- è popolato in questo sprint (la CTA è implementata SOLO in app/nextgen/
+-- layout.tsx, l'area genitore), ma Fabrizio ha chiesto esplicitamente che la
+-- tabella/coda Admin sia già pronta a distinguere "gestore" quando lo stesso
+-- meccanismo verrà aggiunto anche lì — nessuna migrazione futura per questo.
+--
+-- "area" è un'etichetta leggibile calcolata SOLO client-side al momento
+-- dell'invio (vedi lib/nextgen/beta-feedback-areas.ts, piccola funzione pura
+-- pathname -> label, stessa convenzione di altre funzioni di raggruppamento
+-- in questo repo), non un enum rigido: nuove sezioni NEXTGEN non richiedono
+-- una migrazione, solo una entry in più in quella mappa.
+create table if not exists public.beta_feedback (
+  id uuid primary key default gen_random_uuid(),
+  parent_id uuid references public.profiles(id) on delete cascade not null,
+  app_source text not null default 'genitori' check (app_source in ('genitori', 'gestore')),
+  area text not null, -- es. "Planner", "Scopri", "Profilo" — vedi lib/nextgen/beta-feedback-areas.ts
+  page_path text not null, -- pathname esatto al momento dell'invio, per debug puntuale
+  message text not null,
+  status text not null default 'nuovo' check (status in ('nuovo', 'in_gestione', 'risolto')),
+  admin_note text,
+  created_at timestamptz default now(),
+  updated_at timestamptz default now()
+);
+
+alter table public.beta_feedback enable row level security;
+
+create index if not exists idx_beta_feedback_parent on public.beta_feedback(parent_id);
+create index if not exists idx_beta_feedback_status on public.beta_feedback(status);
+create index if not exists idx_beta_feedback_area on public.beta_feedback(area);
+create index if not exists idx_beta_feedback_app_source on public.beta_feedback(app_source);
+
+create policy "Beta feedback: il genitore vede/crea le proprie segnalazioni"
+  on public.beta_feedback for select
+  using (auth.uid() = parent_id or public.is_platform_admin());
+
+create policy "Beta feedback: il genitore crea solo le proprie, sempre 'nuovo'"
+  on public.beta_feedback for insert
+  with check (auth.uid() = parent_id and status = 'nuovo');
+
+create policy "Beta feedback: solo l'admin piattaforma aggiorna stato/nota"
+  on public.beta_feedback for update
+  using (public.is_platform_admin())
+  with check (public.is_platform_admin());

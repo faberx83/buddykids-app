@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import PhoneShell from "@/components/PhoneShell";
 import InstallPrompt from "@/components/InstallPrompt";
 import NextgenBottomNav from "@/components/nextgen/NextgenBottomNav";
+import BetaFeedbackButton from "@/components/nextgen/BetaFeedbackButton";
 import { NextgenToastProvider } from "@/components/nextgen/NextgenToastProvider";
 import { createClient } from "@/lib/supabase/server";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
@@ -64,6 +65,11 @@ export default async function NextgenLayout({ children }: { children: React.Reac
           <div className="no-scrollbar flex-1 overflow-y-auto">{children}</div>
           <NextgenBottomNav />
         </div>
+        {/* SPRINT 5 — floating CTA "Segnala un problema", montata qui una
+            sola volta cosi copre ogni pagina genitore NEXTGEN (il componente
+            stesso si nasconde su /nextgen/admin e /nextgen/center, vedi
+            BetaFeedbackButton.tsx). */}
+        <BetaFeedbackButton />
       </NextgenToastProvider>
       {/* Istanza DEDICATA a NEXTGEN: appName diverso ("TRAMA" vs quello di
           LEGACY, vedi lib/tenant.ts) -> chiave di dismiss separata in

@@ -22,6 +22,9 @@ const navItems = [
   { href: "/admin/presenze", label: "Presenze", icon: "ti-clipboard-check" },
   { href: "/admin/preferiti", label: "Preferiti", icon: "ti-heart" },
   { href: "/admin/partner-offers", label: "Fornitori", icon: "ti-truck-delivery" },
+  // SPRINT 5 (NEXTGEN) — coda "Segnala un problema" della floating CTA
+  // BETA (richiesta di Fabrizio): stessa lista flat, nessuna sotto-voce.
+  { href: "/admin/segnalazioni-beta", label: "Segnalazioni BETA", icon: "ti-message-report" },
 ];
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
