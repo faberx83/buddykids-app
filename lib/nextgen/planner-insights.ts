@@ -18,7 +18,7 @@
 
 import { MyBooking } from "@/lib/data/my-bookings";
 import { Activity, Kid, KidGender } from "@/lib/types";
-import { PlannerData } from "@/lib/data/planner";
+import { PlannerData, SeasonWeek } from "@/lib/data/planner";
 
 export interface KidOverlap {
   kidId: string;
@@ -241,3 +241,44 @@ export const WEEK_STATUS_BAR_CLASS: Record<WeekStatus, string> = {
   priority: "bg-trama-violet",
   uncovered: "bg-[#EEF0F4]",
 };
+
+// SPRINT 2 (Organizzazione, feedback Fabrizio: "la Timeline potrebbe
+// raggruppare le 13 settimane per mese") — stessa convenzione già usata in
+// lib/nextgen/missions.ts (w.startDate.slice(0, 7) come chiave mese, array
+// MONTH_LABELS_IT duplicato di proposito: piccola funzione pura, zero
+// rischio di toccare un modulo condiviso).
+const MONTH_LABELS_IT = [
+  "Gennaio", "Febbraio", "Marzo", "Aprile", "Maggio", "Giugno",
+  "Luglio", "Agosto", "Settembre", "Ottobre", "Novembre", "Dicembre",
+];
+
+function monthLabelFromKey(monthKey: string): string {
+  const [y, m] = monthKey.split("-").map(Number);
+  if (!y || !m) return "";
+  return MONTH_LABELS_IT[m - 1];
+}
+
+export interface WeekMonthGroup {
+  monthKey: string; // "2026-06"
+  monthLabel: string; // "Giugno"
+  weeks: SeasonWeek[];
+}
+
+// Raggruppa le settimane stagionali per mese di inizio (w.startDate),
+// preservando l'ordine cronologico sia dei mesi che delle settimane al
+// loro interno (le settimane arrivano già ordinate da getPlannerData).
+export function groupWeeksByMonth(weeks: SeasonWeek[]): WeekMonthGroup[] {
+  const groups: WeekMonthGroup[] = [];
+  const indexByKey = new Map<string, number>();
+  for (const w of weeks) {
+    const monthKey = w.startDate.slice(0, 7);
+    let idx = indexByKey.get(monthKey);
+    if (idx === undefined) {
+      idx = groups.length;
+      indexByKey.set(monthKey, idx);
+      groups.push({ monthKey, monthLabel: monthLabelFromKey(monthKey), weeks: [] });
+    }
+    groups[idx].weeks.push(w);
+  }
+  return groups;
+}

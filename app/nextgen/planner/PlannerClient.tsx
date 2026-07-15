@@ -12,6 +12,7 @@ import {
   weekIndexFromLabel,
   overlapVerb,
   formatBookingNames,
+  groupWeeksByMonth,
 } from "@/lib/nextgen/planner-insights";
 import type { Mission } from "@/lib/nextgen/missions";
 import type { SmartMatch } from "@/lib/nextgen/smart-search";
@@ -119,9 +120,30 @@ export default function PlannerClient({
   // Timeline sotto (che e' gia' il "dettaglio" — nome attivita, stato,
   // CTA "Riempi") e la evidenzia per un istante.
   const [highlightedWeekIndex, setHighlightedWeekIndex] = useState<number | null>(null);
+  // SPRINT 2 (feedback Fabrizio: "la Timeline potrebbe raggruppare per
+  // mese, espandibile per vedere le singole settimane con le date") — la
+  // Timeline ora è raggruppata per mese, quindi "saltare" a una settimana
+  // deve prima aprire il mese che la contiene, altrimenti la riga bersaglio
+  // non esiste ancora nel DOM (mese collassato) e lo scroll fallirebbe in
+  // silenzio.
+  const monthGroups = useMemo(() => groupWeeksByMonth(planner.weeks), [planner.weeks]);
+  const [expandedMonths, setExpandedMonths] = useState<Set<string>>(() => {
+    const target = planner.weeks.find((w) => w.index === priorityIndex) ?? planner.weeks.find((w) => !w.covered && !w.dismissed);
+    const key = target?.startDate.slice(0, 7);
+    return new Set(key ? [key] : []);
+  });
+  function monthKeyForWeek(index: number): string | undefined {
+    return planner.weeks.find((w) => w.index === index)?.startDate.slice(0, 7);
+  }
   function jumpToWeek(index: number) {
+    const monthKey = monthKeyForWeek(index);
+    if (monthKey) setExpandedMonths((cur) => (cur.has(monthKey) ? cur : new Set(cur).add(monthKey)));
     setHighlightedWeekIndex(index);
-    document.getElementById(`week-row-${index}`)?.scrollIntoView({ behavior: "smooth", block: "center" });
+    // Il mese appena espanso deve prima renderizzare le sue righe prima
+    // che lo scroll possa trovare l'elemento bersaglio nel DOM.
+    window.setTimeout(() => {
+      document.getElementById(`week-row-${index}`)?.scrollIntoView({ behavior: "smooth", block: "center" });
+    }, 50);
     window.setTimeout(() => setHighlightedWeekIndex((cur) => (cur === index ? null : cur)), 1600);
   }
   // SPRINT CORRETTIVO — "vorrei semplificare le notifiche, sono troppe": prima
@@ -346,7 +368,20 @@ export default function PlannerClient({
             jumpToWeek sopra) — quella riga È il "dettaglio per settimana"
             richiesto da Fabrizio, non serve duplicarlo. */}
         <div className="mb-4 rounded-2xl bg-white p-4">
-          <div className="mb-2.5 font-poppins text-[13px] font-bold text-ink">Stato per settimana</div>
+          <div className="mb-2.5 flex items-center justify-between">
+            <span className="font-poppins text-[13px] font-bold text-ink">Stato per settimana</span>
+            {/* SPRINT 2 (feedback Fabrizio: "il pallino di 'Stato per
+                settimana' potrebbe mostrare le date al click, non solo
+                scorrere") — mostra "Settimana N · date" per la barra appena
+                cliccata, per lo stesso istante in cui resta evidenziata la
+                riga corrispondente nella Timeline sotto (highlightedWeekIndex,
+                già calcolato da jumpToWeek). */}
+            {highlightedWeekIndex !== null && (
+              <span className="text-[11px] font-semibold text-trama-violet">
+                Settimana {highlightedWeekIndex} · {planner.weeks.find((w) => w.index === highlightedWeekIndex)?.dateRange}
+              </span>
+            )}
+          </div>
           <div className="flex items-end gap-1">
             {planner.weeks.map((w) => {
               const hasOverlap = overlapsByWeekIndex.has(w.index);
@@ -356,8 +391,8 @@ export default function PlannerClient({
                   key={w.index}
                   type="button"
                   onClick={() => jumpToWeek(w.index)}
-                  title={`Settimana ${w.index}`}
-                  aria-label={`Vai al dettaglio della Settimana ${w.index}`}
+                  title={`Settimana ${w.index} · ${w.dateRange}`}
+                  aria-label={`Vai al dettaglio della Settimana ${w.index}, ${w.dateRange}`}
                   className="flex flex-1 flex-col items-center gap-1"
                 >
                   <div className={`h-6 w-full rounded-full ${WEEK_STATUS_BAR_CLASS[status]}`} />
@@ -423,79 +458,175 @@ export default function PlannerClient({
           </div>
         )}
 
-        {/* 3. Timeline familiare — tutte le settimane della stagione. */}
+        {/* 3. Timeline familiare — tutte le settimane della stagione.
+            SPRINT 2 (feedback Fabrizio: "13 righe piatte sono tante da
+            scorrere, si potrebbero raggruppare per mese?") — raggruppata
+            per mese, ogni mese pieghevole (aperto di default quello con la
+            settimana prioritaria o la prima scoperta, vedi expandedMonths
+            sopra). "Estiva {anno}" nel titolo: stesso anno stagionale già
+            calcolato da lib/data/season-year.ts, dedotto qui dalla prima
+            settimana (nessuna nuova query). */}
         <div className="mb-4">
-          <div className="mb-2.5 font-poppins text-sm font-bold text-ink">Timeline della stagione</div>
-          <div className="flex flex-col gap-1.5">
-            {planner.weeks.map((w) => {
-              const isPartial = w.covered && w.coveredKids.length > 0 && w.coveredKids.length < kids.length;
-              const hasOverlap = overlapsByWeekIndex.has(w.index);
-              const color = w.activityTagColor ?? "sky";
-              const rowBg = w.dismissed
-                ? "bg-white"
-                : w.covered
-                  ? isPartial || hasOverlap
-                    ? "bg-[#FFF7E8]"
-                    : lightBgClasses[color]
-                  : w.index === priorityIndex
-                    ? "bg-trama-lilac/20"
-                    : "bg-white";
-
-              // SPRINT CORRETTIVO — id + anello viola temporaneo: bersaglio
-              // dello scroll-to + evidenziazione quando si clicca la barra
-              // corrispondente in "Stato per settimana" sopra.
-              const isHighlighted = highlightedWeekIndex === w.index;
+          <div className="mb-2.5 font-poppins text-sm font-bold text-ink">
+            Timeline della stagione{planner.weeks[0] && ` — Estiva ${planner.weeks[0].startDate.slice(0, 4)}`}
+          </div>
+          <div className="flex flex-col gap-2">
+            {monthGroups.map((group) => {
+              const isMonthExpanded = expandedMonths.has(group.monthKey);
+              const monthNeeded = group.weeks.filter((w) => !w.dismissed).length;
+              const monthCovered = group.weeks.filter((w) => w.covered && !w.dismissed).length;
               return (
-                <div
-                  key={w.index}
-                  id={`week-row-${w.index}`}
-                  className={`flex items-center gap-3 rounded-xl p-3 transition-shadow ${rowBg} ${
-                    isHighlighted ? "ring-2 ring-trama-violet" : ""
-                  }`}
-                >
-                  {/* SEGNALAZIONE DI FABRIZIO: "settimana 12 e 13 vanno a capo" —
-                      con una larghezza fissa (84px) "Settimana 12"/"Settimana 13"
-                      (12 caratteri, più larghi di "Settimana 1".."Settimana 9")
-                      arrivavano al limite e andavano a capo. whitespace-nowrap
-                      + larghezza automatica (solo flex-shrink-0, nessun width
-                      fisso): la colonna si allarga quanto serve, il testo non
-                      va mai a capo, qualunque sia il numero della settimana. */}
-                  <div className="flex-shrink-0">
-                    <div className="whitespace-nowrap text-[12.5px] font-bold text-ink">Settimana {w.index}</div>
-                    <div className="whitespace-nowrap text-[10.5px] text-ink-2">{w.dateRange}</div>
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    {w.dismissed ? (
-                      <span className="text-[12px] text-ink-3">Non ti serve</span>
-                    ) : w.covered ? (
-                      <span className="truncate text-[12.5px] font-semibold text-ink">
-                        {w.activityName}
-                        {isPartial && ` · manca ${kids.length - w.coveredKids.length} bambino/i`}
-                      </span>
-                    ) : (
-                      <span className="text-[12px] font-medium text-ink-3">
-                        Scoperta{w.index === priorityIndex ? " · priorità" : ""}
-                      </span>
-                    )}
-                  </div>
-                  {/* BUGFIX (segnalato da Fabrizio: "se non mi serve perché
-                      c'è il triangolino?") — il triangolo ignorava
-                      completamente lo stato "dismissed": una settimana
-                      "Non ti serve" con una sovrapposizione rilevata lo
-                      mostrava comunque, in contraddizione con la riga
-                      stessa. Il segnale resta comunque visibile nel box
-                      "Sovrapposizioni da controllare" sopra. */}
-                  {hasOverlap && !w.dismissed && <i className="ti ti-alert-triangle flex-shrink-0 text-base text-[#9a6b00]" />}
-                  {!w.dismissed && !w.covered && (
-                    <Link
-                      href="/nextgen/search"
-                      className="flex-shrink-0 rounded-full bg-trama-violet px-3 py-1.5 text-[11px] font-bold text-white"
-                    >
-                      Riempi
-                    </Link>
-                  )}
-                  {w.covered && !hasOverlap && (
-                    <i className={`ti ti-circle-check-filled flex-shrink-0 text-[18px] ${isPartial ? "text-[#9a6b00]" : "text-green"}`} />
+                <div key={group.monthKey} className="overflow-hidden rounded-xl bg-white">
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setExpandedMonths((cur) => {
+                        const next = new Set(cur);
+                        if (next.has(group.monthKey)) next.delete(group.monthKey);
+                        else next.add(group.monthKey);
+                        return next;
+                      })
+                    }
+                    className="flex w-full items-center justify-between px-3 py-2.5 text-left"
+                    aria-expanded={isMonthExpanded}
+                  >
+                    <span className="font-poppins text-[12.5px] font-bold text-ink">{group.monthLabel}</span>
+                    <span className="flex items-center gap-2">
+                      {monthNeeded > 0 && (
+                        <span className="text-[11px] font-semibold text-ink-3">
+                          {monthCovered}/{monthNeeded}
+                        </span>
+                      )}
+                      <i className={`ti ${isMonthExpanded ? "ti-chevron-up" : "ti-chevron-down"} text-[15px] text-ink-3`} />
+                    </span>
+                  </button>
+                  {isMonthExpanded && (
+                    <div className="flex flex-col gap-1.5 px-1.5 pb-1.5">
+                      {group.weeks.map((w) => {
+                        const isPartial = w.covered && w.coveredKids.length > 0 && w.coveredKids.length < kids.length;
+                        const hasOverlap = overlapsByWeekIndex.has(w.index);
+                        const color = w.activityTagColor ?? "sky";
+                        const rowBg = w.dismissed
+                          ? "bg-white"
+                          : w.covered
+                            ? isPartial || hasOverlap
+                              ? "bg-[#FFF7E8]"
+                              : lightBgClasses[color]
+                            : w.index === priorityIndex
+                              ? "bg-trama-lilac/20"
+                              : "bg-white";
+
+                        // SPRINT CORRETTIVO — id + anello viola temporaneo:
+                        // bersaglio dello scroll-to + evidenziazione quando
+                        // si clicca la barra corrispondente in "Stato per
+                        // settimana" sopra.
+                        const isHighlighted = highlightedWeekIndex === w.index;
+                        // SPRINT 2 (feedback Fabrizio: "la riga di una
+                        // settimana coperta non porta da nessuna parte") —
+                        // stesso pattern già usato in components/PlannerView.tsx
+                        // (LEGACY): hover/active feedback + apertura della
+                        // scheda attività quando esiste uno slug reale.
+                        const rowContent = (
+                          <>
+                            {/* SEGNALAZIONE DI FABRIZIO: "settimana 12 e 13
+                                vanno a capo" — con una larghezza fissa
+                                (84px) "Settimana 12"/"Settimana 13" (12
+                                caratteri, più larghi di "Settimana 1".."Settimana 9")
+                                arrivavano al limite e andavano a capo.
+                                whitespace-nowrap + larghezza automatica
+                                (solo flex-shrink-0, nessun width fisso): la
+                                colonna si allarga quanto serve, il testo non
+                                va mai a capo, qualunque sia il numero della
+                                settimana. */}
+                            <div className="flex-shrink-0">
+                              <div className="whitespace-nowrap text-[12.5px] font-bold text-ink">Settimana {w.index}</div>
+                              <div className="whitespace-nowrap text-[10.5px] text-ink-2">{w.dateRange}</div>
+                            </div>
+                            <div className="min-w-0 flex-1">
+                              {w.dismissed ? (
+                                <span className="text-[12px] text-ink-3">Non ti serve</span>
+                              ) : w.covered ? (
+                                <span className="truncate text-[12.5px] font-semibold text-ink">
+                                  {w.activityName}
+                                  {isPartial && ` · manca ${kids.length - w.coveredKids.length} bambino/i`}
+                                </span>
+                              ) : (
+                                <span className="text-[12px] font-medium text-ink-3">
+                                  Scoperta{w.index === priorityIndex ? " · priorità" : ""}
+                                </span>
+                              )}
+                            </div>
+                            {/* BUGFIX (segnalato da Fabrizio: "se non mi
+                                serve perché c'è il triangolino?") — il
+                                triangolo ignorava completamente lo stato
+                                "dismissed": una settimana "Non ti serve" con
+                                una sovrapposizione rilevata lo mostrava
+                                comunque, in contraddizione con la riga
+                                stessa. Il segnale resta comunque visibile
+                                nel box "Sovrapposizioni da controllare"
+                                sopra. */}
+                            {/* BUGFIX (segnalato da Fabrizio: "se non mi
+                                serve perché c'è il triangolino?") — il
+                                triangolo ignorava completamente lo stato
+                                "dismissed": una settimana "Non ti serve" con
+                                una sovrapposizione rilevata lo mostrava
+                                comunque, in contraddizione con la riga
+                                stessa. Il segnale resta comunque visibile
+                                nel box "Sovrapposizioni da controllare"
+                                sopra. */}
+                            {hasOverlap && !w.dismissed && (
+                              <i className="ti ti-alert-triangle flex-shrink-0 text-base text-[#9a6b00]" />
+                            )}
+                            {w.covered && !hasOverlap && (
+                              <i className={`ti ti-circle-check-filled flex-shrink-0 text-[18px] ${isPartial ? "text-[#9a6b00]" : "text-green"}`} />
+                            )}
+                            {/* SPRINT 2 (feedback Fabrizio: "la riga di una
+                                settimana coperta non porta da nessuna
+                                parte") — freccina di affordance SOLO quando
+                                la riga è davvero cliccabile (attività con
+                                slug reale), in aggiunta all'icona di stato
+                                sopra, non al suo posto. */}
+                            {w.covered && w.activitySlug && (
+                              <i className="ti ti-chevron-right flex-shrink-0 text-base text-ink-3" />
+                            )}
+                          </>
+                        );
+
+                        if (w.covered && w.activitySlug) {
+                          return (
+                            <Link
+                              key={w.index}
+                              id={`week-row-${w.index}`}
+                              href={`/activity/${w.activitySlug}`}
+                              className={`flex items-center gap-3 rounded-xl p-3 transition-colors hover:bg-black/[0.03] active:bg-black/[0.06] ${rowBg} ${
+                                isHighlighted ? "ring-2 ring-trama-violet" : ""
+                              }`}
+                            >
+                              {rowContent}
+                            </Link>
+                          );
+                        }
+                        return (
+                          <div
+                            key={w.index}
+                            id={`week-row-${w.index}`}
+                            className={`flex items-center gap-3 rounded-xl p-3 transition-shadow ${rowBg} ${
+                              isHighlighted ? "ring-2 ring-trama-violet" : ""
+                            }`}
+                          >
+                            {rowContent}
+                            {!w.dismissed && !w.covered && (
+                              <Link
+                                href="/nextgen/search"
+                                className="flex-shrink-0 rounded-full bg-trama-violet px-3 py-1.5 text-[11px] font-bold text-white"
+                              >
+                                Riempi
+                              </Link>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
                   )}
                 </div>
               );
