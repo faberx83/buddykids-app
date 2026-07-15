@@ -434,9 +434,14 @@ export default function FamigliaClient({
     <div className="flex min-h-screen flex-col">
       {/* SPRINT 7 — l'hub "Logistica & Famiglia" e' stato eliminato (feedback
           Fabrizio: "Logistica e Famiglia non devono diventare una sezione ad
-          hoc?"): Famiglia e' ora raggiungibile da Profilo (vera sezione
-          Famiglia, non piu' link separato dal Planner) — "indietro" torna li'. */}
-      <PageHeader title="Famiglia" onBack={() => router.push("/nextgen/profile")} showBrandIcon />
+          hoc?"): Famiglia e' raggiungibile da Profilo (vera sezione
+          Famiglia, non piu' link separato dal Planner).
+          SPRINT CORRETTIVO — da qui Famiglia vive un livello più in
+          profondità, dietro l'hub "Famiglia e logistica"
+          (app/nextgen/profile/famiglia/): "indietro" torna lì, anche per chi
+          arriva da un link di invito via email (acceptToken) — quella pagina
+          esiste comunque, non e' legata alla history di navigazione. */}
+      <PageHeader title="Famiglia" onBack={() => router.push("/nextgen/profile/famiglia")} showBrandIcon />
       {acceptToken && !accepted && (
         <AcceptInviteBanner token={acceptToken} preview={invitePreview} onAccepted={() => setAccepted(true)} />
       )}

@@ -18,11 +18,16 @@ import { loginAs, isRealDeployment } from "../fixtures/roles";
 // con due account reali prima del rilascio a Fabrizio.
 
 test.describe("NEXTGEN - Family Planner Sprint 5.5 (Profilo Famiglia multi-genitore)", () => {
-  test("TC-N73 - Il link 'Famiglia' è raggiungibile dal Planner", async ({ page }) => {
+  // AGGIORNATO (era già stale rispetto a Sprint 7 — feedback Fabrizio
+  // "Logistica e Famiglia non devono diventare una sezione ad hoc?": il
+  // link non vive più dentro il Planner, ma in Profilo. SPRINT CORRETTIVO —
+  // e poi un livello più in profondità, dietro "Famiglia e logistica").
+  test("TC-N73 - Il link 'Famiglia' è raggiungibile da Profilo -> Famiglia e logistica", async ({ page }) => {
     test.skip(!isRealDeployment, "Richiede un deploy con Supabase configurato e l'account genitore di test.");
     await loginAs(page, "parent");
-    await page.goto("/nextgen/planner");
-    await page.getByRole("link", { name: /Famiglia/ }).click();
+    await page.goto("/nextgen/profile");
+    await page.getByRole("link", { name: /Famiglia e logistica/ }).click();
+    await page.getByRole("link", { name: /^Famiglia/ }).click();
 
     await expect(page).toHaveURL(/\/nextgen\/planner\/famiglia/);
   });

@@ -23,10 +23,16 @@ test.describe("NEXTGEN - Family Planner Sprint 5.3 (Logistica/Chi fa cosa/Condiv
   // (eliminato) — ora è una vera sezione dentro Profilo (feedback Fabrizio:
   // "Logistica e Famiglia non devono diventare una sezione ad hoc?"), vedi
   // tests/nextgen/profile-6.spec.ts per Profilo in sé.
-  test("TC-N56 - Da Profilo -> Indirizzi di famiglia si aprono le 4 schede indirizzo", async ({ page }) => {
+  // SPRINT CORRETTIVO — un livello di navigazione in più: da Profilo si
+  // passa prima per "Famiglia e logistica" (consolidamento di
+  // Indirizzi/Famiglia/Condivisione/Promemoria dietro un solo ingresso).
+  test("TC-N56 - Da Profilo -> Famiglia e logistica -> Indirizzi di famiglia si aprono le 4 schede indirizzo", async ({
+    page,
+  }) => {
     test.skip(!isRealDeployment, "Richiede un deploy con Supabase configurato e l'account genitore di test.");
     await loginAs(page, "parent");
     await page.goto("/nextgen/profile");
+    await page.getByRole("link", { name: /Famiglia e logistica/ }).click();
     await page.getByRole("link", { name: /Indirizzi di famiglia/ }).click();
 
     await expect(page).toHaveURL(/\/nextgen\/planner\/indirizzi/);

@@ -57,10 +57,16 @@ test.describe("NEXTGEN - Planner Organizzazione, sprint correttivo (feedback det
     await expect(page.locator("body")).not.toContainText("Application error");
   });
 
-  test("TC-265 - La pagina 'Promemoria e avvisi' è raggiungibile da Profilo ed è segnata come anteprima", async ({ page }) => {
+  // SPRINT CORRETTIVO — un livello di navigazione in più: da Profilo si
+  // passa prima per "Famiglia e logistica" (vedi tests/nextgen/profile-6.spec.ts
+  // per il consolidamento completo).
+  test("TC-265 - La pagina 'Promemoria e avvisi' è raggiungibile da Profilo -> Famiglia e logistica ed è segnata come anteprima", async ({
+    page,
+  }) => {
     test.skip(!isRealDeployment, "Richiede un deploy con Supabase configurato e l'account genitore di test.");
     await loginAs(page, "parent");
     await page.goto("/nextgen/profile");
+    await page.getByRole("link", { name: /Famiglia e logistica/ }).click();
     await page.getByText("Promemoria e avvisi").click();
 
     await expect(page).toHaveURL(/\/nextgen\/planner\/promemoria/);

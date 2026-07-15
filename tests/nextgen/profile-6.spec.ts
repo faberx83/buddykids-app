@@ -31,9 +31,17 @@ test.describe("NEXTGEN - Profilo (Sprint 6)", () => {
     await expect(page).toHaveURL(/\/nextgen\/profile/);
   });
 
-  test("TC-N107 - la card 'Condivisione piano' porta al Calendario del Planner (?mode=calendario)", async ({
+  // SPRINT CORRETTIVO (Fabrizio, dopo la discussione su Famiglia in bottom
+  // nav: "facciamo hub card se ha senso anche sulle altre sezioni") — le 4
+  // righe intere di "Famiglia" (Indirizzi/Famiglia/Condivisione
+  // piano/Promemoria) sono consolidate dietro un solo ingresso "Famiglia e
+  // logistica"; i link diretti dal Profilo principale non esistono più,
+  // vivono nella sotto-pagina /nextgen/profile/famiglia.
+  test("TC-N107 - la card 'Condivisione piano' (dentro Famiglia e logistica) porta al Calendario del Planner", async ({
     page,
   }) => {
+    await page.getByRole("link", { name: /Famiglia e logistica/ }).click();
+    await expect(page).toHaveURL(/\/nextgen\/profile\/famiglia/);
     const card = page.getByRole("link", { name: /Condivisione piano/ });
     await expect(card).toBeVisible();
     await expect(card).toHaveAttribute("href", "/nextgen/planner?mode=calendario");
@@ -42,9 +50,14 @@ test.describe("NEXTGEN - Profilo (Sprint 6)", () => {
   // SPRINT 7 (feedback Fabrizio: "Logistica e Famiglia non devono diventare
   // una sezione ad hoc?") — Indirizzi/Famiglia sono ora vere sezioni "Famiglia"
   // dentro Profilo, non più un hub separato raggiunto da un link nel Planner.
-  test("TC-N112 - la sezione 'Famiglia' ha le card 'Indirizzi di famiglia' e 'Famiglia' con i link corretti", async ({
+  // SPRINT CORRETTIVO — e poi consolidate a un solo ingresso "Famiglia e
+  // logistica" (vedi commento sopra): la card in Profilo porta alla
+  // sotto-pagina, dove vivono i link originali, invariati.
+  test("TC-N112 - 'Famiglia e logistica' porta a una sotto-pagina con 'Indirizzi di famiglia' e 'Famiglia' con i link corretti", async ({
     page,
   }) => {
+    await page.getByRole("link", { name: /Famiglia e logistica/ }).click();
+    await expect(page).toHaveURL(/\/nextgen\/profile\/famiglia/);
     await expect(page.getByRole("link", { name: /Indirizzi di famiglia/ })).toHaveAttribute(
       "href",
       "/nextgen/planner/indirizzi"
@@ -53,6 +66,24 @@ test.describe("NEXTGEN - Profilo (Sprint 6)", () => {
       "href",
       "/nextgen/planner/famiglia"
     );
+
+    // BUGFIX (indietro deve tornare all'hub, non al Profilo direttamente —
+    // vedi commento in IndirizziClient.tsx)
+    await page.getByRole("link", { name: /Indirizzi di famiglia/ }).click();
+    await expect(page).toHaveURL(/\/nextgen\/planner\/indirizzi/);
+    await page.getByLabel("Indietro").click();
+    await expect(page).toHaveURL(/\/nextgen\/profile\/famiglia/);
+  });
+
+  // SPRINT CORRETTIVO — stesso trattamento per "Impostazioni"
+  // (Sicurezza/Preferenze/Metodi di pagamento/Privacy): consolidate dietro
+  // un solo ingresso, stesso ragionamento di Famiglia.
+  test("TC-N114 - 'Impostazioni' porta a una sotto-pagina con Sicurezza/Preferenze/Privacy", async ({ page }) => {
+    await page.getByRole("link", { name: /^Impostazioni/ }).click();
+    await expect(page).toHaveURL(/\/nextgen\/profile\/impostazioni/);
+    await expect(page.getByRole("link", { name: /Sicurezza/ })).toHaveAttribute("href", "/profile/sicurezza");
+    await expect(page.getByRole("link", { name: /Preferenze/ })).toHaveAttribute("href", "/profile/preferenze");
+    await expect(page.getByRole("link", { name: /Privacy e account/ })).toHaveAttribute("href", "/profile/privacy");
   });
 
   test("TC-N108 - le card di accesso rapido (Prenotazioni/Preferiti/Presenze/Richieste) sono presenti con i link corretti", async ({

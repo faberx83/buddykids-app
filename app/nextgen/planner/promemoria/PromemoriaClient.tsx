@@ -56,7 +56,11 @@ export default function PromemoriaClient({ addresses }: { addresses: ParentAddre
 
   return (
     <div className="flex min-h-screen flex-col">
-      <PageHeader title="Promemoria" onBack={() => router.push("/nextgen/profile")} showBrandIcon />
+      {/* SPRINT CORRETTIVO — Promemoria non è più un link diretto da Profilo:
+          vive dietro l'hub "Famiglia e logistica" (vedi
+          app/nextgen/profile/famiglia/), "indietro" torna lì invece che
+          direttamente al Profilo. */}
+      <PageHeader title="Promemoria" onBack={() => router.push("/nextgen/profile/famiglia")} showBrandIcon />
 
       <div className="flex flex-col gap-3 px-5 py-4">
         <div className="flex items-center gap-2">

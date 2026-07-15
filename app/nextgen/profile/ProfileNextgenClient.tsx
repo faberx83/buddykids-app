@@ -1,12 +1,11 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import Link from "next/link";
 import PageHeader from "@/components/PageHeader";
 import LogoutButton from "@/components/LogoutButton";
 import ProfileHeaderClient from "@/components/ProfileHeaderClient";
 import ProfileKidsSection from "@/components/ProfileKidsSection";
-import { ComingSoonBadge } from "@/components/StatusBadge";
+import HubCard from "@/components/nextgen/HubCard";
 import type { ParentRole, Gender } from "@/lib/data/profile";
 import type { Kid } from "@/lib/types";
 
@@ -25,52 +24,19 @@ import type { Kid } from "@/lib/types";
 // della card equivalente nell'hub Logistica (/nextgen/planner?mode=calendario
 // — la UI di condivisione vive ancora dentro PlannerCalendarView, Sprint
 // 5.3) — non duplicata, stesso link, solo raggiungibile anche da qui.
-function HubCard({
-  href,
-  icon,
-  iconBg,
-  iconColor,
-  title,
-  subtitle,
-  badge,
-  comingSoon,
-}: {
-  href?: string;
-  icon: string;
-  iconBg: string;
-  iconColor: string;
-  title: string;
-  subtitle?: string;
-  badge?: number;
-  comingSoon?: boolean;
-}) {
-  const content = (
-    <div className={`flex items-center gap-3 rounded-2xl bg-white p-4 ${comingSoon ? "opacity-60" : ""}`}>
-      <div
-        className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-full text-[19px]"
-        style={{ backgroundColor: iconBg, color: iconColor }}
-      >
-        <i className={`ti ${icon}`} />
-      </div>
-      <div className="min-w-0 flex-1">
-        <div className="flex items-center gap-1.5 text-[13.5px] font-bold text-ink">
-          {title}
-          {comingSoon && <ComingSoonBadge />}
-        </div>
-        {subtitle && <div className="text-[11.5px] text-ink-2">{subtitle}</div>}
-      </div>
-      {comingSoon ? null : badge !== undefined && badge > 0 ? (
-        <span className="flex-shrink-0 rounded-full bg-trama-orange px-2 py-0.5 text-[10px] font-bold text-white">
-          {badge}
-        </span>
-      ) : (
-        <i className="ti ti-chevron-right flex-shrink-0 text-[16px] text-ink-3" />
-      )}
-    </div>
-  );
+//
+// SPRINT CORRETTIVO (Fabrizio, dopo aver discusso se "Famiglia" meritasse di
+// essere promossa in bottom nav accanto a Planner/Scopri: no, restano
+// impostazioni "una tantum" — ma la discussione ha fatto notare che 4 righe
+// intere sotto un solo header pesano comunque troppo in questa lista) —
+// HubCard estratto in components/nextgen/HubCard.tsx (ora condiviso con le
+// nuove sotto-pagine). Le sezioni "Famiglia" e "Impostazioni" sono
+// consolidate a un solo ingresso ciascuna; "Attività" e "Supporto" restano
+// invariate: sono destinazioni toccate con una certa regolarità (prenotare,
+// controllare i preferiti, scrivere al centro), non impostazioni "si
+// configura una volta e non si tocca più" come indirizzi/inviti/promemoria
+// o sicurezza/preferenze/privacy.
 
-  return href && !comingSoon ? <Link href={href}>{content}</Link> : content;
-}
 
 export default function ProfileNextgenClient({
   fullName,
@@ -150,46 +116,24 @@ export default function ProfileNextgenClient({
 
         {/* SPRINT 7 (feedback Fabrizio: "Logistica e Famiglia non devono
             diventare una sezione ad hoc?") — Indirizzi/Famiglia/Condivisione
-            piano prima vivevano in un hub separato raggiungibile da un link
-            in fondo al Planner (/nextgen/planner/logistica, ora eliminato,
-            redirect qui). Sono impostazioni che si toccano di rado (si
-            configurano una volta, non si rivedono ogni settimana come Chi fa
-            cosa nel Calendario, che resta li'), quindi il loro posto naturale
-            e' Profilo, non il Planner. */}
+            piano/Promemoria vivevano prima in un hub separato raggiungibile
+            da un link in fondo al Planner (/nextgen/planner/logistica, ora
+            eliminato, redirect qui). Sono impostazioni che si toccano di
+            rado (si configurano una volta, non si rivedono ogni settimana
+            come Chi fa cosa nel Calendario, che resta li').
+            SPRINT CORRETTIVO — consolidate a un solo ingresso (vedi
+            /nextgen/profile/famiglia/FamigliaHubClient.tsx per i 4 link
+            originali, invariati): 4 righe intere sotto un solo header
+            davano lo stesso peso visivo di intere destinazioni come
+            Planner/Scopri, ma sono solo impostazioni minori. */}
         <div className="mt-2 text-[11px] font-bold uppercase tracking-wide text-ink-3">Famiglia</div>
         <HubCard
-          href="/nextgen/planner/indirizzi"
-          icon="ti-map-pin"
+          href="/nextgen/profile/famiglia"
+          icon="ti-users"
           iconBg="#F0EEFF"
           iconColor="#6F63C5"
-          title="Indirizzi di famiglia"
-          subtitle="Casa, lavoro e altri punti di partenza"
-        />
-        <HubCard
-          href="/nextgen/planner/famiglia"
-          icon="ti-users"
-          iconBg="#E3F9F5"
-          iconColor="#2DBA8C"
-          title="Famiglia"
-          subtitle="Invita l'altro genitore, condividete tutto"
-        />
-        <HubCard
-          href="/nextgen/planner?mode=calendario"
-          icon="ti-share"
-          iconBg="#FFF0EA"
-          iconColor="#F6A623"
-          title="Condivisione piano"
-          subtitle="Crea un link di sola lettura per mese o settimana"
-        />
-        {/* SPRINT CORRETTIVO (Fabrizio, screenshot "13. Promemoria e
-            avvisi") — anteprima non ancora salvata, vedi PromemoriaClient. */}
-        <HubCard
-          href="/nextgen/planner/promemoria"
-          icon="ti-bell"
-          iconBg="#FFF3E6"
-          iconColor="#E08A2D"
-          title="Promemoria e avvisi"
-          subtitle="Avvisami prima di partire (anteprima)"
+          title="Famiglia e logistica"
+          subtitle="Indirizzi, condivisione piano, promemoria"
         />
 
         <div className="mt-2 text-[11px] font-bold uppercase tracking-wide text-ink-3">Supporto</div>
@@ -210,37 +154,19 @@ export default function ProfileNextgenClient({
           comingSoon
         />
 
+        {/* SPRINT CORRETTIVO — stesso ragionamento di "Famiglia" sopra:
+            Sicurezza/Preferenze/Metodi di pagamento/Privacy sono
+            impostazioni account "una tantum", consolidate a un solo
+            ingresso (vedi /nextgen/profile/impostazioni/ImpostazioniHubClient.tsx
+            per i 4 link originali, invariati). */}
         <div className="mt-2 text-[11px] font-bold uppercase tracking-wide text-ink-3">Impostazioni</div>
         <HubCard
-          href="/profile/sicurezza"
-          icon="ti-shield-lock"
-          iconBg="#E8F6FD"
-          iconColor="#4DAFEF"
-          title="Sicurezza"
-          subtitle="Password, accesso rapido"
-        />
-        <HubCard
-          href="/profile/preferenze"
-          icon="ti-adjustments"
-          iconBg="#FFF3E6"
-          iconColor="#E08A2D"
-          title="Preferenze"
-          subtitle="Lingua, tema, notifiche"
-        />
-        <HubCard
-          icon="ti-credit-card"
-          iconBg="#E8F9EE"
-          iconColor="#52C87A"
-          title="Metodi di pagamento"
-          comingSoon
-        />
-        <HubCard
-          href="/profile/privacy"
-          icon="ti-lock"
-          iconBg="#FCE8EC"
-          iconColor="#D6497A"
-          title="Privacy e account"
-          subtitle="Consenso, disattivazione"
+          href="/nextgen/profile/impostazioni"
+          icon="ti-settings"
+          iconBg="#F4F6FA"
+          iconColor="#6B7280"
+          title="Impostazioni"
+          subtitle="Sicurezza, preferenze, privacy"
         />
       </div>
 
