@@ -27,7 +27,7 @@ export default function BookingVisualCard({
   return (
     <Link
       href={`/activity/${booking.activityId}`}
-      className="nextgen-hero-shadow flex items-center gap-3 rounded-2xl border border-[#F0F2F5] bg-white p-3.5 transition-transform hover:scale-[0.99]"
+      className="nextgen-hero-shadow flex items-center gap-3 rounded-2xl border border-[#F0F2F5] bg-white p-3.5 transition-transform hover:scale-[0.99] active:bg-black/[0.06]"
     >
       <div
         className={`flex flex-shrink-0 items-center justify-center overflow-hidden rounded-xl bg-cover bg-center text-xl ${

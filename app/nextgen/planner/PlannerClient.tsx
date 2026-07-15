@@ -242,7 +242,7 @@ export default function PlannerClient({
               }
               if (a.action.type === "link") {
                 return (
-                  <Link key={a.id} href={a.action.href} className={rowClass}>
+                  <Link key={a.id} href={a.action.href} className={`${rowClass} active:scale-[0.99]`}>
                     {inner}
                   </Link>
                 );
@@ -256,7 +256,7 @@ export default function PlannerClient({
                     if (action.type === "week") jumpToWeek(action.index);
                     else if (action.type === "mode") setMode(action.mode);
                   }}
-                  className={rowClass}
+                  className={`${rowClass} active:scale-[0.99]`}
                 >
                   {inner}
                 </button>
@@ -266,7 +266,7 @@ export default function PlannerClient({
               <button
                 type="button"
                 onClick={() => setShowAllAlerts((v) => !v)}
-                className="self-start text-[11.5px] font-semibold text-trama-violet"
+                className="self-start text-[11.5px] font-semibold text-trama-violet active:bg-black/[0.04]"
               >
                 {showAllAlerts ? "Mostra meno" : `Mostra tutti (${allAlerts.length})`}
               </button>
@@ -320,7 +320,7 @@ export default function PlannerClient({
                     <button
                       type="button"
                       onClick={() => setExpandedKidId(isExpanded ? null : k.kidId)}
-                      className="w-full text-left"
+                      className="w-full rounded-xl text-left active:bg-black/[0.06]"
                       aria-expanded={isExpanded}
                     >
                       <div className="mb-1 flex items-center justify-between text-[12.5px]">
@@ -399,7 +399,7 @@ export default function PlannerClient({
                   onClick={() => jumpToWeek(w.index)}
                   title={`Settimana ${w.index} · ${w.dateRange}`}
                   aria-label={`Vai al dettaglio della Settimana ${w.index}, ${w.dateRange}`}
-                  className="flex flex-1 flex-col items-center gap-1"
+                  className="flex flex-1 flex-col items-center gap-1 active:scale-95"
                 >
                   <div className={`h-6 w-full rounded-full ${WEEK_STATUS_BAR_CLASS[status]}`} />
                   <span className="text-[9px] font-semibold text-ink-3">{w.index}</span>
@@ -420,7 +420,7 @@ export default function PlannerClient({
           <button
             type="button"
             onClick={() => setCalendarExpanded((v) => !v)}
-            className="flex w-full items-center justify-between rounded-2xl bg-white p-4 text-left"
+            className="flex w-full items-center justify-between rounded-2xl bg-white p-4 text-left active:bg-black/[0.06]"
             aria-expanded={calendarExpanded}
           >
             <span className="flex items-center gap-2 font-poppins text-[13px] font-bold text-ink">
@@ -493,7 +493,7 @@ export default function PlannerClient({
                         return next;
                       })
                     }
-                    className="flex w-full items-center justify-between px-3 py-2.5 text-left"
+                    className="flex w-full items-center justify-between px-3 py-2.5 text-left active:bg-black/[0.06]"
                     aria-expanded={isMonthExpanded}
                   >
                     <span className="font-poppins text-[12.5px] font-bold text-ink">{group.monthLabel}</span>
@@ -624,7 +624,7 @@ export default function PlannerClient({
                             {!w.dismissed && !w.covered && (
                               <Link
                                 href="/nextgen/search"
-                                className="flex-shrink-0 rounded-full bg-trama-violet px-3 py-1.5 text-[11px] font-bold text-white"
+                                className="flex-shrink-0 rounded-full bg-trama-violet px-3 py-1.5 text-[11px] font-bold text-white active:scale-[0.97]"
                               >
                                 Riempi
                               </Link>

@@ -93,7 +93,7 @@ function AddressCard({ initial }: { initial: ParentAddress }) {
               type="button"
               disabled={busy}
               onClick={handleSave}
-              className="rounded-full bg-trama-violet px-4 py-2 text-[12.5px] font-bold text-white disabled:opacity-50"
+              className="rounded-full bg-trama-violet px-4 py-2 text-[12.5px] font-bold text-white active:scale-[0.97] disabled:opacity-50"
             >
               {busy ? "Salvo…" : "Salva"}
             </button>
@@ -106,7 +106,7 @@ function AddressCard({ initial }: { initial: ParentAddress }) {
                   setLabel(saved.label ?? "");
                   setError(null);
                 }}
-                className="rounded-full bg-bg px-4 py-2 text-[12.5px] font-semibold text-ink-2"
+                className="rounded-full bg-bg px-4 py-2 text-[12.5px] font-semibold text-ink-2 active:brightness-95"
               >
                 Annulla
               </button>
@@ -121,7 +121,7 @@ function AddressCard({ initial }: { initial: ParentAddress }) {
               href={mapsUrl(saved.address)}
               target="_blank"
               rel="noopener noreferrer"
-              className="flex h-8 w-8 items-center justify-center rounded-full bg-trama-lilac/20 text-trama-violet"
+              className="flex h-8 w-8 items-center justify-center rounded-full bg-trama-lilac/20 text-trama-violet active:scale-95"
               aria-label="Apri in Maps"
             >
               <i className="ti ti-map-pin text-[15px]" />
@@ -129,7 +129,7 @@ function AddressCard({ initial }: { initial: ParentAddress }) {
             <button
               type="button"
               onClick={() => setEditing(true)}
-              className="flex h-8 w-8 items-center justify-center rounded-full bg-bg text-ink-2"
+              className="flex h-8 w-8 items-center justify-center rounded-full bg-bg text-ink-2 active:scale-95"
               aria-label="Modifica"
             >
               <i className="ti ti-pencil text-[14px]" />
@@ -138,7 +138,7 @@ function AddressCard({ initial }: { initial: ParentAddress }) {
               type="button"
               disabled={busy}
               onClick={handleDelete}
-              className="flex h-8 w-8 items-center justify-center rounded-full bg-bg text-ink-2 disabled:opacity-50"
+              className="flex h-8 w-8 items-center justify-center rounded-full bg-bg text-ink-2 active:scale-95 disabled:opacity-50"
               aria-label="Rimuovi"
             >
               <i className="ti ti-trash text-[14px]" />

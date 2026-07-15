@@ -80,7 +80,7 @@ function AcceptInviteBanner({
           type="button"
           disabled={busy}
           onClick={handleAccept}
-          className="rounded-full bg-trama-violet px-4 py-2 text-[12.5px] font-bold text-white disabled:opacity-50"
+          className="rounded-full bg-trama-violet px-4 py-2 text-[12.5px] font-bold text-white active:scale-[0.97] disabled:opacity-50"
         >
           {busy ? "Accetto…" : "Accetta l'invito"}
         </button>
@@ -153,7 +153,7 @@ function NoFamilyView({ onCreated }: { onCreated: (f: Family) => void }) {
             type="button"
             disabled={busyCreate}
             onClick={handleCreate}
-            className="rounded-full bg-trama-violet px-4 py-2 text-[12.5px] font-bold text-white disabled:opacity-50"
+            className="rounded-full bg-trama-violet px-4 py-2 text-[12.5px] font-bold text-white active:scale-[0.97] disabled:opacity-50"
           >
             {busyCreate ? "Creo…" : "Crea famiglia"}
           </button>
@@ -176,7 +176,7 @@ function NoFamilyView({ onCreated }: { onCreated: (f: Family) => void }) {
             type="button"
             disabled={busyJoin}
             onClick={handleJoin}
-            className="rounded-full bg-bg px-4 py-2 text-[12.5px] font-semibold text-ink-2 disabled:opacity-50"
+            className="rounded-full bg-bg px-4 py-2 text-[12.5px] font-semibold text-ink-2 active:brightness-95 disabled:opacity-50"
           >
             {busyJoin ? "Entro…" : "Entra nella famiglia"}
           </button>
@@ -251,7 +251,7 @@ function InviteByEmailBox({ onSent }: { onSent: () => void }) {
           type="button"
           disabled={busy || !email.trim()}
           onClick={handleInvite}
-          className="rounded-full bg-trama-violet px-4 py-2 text-[12.5px] font-bold text-white disabled:opacity-50"
+          className="rounded-full bg-trama-violet px-4 py-2 text-[12.5px] font-bold text-white active:scale-[0.97] disabled:opacity-50"
         >
           {busy ? "Invio…" : "Invia invito"}
         </button>
@@ -260,7 +260,7 @@ function InviteByEmailBox({ onSent }: { onSent: () => void }) {
           <button
             type="button"
             onClick={() => copyLink(justSentLink, showToast)}
-            className="rounded-full bg-trama-lilac/20 px-4 py-2 text-[12.5px] font-bold text-trama-violet"
+            className="rounded-full bg-trama-lilac/20 px-4 py-2 text-[12.5px] font-bold text-trama-violet active:brightness-95"
           >
             Copia link invito (WhatsApp, SMS…)
           </button>
@@ -288,7 +288,7 @@ function PendingInvitesList({ invites }: { invites: Family["pendingInvites"] }) 
             <button
               type="button"
               onClick={() => copyLink(buildFamilyInviteLink(inv.token), showToast)}
-              className="flex-shrink-0 rounded-full bg-trama-lilac/20 px-2.5 py-1 text-[11px] font-bold text-trama-violet"
+              className="flex-shrink-0 rounded-full bg-trama-lilac/20 px-2.5 py-1 text-[11px] font-bold text-trama-violet active:brightness-95"
             >
               Copia link
             </button>
@@ -344,7 +344,7 @@ function FamilyView({ family }: { family: Family }) {
           <button
             type="button"
             onClick={handleCopy}
-            className="rounded-full bg-trama-lilac/20 px-3 py-1.5 text-[12px] font-bold text-trama-violet"
+            className="rounded-full bg-trama-lilac/20 px-3 py-1.5 text-[12px] font-bold text-trama-violet active:brightness-95"
           >
             {copied ? "Copiato!" : "Copia"}
           </button>
@@ -388,14 +388,14 @@ function FamilyView({ family }: { family: Family }) {
               type="button"
               disabled={busyLeave}
               onClick={handleLeave}
-              className="rounded-full bg-red-500 px-4 py-2 text-[12.5px] font-bold text-white disabled:opacity-50"
+              className="rounded-full bg-red-500 px-4 py-2 text-[12.5px] font-bold text-white active:scale-[0.97] disabled:opacity-50"
             >
               {busyLeave ? "Esco…" : "Sì, esci"}
             </button>
             <button
               type="button"
               onClick={() => setConfirmingLeave(false)}
-              className="rounded-full bg-bg px-4 py-2 text-[12.5px] font-semibold text-ink-2"
+              className="rounded-full bg-bg px-4 py-2 text-[12.5px] font-semibold text-ink-2 active:brightness-95"
             >
               Annulla
             </button>
@@ -405,7 +405,7 @@ function FamilyView({ family }: { family: Family }) {
         <button
           type="button"
           onClick={() => setConfirmingLeave(true)}
-          className="text-center text-[12.5px] font-semibold text-red-500"
+          className="text-center text-[12.5px] font-semibold text-red-500 active:bg-black/[0.04]"
         >
           Esci dalla famiglia
         </button>

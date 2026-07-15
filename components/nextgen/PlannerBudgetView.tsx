@@ -75,7 +75,7 @@ export default function PlannerBudgetView({
                 type="button"
                 disabled={busy}
                 onClick={handleSave}
-                className="rounded-full bg-trama-violet px-4 py-2 text-[13px] font-bold text-white disabled:opacity-50"
+                className="rounded-full bg-trama-violet px-4 py-2 text-[13px] font-bold text-white active:scale-[0.97] disabled:opacity-50"
               >
                 {busy ? "Salvo…" : "Salva budget"}
               </button>
@@ -87,7 +87,7 @@ export default function PlannerBudgetView({
                     setInputValue(target.toString());
                     setError(null);
                   }}
-                  className="rounded-full bg-bg px-4 py-2 text-[13px] font-semibold text-ink-2"
+                  className="rounded-full bg-bg px-4 py-2 text-[13px] font-semibold text-ink-2 active:brightness-95"
                 >
                   Annulla
                 </button>
@@ -122,7 +122,7 @@ export default function PlannerBudgetView({
               <span className={overBudget ? "font-semibold text-red-500" : "text-ink-2"}>
                 {overBudget ? `${percent}% — hai superato il budget` : `${percent}% utilizzato`}
               </span>
-              <button type="button" onClick={() => setEditing(true)} className="font-semibold text-trama-violet">
+              <button type="button" onClick={() => setEditing(true)} className="font-semibold text-trama-violet active:bg-black/[0.04]">
                 Modifica
               </button>
             </div>

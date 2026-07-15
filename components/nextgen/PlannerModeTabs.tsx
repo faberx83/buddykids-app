@@ -68,7 +68,7 @@ export default function PlannerModeTabs({
             key={m.key}
             type="button"
             onClick={() => onChange(m.key)}
-            className={`flex flex-shrink-0 items-center gap-1.5 rounded-full px-4 py-2 text-[12.5px] font-bold transition-colors ${
+            className={`flex flex-shrink-0 items-center gap-1.5 rounded-full px-4 py-2 text-[12.5px] font-bold transition-colors active:scale-95 ${
               mode === m.key ? "bg-trama-violet text-white" : "bg-bg text-ink-2"
             }`}
           >

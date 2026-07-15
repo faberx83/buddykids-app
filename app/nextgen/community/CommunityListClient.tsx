@@ -71,7 +71,7 @@ export default function CommunityListClient({ initialCommunities }: { initialCom
           <button
             type="button"
             onClick={() => setMode("create")}
-            className="flex-1 rounded-2xl bg-trama-violet px-4 py-3 text-sm font-bold text-white"
+            className="flex-1 rounded-2xl bg-trama-violet px-4 py-3 text-sm font-bold text-white active:scale-[0.97]"
           >
             <i className="ti ti-plus mr-1.5" />
             Crea community
@@ -79,7 +79,7 @@ export default function CommunityListClient({ initialCommunities }: { initialCom
           <button
             type="button"
             onClick={() => setMode("join")}
-            className="flex-1 rounded-2xl bg-bg px-4 py-3 text-sm font-bold text-ink"
+            className="flex-1 rounded-2xl bg-bg px-4 py-3 text-sm font-bold text-ink active:brightness-95"
           >
             <i className="ti ti-login-2 mr-1.5" />
             Entra con codice
@@ -109,14 +109,14 @@ export default function CommunityListClient({ initialCommunities }: { initialCom
               type="button"
               disabled={busy}
               onClick={handleCreate}
-              className="flex-1 rounded-full bg-trama-violet px-4 py-2.5 text-sm font-bold text-white disabled:opacity-50"
+              className="flex-1 rounded-full bg-trama-violet px-4 py-2.5 text-sm font-bold text-white active:scale-[0.97] disabled:opacity-50"
             >
               {busy ? "Creazione…" : "Crea"}
             </button>
             <button
               type="button"
               onClick={() => setMode("none")}
-              className="rounded-full bg-bg px-4 py-2.5 text-sm font-semibold text-ink-2"
+              className="rounded-full bg-bg px-4 py-2.5 text-sm font-semibold text-ink-2 active:brightness-95"
             >
               Annulla
             </button>
@@ -139,14 +139,14 @@ export default function CommunityListClient({ initialCommunities }: { initialCom
               type="button"
               disabled={busy}
               onClick={handleJoin}
-              className="flex-1 rounded-full bg-trama-violet px-4 py-2.5 text-sm font-bold text-white disabled:opacity-50"
+              className="flex-1 rounded-full bg-trama-violet px-4 py-2.5 text-sm font-bold text-white active:scale-[0.97] disabled:opacity-50"
             >
               {busy ? "Verifica…" : "Entra"}
             </button>
             <button
               type="button"
               onClick={() => setMode("none")}
-              className="rounded-full bg-bg px-4 py-2.5 text-sm font-semibold text-ink-2"
+              className="rounded-full bg-bg px-4 py-2.5 text-sm font-semibold text-ink-2 active:brightness-95"
             >
               Annulla
             </button>
@@ -164,7 +164,7 @@ export default function CommunityListClient({ initialCommunities }: { initialCom
             <Link
               key={c.id}
               href={`/nextgen/community/${c.id}`}
-              className="nextgen-warm-shadow flex items-center gap-3 rounded-[20px] bg-white p-4"
+              className="nextgen-warm-shadow flex items-center gap-3 rounded-[20px] bg-white p-4 active:bg-black/[0.06]"
             >
               <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-2xl bg-bg text-2xl">
                 {c.emoji}

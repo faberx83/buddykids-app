@@ -116,7 +116,7 @@ export default function PlannerMapView({ pins, addresses }: { pins: PlannerMapPi
               type="button"
               onClick={() => setSelectedId(null)}
               aria-label="Chiudi scheda"
-              className="flex-shrink-0 text-ink-3"
+              className="flex-shrink-0 text-ink-3 active:scale-95"
             >
               <i className="ti ti-x text-[18px]" />
             </button>
@@ -142,7 +142,7 @@ export default function PlannerMapView({ pins, addresses }: { pins: PlannerMapPi
                     key={a.kind}
                     type="button"
                     onClick={() => setOriginKind(a.kind)}
-                    className={`flex-shrink-0 whitespace-nowrap rounded-full px-3 py-1.5 text-[11.5px] font-semibold transition-colors ${
+                    className={`flex-shrink-0 whitespace-nowrap rounded-full px-3 py-1.5 text-[11.5px] font-semibold transition-colors active:scale-95 ${
                       originKind === a.kind ? "bg-trama-violet text-white" : "bg-bg text-ink-2"
                     }`}
                   >
@@ -155,7 +155,7 @@ export default function PlannerMapView({ pins, addresses }: { pins: PlannerMapPi
           <div className="flex gap-2">
             <Link
               href={`/activity/${selected.activitySlug}`}
-              className="flex-1 rounded-full bg-bg py-2.5 text-center text-[12.5px] font-bold text-ink-2"
+              className="flex-1 rounded-full bg-bg py-2.5 text-center text-[12.5px] font-bold text-ink-2 active:brightness-95"
             >
               Apri scheda
             </Link>
@@ -164,7 +164,7 @@ export default function PlannerMapView({ pins, addresses }: { pins: PlannerMapPi
                 href={mapsUrl(selected.address, selectedOrigin?.address)}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="flex-1 rounded-full bg-trama-violet py-2.5 text-center text-[12.5px] font-bold text-white"
+                className="flex-1 rounded-full bg-trama-violet py-2.5 text-center text-[12.5px] font-bold text-white active:scale-[0.97]"
               >
                 Avvia navigazione
               </a>
@@ -187,7 +187,7 @@ export default function PlannerMapView({ pins, addresses }: { pins: PlannerMapPi
                   type="button"
                   onClick={() => hasCoords && setSelectedId(p.activityDbId)}
                   disabled={!hasCoords}
-                  className="flex items-center justify-between gap-2 rounded-xl bg-bg px-3 py-2.5 text-left disabled:opacity-60"
+                  className="flex items-center justify-between gap-2 rounded-xl bg-bg px-3 py-2.5 text-left active:bg-black/[0.06] disabled:opacity-60"
                 >
                   <div className="min-w-0">
                     <div className="truncate text-[12.5px] font-semibold text-ink">

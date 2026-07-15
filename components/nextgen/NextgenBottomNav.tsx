@@ -50,7 +50,7 @@ export default function NextgenBottomNav() {
       {items.map((item) => {
         const active = isActive(pathname, item.href);
         return (
-          <Link key={item.href} href={item.href} className="flex flex-1 flex-col items-center gap-[3px]">
+          <Link key={item.href} href={item.href} className="flex flex-1 flex-col items-center gap-[3px] active:scale-90">
             <i
               className={`ti ${item.icon} text-[22px] transition-colors ${
                 active ? "text-trama-violet" : "text-ink-3"

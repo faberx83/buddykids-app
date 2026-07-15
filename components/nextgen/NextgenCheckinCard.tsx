@@ -110,7 +110,7 @@ export default function NextgenCheckinCard({ items }: { items: TodayCheckin[] })
               key={key}
               type="button"
               onClick={() => toggleExpanded(key)}
-              className="nextgen-warm-shadow flex items-center gap-2.5 rounded-2xl border border-[#FBE4CE] bg-[#FFF7EE] px-4 py-3 text-left"
+              className="nextgen-warm-shadow flex items-center gap-2.5 rounded-2xl border border-[#FBE4CE] bg-[#FFF7EE] px-4 py-3 text-left active:scale-[0.99]"
             >
               <span className={`flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-full ${summary.cls}`}>
                 <i className={`ti ${summary.icon} text-xs`} />
@@ -169,7 +169,7 @@ export default function NextgenCheckinCard({ items }: { items: TodayCheckin[] })
                 type="button"
                 disabled={saving}
                 onClick={() => answer(item, "presente")}
-                className={`flex-1 rounded-lg px-3 py-2.5 text-sm font-bold transition-colors disabled:opacity-60 ${
+                className={`flex-1 rounded-lg px-3 py-2.5 text-sm font-bold transition-colors active:scale-95 disabled:opacity-60 ${
                   status === "presente" ? "bg-partner text-white" : "border border-[#F0C9A0] bg-white text-ink-2"
                 }`}
               >
@@ -179,7 +179,7 @@ export default function NextgenCheckinCard({ items }: { items: TodayCheckin[] })
                 type="button"
                 disabled={saving}
                 onClick={() => answer(item, "in_ritardo")}
-                className={`flex-1 rounded-lg px-3 py-2.5 text-sm font-bold transition-colors disabled:opacity-60 ${
+                className={`flex-1 rounded-lg px-3 py-2.5 text-sm font-bold transition-colors active:scale-95 disabled:opacity-60 ${
                   status === "in_ritardo" ? "bg-orange text-white" : "border border-[#F0C9A0] bg-white text-ink-2"
                 }`}
               >
@@ -189,7 +189,7 @@ export default function NextgenCheckinCard({ items }: { items: TodayCheckin[] })
                 type="button"
                 disabled={saving}
                 onClick={() => answer(item, "assente")}
-                className={`flex-1 rounded-lg px-3 py-2.5 text-sm font-bold transition-colors disabled:opacity-60 ${
+                className={`flex-1 rounded-lg px-3 py-2.5 text-sm font-bold transition-colors active:scale-95 disabled:opacity-60 ${
                   status === "assente" ? "bg-ink text-white" : "border border-[#F0C9A0] bg-white text-ink-2"
                 }`}
               >

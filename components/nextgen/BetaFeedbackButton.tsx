@@ -176,7 +176,7 @@ export default function BetaFeedbackButton() {
           <div className="w-full max-w-sm rounded-2xl bg-white p-4">
             <div className="mb-1 flex items-center justify-between">
               <div className="text-[15px] font-bold text-ink">Segnala un problema</div>
-              <button type="button" onClick={() => setOpen(false)} aria-label="Chiudi" className="text-ink-3">
+              <button type="button" onClick={() => setOpen(false)} aria-label="Chiudi" className="text-ink-3 active:scale-95">
                 <i className="ti ti-x text-[18px]" />
               </button>
             </div>
@@ -196,7 +196,7 @@ export default function BetaFeedbackButton() {
               type="button"
               disabled={submitting}
               onClick={handleSubmit}
-              className="mt-3 w-full rounded-full bg-trama-violet py-2.5 text-[13.5px] font-bold text-white disabled:opacity-50"
+              className="mt-3 w-full rounded-full bg-trama-violet py-2.5 text-[13.5px] font-bold text-white active:scale-[0.97] disabled:opacity-50"
             >
               {submitting ? "Invio…" : "Invia segnalazione"}
             </button>

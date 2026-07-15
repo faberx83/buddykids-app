@@ -29,8 +29,13 @@ export default function HubCard({
   badge?: number;
   comingSoon?: boolean;
 }) {
+  const clickable = Boolean(href && !comingSoon);
   const content = (
-    <div className={`flex items-center gap-3 rounded-2xl bg-white p-4 ${comingSoon ? "opacity-60" : ""}`}>
+    <div
+      className={`flex items-center gap-3 rounded-2xl bg-white p-4 ${comingSoon ? "opacity-60" : ""} ${
+        clickable ? "active:bg-black/[0.06]" : ""
+      }`}
+    >
       <div
         className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-full text-[19px]"
         style={{ backgroundColor: iconBg, color: iconColor }}

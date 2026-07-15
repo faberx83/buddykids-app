@@ -26,7 +26,7 @@ function CommunityCard({ community }: { community: CommunityItem }) {
   return (
     <Link
       href={`/nextgen/community/${community.id}`}
-      className="flex items-center gap-3 rounded-2xl bg-white p-3.5"
+      className="flex items-center gap-3 rounded-2xl bg-white p-3.5 active:bg-black/[0.06]"
     >
       <span className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-trama-lilac/20 text-lg">
         {community.emoji}
@@ -52,7 +52,7 @@ function CommunityCard({ community }: { community: CommunityItem }) {
 
 function GroupCard({ group }: { group: GroupItem }) {
   return (
-    <Link href={`/groups/${group.id}`} className="flex items-center gap-3 rounded-2xl bg-white p-3.5">
+    <Link href={`/groups/${group.id}`} className="flex items-center gap-3 rounded-2xl bg-white p-3.5 active:bg-black/[0.06]">
       <span
         className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full text-lg"
         style={{ background: group.gradient }}
@@ -82,7 +82,7 @@ export default function PlannerGroupsView({
       <div>
         <div className="mb-2.5 flex items-center justify-between">
           <span className="font-poppins text-[13px] font-bold text-ink">Le tue Community</span>
-          <Link href="/nextgen/community" className="text-[12px] font-semibold text-trama-violet">
+          <Link href="/nextgen/community" className="text-[12px] font-semibold text-trama-violet active:bg-black/[0.04]">
             {communities.length > 0 ? "Vedi tutte" : "Crea o entra"}
           </Link>
         </div>
@@ -102,7 +102,7 @@ export default function PlannerGroupsView({
       <div>
         <div className="mb-2.5 flex items-center justify-between">
           <span className="font-poppins text-[13px] font-bold text-ink">I tuoi Gruppi sconto</span>
-          <Link href="/groups" className="text-[12px] font-semibold text-trama-violet">
+          <Link href="/groups" className="text-[12px] font-semibold text-trama-violet active:bg-black/[0.04]">
             {groups.length > 0 ? "Vedi tutti" : "Scopri come"}
           </Link>
         </div>

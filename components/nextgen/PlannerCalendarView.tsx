@@ -354,7 +354,7 @@ export default function PlannerCalendarView({
               setViewMode(opt.key);
               setSelectedDay(null);
             }}
-            className={`rounded-full px-3.5 py-1.5 text-[12.5px] font-bold ${
+            className={`rounded-full px-3.5 py-1.5 text-[12.5px] font-bold active:scale-95 ${
               viewMode === opt.key ? "bg-trama-violet text-white" : "bg-bg text-ink-2"
             }`}
           >
@@ -386,7 +386,7 @@ export default function PlannerCalendarView({
               type="button"
               disabled={monthIndex <= 0}
               onClick={() => setMonthKey(months[Math.max(0, monthIndex - 1)].key)}
-              className="flex h-8 w-8 items-center justify-center rounded-full bg-bg text-ink-2 disabled:opacity-30"
+              className="flex h-8 w-8 items-center justify-center rounded-full bg-bg text-ink-2 active:scale-95 disabled:opacity-30"
               aria-label="Mese precedente"
             >
               <i className="ti ti-chevron-left text-[15px]" />
@@ -396,7 +396,7 @@ export default function PlannerCalendarView({
               type="button"
               disabled={monthIndex >= months.length - 1}
               onClick={() => setMonthKey(months[Math.min(months.length - 1, monthIndex + 1)].key)}
-              className="flex h-8 w-8 items-center justify-center rounded-full bg-bg text-ink-2 disabled:opacity-30"
+              className="flex h-8 w-8 items-center justify-center rounded-full bg-bg text-ink-2 active:scale-95 disabled:opacity-30"
               aria-label="Mese successivo"
             >
               <i className="ti ti-chevron-right text-[15px]" />
@@ -422,7 +422,7 @@ export default function PlannerCalendarView({
                   type="button"
                   disabled={!cell.inSeason}
                   onClick={() => setSelectedDay(isSelected ? null : cell)}
-                  className={`relative flex aspect-square flex-col items-center justify-center rounded-lg text-[11px] ${
+                  className={`relative flex aspect-square flex-col items-center justify-center rounded-lg text-[11px] active:scale-95 ${
                     isSelected
                       ? "bg-trama-lilac/20 font-bold text-ink"
                       : isToday
@@ -454,7 +454,7 @@ export default function PlannerCalendarView({
             <button
               type="button"
               onClick={() => openShare(monthShareScope.start, monthShareScope.end, activeMonth.label)}
-              className="mt-3 flex w-full items-center justify-center gap-1.5 rounded-full bg-trama-lilac/20 py-2 text-[12px] font-bold text-trama-violet"
+              className="mt-3 flex w-full items-center justify-center gap-1.5 rounded-full bg-trama-lilac/20 py-2 text-[12px] font-bold text-trama-violet active:brightness-95"
             >
               <i className="ti ti-share text-[14px]" />
               Condividi {activeMonth.label}
@@ -497,7 +497,7 @@ export default function PlannerCalendarView({
                         }
                   )
                 }
-                className={`flex items-center gap-3 rounded-xl p-3 text-left ${
+                className={`flex items-center gap-3 rounded-xl p-3 text-left active:bg-black/[0.06] ${
                   isSelected ? "bg-trama-lilac/20" : w.dismissed ? "bg-bg" : "bg-white"
                 }`}
               >
@@ -556,7 +556,7 @@ export default function PlannerCalendarView({
                       selectedDay.weekLabel ?? "Settimana"
                     )
                   }
-                  className="flex items-center gap-1 rounded-full bg-trama-lilac/20 px-2.5 py-1 text-[11px] font-bold text-trama-violet"
+                  className="flex items-center gap-1 rounded-full bg-trama-lilac/20 px-2.5 py-1 text-[11px] font-bold text-trama-violet active:brightness-95"
                 >
                   <i className="ti ti-share text-[12px]" />
                   Condividi
@@ -589,7 +589,7 @@ export default function PlannerCalendarView({
                             key={k.kidId}
                             type="button"
                             onClick={() => toggleBulkKid(k.kidId)}
-                            className={`flex items-center gap-1.5 rounded-full bg-white px-2.5 py-1 text-[11px] font-semibold ${
+                            className={`flex items-center gap-1.5 rounded-full bg-white px-2.5 py-1 text-[11px] font-semibold active:scale-95 ${
                               included ? "text-ink" : "text-ink-3 line-through"
                             }`}
                           >
@@ -611,7 +611,7 @@ export default function PlannerCalendarView({
                           key={mo.value}
                           type="button"
                           onClick={() => toggleBulkMoment(mo.value)}
-                          className={`flex items-center gap-1 rounded-full bg-white px-2.5 py-1 text-[11px] font-semibold ${
+                          className={`flex items-center gap-1 rounded-full bg-white px-2.5 py-1 text-[11px] font-semibold active:scale-95 ${
                             included ? "text-trama-violet" : "text-ink-3 line-through"
                           }`}
                         >
@@ -634,7 +634,7 @@ export default function PlannerCalendarView({
                           }
                           handleBulkAssign(opt.value);
                         }}
-                        className="rounded-full bg-white px-2.5 py-1 text-[11px] font-semibold text-ink-2 disabled:opacity-50"
+                        className="rounded-full bg-white px-2.5 py-1 text-[11px] font-semibold text-ink-2 active:scale-95 disabled:opacity-50"
                       >
                         {opt.emoji} {opt.label}
                       </button>
@@ -653,7 +653,7 @@ export default function PlannerCalendarView({
                         type="button"
                         disabled={bulkBusy || !bulkAltroText.trim()}
                         onClick={() => handleBulkAssign("altro", bulkAltroText)}
-                        className="flex-shrink-0 rounded-lg bg-trama-violet px-2.5 py-1.5 text-[11px] font-bold text-white disabled:opacity-40"
+                        className="flex-shrink-0 rounded-lg bg-trama-violet px-2.5 py-1.5 text-[11px] font-bold text-white active:scale-[0.97] disabled:opacity-40"
                       >
                         OK
                       </button>
@@ -720,7 +720,7 @@ export default function PlannerCalendarView({
                                           : currentOption?.label
                                         : "Nessuno assegnato"
                                     }
-                                    className={`flex h-7 items-center justify-center rounded-lg text-[13px] ${
+                                    className={`flex h-7 items-center justify-center rounded-lg text-[13px] active:scale-95 ${
                                       isAssigning
                                         ? "bg-trama-lilac/20 ring-1 ring-trama-violet"
                                         : current
@@ -758,7 +758,7 @@ export default function PlannerCalendarView({
                                             if (opt.value === "altro") return; // richiede il testo sotto
                                             handleAssign(k.kidId, weekStartDate, weekday, moment, opt.value);
                                           }}
-                                          className={`rounded-full px-2.5 py-1 text-[11px] font-semibold ${
+                                          className={`rounded-full px-2.5 py-1 text-[11px] font-semibold active:scale-95 ${
                                             current?.responsible === opt.value
                                               ? "bg-trama-violet text-white"
                                               : "bg-white text-ink-2"
@@ -782,7 +782,7 @@ export default function PlannerCalendarView({
                                         onClick={() =>
                                           handleAssign(k.kidId, weekStartDate, weekday, moment, "altro", altroText)
                                         }
-                                        className="flex-shrink-0 rounded-lg bg-trama-violet px-2.5 py-1.5 text-[11px] font-bold text-white disabled:opacity-40"
+                                        className="flex-shrink-0 rounded-lg bg-trama-violet px-2.5 py-1.5 text-[11px] font-bold text-white active:scale-[0.97] disabled:opacity-40"
                                       >
                                         OK
                                       </button>
@@ -792,7 +792,7 @@ export default function PlannerCalendarView({
                                         type="button"
                                         disabled={savingKey === assigningKey}
                                         onClick={() => handleClear(k.kidId, weekStartDate, weekday, moment)}
-                                        className="self-start text-[11px] font-semibold text-ink-3"
+                                        className="self-start text-[11px] font-semibold text-ink-3 active:bg-black/[0.04]"
                                       >
                                         Rimuovi assegnazione
                                       </button>
@@ -827,7 +827,7 @@ export default function PlannerCalendarView({
         <div className="rounded-2xl border border-[#E8EBF0] bg-white p-4">
           <div className="mb-2.5 flex items-center justify-between">
             <div className="font-poppins text-[13px] font-bold text-ink">Condividi piano</div>
-            <button type="button" onClick={() => setSharingScope(null)} className="text-ink-3" aria-label="Chiudi">
+            <button type="button" onClick={() => setSharingScope(null)} className="text-ink-3 active:scale-95" aria-label="Chiudi">
               <i className="ti ti-x text-[16px]" />
             </button>
           </div>
@@ -842,7 +842,7 @@ export default function PlannerCalendarView({
                 <button
                   type="button"
                   onClick={() => copyToClipboard(shareResultUrl)}
-                  className="flex-shrink-0 rounded-full bg-trama-violet px-3 py-1.5 text-[11px] font-bold text-white"
+                  className="flex-shrink-0 rounded-full bg-trama-violet px-3 py-1.5 text-[11px] font-bold text-white active:scale-[0.97]"
                 >
                   Copia
                 </button>
@@ -850,7 +850,7 @@ export default function PlannerCalendarView({
               <button
                 type="button"
                 onClick={() => setSharingScope(null)}
-                className="self-start text-[11.5px] font-semibold text-trama-violet"
+                className="self-start text-[11.5px] font-semibold text-trama-violet active:bg-black/[0.04]"
               >
                 Fatto
               </button>
@@ -871,7 +871,7 @@ export default function PlannerCalendarView({
                 type="button"
                 disabled={shareBusy}
                 onClick={handleCreateShare}
-                className="rounded-full bg-trama-violet px-4 py-2 text-[12.5px] font-bold text-white disabled:opacity-50"
+                className="rounded-full bg-trama-violet px-4 py-2 text-[12.5px] font-bold text-white active:scale-[0.97] disabled:opacity-50"
               >
                 {shareBusy ? "Creo il link…" : "Crea link"}
               </button>
@@ -898,7 +898,7 @@ export default function PlannerCalendarView({
                   <button
                     type="button"
                     onClick={() => handleRevokeShare(s.id)}
-                    className="flex-shrink-0 text-[11px] font-semibold text-red-500"
+                    className="flex-shrink-0 text-[11px] font-semibold text-red-500 active:bg-black/[0.04]"
                   >
                     Revoca
                   </button>

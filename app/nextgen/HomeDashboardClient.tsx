@@ -197,7 +197,7 @@ export default function HomeDashboardClient({
           <button
             type="button"
             onClick={() => router.push("/nextgen/planner")}
-            className="rounded-full bg-trama-violet px-5 py-3 text-sm font-bold text-white"
+            className="rounded-full bg-trama-violet px-5 py-3 text-sm font-bold text-white active:scale-[0.97]"
           >
             Continua a pianificare
           </button>
@@ -231,7 +231,7 @@ export default function HomeDashboardClient({
       {communitySignal && (
         <Link
           href={`/nextgen/community/${communitySignal.communityId}`}
-          className="flex items-center gap-2.5 rounded-2xl bg-trama-lilac/20 px-4 py-3"
+          className="flex items-center gap-2.5 rounded-2xl bg-trama-lilac/20 px-4 py-3 active:scale-[0.99]"
         >
           <i className="ti ti-users-group flex-shrink-0 text-lg text-trama-violet" />
           <span className="text-[13px] font-medium text-ink-2">
@@ -272,7 +272,7 @@ export default function HomeDashboardClient({
               <BookingVisualCard key={b.id} booking={b} compact />
             ))}
           </div>
-          <Link href="/prenotazioni" className="mt-3 inline-block text-sm font-semibold text-trama-violet">
+          <Link href="/prenotazioni" className="mt-3 inline-block text-sm font-semibold text-trama-violet active:bg-black/[0.04]">
             Gestisci tutte le prenotazioni →
           </Link>
         </div>
@@ -285,7 +285,7 @@ export default function HomeDashboardClient({
           "primario scuro" del rebrand, vedi tailwind.config.ts). */}
       <Link
         href="/nextgen/planner"
-        className="flex items-center justify-between rounded-2xl bg-trama-navy px-5 py-4 text-white"
+        className="flex items-center justify-between rounded-2xl bg-trama-navy px-5 py-4 text-white active:scale-[0.97]"
       >
         <div>
           <div className="font-poppins text-base font-bold">Apri Planner</div>

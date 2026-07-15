@@ -395,7 +395,7 @@ export default function SearchDiscoveryClient({
               <div
                 key={f.key}
                 onClick={() => setOpenPanel((prev) => (prev === f.key ? null : f.key))}
-                className={`flex flex-shrink-0 cursor-pointer items-center gap-1.5 rounded-full border-[1.5px] px-3 py-1.5 text-xs font-medium transition-colors ${
+                className={`flex flex-shrink-0 cursor-pointer items-center gap-1.5 rounded-full border-[1.5px] px-3 py-1.5 text-xs font-medium transition-colors active:scale-95 ${
                   openPanel === f.key
                     ? "border-trama-violet bg-trama-violet text-white"
                     : "border-[#E8EBF0] bg-[#F4F6FA] text-ink-2 hover:border-trama-violet hover:bg-trama-violet hover:text-white"
@@ -410,7 +410,7 @@ export default function SearchDiscoveryClient({
                       e.stopPropagation();
                       clearGeo();
                     }}
-                    className={`ti ti-x flex h-3.5 w-3.5 items-center justify-center rounded-full text-[10px] ${
+                    className={`ti ti-x flex h-3.5 w-3.5 items-center justify-center rounded-full text-[10px] active:scale-95 ${
                       openPanel === f.key ? "bg-white/25" : "bg-ink-3/20"
                     }`}
                   />
@@ -422,7 +422,7 @@ export default function SearchDiscoveryClient({
                       e.stopPropagation();
                       setSelectedWeekStarts([]);
                     }}
-                    className={`ti ti-x flex h-3.5 w-3.5 items-center justify-center rounded-full text-[10px] ${
+                    className={`ti ti-x flex h-3.5 w-3.5 items-center justify-center rounded-full text-[10px] active:scale-95 ${
                       openPanel === f.key ? "bg-white/25" : "bg-ink-3/20"
                     }`}
                   />
@@ -434,7 +434,7 @@ export default function SearchDiscoveryClient({
                       e.stopPropagation();
                       setSelectedTagIds([]);
                     }}
-                    className={`ti ti-x flex h-3.5 w-3.5 items-center justify-center rounded-full text-[10px] ${
+                    className={`ti ti-x flex h-3.5 w-3.5 items-center justify-center rounded-full text-[10px] active:scale-95 ${
                       openPanel === f.key ? "bg-white/25" : "bg-ink-3/20"
                     }`}
                   />
@@ -446,7 +446,7 @@ export default function SearchDiscoveryClient({
                       e.stopPropagation();
                       setSelectedKidId(null);
                     }}
-                    className={`ti ti-x flex h-3.5 w-3.5 items-center justify-center rounded-full text-[10px] ${
+                    className={`ti ti-x flex h-3.5 w-3.5 items-center justify-center rounded-full text-[10px] active:scale-95 ${
                       openPanel === f.key ? "bg-white/25" : "bg-ink-3/20"
                     }`}
                   />
@@ -462,7 +462,7 @@ export default function SearchDiscoveryClient({
             <button
               type="button"
               onClick={clearAllFilters}
-              className="flex-shrink-0 whitespace-nowrap pl-1 text-xs font-semibold text-trama-orange"
+              className="flex-shrink-0 whitespace-nowrap pl-1 text-xs font-semibold text-trama-orange active:bg-black/[0.04]"
             >
               Azzera ({activeFiltersCount})
             </button>
@@ -480,7 +480,7 @@ export default function SearchDiscoveryClient({
               <button
                 type="button"
                 onClick={() => setSelectedKidId(null)}
-                className={`rounded-full border-[1.5px] px-3 py-1.5 text-xs font-medium transition-colors ${
+                className={`rounded-full border-[1.5px] px-3 py-1.5 text-xs font-medium transition-colors active:scale-95 ${
                   selectedKidId === null ? "border-trama-violet bg-trama-violet text-white" : "border-[#E8EBF0] bg-white text-ink-2"
                 }`}
               >
@@ -491,7 +491,7 @@ export default function SearchDiscoveryClient({
                   key={k.id}
                   type="button"
                   onClick={() => setSelectedKidId(k.id)}
-                  className={`rounded-full border-[1.5px] px-3 py-1.5 text-xs font-medium transition-colors ${
+                  className={`rounded-full border-[1.5px] px-3 py-1.5 text-xs font-medium transition-colors active:scale-95 ${
                     selectedKidId === k.id ? "border-trama-violet bg-trama-violet text-white" : "border-[#E8EBF0] bg-white text-ink-2"
                   }`}
                 >
@@ -570,7 +570,7 @@ export default function SearchDiscoveryClient({
                   type="button"
                   onClick={locateMe}
                   disabled={geoStatus === "loading"}
-                  className="flex items-center gap-1.5 rounded-md bg-trama-violet px-3 py-2 text-xs font-bold text-white disabled:opacity-60"
+                  className="flex items-center gap-1.5 rounded-md bg-trama-violet px-3 py-2 text-xs font-bold text-white active:scale-[0.97] disabled:opacity-60"
                 >
                   <i className="ti ti-current-location text-sm" />
                   {geoStatus === "loading" ? "Rilevo la posizione…" : "Usa la mia posizione"}
@@ -587,7 +587,7 @@ export default function SearchDiscoveryClient({
                   <p className="text-[11px] text-ink-3">
                     Posizione rilevata: {geo.lat.toFixed(4)}, {geo.lng.toFixed(4)}
                   </p>
-                  <button type="button" onClick={clearGeo} className="text-[11px] font-semibold text-trama-orange">
+                  <button type="button" onClick={clearGeo} className="text-[11px] font-semibold text-trama-orange active:bg-black/[0.04]">
                     Rimuovi posizione
                   </button>
                 </div>
@@ -625,7 +625,7 @@ export default function SearchDiscoveryClient({
                     key={c.id}
                     type="button"
                     onClick={() => toggleTag(c.id)}
-                    className={`rounded-full border-[1.5px] px-3 py-1.5 text-xs font-medium transition-colors ${
+                    className={`rounded-full border-[1.5px] px-3 py-1.5 text-xs font-medium transition-colors active:scale-95 ${
                       active ? "border-trama-violet bg-trama-violet text-white" : "border-[#E8EBF0] bg-white text-ink-2"
                     }`}
                   >
@@ -697,7 +697,7 @@ export default function SearchDiscoveryClient({
                 <button
                   type="button"
                   onClick={() => setSelectedWeekStarts([])}
-                  className="text-[11px] font-semibold text-trama-orange"
+                  className="text-[11px] font-semibold text-trama-orange active:bg-black/[0.04]"
                 >
                   Qualsiasi settimana
                 </button>
@@ -718,7 +718,7 @@ export default function SearchDiscoveryClient({
                           key={start}
                           type="button"
                           onClick={() => toggleWeek(start)}
-                          className={`flex w-full items-center justify-between rounded-md px-3 py-2 text-left text-xs font-semibold transition-colors ${
+                          className={`flex w-full items-center justify-between rounded-md px-3 py-2 text-left text-xs font-semibold transition-colors active:scale-[0.99] ${
                             active ? "bg-trama-violet text-white" : "bg-white text-ink-2"
                           }`}
                         >
@@ -757,7 +757,7 @@ export default function SearchDiscoveryClient({
               <button
                 type="button"
                 onClick={() => setViewMode("lista")}
-                className={`flex items-center gap-1 rounded-full px-2.5 py-1 transition-colors ${
+                className={`flex items-center gap-1 rounded-full px-2.5 py-1 transition-colors active:scale-95 ${
                   viewMode === "lista" ? "bg-trama-violet text-white" : "text-ink-2"
                 }`}
               >
@@ -767,7 +767,7 @@ export default function SearchDiscoveryClient({
               <button
                 type="button"
                 onClick={() => setViewMode("mappa")}
-                className={`flex items-center gap-1 rounded-full px-2.5 py-1 transition-colors ${
+                className={`flex items-center gap-1 rounded-full px-2.5 py-1 transition-colors active:scale-95 ${
                   viewMode === "mappa" ? "bg-trama-violet text-white" : "text-ink-2"
                 }`}
               >

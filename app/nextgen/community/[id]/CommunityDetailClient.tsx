@@ -115,7 +115,7 @@ export default function CommunityDetailClient({
       <button
         type="button"
         onClick={copyCode}
-        className="nextgen-warm-shadow flex items-center justify-between rounded-[20px] bg-white p-4 text-left"
+        className="nextgen-warm-shadow flex items-center justify-between rounded-[20px] bg-white p-4 text-left active:bg-black/[0.06]"
       >
         <div>
           <div className="text-[11px] font-bold uppercase tracking-wide text-ink-3">Codice invito</div>
@@ -147,7 +147,7 @@ export default function CommunityDetailClient({
           <button
             type="button"
             onClick={() => setShowProposeForm((v) => !v)}
-            className="text-sm font-semibold text-trama-violet"
+            className="text-sm font-semibold text-trama-violet active:bg-black/[0.04]"
           >
             <i className="ti ti-plus mr-1" />
             Proponi
@@ -180,7 +180,7 @@ export default function CommunityDetailClient({
               type="button"
               disabled={busyPropose}
               onClick={handlePropose}
-              className="rounded-full bg-trama-violet px-4 py-2.5 text-sm font-bold text-white disabled:opacity-50"
+              className="rounded-full bg-trama-violet px-4 py-2.5 text-sm font-bold text-white active:scale-[0.97] disabled:opacity-50"
             >
               {busyPropose ? "Invio…" : "Condividi proposta"}
             </button>
@@ -203,7 +203,7 @@ export default function CommunityDetailClient({
                     {p.activityEmoji}
                   </div>
                   <div className="min-w-0 flex-1">
-                    <Link href={`/activity/${p.activitySlug}`} className="block truncate text-base font-semibold text-ink">
+                    <Link href={`/activity/${p.activitySlug}`} className="block truncate text-base font-semibold text-ink active:bg-black/[0.04]">
                       {p.activityName}
                     </Link>
                     <div className="truncate text-[12.5px] text-ink-3">{p.centerName}</div>
@@ -216,7 +216,7 @@ export default function CommunityDetailClient({
                     type="button"
                     disabled={busyProposalId === p.id}
                     onClick={() => toggleInterest(p.id, p.iAmInterested)}
-                    className={`flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[12.5px] font-bold disabled:opacity-50 ${
+                    className={`flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[12.5px] font-bold active:scale-95 disabled:opacity-50 ${
                       p.iAmInterested ? "bg-trama-violet text-white" : "bg-bg text-ink-2"
                     }`}
                   >
@@ -233,7 +233,7 @@ export default function CommunityDetailClient({
                       type="button"
                       disabled={busyProposalId === p.id}
                       onClick={() => handleSpawnGroup(p.id)}
-                      className="ml-auto flex items-center gap-1 rounded-full bg-trama-violet px-3 py-1.5 text-[12px] font-bold text-white disabled:opacity-50"
+                      className="ml-auto flex items-center gap-1 rounded-full bg-trama-violet px-3 py-1.5 text-[12px] font-bold text-white active:scale-[0.97] disabled:opacity-50"
                     >
                       <i className="ti ti-users-group text-[13px]" />
                       Genera Gruppo

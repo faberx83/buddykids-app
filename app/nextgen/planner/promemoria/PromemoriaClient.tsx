@@ -79,7 +79,7 @@ export default function PromemoriaClient({ addresses }: { addresses: ParentAddre
           <button
             type="button"
             onClick={() => setActive((v) => !v)}
-            className="flex w-full items-center justify-between"
+            className="flex w-full items-center justify-between active:bg-black/[0.04]"
             aria-pressed={active}
           >
             <span className="text-[14px] font-bold text-ink">Promemoria attivo</span>
@@ -113,7 +113,7 @@ export default function PromemoriaClient({ addresses }: { addresses: ParentAddre
                 <button
                   type="button"
                   onClick={() => setExpanded((v) => !v)}
-                  className="flex w-full items-center justify-between text-[13px] font-bold text-green"
+                  className="flex w-full items-center justify-between text-[13px] font-bold text-green active:bg-black/[0.04]"
                 >
                   Partenza consigliata
                   <i className={`ti ${expanded ? "ti-chevron-up" : "ti-chevron-down"} text-[16px]`} />
@@ -150,7 +150,7 @@ export default function PromemoriaClient({ addresses }: { addresses: ParentAddre
                                 type="button"
                                 onClick={() => setOriginKind(a.kind)}
                                 aria-pressed={isSelected}
-                                className={`rounded-full px-3 py-1.5 text-[12px] font-semibold transition-colors ${
+                                className={`rounded-full px-3 py-1.5 text-[12px] font-semibold transition-colors active:scale-95 ${
                                   isSelected
                                     ? "bg-trama-violet text-white"
                                     : "bg-bg text-ink-2 hover:bg-[#EEF0F4]"
@@ -168,7 +168,7 @@ export default function PromemoriaClient({ addresses }: { addresses: ParentAddre
                     ) : (
                       <p className="text-[11.5px] text-ink-2">
                         Nessun indirizzo salvato.{" "}
-                        <Link href="/nextgen/planner/indirizzi" className="font-semibold text-trama-violet">
+                        <Link href="/nextgen/planner/indirizzi" className="font-semibold text-trama-violet active:bg-black/[0.04]">
                           Aggiungine uno
                         </Link>{" "}
                         per calcolare la partenza.
