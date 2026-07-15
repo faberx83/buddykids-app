@@ -18,16 +18,16 @@ import { loginAs, isRealDeployment } from "../fixtures/roles";
 // conseguenza, TC-N65 aggiunto per verificare l'indipendenza fra celle.
 
 test.describe("NEXTGEN - Family Planner Sprint 5.3 (Logistica/Chi fa cosa/Condivisione)", () => {
-  // SPRINT CORRETTIVO: "Indirizzi di famiglia" non è più un link diretto sotto
-  // ogni modalità del Planner — ora si passa dall'hub /nextgen/planner/logistica
-  // (vedi tests/nextgen/planner-logistica.spec.ts#TC-N95 per l'hub in sé).
-  test("TC-N56 - Da Planner -> Logistica & Famiglia -> Indirizzi si aprono le 4 schede indirizzo", async ({ page }) => {
+  // SPRINT 7: "Indirizzi di famiglia" non è più un link diretto sotto ogni
+  // modalità del Planner, né passa più dall'hub /nextgen/planner/logistica
+  // (eliminato) — ora è una vera sezione dentro Profilo (feedback Fabrizio:
+  // "Logistica e Famiglia non devono diventare una sezione ad hoc?"), vedi
+  // tests/nextgen/profile-6.spec.ts per Profilo in sé.
+  test("TC-N56 - Da Profilo -> Indirizzi di famiglia si aprono le 4 schede indirizzo", async ({ page }) => {
     test.skip(!isRealDeployment, "Richiede un deploy con Supabase configurato e l'account genitore di test.");
     await loginAs(page, "parent");
-    await page.goto("/nextgen/planner");
-    await page.getByRole("link", { name: /Logistica & Famiglia/ }).click();
-    await expect(page).toHaveURL(/\/nextgen\/planner\/logistica/);
-    await page.getByText("Indirizzi di famiglia").click();
+    await page.goto("/nextgen/profile");
+    await page.getByRole("link", { name: /Indirizzi di famiglia/ }).click();
 
     await expect(page).toHaveURL(/\/nextgen\/planner\/indirizzi/);
     await expect(page.getByText("Casa", { exact: true })).toBeVisible();

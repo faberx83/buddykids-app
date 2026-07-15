@@ -501,19 +501,6 @@ export default function PlannerClient({
         </>
         )}
 
-        {/* SPRINT CORRETTIVO (feedback Fabrizio): "Indirizzi di Famiglia/
-            Famiglia/Gestisci prenotazioni... vanno riportate in una unica
-            pagina" — prima questi 3 link comparivano ripetuti qui sotto OGNI
-            modalità del Planner. Ora un solo link porta all'hub
-            /nextgen/planner/logistica (Indirizzi, Famiglia, Condivisione
-            piano, Le tue prenotazioni), vedi LogisticaClient.tsx. */}
-        <Link
-          href="/nextgen/planner/logistica"
-          className="mt-4 flex items-center justify-center gap-1.5 text-center text-[12.5px] font-semibold text-trama-violet"
-        >
-          <i className="ti ti-compass text-[15px]" />
-          Logistica &amp; Famiglia
-        </Link>
       </div>
     </div>
   );

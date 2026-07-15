@@ -232,10 +232,11 @@ export default function FamigliaClient({ initialFamily }: { initialFamily: Famil
 
   return (
     <div className="flex min-h-screen flex-col">
-      {/* SPRINT CORRETTIVO — raggiungibile ora da /nextgen/planner/logistica
-          (hub "Logistica & Famiglia"), non piu' direttamente dal Planner:
-          "indietro" torna li'. */}
-      <PageHeader title="Famiglia" onBack={() => router.push("/nextgen/planner/logistica")} showBrandIcon />
+      {/* SPRINT 7 — l'hub "Logistica & Famiglia" e' stato eliminato (feedback
+          Fabrizio: "Logistica e Famiglia non devono diventare una sezione ad
+          hoc?"): Famiglia e' ora raggiungibile da Profilo (vera sezione
+          Famiglia, non piu' link separato dal Planner) — "indietro" torna li'. */}
+      <PageHeader title="Famiglia" onBack={() => router.push("/nextgen/profile")} showBrandIcon />
       {family ? <FamilyView family={family} /> : <NoFamilyView onCreated={setCreatedFamily} />}
     </div>
   );

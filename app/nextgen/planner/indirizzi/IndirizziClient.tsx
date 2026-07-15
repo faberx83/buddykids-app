@@ -148,10 +148,11 @@ export default function IndirizziClient({ addresses }: { addresses: ParentAddres
 
   return (
     <div className="flex min-h-screen flex-col">
-      {/* SPRINT CORRETTIVO — raggiungibile ora da /nextgen/planner/logistica
-          (hub "Logistica & Famiglia"), non piu' direttamente dal Planner:
-          "indietro" torna li'. */}
-      <PageHeader title="Indirizzi" onBack={() => router.push("/nextgen/planner/logistica")} showBrandIcon />
+      {/* SPRINT 7 — l'hub "Logistica & Famiglia" e' stato eliminato (feedback
+          Fabrizio: "Logistica e Famiglia non devono diventare una sezione ad
+          hoc?"): Indirizzi e' ora raggiungibile da Profilo (vera sezione
+          Famiglia, non piu' link separato dal Planner) — "indietro" torna li'. */}
+      <PageHeader title="Indirizzi" onBack={() => router.push("/nextgen/profile")} showBrandIcon />
       <div className="flex flex-col gap-3 px-5 py-4">
         <p className="text-xs text-ink-2">
           Salva gli indirizzi di famiglia per aprirli velocemente in Maps. La distanza e il tempo di percorrenza dai

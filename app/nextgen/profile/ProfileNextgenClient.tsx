@@ -148,7 +148,31 @@ export default function ProfileNextgenClient({
           subtitle="Storico presenze, ritardi e assenze per i tuoi bambini"
         />
 
-        <div className="mt-2 text-[11px] font-bold uppercase tracking-wide text-ink-3">Piano condiviso</div>
+        {/* SPRINT 7 (feedback Fabrizio: "Logistica e Famiglia non devono
+            diventare una sezione ad hoc?") — Indirizzi/Famiglia/Condivisione
+            piano prima vivevano in un hub separato raggiungibile da un link
+            in fondo al Planner (/nextgen/planner/logistica, ora eliminato,
+            redirect qui). Sono impostazioni che si toccano di rado (si
+            configurano una volta, non si rivedono ogni settimana come Chi fa
+            cosa nel Calendario, che resta li'), quindi il loro posto naturale
+            e' Profilo, non il Planner. */}
+        <div className="mt-2 text-[11px] font-bold uppercase tracking-wide text-ink-3">Famiglia</div>
+        <HubCard
+          href="/nextgen/planner/indirizzi"
+          icon="ti-map-pin"
+          iconBg="#F0EEFF"
+          iconColor="#6F63C5"
+          title="Indirizzi di famiglia"
+          subtitle="Casa, lavoro e altri punti di partenza"
+        />
+        <HubCard
+          href="/nextgen/planner/famiglia"
+          icon="ti-users"
+          iconBg="#E3F9F5"
+          iconColor="#2DBA8C"
+          title="Famiglia"
+          subtitle="Invita l'altro genitore, condividete tutto"
+        />
         <HubCard
           href="/nextgen/planner?mode=calendario"
           icon="ti-share"

@@ -39,6 +39,22 @@ test.describe("NEXTGEN - Profilo (Sprint 6)", () => {
     await expect(card).toHaveAttribute("href", "/nextgen/planner?mode=calendario");
   });
 
+  // SPRINT 7 (feedback Fabrizio: "Logistica e Famiglia non devono diventare
+  // una sezione ad hoc?") — Indirizzi/Famiglia sono ora vere sezioni "Famiglia"
+  // dentro Profilo, non più un hub separato raggiunto da un link nel Planner.
+  test("TC-N112 - la sezione 'Famiglia' ha le card 'Indirizzi di famiglia' e 'Famiglia' con i link corretti", async ({
+    page,
+  }) => {
+    await expect(page.getByRole("link", { name: /Indirizzi di famiglia/ })).toHaveAttribute(
+      "href",
+      "/nextgen/planner/indirizzi"
+    );
+    await expect(page.getByRole("link", { name: /^Famiglia/ })).toHaveAttribute(
+      "href",
+      "/nextgen/planner/famiglia"
+    );
+  });
+
   test("TC-N108 - le card di accesso rapido (Prenotazioni/Preferiti/Presenze/Richieste) sono presenti con i link corretti", async ({
     page,
   }) => {
