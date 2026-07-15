@@ -5,6 +5,7 @@ import { DemoRoleProvider } from "@/components/DemoRoleProvider";
 import RoleSwitcher from "@/components/RoleSwitcher";
 import InstallPrompt from "@/components/InstallPrompt";
 import VersionToggle from "@/components/VersionToggle";
+import AppSplashOverlay from "@/components/AppSplashOverlay";
 import { tenantForHost, TENANT_CONFIG, splashLinks } from "@/lib/tenant";
 
 async function currentTenantConfig() {
@@ -80,6 +81,19 @@ export default async function RootLayout({
         />
       </head>
       <body className="font-sans antialiased">
+        {/* BUGFIX (Fabrizio: "in apertura della PWA si vede ancora lo sfondo
+            colorato... aggiungi anche nome TRAMA e claim") — vedi commento in
+            components/AppSplashOverlay.tsx: Android non supporta uno splash
+            nativo personalizzato, quindi questo overlay lo sostituisce.
+            Montato qui (root layout, fuori da DemoRoleProvider ma non ha
+            bisogno del contesto) cosi' copre sia LEGACY che NEXTGEN con
+            un'unica istanza. */}
+        <AppSplashOverlay
+          logoSrc={config.splashLogo}
+          wordmarkSrc={config.splashWordmark}
+          claim={config.splashClaim}
+          background={config.chromeColor}
+        />
         <DemoRoleProvider>
           {children}
           <RoleSwitcher />

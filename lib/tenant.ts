@@ -49,6 +49,19 @@ export interface TenantConfig {
   icon512: string;
   appleIcon: string;
   splashPrefix: string;
+  // BUGFIX (segnalato da Fabrizio: "in apertura della PWA si vede ancora lo
+  // sfondo colorato, dovrebbe essere bianco... aggiungi anche nome TRAMA e
+  // claim") — su Android, Chrome NON supporta uno splash screen nativo
+  // personalizzato (solo icona + manifest#background_color, mai testo): è un
+  // limite della piattaforma, non risolvibile da manifest/meta come per iOS
+  // sopra. Per mostrare davvero logo+nome+claim all'apertura serve un
+  // overlay nostro (vedi components/AppSplashOverlay.tsx, montato una sola
+  // volta in app/layout.tsx) — questi 3 campi lo configurano per tenant,
+  // riusando gli stessi asset già usati altrove (TramaLoginHeader.tsx per
+  // family, DashboardLayout.tsx per la variante navy/white).
+  splashLogo: string;
+  splashWordmark: string;
+  splashClaim?: string;
 }
 
 // Sprint correttivo (feedback Fabrizio): "l'icona della pwa e' piccola
@@ -78,6 +91,9 @@ export const TENANT_CONFIG: Record<Tenant, TenantConfig> = {
     icon512: "/icon-512.png",
     appleIcon: "/apple-touch-icon.png",
     splashPrefix: "/splash/family",
+    splashLogo: "/brand/trama-logo-mark.png",
+    splashWordmark: "/brand/trama-wordmark.png",
+    splashClaim: "Organizing childhood. Together.",
   },
   partner: {
     title: "TRAMA Partner — Gestione centro",
@@ -89,6 +105,9 @@ export const TENANT_CONFIG: Record<Tenant, TenantConfig> = {
     icon512: "/icon-partner-512.png",
     appleIcon: "/apple-touch-icon-partner.png",
     splashPrefix: "/splash/partner",
+    splashLogo: "/brand/trama-logo-mark-navy.png",
+    splashWordmark: "/brand/trama-wordmark.png",
+    splashClaim: "Organizing childhood. Together.",
   },
   admin: {
     title: "TRAMA Admin — Piattaforma",
@@ -100,6 +119,10 @@ export const TENANT_CONFIG: Record<Tenant, TenantConfig> = {
     icon512: "/icon-admin-512.png",
     appleIcon: "/apple-touch-icon-admin.png",
     splashPrefix: "/splash/admin",
+    splashLogo: "/brand/trama-logo-mark-white.png",
+    splashWordmark: "/brand/trama-wordmark-white.png",
+    // Nessun claim per l'Admin: pannello interno, non ha bisogno del payoff
+    // consumer-facing usato per genitori/gestori.
   },
 };
 
