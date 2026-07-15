@@ -403,11 +403,14 @@ test.describe("Genitori - Prenotazione", () => {
   });
 
   // Segnalazione di Fabrizio: "nella 'modifica prenotazione' deve esserci la
-  // possibilità di annullare — se nei tempi previsti dal gestore, il salva
-  // modifiche deve capire e mostrare un pop-up che dica 'vuoi annullare'
-  // oppure 'non puoi più annullare'" — vedi ModificaPrenotazioneClient.tsx.
+  // possibilità di annullare" — vedi ModificaPrenotazioneClient.tsx.
+  // AGGIORNATO (feedback successivo di Fabrizio: "è ridondante 'salva
+  // modifiche (annulla prenotazione)' e 'annulla prenotazione'... vanno bene
+  // 2 tasti"): "Salva modifiche" NON interpreta più la deselezione di tutte
+  // le settimane come intento di annullare — resta semplicemente disabilitato
+  // in quel caso, l'unico modo per annullare è il pulsante esplicito.
   // Priorita: Alta | Precondizioni: Prenotazione modificabile (entro la finestra di preavviso)
-  test("TC-292 - Deselezionare tutte le settimane e premere 'Salva modifiche' apre il pop-up di conferma annullamento", async ({
+  test("TC-292 - Deselezionare tutte le settimane disabilita 'Salva modifiche' (nessun pop-up, l'annullamento resta solo nel pulsante esplicito)", async ({
     page,
   }) => {
     test.skip(!isRealDeployment, "Richiede un deploy con Supabase configurato e l'account genitore di test.");
@@ -427,21 +430,18 @@ test.describe("Genitori - Prenotazione", () => {
       await selected.first().click();
     }
 
-    const saveButton = page.getByRole("button", { name: "Salva modifiche (annulla prenotazione)" });
+    const saveButton = page.getByRole("button", { name: "Salva modifiche", exact: true });
     await expect(saveButton).toBeVisible();
-    await saveButton.click();
+    await expect(saveButton).toBeDisabled();
 
-    await expect(page.getByText("Vuoi annullare la prenotazione?", { exact: true })).toBeVisible();
-    await expect(page.getByRole("button", { name: "No, mantieni" })).toBeVisible();
-    await expect(page.getByRole("button", { name: "Sì, annulla" })).toBeVisible();
-
-    // Chiudiamo senza confermare, per non alterare i dati usati da altri test.
-    await page.getByRole("button", { name: "No, mantieni" }).click();
+    // Nessun pop-up: il click non fa nulla su un pulsante disabilitato.
     await expect(page.getByText("Vuoi annullare la prenotazione?", { exact: true })).toHaveCount(0);
   });
 
   // Priorita: Media | Precondizioni: Prenotazione modificabile (entro la finestra di preavviso)
-  test("TC-293 - Il pulsante esplicito 'Annulla prenotazione' apre lo stesso pop-up di conferma", async ({ page }) => {
+  test("TC-293 - Il pulsante esplicito 'Annulla prenotazione' apre il pop-up di conferma con la settimana di riferimento", async ({
+    page,
+  }) => {
     test.skip(!isRealDeployment, "Richiede un deploy con Supabase configurato e l'account genitore di test.");
     await loginAs(page, "parent");
     await page.goto("/prenotazioni");
@@ -455,6 +455,10 @@ test.describe("Genitori - Prenotazione", () => {
 
     await page.getByRole("button", { name: "Annulla prenotazione", exact: true }).click();
     await expect(page.getByText("Vuoi annullare la prenotazione?", { exact: true })).toBeVisible();
+    // Feedback Fabrizio: "nel pop-up 'Vuoi annullare la prenotazione' deve
+    // essere indicata la settimana di riferimento" — il formato usato è
+    // quello di WeekCard/shortWeekLabel, es. "LUG 27-31 (Sett. 9)".
+    await expect(page.getByText(/[A-Z]{3} \d{1,2}-\d{1,2} \(Sett\. \d+\)/)).toBeVisible();
 
     await page.getByRole("button", { name: "No, mantieni" }).click();
     await expect(page.getByText("Vuoi annullare la prenotazione?", { exact: true })).toHaveCount(0);

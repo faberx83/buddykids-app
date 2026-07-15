@@ -8,6 +8,7 @@ import { Activity, Week } from "@/lib/types";
 import { MyBooking } from "@/lib/data/my-bookings";
 import { buildFamilyTiers, familyDiscountAmount } from "@/lib/family-discount";
 import { updateBookingWeeksAction, cancelBookingAction } from "@/app/actions/bookings";
+import { shortWeekLabel } from "@/lib/season-weeks";
 
 // NOTA (limite noto, accettabile per questa funzionalità "di test"): WeekCard
 // non permette di deselezionare una settimana risultata "piena" nel
@@ -32,19 +33,14 @@ export default function ModificaPrenotazioneClient({
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   // SPRINT (feedback Fabrizio: "nella 'modifica prenotazione' deve esserci
-  // la possibilità di annullare — se nei tempi previsti dal gestore, il
-  // salva modifiche deve capire e mostrare un pop-up che dica 'vuoi
-  // annullare' oppure 'non puoi più annullare'") — pop-up di conferma
-  // riusato in due punti: 1) pulsante esplicito "Annulla prenotazione" 2)
-  // "Salva modifiche" quando l'utente ha deselezionato TUTTE le settimane
-  // (prima mostrava solo un errore di validazione generico "Seleziona
-  // almeno una settimana", trattando l'intento di annullare come un errore
-  // di input invece che riconoscerlo). cancelBookingAction ri-verifica la
-  // finestra di preavviso lato server (stessa funzione già usata in "Le mie
-  // prenotazioni"): se nel frattempo la finestra si è chiusa, l'errore
-  // restituito ("Puoi annullare/modificare solo fino a X giorni prima...")
-  // è già il messaggio "non puoi più annullare" richiesto, mostrato dentro
-  // lo stesso pop-up invece di un caso separato.
+  // la possibilità di annullare") — pop-up di conferma aperto dal pulsante
+  // esplicito "Annulla prenotazione" (unico modo per annullare da qui,
+  // "Salva modifiche" resta a fare solo il suo mestiere, vedi sotto).
+  // cancelBookingAction ri-verifica la finestra di preavviso lato server
+  // (stessa funzione già usata in "Le mie prenotazioni"): se nel frattempo
+  // la finestra si è chiusa, l'errore restituito è il messaggio "non puoi
+  // più annullare" mostrato dentro lo stesso pop-up invece di un caso
+  // separato.
   const [showCancelConfirm, setShowCancelConfirm] = useState(false);
   const [cancelling, setCancelling] = useState(false);
   const [cancelError, setCancelError] = useState<string | null>(null);
@@ -77,15 +73,22 @@ export default function ModificaPrenotazioneClient({
     selectedWeeks.length === booking.weekIds.length &&
     selectedWeeks.every((id) => booking.weekIds.includes(id));
 
+  // Le settimane davvero prenotate ORA (non quelle selezionate in questo
+  // form, che potrebbero essere state cambiate senza ancora salvare): sono
+  // quelle che cancelBookingAction annulla per davvero — riferimento
+  // mostrato nel pop-up di conferma (feedback Fabrizio: "nel pop-up 'Vuoi
+  // annullare la prenotazione' deve essere indicata la settimana di
+  // riferimento").
+  const bookedWeeksLabel = weeks
+    .filter((w) => booking.weekIds.includes(w.id))
+    .map((w) => `${w.dates} (${shortWeekLabel(w.label)})`)
+    .join(", ");
+
+  const expiredWindowMessage = `La finestra di ${booking.cancellationWindowDays} giorni di preavviso richiesta da questo centro è terminata${
+    booking.daysUntilStart !== null ? ` (mancano ${booking.daysUntilStart} giorni)` : ""
+  }. Contatta direttamente il centro per annullare questa prenotazione.`;
+
   async function handleSave() {
-    if (selectedWeeks.length === 0) {
-      // Deselezionare tutte le settimane e premere "Salva" è, di fatto,
-      // un intento di annullare la prenotazione: invece di un errore di
-      // validazione, apriamo il pop-up di conferma annullamento.
-      setCancelError(null);
-      setShowCancelConfirm(true);
-      return;
-    }
     setSubmitting(true);
     setError(null);
     const result = await updateBookingWeeksAction({ bookingId: booking.id, weekIds: selectedWeeks });
@@ -95,6 +98,21 @@ export default function ModificaPrenotazioneClient({
       return;
     }
     router.push("/prenotazioni");
+  }
+
+  // Feedback Fabrizio: "'Annulla prenotazione' deve essere cliccabile solo
+  // se c'è una prenotazione e ci sono i tempi tecnici per farlo. Se è
+  // 'disabilitato' al click deve esserci un pop-up che dica qualcosa
+  // riguardo ai tempi scaduti" — booking.canCancelOrModify è già la stessa
+  // condizione che decide se questa pagina è raggiungibile (vedi guard più
+  // sotto), quindi qui è una verifica difensiva in più contro l'eventualità
+  // che la finestra si chiuda proprio mentre il genitore ha la pagina
+  // aperta (race condition tra il caricamento e il click): in quel caso
+  // mostriamo subito il messaggio "tempi scaduti", senza nemmeno provare la
+  // chiamata al server.
+  function openCancelPopup() {
+    setCancelError(booking.canCancelOrModify ? null : expiredWindowMessage);
+    setShowCancelConfirm(true);
   }
 
   async function handleConfirmCancel() {
@@ -174,30 +192,25 @@ export default function ModificaPrenotazioneClient({
 
         {error && <p className="mt-3 text-xs font-medium text-orange">{error}</p>}
 
-        {/* Se non è rimasta nessuna settimana selezionata, "Salva modifiche"
-            non è più disabilitato: il click apre il pop-up di conferma
-            annullamento (vedi handleSave) invece di un semplice errore di
-            validazione — l'etichetta cambia per rendere esplicito cosa
-            succederà. */}
+        {/* "Salva modifiche" fa solo il suo mestiere: salva il cambio di
+            settimane. Niente più doppio significato con l'annullamento
+            (feedback Fabrizio: "è ridondante 'salva modifiche (annulla
+            prenotazione)' e 'annulla prenotazione'") — deselezionare tutte le
+            settimane disabilita semplicemente questo pulsante, l'unico modo
+            per annullare resta il pulsante esplicito sotto. */}
         <button
           type="button"
           onClick={handleSave}
-          disabled={submitting || (unchanged && selectedWeeks.length > 0)}
+          disabled={submitting || unchanged || selectedWeeks.length === 0}
           className="mt-4 w-full rounded-md bg-sky px-4 py-3 text-sm font-bold text-white disabled:opacity-50"
         >
-          {submitting ? "Salvataggio…" : selectedWeeks.length === 0 ? "Salva modifiche (annulla prenotazione)" : "Salva modifiche"}
+          {submitting ? "Salvataggio…" : "Salva modifiche"}
         </button>
 
-        {/* Possibilità esplicita di annullare, non solo deselezionando tutte
-            le settimane — stesso pop-up di conferma. */}
-        <button
-          type="button"
-          onClick={() => {
-            setCancelError(null);
-            setShowCancelConfirm(true);
-          }}
-          className="mt-2.5 w-full rounded-md border border-[#E8EBF0] px-4 py-2.5 text-[13px] font-semibold text-orange"
-        >
+        {/* Unico modo per annullare da questa pagina. openCancelPopup fa una
+            verifica difensiva su booking.canCancelOrModify (vedi sopra) prima
+            di aprire il pop-up di conferma vero e proprio. */}
+        <button type="button" onClick={openCancelPopup} className="mt-2.5 w-full rounded-md border border-[#E8EBF0] px-4 py-2.5 text-[13px] font-semibold text-orange">
           Annulla prenotazione
         </button>
       </div>
@@ -212,7 +225,7 @@ export default function ModificaPrenotazioneClient({
               {cancelError ??
                 `Stai per annullare "${booking.activityName}"${
                   booking.kidNames.length > 0 ? ` per ${booking.kidNames.join(", ")}` : ""
-                }. L'operazione non si può annullare.`}
+                } — ${bookedWeeksLabel || "nessuna settimana"}. L'operazione non si può annullare.`}
             </p>
             <div className="flex gap-2">
               {cancelError ? (

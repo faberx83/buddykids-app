@@ -20,6 +20,20 @@ import { useNextgenToast } from "@/components/nextgen/NextgenToastProvider";
 // non va quindi mostrata lì già ora, per non anticipare quella fase con una
 // UI mezza pronta.
 //
+// BUGFIX (Fabrizio: "la CTA la vedo su mobile PWA Android, non compare da
+// web") — prima era `position: fixed` con i bound calcolati su
+// window.innerWidth/innerHeight (il vero viewport del browser). Su mobile
+// il viewport coincide con la cornice "telefono" (.app-shell, vedi
+// PhoneShell.tsx) quindi sembrava funzionare; su desktop web .app-shell è
+// una card centrata larga al massimo 480px dentro a un browser molto più
+// largo, quindi il pulsante finiva ancorato all'angolo della FINESTRA
+// (lontano dalla card, fuori dall'area visibile dell'app). Ora è
+// `position: absolute`: essendo .app-shell il primo antenato posizionato
+// (position: relative), diventa il suo offsetParent, e i bound per
+// trascinamento/posizione di default sono presi da lì invece che dalla
+// finestra — resta sempre dentro la cornice, sia su telefono reale che
+// nell'anteprima desktop.
+//
 // Posizione trascinabile persistita in localStorage (solo lato client,
 // nessun impatto su SSR): la stessa posizione resta tra una pagina e
 // l'altra e tra sessioni, cosi l'utente la sposta una volta sola dove non
@@ -33,23 +47,30 @@ interface Pos {
   y: number;
 }
 
-function clamp(pos: Pos): Pos {
-  if (typeof window === "undefined") return pos;
-  const maxX = window.innerWidth - BUTTON_SIZE - 8;
-  const maxY = window.innerHeight - BUTTON_SIZE - 8;
+function clamp(pos: Pos, width: number, height: number): Pos {
+  const maxX = width - BUTTON_SIZE - 8;
+  const maxY = height - BUTTON_SIZE - 8;
   return { x: Math.min(Math.max(pos.x, 8), Math.max(8, maxX)), y: Math.min(Math.max(pos.y, 8), Math.max(8, maxY)) };
 }
 
-function defaultPos(): Pos {
-  if (typeof window === "undefined") return { x: 16, y: 500 };
-  return clamp({ x: window.innerWidth - BUTTON_SIZE - 16, y: window.innerHeight - 160 });
+// Dimensioni del contenitore posizionato più vicino (.app-shell in pratica):
+// se non ancora disponibile (SSR o primo istante prima del mount) ricade sul
+// viewport reale, solo come stima temporanea finché il ref non è attaccato.
+function containerBounds(el: HTMLElement | null): { width: number; height: number } {
+  const parent = el?.offsetParent as HTMLElement | null;
+  if (parent) return { width: parent.clientWidth, height: parent.clientHeight };
+  if (typeof window !== "undefined") return { width: window.innerWidth, height: window.innerHeight };
+  return { width: 375, height: 667 };
 }
 
 export default function BetaFeedbackButton() {
   const pathname = usePathname();
   const showToast = useNextgenToast();
-  const [mounted, setMounted] = useState(false);
-  const [pos, setPos] = useState<Pos>(defaultPos);
+  const buttonRef = useRef<HTMLButtonElement>(null);
+  // null = nessuna posizione personalizzata ancora nota: il pulsante resta
+  // nell'angolo di default via classi CSS (bottom-24 right-4), niente da
+  // calcolare lato client — renderizzabile identico da SSR, senza flash.
+  const [pos, setPos] = useState<Pos | null>(null);
   const [open, setOpen] = useState(false);
   const [message, setMessage] = useState("");
   const [submitting, setSubmitting] = useState(false);
@@ -57,25 +78,24 @@ export default function BetaFeedbackButton() {
   const dragState = useRef<{ startX: number; startY: number; originX: number; originY: number; dragged: boolean } | null>(null);
 
   useEffect(() => {
-    // La posizione salvata (e il fatto stesso che il componente sia montato
-    // lato client) esistono solo nel browser e non sono derivabili durante
-    // il render SSR — vanno per forza letti in questo effetto "one-shot" al
-    // mount, stesso pattern già usato in InstallPrompt.tsx per lo stesso
-    // motivo (user agent non derivabile a runtime server).
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setMounted(true);
+    // La posizione salvata esiste solo nel browser — va per forza letta in
+    // questo effetto "one-shot" al mount, stesso pattern già usato in
+    // InstallPrompt.tsx per lo stesso motivo (user agent non derivabile a
+    // runtime server).
     try {
       const raw = window.localStorage.getItem(STORAGE_KEY);
-      if (raw) setPos(clamp(JSON.parse(raw)));
+      if (raw) {
+        const { width, height } = containerBounds(buttonRef.current);
+        setPos(clamp(JSON.parse(raw), width, height));
+      }
     } catch {
-      // localStorage non disponibile (es. modalità privata) — resta la posizione di default.
+      // localStorage non disponibile (es. modalità privata) — resta la posizione di default (CSS).
     }
   }, []);
 
   // Sprint 0: gestore/admin condividono ancora questo layout (vedi commento
   // sopra) — la CTA non deve comparire lì, solo nelle pagine genitore vere.
   if (pathname?.startsWith("/nextgen/admin") || pathname?.startsWith("/nextgen/center")) return null;
-  if (!mounted) return null;
 
   function persist(next: Pos) {
     setPos(next);
@@ -88,7 +108,12 @@ export default function BetaFeedbackButton() {
 
   function handlePointerDown(e: React.PointerEvent) {
     (e.target as HTMLElement).setPointerCapture(e.pointerId);
-    dragState.current = { startX: e.clientX, startY: e.clientY, originX: pos.x, originY: pos.y, dragged: false };
+    const rect = buttonRef.current?.getBoundingClientRect();
+    const parent = buttonRef.current?.offsetParent as HTMLElement | null;
+    const parentRect = parent?.getBoundingClientRect();
+    const originX = pos?.x ?? (rect && parentRect ? rect.left - parentRect.left : 0);
+    const originY = pos?.y ?? (rect && parentRect ? rect.top - parentRect.top : 0);
+    dragState.current = { startX: e.clientX, startY: e.clientY, originX, originY, dragged: false };
   }
 
   function handlePointerMove(e: React.PointerEvent) {
@@ -99,7 +124,8 @@ export default function BetaFeedbackButton() {
       dragState.current.dragged = true;
     }
     if (dragState.current.dragged) {
-      persist(clamp({ x: dragState.current.originX + dx, y: dragState.current.originY + dy }));
+      const { width, height } = containerBounds(buttonRef.current);
+      persist(clamp({ x: dragState.current.originX + dx, y: dragState.current.originY + dy }, width, height));
     }
   }
 
@@ -131,13 +157,16 @@ export default function BetaFeedbackButton() {
   return (
     <>
       <button
+        ref={buttonRef}
         type="button"
         onPointerDown={handlePointerDown}
         onPointerMove={handlePointerMove}
         onPointerUp={handlePointerUp}
         aria-label="Segnala un problema"
-        style={{ left: pos.x, top: pos.y, width: BUTTON_SIZE, height: BUTTON_SIZE, touchAction: "none" }}
-        className="fixed z-[70] flex items-center justify-center rounded-full bg-trama-violet text-white shadow-lg active:scale-95"
+        style={{ width: BUTTON_SIZE, height: BUTTON_SIZE, touchAction: "none", ...(pos ? { left: pos.x, top: pos.y } : {}) }}
+        className={`absolute z-[70] flex items-center justify-center rounded-full bg-trama-violet text-white shadow-lg active:scale-95 ${
+          pos ? "" : "bottom-24 right-4"
+        }`}
       >
         <i className="ti ti-message-report text-[22px]" />
       </button>

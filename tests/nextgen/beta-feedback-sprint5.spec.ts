@@ -94,4 +94,34 @@ test.describe("NEXTGEN Sprint 5 - Segnala un problema (BETA)", () => {
 
     await expect(page.getByText("In gestione", { exact: true }).first()).toBeVisible();
   });
+
+  // BUGFIX (Fabrizio: "la CTA la vedo su mobile PWA Android, non compare da
+  // web") — era `position: fixed` calcolata sul vero viewport del browser:
+  // su una finestra desktop larga, la cornice "telefono" (.app-shell, vedi
+  // PhoneShell.tsx) è una card centrata di soli 480px, quindi il pulsante
+  // finiva ancorato all'angolo della finestra, ben oltre il bordo destro
+  // della card — tecnicamente presente nel DOM ma fuori dall'area visibile
+  // dell'app. Ora è `position: absolute` relativa a .app-shell (il suo
+  // offsetParent) — verifichiamo che, anche con un viewport desktop molto
+  // più largo di 480px, il pulsante resti dentro i bordi della card.
+  test("TC-N292 - La floating CTA resta dentro la cornice 'telefono' anche su un viewport desktop largo", async ({
+    page,
+  }) => {
+    test.skip(!isRealDeployment, "Richiede un deploy con Supabase configurato e l'account genitore di test.");
+    await page.setViewportSize({ width: 1600, height: 900 });
+    await loginAs(page, "parent");
+    await page.goto("/nextgen/planner");
+
+    const button = page.getByRole("button", { name: "Segnala un problema" });
+    await expect(button).toBeVisible();
+
+    const buttonBox = await button.boundingBox();
+    const shellBox = await page.locator(".app-shell").boundingBox();
+    expect(buttonBox).not.toBeNull();
+    expect(shellBox).not.toBeNull();
+    if (buttonBox && shellBox) {
+      expect(buttonBox.x).toBeGreaterThanOrEqual(shellBox.x);
+      expect(buttonBox.x + buttonBox.width).toBeLessThanOrEqual(shellBox.x + shellBox.width + 1);
+    }
+  });
 });
