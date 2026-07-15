@@ -101,4 +101,29 @@ test.describe("TRAMA - Login (header animato)", () => {
     expect(manifest.background_color.toLowerCase()).toBe("#ffffff");
     expect(manifest.theme_color.toLowerCase()).toBe("#ffffff");
   });
+
+  // BUGFIX (segnalato da Fabrizio con screenshot: "nelle schede del browser
+  // sono tutte uguali (genitori, partner, admin)") — la favicon della scheda
+  // browser era sempre la stessa a prescindere dal tenant. Causa: la
+  // convenzione speciale di Next.js `app/favicon.ico` (file statico, NON
+  // sensibile all'host) viene iniettata SEMPRE come primo <link rel="icon">,
+  // prima delle icone per-tenant generate dinamicamente da
+  // generateMetadata() (app/layout.tsx) — il browser preferisce quel primo
+  // link generico per la scheda. Fix: rimosso app/favicon.ico, così restano
+  // solo i <link> per-tenant (icon-192.png per famiglia, icon-partner-192.png
+  // per partner, icon-admin-192.png per admin — vedi lib/tenant.ts).
+  // NOTA: i fixture Playwright di questo progetto girano su un solo baseURL
+  // (tenant famiglia, vedi tests/fixtures/roles.ts) — la verifica per
+  // partner.*/admin.* va fatta a livello di codice (già fatto, stesso
+  // generateMetadata() per tutti e 3 i tenant) e manualmente dopo il deploy.
+  test("TC-261 - Nessun <link> favicon.ico generico; presente l'icona per-tenant corretta", async ({ page }) => {
+    test.skip(!isRealDeployment, "Richiede un deploy con Supabase configurato (tenant famiglia).");
+    await page.goto("/auth/login");
+
+    const genericFavicon = page.locator('link[rel="icon"][href*="favicon.ico"]');
+    await expect(genericFavicon).toHaveCount(0);
+
+    const tenantIcon = page.locator('link[rel="icon"][href*="icon-192.png"]');
+    await expect(tenantIcon.first()).toHaveCount(1);
+  });
 });
