@@ -163,6 +163,10 @@ function buildFamilyInviteEmailHtml(params: { familyName: string; inviterName: s
 export interface InviteToFamilyResult {
   error?: string;
   emailSent?: boolean;
+  // Sempre restituito (anche se l'email parte con successo): Fabrizio vuole
+  // poter mandare l'invito anche a mano, es. su WhatsApp, invece di dipendere
+  // solo dalla consegna dell'email.
+  link?: string;
 }
 
 export async function inviteToFamilyAction(email: string): Promise<InviteToFamilyResult> {
@@ -226,7 +230,7 @@ export async function inviteToFamilyAction(email: string): Promise<InviteToFamil
   }
 
   revalidatePath(PLANNER_FAMILY_PATH);
-  return { emailSent };
+  return { emailSent, link };
 }
 
 export interface FamilyInvitePreview {

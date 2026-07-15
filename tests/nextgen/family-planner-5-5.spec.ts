@@ -135,4 +135,29 @@ test.describe("NEXTGEN - Family Planner Sprint 5.5 (Profilo Famiglia multi-genit
 
     await expect(page.getByText(/Questo invito non è \(più\) valido/)).toBeVisible();
   });
+
+  // Fabrizio: "ma un link da poter inviare su whatsapp?" — l'invio email
+  // automatico non basta: serve anche poter copiare il link a mano e
+  // mandarlo su qualsiasi canale (non solo email).
+  test("TC-N117 - Dopo aver inviato un invito, compare 'Copia link invito' subito e nella lista 'In attesa'", async ({ page }) => {
+    test.skip(!isRealDeployment, "Richiede un deploy con Supabase configurato e un account genitore di test già creatore di una famiglia.");
+    await loginAs(page, "parent");
+    await page.goto("/nextgen/planner/famiglia");
+
+    const emailInput = page.getByPlaceholder("Email dell'altro genitore");
+    if (!(await emailInput.isVisible().catch(() => false))) {
+      test.skip(true, "L'account di test non è creatore/admin di una famiglia (esegui prima TC-N74).");
+    }
+    await emailInput.fill(`whatsapp-test-${Date.now()}@example.com`);
+    await page.getByRole("button", { name: "Invia invito" }).click();
+
+    await expect(page.getByRole("button", { name: "Copia link invito (WhatsApp, SMS…)" })).toBeVisible();
+    await page.getByRole("button", { name: "Copia link invito (WhatsApp, SMS…)" }).click();
+    await expect(page.getByText("Link copiato!")).toBeVisible();
+
+    // Anche dalla lista "In attesa di risposta" (dopo refresh) si può
+    // recuperare/ricopiare lo stesso link, senza reinviare da capo.
+    await page.reload();
+    await expect(page.getByRole("button", { name: "Copia link" }).first()).toBeVisible();
+  });
 });

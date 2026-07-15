@@ -32,6 +32,9 @@ export interface PendingFamilyInvite {
   invitedEmail: string;
   status: "pending" | "sent";
   createdAt: string;
+  // Serve a ricostruire il link "Copia link" (WhatsApp/SMS ecc.) anche dopo
+  // un refresh, senza dover reinviare l'invito da capo.
+  token: string;
 }
 
 export interface Family {

@@ -193,11 +193,33 @@ function NoFamilyView({ onCreated }: { onCreated: (f: Family) => void }) {
 // comunque disponibile come alternativa manuale (scelta di Fabrizio: tenere
 // entrambi). Solo creatore/admin possono invitare — stesso controllo
 // lato server in inviteToFamilyAction.
+// Ricostruisce lo stesso link generato lato server (inviteToFamilyAction) a
+// partire dal solo token — usato per "Copia link" sugli inviti già creati,
+// senza dover richiamare il server. Stesso path di app/actions/family.ts.
+function buildFamilyInviteLink(token: string): string {
+  const acceptPath = `/nextgen/planner/famiglia?accept=${token}`;
+  return `${window.location.origin}/auth/login?next=${encodeURIComponent(acceptPath)}`;
+}
+
+async function copyLink(link: string, showToast: (msg: string) => void, onCopied?: () => void) {
+  try {
+    await navigator.clipboard.writeText(link);
+    showToast("Link copiato! Incollalo dove preferisci (WhatsApp, SMS…)");
+    onCopied?.();
+  } catch {
+    showToast("Non sono riuscito a copiare il link");
+  }
+}
+
 function InviteByEmailBox({ onSent }: { onSent: () => void }) {
   const showToast = useNextgenToast();
   const [email, setEmail] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Mostrato subito dopo l'invio, cosi' si puo' copiare il link senza
+  // aspettare il refresh della pagina (Fabrizio: "un link da poter inviare
+  // su whatsapp?" — non solo l'email automatica).
+  const [justSentLink, setJustSentLink] = useState<string | null>(null);
 
   async function handleInvite() {
     setBusy(true);
@@ -209,6 +231,7 @@ function InviteByEmailBox({ onSent }: { onSent: () => void }) {
       return;
     }
     showToast(res.emailSent ? "Invito inviato!" : "Invito creato (email non configurata — condividi il link a mano)");
+    setJustSentLink(res.link || null);
     setEmail("");
     onSent();
   }
@@ -233,12 +256,22 @@ function InviteByEmailBox({ onSent }: { onSent: () => void }) {
           {busy ? "Invio…" : "Invia invito"}
         </button>
         {error && <div className="text-[12px] font-medium text-red-500">{error}</div>}
+        {justSentLink && (
+          <button
+            type="button"
+            onClick={() => copyLink(justSentLink, showToast)}
+            className="rounded-full bg-trama-lilac/20 px-4 py-2 text-[12.5px] font-bold text-trama-violet"
+          >
+            Copia link invito (WhatsApp, SMS…)
+          </button>
+        )}
       </div>
     </div>
   );
 }
 
 function PendingInvitesList({ invites }: { invites: Family["pendingInvites"] }) {
+  const showToast = useNextgenToast();
   if (invites.length === 0) return null;
   return (
     <div className="rounded-2xl bg-white p-4">
@@ -248,10 +281,17 @@ function PendingInvitesList({ invites }: { invites: Family["pendingInvites"] }) 
       <div className="flex flex-col gap-2">
         {invites.map((inv) => (
           <div key={inv.id} className="flex items-center justify-between gap-2">
-            <span className="truncate text-[13px] font-medium text-ink">{inv.invitedEmail}</span>
+            <span className="min-w-0 flex-1 truncate text-[13px] font-medium text-ink">{inv.invitedEmail}</span>
             <span className="flex-shrink-0 rounded-full bg-bg px-2.5 py-1 text-[11px] font-bold text-ink-2">
               {inv.status === "sent" ? "Email inviata" : "In attesa"}
             </span>
+            <button
+              type="button"
+              onClick={() => copyLink(buildFamilyInviteLink(inv.token), showToast)}
+              className="flex-shrink-0 rounded-full bg-trama-lilac/20 px-2.5 py-1 text-[11px] font-bold text-trama-violet"
+            >
+              Copia link
+            </button>
           </div>
         ))}
       </div>

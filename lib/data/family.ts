@@ -47,7 +47,7 @@ export async function getFamilyForUser(): Promise<Family | null> {
   // inviti sono ancora in attesa di risposta, per non reinvitare a caso.
   const { data: inviteRows } = await supabase
     .from("family_invites")
-    .select("id, invited_email, status, created_at")
+    .select("id, invited_email, status, created_at, token")
     .eq("family_id", family.id)
     .in("status", ["pending", "sent"])
     .order("created_at", { ascending: false });
@@ -70,6 +70,7 @@ export async function getFamilyForUser(): Promise<Family | null> {
       invitedEmail: r.invited_email,
       status: r.status as PendingFamilyInvite["status"],
       createdAt: r.created_at,
+      token: r.token,
     })),
   };
 }
