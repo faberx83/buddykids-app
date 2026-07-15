@@ -15,7 +15,13 @@ export default async function PresenzePage() {
 
   return (
     <div className="animate-fade-in">
-      <PageHeader title="Le presenze" backHref="/profile" />
+      {/* BUGFIX (segnalato da Fabrizio: da Profilo NEXTGEN, "Indietro" da
+          qui riportava al profilo LEGACY invece che a quello nuovo) —
+          questa pagina è condivisa tra il profilo LEGACY (/profile) e quello
+          NEXTGEN (/nextgen/profile), non ha un unico "genitore" fisso.
+          Niente backHref: PageHeader ricade su router.back(), che torna
+          sempre a dove l'utente era arrivato davvero (l'uno o l'altro). */}
+      <PageHeader title="Le presenze" />
       <div className="px-5 pt-4">
         <p className="mb-4 text-xs text-ink-2">
           Storico di presenze, ritardi e assenze segnalati per i tuoi bambini — dal check-in in

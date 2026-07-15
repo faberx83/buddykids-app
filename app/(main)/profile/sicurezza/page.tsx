@@ -7,7 +7,10 @@ import ProfileSecuritySection from "@/components/ProfileSecuritySection";
 export default function ProfileSicurezzaPage() {
   return (
     <div className="animate-fade-in">
-      <PageHeader title="Sicurezza" backHref="/profile" />
+      {/* BUGFIX (segnalato da Fabrizio) — raggiungibile sia dal profilo LEGACY
+          che da quello NEXTGEN: niente backHref fisso, PageHeader ricade su
+          router.back() e torna a dove l'utente era arrivato davvero. */}
+      <PageHeader title="Sicurezza" />
       <div className="px-5 py-4">
         <ProfileSecuritySection />
       </div>

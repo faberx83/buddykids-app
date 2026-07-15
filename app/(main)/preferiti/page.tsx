@@ -10,7 +10,10 @@ export default async function PreferitiPage() {
 
   return (
     <div className="animate-fade-in">
-      <PageHeader title="Preferiti" backHref="/profile" />
+      {/* BUGFIX (segnalato da Fabrizio) — pagina condivisa tra profilo LEGACY
+          e NEXTGEN: niente backHref fisso, PageHeader ricade su
+          router.back() e torna sempre a dove l'utente era arrivato davvero. */}
+      <PageHeader title="Preferiti" />
       <div className="pt-4">
         {favorites.length === 0 && (
           <p className="mx-5 rounded-lg border border-dashed border-[#D8DEE8] bg-white p-5 text-center text-sm text-ink-2">

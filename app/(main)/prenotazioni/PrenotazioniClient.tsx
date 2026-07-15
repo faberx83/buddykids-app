@@ -207,7 +207,10 @@ export default function PrenotazioniClient({
 
   return (
     <div className="flex min-h-screen flex-col pb-6">
-      <PageHeader title="Le mie prenotazioni" backHref="/profile" />
+      {/* BUGFIX (segnalato da Fabrizio) — pagina condivisa tra profilo LEGACY
+          e NEXTGEN: niente backHref fisso, PageHeader ricade su
+          router.back() e torna sempre a dove l'utente era arrivato davvero. */}
+      <PageHeader title="Le mie prenotazioni" />
 
       <div className="px-5 py-4">
         {/* 1) Copertura del periodo — "in pochi secondi" capire cosa è

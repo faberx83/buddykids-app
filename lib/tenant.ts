@@ -33,6 +33,18 @@ export interface TenantConfig {
   description: string;
   manifest: string;
   themeColor: string;
+  // BUGFIX (segnalato da Fabrizio: "al login, quando viene presentato il
+  // logo, lo sfondo è ancora sbagliato — azzurro per genitori, verde per
+  // partner, deve essere bianco") — non era la pagina di login (già bianca,
+  // vedi LoginForm.tsx), ma lo sfondo dello splash/status-bar della PWA:
+  // manifest-*.json#background_color/theme_color E il meta
+  // <name="theme-color"> (app/layout.tsx) usavano entrambi `themeColor` qui
+  // sotto (l'azzurro/verde di brand), che Chrome dipinge DIETRO il logo
+  // all'avvio prima che la pagina bianca faccia il suo render. `chromeColor`
+  // è un campo SEPARATO, solo per quei due usi — `themeColor` resta
+  // invariato per pulsanti/accenti (LoginForm, InstallPrompt), che devono
+  // restare colorati.
+  chromeColor: string;
   icon192: string;
   icon512: string;
   appleIcon: string;
@@ -61,6 +73,7 @@ export const TENANT_CONFIG: Record<Tenant, TenantConfig> = {
     description: "Trova, prenota e gestisci le attività extrascolastiche per i tuoi bambini.",
     manifest: "/manifest-family.json",
     themeColor: "#4DAFEF",
+    chromeColor: "#FFFFFF",
     icon192: "/icon-192.png",
     icon512: "/icon-512.png",
     appleIcon: "/apple-touch-icon.png",
@@ -71,6 +84,7 @@ export const TENANT_CONFIG: Record<Tenant, TenantConfig> = {
     description: "Gestisci attività, calendario e promozioni del tuo centro estivo su TRAMA.",
     manifest: "/manifest-partner.json",
     themeColor: "#1FA88E",
+    chromeColor: "#FFFFFF",
     icon192: "/icon-partner-192.png",
     icon512: "/icon-partner-512.png",
     appleIcon: "/apple-touch-icon-partner.png",
@@ -81,6 +95,7 @@ export const TENANT_CONFIG: Record<Tenant, TenantConfig> = {
     description: "Pannello di controllo piattaforma TRAMA: centri, attività, prenotazioni e analisi.",
     manifest: "/manifest-admin.json",
     themeColor: "#1A1D2E",
+    chromeColor: "#1A1D2E",
     icon192: "/icon-admin-192.png",
     icon512: "/icon-admin-512.png",
     appleIcon: "/apple-touch-icon-admin.png",

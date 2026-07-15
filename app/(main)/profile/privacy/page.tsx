@@ -8,7 +8,10 @@ export default async function ProfilePrivacyPage() {
 
   return (
     <div className="animate-fade-in">
-      <PageHeader title="Privacy e account" backHref="/profile" />
+      {/* BUGFIX (segnalato da Fabrizio) — raggiungibile sia dal profilo LEGACY
+          che da quello NEXTGEN: niente backHref fisso, PageHeader ricade su
+          router.back() e torna a dove l'utente era arrivato davvero. */}
+      <PageHeader title="Privacy e account" />
       <div className="px-5 py-4">
         <ProfilePrivacySection
           initialMarketingConsent={profile.marketingConsent}

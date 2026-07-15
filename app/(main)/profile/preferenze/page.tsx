@@ -10,7 +10,11 @@ export default async function ProfilePreferenzePage() {
 
   return (
     <div className="animate-fade-in">
-      <PageHeader title="Preferenze" backHref="/profile" />
+      {/* BUGFIX (segnalato da Fabrizio) — raggiungibile sia dal profilo LEGACY
+          che da quello NEXTGEN (ProfileSettingsSection, basePath="/profile"
+          in entrambi): niente backHref fisso, PageHeader ricade su
+          router.back() e torna a dove l'utente era arrivato davvero. */}
+      <PageHeader title="Preferenze" />
       <div className="px-5 py-4">
         <ProfilePreferencesSection
           initialLanguage={profile.language}

@@ -40,7 +40,14 @@ export async function generateMetadata(): Promise<Metadata> {
 export async function generateViewport(): Promise<Viewport> {
   const config = await currentTenantConfig();
   return {
-    themeColor: config.themeColor,
+    // BUGFIX (Fabrizio: "lo sfondo dietro al logo al login è ancora
+    // sbagliato, azzurro/verde invece che bianco") — non è la pagina, è lo
+    // status bar/chrome del browser (e lo sfondo dello splash PWA su
+    // Android, insieme a manifest-*.json#background_color) dipinti con
+    // `themeColor` (l'azzurro/verde di brand). `chromeColor` è bianco per
+    // family/partner, navy per admin (vedi lib/tenant.ts) — `themeColor`
+    // resta quello di brand per pulsanti/accenti, invariato.
+    themeColor: config.chromeColor,
     // "cover" fa si' che env(safe-area-inset-*) restituisca il valore reale
     // dell'area coperta da tacche/pulsanti di navigazione del sistema
     // (es. gesture bar Android, home indicator iOS), invece di 0 sempre.

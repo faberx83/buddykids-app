@@ -12,7 +12,10 @@ export default async function RichiestePage() {
 
   return (
     <div className="animate-fade-in">
-      <PageHeader title="Le mie richieste" backHref="/profile" />
+      {/* BUGFIX (segnalato da Fabrizio) — pagina condivisa tra profilo LEGACY
+          e NEXTGEN: niente backHref fisso, PageHeader ricade su
+          router.back() e torna sempre a dove l'utente era arrivato davvero. */}
+      <PageHeader title="Le mie richieste" />
       <RichiesteGenitoreClient initialInquiries={inquiries} />
     </div>
   );

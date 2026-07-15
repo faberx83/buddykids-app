@@ -63,4 +63,22 @@ test.describe("NEXTGEN - Profilo (Sprint 6)", () => {
     await expect(page.getByRole("link", { name: /Le presenze/ })).toHaveAttribute("href", "/presenze");
     await expect(page.getByRole("link", { name: /Le mie richieste/ })).toHaveAttribute("href", "/richieste");
   });
+
+  // BUGFIX (segnalato da Fabrizio: "se vado in 'Le presenze' e poi torno
+  // indietro con la freccetta dell'app, mi riporta in una sezione profilo
+  // legacy e non quella nuova") — Le presenze/Preferiti/Le mie prenotazioni/
+  // Le mie richieste/Sicurezza/Preferenze/Privacy sono pagine condivise tra
+  // il profilo LEGACY e quello NEXTGEN: avevano tutte un
+  // <PageHeader backHref="/profile"> fisso. Rimosso ovunque: PageHeader
+  // ricade su router.back(), che torna sempre a dove l'utente era arrivato
+  // davvero (vedi components/PageHeader.tsx).
+  test("TC-N113 - Da Profilo NEXTGEN, 'Le presenze' -> Indietro torna a Profilo NEXTGEN (non al profilo legacy)", async ({
+    page,
+  }) => {
+    await page.getByRole("link", { name: /Le presenze/ }).click();
+    await expect(page).toHaveURL(/\/presenze/);
+
+    await page.getByLabel("Indietro").click();
+    await expect(page).toHaveURL(/\/nextgen\/profile/);
+  });
 });

@@ -38,8 +38,13 @@ export const metadata: Metadata = {
   },
 };
 
+// BUGFIX (Fabrizio: "lo sfondo dietro al logo è ancora sbagliato... deve
+// essere bianco") — allineato a manifest-nextgen.json#background_color/
+// theme_color (anch'essi passati a bianco): il viola #6F63C5 restava solo
+// qui, dipinto dal browser dietro al logo/status bar prima che la pagina
+// bianca facesse il render.
 export const viewport: Viewport = {
-  themeColor: "#6F63C5",
+  themeColor: "#FFFFFF",
   viewportFit: "cover",
 };
 

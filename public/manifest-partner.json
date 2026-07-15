@@ -4,8 +4,8 @@
   "description": "Gestisci attività, calendario e promozioni del tuo centro estivo su TRAMA.",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#1FA88E",
-  "theme_color": "#1FA88E",
+  "background_color": "#FFFFFF",
+  "theme_color": "#FFFFFF",
   "icons": [
     { "src": "/icon-partner-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
     { "src": "/icon-partner-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },

@@ -81,4 +81,24 @@ test.describe("TRAMA - Login (header animato)", () => {
   // tutti su un solo baseURL (vedi tests/fixtures/roles.ts), nessun supporto
   // per host multipli. Verificato invece a livello di codice (LoginForm.tsx).
   test.fixme("TC-209 - Login Partner ha sfondo bianco, Login Admin mostra il claim su navy", async () => {});
+
+  // BUGFIX (segnalato da Fabrizio: "quando viene presentato il logo, lo
+  // sfondo è ancora sbagliato — azzurro invece che bianco") — non era la
+  // pagina (già bg-white, TC-208), ma lo sfondo dipinto dal browser DIETRO
+  // al logo prima che la pagina faccia il render: <meta name="theme-color">
+  // (app/layout.tsx#generateViewport) e manifest-family.json#background_
+  // color/theme_color usavano entrambi l'azzurro di brand (#4DAFEF). Ora
+  // separati in `chromeColor` (bianco) vs `themeColor` (resta azzurro per
+  // pulsanti/accenti) — vedi lib/tenant.ts.
+  test("TC-210 - Il meta theme-color e il manifest (tenant famiglia) sono bianchi, non azzurri", async ({ page }) => {
+    test.skip(!isRealDeployment, "Richiede un deploy con Supabase configurato (tenant famiglia).");
+    await page.goto("/auth/login");
+
+    const themeColorMeta = page.locator('meta[name="theme-color"]');
+    await expect(themeColorMeta).toHaveAttribute("content", /^#fff(fff)?$/i);
+
+    const manifest = await page.request.get("/manifest-family.json").then((r) => r.json());
+    expect(manifest.background_color.toLowerCase()).toBe("#ffffff");
+    expect(manifest.theme_color.toLowerCase()).toBe("#ffffff");
+  });
 });
