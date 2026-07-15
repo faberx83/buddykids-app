@@ -31,6 +31,30 @@ test.describe("NEXTGEN - Family Planner Sprint 5.4 (Mappa/Promemoria)", () => {
     await expect(page.getByText(/km · \d+ min|Indirizzo non disponibile/).first()).toBeVisible();
   });
 
+  // BUGFIX (segnalato da Fabrizio: "la mappa restituisce 'This page couldn't
+  // load'", riproducibile sempre, sia web che PWA) — react-leaflet passava
+  // icon={undefined} per ogni pin non selezionato; Leaflet applica le
+  // options con un for...in che copia anche chiavi undefined, sovrascrivendo
+  // l'icona di default e facendo crashare _initIcon al primo render (nessun
+  // pin è mai selezionato all'apertura). Fix in ActivityMap.tsx: la prop
+  // "icon" ora viene passata SOLO quando c'è un'icona di selezione da
+  // applicare, mai come undefined esplicito.
+  test("TC-N109 - Vista Mappa: non crasha al primo render (nessun pin ancora selezionato)", async ({ page }) => {
+    test.skip(!isRealDeployment, "Richiede un deploy con Supabase configurato e un account genitore di test con almeno una prenotazione attiva con coordinate.");
+    await loginAs(page, "parent");
+    await page.goto("/nextgen/planner");
+    await page.getByRole("button", { name: "Mappa" }).click();
+
+    await expect(page.locator("body")).not.toContainText("Application error");
+    await expect(page.locator("body")).not.toContainText("couldn't load");
+    // Se ci sono attività con coordinate, la mappa Leaflet deve montarsi e
+    // disegnare almeno un marker senza eccezioni.
+    const mapContainer = page.locator(".leaflet-container");
+    if (await mapContainer.isVisible().catch(() => false)) {
+      await expect(page.locator(".leaflet-marker-icon").first()).toBeVisible();
+    }
+  });
+
   test("TC-N67 - Vista Mappa: senza prenotazioni attive mostra lo stato vuoto", async ({ page }) => {
     test.skip(!isRealDeployment, "Richiede un deploy con Supabase configurato e un account genitore di test SENZA prenotazioni attive.");
     await loginAs(page, "parent");

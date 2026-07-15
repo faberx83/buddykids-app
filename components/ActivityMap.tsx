@@ -105,10 +105,21 @@ export default function ActivityMap({
         <FitBounds points={points} />
         {items.map((it) =>
           onSelect ? (
+            // BUGFIX (segnalato da Fabrizio: la Mappa crasha sempre, sia web
+            // che PWA, appena si apre) — react-leaflet passa "icon" così
+            // com'è dentro `new L.Marker(position, options)`; Leaflet applica
+            // le options con un `for...in`, che copia la chiave "icon" anche
+            // quando vale `undefined`, sovrascrivendo l'icona di default e
+            // facendo esplodere `_initIcon` (chiama `.createIcon()` su
+            // `undefined`). Prima capitava per OGNI marker non selezionato,
+            // cioè sempre al primo render (nessun pin ancora scelto). Fix:
+            // passare la prop "icon" solo quando c'è davvero un'icona da
+            // sovrascrivere, così quando non è passata affatto Leaflet usa
+            // correttamente il suo default.
             <Marker
               key={it.id}
               position={[it.lat, it.lng]}
-              icon={selectedId === it.id ? selectedIcon : undefined}
+              {...(selectedId === it.id ? { icon: selectedIcon } : {})}
               eventHandlers={{ click: () => onSelect(it.id) }}
             />
           ) : (
