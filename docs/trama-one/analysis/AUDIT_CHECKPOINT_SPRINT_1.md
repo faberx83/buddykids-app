@@ -8,7 +8,7 @@ Documento autosufficiente per un auditor esterno che non ha seguito la conversaz
 
 **Risultato**: obiettivo raggiunto. Matrice di preservazione prodotta prima dell'implementazione (prerequisito V5 di `ASSUMPTION_LOG.md`); migrazione applicata e verificata in produzione da Fabrizio; flusso reale testato end-to-end da Fabrizio (reclama centro → checklist → verifica identità → invio → approvazione Admin → stato "Approvato"; percorso Walkthrough Parent completato); un bug reale trovato durante il test (coda Admin che escludeva i centri approvati) e corretto; i 5 test di fallback (TC-N302/303/304/401/402) confermati 10/10 passed contro produzione, in isolamento (`--workers=1`, per escludere flakiness da carico parallelo).
 
-**Stato**: **READY WITH CONDITIONS**. Unica condizione aperta: la correzione del bug della coda Admin (DEC-23) è verificata via revisione statica del codice (tsc/lint/build puliti) ma non ri-confermata visivamente in produzione dopo il fix (l'ultima schermata mostrata da Fabrizio era precedente alla correzione). Nessun altro blocco.
+**Stato**: **READY**. La correzione del bug della coda Admin (DEC-23) è stata ri-confermata visivamente in produzione da Fabrizio: dopo aver creato manualmente una riga di stato `LEAD` per un centro di test (nessun trigger automatico la crea per centri pre-esistenti, per costruzione — vedi nota in §9) ed eseguito il flusso reale completo (Reclama→Checklist→Invio→Approvazione Admin), lo storico Partner mostra correttamente `LEAD → CLAIMED → SUBMITTED → APPROVED` e la coda Admin mostra il centro in "Altri stati (1)" con stato "Approvato" e bottone "Sospendi" funzionante. Nessuna condizione aperta.
 
 ## 2. Repository State
 
@@ -80,7 +80,7 @@ Documento autosufficiente per un auditor esterno che non ha seguito la conversaz
 | Verifica strutturale DB (post-migrazione) | **Eseguita da Fabrizio**: 5 tabelle con RLS attiva, 3 funzioni presenti — screenshot fornito |
 | Smoke fallback produzione (TC-N302/303/304/401/402) | **Eseguito da Fabrizio, 10/10 passed**, in isolamento (`--workers=1`) dopo pulizia degli override di test |
 | Flusso reale end-to-end (claim→checklist→identità→submit→approve; Walkthrough Parent) | **Eseguito da Fabrizio manualmente in produzione** — esito positivo (stato "Approvato" raggiunto, Walkthrough Parent completato); ha rivelato il bug DEC-23, poi corretto |
-| Ri-verifica visiva del fix DEC-23 (coda Admin con centro approvato + bottone Sospendi) | **NON ri-confermata visivamente dopo il fix** — verificata solo via revisione statica del codice e tsc/lint/build puliti. Unica condizione aperta di questo checkpoint |
+| Ri-verifica visiva del fix DEC-23 (coda Admin con centro approvato + bottone Sospendi) | **Confermata da Fabrizio in produzione** (screenshot): storico Partner `LEAD → CLAIMED → SUBMITTED → APPROVED`, coda Admin mostra "Altri stati (1)" con "[TEST] Centro BuddyKids" stato "Approvato" e bottone "Sospendi" presente. Nota metodologica: per eseguire questa riverifica è stato necessario inserire manualmente una riga `status='LEAD'` per il centro di test (nessun meccanismo crea automaticamente questa riga per un centro pre-esistente — la convenzione "riga assente = APPROVED" nasconde per costruzione il bottone "Reclama" ai centri già esistenti, comportamento corretto per l'AS-IS ma che richiede questo passaggio manuale per testare il flusso da zero) |
 | Suite completa (`TEST_SCOPE=all`) | Non eseguita in questo sprint (solo `smoke`, come da scope) |
 
 Nessuna affermazione di test/migrazione/deploy eseguito senza riscontro reale.
@@ -123,8 +123,8 @@ f0d246e feat(trama-one): generic Walkthrough engine + welcome_parent demo (Sprin
 ## 13. Risks
 
 - **Blocker**: nessuno.
-- **Rischio medio**: la correzione DEC-23 non è stata ri-verificata visivamente in produzione dopo il fix (solo staticamente) — vedi §9, condizione di questo checkpoint.
 - **Rischio basso**: i 7 fallimenti preesistenti (login/dashboard/badge/logo) restano non diagnosticati in questo sprint, indipendenti da TRAMA ONE.
+- **Rischio basso, nuovo, non bloccante**: per un centro pre-esistente (creato prima di Sprint 1) il bottone "Reclama il mio centro" non è mai raggiungibile via UI, perché la convenzione "riga assente in `center_onboarding_state` = APPROVED" fa sì che quei centri risultino già "Approvato" fin da subito, senza mai passare per `LEAD`. Comportamento corretto e voluto per l'AS-IS (nessun centro esistente deve rifare l'onboarding), ma vale anche per i centri creati DOPO Sprint 1: nessun meccanismo inserisce automaticamente una riga `LEAD` alla creazione di un nuovo centro. Se in Sprint 2+ si vuole che i centri genuinamente nuovi passino per il percorso onboarding reale fin dall'inizio, serve un trigger o una chiamata esplicita che crei la riga `LEAD` alla creazione del centro — al momento va fatto manualmente (come fatto per la verifica di questo sprint). Da valutare come piccolo item tecnico per Sprint 2, non urgente per il pilot.
 
 ## 14. Rollback
 
@@ -136,11 +136,11 @@ f0d246e feat(trama-one): generic Walkthrough engine + welcome_parent demo (Sprin
 ## 15. Next Sprint Readiness
 
 - **Prerequisiti per Build Sprint 2** (Offering/Giorni spot, da `SPRINT_GOVERNANCE.md`): Sprint 1 chiuso con Definition of Done soddisfatta; matrice pagina-per-pagina estesa alle route coinvolte in Sprint 2 (da produrre prima dell'avvio, non ancora fatta — correttamente, non è compito di Sprint 1); decisione Offering (DEC-05, ancora da prendere in Sprint 2).
-- **Blocker**: nessuno per l'avvio di Sprint 2, salvo la ri-verifica visiva raccomandata in §9/§13.
-- **Raccomandazione**: eseguire un rapido controllo visivo di `/admin/one/onboarding` per il centro di test (deve mostrare "Approvato" in "Altri stati" con bottone "Sospendi") prima di considerare chiuso al 100% anche l'ultimo dettaglio.
+- **Blocker**: nessuno per l'avvio di Sprint 2.
+- **Item tecnico non bloccante da valutare in Sprint 2**: creazione automatica della riga `LEAD` per i centri genuinamente nuovi (vedi §13) — al momento va fatta manualmente.
 
 ## 16. Audit Conclusion
 
-**AUDIT STATUS: READY WITH CONDITIONS**
+**AUDIT STATUS: READY**
 
-Condizione: conferma visiva del fix DEC-23 (coda Admin) in produzione, non ancora fornita — verificata solo staticamente. Nessun blocker strutturale, di sicurezza o di regressione rilevato. Tutte le altre verifiche hanno riscontro reale documentato.
+Tutte le verifiche hanno riscontro reale documentato, inclusa la ri-conferma visiva del fix DEC-23. Nessun blocker strutturale, di sicurezza o di regressione rilevato. Nessuna condizione aperta.
