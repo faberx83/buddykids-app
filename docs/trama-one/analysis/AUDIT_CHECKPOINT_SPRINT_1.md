@@ -8,7 +8,7 @@ Documento autosufficiente per un auditor esterno che non ha seguito la conversaz
 
 **Risultato**: le tre condizioni sono state chiuse a livello di codice, test e documentazione. La migrazione che introduce l'auto-inizializzazione (`migration_10_center_onboarding_auto_lead.sql`) è pronta ma **non ancora applicata** in produzione (Gate 1, in fondo a questo documento) — nessuna capability nuova può dirsi verificata end-to-end finché non è applicata e ri-testata dal vivo.
 
-**Stato**: **READY WITH CONDITIONS**. Condizione unica e residua: applicazione di `migration_10` in produzione e ri-verifica tramite `tests/one/onboarding-remediation.spec.ts` (Gate 1 e Gate 2 di questo documento). Tutto il resto — codice, test statici, documentazione — è completo e verificato.
+**Stato**: **READY FOR CONTINUATION** (governance aggiornata da Fabrizio dopo l'audit esterno, DEC-29/30/31: la cadenza "audit esterno ad ogni sprint" è sostituita da un unico Integration Gate dopo Build Sprint 4; questo checkpoint resta un documento interno di continuità, non richiede condivisione con un nuovo audit esterno). Migration_10 resta da applicare in produzione da Fabrizio (Gate 1) — questo non blocca l'avvio di Build Sprint 2, che procede in parallelo per decisione esplicita di delivery.
 
 ## 2. Repository State
 
@@ -116,9 +116,11 @@ Nessuna route nuova o modificata in questa remediation — stesse due route di S
 | Unit test onboarding + walkthrough + feature-flags + registry italiano (`tests/one/onboarding.spec.ts`, `tests/one/feature-flags.spec.ts`) | **Eseguito, 72/72 passed** (36 test unici × 2 progetti browser), incluse le 9 nuove assertion TC-N410a..i su valori tecnici invariati, etichette differenziate, CTA corrette, storico tradotto, assenza di "Reclama" |
 | `tests/one/onboarding-remediation.spec.ts` — sintassi/list | **Eseguito, `--list` conferma 12 test (6 ID × 2 browser) senza errori di parsing** |
 | `tests/one/onboarding-remediation.spec.ts` — esecuzione reale (TC-N407/408/409/411/412/413) | **PENDING LOCAL VERIFICATION** — richiede migration_10 applicata + deploy reale (Gate 1 + Gate 2), non eseguibile nel sandbox (nessun browser, nessuna credenziale Supabase) |
-| Suite browser completa (`TEST_SCOPE=all`) confrontata con la baseline | **PENDING LOCAL VERIFICATION** — vedi Gate 2 |
+| Suite browser completa (`TEST_SCOPE=all`) | **NON ESEGUITA — decisione di delivery esplicita (DEC-29), non una dimenticanza.** Verifiche per questa chiusura limitate a: test statici (tsc/lint/build), unit test onboarding/walkthrough/feature-flags/registry italiano, test mirati auto-LEAD e microcopy, smoke delle route Sprint 1, fallback essenziali `/one`. La regressione completa (`TEST_SCOPE=all` confrontata con `PRE_EXISTING_TEST_FAILURE_BASELINE.md`) è differita all'Integration Gate dopo Build Sprint 4 (DEC-30) |
 
-Nessuna affermazione di test/migrazione/deploy eseguito senza riscontro reale.
+**Suite browser completa non eseguita per decisione di delivery. Verifiche limitate a test statici, unitari, smoke mirati e flusso funzionale Sprint 1. Regressione completa differita all'Integration Gate dopo Build Sprint 4.**
+
+Nessuna affermazione di test/migrazione/deploy eseguito senza riscontro reale. Qualunque errore emerso nei test effettivamente eseguiti (statici, unitari, mirati) resta bloccante e va corretto, non ignorato.
 
 ## 12. Baseline dei fallimenti preesistenti
 
@@ -188,6 +190,6 @@ TEST_BASE_URL=https://buddykids-app.vercel.app npx playwright test --reporter=li
 
 ## 19. Audit Conclusion
 
-**AUDIT STATUS: READY WITH CONDITIONS**
+**AUDIT STATUS: READY FOR CONTINUATION**
 
-Condizione residua unica: applicazione di `migration_10` in produzione (Gate 1) e ri-verifica tramite `tests/one/onboarding-remediation.spec.ts` + suite completa per la baseline (Gate 2). Codice, test statici (72/72 passed) e documentazione completi e verificati. Nessuna capability AS-IS a rischio, nessun valore tecnico rinominato, "Reclama" rimosso e verificato, nessuna regressione introdotta.
+Remediation Sprint 1 completata: codice, test statici/unitari/mirati (72/72 passed) e documentazione completi e verificati. Nessuna capability AS-IS a rischio, nessun valore tecnico rinominato, "Reclama" rimosso e verificato, nessuna regressione introdotta nei test eseguiti. Nessun blocker noto per l'avvio di Build Sprint 2. `migration_10` resta da applicare in produzione (Gate 1, non bloccante per l'avvio di Sprint 2 per decisione di delivery). Suite browser completa differita all'Integration Gate dopo Build Sprint 4 (DEC-29/30) — questo checkpoint è un documento interno di continuità, non richiede un nuovo audit esterno.
