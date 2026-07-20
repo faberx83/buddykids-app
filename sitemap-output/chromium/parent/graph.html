@@ -1,0 +1,315 @@
+<!doctype html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>TRAMA - Mappa Genitore</title>
+
+  <script type="module">
+    import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs";
+
+    mermaid.initialize({
+      startOnLoad: true,
+      theme: "base",
+      securityLevel: "loose",
+      flowchart: {
+        useMaxWidth: false,
+        htmlLabels: true,
+        curve: "basis",
+        nodeSpacing: 45,
+        rankSpacing: 70
+      }
+    });
+  </script>
+
+  <style>
+    * { box-sizing: border-box; }
+    html, body { margin: 0; min-height: 100%; }
+    body {
+      font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: #f4f6f8;
+      color: #172033;
+    }
+    header {
+      position: sticky;
+      top: 0;
+      z-index: 20;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 20px;
+      padding: 16px 22px;
+      border-bottom: 1px solid #e2e8f0;
+      background: rgba(255,255,255,.96);
+      backdrop-filter: blur(10px);
+    }
+    h1 { margin: 0 0 4px; font-size: 22px; }
+    header p { margin: 0; color: #64748b; }
+    .legend, .toolbar { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+    .legend-item { display: flex; align-items: center; gap: 7px; font-size: 13px; font-weight: 700; }
+    .dot { width: 12px; height: 12px; border-radius: 50%; }
+    .dot.nextgen { background: #22c55e; }
+    .dot.legacy { background: #f97316; }
+    .dot.partner { background: #3b82f6; }
+    .dot.admin { background: #a855f7; }
+    .toolbar button, .toolbar a {
+      border: 0;
+      border-radius: 9px;
+      padding: 9px 12px;
+      background: #172033;
+      color: white;
+      font-weight: 750;
+      text-decoration: none;
+      cursor: pointer;
+    }
+    .graph-wrapper { min-height: calc(100vh - 85px); padding: 28px; overflow: auto; }
+    .graph-board {
+      width: max-content;
+      min-width: 100%;
+      min-height: 680px;
+      padding: 38px;
+      border-radius: 22px;
+      background: white;
+      box-shadow: 0 10px 40px rgba(15, 23, 42, .08);
+      transform-origin: top left;
+    }
+    .mermaid { display: flex; justify-content: center; }
+    .mermaid svg { max-width: none !important; height: auto; }
+    .status {
+      position: fixed;
+      right: 20px;
+      bottom: 18px;
+      z-index: 30;
+      padding: 8px 11px;
+      border-radius: 999px;
+      background: rgba(23,32,51,.92);
+      color: white;
+      font-size: 12px;
+      font-weight: 700;
+    }
+    @media (max-width: 900px) {
+      header { display: block; }
+      .legend, .toolbar { margin-top: 10px; }
+      .graph-wrapper { padding: 14px; }
+      .graph-board { padding: 18px; }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div>
+      <h1>TRAMA - Mappa Genitore</h1>
+      <p>chromium · 27 pagine · 87 collegamenti · 0 errori</p>
+    </div>
+
+    <div class="legend">
+      <div class="legend-item"><span class="dot nextgen"></span>Next Gen</div>
+      <div class="legend-item"><span class="dot legacy"></span>Legacy richiamata</div>
+    </div>
+
+    <div class="toolbar">
+      <button id="zoom-out" type="button">−</button>
+      <button id="zoom-reset" type="button">Adatta</button>
+      <button id="zoom-in" type="button">+</button>
+      <a href="sitemap.json" target="_blank" rel="noreferrer">JSON</a>
+    </div>
+  </header>
+
+  <main id="graph-wrapper" class="graph-wrapper">
+    <section id="graph-board" class="graph-board">
+      <pre class="mermaid">flowchart LR
+  N0[&quot;&lt;b&gt;TRAMA — Attività per bambini&lt;/b&gt;&lt;br/&gt;&lt;span style=&#039;font-size:12px&#039;&gt;/activity/attivita-test-buddykids&lt;/span&gt;&quot;]:::legacy
+  N1[&quot;&lt;b&gt;TRAMA — Attività per bambini&lt;/b&gt;&lt;br/&gt;&lt;span style=&#039;font-size:12px&#039;&gt;/activity/coding-robotica-kids&lt;/span&gt;&quot;]:::legacy
+  N2[&quot;&lt;b&gt;TRAMA — Attività per bambini&lt;/b&gt;&lt;br/&gt;&lt;span style=&#039;font-size:12px&#039;&gt;/activity/laboratorio-arti-creative&lt;/span&gt;&quot;]:::legacy
+  N3[&quot;&lt;b&gt;TRAMA — Attività per bambini&lt;/b&gt;&lt;br/&gt;&lt;span style=&#039;font-size:12px&#039;&gt;/activity/soccer-academy-estate&lt;/span&gt;&quot;]:::legacy
+  N4[&quot;&lt;b&gt;TRAMA — Attività per bambini&lt;/b&gt;&lt;br/&gt;&lt;span style=&#039;font-size:12px&#039;&gt;/activity/summer-camp-acquatico&lt;/span&gt;&quot;]:::legacy
+  N5[&quot;&lt;b&gt;TRAMA — Attività per bambini&lt;/b&gt;&lt;br/&gt;&lt;span style=&#039;font-size:12px&#039;&gt;/activity/summer-music-camp&lt;/span&gt;&quot;]:::legacy
+  N6[&quot;&lt;b&gt;TRAMA — Attività per bambini&lt;/b&gt;&lt;br/&gt;&lt;span style=&#039;font-size:12px&#039;&gt;/activity/test&lt;/span&gt;&quot;]:::legacy
+  N7[&quot;&lt;b&gt;TRAMA — Attività per bambini&lt;/b&gt;&lt;br/&gt;&lt;span style=&#039;font-size:12px&#039;&gt;/activity/test-attivita-auto-1784107753260&lt;/span&gt;&quot;]:::legacy
+  N8[&quot;&lt;b&gt;TRAMA — Attività per bambini&lt;/b&gt;&lt;br/&gt;&lt;span style=&#039;font-size:12px&#039;&gt;/activity/test-attivita-auto-1784108193968&lt;/span&gt;&quot;]:::legacy
+  N9[&quot;&lt;b&gt;Ciao 👋&lt;/b&gt;&lt;br/&gt;&lt;span style=&#039;font-size:12px&#039;&gt;/nextgen&lt;/span&gt;&quot;]:::nextgen
+  N10[&quot;&lt;b&gt;TRAMA&lt;/b&gt;&lt;br/&gt;&lt;span style=&#039;font-size:12px&#039;&gt;/nextgen/planner&lt;/span&gt;&quot;]:::nextgen
+  N11[&quot;&lt;b&gt;TRAMA&lt;/b&gt;&lt;br/&gt;&lt;span style=&#039;font-size:12px&#039;&gt;/nextgen/planner?mode=calendario&lt;/span&gt;&quot;]:::nextgen
+  N12[&quot;&lt;b&gt;TRAMA&lt;/b&gt;&lt;br/&gt;&lt;span style=&#039;font-size:12px&#039;&gt;/nextgen/planner/famiglia&lt;/span&gt;&quot;]:::nextgen
+  N13[&quot;&lt;b&gt;TRAMA&lt;/b&gt;&lt;br/&gt;&lt;span style=&#039;font-size:12px&#039;&gt;/nextgen/planner/indirizzi&lt;/span&gt;&quot;]:::nextgen
+  N14[&quot;&lt;b&gt;TRAMA&lt;/b&gt;&lt;br/&gt;&lt;span style=&#039;font-size:12px&#039;&gt;/nextgen/planner/promemoria&lt;/span&gt;&quot;]:::nextgen
+  N15[&quot;&lt;b&gt;TRAMA&lt;/b&gt;&lt;br/&gt;&lt;span style=&#039;font-size:12px&#039;&gt;/nextgen/profile&lt;/span&gt;&quot;]:::nextgen
+  N16[&quot;&lt;b&gt;TRAMA&lt;/b&gt;&lt;br/&gt;&lt;span style=&#039;font-size:12px&#039;&gt;/nextgen/profile/famiglia&lt;/span&gt;&quot;]:::nextgen
+  N17[&quot;&lt;b&gt;TRAMA&lt;/b&gt;&lt;br/&gt;&lt;span style=&#039;font-size:12px&#039;&gt;/nextgen/profile/impostazioni&lt;/span&gt;&quot;]:::nextgen
+  N18[&quot;&lt;b&gt;TRAMA&lt;/b&gt;&lt;br/&gt;&lt;span style=&#039;font-size:12px&#039;&gt;/nextgen/profile/segnalazioni&lt;/span&gt;&quot;]:::nextgen
+  N19[&quot;&lt;b&gt;TRAMA&lt;/b&gt;&lt;br/&gt;&lt;span style=&#039;font-size:12px&#039;&gt;/nextgen/search&lt;/span&gt;&quot;]:::nextgen
+  N20[&quot;&lt;b&gt;TRAMA — Attività per bambini&lt;/b&gt;&lt;br/&gt;&lt;span style=&#039;font-size:12px&#039;&gt;/preferiti&lt;/span&gt;&quot;]:::legacy
+  N21[&quot;&lt;b&gt;TRAMA — Attività per bambini&lt;/b&gt;&lt;br/&gt;&lt;span style=&#039;font-size:12px&#039;&gt;/prenotazioni&lt;/span&gt;&quot;]:::legacy
+  N22[&quot;&lt;b&gt;TRAMA — Attività per bambini&lt;/b&gt;&lt;br/&gt;&lt;span style=&#039;font-size:12px&#039;&gt;/presenze&lt;/span&gt;&quot;]:::legacy
+  N23[&quot;&lt;b&gt;TRAMA — Attività per bambini&lt;/b&gt;&lt;br/&gt;&lt;span style=&#039;font-size:12px&#039;&gt;/profile/preferenze&lt;/span&gt;&quot;]:::legacy
+  N24[&quot;&lt;b&gt;TRAMA — Attività per bambini&lt;/b&gt;&lt;br/&gt;&lt;span style=&#039;font-size:12px&#039;&gt;/profile/privacy&lt;/span&gt;&quot;]:::legacy
+  N25[&quot;&lt;b&gt;TRAMA — Attività per bambini&lt;/b&gt;&lt;br/&gt;&lt;span style=&#039;font-size:12px&#039;&gt;/profile/sicurezza&lt;/span&gt;&quot;]:::legacy
+  N26[&quot;&lt;b&gt;TRAMA — Attività per bambini&lt;/b&gt;&lt;br/&gt;&lt;span style=&#039;font-size:12px&#039;&gt;/richieste&lt;/span&gt;&quot;]:::legacy
+  N9 --&gt; N2
+  N9 --&gt; N3
+  N9 --&gt; N4
+  N9 --&gt; N10
+  N9 --&gt; N15
+  N9 --&gt; N19
+  N9 --&gt; N21
+  N10 --&gt; N0
+  N10 --&gt; N2
+  N10 --&gt; N3
+  N10 --&gt; N4
+  N10 --&gt; N9
+  N10 --&gt; N15
+  N10 --&gt; N19
+  N10 --&gt; N21
+  N11 --&gt; N0
+  N11 --&gt; N2
+  N11 --&gt; N3
+  N11 --&gt; N4
+  N11 --&gt; N9
+  N11 --&gt; N10
+  N11 --&gt; N15
+  N11 --&gt; N19
+  N11 --&gt; N21
+  N12 --&gt; N9
+  N12 --&gt; N10
+  N12 --&gt; N15
+  N12 --&gt; N19
+  N12 --&gt; N21
+  N13 --&gt; N9
+  N13 --&gt; N10
+  N13 --&gt; N15
+  N13 --&gt; N19
+  N13 --&gt; N21
+  N14 --&gt; N9
+  N14 --&gt; N10
+  N14 --&gt; N15
+  N14 --&gt; N19
+  N14 --&gt; N21
+  N15 --&gt; N9
+  N15 --&gt; N10
+  N15 --&gt; N16
+  N15 --&gt; N17
+  N15 --&gt; N18
+  N15 --&gt; N19
+  N15 --&gt; N20
+  N15 --&gt; N21
+  N15 --&gt; N22
+  N15 --&gt; N26
+  N16 --&gt; N9
+  N16 --&gt; N10
+  N16 --&gt; N11
+  N16 --&gt; N12
+  N16 --&gt; N13
+  N16 --&gt; N14
+  N16 --&gt; N15
+  N16 --&gt; N19
+  N16 --&gt; N21
+  N17 --&gt; N9
+  N17 --&gt; N10
+  N17 --&gt; N15
+  N17 --&gt; N19
+  N17 --&gt; N21
+  N17 --&gt; N23
+  N17 --&gt; N24
+  N17 --&gt; N25
+  N18 --&gt; N9
+  N18 --&gt; N10
+  N18 --&gt; N15
+  N18 --&gt; N19
+  N18 --&gt; N21
+  N19 --&gt; N0
+  N19 --&gt; N1
+  N19 --&gt; N2
+  N19 --&gt; N3
+  N19 --&gt; N5
+  N19 --&gt; N6
+  N19 --&gt; N7
+  N19 --&gt; N8
+  N19 --&gt; N9
+  N19 --&gt; N10
+  N19 --&gt; N15
+  N19 --&gt; N21
+  click N0 &quot;https://buddykids-app.vercel.app/activity/attivita-test-buddykids&quot; &quot;Apri pagina&quot; _blank
+  click N1 &quot;https://buddykids-app.vercel.app/activity/coding-robotica-kids&quot; &quot;Apri pagina&quot; _blank
+  click N2 &quot;https://buddykids-app.vercel.app/activity/laboratorio-arti-creative&quot; &quot;Apri pagina&quot; _blank
+  click N3 &quot;https://buddykids-app.vercel.app/activity/soccer-academy-estate&quot; &quot;Apri pagina&quot; _blank
+  click N4 &quot;https://buddykids-app.vercel.app/activity/summer-camp-acquatico&quot; &quot;Apri pagina&quot; _blank
+  click N5 &quot;https://buddykids-app.vercel.app/activity/summer-music-camp&quot; &quot;Apri pagina&quot; _blank
+  click N6 &quot;https://buddykids-app.vercel.app/activity/test&quot; &quot;Apri pagina&quot; _blank
+  click N7 &quot;https://buddykids-app.vercel.app/activity/test-attivita-auto-1784107753260&quot; &quot;Apri pagina&quot; _blank
+  click N8 &quot;https://buddykids-app.vercel.app/activity/test-attivita-auto-1784108193968&quot; &quot;Apri pagina&quot; _blank
+  click N9 &quot;https://buddykids-app.vercel.app/nextgen&quot; &quot;Apri pagina&quot; _blank
+  click N10 &quot;https://buddykids-app.vercel.app/nextgen/planner&quot; &quot;Apri pagina&quot; _blank
+  click N11 &quot;https://buddykids-app.vercel.app/nextgen/planner?mode=calendario&quot; &quot;Apri pagina&quot; _blank
+  click N12 &quot;https://buddykids-app.vercel.app/nextgen/planner/famiglia&quot; &quot;Apri pagina&quot; _blank
+  click N13 &quot;https://buddykids-app.vercel.app/nextgen/planner/indirizzi&quot; &quot;Apri pagina&quot; _blank
+  click N14 &quot;https://buddykids-app.vercel.app/nextgen/planner/promemoria&quot; &quot;Apri pagina&quot; _blank
+  click N15 &quot;https://buddykids-app.vercel.app/nextgen/profile&quot; &quot;Apri pagina&quot; _blank
+  click N16 &quot;https://buddykids-app.vercel.app/nextgen/profile/famiglia&quot; &quot;Apri pagina&quot; _blank
+  click N17 &quot;https://buddykids-app.vercel.app/nextgen/profile/impostazioni&quot; &quot;Apri pagina&quot; _blank
+  click N18 &quot;https://buddykids-app.vercel.app/nextgen/profile/segnalazioni&quot; &quot;Apri pagina&quot; _blank
+  click N19 &quot;https://buddykids-app.vercel.app/nextgen/search&quot; &quot;Apri pagina&quot; _blank
+  click N20 &quot;https://buddykids-app.vercel.app/preferiti&quot; &quot;Apri pagina&quot; _blank
+  click N21 &quot;https://buddykids-app.vercel.app/prenotazioni&quot; &quot;Apri pagina&quot; _blank
+  click N22 &quot;https://buddykids-app.vercel.app/presenze&quot; &quot;Apri pagina&quot; _blank
+  click N23 &quot;https://buddykids-app.vercel.app/profile/preferenze&quot; &quot;Apri pagina&quot; _blank
+  click N24 &quot;https://buddykids-app.vercel.app/profile/privacy&quot; &quot;Apri pagina&quot; _blank
+  click N25 &quot;https://buddykids-app.vercel.app/profile/sicurezza&quot; &quot;Apri pagina&quot; _blank
+  click N26 &quot;https://buddykids-app.vercel.app/richieste&quot; &quot;Apri pagina&quot; _blank
+
+  classDef nextgen fill:#dcfce7,stroke:#15803d,stroke-width:2px,color:#14532d;
+  classDef legacy fill:#ffedd5,stroke:#ea580c,stroke-width:2px,color:#7c2d12;
+  classDef partner fill:#dbeafe,stroke:#2563eb,stroke-width:2px,color:#1e3a8a;
+  classDef admin fill:#f3e8ff,stroke:#9333ea,stroke-width:2px,color:#581c87;
+  %% Verde = Next Gen; arancione = Legacy richiamata</pre>
+    </section>
+  </main>
+
+  <div id="status" class="status">Zoom 100%</div>
+
+  <script>
+    const metadata = JSON.parse("{\"target\":\"parent\",\"project\":\"chromium\",\"pageCount\":27,\"edgeCount\":87,\"errorCount\":0}");
+    const wrapper = document.getElementById("graph-wrapper");
+    const board = document.getElementById("graph-board");
+    const status = document.getElementById("status");
+    let scale = 1;
+
+    function applyScale() {
+      board.style.transform = "scale(" + scale + ")";
+      status.textContent = "Zoom " + Math.round(scale * 100) + "%";
+    }
+
+    function fitGraph() {
+      const svg = board.querySelector("svg");
+      if (!svg) return;
+
+      const svgWidth = svg.getBoundingClientRect().width / scale;
+      const availableWidth = Math.max(wrapper.clientWidth - 90, 320);
+      scale = Math.max(0.15, Math.min(1, availableWidth / svgWidth));
+      applyScale();
+    }
+
+    document.getElementById("zoom-in").addEventListener("click", () => {
+      scale = Math.min(2, scale + 0.1);
+      applyScale();
+    });
+
+    document.getElementById("zoom-out").addEventListener("click", () => {
+      scale = Math.max(0.1, scale - 0.1);
+      applyScale();
+    });
+
+    document.getElementById("zoom-reset").addEventListener("click", fitGraph);
+
+    const observer = new MutationObserver(() => {
+      if (board.querySelector("svg")) {
+        observer.disconnect();
+        window.setTimeout(fitGraph, 150);
+      }
+    });
+
+    observer.observe(board, { childList: true, subtree: true });
+    window.addEventListener("resize", () => window.setTimeout(fitGraph, 100));
+    console.info("TRAMA sitemap", metadata);
+  </script>
+</body>
+</html>

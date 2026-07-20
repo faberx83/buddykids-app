@@ -1,0 +1,420 @@
+<!doctype html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8" />
+
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1"
+  />
+
+  <title>
+    Mappa applicativa chromium
+  </title>
+
+  <script type="module">
+    import mermaid from
+      "https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs";
+
+    mermaid.initialize({
+      startOnLoad: true,
+      theme: "base",
+      securityLevel: "loose",
+      flowchart: {
+        useMaxWidth: false,
+        htmlLabels: true,
+        curve: "basis",
+        nodeSpacing: 50,
+        rankSpacing: 80
+      }
+    });
+  </script>
+
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      font-family:
+        Inter,
+        -apple-system,
+        BlinkMacSystemFont,
+        "Segoe UI",
+        sans-serif;
+      background: #f4f6f8;
+      color: #172033;
+    }
+
+    header {
+      position: sticky;
+      top: 0;
+      z-index: 10;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 20px;
+      padding: 18px 24px;
+      border-bottom: 1px solid #e2e8f0;
+      background:
+        rgba(255, 255, 255, 0.96);
+      backdrop-filter: blur(10px);
+    }
+
+    header h1 {
+      margin: 0 0 5px;
+      font-size: 22px;
+    }
+
+    header p {
+      margin: 0;
+      color: #64748b;
+    }
+
+    .legend {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      font-size: 14px;
+      font-weight: 700;
+    }
+
+    .dot {
+      width: 13px;
+      height: 13px;
+      border-radius: 50%;
+    }
+
+    .dot.nextgen {
+      background: #22c55e;
+    }
+
+    .dot.legacy {
+      background: #f97316;
+    }
+
+    .toolbar {
+      display: flex;
+      gap: 8px;
+    }
+
+    .toolbar button,
+    .toolbar a {
+      padding: 9px 12px;
+      border: 0;
+      border-radius: 9px;
+      background: #172033;
+      color: white;
+      text-decoration: none;
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    .graph-wrapper {
+      min-height: calc(100vh - 90px);
+      padding: 40px;
+      overflow: auto;
+    }
+
+    .graph-board {
+      width: max-content;
+      min-width: 100%;
+      min-height: 700px;
+      padding: 50px;
+      border-radius: 24px;
+      background: white;
+      box-shadow:
+        0 10px 40px
+        rgba(15, 23, 42, 0.08);
+      transform-origin: top left;
+    }
+
+    .mermaid {
+      display: flex;
+      justify-content: center;
+    }
+
+    .mermaid svg {
+      max-width: none !important;
+      height: auto;
+    }
+
+    @media (max-width: 900px) {
+      header {
+        display: block;
+      }
+
+      .legend,
+      .toolbar {
+        margin-top: 12px;
+      }
+
+      .graph-wrapper {
+        padding: 16px;
+      }
+
+      .graph-board {
+        padding: 20px;
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <header>
+    <div>
+      <h1>TRAMA – Mappa applicativa</h1>
+
+      <p>
+        chromium ·
+        27 pagine
+      </p>
+    </div>
+
+    <div class="legend">
+      <div class="legend-item">
+        <span class="dot nextgen"></span>
+        Next Gen
+      </div>
+
+      <div class="legend-item">
+        <span class="dot legacy"></span>
+        Legacy richiamata
+      </div>
+    </div>
+
+    <div class="toolbar">
+      <button
+        id="zoom-out"
+        type="button"
+      >
+        −
+      </button>
+
+      <button
+        id="zoom-reset"
+        type="button"
+      >
+        100%
+      </button>
+
+      <button
+        id="zoom-in"
+        type="button"
+      >
+        +
+      </button>
+
+      <a href="index.html">
+        Dettagli
+      </a>
+    </div>
+  </header>
+
+  <main class="graph-wrapper">
+    <section
+      id="graph-board"
+      class="graph-board"
+    >
+      <pre class="mermaid">
+flowchart TD
+
+  N0["Ciao 👋<br/>/nextgen"]
+  N1["TRAMA<br/>/nextgen/planner"]
+  N2["TRAMA<br/>/nextgen/planner?mode=calendario"]
+  N3["TRAMA<br/>/nextgen/planner/famiglia"]
+  N4["TRAMA<br/>/nextgen/planner/indirizzi"]
+  N5["TRAMA<br/>/nextgen/planner/promemoria"]
+  N6["TRAMA<br/>/nextgen/profile"]
+  N7["TRAMA<br/>/nextgen/profile/famiglia"]
+  N8["TRAMA<br/>/nextgen/profile/impostazioni"]
+  N9["TRAMA<br/>/nextgen/profile/segnalazioni"]
+  N10["TRAMA<br/>/nextgen/search"]
+  N11["TRAMA — Attività per bambini<br/>/activity/attivita-test-buddykids"]
+  N12["TRAMA — Attività per bambini<br/>/activity/coding-robotica-kids"]
+  N13["TRAMA — Attività per bambini<br/>/activity/laboratorio-arti-creative"]
+  N14["TRAMA — Attività per bambini<br/>/activity/soccer-academy-estate"]
+  N15["TRAMA — Attività per bambini<br/>/activity/summer-camp-acquatico"]
+  N16["TRAMA — Attività per bambini<br/>/activity/summer-music-camp"]
+  N17["TRAMA — Attività per bambini<br/>/activity/test"]
+  N18["TRAMA — Attività per bambini<br/>/activity/test-attivita-auto-1784107753260"]
+  N19["TRAMA — Attività per bambini<br/>/activity/test-attivita-auto-1784108193968"]
+  N20["TRAMA — Attività per bambini<br/>/preferiti"]
+  N21["TRAMA — Attività per bambini<br/>/prenotazioni"]
+  N22["TRAMA — Attività per bambini<br/>/presenze"]
+  N23["TRAMA — Attività per bambini<br/>/profile/preferenze"]
+  N24["TRAMA — Attività per bambini<br/>/profile/privacy"]
+  N25["TRAMA — Attività per bambini<br/>/profile/sicurezza"]
+  N26["TRAMA — Attività per bambini<br/>/richieste"]
+
+  N0 -->|"🎨Match 60%4.8 · Accademia CreArte�"| N13
+  N0 -->|"🏊Match 60%4.9 · Centro Sportivo Li"| N15
+  N0 -->|"⚽Match 59%4.6 · Campo Brera🤍Soccer"| N14
+  N0 -->|"Apri PlannerOrganizzazione, calenda"| N1
+  N0 -->|"Home"| N0
+  N0 -->|"Scopri"| N10
+  N0 -->|"Prenotazioni"| N21
+  N0 -->|"Profilo"| N6
+  N1 -->|"Settimana 1GIU 1-5(TEST) Attività B"| N11
+  N1 -->|"Riempi"| N10
+  N1 -->|"🎨Match 60%4.8 · Accademia CreArte�"| N13
+  N1 -->|"🏊Match 60%4.9 · Centro Sportivo Li"| N15
+  N1 -->|"⚽Match 59%4.6 · Campo Brera🤍Soccer"| N14
+  N1 -->|"Home"| N0
+  N1 -->|"Planner"| N1
+  N1 -->|"Prenotazioni"| N21
+  N1 -->|"Profilo"| N6
+  N2 -->|"Settimana 1GIU 1-5(TEST) Attività B"| N11
+  N2 -->|"Riempi"| N10
+  N2 -->|"🎨Match 60%4.8 · Accademia CreArte�"| N13
+  N2 -->|"🏊Match 60%4.9 · Centro Sportivo Li"| N15
+  N2 -->|"⚽Match 59%4.6 · Campo Brera🤍Soccer"| N14
+  N2 -->|"Home"| N0
+  N2 -->|"Planner"| N1
+  N2 -->|"Prenotazioni"| N21
+  N2 -->|"Profilo"| N6
+  N3 -->|"Home"| N0
+  N3 -->|"Planner"| N1
+  N3 -->|"Scopri"| N10
+  N3 -->|"Prenotazioni"| N21
+  N3 -->|"Profilo"| N6
+  N4 -->|"Home"| N0
+  N4 -->|"Planner"| N1
+  N4 -->|"Scopri"| N10
+  N4 -->|"Prenotazioni"| N21
+  N4 -->|"Profilo"| N6
+  N5 -->|"Home"| N0
+  N5 -->|"Planner"| N1
+  N5 -->|"Scopri"| N10
+  N5 -->|"Prenotazioni"| N21
+  N5 -->|"Profilo"| N6
+  N6 -->|"Le mie prenotazioniElenco delle tue"| N21
+  N6 -->|"PreferitiAttività salvate"| N20
+  N6 -->|"Le presenzeStorico presenze, ritard"| N22
+  N6 -->|"Famiglia e logisticaIndirizzi, cond"| N7
+  N6 -->|"Le mie richiesteMessaggi ai centri"| N26
+  N6 -->|"ImpostazioniSicurezza, preferenze,"| N8
+  N6 -->|"Le mie segnalazioniStato dei bug/su"| N9
+  N6 -->|"Home"| N0
+  N6 -->|"Planner"| N1
+  N6 -->|"Scopri"| N10
+  N6 -->|"Profilo"| N6
+  N7 -->|"Indirizzi di famigliaCasa, lavoro e"| N4
+  N7 -->|"FamigliaInvita l'altro genitore, co"| N3
+  N7 -->|"Condivisione pianoCrea un link di s"| N2
+  N7 -->|"Promemoria e avvisiAvvisami prima d"| N5
+  N7 -->|"Home"| N0
+  N7 -->|"Planner"| N1
+  N7 -->|"Scopri"| N10
+  N7 -->|"Prenotazioni"| N21
+  N7 -->|"Profilo"| N6
+  N8 -->|"SicurezzaPassword, accesso rapido"| N25
+  N8 -->|"PreferenzeLingua, tema, notifiche"| N23
+  N8 -->|"Privacy e accountConsenso, disattiv"| N24
+  N8 -->|"Home"| N0
+  N8 -->|"Planner"| N1
+  N8 -->|"Scopri"| N10
+  N8 -->|"Prenotazioni"| N21
+  N8 -->|"Profilo"| N6
+  N9 -->|"Home"| N0
+  N9 -->|"Planner"| N1
+  N9 -->|"Scopri"| N10
+  N9 -->|"Prenotazioni"| N21
+  N9 -->|"Profilo"| N6
+  N10 -->|"🧪Match 79%4.5 · (TEST) Centro Budd"| N11
+  N10 -->|"🎨Match 60%4.8 · Accademia CreArte�"| N13
+  N10 -->|"⚽Match 59%4.6 · Campo Brera🤍Soccer"| N14
+  N10 -->|"🎵Match 59%4.5 · Scuola di Musica A"| N16
+  N10 -->|"Match 50%0 · Test centro estivo🤍te"| N17
+  N10 -->|"⭐Match 50%0 · (TEST) Centro BuddyKi"| N18
+  N10 -->|"⭐Match 50%0 · (TEST) Centro BuddyKi"| N19
+  N10 -->|"🔬Match 44%4.7 · TechKids Milano🤍C"| N12
+  N10 -->|"Home"| N0
+  N10 -->|"Planner"| N1
+  N10 -->|"Scopri"| N10
+  N10 -->|"Prenotazioni"| N21
+  N10 -->|"Profilo"| N6
+  N20 -->|"🧪(TEST) Attività BuddyKids0 km · 3"| N11
+  N21 -->|"Dettagli"| N11
+  N26 -->|"(TEST) Attività BuddyKids"| N11
+
+  classDef nextgen fill:#dcfce7,stroke:#15803d,stroke-width:2px,color:#14532d;
+  classDef legacy fill:#ffedd5,stroke:#ea580c,stroke-width:2px,color:#7c2d12;
+  class N0,N1,N2,N3,N4,N5,N6,N7,N8,N9,N10 nextgen;
+  class N11,N12,N13,N14,N15,N16,N17,N18,N19,N20,N21,N22,N23,N24,N25,N26 legacy;
+      </pre>
+    </section>
+  </main>
+
+  <script>
+    let zoom = 1;
+
+    const board =
+      document.getElementById(
+        "graph-board"
+      );
+
+    const resetButton =
+      document.getElementById(
+        "zoom-reset"
+      );
+
+    function applyZoom() {
+      board.style.transform =
+        "scale(" + zoom + ")";
+
+      resetButton.textContent =
+        Math.round(zoom * 100) + "%";
+    }
+
+    document
+      .getElementById(
+        "zoom-in"
+      )
+      .addEventListener(
+        "click",
+        () => {
+          zoom =
+            Math.min(
+              2,
+              zoom + 0.1
+            );
+
+          applyZoom();
+        }
+      );
+
+    document
+      .getElementById(
+        "zoom-out"
+      )
+      .addEventListener(
+        "click",
+        () => {
+          zoom =
+            Math.max(
+              0.3,
+              zoom - 0.1
+            );
+
+          applyZoom();
+        }
+      );
+
+    resetButton.addEventListener(
+      "click",
+      () => {
+        zoom = 1;
+        applyZoom();
+      }
+    );
+  </script>
+</body>
+</html>
