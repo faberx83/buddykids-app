@@ -50,6 +50,24 @@ Entrambe le tabelle vanno prima applicate (vedi §20 del report finale) — ness
 
 Richiesto esplicitamente nel Final Plan Correction (punto 3): `evaluate.ts` è logica pura (nessun I/O), testabile senza mock di Supabase — è quello che `tests/one/feature-flags.spec.ts` esercita direttamente. `resolve.ts` fa solo I/O (override, membership, contesto, logging) e delega ogni decisione a `evaluate.ts`. Questo separa "cosa decide il flag" (testabile, deterministico) da "dove prendiamo i dati per decidere" (dipendente da Supabase, non testabile in questo sandbox).
 
+## 7bis. Verifica tecnica: rendering dinamico di `/one` (Pre-Migration Hardening)
+
+**Problema potenziale**: la risoluzione di `TRAMA_ONE_ENABLED` dipende da utente/ruolo/tenant/coorte/override DB — se Next.js prerenderizzasse `/one` a build-time, il risultato resterebbe congelato per tutti gli utenti, ignorando qualunque override successivo.
+
+**Causa già presente, indipendente da questo sprint**: `app/layout.tsx` (root layout, eredita su ogni route dell'app) chiama `headers()` incondizionatamente in `generateMetadata`/`generateViewport`/`RootLayout` per servire manifest/tema per-tenant. `headers()` è una "Dynamic Function" di Next.js: il suo uso in un punto qualunque dell'albero di render forza l'intera route (e nel caso del root layout, l'intera app) a rendering dinamico. Prova diretta dal build: **tutte** le 72 route dell'app risultano `ƒ (Dynamic)`, non solo `/one` — nessuna route dell'app è oggi staticamente prerenderizzata (l'unica eccezione è `/_global-error`, pagina interna di Next.js, sempre statica per costruzione).
+
+**Correzione applicata comunque**: aggiunto `export const dynamic = "force-dynamic";` esplicito in `app/one/layout.tsx`, `app/center/one/layout.tsx`, `app/admin/one/layout.tsx`. Motivazione: la garanzia esisteva già ma solo per eredità da un meccanismo del root layout introdotto per un motivo non collegato a TRAMA ONE — fragile nel tempo (un futuro refactor del root layout potrebbe rimuovere `headers()` e silenziosamente rendere `/one` statica, senza che nessuno se ne accorga). La dichiarazione esplicita rende la garanzia locale, leggibile e indipendente da comportamento ereditato.
+
+**Verifica tecnica eseguita** (build reale, non assunzione):
+```bash
+rm -rf .next && npm run build
+```
+1. Tabella route del build: `/one`, `/center/one`, `/admin/one` marcate `ƒ (Dynamic) server-rendered on demand`.
+2. `.next/prerender-manifest.json` — manifest autoritativo delle route effettivamente prerenderizzate a build-time: **0 voci** per `/one`/`/center/one`/`/admin/one` (verificato via script Node che elenca le chiavi contenenti "one" — array vuoto). L'unica route statica nell'intero manifest è `/_global-error`.
+3. `.next/server/app/{one,center/one,admin/one}/page/` contiene solo bundle server (`page.js`, manifest RSC) — nessun artefatto HTML/RSC pre-generato, coerente con rendering per-richiesta.
+
+Questa è la "verifica tecnica" richiesta al posto di un test Playwright: un test E2E che dimostri "richieste diverse -> risposte diverse" richiederebbe un server live raggiungibile due volte con override di flag diversi, non riproducibile in modo sicuro in questo sandbox senza un deployment reale — resta **pending local verification** (vedi `tests/one/smoke.spec.ts`, TC-N306).
+
 ## 7. Limiti noti, non risolti in questo sprint
 
 - La validazione "il flag esiste nel registry prima dell'INSERT" non è a livello database (impossibile, il registry è TypeScript) — resta una disciplina operativa documentata nei commenti dei file di migrazione, non un vincolo enforced.
