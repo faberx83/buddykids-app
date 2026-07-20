@@ -4,6 +4,7 @@
 -- Fabrizio nello SQL Editor di Supabase, DOPO supabase/schema.sql (e
 -- indipendentemente da migration_07_feature_flags_foundation.sql: le due
 -- tabelle non dipendono l'una dall'altra, solo da public.profiles).
+-- Procedura passo-passo: docs/trama-one/analysis/SPRINT_0_ACTIVATION_RUNBOOK.md
 --
 -- Sostituisce la proposta precedente "profiles.beta_cohort" (colonna),
 -- scartata: una colonna su profiles sarebbe stata soggetta alle RLS già
@@ -14,10 +15,19 @@
 --
 -- Stessa nota sulla convenzione di bootstrap dello schema documentata in
 -- migration_07_feature_flags_foundation.sql: file standalone, non ripiegato
--- in schema.sql, decisione di eventuale fold-in rimandata a Fabrizio.
+-- in schema.sql, decisione di eventuale fold-in rimandata a Fabrizio. Questo
+-- file NON modifica schema.sql.
 --
 -- Dipendenze: tabella public.profiles già presente in schema.sql.
 -- Compatibilità Legacy/Next Gen: totale, nessuna tabella/colonna esistente toccata.
+--
+-- Transazionalità: tutte le istruzioni DDL sotto (CREATE TABLE, COMMENT,
+-- CREATE FUNCTION, CREATE TRIGGER, ALTER TABLE ENABLE RLS, CREATE POLICY)
+-- sono DDL Postgres transazionali — nessuna richiede CONCURRENTLY. Applicate
+-- tutte dentro BEGIN/COMMIT: o vengono applicate TUTTE, o (in caso di
+-- errore) NESSUNA — nessuno stato parziale possibile.
+
+begin;
 
 create table if not exists public.beta_cohort_memberships (
   id            uuid primary key default gen_random_uuid(),
@@ -38,6 +48,9 @@ comment on table public.beta_cohort_memberships is
 -- on delete cascade: se un profilo viene eliminato, le sue membership
 -- decadono con lui, nessuna riga orfana.
 
+-- Funzione e trigger esplicitamente qualificati con schema "public.", locali
+-- a questa tabella (stessa convenzione di migration_07, nessuna funzione
+-- trigger condivisa esistente nel repository per updated_at).
 create or replace function public.set_beta_cohort_memberships_updated_at()
 returns trigger as $$
 begin
@@ -77,19 +90,32 @@ create policy beta_cohort_memberships_delete_admin
   on public.beta_cohort_memberships for delete
   using (exists (select 1 from public.profiles where profiles.id = auth.uid() and profiles.role = 'platform_admin'));
 
--- Esempio d'uso per assegnare un utente di test alla coorte beta pilota
--- (da eseguire manualmente, sostituendo l'UUID reale):
+commit;
+
+-- ════════════════════════════════════════════════════════════════
+-- Tutto ciò che segue è FUORI dalla transazione sopra (già chiusa da
+-- COMMIT): blocchi di riferimento (esempio d'uso, verifica, rollback), non
+-- parte della migrazione automatica. Eseguiti a parte, manualmente, quando
+-- serve — mai insieme al blocco DDL.
+-- ════════════════════════════════════════════════════════════════
+
+-- ESEMPIO D'USO per assegnare un utente di test alla coorte beta pilota
+-- (da eseguire manualmente, sostituendo l'UUID reale) — per la procedura
+-- completa vedi SPRINT_0_ACTIVATION_RUNBOOK.md:
 --
 -- insert into public.beta_cohort_memberships (user_id, cohort_key, active, created_by)
 -- values ('00000000-0000-0000-0000-000000000000', 'beta-wave-1', true, auth.uid());
 
--- ROLLBACK (sicuro, nessuna query esistente referenzia questa tabella):
--- drop trigger if exists trg_beta_cohort_memberships_updated_at on public.beta_cohort_memberships;
--- drop function if exists public.set_beta_cohort_memberships_updated_at();
--- drop table if exists public.beta_cohort_memberships;
-
--- VERIFICA POST-APPLICAZIONE (da eseguire manualmente dopo aver applicato questo file):
+-- VERIFICA POST-APPLICAZIONE (eseguire DOPO il COMMIT sopra, separatamente):
 -- select relrowsecurity from pg_class where relname = 'beta_cohort_memberships'; -- deve dare true
 -- select * from public.beta_cohort_memberships; -- da un ruolo non-platform_admin deve dare 0 righe
 -- insert into public.beta_cohort_memberships (user_id, cohort_key) values ('<uuid>', 'beta-wave-1'); -- prima riga: ok
 -- insert into public.beta_cohort_memberships (user_id, cohort_key) values ('<uuid>', 'beta-wave-1'); -- seconda riga identica: deve fallire per uq_beta_cohort_membership
+
+-- ROLLBACK (eseguire come blocco separato — sicuro, nessuna query esistente
+-- referenzia questa tabella, nessuna modifica a schema.sql da annullare):
+-- begin;
+-- drop trigger if exists trg_beta_cohort_memberships_updated_at on public.beta_cohort_memberships;
+-- drop function if exists public.set_beta_cohort_memberships_updated_at();
+-- drop table if exists public.beta_cohort_memberships;
+-- commit;
