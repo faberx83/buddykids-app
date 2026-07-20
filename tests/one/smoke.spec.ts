@@ -86,4 +86,33 @@ test.describe("TRAMA ONE — /one smoke cross-portale", () => {
     await page.goto("/one");
     await expect(page.locator("body")).not.toContainText("Application error");
   });
+
+  // ────────────────────────────────────────────────────────────────
+  // TRAMA ONE Build Sprint 1 — le nuove sotto-route /center/one/onboarding
+  // e /admin/one/onboarding ereditano lo stesso gate del layout genitore
+  // (app/center/one/layout.tsx, app/admin/one/layout.tsx): a flag
+  // disattivato (default) il redirect scatta PRIMA di raggiungere la
+  // sotto-route, stesso comportamento già verificato per "/center/one" e
+  // "/admin/one" in TC-N303/TC-N304 — verifichiamo che valga anche
+  // navigando direttamente alla sotto-route (nessun bypass del gate).
+  // ────────────────────────────────────────────────────────────────
+  test("TC-N401 - Partner: /center/one/onboarding con flag disattivato fa fallback a '/center' senza loop", async ({
+    page,
+  }) => {
+    test.skip(!isRealDeployment, "Richiede un deploy con Supabase configurato e l'account gestore di test.");
+    await loginAs(page, "center_admin");
+    await page.goto("/center/one/onboarding");
+    await expect(page).toHaveURL(/\/center\/?$/);
+    await expect(page.locator("body")).not.toContainText("Application error");
+  });
+
+  test("TC-N402 - Admin: /admin/one/onboarding con flag disattivato fa fallback a '/admin' senza loop", async ({
+    page,
+  }) => {
+    test.skip(!isRealDeployment, "Richiede un deploy con Supabase configurato e l'account admin di test.");
+    await loginAs(page, "platform_admin");
+    await page.goto("/admin/one/onboarding");
+    await expect(page).toHaveURL(/\/admin\/?$/);
+    await expect(page.locator("body")).not.toContainText("Application error");
+  });
 });
