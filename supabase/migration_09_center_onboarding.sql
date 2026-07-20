@@ -250,6 +250,18 @@ create policy center_identity_verifications_update_admin
   using (public.is_platform_admin())
   with check (public.is_platform_admin());
 
+-- Il center_admin proprietario può correggere nota/documento SOLO finché la
+-- riga è ancora "pending" (nessuna decisione presa) — using() verifica la
+-- riga PRIMA dell'update (deve essere pending), with check() verifica la
+-- riga DOPO (deve restare pending): un center_admin non può quindi mai
+-- scrivere "verified"/"rejected" su se stesso, può solo modificare
+-- nota/documento mentre è in attesa di revisione.
+drop policy if exists center_identity_verifications_update_owner_pending on public.center_identity_verifications;
+create policy center_identity_verifications_update_owner_pending
+  on public.center_identity_verifications for update
+  using (center_id = public.current_center_id() and status = 'pending')
+  with check (center_id = public.current_center_id() and status = 'pending');
+
 -- center_onboarding_audit_log: SELECT per il proprietario (trasparenza sulle
 -- proprie transizioni) o platform_admin. Nessuna policy di scrittura: solo
 -- le funzioni SECURITY DEFINER scrivono qui.
