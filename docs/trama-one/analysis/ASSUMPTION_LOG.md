@@ -19,7 +19,7 @@ Elenco delle ambiguità rilevate durante l'Impact Assessment (Fase A) e i due Ad
 
 | # | Assunzione | Motivo del rinvio | Sprint di verifica/decisione finale |
 |---|---|---|---|
-| D1 | Offering come entità distinta da Activity, o solo stato aggiuntivo su `activities`/`activity_weeks` | Decisione dipende dall'esito dell'analisi Giorni spot (prezzo/capacità/giorni/servizi) | Build Sprint 2 |
+| D1 | Offering come entità distinta da Activity, o solo stato aggiuntivo su `activities`/`activity_weeks` | **RISOLTA (Build Sprint 2, DEC-32)** — nessuna nuova entità: `activities`/`activity_weeks`/`activity_days` coprono già quasi per intero la capability Giorni spot; estensione additiva di 2 colonne (`booking_mode`, `min_days_per_booking`) | Build Sprint 2 — chiusa |
 | D2 | Persistenza dedicata per PlannerItem (tabella o estensione leggera) vs proiezione calcolata attuale | Decisione dipende da: state machine Request (Sprint 3), comportamento Booking, idempotenza eventi, accettazioni parziali per giorno | Build Sprint 4 |
 | D3 | Eventuale confluenza del toggle `bk_version` (Legacy/NextGen) nel nuovo Feature Flag Engine | Non necessaria per Sprint 0-6, i due meccanismi restano indipendenti nel perimetro attuale | Fuori dal perimetro Sprint 0-6, da riconsiderare solo se emerge un bisogno esplicito |
 | D4 | Multi-sede per Centro (tabella `locations`) | Deferita per l'intero pilot (A2); nessun vincolo tecnico bloccante per introdurla dopo | Da riconsiderare solo se un centro reale del pilot dichiara più sedi |
