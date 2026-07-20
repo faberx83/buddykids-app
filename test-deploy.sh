@@ -36,7 +36,33 @@ echo ""
 echo "🧪 Eseguo la suite Playwright contro: $BASE_URL"
 echo ""
 
+if [ -n "$ONLY_SITEMAP" ]; then
+  echo ""
+  echo "🗺️ Genero solo la sitemap..."
+
+  TEST_BASE_URL="$BASE_URL" \
+  npx playwright test tests/sitemap.spec.ts || true
+
+  exit 0
+fi
+
 TEST_BASE_URL="$BASE_URL" npx playwright test || true
 
 echo ""
+echo "🗺️ Genero la sitemap..."
+
+TEST_BASE_URL="$BASE_URL" \
+npx playwright test tests/sitemap.spec.ts || true
+
+echo ""
 echo "📊 Report dettagliato: npx playwright show-report  (oppure: bash report.sh)"
+
+echo ""
+echo "🌐 Apro le sitemap..."
+
+open sitemap-output/chromium/index.html
+
+# Se esiste anche la versione mobile
+#if [ -f sitemap-output/mobile-chrome/index.html ]; then
+#  open sitemap-output/mobile-chrome/index.html
+#fi

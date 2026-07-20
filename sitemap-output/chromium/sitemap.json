@@ -1,0 +1,2042 @@
+{
+  "project": "chromium",
+  "generatedAt": "2026-07-16T09:15:25.503Z",
+  "startUrl": "https://buddykids-app.vercel.app/nextgen",
+  "rules": {
+    "startFromNextGen": true,
+    "scanLegacyLinkedFromNextGen": true,
+    "followLegacyFromLegacy": false,
+    "followNextGenFromLegacy": true
+  },
+  "pages": [
+    {
+      "url": "https://buddykids-app.vercel.app/nextgen",
+      "pathname": "/nextgen",
+      "title": "TRAMA",
+      "heading": "Ciao 👋",
+      "type": "nextgen",
+      "discoveredFrom": null,
+      "links": [
+        {
+          "url": "https://buddykids-app.vercel.app/activity/laboratorio-arti-creative",
+          "pathname": "/activity/laboratorio-arti-creative",
+          "text": "🎨Match 60%4.8 · Accademia CreArte🤍Laboratorio Arti Creative2.5 km7-12 anni🎨 Arte🎭 Teatro🕐 Mezza€220 / settimana4.8 (94)",
+          "type": "legacy"
+        },
+        {
+          "url": "https://buddykids-app.vercel.app/activity/summer-camp-acquatico",
+          "pathname": "/activity/summer-camp-acquatico",
+          "text": "🏊Match 60%4.9 · Centro Sportivo Lido🤍Summer Camp Acquatico1.2 km6-14 anniLun-Ven⚽ Sport🏊 Piscina☀️ Intera💻 Tecnologia€555 / settimana4.9 (128)Solo 3 posti disponibili!",
+          "type": "legacy"
+        },
+        {
+          "url": "https://buddykids-app.vercel.app/activity/soccer-academy-estate",
+          "pathname": "/activity/soccer-academy-estate",
+          "text": "⚽Match 59%4.6 · Campo Brera🤍Soccer Academy Estate3.1 km6-16 anni⚽ Sport🌳 Outdoor☀️ Intera€250 / settimana4.6 (47)",
+          "type": "legacy"
+        },
+        {
+          "url": "https://buddykids-app.vercel.app/nextgen/planner",
+          "pathname": "/nextgen/planner",
+          "text": "Apri PlannerOrganizzazione, calendario, budget e altro",
+          "type": "nextgen"
+        },
+        {
+          "url": "https://buddykids-app.vercel.app/nextgen",
+          "pathname": "/nextgen",
+          "text": "Home",
+          "type": "nextgen"
+        },
+        {
+          "url": "https://buddykids-app.vercel.app/nextgen/search",
+          "pathname": "/nextgen/search",
+          "text": "Scopri",
+          "type": "nextgen"
+        },
+        {
+          "url": "https://buddykids-app.vercel.app/prenotazioni",
+          "pathname": "/prenotazioni",
+          "text": "Prenotazioni",
+          "type": "legacy"
+        },
+        {
+          "url": "https://buddykids-app.vercel.app/nextgen/profile",
+          "pathname": "/nextgen/profile",
+          "text": "Profilo",
+          "type": "nextgen"
+        }
+      ],
+      "buttons": [
+        "Continua a pianificare",
+        "Sì",
+        "In ritardo",
+        "No",
+        "🤍",
+        "Segnala un problema",
+        "Torna a V1"
+      ],
+      "screenshot": "screenshots/nextgen.png",
+      "screenshotType": "full-page"
+    },
+    {
+      "url": "https://buddykids-app.vercel.app/nextgen/planner",
+      "pathname": "/nextgen/planner",
+      "title": "TRAMA",
+      "heading": "",
+      "type": "nextgen",
+      "discoveredFrom": "https://buddykids-app.vercel.app/nextgen",
+      "links": [
+        {
+          "url": "https://buddykids-app.vercel.app/activity/attivita-test-buddykids",
+          "pathname": "/activity/attivita-test-buddykids",
+          "text": "Settimana 1GIU 1-5[TEST] Attività BuddyKids",
+          "type": "legacy"
+        },
+        {
+          "url": "https://buddykids-app.vercel.app/nextgen/search",
+          "pathname": "/nextgen/search",
+          "text": "Riempi",
+          "type": "nextgen"
+        },
+        {
+          "url": "https://buddykids-app.vercel.app/activity/laboratorio-arti-creative",
+          "pathname": "/activity/laboratorio-arti-creative",
+          "text": "🎨Match 60%4.8 · Accademia CreArte🤍Laboratorio Arti Creative2.5 km7-12 anni🎨 Arte🎭 Teatro🕐 Mezza€220 / settimana4.8 (94)",
+          "type": "legacy"
+        },
+        {
+          "url": "https://buddykids-app.vercel.app/activity/summer-camp-acquatico",
+          "pathname": "/activity/summer-camp-acquatico",
+          "text": "🏊Match 60%4.9 · Centro Sportivo Lido🤍Summer Camp Acquatico1.2 km6-14 anniLun-Ven⚽ Sport🏊 Piscina☀️ Intera💻 Tecnologia€555 / settimana4.9 (128)Solo 3 posti disponibili!",
+          "type": "legacy"
+        },
+        {
+          "url": "https://buddykids-app.vercel.app/activity/soccer-academy-estate",
+          "pathname": "/activity/soccer-academy-estate",
+          "text": "⚽Match 59%4.6 · Campo Brera🤍Soccer Academy Estate3.1 km6-16 anni⚽ Sport🌳 Outdoor☀️ Intera€250 / settimana4.6 (47)",
+          "type": "legacy"
+        },
+        {
+          "url": "https://buddykids-app.vercel.app/nextgen",
+          "pathname": "/nextgen",
+          "text": "Home",
+          "type": "nextgen"
+        },
+        {
+          "url": "https://buddykids-app.vercel.app/nextgen/planner",
+          "pathname": "/nextgen/planner",
+          "text": "Planner",
+          "type": "nextgen"
+        },
+        {
+          "url": "https://buddykids-app.vercel.app/prenotazioni",
+          "pathname": "/prenotazioni",
+          "text": "Prenotazioni",
+          "type": "legacy"
+        },
+        {
+          "url": "https://buddykids-app.vercel.app/nextgen/profile",
+          "pathname": "/nextgen/profile",
+          "text": "Profilo",
+          "type": "nextgen"
+        }
+      ],
+      "buttons": [
+        "Indietro",
+        "Organizzazione",
+        "Mappa",
+        "Budget",
+        "Gruppi",
+        "1",
+        "2",
+        "3",
+        "4",
+        "5",
+        "6",
+        "7",
+        "8",
+        "9",
+        "10",
+        "11",
+        "12",
+        "13",
+        "Calendario",
+        "Giugno1/5",
+        "Luglio1/4",
+        "Agosto0/4",
+        "🤍",
+        "Segnala un problema",
+        "Torna a V1"
+      ],
+      "screenshot": "screenshots/nextgen-planner.png",
+      "screenshotType": "full-page"
+    },
+    {
+      "url": "https://buddykids-app.vercel.app/nextgen/planner?mode=calendario",
+      "pathname": "/nextgen/planner?mode=calendario",
+      "title": "TRAMA",
+      "heading": "",
+      "type": "nextgen",
+      "discoveredFrom": "https://buddykids-app.vercel.app/nextgen/profile/famiglia",
+      "links": [
+        {
+          "url": "https://buddykids-app.vercel.app/activity/attivita-test-buddykids",
+          "pathname": "/activity/attivita-test-buddykids",
+          "text": "Settimana 1GIU 1-5[TEST] Attività BuddyKids",
+          "type": "legacy"
+        },
+        {
+          "url": "https://buddykids-app.vercel.app/nextgen/search",
+          "pathname": "/nextgen/search",
+          "text": "Riempi",
+          "type": "nextgen"
+        },
+        {
+          "url": "https://buddykids-app.vercel.app/activity/laboratorio-arti-creative",
+          "pathname": "/activity/laboratorio-arti-creative",
+          "text": "🎨Match 60%4.8 · Accademia CreArte🤍Laboratorio Arti Creative2.5 km7-12 anni🎨 Arte🎭 Teatro🕐 Mezza€220 / settimana4.8 (94)",
+          "type": "legacy"
+        },
+        {
+          "url": "https://buddykids-app.vercel.app/activity/summer-camp-acquatico",
+          "pathname": "/activity/summer-camp-acquatico",
+          "text": "🏊Match 60%4.9 · Centro Sportivo Lido🤍Summer Camp Acquatico1.2 km6-14 anniLun-Ven⚽ Sport🏊 Piscina☀️ Intera💻 Tecnologia€555 / settimana4.9 (128)Solo 3 posti disponibili!",
+          "type": "legacy"
+        },
+        {
+          "url": "https://buddykids-app.vercel.app/activity/soccer-academy-estate",
+          "pathname": "/activity/soccer-academy-estate",
+          "text": "⚽Match 59%4.6 · Campo Brera🤍Soccer Academy Estate3.1 km6-16 anni⚽ Sport🌳 Outdoor☀️ Intera€250 / settimana4.6 (47)",
+          "type": "legacy"
+        },
+        {
+          "url": "https://buddykids-app.vercel.app/nextgen",
+          "pathname": "/nextgen",
+          "text": "Home",
+          "type": "nextgen"
+        },
+        {
+          "url": "https://buddykids-app.vercel.app/nextgen/planner",
+          "pathname": "/nextgen/planner",
+          "text": "Planner",
+          "type": "nextgen"
+        },
+        {
+          "url": "https://buddykids-app.vercel.app/prenotazioni",
+          "pathname": "/prenotazioni",
+          "text": "Prenotazioni",
+          "type": "legacy"
+        },
+        {
+          "url": "https://buddykids-app.vercel.app/nextgen/profile",
+          "pathname": "/nextgen/profile",
+          "text": "Profilo",
+          "type": "nextgen"
+        }
+      ],
+      "buttons": [
+        "Indietro",
+        "Organizzazione",
+        "Mappa",
+        "Budget",
+        "Gruppi",
+        "1",
+        "2",
+        "3",
+        "4",
+        "5",
+        "6",
+        "7",
+        "8",
+        "9",
+        "10",
+        "11",
+        "12",
+        "13",
+        "Calendario",
+        "Mese",
+        "Settimana",
+        "Mese precedente",
+        "Mese successivo",
+        "14",
+        "15",
+        "16",
+        "17",
+        "18",
+        "19",
+        "20",
+        "21",
+        "22",
+        "23",
+        "24",
+        "25",
+        "26",
+        "27",
+        "28",
+        "29",
+        "30",
+        "31",
+        "Condividi Luglio 2026",
+        "Revoca",
+        "Giugno1/5",
+        "Luglio1/4",
+        "Agosto0/4",
+        "🤍",
+        "Segnala un problema",
+        "Torna a V1"
+      ],
+      "screenshot": "screenshots/nextgen-planner-mode-calendario.png",
+      "screenshotType": "full-page"
+    },
+    {
+      "url": "https://buddykids-app.vercel.app/nextgen/planner/famiglia",
+      "pathname": "/nextgen/planner/famiglia",
+      "title": "TRAMA",
+      "heading": "",
+      "type": "nextgen",
+      "discoveredFrom": "https://buddykids-app.vercel.app/nextgen/profile/famiglia",
+      "links": [
+        {
+          "url": "https://buddykids-app.vercel.app/nextgen",
+          "pathname": "/nextgen",
+          "text": "Home",
+          "type": "nextgen"
+        },
+        {
+          "url": "https://buddykids-app.vercel.app/nextgen/planner",
+          "pathname": "/nextgen/planner",
+          "text": "Planner",
+          "type": "nextgen"
+        },
+        {
+          "url": "https://buddykids-app.vercel.app/nextgen/search",
+          "pathname": "/nextgen/search",
+          "text": "Scopri",
+          "type": "nextgen"
+        },
+        {
+          "url": "https://buddykids-app.vercel.app/prenotazioni",
+          "pathname": "/prenotazioni",
+          "text": "Prenotazioni",
+          "type": "legacy"
+        },
+        {
+          "url": "https://buddykids-app.vercel.app/nextgen/profile",
+          "pathname": "/nextgen/profile",
+          "text": "Profilo",
+          "type": "nextgen"
+        }
+      ],
+      "buttons": [
+        "Indietro",
+        "Crea famiglia",
+        "Entra nella famiglia",
+        "Segnala un problema",
+        "Torna a V1"
+      ],
+      "screenshot": "screenshots/nextgen-planner-famiglia.png",
+      "screenshotType": "full-page"
+    },
+    {
+      "url": "https://buddykids-app.vercel.app/nextgen/planner/indirizzi",
+      "pathname": "/nextgen/planner/indirizzi",
+      "title": "TRAMA",
+      "heading": "",
+      "type": "nextgen",
+      "discoveredFrom": "https://buddykids-app.vercel.app/nextgen/profile/famiglia",
+      "links": [
+        {
+          "url": "https://buddykids-app.vercel.app/nextgen",
+          "pathname": "/nextgen",
+          "text": "Home",
+          "type": "nextgen"
+        },
+        {
+          "url": "https://buddykids-app.vercel.app/nextgen/planner",
+          "pathname": "/nextgen/planner",
+          "text": "Planner",
+          "type": "nextgen"
+        },
+        {
+          "url": "https://buddykids-app.vercel.app/nextgen/search",
+          "pathname": "/nextgen/search",
+          "text": "Scopri",
+          "type": "nextgen"
+        },
+        {
+          "url": "https://buddykids-app.vercel.app/prenotazioni",
+          "pathname": "/prenotazioni",
+          "text": "Prenotazioni",
+          "type": "legacy"
+        },
+        {
+          "url": "https://buddykids-app.vercel.app/nextgen/profile",
+          "pathname": "/nextgen/profile",
+          "text": "Profilo",
+          "type": "nextgen"
+        }
+      ],
+      "buttons": [
+        "Indietro",
+        "Modifica",
+        "Rimuovi",
+        "Salva",
+        "Segnala un problema",
+        "Torna a V1"
+      ],
+      "screenshot": "screenshots/nextgen-planner-indirizzi.png",
+      "screenshotType": "full-page"
+    },
+    {
+      "url": "https://buddykids-app.vercel.app/nextgen/planner/promemoria",
+      "pathname": "/nextgen/planner/promemoria",
+      "title": "TRAMA",
+      "heading": "",
+      "type": "nextgen",
+      "discoveredFrom": "https://buddykids-app.vercel.app/nextgen/profile/famiglia",
+      "links": [
+        {
+          "url": "https://buddykids-app.vercel.app/nextgen",
+          "pathname": "/nextgen",
+          "text": "Home",
+          "type": "nextgen"
+        },
+        {
+          "url": "https://buddykids-app.vercel.app/nextgen/planner",
+          "pathname": "/nextgen/planner",
+          "text": "Planner",
+          "type": "nextgen"
+        },
+        {
+          "url": "https://buddykids-app.vercel.app/nextgen/search",
+          "pathname": "/nextgen/search",
+          "text": "Scopri",
+          "type": "nextgen"
+        },
+        {
+          "url": "https://buddykids-app.vercel.app/prenotazioni",
+          "pathname": "/prenotazioni",
+          "text": "Prenotazioni",
+          "type": "legacy"
+        },
+        {
+          "url": "https://buddykids-app.vercel.app/nextgen/profile",
+          "pathname": "/nextgen/profile",
+          "text": "Profilo",
+          "type": "nextgen"
+        }
+      ],
+      "buttons": [
+        "Indietro",
+        "Promemoria attivo",
+        "Partenza consigliata",
+        "Casa",
+        "Segnala un problema",
+        "Torna a V1"
+      ],
+      "screenshot": "screenshots/nextgen-planner-promemoria.png",
+      "screenshotType": "full-page"
+    },
+    {
+      "url": "https://buddykids-app.vercel.app/nextgen/profile",
+      "pathname": "/nextgen/profile",
+      "title": "TRAMA",
+      "heading": "",
+      "type": "nextgen",
+      "discoveredFrom": "https://buddykids-app.vercel.app/nextgen",
+      "links": [
+        {
+          "url": "https://buddykids-app.vercel.app/prenotazioni",
+          "pathname": "/prenotazioni",
+          "text": "Le mie prenotazioniElenco delle tue prenotazioni",
+          "type": "legacy"
+        },
+        {
+          "url": "https://buddykids-app.vercel.app/preferiti",
+          "pathname": "/preferiti",
+          "text": "PreferitiAttività salvate",
+          "type": "legacy"
+        },
+        {
+          "url": "https://buddykids-app.vercel.app/presenze",
+          "pathname": "/presenze",
+          "text": "Le presenzeStorico presenze, ritardi e assenze per i tuoi bambini",
+          "type": "legacy"
+        },
+        {
+          "url": "https://buddykids-app.vercel.app/nextgen/profile/famiglia",
+          "pathname": "/nextgen/profile/famiglia",
+          "text": "Famiglia e logisticaIndirizzi, condivisione piano, promemoria",
+          "type": "nextgen"
+        },
+        {
+          "url": "https://buddykids-app.vercel.app/richieste",
+          "pathname": "/richieste",
+          "text": "Le mie richiesteMessaggi ai centri e risposte ricevute13",
+          "type": "legacy"
+        },
+        {
+          "url": "https://buddykids-app.vercel.app/nextgen/profile/impostazioni",
+          "pathname": "/nextgen/profile/impostazioni",
+          "text": "ImpostazioniSicurezza, preferenze, privacy",
+          "type": "nextgen"
+        },
+        {
+          "url": "https://buddykids-app.vercel.app/nextgen/profile/segnalazioni",
+          "pathname": "/nextgen/profile/segnalazioni",
+          "text": "Le mie segnalazioniStato dei bug/suggerimenti inviati durante la BETA",
+          "type": "nextgen"
+        },
+        {
+          "url": "https://buddykids-app.vercel.app/nextgen",
+          "pathname": "/nextgen",
+          "text": "Home",
+          "type": "nextgen"
+        },
+        {
+          "url": "https://buddykids-app.vercel.app/nextgen/planner",
+          "pathname": "/nextgen/planner",
+          "text": "Planner",
+          "type": "nextgen"
+        },
+        {
+          "url": "https://buddykids-app.vercel.app/nextgen/search",
+          "pathname": "/nextgen/search",
+          "text": "Scopri",
+          "type": "nextgen"
+        },
+        {
+          "url": "https://buddykids-app.vercel.app/nextgen/profile",
+          "pathname": "/nextgen/profile",
+          "text": "Profilo",
+          "type": "nextgen"
+        }
+      ],
+      "buttons": [
+        "Indietro",
+        "Cambia foto",
+        "Modifica",
+        "Esci dall'account",
+        "Segnala un problema",
+        "Torna a V1"
+      ],
+      "screenshot": "screenshots/nextgen-profile.png",
+      "screenshotType": "full-page"
+    },
+    {
+      "url": "https://buddykids-app.vercel.app/nextgen/profile/famiglia",
+      "pathname": "/nextgen/profile/famiglia",
+      "title": "TRAMA",
+      "heading": "",
+      "type": "nextgen",
+      "discoveredFrom": "https://buddykids-app.vercel.app/nextgen/profile",
+      "links": [
+        {
+          "url": "https://buddykids-app.vercel.app/nextgen/planner/indirizzi",
+          "pathname": "/nextgen/planner/indirizzi",
+          "text": "Indirizzi di famigliaCasa, lavoro e altri punti di partenza",
+          "type": "nextgen"
+        },
+        {
+          "url": "https://buddykids-app.vercel.app/nextgen/planner/famiglia",
+          "pathname": "/nextgen/planner/famiglia",
+          "text": "FamigliaInvita l'altro genitore, condividete tutto",
+          "type": "nextgen"
+        },
+        {
+          "url": "https://buddykids-app.vercel.app/nextgen/planner?mode=calendario",
+          "pathname": "/nextgen/planner?mode=calendario",
+          "text": "Condivisione pianoCrea un link di sola lettura per mese o settimana",
+          "type": "nextgen"
+        },
+        {
+          "url": "https://buddykids-app.vercel.app/nextgen/planner/promemoria",
+          "pathname": "/nextgen/planner/promemoria",
+          "text": "Promemoria e avvisiAvvisami prima di partire (anteprima)",
+          "type": "nextgen"
+        },
+        {
+          "url": "https://buddykids-app.vercel.app/nextgen",
+          "pathname": "/nextgen",
+          "text": "Home",
+          "type": "nextgen"
+        },
+        {
+          "url": "https://buddykids-app.vercel.app/nextgen/planner",
+          "pathname": "/nextgen/planner",
+          "text": "Planner",
+          "type": "nextgen"
+        },
+        {
+          "url": "https://buddykids-app.vercel.app/nextgen/search",
+          "pathname": "/nextgen/search",
+          "text": "Scopri",
+          "type": "nextgen"
+        },
+        {
+          "url": "https://buddykids-app.vercel.app/prenotazioni",
+          "pathname": "/prenotazioni",
+          "text": "Prenotazioni",
+          "type": "legacy"
+        },
+        {
+          "url": "https://buddykids-app.vercel.app/nextgen/profile",
+          "pathname": "/nextgen/profile",
+          "text": "Profilo",
+          "type": "nextgen"
+        }
+      ],
+      "buttons": [
+        "Indietro",
+        "Segnala un problema",
+        "Torna a V1"
+      ],
+      "screenshot": "screenshots/nextgen-profile-famiglia.png",
+      "screenshotType": "full-page"
+    },
+    {
+      "url": "https://buddykids-app.vercel.app/nextgen/profile/impostazioni",
+      "pathname": "/nextgen/profile/impostazioni",
+      "title": "TRAMA",
+      "heading": "",
+      "type": "nextgen",
+      "discoveredFrom": "https://buddykids-app.vercel.app/nextgen/profile",
+      "links": [
+        {
+          "url": "https://buddykids-app.vercel.app/profile/sicurezza",
+          "pathname": "/profile/sicurezza",
+          "text": "SicurezzaPassword, accesso rapido",
+          "type": "legacy"
+        },
+        {
+          "url": "https://buddykids-app.vercel.app/profile/preferenze",
+          "pathname": "/profile/preferenze",
+          "text": "PreferenzeLingua, tema, notifiche",
+          "type": "legacy"
+        },
+        {
+          "url": "https://buddykids-app.vercel.app/profile/privacy",
+          "pathname": "/profile/privacy",
+          "text": "Privacy e accountConsenso, disattivazione",
+          "type": "legacy"
+        },
+        {
+          "url": "https://buddykids-app.vercel.app/nextgen",
+          "pathname": "/nextgen",
+          "text": "Home",
+          "type": "nextgen"
+        },
+        {
+          "url": "https://buddykids-app.vercel.app/nextgen/planner",
+          "pathname": "/nextgen/planner",
+          "text": "Planner",
+          "type": "nextgen"
+        },
+        {
+          "url": "https://buddykids-app.vercel.app/nextgen/search",
+          "pathname": "/nextgen/search",
+          "text": "Scopri",
+          "type": "nextgen"
+        },
+        {
+          "url": "https://buddykids-app.vercel.app/prenotazioni",
+          "pathname": "/prenotazioni",
+          "text": "Prenotazioni",
+          "type": "legacy"
+        },
+        {
+          "url": "https://buddykids-app.vercel.app/nextgen/profile",
+          "pathname": "/nextgen/profile",
+          "text": "Profilo",
+          "type": "nextgen"
+        }
+      ],
+      "buttons": [
+        "Indietro",
+        "Segnala un problema",
+        "Torna a V1"
+      ],
+      "screenshot": "screenshots/nextgen-profile-impostazioni.png",
+      "screenshotType": "full-page"
+    },
+    {
+      "url": "https://buddykids-app.vercel.app/nextgen/profile/segnalazioni",
+      "pathname": "/nextgen/profile/segnalazioni",
+      "title": "TRAMA",
+      "heading": "",
+      "type": "nextgen",
+      "discoveredFrom": "https://buddykids-app.vercel.app/nextgen/profile",
+      "links": [
+        {
+          "url": "https://buddykids-app.vercel.app/nextgen",
+          "pathname": "/nextgen",
+          "text": "Home",
+          "type": "nextgen"
+        },
+        {
+          "url": "https://buddykids-app.vercel.app/nextgen/planner",
+          "pathname": "/nextgen/planner",
+          "text": "Planner",
+          "type": "nextgen"
+        },
+        {
+          "url": "https://buddykids-app.vercel.app/nextgen/search",
+          "pathname": "/nextgen/search",
+          "text": "Scopri",
+          "type": "nextgen"
+        },
+        {
+          "url": "https://buddykids-app.vercel.app/prenotazioni",
+          "pathname": "/prenotazioni",
+          "text": "Prenotazioni",
+          "type": "legacy"
+        },
+        {
+          "url": "https://buddykids-app.vercel.app/nextgen/profile",
+          "pathname": "/nextgen/profile",
+          "text": "Profilo",
+          "type": "nextgen"
+        }
+      ],
+      "buttons": [
+        "Indietro",
+        "Segnala un problema",
+        "Torna a V1"
+      ],
+      "screenshot": "screenshots/nextgen-profile-segnalazioni.png",
+      "screenshotType": "full-page"
+    },
+    {
+      "url": "https://buddykids-app.vercel.app/nextgen/search",
+      "pathname": "/nextgen/search",
+      "title": "TRAMA",
+      "heading": "",
+      "type": "nextgen",
+      "discoveredFrom": "https://buddykids-app.vercel.app/nextgen",
+      "links": [
+        {
+          "url": "https://buddykids-app.vercel.app/activity/attivita-test-buddykids",
+          "pathname": "/activity/attivita-test-buddykids",
+          "text": "🧪Match 79%4.5 · [TEST] Centro BuddyKids🤍[TEST] Attività BuddyKids0 km3-12 anniLun-Ven⚽ Sport🌿 Natura🌍 LingueNessuna limitazioneDiete gestite€120 / settimana4.5 (0)Solo 20 posti disponibili!",
+          "type": "legacy"
+        },
+        {
+          "url": "https://buddykids-app.vercel.app/activity/laboratorio-arti-creative",
+          "pathname": "/activity/laboratorio-arti-creative",
+          "text": "🎨Match 60%4.8 · Accademia CreArte🤍Laboratorio Arti Creative2.5 km7-12 anni🎨 Arte🎭 Teatro🕐 Mezza€220 / settimana4.8 (94)",
+          "type": "legacy"
+        },
+        {
+          "url": "https://buddykids-app.vercel.app/activity/soccer-academy-estate",
+          "pathname": "/activity/soccer-academy-estate",
+          "text": "⚽Match 59%4.6 · Campo Brera🤍Soccer Academy Estate3.1 km6-16 anni⚽ Sport🌳 Outdoor☀️ Intera€250 / settimana4.6 (47)",
+          "type": "legacy"
+        },
+        {
+          "url": "https://buddykids-app.vercel.app/activity/summer-music-camp",
+          "pathname": "/activity/summer-music-camp",
+          "text": "🎵Match 59%4.5 · Scuola di Musica Aria🤍Summer Music Camp1.8 km7-15 anni🎵 Musica€195 / settimana4.5 (38)",
+          "type": "legacy"
+        },
+        {
+          "url": "https://buddykids-app.vercel.app/activity/test",
+          "pathname": "/activity/test",
+          "text": "Match 50%0 · Test centro estivo🤍test0 km6-12 anni⚽ Sport🏊 Piscina💃 Danza🐭 TestNessuna limitazioneDiete gestite€150 / settimana0 (0)Solo 12 posti disponibili!",
+          "type": "legacy"
+        },
+        {
+          "url": "https://buddykids-app.vercel.app/activity/test-attivita-auto-1784107753260",
+          "pathname": "/activity/test-attivita-auto-1784107753260",
+          "text": "⭐Match 50%0 · [TEST] Centro BuddyKids🤍[TEST] Attività auto 17841077532600 km6-12 anniNessuna limitazione€100 / settimana0 (0)",
+          "type": "legacy"
+        },
+        {
+          "url": "https://buddykids-app.vercel.app/activity/test-attivita-auto-1784108193968",
+          "pathname": "/activity/test-attivita-auto-1784108193968",
+          "text": "⭐Match 50%0 · [TEST] Centro BuddyKids🤍[TEST] Attività auto 17841081939680 km6-12 anniNessuna limitazione€100 / settimana0 (0)",
+          "type": "legacy"
+        },
+        {
+          "url": "https://buddykids-app.vercel.app/activity/coding-robotica-kids",
+          "pathname": "/activity/coding-robotica-kids",
+          "text": "🔬Match 44%4.7 · TechKids Milano🤍Coding & Robotica Kids0.8 km8-13 anni🔬 STEM💻 Tecnologia€310 / settimana4.7 (61)",
+          "type": "legacy"
+        },
+        {
+          "url": "https://buddykids-app.vercel.app/nextgen",
+          "pathname": "/nextgen",
+          "text": "Home",
+          "type": "nextgen"
+        },
+        {
+          "url": "https://buddykids-app.vercel.app/nextgen/planner",
+          "pathname": "/nextgen/planner",
+          "text": "Planner",
+          "type": "nextgen"
+        },
+        {
+          "url": "https://buddykids-app.vercel.app/nextgen/search",
+          "pathname": "/nextgen/search",
+          "text": "Scopri",
+          "type": "nextgen"
+        },
+        {
+          "url": "https://buddykids-app.vercel.app/prenotazioni",
+          "pathname": "/prenotazioni",
+          "text": "Prenotazioni",
+          "type": "legacy"
+        },
+        {
+          "url": "https://buddykids-app.vercel.app/nextgen/profile",
+          "pathname": "/nextgen/profile",
+          "text": "Profilo",
+          "type": "nextgen"
+        }
+      ],
+      "buttons": [
+        "Indietro",
+        "Lista",
+        "Mappa",
+        "🤍",
+        "Segnala un problema",
+        "Torna a V1"
+      ],
+      "screenshot": "screenshots/nextgen-search.png",
+      "screenshotType": "full-page"
+    },
+    {
+      "url": "https://buddykids-app.vercel.app/activity/attivita-test-buddykids",
+      "pathname": "/activity/attivita-test-buddykids",
+      "title": "TRAMA — Attività per bambini",
+      "heading": "",
+      "type": "legacy",
+      "discoveredFrom": "https://buddykids-app.vercel.app/nextgen/planner",
+      "links": [
+        {
+          "url": "https://buddykids-app.vercel.app/booking/attivita-test-buddykids",
+          "pathname": "/booking/attivita-test-buddykids",
+          "text": "Prenota ora",
+          "type": "legacy"
+        }
+      ],
+      "buttons": [
+        "Contatta il gestore",
+        "Passa a NextGen"
+      ],
+      "screenshot": "screenshots/activity-attivita-test-buddykids.png",
+      "screenshotType": "full-page"
+    },
+    {
+      "url": "https://buddykids-app.vercel.app/activity/coding-robotica-kids",
+      "pathname": "/activity/coding-robotica-kids",
+      "title": "TRAMA — Attività per bambini",
+      "heading": "",
+      "type": "legacy",
+      "discoveredFrom": "https://buddykids-app.vercel.app/nextgen/search",
+      "links": [
+        {
+          "url": "https://buddykids-app.vercel.app/booking/coding-robotica-kids",
+          "pathname": "/booking/coding-robotica-kids",
+          "text": "Prenota ora",
+          "type": "legacy"
+        }
+      ],
+      "buttons": [
+        "Contatta il gestore",
+        "Passa a NextGen"
+      ],
+      "screenshot": "screenshots/activity-coding-robotica-kids.png",
+      "screenshotType": "full-page"
+    },
+    {
+      "url": "https://buddykids-app.vercel.app/activity/laboratorio-arti-creative",
+      "pathname": "/activity/laboratorio-arti-creative",
+      "title": "TRAMA — Attività per bambini",
+      "heading": "",
+      "type": "legacy",
+      "discoveredFrom": "https://buddykids-app.vercel.app/nextgen",
+      "links": [
+        {
+          "url": "https://buddykids-app.vercel.app/booking/laboratorio-arti-creative",
+          "pathname": "/booking/laboratorio-arti-creative",
+          "text": "Prenota ora",
+          "type": "legacy"
+        }
+      ],
+      "buttons": [
+        "Contatta il gestore",
+        "Passa a NextGen"
+      ],
+      "screenshot": "screenshots/activity-laboratorio-arti-creative.png",
+      "screenshotType": "full-page"
+    },
+    {
+      "url": "https://buddykids-app.vercel.app/activity/soccer-academy-estate",
+      "pathname": "/activity/soccer-academy-estate",
+      "title": "TRAMA — Attività per bambini",
+      "heading": "",
+      "type": "legacy",
+      "discoveredFrom": "https://buddykids-app.vercel.app/nextgen",
+      "links": [
+        {
+          "url": "https://buddykids-app.vercel.app/booking/soccer-academy-estate",
+          "pathname": "/booking/soccer-academy-estate",
+          "text": "Prenota ora",
+          "type": "legacy"
+        }
+      ],
+      "buttons": [
+        "Contatta il gestore",
+        "Passa a NextGen"
+      ],
+      "screenshot": "screenshots/activity-soccer-academy-estate.png",
+      "screenshotType": "full-page"
+    },
+    {
+      "url": "https://buddykids-app.vercel.app/activity/summer-camp-acquatico",
+      "pathname": "/activity/summer-camp-acquatico",
+      "title": "TRAMA — Attività per bambini",
+      "heading": "",
+      "type": "legacy",
+      "discoveredFrom": "https://buddykids-app.vercel.app/nextgen",
+      "links": [
+        {
+          "url": "https://buddykids-app.vercel.app/booking/summer-camp-acquatico",
+          "pathname": "/booking/summer-camp-acquatico",
+          "text": "Prenota ora",
+          "type": "legacy"
+        }
+      ],
+      "buttons": [
+        "Contatta il gestore",
+        "Passa a NextGen"
+      ],
+      "screenshot": "screenshots/activity-summer-camp-acquatico.png",
+      "screenshotType": "full-page"
+    },
+    {
+      "url": "https://buddykids-app.vercel.app/activity/summer-music-camp",
+      "pathname": "/activity/summer-music-camp",
+      "title": "TRAMA — Attività per bambini",
+      "heading": "",
+      "type": "legacy",
+      "discoveredFrom": "https://buddykids-app.vercel.app/nextgen/search",
+      "links": [
+        {
+          "url": "https://buddykids-app.vercel.app/booking/summer-music-camp",
+          "pathname": "/booking/summer-music-camp",
+          "text": "Prenota ora",
+          "type": "legacy"
+        }
+      ],
+      "buttons": [
+        "Contatta il gestore",
+        "Passa a NextGen"
+      ],
+      "screenshot": "screenshots/activity-summer-music-camp.png",
+      "screenshotType": "full-page"
+    },
+    {
+      "url": "https://buddykids-app.vercel.app/activity/test",
+      "pathname": "/activity/test",
+      "title": "TRAMA — Attività per bambini",
+      "heading": "",
+      "type": "legacy",
+      "discoveredFrom": "https://buddykids-app.vercel.app/nextgen/search",
+      "links": [
+        {
+          "url": "https://buddykids-app.vercel.app/booking/test",
+          "pathname": "/booking/test",
+          "text": "Prenota ora",
+          "type": "legacy"
+        }
+      ],
+      "buttons": [
+        "Apri la copertina a schermo intero",
+        "Contatta il gestore",
+        "Apri foto 1 a schermo intero",
+        "Apri foto 2 a schermo intero",
+        "Passa a NextGen"
+      ],
+      "screenshot": "screenshots/activity-test.png",
+      "screenshotType": "full-page"
+    },
+    {
+      "url": "https://buddykids-app.vercel.app/activity/test-attivita-auto-1784107753260",
+      "pathname": "/activity/test-attivita-auto-1784107753260",
+      "title": "TRAMA — Attività per bambini",
+      "heading": "",
+      "type": "legacy",
+      "discoveredFrom": "https://buddykids-app.vercel.app/nextgen/search",
+      "links": [
+        {
+          "url": "https://buddykids-app.vercel.app/booking/test-attivita-auto-1784107753260",
+          "pathname": "/booking/test-attivita-auto-1784107753260",
+          "text": "Prenota ora",
+          "type": "legacy"
+        }
+      ],
+      "buttons": [
+        "Contatta il gestore",
+        "Passa a NextGen"
+      ],
+      "screenshot": "screenshots/activity-test-attivita-auto-1784107753260.png",
+      "screenshotType": "full-page"
+    },
+    {
+      "url": "https://buddykids-app.vercel.app/activity/test-attivita-auto-1784108193968",
+      "pathname": "/activity/test-attivita-auto-1784108193968",
+      "title": "TRAMA — Attività per bambini",
+      "heading": "",
+      "type": "legacy",
+      "discoveredFrom": "https://buddykids-app.vercel.app/nextgen/search",
+      "links": [
+        {
+          "url": "https://buddykids-app.vercel.app/booking/test-attivita-auto-1784108193968",
+          "pathname": "/booking/test-attivita-auto-1784108193968",
+          "text": "Prenota ora",
+          "type": "legacy"
+        }
+      ],
+      "buttons": [
+        "Contatta il gestore",
+        "Passa a NextGen"
+      ],
+      "screenshot": "screenshots/activity-test-attivita-auto-1784108193968.png",
+      "screenshotType": "full-page"
+    },
+    {
+      "url": "https://buddykids-app.vercel.app/preferiti",
+      "pathname": "/preferiti",
+      "title": "TRAMA — Attività per bambini",
+      "heading": "",
+      "type": "legacy",
+      "discoveredFrom": "https://buddykids-app.vercel.app/nextgen/profile",
+      "links": [
+        {
+          "url": "https://buddykids-app.vercel.app/activity/attivita-test-buddykids",
+          "pathname": "/activity/attivita-test-buddykids",
+          "text": "🧪[TEST] Attività BuddyKids0 km · 3-12 anniSportNatura€120/sett4.5",
+          "type": "legacy"
+        },
+        {
+          "url": "https://buddykids-app.vercel.app/",
+          "pathname": "/",
+          "text": "Home",
+          "type": "legacy"
+        },
+        {
+          "url": "https://buddykids-app.vercel.app/search",
+          "pathname": "/search",
+          "text": "Cerca",
+          "type": "legacy"
+        },
+        {
+          "url": "https://buddykids-app.vercel.app/groups",
+          "pathname": "/groups",
+          "text": "Gruppi",
+          "type": "legacy"
+        },
+        {
+          "url": "https://buddykids-app.vercel.app/calendar",
+          "pathname": "/calendar",
+          "text": "Calendario",
+          "type": "legacy"
+        },
+        {
+          "url": "https://buddykids-app.vercel.app/profile",
+          "pathname": "/profile",
+          "text": "Profilo",
+          "type": "legacy"
+        }
+      ],
+      "buttons": [
+        "Indietro",
+        "Passa a NextGen"
+      ],
+      "screenshot": "screenshots/preferiti.png",
+      "screenshotType": "full-page"
+    },
+    {
+      "url": "https://buddykids-app.vercel.app/prenotazioni",
+      "pathname": "/prenotazioni",
+      "title": "TRAMA — Attività per bambini",
+      "heading": "",
+      "type": "legacy",
+      "discoveredFrom": "https://buddykids-app.vercel.app/nextgen",
+      "links": [
+        {
+          "url": "https://buddykids-app.vercel.app/",
+          "pathname": "/",
+          "text": "vai al Planner",
+          "type": "legacy"
+        },
+        {
+          "url": "https://buddykids-app.vercel.app/activity/attivita-test-buddykids",
+          "pathname": "/activity/attivita-test-buddykids",
+          "text": "Dettagli",
+          "type": "legacy"
+        },
+        {
+          "url": "https://buddykids-app.vercel.app/search",
+          "pathname": "/search",
+          "text": "Cerca",
+          "type": "legacy"
+        },
+        {
+          "url": "https://buddykids-app.vercel.app/groups",
+          "pathname": "/groups",
+          "text": "Gruppi",
+          "type": "legacy"
+        },
+        {
+          "url": "https://buddykids-app.vercel.app/calendar",
+          "pathname": "/calendar",
+          "text": "Calendario",
+          "type": "legacy"
+        },
+        {
+          "url": "https://buddykids-app.vercel.app/profile",
+          "pathname": "/profile",
+          "text": "Profilo",
+          "type": "legacy"
+        }
+      ],
+      "buttons": [
+        "Indietro",
+        "Elenco",
+        "Copertura",
+        "CalendarioPresto",
+        "Settimana",
+        "Mese",
+        "Figlio",
+        "Attività",
+        "Centro",
+        "Stato",
+        "Data",
+        "Prezzo",
+        "Nome attività",
+        "Luogo",
+        "Settimana 1 · 1",
+        "Contatta il gestore",
+        "Passa a NextGen"
+      ],
+      "screenshot": "screenshots/prenotazioni.png",
+      "screenshotType": "full-page"
+    },
+    {
+      "url": "https://buddykids-app.vercel.app/presenze",
+      "pathname": "/presenze",
+      "title": "TRAMA — Attività per bambini",
+      "heading": "",
+      "type": "legacy",
+      "discoveredFrom": "https://buddykids-app.vercel.app/nextgen/profile",
+      "links": [
+        {
+          "url": "https://buddykids-app.vercel.app/",
+          "pathname": "/",
+          "text": "Home",
+          "type": "legacy"
+        },
+        {
+          "url": "https://buddykids-app.vercel.app/search",
+          "pathname": "/search",
+          "text": "Cerca",
+          "type": "legacy"
+        },
+        {
+          "url": "https://buddykids-app.vercel.app/groups",
+          "pathname": "/groups",
+          "text": "Gruppi",
+          "type": "legacy"
+        },
+        {
+          "url": "https://buddykids-app.vercel.app/calendar",
+          "pathname": "/calendar",
+          "text": "Calendario",
+          "type": "legacy"
+        },
+        {
+          "url": "https://buddykids-app.vercel.app/profile",
+          "pathname": "/profile",
+          "text": "Profilo",
+          "type": "legacy"
+        }
+      ],
+      "buttons": [
+        "Indietro",
+        "Passa a NextGen"
+      ],
+      "screenshot": "screenshots/presenze.png",
+      "screenshotType": "full-page"
+    },
+    {
+      "url": "https://buddykids-app.vercel.app/profile/preferenze",
+      "pathname": "/profile/preferenze",
+      "title": "TRAMA — Attività per bambini",
+      "heading": "",
+      "type": "legacy",
+      "discoveredFrom": "https://buddykids-app.vercel.app/nextgen/profile/impostazioni",
+      "links": [
+        {
+          "url": "https://buddykids-app.vercel.app/",
+          "pathname": "/",
+          "text": "Home",
+          "type": "legacy"
+        },
+        {
+          "url": "https://buddykids-app.vercel.app/search",
+          "pathname": "/search",
+          "text": "Cerca",
+          "type": "legacy"
+        },
+        {
+          "url": "https://buddykids-app.vercel.app/groups",
+          "pathname": "/groups",
+          "text": "Gruppi",
+          "type": "legacy"
+        },
+        {
+          "url": "https://buddykids-app.vercel.app/calendar",
+          "pathname": "/calendar",
+          "text": "Calendario",
+          "type": "legacy"
+        },
+        {
+          "url": "https://buddykids-app.vercel.app/profile",
+          "pathname": "/profile",
+          "text": "Profilo",
+          "type": "legacy"
+        }
+      ],
+      "buttons": [
+        "Indietro",
+        "Italiano",
+        "English",
+        "Chiaro",
+        "Scuro",
+        "Passa a NextGen"
+      ],
+      "screenshot": "screenshots/profile-preferenze.png",
+      "screenshotType": "full-page"
+    },
+    {
+      "url": "https://buddykids-app.vercel.app/profile/privacy",
+      "pathname": "/profile/privacy",
+      "title": "TRAMA — Attività per bambini",
+      "heading": "",
+      "type": "legacy",
+      "discoveredFrom": "https://buddykids-app.vercel.app/nextgen/profile/impostazioni",
+      "links": [
+        {
+          "url": "https://buddykids-app.vercel.app/",
+          "pathname": "/",
+          "text": "Home",
+          "type": "legacy"
+        },
+        {
+          "url": "https://buddykids-app.vercel.app/search",
+          "pathname": "/search",
+          "text": "Cerca",
+          "type": "legacy"
+        },
+        {
+          "url": "https://buddykids-app.vercel.app/groups",
+          "pathname": "/groups",
+          "text": "Gruppi",
+          "type": "legacy"
+        },
+        {
+          "url": "https://buddykids-app.vercel.app/calendar",
+          "pathname": "/calendar",
+          "text": "Calendario",
+          "type": "legacy"
+        },
+        {
+          "url": "https://buddykids-app.vercel.app/profile",
+          "pathname": "/profile",
+          "text": "Profilo",
+          "type": "legacy"
+        }
+      ],
+      "buttons": [
+        "Indietro",
+        "Disattiva account temporaneamente",
+        "Richiedi cancellazione account",
+        "Passa a NextGen"
+      ],
+      "screenshot": "screenshots/profile-privacy.png",
+      "screenshotType": "full-page"
+    },
+    {
+      "url": "https://buddykids-app.vercel.app/profile/sicurezza",
+      "pathname": "/profile/sicurezza",
+      "title": "TRAMA — Attività per bambini",
+      "heading": "",
+      "type": "legacy",
+      "discoveredFrom": "https://buddykids-app.vercel.app/nextgen/profile/impostazioni",
+      "links": [
+        {
+          "url": "https://buddykids-app.vercel.app/",
+          "pathname": "/",
+          "text": "Home",
+          "type": "legacy"
+        },
+        {
+          "url": "https://buddykids-app.vercel.app/search",
+          "pathname": "/search",
+          "text": "Cerca",
+          "type": "legacy"
+        },
+        {
+          "url": "https://buddykids-app.vercel.app/groups",
+          "pathname": "/groups",
+          "text": "Gruppi",
+          "type": "legacy"
+        },
+        {
+          "url": "https://buddykids-app.vercel.app/calendar",
+          "pathname": "/calendar",
+          "text": "Calendario",
+          "type": "legacy"
+        },
+        {
+          "url": "https://buddykids-app.vercel.app/profile",
+          "pathname": "/profile",
+          "text": "Profilo",
+          "type": "legacy"
+        }
+      ],
+      "buttons": [
+        "Indietro",
+        "Aggiorna password",
+        "Passa a NextGen"
+      ],
+      "screenshot": "screenshots/profile-sicurezza.png",
+      "screenshotType": "full-page"
+    },
+    {
+      "url": "https://buddykids-app.vercel.app/richieste",
+      "pathname": "/richieste",
+      "title": "TRAMA — Attività per bambini",
+      "heading": "",
+      "type": "legacy",
+      "discoveredFrom": "https://buddykids-app.vercel.app/nextgen/profile",
+      "links": [
+        {
+          "url": "https://buddykids-app.vercel.app/activity/attivita-test-buddykids",
+          "pathname": "/activity/attivita-test-buddykids",
+          "text": "[TEST] Attività BuddyKids",
+          "type": "legacy"
+        },
+        {
+          "url": "https://buddykids-app.vercel.app/",
+          "pathname": "/",
+          "text": "Home",
+          "type": "legacy"
+        },
+        {
+          "url": "https://buddykids-app.vercel.app/search",
+          "pathname": "/search",
+          "text": "Cerca",
+          "type": "legacy"
+        },
+        {
+          "url": "https://buddykids-app.vercel.app/groups",
+          "pathname": "/groups",
+          "text": "Gruppi",
+          "type": "legacy"
+        },
+        {
+          "url": "https://buddykids-app.vercel.app/calendar",
+          "pathname": "/calendar",
+          "text": "Calendario",
+          "type": "legacy"
+        },
+        {
+          "url": "https://buddykids-app.vercel.app/profile",
+          "pathname": "/profile",
+          "text": "Profilo",
+          "type": "legacy"
+        }
+      ],
+      "buttons": [
+        "Indietro",
+        "Passa a NextGen"
+      ],
+      "screenshot": "screenshots/richieste.png",
+      "screenshotType": "full-page"
+    }
+  ],
+  "nodes": [
+    {
+      "id": "N0",
+      "url": "https://buddykids-app.vercel.app/nextgen",
+      "pathname": "/nextgen",
+      "label": "Ciao 👋",
+      "type": "nextgen",
+      "screenshot": "screenshots/nextgen.png"
+    },
+    {
+      "id": "N1",
+      "url": "https://buddykids-app.vercel.app/nextgen/planner",
+      "pathname": "/nextgen/planner",
+      "label": "TRAMA",
+      "type": "nextgen",
+      "screenshot": "screenshots/nextgen-planner.png"
+    },
+    {
+      "id": "N2",
+      "url": "https://buddykids-app.vercel.app/nextgen/planner?mode=calendario",
+      "pathname": "/nextgen/planner?mode=calendario",
+      "label": "TRAMA",
+      "type": "nextgen",
+      "screenshot": "screenshots/nextgen-planner-mode-calendario.png"
+    },
+    {
+      "id": "N3",
+      "url": "https://buddykids-app.vercel.app/nextgen/planner/famiglia",
+      "pathname": "/nextgen/planner/famiglia",
+      "label": "TRAMA",
+      "type": "nextgen",
+      "screenshot": "screenshots/nextgen-planner-famiglia.png"
+    },
+    {
+      "id": "N4",
+      "url": "https://buddykids-app.vercel.app/nextgen/planner/indirizzi",
+      "pathname": "/nextgen/planner/indirizzi",
+      "label": "TRAMA",
+      "type": "nextgen",
+      "screenshot": "screenshots/nextgen-planner-indirizzi.png"
+    },
+    {
+      "id": "N5",
+      "url": "https://buddykids-app.vercel.app/nextgen/planner/promemoria",
+      "pathname": "/nextgen/planner/promemoria",
+      "label": "TRAMA",
+      "type": "nextgen",
+      "screenshot": "screenshots/nextgen-planner-promemoria.png"
+    },
+    {
+      "id": "N6",
+      "url": "https://buddykids-app.vercel.app/nextgen/profile",
+      "pathname": "/nextgen/profile",
+      "label": "TRAMA",
+      "type": "nextgen",
+      "screenshot": "screenshots/nextgen-profile.png"
+    },
+    {
+      "id": "N7",
+      "url": "https://buddykids-app.vercel.app/nextgen/profile/famiglia",
+      "pathname": "/nextgen/profile/famiglia",
+      "label": "TRAMA",
+      "type": "nextgen",
+      "screenshot": "screenshots/nextgen-profile-famiglia.png"
+    },
+    {
+      "id": "N8",
+      "url": "https://buddykids-app.vercel.app/nextgen/profile/impostazioni",
+      "pathname": "/nextgen/profile/impostazioni",
+      "label": "TRAMA",
+      "type": "nextgen",
+      "screenshot": "screenshots/nextgen-profile-impostazioni.png"
+    },
+    {
+      "id": "N9",
+      "url": "https://buddykids-app.vercel.app/nextgen/profile/segnalazioni",
+      "pathname": "/nextgen/profile/segnalazioni",
+      "label": "TRAMA",
+      "type": "nextgen",
+      "screenshot": "screenshots/nextgen-profile-segnalazioni.png"
+    },
+    {
+      "id": "N10",
+      "url": "https://buddykids-app.vercel.app/nextgen/search",
+      "pathname": "/nextgen/search",
+      "label": "TRAMA",
+      "type": "nextgen",
+      "screenshot": "screenshots/nextgen-search.png"
+    },
+    {
+      "id": "N11",
+      "url": "https://buddykids-app.vercel.app/activity/attivita-test-buddykids",
+      "pathname": "/activity/attivita-test-buddykids",
+      "label": "TRAMA — Attività per bambini",
+      "type": "legacy",
+      "screenshot": "screenshots/activity-attivita-test-buddykids.png"
+    },
+    {
+      "id": "N12",
+      "url": "https://buddykids-app.vercel.app/activity/coding-robotica-kids",
+      "pathname": "/activity/coding-robotica-kids",
+      "label": "TRAMA — Attività per bambini",
+      "type": "legacy",
+      "screenshot": "screenshots/activity-coding-robotica-kids.png"
+    },
+    {
+      "id": "N13",
+      "url": "https://buddykids-app.vercel.app/activity/laboratorio-arti-creative",
+      "pathname": "/activity/laboratorio-arti-creative",
+      "label": "TRAMA — Attività per bambini",
+      "type": "legacy",
+      "screenshot": "screenshots/activity-laboratorio-arti-creative.png"
+    },
+    {
+      "id": "N14",
+      "url": "https://buddykids-app.vercel.app/activity/soccer-academy-estate",
+      "pathname": "/activity/soccer-academy-estate",
+      "label": "TRAMA — Attività per bambini",
+      "type": "legacy",
+      "screenshot": "screenshots/activity-soccer-academy-estate.png"
+    },
+    {
+      "id": "N15",
+      "url": "https://buddykids-app.vercel.app/activity/summer-camp-acquatico",
+      "pathname": "/activity/summer-camp-acquatico",
+      "label": "TRAMA — Attività per bambini",
+      "type": "legacy",
+      "screenshot": "screenshots/activity-summer-camp-acquatico.png"
+    },
+    {
+      "id": "N16",
+      "url": "https://buddykids-app.vercel.app/activity/summer-music-camp",
+      "pathname": "/activity/summer-music-camp",
+      "label": "TRAMA — Attività per bambini",
+      "type": "legacy",
+      "screenshot": "screenshots/activity-summer-music-camp.png"
+    },
+    {
+      "id": "N17",
+      "url": "https://buddykids-app.vercel.app/activity/test",
+      "pathname": "/activity/test",
+      "label": "TRAMA — Attività per bambini",
+      "type": "legacy",
+      "screenshot": "screenshots/activity-test.png"
+    },
+    {
+      "id": "N18",
+      "url": "https://buddykids-app.vercel.app/activity/test-attivita-auto-1784107753260",
+      "pathname": "/activity/test-attivita-auto-1784107753260",
+      "label": "TRAMA — Attività per bambini",
+      "type": "legacy",
+      "screenshot": "screenshots/activity-test-attivita-auto-1784107753260.png"
+    },
+    {
+      "id": "N19",
+      "url": "https://buddykids-app.vercel.app/activity/test-attivita-auto-1784108193968",
+      "pathname": "/activity/test-attivita-auto-1784108193968",
+      "label": "TRAMA — Attività per bambini",
+      "type": "legacy",
+      "screenshot": "screenshots/activity-test-attivita-auto-1784108193968.png"
+    },
+    {
+      "id": "N20",
+      "url": "https://buddykids-app.vercel.app/preferiti",
+      "pathname": "/preferiti",
+      "label": "TRAMA — Attività per bambini",
+      "type": "legacy",
+      "screenshot": "screenshots/preferiti.png"
+    },
+    {
+      "id": "N21",
+      "url": "https://buddykids-app.vercel.app/prenotazioni",
+      "pathname": "/prenotazioni",
+      "label": "TRAMA — Attività per bambini",
+      "type": "legacy",
+      "screenshot": "screenshots/prenotazioni.png"
+    },
+    {
+      "id": "N22",
+      "url": "https://buddykids-app.vercel.app/presenze",
+      "pathname": "/presenze",
+      "label": "TRAMA — Attività per bambini",
+      "type": "legacy",
+      "screenshot": "screenshots/presenze.png"
+    },
+    {
+      "id": "N23",
+      "url": "https://buddykids-app.vercel.app/profile/preferenze",
+      "pathname": "/profile/preferenze",
+      "label": "TRAMA — Attività per bambini",
+      "type": "legacy",
+      "screenshot": "screenshots/profile-preferenze.png"
+    },
+    {
+      "id": "N24",
+      "url": "https://buddykids-app.vercel.app/profile/privacy",
+      "pathname": "/profile/privacy",
+      "label": "TRAMA — Attività per bambini",
+      "type": "legacy",
+      "screenshot": "screenshots/profile-privacy.png"
+    },
+    {
+      "id": "N25",
+      "url": "https://buddykids-app.vercel.app/profile/sicurezza",
+      "pathname": "/profile/sicurezza",
+      "label": "TRAMA — Attività per bambini",
+      "type": "legacy",
+      "screenshot": "screenshots/profile-sicurezza.png"
+    },
+    {
+      "id": "N26",
+      "url": "https://buddykids-app.vercel.app/richieste",
+      "pathname": "/richieste",
+      "label": "TRAMA — Attività per bambini",
+      "type": "legacy",
+      "screenshot": "screenshots/richieste.png"
+    }
+  ],
+  "edges": [
+    {
+      "source": "N0",
+      "target": "N13",
+      "label": "🎨Match 60%4.8 · Accademia CreArte\ud83e"
+    },
+    {
+      "source": "N0",
+      "target": "N15",
+      "label": "🏊Match 60%4.9 · Centro Sportivo Li"
+    },
+    {
+      "source": "N0",
+      "target": "N14",
+      "label": "⚽Match 59%4.6 · Campo Brera🤍Soccer"
+    },
+    {
+      "source": "N0",
+      "target": "N1",
+      "label": "Apri PlannerOrganizzazione, calenda"
+    },
+    {
+      "source": "N0",
+      "target": "N0",
+      "label": "Home"
+    },
+    {
+      "source": "N0",
+      "target": "N10",
+      "label": "Scopri"
+    },
+    {
+      "source": "N0",
+      "target": "N21",
+      "label": "Prenotazioni"
+    },
+    {
+      "source": "N0",
+      "target": "N6",
+      "label": "Profilo"
+    },
+    {
+      "source": "N1",
+      "target": "N11",
+      "label": "Settimana 1GIU 1-5[TEST] Attività B"
+    },
+    {
+      "source": "N1",
+      "target": "N10",
+      "label": "Riempi"
+    },
+    {
+      "source": "N1",
+      "target": "N13",
+      "label": "🎨Match 60%4.8 · Accademia CreArte\ud83e"
+    },
+    {
+      "source": "N1",
+      "target": "N15",
+      "label": "🏊Match 60%4.9 · Centro Sportivo Li"
+    },
+    {
+      "source": "N1",
+      "target": "N14",
+      "label": "⚽Match 59%4.6 · Campo Brera🤍Soccer"
+    },
+    {
+      "source": "N1",
+      "target": "N0",
+      "label": "Home"
+    },
+    {
+      "source": "N1",
+      "target": "N1",
+      "label": "Planner"
+    },
+    {
+      "source": "N1",
+      "target": "N21",
+      "label": "Prenotazioni"
+    },
+    {
+      "source": "N1",
+      "target": "N6",
+      "label": "Profilo"
+    },
+    {
+      "source": "N2",
+      "target": "N11",
+      "label": "Settimana 1GIU 1-5[TEST] Attività B"
+    },
+    {
+      "source": "N2",
+      "target": "N10",
+      "label": "Riempi"
+    },
+    {
+      "source": "N2",
+      "target": "N13",
+      "label": "🎨Match 60%4.8 · Accademia CreArte\ud83e"
+    },
+    {
+      "source": "N2",
+      "target": "N15",
+      "label": "🏊Match 60%4.9 · Centro Sportivo Li"
+    },
+    {
+      "source": "N2",
+      "target": "N14",
+      "label": "⚽Match 59%4.6 · Campo Brera🤍Soccer"
+    },
+    {
+      "source": "N2",
+      "target": "N0",
+      "label": "Home"
+    },
+    {
+      "source": "N2",
+      "target": "N1",
+      "label": "Planner"
+    },
+    {
+      "source": "N2",
+      "target": "N21",
+      "label": "Prenotazioni"
+    },
+    {
+      "source": "N2",
+      "target": "N6",
+      "label": "Profilo"
+    },
+    {
+      "source": "N3",
+      "target": "N0",
+      "label": "Home"
+    },
+    {
+      "source": "N3",
+      "target": "N1",
+      "label": "Planner"
+    },
+    {
+      "source": "N3",
+      "target": "N10",
+      "label": "Scopri"
+    },
+    {
+      "source": "N3",
+      "target": "N21",
+      "label": "Prenotazioni"
+    },
+    {
+      "source": "N3",
+      "target": "N6",
+      "label": "Profilo"
+    },
+    {
+      "source": "N4",
+      "target": "N0",
+      "label": "Home"
+    },
+    {
+      "source": "N4",
+      "target": "N1",
+      "label": "Planner"
+    },
+    {
+      "source": "N4",
+      "target": "N10",
+      "label": "Scopri"
+    },
+    {
+      "source": "N4",
+      "target": "N21",
+      "label": "Prenotazioni"
+    },
+    {
+      "source": "N4",
+      "target": "N6",
+      "label": "Profilo"
+    },
+    {
+      "source": "N5",
+      "target": "N0",
+      "label": "Home"
+    },
+    {
+      "source": "N5",
+      "target": "N1",
+      "label": "Planner"
+    },
+    {
+      "source": "N5",
+      "target": "N10",
+      "label": "Scopri"
+    },
+    {
+      "source": "N5",
+      "target": "N21",
+      "label": "Prenotazioni"
+    },
+    {
+      "source": "N5",
+      "target": "N6",
+      "label": "Profilo"
+    },
+    {
+      "source": "N6",
+      "target": "N21",
+      "label": "Le mie prenotazioniElenco delle tue"
+    },
+    {
+      "source": "N6",
+      "target": "N20",
+      "label": "PreferitiAttività salvate"
+    },
+    {
+      "source": "N6",
+      "target": "N22",
+      "label": "Le presenzeStorico presenze, ritard"
+    },
+    {
+      "source": "N6",
+      "target": "N7",
+      "label": "Famiglia e logisticaIndirizzi, cond"
+    },
+    {
+      "source": "N6",
+      "target": "N26",
+      "label": "Le mie richiesteMessaggi ai centri "
+    },
+    {
+      "source": "N6",
+      "target": "N8",
+      "label": "ImpostazioniSicurezza, preferenze, "
+    },
+    {
+      "source": "N6",
+      "target": "N9",
+      "label": "Le mie segnalazioniStato dei bug/su"
+    },
+    {
+      "source": "N6",
+      "target": "N0",
+      "label": "Home"
+    },
+    {
+      "source": "N6",
+      "target": "N1",
+      "label": "Planner"
+    },
+    {
+      "source": "N6",
+      "target": "N10",
+      "label": "Scopri"
+    },
+    {
+      "source": "N6",
+      "target": "N6",
+      "label": "Profilo"
+    },
+    {
+      "source": "N7",
+      "target": "N4",
+      "label": "Indirizzi di famigliaCasa, lavoro e"
+    },
+    {
+      "source": "N7",
+      "target": "N3",
+      "label": "FamigliaInvita l'altro genitore, co"
+    },
+    {
+      "source": "N7",
+      "target": "N2",
+      "label": "Condivisione pianoCrea un link di s"
+    },
+    {
+      "source": "N7",
+      "target": "N5",
+      "label": "Promemoria e avvisiAvvisami prima d"
+    },
+    {
+      "source": "N7",
+      "target": "N0",
+      "label": "Home"
+    },
+    {
+      "source": "N7",
+      "target": "N1",
+      "label": "Planner"
+    },
+    {
+      "source": "N7",
+      "target": "N10",
+      "label": "Scopri"
+    },
+    {
+      "source": "N7",
+      "target": "N21",
+      "label": "Prenotazioni"
+    },
+    {
+      "source": "N7",
+      "target": "N6",
+      "label": "Profilo"
+    },
+    {
+      "source": "N8",
+      "target": "N25",
+      "label": "SicurezzaPassword, accesso rapido"
+    },
+    {
+      "source": "N8",
+      "target": "N23",
+      "label": "PreferenzeLingua, tema, notifiche"
+    },
+    {
+      "source": "N8",
+      "target": "N24",
+      "label": "Privacy e accountConsenso, disattiv"
+    },
+    {
+      "source": "N8",
+      "target": "N0",
+      "label": "Home"
+    },
+    {
+      "source": "N8",
+      "target": "N1",
+      "label": "Planner"
+    },
+    {
+      "source": "N8",
+      "target": "N10",
+      "label": "Scopri"
+    },
+    {
+      "source": "N8",
+      "target": "N21",
+      "label": "Prenotazioni"
+    },
+    {
+      "source": "N8",
+      "target": "N6",
+      "label": "Profilo"
+    },
+    {
+      "source": "N9",
+      "target": "N0",
+      "label": "Home"
+    },
+    {
+      "source": "N9",
+      "target": "N1",
+      "label": "Planner"
+    },
+    {
+      "source": "N9",
+      "target": "N10",
+      "label": "Scopri"
+    },
+    {
+      "source": "N9",
+      "target": "N21",
+      "label": "Prenotazioni"
+    },
+    {
+      "source": "N9",
+      "target": "N6",
+      "label": "Profilo"
+    },
+    {
+      "source": "N10",
+      "target": "N11",
+      "label": "🧪Match 79%4.5 · [TEST] Centro Budd"
+    },
+    {
+      "source": "N10",
+      "target": "N13",
+      "label": "🎨Match 60%4.8 · Accademia CreArte\ud83e"
+    },
+    {
+      "source": "N10",
+      "target": "N14",
+      "label": "⚽Match 59%4.6 · Campo Brera🤍Soccer"
+    },
+    {
+      "source": "N10",
+      "target": "N16",
+      "label": "🎵Match 59%4.5 · Scuola di Musica A"
+    },
+    {
+      "source": "N10",
+      "target": "N17",
+      "label": "Match 50%0 · Test centro estivo🤍te"
+    },
+    {
+      "source": "N10",
+      "target": "N18",
+      "label": "⭐Match 50%0 · [TEST] Centro BuddyKi"
+    },
+    {
+      "source": "N10",
+      "target": "N19",
+      "label": "⭐Match 50%0 · [TEST] Centro BuddyKi"
+    },
+    {
+      "source": "N10",
+      "target": "N12",
+      "label": "🔬Match 44%4.7 · TechKids Milano🤍C"
+    },
+    {
+      "source": "N10",
+      "target": "N0",
+      "label": "Home"
+    },
+    {
+      "source": "N10",
+      "target": "N1",
+      "label": "Planner"
+    },
+    {
+      "source": "N10",
+      "target": "N10",
+      "label": "Scopri"
+    },
+    {
+      "source": "N10",
+      "target": "N21",
+      "label": "Prenotazioni"
+    },
+    {
+      "source": "N10",
+      "target": "N6",
+      "label": "Profilo"
+    },
+    {
+      "source": "N20",
+      "target": "N11",
+      "label": "🧪[TEST] Attività BuddyKids0 km · 3"
+    },
+    {
+      "source": "N21",
+      "target": "N11",
+      "label": "Dettagli"
+    },
+    {
+      "source": "N26",
+      "target": "N11",
+      "label": "[TEST] Attività BuddyKids"
+    }
+  ],
+  "errors": []
+}

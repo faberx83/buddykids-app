@@ -1,0 +1,691 @@
+{
+  "generatedAt": "2026-07-16T13:26:39.539Z",
+  "target": "parent",
+  "label": "Genitore",
+  "project": "chromium",
+  "baseUrl": "https://buddykids-app.vercel.app",
+  "startPath": "/nextgen",
+  "pages": [
+    {
+      "url": "https://buddykids-app.vercel.app/activity/attivita-test-buddykids",
+      "pathname": "/activity/attivita-test-buddykids",
+      "title": "TRAMA — Attività per bambini",
+      "heading": "",
+      "kind": "legacy",
+      "calledBy": [
+        "https://buddykids-app.vercel.app/nextgen/planner",
+        "https://buddykids-app.vercel.app/nextgen/planner?mode=calendario",
+        "https://buddykids-app.vercel.app/nextgen/search"
+      ]
+    },
+    {
+      "url": "https://buddykids-app.vercel.app/activity/coding-robotica-kids",
+      "pathname": "/activity/coding-robotica-kids",
+      "title": "TRAMA — Attività per bambini",
+      "heading": "",
+      "kind": "legacy",
+      "calledBy": [
+        "https://buddykids-app.vercel.app/nextgen/search"
+      ]
+    },
+    {
+      "url": "https://buddykids-app.vercel.app/activity/laboratorio-arti-creative",
+      "pathname": "/activity/laboratorio-arti-creative",
+      "title": "TRAMA — Attività per bambini",
+      "heading": "",
+      "kind": "legacy",
+      "calledBy": [
+        "https://buddykids-app.vercel.app/nextgen",
+        "https://buddykids-app.vercel.app/nextgen/planner",
+        "https://buddykids-app.vercel.app/nextgen/planner?mode=calendario",
+        "https://buddykids-app.vercel.app/nextgen/search"
+      ]
+    },
+    {
+      "url": "https://buddykids-app.vercel.app/activity/soccer-academy-estate",
+      "pathname": "/activity/soccer-academy-estate",
+      "title": "TRAMA — Attività per bambini",
+      "heading": "",
+      "kind": "legacy",
+      "calledBy": [
+        "https://buddykids-app.vercel.app/nextgen",
+        "https://buddykids-app.vercel.app/nextgen/planner",
+        "https://buddykids-app.vercel.app/nextgen/planner?mode=calendario",
+        "https://buddykids-app.vercel.app/nextgen/search"
+      ]
+    },
+    {
+      "url": "https://buddykids-app.vercel.app/activity/summer-camp-acquatico",
+      "pathname": "/activity/summer-camp-acquatico",
+      "title": "TRAMA — Attività per bambini",
+      "heading": "",
+      "kind": "legacy",
+      "calledBy": [
+        "https://buddykids-app.vercel.app/nextgen",
+        "https://buddykids-app.vercel.app/nextgen/planner",
+        "https://buddykids-app.vercel.app/nextgen/planner?mode=calendario"
+      ]
+    },
+    {
+      "url": "https://buddykids-app.vercel.app/activity/summer-music-camp",
+      "pathname": "/activity/summer-music-camp",
+      "title": "TRAMA — Attività per bambini",
+      "heading": "",
+      "kind": "legacy",
+      "calledBy": [
+        "https://buddykids-app.vercel.app/nextgen/search"
+      ]
+    },
+    {
+      "url": "https://buddykids-app.vercel.app/activity/test",
+      "pathname": "/activity/test",
+      "title": "TRAMA — Attività per bambini",
+      "heading": "",
+      "kind": "legacy",
+      "calledBy": [
+        "https://buddykids-app.vercel.app/nextgen/search"
+      ]
+    },
+    {
+      "url": "https://buddykids-app.vercel.app/activity/test-attivita-auto-1784107753260",
+      "pathname": "/activity/test-attivita-auto-1784107753260",
+      "title": "TRAMA — Attività per bambini",
+      "heading": "",
+      "kind": "legacy",
+      "calledBy": [
+        "https://buddykids-app.vercel.app/nextgen/search"
+      ]
+    },
+    {
+      "url": "https://buddykids-app.vercel.app/activity/test-attivita-auto-1784108193968",
+      "pathname": "/activity/test-attivita-auto-1784108193968",
+      "title": "TRAMA — Attività per bambini",
+      "heading": "",
+      "kind": "legacy",
+      "calledBy": [
+        "https://buddykids-app.vercel.app/nextgen/search"
+      ]
+    },
+    {
+      "url": "https://buddykids-app.vercel.app/nextgen",
+      "pathname": "/nextgen",
+      "title": "TRAMA",
+      "heading": "Ciao 👋",
+      "kind": "nextgen",
+      "calledBy": [
+        "https://buddykids-app.vercel.app/nextgen",
+        "https://buddykids-app.vercel.app/nextgen/planner",
+        "https://buddykids-app.vercel.app/nextgen/planner/famiglia",
+        "https://buddykids-app.vercel.app/nextgen/planner/indirizzi",
+        "https://buddykids-app.vercel.app/nextgen/planner/promemoria",
+        "https://buddykids-app.vercel.app/nextgen/planner?mode=calendario",
+        "https://buddykids-app.vercel.app/nextgen/profile",
+        "https://buddykids-app.vercel.app/nextgen/profile/famiglia",
+        "https://buddykids-app.vercel.app/nextgen/profile/impostazioni",
+        "https://buddykids-app.vercel.app/nextgen/profile/segnalazioni",
+        "https://buddykids-app.vercel.app/nextgen/search"
+      ]
+    },
+    {
+      "url": "https://buddykids-app.vercel.app/nextgen/planner",
+      "pathname": "/nextgen/planner",
+      "title": "TRAMA",
+      "heading": "",
+      "kind": "nextgen",
+      "calledBy": [
+        "https://buddykids-app.vercel.app/nextgen",
+        "https://buddykids-app.vercel.app/nextgen/planner",
+        "https://buddykids-app.vercel.app/nextgen/planner/famiglia",
+        "https://buddykids-app.vercel.app/nextgen/planner/indirizzi",
+        "https://buddykids-app.vercel.app/nextgen/planner/promemoria",
+        "https://buddykids-app.vercel.app/nextgen/planner?mode=calendario",
+        "https://buddykids-app.vercel.app/nextgen/profile",
+        "https://buddykids-app.vercel.app/nextgen/profile/famiglia",
+        "https://buddykids-app.vercel.app/nextgen/profile/impostazioni",
+        "https://buddykids-app.vercel.app/nextgen/profile/segnalazioni",
+        "https://buddykids-app.vercel.app/nextgen/search"
+      ]
+    },
+    {
+      "url": "https://buddykids-app.vercel.app/nextgen/planner?mode=calendario",
+      "pathname": "/nextgen/planner?mode=calendario",
+      "title": "TRAMA",
+      "heading": "",
+      "kind": "nextgen",
+      "calledBy": [
+        "https://buddykids-app.vercel.app/nextgen/profile/famiglia"
+      ]
+    },
+    {
+      "url": "https://buddykids-app.vercel.app/nextgen/planner/famiglia",
+      "pathname": "/nextgen/planner/famiglia",
+      "title": "TRAMA",
+      "heading": "",
+      "kind": "nextgen",
+      "calledBy": [
+        "https://buddykids-app.vercel.app/nextgen/profile/famiglia"
+      ]
+    },
+    {
+      "url": "https://buddykids-app.vercel.app/nextgen/planner/indirizzi",
+      "pathname": "/nextgen/planner/indirizzi",
+      "title": "TRAMA",
+      "heading": "",
+      "kind": "nextgen",
+      "calledBy": [
+        "https://buddykids-app.vercel.app/nextgen/profile/famiglia"
+      ]
+    },
+    {
+      "url": "https://buddykids-app.vercel.app/nextgen/planner/promemoria",
+      "pathname": "/nextgen/planner/promemoria",
+      "title": "TRAMA",
+      "heading": "",
+      "kind": "nextgen",
+      "calledBy": [
+        "https://buddykids-app.vercel.app/nextgen/profile/famiglia"
+      ]
+    },
+    {
+      "url": "https://buddykids-app.vercel.app/nextgen/profile",
+      "pathname": "/nextgen/profile",
+      "title": "TRAMA",
+      "heading": "",
+      "kind": "nextgen",
+      "calledBy": [
+        "https://buddykids-app.vercel.app/nextgen",
+        "https://buddykids-app.vercel.app/nextgen/planner",
+        "https://buddykids-app.vercel.app/nextgen/planner/famiglia",
+        "https://buddykids-app.vercel.app/nextgen/planner/indirizzi",
+        "https://buddykids-app.vercel.app/nextgen/planner/promemoria",
+        "https://buddykids-app.vercel.app/nextgen/planner?mode=calendario",
+        "https://buddykids-app.vercel.app/nextgen/profile",
+        "https://buddykids-app.vercel.app/nextgen/profile/famiglia",
+        "https://buddykids-app.vercel.app/nextgen/profile/impostazioni",
+        "https://buddykids-app.vercel.app/nextgen/profile/segnalazioni",
+        "https://buddykids-app.vercel.app/nextgen/search"
+      ]
+    },
+    {
+      "url": "https://buddykids-app.vercel.app/nextgen/profile/famiglia",
+      "pathname": "/nextgen/profile/famiglia",
+      "title": "TRAMA",
+      "heading": "",
+      "kind": "nextgen",
+      "calledBy": [
+        "https://buddykids-app.vercel.app/nextgen/profile"
+      ]
+    },
+    {
+      "url": "https://buddykids-app.vercel.app/nextgen/profile/impostazioni",
+      "pathname": "/nextgen/profile/impostazioni",
+      "title": "TRAMA",
+      "heading": "",
+      "kind": "nextgen",
+      "calledBy": [
+        "https://buddykids-app.vercel.app/nextgen/profile"
+      ]
+    },
+    {
+      "url": "https://buddykids-app.vercel.app/nextgen/profile/segnalazioni",
+      "pathname": "/nextgen/profile/segnalazioni",
+      "title": "TRAMA",
+      "heading": "",
+      "kind": "nextgen",
+      "calledBy": [
+        "https://buddykids-app.vercel.app/nextgen/profile"
+      ]
+    },
+    {
+      "url": "https://buddykids-app.vercel.app/nextgen/search",
+      "pathname": "/nextgen/search",
+      "title": "TRAMA",
+      "heading": "",
+      "kind": "nextgen",
+      "calledBy": [
+        "https://buddykids-app.vercel.app/nextgen",
+        "https://buddykids-app.vercel.app/nextgen/planner",
+        "https://buddykids-app.vercel.app/nextgen/planner/famiglia",
+        "https://buddykids-app.vercel.app/nextgen/planner/indirizzi",
+        "https://buddykids-app.vercel.app/nextgen/planner/promemoria",
+        "https://buddykids-app.vercel.app/nextgen/planner?mode=calendario",
+        "https://buddykids-app.vercel.app/nextgen/profile",
+        "https://buddykids-app.vercel.app/nextgen/profile/famiglia",
+        "https://buddykids-app.vercel.app/nextgen/profile/impostazioni",
+        "https://buddykids-app.vercel.app/nextgen/profile/segnalazioni",
+        "https://buddykids-app.vercel.app/nextgen/search"
+      ]
+    },
+    {
+      "url": "https://buddykids-app.vercel.app/preferiti",
+      "pathname": "/preferiti",
+      "title": "TRAMA — Attività per bambini",
+      "heading": "",
+      "kind": "legacy",
+      "calledBy": [
+        "https://buddykids-app.vercel.app/nextgen/profile"
+      ]
+    },
+    {
+      "url": "https://buddykids-app.vercel.app/prenotazioni",
+      "pathname": "/prenotazioni",
+      "title": "TRAMA — Attività per bambini",
+      "heading": "",
+      "kind": "legacy",
+      "calledBy": [
+        "https://buddykids-app.vercel.app/nextgen",
+        "https://buddykids-app.vercel.app/nextgen/planner",
+        "https://buddykids-app.vercel.app/nextgen/planner/famiglia",
+        "https://buddykids-app.vercel.app/nextgen/planner/indirizzi",
+        "https://buddykids-app.vercel.app/nextgen/planner/promemoria",
+        "https://buddykids-app.vercel.app/nextgen/planner?mode=calendario",
+        "https://buddykids-app.vercel.app/nextgen/profile",
+        "https://buddykids-app.vercel.app/nextgen/profile/famiglia",
+        "https://buddykids-app.vercel.app/nextgen/profile/impostazioni",
+        "https://buddykids-app.vercel.app/nextgen/profile/segnalazioni",
+        "https://buddykids-app.vercel.app/nextgen/search"
+      ]
+    },
+    {
+      "url": "https://buddykids-app.vercel.app/presenze",
+      "pathname": "/presenze",
+      "title": "TRAMA — Attività per bambini",
+      "heading": "",
+      "kind": "legacy",
+      "calledBy": [
+        "https://buddykids-app.vercel.app/nextgen/profile"
+      ]
+    },
+    {
+      "url": "https://buddykids-app.vercel.app/profile/preferenze",
+      "pathname": "/profile/preferenze",
+      "title": "TRAMA — Attività per bambini",
+      "heading": "",
+      "kind": "legacy",
+      "calledBy": [
+        "https://buddykids-app.vercel.app/nextgen/profile/impostazioni"
+      ]
+    },
+    {
+      "url": "https://buddykids-app.vercel.app/profile/privacy",
+      "pathname": "/profile/privacy",
+      "title": "TRAMA — Attività per bambini",
+      "heading": "",
+      "kind": "legacy",
+      "calledBy": [
+        "https://buddykids-app.vercel.app/nextgen/profile/impostazioni"
+      ]
+    },
+    {
+      "url": "https://buddykids-app.vercel.app/profile/sicurezza",
+      "pathname": "/profile/sicurezza",
+      "title": "TRAMA — Attività per bambini",
+      "heading": "",
+      "kind": "legacy",
+      "calledBy": [
+        "https://buddykids-app.vercel.app/nextgen/profile/impostazioni"
+      ]
+    },
+    {
+      "url": "https://buddykids-app.vercel.app/richieste",
+      "pathname": "/richieste",
+      "title": "TRAMA — Attività per bambini",
+      "heading": "",
+      "kind": "legacy",
+      "calledBy": [
+        "https://buddykids-app.vercel.app/nextgen/profile"
+      ]
+    }
+  ],
+  "edges": [
+    {
+      "from": "https://buddykids-app.vercel.app/nextgen",
+      "to": "https://buddykids-app.vercel.app/activity/laboratorio-arti-creative"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/nextgen",
+      "to": "https://buddykids-app.vercel.app/activity/soccer-academy-estate"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/nextgen",
+      "to": "https://buddykids-app.vercel.app/activity/summer-camp-acquatico"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/nextgen",
+      "to": "https://buddykids-app.vercel.app/nextgen"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/nextgen",
+      "to": "https://buddykids-app.vercel.app/nextgen/planner"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/nextgen",
+      "to": "https://buddykids-app.vercel.app/nextgen/profile"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/nextgen",
+      "to": "https://buddykids-app.vercel.app/nextgen/search"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/nextgen",
+      "to": "https://buddykids-app.vercel.app/prenotazioni"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/nextgen/planner",
+      "to": "https://buddykids-app.vercel.app/activity/attivita-test-buddykids"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/nextgen/planner",
+      "to": "https://buddykids-app.vercel.app/activity/laboratorio-arti-creative"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/nextgen/planner",
+      "to": "https://buddykids-app.vercel.app/activity/soccer-academy-estate"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/nextgen/planner",
+      "to": "https://buddykids-app.vercel.app/activity/summer-camp-acquatico"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/nextgen/planner",
+      "to": "https://buddykids-app.vercel.app/nextgen"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/nextgen/planner",
+      "to": "https://buddykids-app.vercel.app/nextgen/planner"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/nextgen/planner",
+      "to": "https://buddykids-app.vercel.app/nextgen/profile"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/nextgen/planner",
+      "to": "https://buddykids-app.vercel.app/nextgen/search"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/nextgen/planner",
+      "to": "https://buddykids-app.vercel.app/prenotazioni"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/nextgen/planner?mode=calendario",
+      "to": "https://buddykids-app.vercel.app/activity/attivita-test-buddykids"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/nextgen/planner?mode=calendario",
+      "to": "https://buddykids-app.vercel.app/activity/laboratorio-arti-creative"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/nextgen/planner?mode=calendario",
+      "to": "https://buddykids-app.vercel.app/activity/soccer-academy-estate"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/nextgen/planner?mode=calendario",
+      "to": "https://buddykids-app.vercel.app/activity/summer-camp-acquatico"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/nextgen/planner?mode=calendario",
+      "to": "https://buddykids-app.vercel.app/nextgen"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/nextgen/planner?mode=calendario",
+      "to": "https://buddykids-app.vercel.app/nextgen/planner"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/nextgen/planner?mode=calendario",
+      "to": "https://buddykids-app.vercel.app/nextgen/profile"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/nextgen/planner?mode=calendario",
+      "to": "https://buddykids-app.vercel.app/nextgen/search"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/nextgen/planner?mode=calendario",
+      "to": "https://buddykids-app.vercel.app/prenotazioni"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/nextgen/planner/famiglia",
+      "to": "https://buddykids-app.vercel.app/nextgen"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/nextgen/planner/famiglia",
+      "to": "https://buddykids-app.vercel.app/nextgen/planner"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/nextgen/planner/famiglia",
+      "to": "https://buddykids-app.vercel.app/nextgen/profile"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/nextgen/planner/famiglia",
+      "to": "https://buddykids-app.vercel.app/nextgen/search"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/nextgen/planner/famiglia",
+      "to": "https://buddykids-app.vercel.app/prenotazioni"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/nextgen/planner/indirizzi",
+      "to": "https://buddykids-app.vercel.app/nextgen"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/nextgen/planner/indirizzi",
+      "to": "https://buddykids-app.vercel.app/nextgen/planner"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/nextgen/planner/indirizzi",
+      "to": "https://buddykids-app.vercel.app/nextgen/profile"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/nextgen/planner/indirizzi",
+      "to": "https://buddykids-app.vercel.app/nextgen/search"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/nextgen/planner/indirizzi",
+      "to": "https://buddykids-app.vercel.app/prenotazioni"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/nextgen/planner/promemoria",
+      "to": "https://buddykids-app.vercel.app/nextgen"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/nextgen/planner/promemoria",
+      "to": "https://buddykids-app.vercel.app/nextgen/planner"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/nextgen/planner/promemoria",
+      "to": "https://buddykids-app.vercel.app/nextgen/profile"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/nextgen/planner/promemoria",
+      "to": "https://buddykids-app.vercel.app/nextgen/search"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/nextgen/planner/promemoria",
+      "to": "https://buddykids-app.vercel.app/prenotazioni"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/nextgen/profile",
+      "to": "https://buddykids-app.vercel.app/nextgen"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/nextgen/profile",
+      "to": "https://buddykids-app.vercel.app/nextgen/planner"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/nextgen/profile",
+      "to": "https://buddykids-app.vercel.app/nextgen/profile"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/nextgen/profile",
+      "to": "https://buddykids-app.vercel.app/nextgen/profile/famiglia"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/nextgen/profile",
+      "to": "https://buddykids-app.vercel.app/nextgen/profile/impostazioni"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/nextgen/profile",
+      "to": "https://buddykids-app.vercel.app/nextgen/profile/segnalazioni"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/nextgen/profile",
+      "to": "https://buddykids-app.vercel.app/nextgen/search"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/nextgen/profile",
+      "to": "https://buddykids-app.vercel.app/preferiti"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/nextgen/profile",
+      "to": "https://buddykids-app.vercel.app/prenotazioni"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/nextgen/profile",
+      "to": "https://buddykids-app.vercel.app/presenze"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/nextgen/profile",
+      "to": "https://buddykids-app.vercel.app/richieste"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/nextgen/profile/famiglia",
+      "to": "https://buddykids-app.vercel.app/nextgen"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/nextgen/profile/famiglia",
+      "to": "https://buddykids-app.vercel.app/nextgen/planner"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/nextgen/profile/famiglia",
+      "to": "https://buddykids-app.vercel.app/nextgen/planner?mode=calendario"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/nextgen/profile/famiglia",
+      "to": "https://buddykids-app.vercel.app/nextgen/planner/famiglia"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/nextgen/profile/famiglia",
+      "to": "https://buddykids-app.vercel.app/nextgen/planner/indirizzi"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/nextgen/profile/famiglia",
+      "to": "https://buddykids-app.vercel.app/nextgen/planner/promemoria"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/nextgen/profile/famiglia",
+      "to": "https://buddykids-app.vercel.app/nextgen/profile"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/nextgen/profile/famiglia",
+      "to": "https://buddykids-app.vercel.app/nextgen/search"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/nextgen/profile/famiglia",
+      "to": "https://buddykids-app.vercel.app/prenotazioni"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/nextgen/profile/impostazioni",
+      "to": "https://buddykids-app.vercel.app/nextgen"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/nextgen/profile/impostazioni",
+      "to": "https://buddykids-app.vercel.app/nextgen/planner"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/nextgen/profile/impostazioni",
+      "to": "https://buddykids-app.vercel.app/nextgen/profile"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/nextgen/profile/impostazioni",
+      "to": "https://buddykids-app.vercel.app/nextgen/search"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/nextgen/profile/impostazioni",
+      "to": "https://buddykids-app.vercel.app/prenotazioni"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/nextgen/profile/impostazioni",
+      "to": "https://buddykids-app.vercel.app/profile/preferenze"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/nextgen/profile/impostazioni",
+      "to": "https://buddykids-app.vercel.app/profile/privacy"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/nextgen/profile/impostazioni",
+      "to": "https://buddykids-app.vercel.app/profile/sicurezza"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/nextgen/profile/segnalazioni",
+      "to": "https://buddykids-app.vercel.app/nextgen"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/nextgen/profile/segnalazioni",
+      "to": "https://buddykids-app.vercel.app/nextgen/planner"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/nextgen/profile/segnalazioni",
+      "to": "https://buddykids-app.vercel.app/nextgen/profile"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/nextgen/profile/segnalazioni",
+      "to": "https://buddykids-app.vercel.app/nextgen/search"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/nextgen/profile/segnalazioni",
+      "to": "https://buddykids-app.vercel.app/prenotazioni"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/nextgen/search",
+      "to": "https://buddykids-app.vercel.app/activity/attivita-test-buddykids"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/nextgen/search",
+      "to": "https://buddykids-app.vercel.app/activity/coding-robotica-kids"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/nextgen/search",
+      "to": "https://buddykids-app.vercel.app/activity/laboratorio-arti-creative"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/nextgen/search",
+      "to": "https://buddykids-app.vercel.app/activity/soccer-academy-estate"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/nextgen/search",
+      "to": "https://buddykids-app.vercel.app/activity/summer-music-camp"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/nextgen/search",
+      "to": "https://buddykids-app.vercel.app/activity/test"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/nextgen/search",
+      "to": "https://buddykids-app.vercel.app/activity/test-attivita-auto-1784107753260"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/nextgen/search",
+      "to": "https://buddykids-app.vercel.app/activity/test-attivita-auto-1784108193968"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/nextgen/search",
+      "to": "https://buddykids-app.vercel.app/nextgen"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/nextgen/search",
+      "to": "https://buddykids-app.vercel.app/nextgen/planner"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/nextgen/search",
+      "to": "https://buddykids-app.vercel.app/nextgen/profile"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/nextgen/search",
+      "to": "https://buddykids-app.vercel.app/nextgen/search"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/nextgen/search",
+      "to": "https://buddykids-app.vercel.app/prenotazioni"
+    }
+  ],
+  "errors": []
+}

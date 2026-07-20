@@ -1,0 +1,1451 @@
+{
+  "generatedAt": "2026-07-16T13:27:47.405Z",
+  "target": "partner",
+  "label": "Partner / Gestori",
+  "project": "chromium",
+  "baseUrl": "https://buddykids-app.vercel.app",
+  "startPath": "/center",
+  "pages": [
+    {
+      "url": "https://buddykids-app.vercel.app/center",
+      "pathname": "/center",
+      "title": "TRAMA — Attività per bambini",
+      "heading": "Centro Sportivo Lido",
+      "kind": "partner",
+      "calledBy": [
+        "https://buddykids-app.vercel.app/center",
+        "https://buddykids-app.vercel.app/center/account",
+        "https://buddykids-app.vercel.app/center/account/preferenze",
+        "https://buddykids-app.vercel.app/center/account/privacy",
+        "https://buddykids-app.vercel.app/center/account/sicurezza",
+        "https://buddykids-app.vercel.app/center/activities",
+        "https://buddykids-app.vercel.app/center/activities/attivita-test-buddykids",
+        "https://buddykids-app.vercel.app/center/activities/attivita-test-buddykids/calendar",
+        "https://buddykids-app.vercel.app/center/activities/new",
+        "https://buddykids-app.vercel.app/center/activities/test-attivita-auto-1784107753260",
+        "https://buddykids-app.vercel.app/center/activities/test-attivita-auto-1784107753260/calendar",
+        "https://buddykids-app.vercel.app/center/activities/test-attivita-auto-1784108193968",
+        "https://buddykids-app.vercel.app/center/activities/test-attivita-auto-1784108193968/calendar",
+        "https://buddykids-app.vercel.app/center/attendance",
+        "https://buddykids-app.vercel.app/center/group-requests",
+        "https://buddykids-app.vercel.app/center/invites",
+        "https://buddykids-app.vercel.app/center/profile",
+        "https://buddykids-app.vercel.app/center/promotions",
+        "https://buddykids-app.vercel.app/center/report-presenze",
+        "https://buddykids-app.vercel.app/center/richieste",
+        "https://buddykids-app.vercel.app/center/servizi-consigliati"
+      ]
+    },
+    {
+      "url": "https://buddykids-app.vercel.app/center/account",
+      "pathname": "/center/account",
+      "title": "TRAMA — Attività per bambini",
+      "heading": "",
+      "kind": "partner",
+      "calledBy": [
+        "https://buddykids-app.vercel.app/center",
+        "https://buddykids-app.vercel.app/center/account",
+        "https://buddykids-app.vercel.app/center/account/preferenze",
+        "https://buddykids-app.vercel.app/center/account/privacy",
+        "https://buddykids-app.vercel.app/center/account/sicurezza",
+        "https://buddykids-app.vercel.app/center/activities",
+        "https://buddykids-app.vercel.app/center/activities/attivita-test-buddykids",
+        "https://buddykids-app.vercel.app/center/activities/attivita-test-buddykids/calendar",
+        "https://buddykids-app.vercel.app/center/activities/new",
+        "https://buddykids-app.vercel.app/center/activities/test-attivita-auto-1784107753260",
+        "https://buddykids-app.vercel.app/center/activities/test-attivita-auto-1784107753260/calendar",
+        "https://buddykids-app.vercel.app/center/activities/test-attivita-auto-1784108193968",
+        "https://buddykids-app.vercel.app/center/activities/test-attivita-auto-1784108193968/calendar",
+        "https://buddykids-app.vercel.app/center/attendance",
+        "https://buddykids-app.vercel.app/center/group-requests",
+        "https://buddykids-app.vercel.app/center/invites",
+        "https://buddykids-app.vercel.app/center/profile",
+        "https://buddykids-app.vercel.app/center/promotions",
+        "https://buddykids-app.vercel.app/center/report-presenze",
+        "https://buddykids-app.vercel.app/center/richieste",
+        "https://buddykids-app.vercel.app/center/servizi-consigliati"
+      ]
+    },
+    {
+      "url": "https://buddykids-app.vercel.app/center/account/preferenze",
+      "pathname": "/center/account/preferenze",
+      "title": "TRAMA — Attività per bambini",
+      "heading": "",
+      "kind": "partner",
+      "calledBy": [
+        "https://buddykids-app.vercel.app/center/account"
+      ]
+    },
+    {
+      "url": "https://buddykids-app.vercel.app/center/account/privacy",
+      "pathname": "/center/account/privacy",
+      "title": "TRAMA — Attività per bambini",
+      "heading": "",
+      "kind": "partner",
+      "calledBy": [
+        "https://buddykids-app.vercel.app/center/account"
+      ]
+    },
+    {
+      "url": "https://buddykids-app.vercel.app/center/account/sicurezza",
+      "pathname": "/center/account/sicurezza",
+      "title": "TRAMA — Attività per bambini",
+      "heading": "",
+      "kind": "partner",
+      "calledBy": [
+        "https://buddykids-app.vercel.app/center/account"
+      ]
+    },
+    {
+      "url": "https://buddykids-app.vercel.app/center/activities",
+      "pathname": "/center/activities",
+      "title": "TRAMA — Attività per bambini",
+      "heading": "Le tue attività",
+      "kind": "partner",
+      "calledBy": [
+        "https://buddykids-app.vercel.app/center",
+        "https://buddykids-app.vercel.app/center/account",
+        "https://buddykids-app.vercel.app/center/account/preferenze",
+        "https://buddykids-app.vercel.app/center/account/privacy",
+        "https://buddykids-app.vercel.app/center/account/sicurezza",
+        "https://buddykids-app.vercel.app/center/activities",
+        "https://buddykids-app.vercel.app/center/activities/attivita-test-buddykids",
+        "https://buddykids-app.vercel.app/center/activities/attivita-test-buddykids/calendar",
+        "https://buddykids-app.vercel.app/center/activities/new",
+        "https://buddykids-app.vercel.app/center/activities/test-attivita-auto-1784107753260",
+        "https://buddykids-app.vercel.app/center/activities/test-attivita-auto-1784107753260/calendar",
+        "https://buddykids-app.vercel.app/center/activities/test-attivita-auto-1784108193968",
+        "https://buddykids-app.vercel.app/center/activities/test-attivita-auto-1784108193968/calendar",
+        "https://buddykids-app.vercel.app/center/attendance",
+        "https://buddykids-app.vercel.app/center/group-requests",
+        "https://buddykids-app.vercel.app/center/invites",
+        "https://buddykids-app.vercel.app/center/profile",
+        "https://buddykids-app.vercel.app/center/promotions",
+        "https://buddykids-app.vercel.app/center/report-presenze",
+        "https://buddykids-app.vercel.app/center/richieste",
+        "https://buddykids-app.vercel.app/center/servizi-consigliati"
+      ]
+    },
+    {
+      "url": "https://buddykids-app.vercel.app/center/activities/attivita-test-buddykids",
+      "pathname": "/center/activities/attivita-test-buddykids",
+      "title": "TRAMA — Attività per bambini",
+      "heading": "[TEST] Attività BuddyKids",
+      "kind": "partner",
+      "calledBy": [
+        "https://buddykids-app.vercel.app/center/activities",
+        "https://buddykids-app.vercel.app/center/activities/attivita-test-buddykids/calendar"
+      ]
+    },
+    {
+      "url": "https://buddykids-app.vercel.app/center/activities/attivita-test-buddykids/calendar",
+      "pathname": "/center/activities/attivita-test-buddykids/calendar",
+      "title": "TRAMA — Attività per bambini",
+      "heading": "Calendario disponibilità",
+      "kind": "partner",
+      "calledBy": [
+        "https://buddykids-app.vercel.app/center/activities",
+        "https://buddykids-app.vercel.app/center/activities/attivita-test-buddykids"
+      ]
+    },
+    {
+      "url": "https://buddykids-app.vercel.app/center/activities/new",
+      "pathname": "/center/activities/new",
+      "title": "TRAMA — Attività per bambini",
+      "heading": "Nuova attività",
+      "kind": "partner",
+      "calledBy": [
+        "https://buddykids-app.vercel.app/center/activities"
+      ]
+    },
+    {
+      "url": "https://buddykids-app.vercel.app/center/activities/test-attivita-auto-1784107753260",
+      "pathname": "/center/activities/test-attivita-auto-1784107753260",
+      "title": "TRAMA — Attività per bambini",
+      "heading": "[TEST] Attività auto 1784107753260",
+      "kind": "partner",
+      "calledBy": [
+        "https://buddykids-app.vercel.app/center/activities",
+        "https://buddykids-app.vercel.app/center/activities/test-attivita-auto-1784107753260/calendar"
+      ]
+    },
+    {
+      "url": "https://buddykids-app.vercel.app/center/activities/test-attivita-auto-1784107753260/calendar",
+      "pathname": "/center/activities/test-attivita-auto-1784107753260/calendar",
+      "title": "TRAMA — Attività per bambini",
+      "heading": "Calendario disponibilità",
+      "kind": "partner",
+      "calledBy": [
+        "https://buddykids-app.vercel.app/center/activities",
+        "https://buddykids-app.vercel.app/center/activities/test-attivita-auto-1784107753260"
+      ]
+    },
+    {
+      "url": "https://buddykids-app.vercel.app/center/activities/test-attivita-auto-1784108193968",
+      "pathname": "/center/activities/test-attivita-auto-1784108193968",
+      "title": "TRAMA — Attività per bambini",
+      "heading": "[TEST] Attività auto 1784108193968",
+      "kind": "partner",
+      "calledBy": [
+        "https://buddykids-app.vercel.app/center/activities",
+        "https://buddykids-app.vercel.app/center/activities/test-attivita-auto-1784108193968/calendar"
+      ]
+    },
+    {
+      "url": "https://buddykids-app.vercel.app/center/activities/test-attivita-auto-1784108193968/calendar",
+      "pathname": "/center/activities/test-attivita-auto-1784108193968/calendar",
+      "title": "TRAMA — Attività per bambini",
+      "heading": "Calendario disponibilità",
+      "kind": "partner",
+      "calledBy": [
+        "https://buddykids-app.vercel.app/center/activities",
+        "https://buddykids-app.vercel.app/center/activities/test-attivita-auto-1784108193968"
+      ]
+    },
+    {
+      "url": "https://buddykids-app.vercel.app/center/attendance",
+      "pathname": "/center/attendance",
+      "title": "TRAMA — Attività per bambini",
+      "heading": "Registro presenze",
+      "kind": "partner",
+      "calledBy": [
+        "https://buddykids-app.vercel.app/center",
+        "https://buddykids-app.vercel.app/center/account",
+        "https://buddykids-app.vercel.app/center/account/preferenze",
+        "https://buddykids-app.vercel.app/center/account/privacy",
+        "https://buddykids-app.vercel.app/center/account/sicurezza",
+        "https://buddykids-app.vercel.app/center/activities",
+        "https://buddykids-app.vercel.app/center/activities/attivita-test-buddykids",
+        "https://buddykids-app.vercel.app/center/activities/attivita-test-buddykids/calendar",
+        "https://buddykids-app.vercel.app/center/activities/new",
+        "https://buddykids-app.vercel.app/center/activities/test-attivita-auto-1784107753260",
+        "https://buddykids-app.vercel.app/center/activities/test-attivita-auto-1784107753260/calendar",
+        "https://buddykids-app.vercel.app/center/activities/test-attivita-auto-1784108193968",
+        "https://buddykids-app.vercel.app/center/activities/test-attivita-auto-1784108193968/calendar",
+        "https://buddykids-app.vercel.app/center/attendance",
+        "https://buddykids-app.vercel.app/center/group-requests",
+        "https://buddykids-app.vercel.app/center/invites",
+        "https://buddykids-app.vercel.app/center/profile",
+        "https://buddykids-app.vercel.app/center/promotions",
+        "https://buddykids-app.vercel.app/center/report-presenze",
+        "https://buddykids-app.vercel.app/center/richieste",
+        "https://buddykids-app.vercel.app/center/servizi-consigliati"
+      ]
+    },
+    {
+      "url": "https://buddykids-app.vercel.app/center/gianni",
+      "pathname": "/center/gianni",
+      "title": "TRAMA — Attività per bambini",
+      "heading": "404",
+      "kind": "partner",
+      "calledBy": [
+        "https://buddykids-app.vercel.app/center/servizi-consigliati"
+      ]
+    },
+    {
+      "url": "https://buddykids-app.vercel.app/center/group-requests",
+      "pathname": "/center/group-requests",
+      "title": "TRAMA — Attività per bambini",
+      "heading": "Richieste Gruppo",
+      "kind": "partner",
+      "calledBy": [
+        "https://buddykids-app.vercel.app/center",
+        "https://buddykids-app.vercel.app/center/account",
+        "https://buddykids-app.vercel.app/center/account/preferenze",
+        "https://buddykids-app.vercel.app/center/account/privacy",
+        "https://buddykids-app.vercel.app/center/account/sicurezza",
+        "https://buddykids-app.vercel.app/center/activities",
+        "https://buddykids-app.vercel.app/center/activities/attivita-test-buddykids",
+        "https://buddykids-app.vercel.app/center/activities/attivita-test-buddykids/calendar",
+        "https://buddykids-app.vercel.app/center/activities/new",
+        "https://buddykids-app.vercel.app/center/activities/test-attivita-auto-1784107753260",
+        "https://buddykids-app.vercel.app/center/activities/test-attivita-auto-1784107753260/calendar",
+        "https://buddykids-app.vercel.app/center/activities/test-attivita-auto-1784108193968",
+        "https://buddykids-app.vercel.app/center/activities/test-attivita-auto-1784108193968/calendar",
+        "https://buddykids-app.vercel.app/center/attendance",
+        "https://buddykids-app.vercel.app/center/group-requests",
+        "https://buddykids-app.vercel.app/center/invites",
+        "https://buddykids-app.vercel.app/center/profile",
+        "https://buddykids-app.vercel.app/center/promotions",
+        "https://buddykids-app.vercel.app/center/report-presenze",
+        "https://buddykids-app.vercel.app/center/richieste",
+        "https://buddykids-app.vercel.app/center/servizi-consigliati"
+      ]
+    },
+    {
+      "url": "https://buddykids-app.vercel.app/center/invites",
+      "pathname": "/center/invites",
+      "title": "TRAMA — Attività per bambini",
+      "heading": "Inviti",
+      "kind": "partner",
+      "calledBy": [
+        "https://buddykids-app.vercel.app/center",
+        "https://buddykids-app.vercel.app/center/account",
+        "https://buddykids-app.vercel.app/center/account/preferenze",
+        "https://buddykids-app.vercel.app/center/account/privacy",
+        "https://buddykids-app.vercel.app/center/account/sicurezza",
+        "https://buddykids-app.vercel.app/center/activities",
+        "https://buddykids-app.vercel.app/center/activities/attivita-test-buddykids",
+        "https://buddykids-app.vercel.app/center/activities/attivita-test-buddykids/calendar",
+        "https://buddykids-app.vercel.app/center/activities/new",
+        "https://buddykids-app.vercel.app/center/activities/test-attivita-auto-1784107753260",
+        "https://buddykids-app.vercel.app/center/activities/test-attivita-auto-1784107753260/calendar",
+        "https://buddykids-app.vercel.app/center/activities/test-attivita-auto-1784108193968",
+        "https://buddykids-app.vercel.app/center/activities/test-attivita-auto-1784108193968/calendar",
+        "https://buddykids-app.vercel.app/center/attendance",
+        "https://buddykids-app.vercel.app/center/group-requests",
+        "https://buddykids-app.vercel.app/center/invites",
+        "https://buddykids-app.vercel.app/center/profile",
+        "https://buddykids-app.vercel.app/center/promotions",
+        "https://buddykids-app.vercel.app/center/report-presenze",
+        "https://buddykids-app.vercel.app/center/richieste",
+        "https://buddykids-app.vercel.app/center/servizi-consigliati"
+      ]
+    },
+    {
+      "url": "https://buddykids-app.vercel.app/center/profile",
+      "pathname": "/center/profile",
+      "title": "TRAMA — Attività per bambini",
+      "heading": "Il mio centro",
+      "kind": "partner",
+      "calledBy": [
+        "https://buddykids-app.vercel.app/center",
+        "https://buddykids-app.vercel.app/center/account",
+        "https://buddykids-app.vercel.app/center/account/preferenze",
+        "https://buddykids-app.vercel.app/center/account/privacy",
+        "https://buddykids-app.vercel.app/center/account/sicurezza",
+        "https://buddykids-app.vercel.app/center/activities",
+        "https://buddykids-app.vercel.app/center/activities/attivita-test-buddykids",
+        "https://buddykids-app.vercel.app/center/activities/attivita-test-buddykids/calendar",
+        "https://buddykids-app.vercel.app/center/activities/new",
+        "https://buddykids-app.vercel.app/center/activities/test-attivita-auto-1784107753260",
+        "https://buddykids-app.vercel.app/center/activities/test-attivita-auto-1784107753260/calendar",
+        "https://buddykids-app.vercel.app/center/activities/test-attivita-auto-1784108193968",
+        "https://buddykids-app.vercel.app/center/activities/test-attivita-auto-1784108193968/calendar",
+        "https://buddykids-app.vercel.app/center/attendance",
+        "https://buddykids-app.vercel.app/center/group-requests",
+        "https://buddykids-app.vercel.app/center/invites",
+        "https://buddykids-app.vercel.app/center/profile",
+        "https://buddykids-app.vercel.app/center/promotions",
+        "https://buddykids-app.vercel.app/center/report-presenze",
+        "https://buddykids-app.vercel.app/center/richieste",
+        "https://buddykids-app.vercel.app/center/servizi-consigliati"
+      ]
+    },
+    {
+      "url": "https://buddykids-app.vercel.app/center/promotions",
+      "pathname": "/center/promotions",
+      "title": "TRAMA — Attività per bambini",
+      "heading": "Promozioni",
+      "kind": "partner",
+      "calledBy": [
+        "https://buddykids-app.vercel.app/center",
+        "https://buddykids-app.vercel.app/center/account",
+        "https://buddykids-app.vercel.app/center/account/preferenze",
+        "https://buddykids-app.vercel.app/center/account/privacy",
+        "https://buddykids-app.vercel.app/center/account/sicurezza",
+        "https://buddykids-app.vercel.app/center/activities",
+        "https://buddykids-app.vercel.app/center/activities/attivita-test-buddykids",
+        "https://buddykids-app.vercel.app/center/activities/attivita-test-buddykids/calendar",
+        "https://buddykids-app.vercel.app/center/activities/new",
+        "https://buddykids-app.vercel.app/center/activities/test-attivita-auto-1784107753260",
+        "https://buddykids-app.vercel.app/center/activities/test-attivita-auto-1784107753260/calendar",
+        "https://buddykids-app.vercel.app/center/activities/test-attivita-auto-1784108193968",
+        "https://buddykids-app.vercel.app/center/activities/test-attivita-auto-1784108193968/calendar",
+        "https://buddykids-app.vercel.app/center/attendance",
+        "https://buddykids-app.vercel.app/center/group-requests",
+        "https://buddykids-app.vercel.app/center/invites",
+        "https://buddykids-app.vercel.app/center/profile",
+        "https://buddykids-app.vercel.app/center/promotions",
+        "https://buddykids-app.vercel.app/center/report-presenze",
+        "https://buddykids-app.vercel.app/center/richieste",
+        "https://buddykids-app.vercel.app/center/servizi-consigliati"
+      ]
+    },
+    {
+      "url": "https://buddykids-app.vercel.app/center/report-presenze",
+      "pathname": "/center/report-presenze",
+      "title": "TRAMA — Attività per bambini",
+      "heading": "Report presenze",
+      "kind": "partner",
+      "calledBy": [
+        "https://buddykids-app.vercel.app/center",
+        "https://buddykids-app.vercel.app/center/account",
+        "https://buddykids-app.vercel.app/center/account/preferenze",
+        "https://buddykids-app.vercel.app/center/account/privacy",
+        "https://buddykids-app.vercel.app/center/account/sicurezza",
+        "https://buddykids-app.vercel.app/center/activities",
+        "https://buddykids-app.vercel.app/center/activities/attivita-test-buddykids",
+        "https://buddykids-app.vercel.app/center/activities/attivita-test-buddykids/calendar",
+        "https://buddykids-app.vercel.app/center/activities/new",
+        "https://buddykids-app.vercel.app/center/activities/test-attivita-auto-1784107753260",
+        "https://buddykids-app.vercel.app/center/activities/test-attivita-auto-1784107753260/calendar",
+        "https://buddykids-app.vercel.app/center/activities/test-attivita-auto-1784108193968",
+        "https://buddykids-app.vercel.app/center/activities/test-attivita-auto-1784108193968/calendar",
+        "https://buddykids-app.vercel.app/center/attendance",
+        "https://buddykids-app.vercel.app/center/group-requests",
+        "https://buddykids-app.vercel.app/center/invites",
+        "https://buddykids-app.vercel.app/center/profile",
+        "https://buddykids-app.vercel.app/center/promotions",
+        "https://buddykids-app.vercel.app/center/report-presenze",
+        "https://buddykids-app.vercel.app/center/richieste",
+        "https://buddykids-app.vercel.app/center/servizi-consigliati"
+      ]
+    },
+    {
+      "url": "https://buddykids-app.vercel.app/center/richieste",
+      "pathname": "/center/richieste",
+      "title": "TRAMA — Attività per bambini",
+      "heading": "Le mie richieste",
+      "kind": "partner",
+      "calledBy": [
+        "https://buddykids-app.vercel.app/center",
+        "https://buddykids-app.vercel.app/center/account",
+        "https://buddykids-app.vercel.app/center/account/preferenze",
+        "https://buddykids-app.vercel.app/center/account/privacy",
+        "https://buddykids-app.vercel.app/center/account/sicurezza",
+        "https://buddykids-app.vercel.app/center/activities",
+        "https://buddykids-app.vercel.app/center/activities/attivita-test-buddykids",
+        "https://buddykids-app.vercel.app/center/activities/attivita-test-buddykids/calendar",
+        "https://buddykids-app.vercel.app/center/activities/new",
+        "https://buddykids-app.vercel.app/center/activities/test-attivita-auto-1784107753260",
+        "https://buddykids-app.vercel.app/center/activities/test-attivita-auto-1784107753260/calendar",
+        "https://buddykids-app.vercel.app/center/activities/test-attivita-auto-1784108193968",
+        "https://buddykids-app.vercel.app/center/activities/test-attivita-auto-1784108193968/calendar",
+        "https://buddykids-app.vercel.app/center/attendance",
+        "https://buddykids-app.vercel.app/center/group-requests",
+        "https://buddykids-app.vercel.app/center/invites",
+        "https://buddykids-app.vercel.app/center/profile",
+        "https://buddykids-app.vercel.app/center/promotions",
+        "https://buddykids-app.vercel.app/center/report-presenze",
+        "https://buddykids-app.vercel.app/center/richieste",
+        "https://buddykids-app.vercel.app/center/servizi-consigliati"
+      ]
+    },
+    {
+      "url": "https://buddykids-app.vercel.app/center/servizi-consigliati",
+      "pathname": "/center/servizi-consigliati",
+      "title": "TRAMA — Attività per bambini",
+      "heading": "Servizi consigliati",
+      "kind": "partner",
+      "calledBy": [
+        "https://buddykids-app.vercel.app/center",
+        "https://buddykids-app.vercel.app/center/account",
+        "https://buddykids-app.vercel.app/center/account/preferenze",
+        "https://buddykids-app.vercel.app/center/account/privacy",
+        "https://buddykids-app.vercel.app/center/account/sicurezza",
+        "https://buddykids-app.vercel.app/center/activities",
+        "https://buddykids-app.vercel.app/center/activities/attivita-test-buddykids",
+        "https://buddykids-app.vercel.app/center/activities/attivita-test-buddykids/calendar",
+        "https://buddykids-app.vercel.app/center/activities/new",
+        "https://buddykids-app.vercel.app/center/activities/test-attivita-auto-1784107753260",
+        "https://buddykids-app.vercel.app/center/activities/test-attivita-auto-1784107753260/calendar",
+        "https://buddykids-app.vercel.app/center/activities/test-attivita-auto-1784108193968",
+        "https://buddykids-app.vercel.app/center/activities/test-attivita-auto-1784108193968/calendar",
+        "https://buddykids-app.vercel.app/center/attendance",
+        "https://buddykids-app.vercel.app/center/group-requests",
+        "https://buddykids-app.vercel.app/center/invites",
+        "https://buddykids-app.vercel.app/center/profile",
+        "https://buddykids-app.vercel.app/center/promotions",
+        "https://buddykids-app.vercel.app/center/report-presenze",
+        "https://buddykids-app.vercel.app/center/richieste",
+        "https://buddykids-app.vercel.app/center/servizi-consigliati"
+      ]
+    }
+  ],
+  "edges": [
+    {
+      "from": "https://buddykids-app.vercel.app/center",
+      "to": "https://buddykids-app.vercel.app/center"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/center",
+      "to": "https://buddykids-app.vercel.app/center/account"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/center",
+      "to": "https://buddykids-app.vercel.app/center/activities"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/center",
+      "to": "https://buddykids-app.vercel.app/center/attendance"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/center",
+      "to": "https://buddykids-app.vercel.app/center/group-requests"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/center",
+      "to": "https://buddykids-app.vercel.app/center/invites"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/center",
+      "to": "https://buddykids-app.vercel.app/center/profile"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/center",
+      "to": "https://buddykids-app.vercel.app/center/promotions"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/center",
+      "to": "https://buddykids-app.vercel.app/center/report-presenze"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/center",
+      "to": "https://buddykids-app.vercel.app/center/richieste"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/center",
+      "to": "https://buddykids-app.vercel.app/center/servizi-consigliati"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/center/account",
+      "to": "https://buddykids-app.vercel.app/center"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/center/account",
+      "to": "https://buddykids-app.vercel.app/center/account"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/center/account",
+      "to": "https://buddykids-app.vercel.app/center/account/preferenze"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/center/account",
+      "to": "https://buddykids-app.vercel.app/center/account/privacy"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/center/account",
+      "to": "https://buddykids-app.vercel.app/center/account/sicurezza"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/center/account",
+      "to": "https://buddykids-app.vercel.app/center/activities"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/center/account",
+      "to": "https://buddykids-app.vercel.app/center/attendance"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/center/account",
+      "to": "https://buddykids-app.vercel.app/center/group-requests"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/center/account",
+      "to": "https://buddykids-app.vercel.app/center/invites"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/center/account",
+      "to": "https://buddykids-app.vercel.app/center/profile"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/center/account",
+      "to": "https://buddykids-app.vercel.app/center/promotions"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/center/account",
+      "to": "https://buddykids-app.vercel.app/center/report-presenze"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/center/account",
+      "to": "https://buddykids-app.vercel.app/center/richieste"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/center/account",
+      "to": "https://buddykids-app.vercel.app/center/servizi-consigliati"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/center/account/preferenze",
+      "to": "https://buddykids-app.vercel.app/center"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/center/account/preferenze",
+      "to": "https://buddykids-app.vercel.app/center/account"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/center/account/preferenze",
+      "to": "https://buddykids-app.vercel.app/center/activities"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/center/account/preferenze",
+      "to": "https://buddykids-app.vercel.app/center/attendance"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/center/account/preferenze",
+      "to": "https://buddykids-app.vercel.app/center/group-requests"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/center/account/preferenze",
+      "to": "https://buddykids-app.vercel.app/center/invites"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/center/account/preferenze",
+      "to": "https://buddykids-app.vercel.app/center/profile"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/center/account/preferenze",
+      "to": "https://buddykids-app.vercel.app/center/promotions"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/center/account/preferenze",
+      "to": "https://buddykids-app.vercel.app/center/report-presenze"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/center/account/preferenze",
+      "to": "https://buddykids-app.vercel.app/center/richieste"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/center/account/preferenze",
+      "to": "https://buddykids-app.vercel.app/center/servizi-consigliati"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/center/account/privacy",
+      "to": "https://buddykids-app.vercel.app/center"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/center/account/privacy",
+      "to": "https://buddykids-app.vercel.app/center/account"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/center/account/privacy",
+      "to": "https://buddykids-app.vercel.app/center/activities"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/center/account/privacy",
+      "to": "https://buddykids-app.vercel.app/center/attendance"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/center/account/privacy",
+      "to": "https://buddykids-app.vercel.app/center/group-requests"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/center/account/privacy",
+      "to": "https://buddykids-app.vercel.app/center/invites"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/center/account/privacy",
+      "to": "https://buddykids-app.vercel.app/center/profile"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/center/account/privacy",
+      "to": "https://buddykids-app.vercel.app/center/promotions"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/center/account/privacy",
+      "to": "https://buddykids-app.vercel.app/center/report-presenze"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/center/account/privacy",
+      "to": "https://buddykids-app.vercel.app/center/richieste"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/center/account/privacy",
+      "to": "https://buddykids-app.vercel.app/center/servizi-consigliati"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/center/account/sicurezza",
+      "to": "https://buddykids-app.vercel.app/center"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/center/account/sicurezza",
+      "to": "https://buddykids-app.vercel.app/center/account"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/center/account/sicurezza",
+      "to": "https://buddykids-app.vercel.app/center/activities"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/center/account/sicurezza",
+      "to": "https://buddykids-app.vercel.app/center/attendance"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/center/account/sicurezza",
+      "to": "https://buddykids-app.vercel.app/center/group-requests"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/center/account/sicurezza",
+      "to": "https://buddykids-app.vercel.app/center/invites"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/center/account/sicurezza",
+      "to": "https://buddykids-app.vercel.app/center/profile"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/center/account/sicurezza",
+      "to": "https://buddykids-app.vercel.app/center/promotions"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/center/account/sicurezza",
+      "to": "https://buddykids-app.vercel.app/center/report-presenze"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/center/account/sicurezza",
+      "to": "https://buddykids-app.vercel.app/center/richieste"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/center/account/sicurezza",
+      "to": "https://buddykids-app.vercel.app/center/servizi-consigliati"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/center/activities",
+      "to": "https://buddykids-app.vercel.app/center"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/center/activities",
+      "to": "https://buddykids-app.vercel.app/center/account"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/center/activities",
+      "to": "https://buddykids-app.vercel.app/center/activities"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/center/activities",
+      "to": "https://buddykids-app.vercel.app/center/activities/attivita-test-buddykids"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/center/activities",
+      "to": "https://buddykids-app.vercel.app/center/activities/attivita-test-buddykids/calendar"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/center/activities",
+      "to": "https://buddykids-app.vercel.app/center/activities/new"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/center/activities",
+      "to": "https://buddykids-app.vercel.app/center/activities/test-attivita-auto-1784107753260"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/center/activities",
+      "to": "https://buddykids-app.vercel.app/center/activities/test-attivita-auto-1784107753260/calendar"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/center/activities",
+      "to": "https://buddykids-app.vercel.app/center/activities/test-attivita-auto-1784108193968"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/center/activities",
+      "to": "https://buddykids-app.vercel.app/center/activities/test-attivita-auto-1784108193968/calendar"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/center/activities",
+      "to": "https://buddykids-app.vercel.app/center/attendance"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/center/activities",
+      "to": "https://buddykids-app.vercel.app/center/group-requests"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/center/activities",
+      "to": "https://buddykids-app.vercel.app/center/invites"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/center/activities",
+      "to": "https://buddykids-app.vercel.app/center/profile"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/center/activities",
+      "to": "https://buddykids-app.vercel.app/center/promotions"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/center/activities",
+      "to": "https://buddykids-app.vercel.app/center/report-presenze"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/center/activities",
+      "to": "https://buddykids-app.vercel.app/center/richieste"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/center/activities",
+      "to": "https://buddykids-app.vercel.app/center/servizi-consigliati"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/center/activities/attivita-test-buddykids",
+      "to": "https://buddykids-app.vercel.app/center"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/center/activities/attivita-test-buddykids",
+      "to": "https://buddykids-app.vercel.app/center/account"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/center/activities/attivita-test-buddykids",
+      "to": "https://buddykids-app.vercel.app/center/activities"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/center/activities/attivita-test-buddykids",
+      "to": "https://buddykids-app.vercel.app/center/activities/attivita-test-buddykids/calendar"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/center/activities/attivita-test-buddykids",
+      "to": "https://buddykids-app.vercel.app/center/attendance"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/center/activities/attivita-test-buddykids",
+      "to": "https://buddykids-app.vercel.app/center/group-requests"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/center/activities/attivita-test-buddykids",
+      "to": "https://buddykids-app.vercel.app/center/invites"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/center/activities/attivita-test-buddykids",
+      "to": "https://buddykids-app.vercel.app/center/profile"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/center/activities/attivita-test-buddykids",
+      "to": "https://buddykids-app.vercel.app/center/promotions"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/center/activities/attivita-test-buddykids",
+      "to": "https://buddykids-app.vercel.app/center/report-presenze"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/center/activities/attivita-test-buddykids",
+      "to": "https://buddykids-app.vercel.app/center/richieste"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/center/activities/attivita-test-buddykids",
+      "to": "https://buddykids-app.vercel.app/center/servizi-consigliati"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/center/activities/attivita-test-buddykids/calendar",
+      "to": "https://buddykids-app.vercel.app/center"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/center/activities/attivita-test-buddykids/calendar",
+      "to": "https://buddykids-app.vercel.app/center/account"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/center/activities/attivita-test-buddykids/calendar",
+      "to": "https://buddykids-app.vercel.app/center/activities"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/center/activities/attivita-test-buddykids/calendar",
+      "to": "https://buddykids-app.vercel.app/center/activities/attivita-test-buddykids"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/center/activities/attivita-test-buddykids/calendar",
+      "to": "https://buddykids-app.vercel.app/center/attendance"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/center/activities/attivita-test-buddykids/calendar",
+      "to": "https://buddykids-app.vercel.app/center/group-requests"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/center/activities/attivita-test-buddykids/calendar",
+      "to": "https://buddykids-app.vercel.app/center/invites"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/center/activities/attivita-test-buddykids/calendar",
+      "to": "https://buddykids-app.vercel.app/center/profile"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/center/activities/attivita-test-buddykids/calendar",
+      "to": "https://buddykids-app.vercel.app/center/promotions"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/center/activities/attivita-test-buddykids/calendar",
+      "to": "https://buddykids-app.vercel.app/center/report-presenze"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/center/activities/attivita-test-buddykids/calendar",
+      "to": "https://buddykids-app.vercel.app/center/richieste"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/center/activities/attivita-test-buddykids/calendar",
+      "to": "https://buddykids-app.vercel.app/center/servizi-consigliati"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/center/activities/new",
+      "to": "https://buddykids-app.vercel.app/center"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/center/activities/new",
+      "to": "https://buddykids-app.vercel.app/center/account"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/center/activities/new",
+      "to": "https://buddykids-app.vercel.app/center/activities"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/center/activities/new",
+      "to": "https://buddykids-app.vercel.app/center/attendance"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/center/activities/new",
+      "to": "https://buddykids-app.vercel.app/center/group-requests"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/center/activities/new",
+      "to": "https://buddykids-app.vercel.app/center/invites"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/center/activities/new",
+      "to": "https://buddykids-app.vercel.app/center/profile"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/center/activities/new",
+      "to": "https://buddykids-app.vercel.app/center/promotions"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/center/activities/new",
+      "to": "https://buddykids-app.vercel.app/center/report-presenze"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/center/activities/new",
+      "to": "https://buddykids-app.vercel.app/center/richieste"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/center/activities/new",
+      "to": "https://buddykids-app.vercel.app/center/servizi-consigliati"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/center/activities/test-attivita-auto-1784107753260",
+      "to": "https://buddykids-app.vercel.app/center"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/center/activities/test-attivita-auto-1784107753260",
+      "to": "https://buddykids-app.vercel.app/center/account"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/center/activities/test-attivita-auto-1784107753260",
+      "to": "https://buddykids-app.vercel.app/center/activities"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/center/activities/test-attivita-auto-1784107753260",
+      "to": "https://buddykids-app.vercel.app/center/activities/test-attivita-auto-1784107753260/calendar"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/center/activities/test-attivita-auto-1784107753260",
+      "to": "https://buddykids-app.vercel.app/center/attendance"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/center/activities/test-attivita-auto-1784107753260",
+      "to": "https://buddykids-app.vercel.app/center/group-requests"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/center/activities/test-attivita-auto-1784107753260",
+      "to": "https://buddykids-app.vercel.app/center/invites"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/center/activities/test-attivita-auto-1784107753260",
+      "to": "https://buddykids-app.vercel.app/center/profile"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/center/activities/test-attivita-auto-1784107753260",
+      "to": "https://buddykids-app.vercel.app/center/promotions"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/center/activities/test-attivita-auto-1784107753260",
+      "to": "https://buddykids-app.vercel.app/center/report-presenze"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/center/activities/test-attivita-auto-1784107753260",
+      "to": "https://buddykids-app.vercel.app/center/richieste"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/center/activities/test-attivita-auto-1784107753260",
+      "to": "https://buddykids-app.vercel.app/center/servizi-consigliati"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/center/activities/test-attivita-auto-1784107753260/calendar",
+      "to": "https://buddykids-app.vercel.app/center"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/center/activities/test-attivita-auto-1784107753260/calendar",
+      "to": "https://buddykids-app.vercel.app/center/account"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/center/activities/test-attivita-auto-1784107753260/calendar",
+      "to": "https://buddykids-app.vercel.app/center/activities"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/center/activities/test-attivita-auto-1784107753260/calendar",
+      "to": "https://buddykids-app.vercel.app/center/activities/test-attivita-auto-1784107753260"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/center/activities/test-attivita-auto-1784107753260/calendar",
+      "to": "https://buddykids-app.vercel.app/center/attendance"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/center/activities/test-attivita-auto-1784107753260/calendar",
+      "to": "https://buddykids-app.vercel.app/center/group-requests"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/center/activities/test-attivita-auto-1784107753260/calendar",
+      "to": "https://buddykids-app.vercel.app/center/invites"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/center/activities/test-attivita-auto-1784107753260/calendar",
+      "to": "https://buddykids-app.vercel.app/center/profile"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/center/activities/test-attivita-auto-1784107753260/calendar",
+      "to": "https://buddykids-app.vercel.app/center/promotions"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/center/activities/test-attivita-auto-1784107753260/calendar",
+      "to": "https://buddykids-app.vercel.app/center/report-presenze"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/center/activities/test-attivita-auto-1784107753260/calendar",
+      "to": "https://buddykids-app.vercel.app/center/richieste"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/center/activities/test-attivita-auto-1784107753260/calendar",
+      "to": "https://buddykids-app.vercel.app/center/servizi-consigliati"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/center/activities/test-attivita-auto-1784108193968",
+      "to": "https://buddykids-app.vercel.app/center"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/center/activities/test-attivita-auto-1784108193968",
+      "to": "https://buddykids-app.vercel.app/center/account"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/center/activities/test-attivita-auto-1784108193968",
+      "to": "https://buddykids-app.vercel.app/center/activities"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/center/activities/test-attivita-auto-1784108193968",
+      "to": "https://buddykids-app.vercel.app/center/activities/test-attivita-auto-1784108193968/calendar"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/center/activities/test-attivita-auto-1784108193968",
+      "to": "https://buddykids-app.vercel.app/center/attendance"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/center/activities/test-attivita-auto-1784108193968",
+      "to": "https://buddykids-app.vercel.app/center/group-requests"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/center/activities/test-attivita-auto-1784108193968",
+      "to": "https://buddykids-app.vercel.app/center/invites"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/center/activities/test-attivita-auto-1784108193968",
+      "to": "https://buddykids-app.vercel.app/center/profile"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/center/activities/test-attivita-auto-1784108193968",
+      "to": "https://buddykids-app.vercel.app/center/promotions"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/center/activities/test-attivita-auto-1784108193968",
+      "to": "https://buddykids-app.vercel.app/center/report-presenze"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/center/activities/test-attivita-auto-1784108193968",
+      "to": "https://buddykids-app.vercel.app/center/richieste"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/center/activities/test-attivita-auto-1784108193968",
+      "to": "https://buddykids-app.vercel.app/center/servizi-consigliati"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/center/activities/test-attivita-auto-1784108193968/calendar",
+      "to": "https://buddykids-app.vercel.app/center"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/center/activities/test-attivita-auto-1784108193968/calendar",
+      "to": "https://buddykids-app.vercel.app/center/account"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/center/activities/test-attivita-auto-1784108193968/calendar",
+      "to": "https://buddykids-app.vercel.app/center/activities"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/center/activities/test-attivita-auto-1784108193968/calendar",
+      "to": "https://buddykids-app.vercel.app/center/activities/test-attivita-auto-1784108193968"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/center/activities/test-attivita-auto-1784108193968/calendar",
+      "to": "https://buddykids-app.vercel.app/center/attendance"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/center/activities/test-attivita-auto-1784108193968/calendar",
+      "to": "https://buddykids-app.vercel.app/center/group-requests"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/center/activities/test-attivita-auto-1784108193968/calendar",
+      "to": "https://buddykids-app.vercel.app/center/invites"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/center/activities/test-attivita-auto-1784108193968/calendar",
+      "to": "https://buddykids-app.vercel.app/center/profile"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/center/activities/test-attivita-auto-1784108193968/calendar",
+      "to": "https://buddykids-app.vercel.app/center/promotions"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/center/activities/test-attivita-auto-1784108193968/calendar",
+      "to": "https://buddykids-app.vercel.app/center/report-presenze"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/center/activities/test-attivita-auto-1784108193968/calendar",
+      "to": "https://buddykids-app.vercel.app/center/richieste"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/center/activities/test-attivita-auto-1784108193968/calendar",
+      "to": "https://buddykids-app.vercel.app/center/servizi-consigliati"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/center/attendance",
+      "to": "https://buddykids-app.vercel.app/center"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/center/attendance",
+      "to": "https://buddykids-app.vercel.app/center/account"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/center/attendance",
+      "to": "https://buddykids-app.vercel.app/center/activities"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/center/attendance",
+      "to": "https://buddykids-app.vercel.app/center/attendance"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/center/attendance",
+      "to": "https://buddykids-app.vercel.app/center/group-requests"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/center/attendance",
+      "to": "https://buddykids-app.vercel.app/center/invites"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/center/attendance",
+      "to": "https://buddykids-app.vercel.app/center/profile"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/center/attendance",
+      "to": "https://buddykids-app.vercel.app/center/promotions"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/center/attendance",
+      "to": "https://buddykids-app.vercel.app/center/report-presenze"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/center/attendance",
+      "to": "https://buddykids-app.vercel.app/center/richieste"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/center/attendance",
+      "to": "https://buddykids-app.vercel.app/center/servizi-consigliati"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/center/group-requests",
+      "to": "https://buddykids-app.vercel.app/center"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/center/group-requests",
+      "to": "https://buddykids-app.vercel.app/center/account"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/center/group-requests",
+      "to": "https://buddykids-app.vercel.app/center/activities"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/center/group-requests",
+      "to": "https://buddykids-app.vercel.app/center/attendance"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/center/group-requests",
+      "to": "https://buddykids-app.vercel.app/center/group-requests"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/center/group-requests",
+      "to": "https://buddykids-app.vercel.app/center/invites"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/center/group-requests",
+      "to": "https://buddykids-app.vercel.app/center/profile"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/center/group-requests",
+      "to": "https://buddykids-app.vercel.app/center/promotions"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/center/group-requests",
+      "to": "https://buddykids-app.vercel.app/center/report-presenze"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/center/group-requests",
+      "to": "https://buddykids-app.vercel.app/center/richieste"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/center/group-requests",
+      "to": "https://buddykids-app.vercel.app/center/servizi-consigliati"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/center/invites",
+      "to": "https://buddykids-app.vercel.app/center"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/center/invites",
+      "to": "https://buddykids-app.vercel.app/center/account"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/center/invites",
+      "to": "https://buddykids-app.vercel.app/center/activities"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/center/invites",
+      "to": "https://buddykids-app.vercel.app/center/attendance"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/center/invites",
+      "to": "https://buddykids-app.vercel.app/center/group-requests"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/center/invites",
+      "to": "https://buddykids-app.vercel.app/center/invites"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/center/invites",
+      "to": "https://buddykids-app.vercel.app/center/profile"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/center/invites",
+      "to": "https://buddykids-app.vercel.app/center/promotions"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/center/invites",
+      "to": "https://buddykids-app.vercel.app/center/report-presenze"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/center/invites",
+      "to": "https://buddykids-app.vercel.app/center/richieste"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/center/invites",
+      "to": "https://buddykids-app.vercel.app/center/servizi-consigliati"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/center/profile",
+      "to": "https://buddykids-app.vercel.app/center"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/center/profile",
+      "to": "https://buddykids-app.vercel.app/center/account"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/center/profile",
+      "to": "https://buddykids-app.vercel.app/center/activities"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/center/profile",
+      "to": "https://buddykids-app.vercel.app/center/attendance"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/center/profile",
+      "to": "https://buddykids-app.vercel.app/center/group-requests"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/center/profile",
+      "to": "https://buddykids-app.vercel.app/center/invites"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/center/profile",
+      "to": "https://buddykids-app.vercel.app/center/profile"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/center/profile",
+      "to": "https://buddykids-app.vercel.app/center/promotions"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/center/profile",
+      "to": "https://buddykids-app.vercel.app/center/report-presenze"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/center/profile",
+      "to": "https://buddykids-app.vercel.app/center/richieste"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/center/profile",
+      "to": "https://buddykids-app.vercel.app/center/servizi-consigliati"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/center/promotions",
+      "to": "https://buddykids-app.vercel.app/center"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/center/promotions",
+      "to": "https://buddykids-app.vercel.app/center/account"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/center/promotions",
+      "to": "https://buddykids-app.vercel.app/center/activities"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/center/promotions",
+      "to": "https://buddykids-app.vercel.app/center/attendance"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/center/promotions",
+      "to": "https://buddykids-app.vercel.app/center/group-requests"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/center/promotions",
+      "to": "https://buddykids-app.vercel.app/center/invites"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/center/promotions",
+      "to": "https://buddykids-app.vercel.app/center/profile"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/center/promotions",
+      "to": "https://buddykids-app.vercel.app/center/promotions"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/center/promotions",
+      "to": "https://buddykids-app.vercel.app/center/report-presenze"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/center/promotions",
+      "to": "https://buddykids-app.vercel.app/center/richieste"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/center/promotions",
+      "to": "https://buddykids-app.vercel.app/center/servizi-consigliati"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/center/report-presenze",
+      "to": "https://buddykids-app.vercel.app/center"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/center/report-presenze",
+      "to": "https://buddykids-app.vercel.app/center/account"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/center/report-presenze",
+      "to": "https://buddykids-app.vercel.app/center/activities"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/center/report-presenze",
+      "to": "https://buddykids-app.vercel.app/center/attendance"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/center/report-presenze",
+      "to": "https://buddykids-app.vercel.app/center/group-requests"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/center/report-presenze",
+      "to": "https://buddykids-app.vercel.app/center/invites"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/center/report-presenze",
+      "to": "https://buddykids-app.vercel.app/center/profile"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/center/report-presenze",
+      "to": "https://buddykids-app.vercel.app/center/promotions"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/center/report-presenze",
+      "to": "https://buddykids-app.vercel.app/center/report-presenze"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/center/report-presenze",
+      "to": "https://buddykids-app.vercel.app/center/richieste"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/center/report-presenze",
+      "to": "https://buddykids-app.vercel.app/center/servizi-consigliati"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/center/richieste",
+      "to": "https://buddykids-app.vercel.app/center"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/center/richieste",
+      "to": "https://buddykids-app.vercel.app/center/account"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/center/richieste",
+      "to": "https://buddykids-app.vercel.app/center/activities"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/center/richieste",
+      "to": "https://buddykids-app.vercel.app/center/attendance"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/center/richieste",
+      "to": "https://buddykids-app.vercel.app/center/group-requests"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/center/richieste",
+      "to": "https://buddykids-app.vercel.app/center/invites"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/center/richieste",
+      "to": "https://buddykids-app.vercel.app/center/profile"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/center/richieste",
+      "to": "https://buddykids-app.vercel.app/center/promotions"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/center/richieste",
+      "to": "https://buddykids-app.vercel.app/center/report-presenze"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/center/richieste",
+      "to": "https://buddykids-app.vercel.app/center/richieste"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/center/richieste",
+      "to": "https://buddykids-app.vercel.app/center/servizi-consigliati"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/center/servizi-consigliati",
+      "to": "https://buddykids-app.vercel.app/center"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/center/servizi-consigliati",
+      "to": "https://buddykids-app.vercel.app/center/account"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/center/servizi-consigliati",
+      "to": "https://buddykids-app.vercel.app/center/activities"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/center/servizi-consigliati",
+      "to": "https://buddykids-app.vercel.app/center/attendance"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/center/servizi-consigliati",
+      "to": "https://buddykids-app.vercel.app/center/gianni"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/center/servizi-consigliati",
+      "to": "https://buddykids-app.vercel.app/center/group-requests"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/center/servizi-consigliati",
+      "to": "https://buddykids-app.vercel.app/center/invites"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/center/servizi-consigliati",
+      "to": "https://buddykids-app.vercel.app/center/profile"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/center/servizi-consigliati",
+      "to": "https://buddykids-app.vercel.app/center/promotions"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/center/servizi-consigliati",
+      "to": "https://buddykids-app.vercel.app/center/report-presenze"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/center/servizi-consigliati",
+      "to": "https://buddykids-app.vercel.app/center/richieste"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/center/servizi-consigliati",
+      "to": "https://buddykids-app.vercel.app/center/servizi-consigliati"
+    }
+  ],
+  "errors": []
+}
