@@ -4,6 +4,17 @@ import { isSupabaseConfigured } from "@/lib/supabase/env";
 import { resolveFeatureFlag } from "@/lib/feature-flags/resolve";
 import { generateCorrelationId, logTelemetryEvent } from "@/lib/telemetry/correlation";
 
+// Forza il rendering dinamico per-richiesta di /one e di tutte le sue
+// sotto-route. La risoluzione di TRAMA_ONE_ENABLED dipende da utente, ruolo,
+// tenant, coorte e override DB: NON può essere congelata a build-time.
+// Il root layout (app/layout.tsx) usa già headers() in modo incondizionato,
+// il che rende oggi l'intera app dinamica per eredità — ma quella è una
+// proprietà del root layout, introdotta per un motivo non collegato a
+// TRAMA ONE (metadata/manifest per-tenant) e potenzialmente fragile nel
+// tempo. Questa riga rende la garanzia esplicita, leggibile e locale a
+// questa route, indipendente da qualunque comportamento ereditato.
+export const dynamic = "force-dynamic";
+
 // TRAMA ONE — route shell Parent (Build Sprint 0).
 //
 // Shell minimale, nessuna funzionalità di business simulata: solo gate di

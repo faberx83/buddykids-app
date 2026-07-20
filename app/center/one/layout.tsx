@@ -4,6 +4,10 @@ import { isSupabaseConfigured } from "@/lib/supabase/env";
 import { resolveFeatureFlag } from "@/lib/feature-flags/resolve";
 import { generateCorrelationId, logTelemetryEvent } from "@/lib/telemetry/correlation";
 
+// Forza il rendering dinamico per-richiesta — vedi lo stesso commento in
+// app/one/layout.tsx per la motivazione completa.
+export const dynamic = "force-dynamic";
+
 // TRAMA ONE — route shell Partner (Build Sprint 0).
 //
 // proxy.ts NON è stato modificato: sul dominio partner.* la regola generica
