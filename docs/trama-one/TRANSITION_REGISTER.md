@@ -27,6 +27,11 @@ Aggiunti in Build Sprint 1:
 - **RLS reuse**: le nuove tabelle di `migration_09_center_onboarding.sql` riusano `public.is_platform_admin()` e `public.current_center_id()` (helper esistenti, non ridefiniti) nelle proprie policy — stesso principio "reuse-first" già applicato in Sprint 0 (DEC-21/DECISION_LOG.md).
 - **Checklist onboarding**: `lib/onboarding/checklist-registry.ts` linka `/center/profile` (pagina AS-IS) per l'item "Profilo centro completo" — solo un link di navigazione, nessuna lettura/scrittura diretta di quella pagina da parte del nuovo codice.
 
+Aggiunti in Sprint 1 Audit Remediation:
+
+- **Auto-inizializzazione LEAD**: `migration_10_center_onboarding_auto_lead.sql` introduce un trigger `AFTER INSERT` su `public.centers` che crea automaticamente una riga `LEAD` in `center_onboarding_state` per ogni centro nuovo — chiude il gap per cui nessun centro creato dopo Sprint 1 poteva mai raggiungere via UI il percorso di attivazione (DEC-25). Non è un ponte verso uno stato di business preesistente (nessun centro aveva uno stato onboarding prima di Sprint 1): resta una capability NEW, non un adapter — registrato qui solo per completezza di riferimento sul punto di innesto (`public.centers`).
+- **Linguaggio utente centralizzato**: `lib/onboarding/status-copy.ts` è l'unico punto di verità per le etichette italiane Partner/Admin della macchina a stati onboarding. I valori tecnici persistiti (LEAD, CLAIMED, SUBMITTED, CHANGES_REQUESTED, APPROVED, SUSPENDED) restano invariati nel database — solo la presentazione UI è cambiata (DEC-26).
+
 ## Prossimo aggiornamento previsto
 
 Alla chiusura di TRAMA ONE Build Sprint 2 (Offering/Giorni spot) — se quello sprint introduce un qualunque ponte verso `activities`/`activity_weeks` esistenti diverso da un semplice ADAPT, va registrato qui.

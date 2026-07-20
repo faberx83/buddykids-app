@@ -43,6 +43,17 @@ Per ogni route AS-IS che si trova nello stesso perimetro di prodotto (onboarding
 | Lista/dettaglio Centri Admin | RETAIN_AS_IS | Superficie Admin separata (`/admin/one/onboarding` è nuova, non sostituisce `/admin/centers`) |
 | Coda approvazione Certificazioni | RETAIN_AS_IS | Pattern osservato per coerenza UX, implementazione indipendente |
 
+## Aggiornamento — Audit Remediation (migration_10, trigger auto-LEAD)
+
+L'audit esterno di Sprint 1 ha richiesto la chiusura di un gap: nessun meccanismo creava automaticamente una riga `LEAD` in `center_onboarding_state` per i centri creati DOPO Sprint 1 (la convenzione "riga assente = APPROVED", corretta per i centri pre-esistenti, si applicava indistintamente anche a quelli nuovi — DEC-25). Introdotto un trigger `AFTER INSERT` su `public.centers` (`migration_10_center_onboarding_auto_lead.sql`).
+
+| Route/oggetto AS-IS coinvolto | Sprint 1 Remediation lo tocca? | Note di preservazione |
+|---|---|---|
+| `public.centers` (tabella) | Sì, ma solo in AGGIUNTA: un trigger `AFTER INSERT` | Nessuna colonna aggiunta/alterata, nessun trigger su UPDATE/DELETE, nessun cambiamento di comportamento per le righe già esistenti (il trigger si attiva solo su nuovi INSERT, mai retroattivamente) |
+| `app/actions/admin.ts` → `createCenterAndAssignAction()` | No | Nessuna modifica: continua a fare un semplice INSERT su `centers`; il trigger si attiva automaticamente, in modo trasparente al codice applicativo |
+| `supabase/seed.sql`, `supabase/seed-test-data.sql` | No (comportamento invariato) | Gli script di seed continuano a funzionare senza modifiche; dopo l'applicazione di migration_10 ogni nuovo centro che inseriscono riceverà anch'esso automaticamente una riga LEAD (comportamento collaterale accettabile, coerente con l'obiettivo del trigger di coprire OGNI canale di inserimento) |
+| Centri pre-esistenti (creati prima di migration_10) | No | Nessun backfill, nessuna riga retroattiva — confermato dal post-check della migrazione (conteggio `center_onboarding_state` invariato subito dopo il commit) |
+
 ## Esito
 
-Nessuna capability AS-IS risulta a rischio. Tutte le nuove tabelle/funzioni sono additive e referenziano `centers`/`profiles` solo in lettura tramite chiave esterna, senza alterarne lo schema. Tutte le nuove route sono interne alle shell `/one` già dietro flag, il cui fallback a `TRAMA_ONE_ENABLED=false` resta quello certificato in Sprint 0. Verifica V5 di `ASSUMPTION_LOG.md` soddisfatta: matrice prodotta prima dell'avvio dell'implementazione.
+Nessuna capability AS-IS risulta a rischio. Tutte le nuove tabelle/funzioni sono additive e referenziano `centers`/`profiles` solo in lettura tramite chiave esterna, senza alterarne lo schema. Tutte le nuove route sono interne alle shell `/one` già dietro flag, il cui fallback a `TRAMA_ONE_ENABLED=false` resta quello certificato in Sprint 0. Verifica V5 di `ASSUMPTION_LOG.md` soddisfatta: matrice prodotta prima dell'avvio dell'implementazione. Il trigger introdotto dalla Audit Remediation (migration_10) è additivo, non retroattivo, e non altera alcun comportamento AS-IS su `public.centers`.
