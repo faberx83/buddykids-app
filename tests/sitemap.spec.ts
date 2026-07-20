@@ -653,6 +653,12 @@ async function login(page: Page, config: TargetConfig): Promise<void> {
   throw new Error(`[${config.label}] ${lastError}`);
 }
 
+// Una riga sola per pagina visitata invece di un blocco di 8 righe — la
+// versione precedente, moltiplicata per ogni pagina/portale/browser,
+// produceva centinaia di righe nell'output di deploy.sh. Nessuna
+// informazione persa: gli stessi contatori restano tutti sulla riga, il
+// riepilogo completo per portale (funzione a parte, non toccata) resta
+// invariato a fine crawl.
 function printProgress(
   config: TargetConfig,
   projectName: string,
@@ -662,19 +668,10 @@ function printProgress(
   saved: number,
   errors: number
 ): void {
-  console.log("");
-  console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+  const errorFlag = errors > 0 ? ` ⚠️${errors}` : "";
   console.log(
-    `🗺️  ${config.label.toUpperCase()} · ${projectName.toUpperCase()}`
+    `🗺️  ${config.label}/${projectName}  ${visited} analizzate · ${queued} in coda · ${saved} salvate${errorFlag}  →  ${currentUrl}`
   );
-  console.log("");
-  console.log(`✅ Analizzate: ${visited}`);
-  console.log(`📋 In coda:    ${queued}`);
-  console.log(`💾 Salvate:    ${saved}`);
-  console.log(`⚠️  Errori:     ${errors}`);
-  console.log("");
-  console.log(`➡️  ${currentUrl}`);
-  console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
 }
 
 async function extractInternalLinks(

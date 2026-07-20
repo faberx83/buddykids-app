@@ -70,12 +70,7 @@ else
   TREE_STATUS="dirty"
 fi
 
-echo "🔎 Preflight branch/deploy:"
-echo "   branch corrente:       $CURRENT_BRANCH"
-echo "   commit corrente:       $CURRENT_COMMIT"
-echo "   working tree:          $TREE_STATUS"
-echo "   comando di push:       git push origin main (pubblica il ramo locale 'main', NON il branch corrente se diverso)"
-echo "   contenuto pubblicato:  vercel --prod pubblica il working tree di '$CURRENT_BRANCH', indipendentemente da cosa viene pushato"
+echo "[1/5] 🔎 Verifica di sicurezza — branch: $CURRENT_BRANCH · commit: $CURRENT_COMMIT · working tree: $TREE_STATUS"
 
 if [ "$CURRENT_BRANCH" != "main" ]; then
   if [ -n "$ALLOW_PROD_FROM_NON_MAIN" ]; then
@@ -112,7 +107,7 @@ if [ "$TREE_STATUS" = "dirty" ]; then
 fi
 
 echo ""
-echo "📤 Push su GitHub (origin/main)..."
+echo "[2/5] 📤 Pubblico su GitHub (origin/main)..."
 if git push origin main; then
   echo "✅ Push completato."
 else
@@ -131,45 +126,34 @@ else
   fi
 fi
 
-echo ""
-echo "🔎 Deployment precedentemente live (per riferimento rollback manuale):"
-npx vercel ls buddykids-app --prod 2>&1 | head -5 || echo "   (non disponibile — usare 'vercel ls buddykids-app' o la dashboard Vercel per il rollback manuale)"
+echo "(deployment precedente, per rollback manuale: npx vercel ls buddykids-app --prod)"
 
 echo ""
-echo "🚀 Deploy in produzione su Vercel..."
+echo "[3/5] 🚀 Pubblico in produzione su Vercel..."
 npx vercel --prod
 
 echo ""
-echo "🔗 Riallineo gli alias temporanei all'ultimo deploy..."
+echo "[4/5] 🔗 Riallineo gli alias (partner/admin) all'ultimo deploy..."
 ALIAS_PARTNER_OK=1
 ALIAS_ADMIN_OK=1
-npx vercel alias set buddykids-app.vercel.app buddykids-partner.vercel.app || ALIAS_PARTNER_OK=0
-npx vercel alias set buddykids-app.vercel.app buddykids-admin.vercel.app || ALIAS_ADMIN_OK=0
+npx vercel alias set buddykids-app.vercel.app buddykids-partner.vercel.app >/dev/null || ALIAS_PARTNER_OK=0
+npx vercel alias set buddykids-app.vercel.app buddykids-admin.vercel.app >/dev/null || ALIAS_ADMIN_OK=0
 
-echo ""
-echo "✅ Riepilogo alias:"
-if [ "$ALIAS_PARTNER_OK" = "1" ]; then
-  echo "   buddykids-partner.vercel.app: OK"
+if [ "$ALIAS_PARTNER_OK" = "1" ] && [ "$ALIAS_ADMIN_OK" = "1" ]; then
+  echo "✅ Alias partner + admin: OK"
 else
-  echo "   buddykids-partner.vercel.app: FALLITO — verificare manualmente, stato potenzialmente incoerente"
-fi
-if [ "$ALIAS_ADMIN_OK" = "1" ]; then
-  echo "   buddykids-admin.vercel.app: OK"
-else
-  echo "   buddykids-admin.vercel.app: FALLITO — verificare manualmente, stato potenzialmente incoerente"
+  [ "$ALIAS_PARTNER_OK" = "1" ] || echo "🛑 buddykids-partner.vercel.app: FALLITO — verificare manualmente, stato potenzialmente incoerente"
+  [ "$ALIAS_ADMIN_OK" = "1" ] || echo "🛑 buddykids-admin.vercel.app: FALLITO — verificare manualmente, stato potenzialmente incoerente"
 fi
 
 echo ""
-echo "✅ Fatto! Deploy pubblicato:"
-echo "   https://buddykids-app.vercel.app"
-echo "   https://buddykids-partner.vercel.app"
-echo "   https://buddykids-admin.vercel.app"
+echo "✅ Deploy pubblicato: https://buddykids-app.vercel.app (+ alias partner/admin)"
 
 if [ -n "$SKIP_TESTS" ]; then
   echo ""
   echo "⏭️  Test saltati (SKIP_TESTS impostato)."
 else
   echo ""
-  echo "🧪 Verifico lo stato dell'arte con la suite di test..."
+  echo "[5/5] 🧪 Verifico con la suite di test..."
   bash test-deploy.sh https://buddykids-app.vercel.app
 fi

@@ -20,9 +20,16 @@ export default defineConfig({
   expect: { timeout: 8_000 },
   fullyParallel: true,
   retries: process.env.CI ? 1 : 0,
+  // Reporter da terminale: "line" invece di "list" — una singola riga che si
+  // aggiorna con l'avanzamento (N/Totale) invece di una riga per ogni
+  // singolo test, molto più leggibile durante un deploy. I fallimenti
+  // restano comunque stampati per intero quando accadono. Report HTML
+  // completo, trace e screenshot sui fallimenti restano invariati (vedi
+  // "use" sotto) — nessuna perdita di diagnostica, solo output terminale
+  // meno verboso.
   reporter: [
     ["html", { outputFolder: "playwright-report", open: "never" }],
-    ["list"],
+    ["line"],
     ["json", { outputFile: "playwright-report/results.json" }],
   ],
   use: {
