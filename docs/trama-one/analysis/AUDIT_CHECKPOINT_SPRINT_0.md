@@ -6,9 +6,9 @@ Documento autosufficiente per un auditor esterno che non ha seguito la conversaz
 
 **Obiettivo sprint**: costruire la foundation infrastrutturale di TRAMA ONE — Feature Flag Engine, Beta Cohort Memberships, tre route shell `/one` (Parent/Partner/Admin) dietro flag, telemetry minima, hardening di `deploy.sh`/`test-deploy.sh` — senza toccare, rimuovere o indebolire alcuna capability Legacy o Next Gen esistente.
 
-**Risultato**: obiettivo raggiunto. Foundation implementata, migrazioni applicate e verificate manualmente da Fabrizio, RLS corretta per riuso dell'helper esistente, deploy in produzione eseguito e riuscito, smoke test eseguito contro l'ambiente live con log ricevuto e analizzato, un difetto reale trovato in un test proprio (non nell'applicazione) e corretto.
+**Risultato**: obiettivo raggiunto. Foundation implementata, migrazioni applicate e verificate manualmente da Fabrizio, RLS corretta per riuso dell'helper esistente, deploy in produzione eseguito e riuscito, smoke test eseguito contro l'ambiente live con log ricevuto e analizzato, un difetto reale trovato in un test proprio (non nell'applicazione) e corretto, corretzione riverificata con esito 4/4 passed contro produzione.
 
-**Stato**: **READY WITH CONDITIONS**. Unica condizione aperta: riconferma locale dei due test corretti (TC-N303/TC-N304) con il comando fornito a Fabrizio, non ancora eseguito con le variabili d'ambiente corrette al momento della stesura di questo documento (vedi §9).
+**Stato**: **READY**. Tutte le condizioni chiuse: la riconferma locale di TC-N303/TC-N304 è stata eseguita da Fabrizio contro produzione con esito 4 passed su 4 (vedi §9). Nessuna condizione residua.
 
 ## 2. Repository State
 
@@ -86,7 +86,7 @@ File/componenti/servizi principali: vedi §11 per l'elenco completo dei file cre
 | Unit (`tests/one/feature-flags.spec.ts`) | **Eseguito, 34/34 passed** (17 test × 2 progetti browser) |
 | `bash -n deploy.sh` / `bash -n test-deploy.sh` | **Eseguito, sintassi OK** |
 | Browser smoke (produzione) | **Eseguito da Fabrizio** (`TEST_SCOPE=smoke bash deploy.sh` contro `https://buddykids-app.vercel.app`): 60 test totali, 36 passed, 18 failed, 6 skipped (come previsto per TC-N306/307). Dei 18 falliti: 4 (2 test × 2 browser) erano TC-N303/TC-N304, causati da un bug di navigazione nel test stesso (non nell'app) — **corretto** in questo sprint (commit `30e06fd`); i restanti 14 (7 test distinti × 2 browser) sono fallimenti **preesistenti e indipendenti** da TRAMA ONE (login header, dashboard Gestore, badge NextGen, logo TRAMA) |
-| Ri-verifica TC-N303/TC-N304 dopo il fix | **PENDING LOCAL VERIFICATION** — tentata da Fabrizio ma con comando incompleto (mancava `TEST_BASE_URL`+`.env.test`), risultato "4 skipped" anziché eseguiti. Comando corretto fornito, non ancora rieseguito al momento della stesura di questo documento |
+| Ri-verifica TC-N303/TC-N304 dopo il fix | **Eseguita e superata**: primo tentativo con comando incompleto (mancava `TEST_BASE_URL`+`.env.test`) → "4 skipped"; con il comando corretto (`source .env.test` + `TEST_BASE_URL=https://buddykids-app.vercel.app`) → **4 passed (12.2s)**, eseguito da Fabrizio contro produzione |
 | Suite completa (`TEST_SCOPE=all`) | **Non eseguita** in questo sprint (solo `smoke`, come da scope) |
 | Sitemap | **Eseguita con successo**: 27 pagine Parent, 22 Partner, 18 Admin, 0 errori, per entrambi i progetti browser |
 
@@ -171,11 +171,11 @@ ac4e4d2 chore(deploy): reduce terminal output verbosity
 
 - **Prerequisiti per Sprint 1** (da `SPRINT_GOVERNANCE.md`): Sprint 0 chiuso con Definition of Done soddisfatta (vedi §16); matrice pagina-per-pagina/route-per-route dedicata alle route Partner/Admin coinvolte in Sprint 1 (da produrre **prima** dell'avvio, non ancora fatta — correttamente, non è compito di Sprint 0); Feature Flag Engine operativo (fatto).
 - **Dipendenze**: nessuna bloccante.
-- **Blocker**: nessuno per l'avvio di Sprint 1, salvo la riconferma pendente di §9.
-- **Raccomandazione**: eseguire il comando di riverifica fornito a Fabrizio (§9) prima di considerare chiuso al 100% anche l'ultimo dettaglio; questo non blocca la sostanza della Definition of Done (che è già soddisfatta sui punti strutturali), ma completa il loop di verifica locale richiesto da `CLAUDE.md` §3.
+- **Blocker**: nessuno per l'avvio di Sprint 1.
+- **Raccomandazione**: Sprint 0 può considerarsi chiuso a tutti gli effetti; la Definition of Done è soddisfatta sia sui punti strutturali sia sul loop di verifica locale richiesto da `CLAUDE.md` §3 (riconferma TC-N303/TC-N304: 4 passed).
 
 ## 16. Audit Conclusion
 
-**AUDIT STATUS: READY WITH CONDITIONS**
+**AUDIT STATUS: READY**
 
-Condizione: ricevere e analizzare l'output della riverifica locale di TC-N303/TC-N304 (comando fornito a Fabrizio in questa sessione) prima di considerare il local verification gate del Sprint 0 pienamente chiuso in ogni suo dettaglio. Nessun blocker strutturale, di sicurezza o di regressione rilevato.
+Nessuna condizione residua. Nessun blocker strutturale, di sicurezza o di regressione rilevato. Riconferma locale TC-N303/TC-N304 eseguita da Fabrizio contro produzione con esito 4 passed su 4.
