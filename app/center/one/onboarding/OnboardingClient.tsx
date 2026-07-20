@@ -9,21 +9,18 @@ import {
   submitIdentityVerificationAction,
 } from "@/app/actions/onboarding";
 import { ONBOARDING_CHECKLIST_REGISTRY, isRequiredChecklistComplete } from "@/lib/onboarding/checklist-registry";
+import {
+  ONBOARDING_STATUS_REGISTRY,
+  getOnboardingStatusBadgeClassName,
+  getSubmitCta,
+  formatOnboardingTransition,
+} from "@/lib/onboarding/status-copy";
 import type {
   CenterOnboardingState,
   ChecklistItemState,
   IdentityVerificationState,
   OnboardingAuditEntry,
 } from "@/lib/onboarding/types";
-
-const STATUS_LABEL: Record<CenterOnboardingState["status"], { label: string; cls: string }> = {
-  LEAD: { label: "Da reclamare", cls: "bg-[#F0F2F5] text-ink-2" },
-  CLAIMED: { label: "In lavorazione", cls: "bg-orange-light text-trama-orange" },
-  SUBMITTED: { label: "In revisione", cls: "bg-sky/10 text-sky" },
-  CHANGES_REQUESTED: { label: "Modifiche richieste", cls: "bg-[#FBEAEA] text-[#C0392B]" },
-  APPROVED: { label: "Approvato", cls: "bg-green-light text-[#2d8f52]" },
-  SUSPENDED: { label: "Sospeso", cls: "bg-[#FBEAEA] text-[#C0392B]" },
-};
 
 const IDENTITY_LABEL: Record<IdentityVerificationState["status"], { label: string; cls: string }> = {
   not_started: { label: "Non inviata", cls: "bg-[#F0F2F5] text-ink-2" },
@@ -103,9 +100,9 @@ export default function OnboardingClient({
   return (
     <div className="max-w-2xl">
       <div className="mb-5 flex items-center justify-between gap-3">
-        <h1 className="text-lg font-bold text-ink">Onboarding centro — TRAMA ONE</h1>
-        <span className={`rounded-full px-3 py-1 text-xs font-semibold ${STATUS_LABEL[state.status].cls}`}>
-          {STATUS_LABEL[state.status].label}
+        <h1 className="text-lg font-bold text-ink">Attivazione centro — TRAMA ONE</h1>
+        <span className={`rounded-full px-3 py-1 text-xs font-semibold ${getOnboardingStatusBadgeClassName(state.status)}`}>
+          {ONBOARDING_STATUS_REGISTRY[state.status].partner.label}
         </span>
       </div>
 
@@ -117,16 +114,13 @@ export default function OnboardingClient({
 
       {state.status === "LEAD" && (
         <div className="mb-5 rounded-lg border border-[#E8EBF0] bg-white p-5">
-          <p className="mb-3 text-sm text-ink-2">
-            Il tuo centro non è ancora stato reclamato per il percorso TRAMA ONE. Reclamalo per iniziare la
-            checklist di onboarding.
-          </p>
+          <p className="mb-3 text-sm text-ink-2">{ONBOARDING_STATUS_REGISTRY.LEAD.partner.description}</p>
           <button
             onClick={handleClaim}
             disabled={busy}
             className="rounded-md bg-partner px-4 py-2 text-sm font-bold text-white disabled:opacity-60"
           >
-            Reclama il mio centro
+            {ONBOARDING_STATUS_REGISTRY.LEAD.partner.primaryAction}
           </button>
         </div>
       )}
@@ -196,8 +190,8 @@ export default function OnboardingClient({
 
           {state.status === "CHANGES_REQUESTED" && (
             <div className="mb-5 rounded-lg border border-[#F5C6C6] bg-[#FBEAEA] p-4 text-sm text-[#C0392B]">
-              L&apos;Admin ha richiesto delle modifiche — controlla lo storico qui sotto per il dettaglio, poi
-              invia di nuovo.
+              {ONBOARDING_STATUS_REGISTRY.CHANGES_REQUESTED.partner.description} Controlla lo storico qui sotto
+              per il dettaglio, poi invia di nuovo.
             </div>
           )}
 
@@ -208,12 +202,12 @@ export default function OnboardingClient({
               className="rounded-md bg-partner px-4 py-2 text-sm font-bold text-white disabled:opacity-60"
               title={!requiredComplete ? "Completa gli elementi obbligatori (*) della checklist" : undefined}
             >
-              Invia per revisione
+              {getSubmitCta(state.status)}
             </button>
           )}
           {state.status === "SUBMITTED" && (
             <div className="rounded-lg border border-[#E8EBF0] bg-white p-4 text-sm text-ink-2">
-              In attesa di revisione da parte dell&apos;Admin.
+              {ONBOARDING_STATUS_REGISTRY.SUBMITTED.partner.waitingState}.
             </div>
           )}
         </>
@@ -222,15 +216,15 @@ export default function OnboardingClient({
       {state.status === "APPROVED" && (
         <div className="mb-5 rounded-lg border border-[#E8EBF0] bg-white p-5">
           <p className="text-sm text-ink-2">
-            Il tuo centro è approvato per TRAMA ONE. Le funzionalità successive (catalogo, Giorni spot) arrivano
-            nei prossimi sprint.
+            {ONBOARDING_STATUS_REGISTRY.APPROVED.partner.description} Le funzionalità successive (catalogo,
+            Giorni spot) arrivano nei prossimi sprint.
           </p>
         </div>
       )}
 
       {state.status === "SUSPENDED" && (
         <div className="mb-5 rounded-lg border border-[#F5C6C6] bg-[#FBEAEA] p-5 text-sm text-[#C0392B]">
-          Il tuo centro è stato sospeso da TRAMA ONE. Controlla lo storico qui sotto o contatta l&apos;Admin.
+          {ONBOARDING_STATUS_REGISTRY.SUSPENDED.partner.description}
         </div>
       )}
 
@@ -241,7 +235,7 @@ export default function OnboardingClient({
             {auditLog.map((entry) => (
               <div key={entry.id} className="px-4 py-2.5 text-xs text-ink-2">
                 <span className="font-semibold text-ink">
-                  {entry.fromStatus ? `${entry.fromStatus} → ${entry.toStatus}` : entry.toStatus}
+                  {formatOnboardingTransition(entry.fromStatus, entry.toStatus, "partner")}
                 </span>{" "}
                 — {new Date(entry.createdAt).toLocaleString("it-IT")}
                 {entry.note && <div className="mt-0.5 italic">&ldquo;{entry.note}&rdquo;</div>}

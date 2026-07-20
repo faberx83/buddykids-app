@@ -5,16 +5,11 @@ import {
   adminReviewOnboardingAction,
   adminReviewIdentityVerificationAction,
 } from "@/app/actions/onboarding";
+import {
+  ONBOARDING_STATUS_REGISTRY,
+  getOnboardingStatusBadgeClassName,
+} from "@/lib/onboarding/status-copy";
 import type { CenterForReview, IdentityVerificationState, OnboardingAuditEntry } from "@/lib/onboarding/types";
-
-const STATUS_LABEL: Record<CenterForReview["status"], { label: string; cls: string }> = {
-  LEAD: { label: "Da reclamare", cls: "bg-[#F0F2F5] text-ink-2" },
-  CLAIMED: { label: "In lavorazione", cls: "bg-orange-light text-trama-orange" },
-  SUBMITTED: { label: "In revisione", cls: "bg-sky/10 text-sky" },
-  CHANGES_REQUESTED: { label: "Modifiche richieste", cls: "bg-[#FBEAEA] text-[#C0392B]" },
-  APPROVED: { label: "Approvato", cls: "bg-green-light text-[#2d8f52]" },
-  SUSPENDED: { label: "Sospeso", cls: "bg-[#FBEAEA] text-[#C0392B]" },
-};
 
 interface CenterDetail {
   centerId: string;
@@ -88,8 +83,8 @@ export default function AdminOnboardingReviewClient({
                 <div className="flex flex-wrap items-start justify-between gap-3">
                   <div>
                     <div className="text-sm font-semibold text-ink">{c.centerName}</div>
-                    <span className={`mt-1 inline-block rounded-full px-2.5 py-0.5 text-[11px] font-semibold ${STATUS_LABEL[c.status].cls}`}>
-                      {STATUS_LABEL[c.status].label}
+                    <span className={`mt-1 inline-block rounded-full px-2.5 py-0.5 text-[11px] font-semibold ${getOnboardingStatusBadgeClassName(c.status)}`}>
+                      {ONBOARDING_STATUS_REGISTRY[c.status].admin.label}
                     </span>
                   </div>
                   {detail && (
@@ -160,8 +155,8 @@ export default function AdminOnboardingReviewClient({
             <div key={c.centerId} className="flex flex-wrap items-center justify-between gap-3 px-4 py-3">
               <div className="text-sm font-semibold text-ink">{c.centerName}</div>
               <div className="flex items-center gap-2">
-                <span className={`rounded-full px-2.5 py-1 text-[11px] font-semibold ${STATUS_LABEL[c.status].cls}`}>
-                  {STATUS_LABEL[c.status].label}
+                <span className={`rounded-full px-2.5 py-1 text-[11px] font-semibold ${getOnboardingStatusBadgeClassName(c.status)}`}>
+                  {ONBOARDING_STATUS_REGISTRY[c.status].admin.label}
                 </span>
                 {c.status === "APPROVED" && (
                   <button
@@ -169,7 +164,7 @@ export default function AdminOnboardingReviewClient({
                     disabled={busyId === c.centerId}
                     className="rounded-md border border-[#E8EBF0] px-2.5 py-1 text-[11px] font-semibold text-ink disabled:opacity-60"
                   >
-                    Sospendi
+                    {ONBOARDING_STATUS_REGISTRY.APPROVED.admin.primaryAction}
                   </button>
                 )}
               </div>
