@@ -32,7 +32,7 @@ Elenco delle ambiguità rilevate durante l'Impact Assessment (Fase A) e i due Ad
 | V2 | Le 20 CR "MVP-blocking" individuate nel testo del documento MVP (§2.4/§6) coincidono esattamente con le capability P0 delle tabelle 4.1-4.3 dello stesso documento | Verifica riga-per-riga CR↔capability, non ancora fatta in dettaglio in questa Fase A (la matrice prodotta è a livello di epic) | Prima di Build Sprint 3 (l'epic più esposto, E06) |
 | V3 | Lo stesso ambiente Vercel/Supabase condiviso da Legacy/NextGen/beta feedback è idoneo anche per TRAMA ONE (nessun ambiente separato) | Conferma esplicita che non serva un ambiente beta isolato per TRAMA ONE | Prima di Build Sprint 0 |
 | V4 | Il pattern `TutorialProgress` previsto nel domain model MVP è sufficiente come base schema per il motore Walkthrough, senza bisogno di colonne aggiuntive non ancora previste | Verifica schema esatto degli step Walkthrough quando si progetta la tabella | Build Sprint 1 |
-| V5 | La matrice pagina-per-pagina/route-per-route richiesta dal Feature Preservation Gate (vedi `FEATURE_PARITY_MATRIX.md`) copre davvero tutte le capability toccate da Build Sprint 1 | Produzione della matrice dedicata, non ancora fatta | Prima dell'avvio di Build Sprint 1 |
+| V5 | La matrice pagina-per-pagina/route-per-route richiesta dal Feature Preservation Gate (vedi `FEATURE_PARITY_MATRIX.md`) copre davvero tutte le capability toccate da Build Sprint 1 | **VERIFICATA** — prodotta in `SPRINT_1_FEATURE_PRESERVATION_MATRIX.md` (2026-07-20): nessuna capability AS-IS a rischio, tutte le nuove tabelle/route sono additive e interne alle shell `/one` | Prima dell'avvio di Build Sprint 1 — chiusa |
 
 ## Nota
 
