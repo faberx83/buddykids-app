@@ -119,10 +119,14 @@ interface AdminReviewRow {
   centers: { name: string } | { name: string }[] | null;
 }
 
-/** Solo per platform_admin (RLS lo impone comunque): centri con uno stato
- * onboarding diverso dal default AS-IS, per la coda di revisione Admin. Un
- * centro senza riga (AS-IS, APPROVED implicito) non compare qui — non
- * richiede alcuna azione. */
+/** Solo per platform_admin (RLS lo impone comunque): centri con una riga in
+ * center_onboarding_state, per la coda di revisione Admin. Un centro SENZA
+ * riga (AS-IS, APPROVED implicito, mai reclamato per TRAMA ONE) non compare
+ * qui — non richiede alcuna azione. Include anche APPROVED/SUSPENDED (non
+ * solo gli stati "da revisionare"): il chiamante (AdminOnboardingReviewClient)
+ * separa "In revisione" (SUBMITTED) da "Altri stati" (tutto il resto), ma la
+ * query deve restituire tutti gli stati o un centro APPROVED sparirebbe
+ * dalla UI subito dopo l'approvazione, impedendo di vederlo per sospenderlo. */
 export async function listCentersForAdminReview(): Promise<CenterForReview[]> {
   if (!isSupabaseConfigured) return [];
 
@@ -130,7 +134,7 @@ export async function listCentersForAdminReview(): Promise<CenterForReview[]> {
   const { data } = await supabase
     .from("center_onboarding_state")
     .select("center_id, status, updated_at, centers ( name )")
-    .in("status", ["SUBMITTED", "CHANGES_REQUESTED", "CLAIMED", "SUSPENDED"])
+    .in("status", ["LEAD", "CLAIMED", "SUBMITTED", "CHANGES_REQUESTED", "APPROVED", "SUSPENDED"])
     .order("updated_at", { ascending: false });
 
   if (!data) return [];
