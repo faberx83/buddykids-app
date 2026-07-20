@@ -29,6 +29,13 @@ Registro delle decisioni vincolanti prese durante l'Impact Assessment (Fase A) e
 | DEC-18 | `tests/one/` additiva | La nuova cartella di test TRAMA ONE non sostituisce né duplica gli smoke test esistenti; scope `smoke`/`journeys` realizzati con tag `@smoke`/`@journey` su spec esistenti + nuovi file in `tests/one/` | Addendum tecnico finale |
 | DEC-19 | Feature Parity Matrix per capability sufficiente solo per Sprint 0 | Prima di Build Sprint 1 va prodotta una matrice pagina-per-pagina/route-per-route dedicata alle capability coinvolte in quello sprint; da estendere prima di ogni sprint successivo | Addendum tecnico finale |
 
+## Decisioni post Build Sprint 0 (passaggio di consegne operativo)
+
+| # | Decisione | Dettaglio | Fonte |
+|---|---|---|---|
+| DEC-20 | Passaggio di consegne operativo a Claude | Da questo momento Claude mantiene lo stato del programma, propone la sequenza, implementa autonomamente le attività tecniche reversibili e interne al repository (lettura, analisi, codice nel perimetro dello sprint approvato, test, documentazione, commit granulari, correzioni tecniche chiaramente individuate), e si ferma solo per i 13 gate espliciti elencati dal comando di passaggio (migrazioni/SQL su Supabase, dati reali, merge su main, deploy/rollback, domini/alias/DNS/Vercel, credenziali/secret, acquisti, migrazioni distruttive, dismissione capability, decisioni di prodotto non ricavabili dai documenti, rischio concreto, test browser sul Mac di Fabrizio) | Comando "TRAMA ONE — PASSAGGIO DI CONSEGNE OPERATIVO A CLAUDE" |
+| DEC-21 | Correzione TC-N303/TC-N304: navigazione per path fisico, non per host | I due test smoke Partner/Admin navigavano a `/one` assumendo che il ruolo dell'utente loggato determinasse la route servita; in realtà il routing Partner/Admin è basato sull'HOST (rewrite di `proxy.ts` su `buddykids-partner.vercel.app`/`buddykids-admin.vercel.app`), non esercitato da una suite che gira sempre contro un unico `TEST_BASE_URL`. Corretto navigando ai path fisici `/center/one` e `/admin/one` — decisione tecnica presa autonomamente (correzione di errore tecnicamente individuato, non ambiguità di prodotto), nessun impatto sul comportamento dell'applicazione, solo sulla navigazione del test | Prima esecuzione reale `TEST_SCOPE=smoke bash deploy.sh` in produzione, riportata da Fabrizio |
+
 ## Nota
 
 Ogni nuova decisione futura va aggiunta in coda a questo log con numero progressivo, mai sovrascrivendo le voci esistenti. Se una decisione precedente viene superata, la nuova voce deve citare esplicitamente il numero della decisione che sostituisce.
