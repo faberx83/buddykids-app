@@ -13,12 +13,21 @@
 #   TEST_SCOPE=journeys bash test-deploy.sh                    # solo journey cross-portale approvate (vuoto in Sprint 0)
 #   TEST_SCOPE=all bash test-deploy.sh                         # suite intera, esplicito (= comportamento di default)
 #   ALLOW_TEST_FAILURES=1 bash test-deploy.sh                  # non blocca sull'esito test (comportamento esplicito, non più il default)
+#   RUN_SITEMAP=1 bash test-deploy.sh                          # esegue ANCHE la sitemap dopo la suite (skip di default, vedi sotto)
 #   ONLY_SITEMAP=1 SITEMAP_OPEN_BROWSER=1 bash test-deploy.sh  # solo sitemap, apertura browser opzionale
 #
 # Richiede le credenziali degli account di test in ".env.test" (copia
 # ".env.test.example" e compilalo una volta sola — vedi quel file).
 # Senza ".env.test" i test che richiedono login reale falliscono (i test
 # di sola lettura in modalità mock/pubblica girano comunque).
+#
+# Sitemap NON più generata di default ad ogni deploy (richiesta esplicita di
+# Fabrizio, luglio 2026): il crawl di 3 portali x 2 browser produce centinaia
+# di pagine analizzate ad ogni singolo deploy, un costo non giustificato
+# quando non serve verificarla. Ora serve RUN_SITEMAP=1 esplicito per
+# includerla nella suite ordinaria; resta comunque disponibile standalone in
+# qualsiasi momento con ONLY_SITEMAP=1 (vedi sopra), senza bisogno di un
+# deploy completo.
 #
 # TRAMA ONE Build Sprint 0 — adattamenti rispetto alla versione precedente
 # (vedi docs/trama-one/analysis/SPRINT_0_TECH_NOTES.md):
@@ -130,17 +139,23 @@ else
 fi
 
 echo ""
-echo "🗺️ Genero la sitemap..."
-# La generazione sitemap resta sempre "best effort": è un report accessorio,
-# non un gate di qualità — un suo fallimento non deve mai far fallire questo
-# script, ma va comunque segnalato in modo visibile (prima era silenzioso).
-TEST_BASE_URL="$BASE_URL" npx playwright test tests/sitemap.spec.ts || echo "⚠️  Generazione sitemap fallita o parziale — non bloccante."
+if [ -n "$RUN_SITEMAP" ]; then
+  echo "🗺️ Genero la sitemap (RUN_SITEMAP=1)..."
+  # La generazione sitemap resta sempre "best effort": è un report accessorio,
+  # non un gate di qualità — un suo fallimento non deve mai far fallire questo
+  # script, ma va comunque segnalato in modo visibile (prima era silenzioso).
+  TEST_BASE_URL="$BASE_URL" npx playwright test tests/sitemap.spec.ts || echo "⚠️  Generazione sitemap fallita o parziale — non bloccante."
+else
+  echo "🗺️ Sitemap NON generata (skip di default — imposta RUN_SITEMAP=1 se ti serve verificarla, oppure ONLY_SITEMAP=1 per generarla da sola senza deploy)."
+fi
 
 echo ""
 echo "📊 Report dettagliato: npx playwright show-report  (oppure: bash report.sh)"
 
-echo ""
-apri_sitemap_se_richiesto
+if [ -n "$RUN_SITEMAP" ]; then
+  echo ""
+  apri_sitemap_se_richiesto
+fi
 
 if [ "$TEST_EXIT_CODE" != "0" ]; then
   echo ""
