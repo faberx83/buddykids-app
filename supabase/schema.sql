@@ -2010,7 +2010,7 @@ create table if not exists public.beta_feedback (
   -- Colonna SEPARATA da "status" sopra: quella è il dialogo Admin<->genitore
   -- ("nuovo/in gestione/risolto"), questa è solo per il meccanismo di
   -- pipeline verso l'automazione, letta/scritta da un endpoint interno
-  -- dell'app (app/api/internal/beta-pipeline/route.ts, service_role key +
+  -- dell'app (app/internal/beta-pipeline/route.ts, service_role key +
   -- secret condiviso — vedi quel file). "confirmed" = l'admin ha deciso che
   -- va lavorata; "in_progress" = l'automazione l'ha presa in carico; "done"
   -- = intervento committato.

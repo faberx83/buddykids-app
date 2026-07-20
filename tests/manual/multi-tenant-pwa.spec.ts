@@ -86,6 +86,26 @@ test.describe("Multi-tenant / PWA", () => {
     expect(body.name).toBe("TRAMA");
   });
 
+  // Priorita: Alta | Precondizioni: Nessuna (deliberatamente NON autenticato)
+  // Passi: Richiedi /internal/beta-pipeline senza secret e senza sessione
+  // Risultato atteso: risposta JSON 401 "unauthorized" diretta, MAI un redirect a /auth/login
+  //
+  // SPRINT 8 (correzione architettura) — l'endpoint dell'automazione BETA
+  // pipeline viveva inizialmente sotto app/api/internal/beta-pipeline: si e'
+  // scoperto che lo strumento di fetch usato dal task schedulato scarta in
+  // silenzio (nessun errore, risposta vuota) qualsiasi URL il cui path
+  // contiene il segmento "/api/" - non un blocco di Vercel, verificato anche
+  // su domini pubblici estranei. Spostato fuori da /api, sotto /internal:
+  // questo test copre sia che il path resti raggiungibile senza passare dal
+  // gate di ruolo/tenant di proxy.ts (come /api), sia - implicitamente - che
+  // non sia tornato sotto /api per errore in un refactor futuro.
+  test("TC-N301 - L'endpoint automazione BETA pipeline resta raggiungibile senza sessione, fuori da /api", async ({ request }) => {
+    const res = await request.get("/internal/beta-pipeline", { maxRedirects: 0 });
+    expect(res.status()).toBe(401);
+    const body = await res.json();
+    expect(body.error).toBe("unauthorized");
+  });
+
   // Priorita: Alta | Precondizioni: Chrome Android o desktop, cache/service worker puliti
   // Passi: Installa l'app da "/" (LEGACY), poi visita "/nextgen" e installa anche quella
   // Risultato atteso: due icone separate in home screen/launcher ("BuddyKids" e

@@ -4,7 +4,7 @@ import { supabaseUrl } from "./env";
 // SPRINT 8 — client "di servizio" con la service_role key: bypassa
 // interamente le RLS (a differenza di lib/supabase/server.ts, che resta
 // sempre soggetto alle policy). Usato SOLO da endpoint interni/di
-// automazione lato server (vedi app/api/internal/beta-pipeline/route.ts),
+// automazione lato server (vedi app/internal/beta-pipeline/route.ts),
 // MAI esposto al browser: la service_role key va impostata come variabile
 // d'ambiente SUPABASE_SERVICE_ROLE_KEY — senza prefisso NEXT_PUBLIC_, quindi
 // Next.js la esclude per costruzione da qualsiasi bundle client — solo nelle

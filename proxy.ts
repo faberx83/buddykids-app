@@ -84,6 +84,7 @@ export async function proxy(request: NextRequest) {
       isSupabaseConfigured &&
       !pathname.startsWith("/auth") &&
       !pathname.startsWith("/api") &&
+      !pathname.startsWith("/internal") &&
       !pathname.startsWith("/manifest") &&
       pathname !== "/sw.js"
     ) {
@@ -115,6 +116,7 @@ export async function proxy(request: NextRequest) {
   if (
     pathname.startsWith("/auth") ||
     pathname.startsWith("/api") ||
+    pathname.startsWith("/internal") ||
     pathname.startsWith("/_next") ||
     pathname.startsWith("/manifest") ||
     pathname === "/sw.js"

@@ -27,6 +27,15 @@ import { createServiceClient } from "@/lib/supabase/service";
 // header/body custom — un endpoint interno nell'app stessa, raggiungibile
 // con un fetch semplice, è più affidabile per come questa automazione viene
 // davvero eseguita.
+//
+// STORIA 2 — inizialmente questo file viveva sotto app/api/internal/... .
+// Spostato fuori da /api perché lo strumento di fetch usato dall'automazione
+// scarta silenziosamente (nessun errore, risposta vuota) qualsiasi URL il
+// cui path contiene il segmento "/api/" — verificato sia su questo dominio
+// sia su domini pubblici estranei (es. reqres.in/api/...), quindi non è un
+// blocco di Vercel ma un'euristica del tool stesso. Il path "/internal/..."
+// (fuori da /api) evita il problema; proxy.ts esclude "/internal" dal gate
+// di ruolo/tenant esattamente come faceva già per "/api".
 
 function timingSafeEqual(a: string, b: string): boolean {
   if (a.length !== b.length) return false;
