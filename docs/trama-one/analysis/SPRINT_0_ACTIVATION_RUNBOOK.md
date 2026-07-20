@@ -6,11 +6,56 @@ Prerequisiti impliciti: `supabase/schema.sql` già applicato all'ambiente target
 
 ---
 
+## 0. Decisione di governance registrata (RLS Reuse Remediation)
+
+**Le nuove policy RLS devono riutilizzare `public.is_platform_admin()` invece di duplicare controlli inline, quando la semantica richiesta coincide.**
+
+Contesto: un audit pre-esecuzione (TRAMA ONE SPRINT 0 — MIGRATION 07 PRE-EXECUTION AUDIT) ha rilevato che le policy RLS originarie di `migration_07`/`migration_08` duplicavano inline il controllo `exists (select 1 from public.profiles where profiles.id = auth.uid() and profiles.role = 'platform_admin')` invece di riusare l'helper `public.is_platform_admin()` già definito in `schema.sql` (security definer, stable, nessun parametro) e già usato con lo stesso identico significato in `migration_04`, `migration_05`, `migration_06`. Verificata l'equivalenza semantica esatta prima della correzione (stesso comportamento, incluso il caso "nessun profilo per l'utente corrente"). Entrambi i file sono stati corretti di conseguenza — questa decisione resta vincolante per qualunque nuova policy RLS futura con la stessa esigenza (controllo "utente corrente è platform_admin").
+
 ## 1. Applicare migration_07 (Feature Flag Engine)
 
-1. Aprire lo SQL Editor di Supabase per l'ambiente target.
+### 1.0 Pre-check (obbligatorio, prima di aprire lo SQL Editor)
+
+Eseguire, in sola lettura, le 6 query della sezione `PRE-CHECK — NON ESEGUITO AUTOMATICAMENTE` presente nel file `supabase/migration_07_feature_flags_foundation.sql` (subito dopo il `commit;` del blocco DDL). Riepilogo:
+
+| # | Verifica | Risultato atteso su ambiente pulito |
+|---|---|---|
+| 1 | `public.profiles` esiste | 1 riga |
+| 2 | `public.is_platform_admin()` esiste, security definer, stable, nessun parametro, ritorna boolean | 1 riga con quelle proprietà |
+| 3 | `feature_flag_overrides` non esiste già | 0 righe |
+| 4 | Nessun indice residuo su `feature_flag_overrides` | 0 righe |
+| 5 | `set_feature_flag_overrides_updated_at()` non esiste già | 0 righe |
+| 6 | Nessuna policy residua su `feature_flag_overrides` | 0 righe |
+
+### Condizioni STOP
+
+Non procedere con l'applicazione se: il punto 1 o il punto 2 del pre-check restituiscono 0 righe (dipendenze mancanti — l'ambiente non ha `schema.sql` applicato o è più vecchio di quanto documentato); uno dei punti 3-6 restituisce righe inattese senza una spiegazione nota (possibile applicazione parziale precedente non documentata — verificarne la definizione esatta prima di continuare); non si è certi di quale ambiente Supabase è selezionato nello SQL Editor; l'hash del file che si sta per incollare non coincide con quello confermato al punto 1.2 sotto.
+
+### Condizioni GO
+
+Procedere solo se: tutti i punti 1-6 del pre-check danno il risultato atteso (oppure un risultato diverso ma pienamente compreso e considerato sicuro); l'ambiente Supabase è stato confermato esplicitamente (punto 1.1); l'hash del file è stato confermato (punto 1.2).
+
+### 1.1 Conferma dell'ambiente Supabase
+
+Prima di incollare qualunque SQL, verificare nell'interfaccia di Supabase (in alto, selettore progetto) che il progetto/ambiente selezionato sia quello effettivamente voluto (staging o produzione) — nessuna delle query di questo runbook contiene un controllo automatico dell'ambiente. Annotare qui il nome del progetto Supabase su cui si sta per operare prima di procedere.
+
+### 1.2 Conferma dell'hash del file da eseguire
+
+Prima di copiare il contenuto, calcolare l'hash del file locale e confrontarlo con quello riportato di seguito (valido per il commit che ha introdotto questa versione — vedi Report finale della sessione "RLS reuse remediation" per il commit esatto):
+
+```
+sha256sum supabase/migration_07_feature_flags_foundation.sql
+```
+
+Hash atteso: `66cf634eda9b3648cf747a042f850b84fb41b4b7069702739621489c52850b69`
+
+Se l'hash calcolato non coincide, STOP — il file locale non è la versione revisionata e approvata.
+
+### 1.3 Applicazione
+
+1. Aprire lo SQL Editor di Supabase per l'ambiente confermato al punto 1.1.
 2. Aprire il file `supabase/migration_07_feature_flags_foundation.sql` del repository.
-3. Copiare ed eseguire **solo il blocco compreso tra `begin;` e `commit;`** (il file contiene anche esempi/verifica/rollback come commenti SQL sotto quel blocco — non vanno eseguiti insieme, sono riferimento).
+3. Copiare ed eseguire **solo il blocco compreso tra `begin;` e `commit;`** (il file contiene anche pre-check/esempi/verifica/rollback come commenti SQL fuori da quel blocco — non vanno eseguiti insieme, sono riferimento).
 4. Se l'esecuzione fallisce a metà, Postgres annulla automaticamente l'intera transazione (nessuno stato parziale) — correggere l'errore e rieseguire l'intero blocco `begin;`...`commit;` da capo.
 
 ## 2. Verificare migration_07
@@ -46,10 +91,47 @@ delete from public.feature_flag_overrides where flag_name = 'TRAMA_ONE_ENABLED' 
 
 ## 3. Applicare migration_08 (Beta Cohort Memberships)
 
-1. Stesso SQL Editor, stesso ambiente.
+### 3.0 Pre-check (obbligatorio, prima di aprire lo SQL Editor)
+
+Eseguire, in sola lettura, le 6 query della sezione `PRE-CHECK — NON ESEGUITO AUTOMATICAMENTE` presente nel file `supabase/migration_08_beta_cohort_memberships.sql`. Riepilogo:
+
+| # | Verifica | Risultato atteso su ambiente pulito |
+|---|---|---|
+| 1 | `public.profiles` esiste | 1 riga |
+| 2 | `public.is_platform_admin()` esiste, security definer, stable, nessun parametro, ritorna boolean | 1 riga con quelle proprietà |
+| 3 | `beta_cohort_memberships` non esiste già | 0 righe |
+| 4 | Constraint `uq_beta_cohort_membership` non esiste già | 0 righe |
+| 5 | `set_beta_cohort_memberships_updated_at()` non esiste già | 0 righe |
+| 6 | Nessuna policy residua su `beta_cohort_memberships` | 0 righe |
+
+### Condizioni STOP
+
+Stesse condizioni STOP del punto 1 (dipendenze mancanti, righe inattese non spiegate, ambiente non confermato, hash non confermato).
+
+### Condizioni GO
+
+Stesse condizioni GO del punto 1, riferite a questo file.
+
+### 3.1 Conferma dell'ambiente Supabase
+
+Stessa verifica del punto 1.1 — riconfermare il progetto selezionato anche se si applica migration_08 nella stessa sessione di migration_07 (nessuna assunzione di continuità tra i due passi).
+
+### 3.2 Conferma dell'hash del file da eseguire
+
+```
+sha256sum supabase/migration_08_beta_cohort_memberships.sql
+```
+
+Hash atteso: `9a7b1e9f45f859eeadb3fb62d4d8e2bec614049715a2d99468f86a7a25a68c6d`
+
+Se l'hash calcolato non coincide, STOP.
+
+### 3.3 Applicazione
+
+1. Stesso SQL Editor, ambiente confermato al punto 3.1.
 2. Aprire `supabase/migration_08_beta_cohort_memberships.sql`.
 3. Copiare ed eseguire **solo il blocco compreso tra `begin;` e `commit;`**.
-4. Indipendente da migration_07 (nessuna dipendenza reciproca tra le due tabelle, solo da `public.profiles`) — può essere applicata prima, dopo, o in una sessione separata.
+4. Indipendente da migration_07 (nessuna dipendenza reciproca tra le due tabelle, solo da `public.profiles` e `public.is_platform_admin()`) — può essere applicata prima, dopo, o in una sessione separata.
 
 ## 4. Verificare migration_08
 

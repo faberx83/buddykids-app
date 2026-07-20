@@ -18,8 +18,12 @@
 -- in schema.sql, decisione di eventuale fold-in rimandata a Fabrizio. Questo
 -- file NON modifica schema.sql.
 --
--- Dipendenze: tabella public.profiles già presente in schema.sql.
--- Compatibilità Legacy/Next Gen: totale, nessuna tabella/colonna esistente toccata.
+-- Dipendenze: tabella public.profiles e funzione public.is_platform_admin()
+-- (security definer, stable, nessun parametro), entrambe già presenti in
+-- schema.sql.
+-- Compatibilità Legacy/Next Gen: totale, nessuna tabella/colonna esistente
+-- toccata (public.is_platform_admin() viene solo chiamata in sola lettura,
+-- mai ridefinita).
 --
 -- Transazionalità: tutte le istruzioni DDL sotto (CREATE TABLE, COMMENT,
 -- CREATE FUNCTION, CREATE TRIGGER, ALTER TABLE ENABLE RLS, CREATE POLICY)
@@ -69,26 +73,34 @@ alter table public.beta_cohort_memberships enable row level security;
 -- Nessuna policy per l'utente proprietario, di proposito: la lettura della
 -- propria appartenenza a una coorte non deve mai passare da una query
 -- diretta client-side, solo dal resolver server-only.
+--
+-- Reuse-first (RLS Reuse Remediation): le 4 policy sotto usano l'helper
+-- public.is_platform_admin() già definito in schema.sql (security definer,
+-- stable, nessun parametro) e già usato con lo stesso identico significato
+-- in migration_04/05/06, invece di duplicare inline
+-- "exists (select 1 from public.profiles where profiles.id = auth.uid()
+-- and profiles.role = 'platform_admin')". Stessa verifica di equivalenza
+-- semantica documentata in migration_07_feature_flags_foundation.sql.
 drop policy if exists beta_cohort_memberships_select_admin on public.beta_cohort_memberships;
 create policy beta_cohort_memberships_select_admin
   on public.beta_cohort_memberships for select
-  using (exists (select 1 from public.profiles where profiles.id = auth.uid() and profiles.role = 'platform_admin'));
+  using (public.is_platform_admin());
 
 drop policy if exists beta_cohort_memberships_insert_admin on public.beta_cohort_memberships;
 create policy beta_cohort_memberships_insert_admin
   on public.beta_cohort_memberships for insert
-  with check (exists (select 1 from public.profiles where profiles.id = auth.uid() and profiles.role = 'platform_admin'));
+  with check (public.is_platform_admin());
 
 drop policy if exists beta_cohort_memberships_update_admin on public.beta_cohort_memberships;
 create policy beta_cohort_memberships_update_admin
   on public.beta_cohort_memberships for update
-  using (exists (select 1 from public.profiles where profiles.id = auth.uid() and profiles.role = 'platform_admin'))
-  with check (exists (select 1 from public.profiles where profiles.id = auth.uid() and profiles.role = 'platform_admin'));
+  using (public.is_platform_admin())
+  with check (public.is_platform_admin());
 
 drop policy if exists beta_cohort_memberships_delete_admin on public.beta_cohort_memberships;
 create policy beta_cohort_memberships_delete_admin
   on public.beta_cohort_memberships for delete
-  using (exists (select 1 from public.profiles where profiles.id = auth.uid() and profiles.role = 'platform_admin'));
+  using (public.is_platform_admin());
 
 commit;
 
@@ -98,6 +110,58 @@ commit;
 -- parte della migrazione automatica. Eseguiti a parte, manualmente, quando
 -- serve — mai insieme al blocco DDL.
 -- ════════════════════════════════════════════════════════════════
+
+-- ════════════════════════════════════════════════════════════════
+-- PRE-CHECK — NON ESEGUITO AUTOMATICAMENTE
+-- Da eseguire manualmente, una query alla volta, PRIMA di applicare il
+-- blocco begin;/commit; sopra. Solo lettura, nessuna di queste query
+-- modifica alcunché. Se una riga "eventuale esistenza" restituisce righe
+-- inattese, FERMARSI (vedi condizioni STOP in
+-- docs/trama-one/analysis/SPRINT_0_ACTIVATION_RUNBOOK.md) e non procedere
+-- senza aver capito perché l'oggetto esiste già.
+-- ════════════════════════════════════════════════════════════════
+
+-- 1. Esistenza di public.profiles (dipendenza obbligatoria):
+-- select table_name from information_schema.tables
+--   where table_schema = 'public' and table_name = 'profiles';
+-- -- atteso: 1 riga. Se 0 righe: schema.sql non è stato applicato, STOP.
+
+-- 2. Esistenza e proprietà di public.is_platform_admin() (usata dalle 4
+--    policy sotto invece di duplicare il controllo inline):
+-- select p.proname, p.prosecdef as security_definer, p.provolatile,
+--        pg_get_function_result(p.oid) as return_type,
+--        pg_get_function_arguments(p.oid) as arguments
+-- from pg_proc p
+-- join pg_namespace n on n.oid = p.pronamespace
+-- where n.nspname = 'public' and p.proname = 'is_platform_admin';
+-- -- atteso: 1 riga, security_definer = true, provolatile = 's' (stable),
+-- -- return_type = boolean, arguments = '' (nessun parametro).
+-- -- Se 0 righe: l'helper non esiste nell'ambiente target, STOP (le policy
+-- -- sotto falliscono in creazione senza questa funzione).
+
+-- 3. Eventuale esistenza della tabella beta_cohort_memberships:
+-- select table_name from information_schema.tables
+--   where table_schema = 'public' and table_name = 'beta_cohort_memberships';
+-- -- atteso su un ambiente pulito: 0 righe. Se 1 riga: la tabella esiste
+-- -- già (applicazione precedente parziale o manuale) — verificarne la
+-- -- definizione prima di procedere, il "create table if not exists" non
+-- -- la ricrea né la altera.
+
+-- 4. Eventuale esistenza del constraint univoco:
+-- select conname from pg_constraint
+--   where conrelid = 'public.beta_cohort_memberships'::regclass and conname = 'uq_beta_cohort_membership';
+-- -- atteso su un ambiente pulito: 0 righe (fallisce comunque se la tabella
+-- -- non esiste ancora — eseguire solo dopo aver confermato il punto 3).
+
+-- 5. Eventuale esistenza della funzione trigger:
+-- select proname from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+--   where n.nspname = 'public' and p.proname = 'set_beta_cohort_memberships_updated_at';
+-- -- atteso su un ambiente pulito: 0 righe.
+
+-- 6. Eventuale esistenza delle policy:
+-- select policyname from pg_policies
+--   where schemaname = 'public' and tablename = 'beta_cohort_memberships';
+-- -- atteso su un ambiente pulito: 0 righe.
 
 -- ESEMPIO D'USO per assegnare un utente di test alla coorte beta pilota
 -- (da eseguire manualmente, sostituendo l'UUID reale) — per la procedura

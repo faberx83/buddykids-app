@@ -28,10 +28,13 @@
 -- futuro è una decisione che spetta a Fabrizio. Vedi
 -- docs/trama-one/analysis/SPRINT_0_TECH_NOTES.md, sezione "Bootstrap schema".
 --
--- Dipendenze: tabella public.profiles (per created_by/updated_by) già
--- presente in schema.sql.
+-- Dipendenze: tabella public.profiles (per created_by/updated_by e per le
+-- policy) e funzione public.is_platform_admin() (security definer, stable,
+-- nessun parametro), entrambe già presenti in schema.sql.
 -- Compatibilità Legacy/Next Gen: totale. Nessuna tabella, colonna, vista o
--- policy esistente viene letta, modificata o referenziata da questo file.
+-- policy esistente viene letta, modificata o referenziata da questo file
+-- (public.is_platform_admin() viene solo chiamata in sola lettura, mai
+-- ridefinita).
 --
 -- Transazionalità: tutte le istruzioni DDL sotto (CREATE TABLE, CREATE
 -- INDEX, CREATE FUNCTION, CREATE TRIGGER, ALTER TABLE ENABLE RLS, CREATE
@@ -110,26 +113,37 @@ create trigger trg_feature_flag_overrides_updated_at
 
 alter table public.feature_flag_overrides enable row level security;
 
+-- Reuse-first (RLS Reuse Remediation): le 4 policy sotto usano l'helper
+-- public.is_platform_admin() già definito in schema.sql (security definer,
+-- stable, nessun parametro) e già usato con lo stesso identico significato
+-- in migration_04/05/06 — invece di duplicare inline
+-- "exists (select 1 from public.profiles where profiles.id = auth.uid()
+-- and profiles.role = 'platform_admin')". Verificata semantica equivalente
+-- prima della sostituzione: is_platform_admin() ritorna
+-- current_role() = 'platform_admin', e current_role() è
+-- "select role from public.profiles where id = auth.uid()" — stesso esatto
+-- comportamento (incluso il caso "nessun profilo": NULL = 'platform_admin'
+-- è NULL, quindi falsy, equivalente a EXISTS che ritorna false).
 drop policy if exists feature_flag_overrides_select_admin on public.feature_flag_overrides;
 create policy feature_flag_overrides_select_admin
   on public.feature_flag_overrides for select
-  using (exists (select 1 from public.profiles where profiles.id = auth.uid() and profiles.role = 'platform_admin'));
+  using (public.is_platform_admin());
 
 drop policy if exists feature_flag_overrides_insert_admin on public.feature_flag_overrides;
 create policy feature_flag_overrides_insert_admin
   on public.feature_flag_overrides for insert
-  with check (exists (select 1 from public.profiles where profiles.id = auth.uid() and profiles.role = 'platform_admin'));
+  with check (public.is_platform_admin());
 
 drop policy if exists feature_flag_overrides_update_admin on public.feature_flag_overrides;
 create policy feature_flag_overrides_update_admin
   on public.feature_flag_overrides for update
-  using (exists (select 1 from public.profiles where profiles.id = auth.uid() and profiles.role = 'platform_admin'))
-  with check (exists (select 1 from public.profiles where profiles.id = auth.uid() and profiles.role = 'platform_admin'));
+  using (public.is_platform_admin())
+  with check (public.is_platform_admin());
 
 drop policy if exists feature_flag_overrides_delete_admin on public.feature_flag_overrides;
 create policy feature_flag_overrides_delete_admin
   on public.feature_flag_overrides for delete
-  using (exists (select 1 from public.profiles where profiles.id = auth.uid() and profiles.role = 'platform_admin'));
+  using (public.is_platform_admin());
 
 commit;
 
@@ -140,6 +154,57 @@ commit;
 -- eseguito insieme al blocco DDL — sono eseguiti a parte, manualmente,
 -- quando serve.
 -- ════════════════════════════════════════════════════════════════
+
+-- ════════════════════════════════════════════════════════════════
+-- PRE-CHECK — NON ESEGUITO AUTOMATICAMENTE
+-- Da eseguire manualmente, una query alla volta, PRIMA di applicare il
+-- blocco begin;/commit; sopra. Solo lettura, nessuna di queste query
+-- modifica alcunché. Se una riga "eventuale esistenza" restituisce righe
+-- inattese, FERMARSI (vedi condizioni STOP in
+-- docs/trama-one/analysis/SPRINT_0_ACTIVATION_RUNBOOK.md) e non procedere
+-- senza aver capito perché l'oggetto esiste già.
+-- ════════════════════════════════════════════════════════════════
+
+-- 1. Esistenza di public.profiles (dipendenza obbligatoria):
+-- select table_name from information_schema.tables
+--   where table_schema = 'public' and table_name = 'profiles';
+-- -- atteso: 1 riga. Se 0 righe: schema.sql non è stato applicato, STOP.
+
+-- 2. Esistenza e proprietà di public.is_platform_admin() (usata dalle 4
+--    policy sotto invece di duplicare il controllo inline):
+-- select p.proname, p.prosecdef as security_definer, p.provolatile,
+--        pg_get_function_result(p.oid) as return_type,
+--        pg_get_function_arguments(p.oid) as arguments
+-- from pg_proc p
+-- join pg_namespace n on n.oid = p.pronamespace
+-- where n.nspname = 'public' and p.proname = 'is_platform_admin';
+-- -- atteso: 1 riga, security_definer = true, provolatile = 's' (stable),
+-- -- return_type = boolean, arguments = '' (nessun parametro).
+-- -- Se 0 righe: l'helper non esiste nell'ambiente target, STOP (le policy
+-- -- sotto falliscono in creazione senza questa funzione).
+
+-- 3. Eventuale esistenza della tabella feature_flag_overrides:
+-- select table_name from information_schema.tables
+--   where table_schema = 'public' and table_name = 'feature_flag_overrides';
+-- -- atteso su un ambiente pulito: 0 righe. Se 1 riga: la tabella esiste
+-- -- già (applicazione precedente parziale o manuale) — verificarne la
+-- -- definizione prima di procedere, il "create table if not exists" non
+-- -- la ricrea né la altera.
+
+-- 4. Eventuale esistenza degli indici:
+-- select indexname from pg_indexes
+--   where schemaname = 'public' and tablename = 'feature_flag_overrides';
+-- -- atteso su un ambiente pulito: 0 righe (la tabella non esiste ancora).
+
+-- 5. Eventuale esistenza della funzione trigger:
+-- select proname from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+--   where n.nspname = 'public' and p.proname = 'set_feature_flag_overrides_updated_at';
+-- -- atteso su un ambiente pulito: 0 righe.
+
+-- 6. Eventuale esistenza delle policy:
+-- select policyname from pg_policies
+--   where schemaname = 'public' and tablename = 'feature_flag_overrides';
+-- -- atteso su un ambiente pulito: 0 righe.
 
 -- ────────────────────────────────────────────────────────────────
 -- Validazione "il flag esiste nel registry" — NON esprimibile come CHECK
