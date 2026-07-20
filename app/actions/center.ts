@@ -189,6 +189,11 @@ export interface ActivityUpdateInput {
   schedule: { time: string; label: string; color: string }[];
   coverImageUrl?: string | null;
   galleryUrls?: string[];
+  // TRAMA ONE Build Sprint 2 (DEC-32): opzionali per non rompere eventuali
+  // chiamanti esistenti che non li passano ancora — se assenti, la colonna
+  // non viene toccata (nessun override involontario a 'mixed'/null).
+  bookingMode?: "week_only" | "day_only" | "mixed";
+  minDaysPerBooking?: number | null;
 }
 
 export async function updateActivityAction(input: ActivityUpdateInput): Promise<{ error?: string }> {
@@ -230,6 +235,8 @@ export async function updateActivityAction(input: ActivityUpdateInput): Promise<
       schedule: input.schedule,
       ...(input.coverImageUrl !== undefined ? { cover_image_url: input.coverImageUrl } : {}),
       ...(input.galleryUrls !== undefined ? { gallery_urls: input.galleryUrls } : {}),
+      ...(input.bookingMode !== undefined ? { booking_mode: input.bookingMode } : {}),
+      ...(input.minDaysPerBooking !== undefined ? { min_days_per_booking: input.minDaysPerBooking } : {}),
     })
     .eq("id", input.activityDbId);
 

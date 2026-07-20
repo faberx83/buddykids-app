@@ -28,6 +28,24 @@ const mealLabels: Record<MealOption, string> = {
   none: "— Non fornito",
 };
 
+// TRAMA ONE Build Sprint 2 (DEC-32): le 3 modalità ammesse — "mixed" resta il
+// default e corrisponde al comportamento di ogni attività prima di questo
+// sprint (prenotabile sia a settimana che a Giorni spot).
+const bookingModeLabels: Record<"week_only" | "day_only" | "mixed", { label: string; hint: string }> = {
+  mixed: {
+    label: "Settimana e Giorni spot",
+    hint: "Il genitore può prenotare sia intere settimane che singoli Giorni spot (comportamento attuale).",
+  },
+  week_only: {
+    label: "Solo a settimana",
+    hint: "Il genitore può prenotare solo settimane intere, non singoli giorni.",
+  },
+  day_only: {
+    label: "Solo Giorni spot",
+    hint: "Il genitore può prenotare solo singoli giorni dal calendario, non settimane intere.",
+  },
+};
+
 // Diete/intolleranze che il servizio pranzo dichiara di saper gestire — è una
 // capacità del servizio (dichiarata dal gestore), non un dato sanitario di un
 // bambino specifico: quello resta fuori scope (vedi piano Privacy/Compliance).
@@ -138,6 +156,8 @@ export default function ActivityEditForm({
     schedule: activity.schedule,
     coverImageUrl: activity.coverImageUrl ?? null,
     galleryUrls: activity.galleryUrls ?? [],
+    bookingMode: (activity.bookingMode ?? "mixed") as "week_only" | "day_only" | "mixed",
+    minDaysPerBooking: activity.minDaysPerBooking ?? null,
   });
   const [saved, setSaved] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -282,6 +302,8 @@ export default function ActivityEditForm({
             schedule: form.schedule,
             coverImageUrl: form.coverImageUrl,
             galleryUrls: form.galleryUrls,
+            bookingMode: form.bookingMode,
+            minDaysPerBooking: form.minDaysPerBooking,
           });
           setSaving(false);
           if (result.error) {
@@ -368,6 +390,50 @@ export default function ActivityEditForm({
               className="w-full rounded-md border border-[#E8EBF0] bg-bg px-3 py-2 text-sm outline-none focus:border-sky"
             />
           </Field>
+        </div>
+
+        <div className="space-y-4 rounded-lg border border-[#E8EBF0] bg-white p-5">
+          <div className="text-sm font-bold text-ink">Modalità di prenotazione</div>
+          <p className="text-xs text-ink-2">
+            Scegli come i genitori possono prenotare questa attività. Il calendario
+            disponibilità (Giorni spot) resta configurabile da qui sotto — questa scelta
+            determina solo quali modalità sono ammesse in ricerca/prenotazione.
+          </p>
+          <div className="flex flex-wrap gap-2">
+            {(Object.entries(bookingModeLabels) as [keyof typeof bookingModeLabels, { label: string; hint: string }][]).map(
+              ([value, { label }]) => {
+                const active = form.bookingMode === value;
+                return (
+                  <button
+                    key={value}
+                    type="button"
+                    onClick={() => update("bookingMode", value)}
+                    className={`rounded-full border px-3 py-1.5 text-xs font-semibold transition-colors ${
+                      active ? "border-sky bg-sky-light text-sky" : "border-[#E8EBF0] bg-bg text-ink-2"
+                    }`}
+                  >
+                    {label}
+                  </button>
+                );
+              }
+            )}
+          </div>
+          <p className="text-[11px] text-ink-3">{bookingModeLabels[form.bookingMode].hint}</p>
+
+          {form.bookingMode !== "week_only" && (
+            <Field label="Minimo giorni per prenotazione a Giorni spot (facoltativo)">
+              <input
+                type="number"
+                min={0}
+                placeholder="Nessun minimo"
+                value={form.minDaysPerBooking ?? ""}
+                onChange={(e) =>
+                  update("minDaysPerBooking", e.target.value === "" ? null : Number(e.target.value))
+                }
+                className="w-full rounded-md border border-[#E8EBF0] bg-bg px-3 py-2 text-sm outline-none focus:border-sky"
+              />
+            </Field>
+          )}
         </div>
 
         <div className="space-y-4 rounded-lg border border-[#E8EBF0] bg-white p-5">

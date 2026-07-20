@@ -173,4 +173,33 @@ test.describe("Gestore - Attivita", () => {
     // security policy" ma il badge "In verifica" come per il testo semplice.
   });
 
+  // TRAMA ONE Build Sprint 2 (DEC-32) — modalità di prenotazione
+  // (booking_mode) e minimo giorni (min_days_per_booking), aggiunte in modo
+  // additivo su public.activities via migration_11 (non applicata). Il test
+  // seleziona "Solo Giorni spot" (nasconde il campo minimo giorni è FALSO:
+  // il campo resta visibile per week_only escluso soltanto), imposta un
+  // minimo, salva, poi ripristina "Settimana e Giorni spot" (default 'mixed')
+  // per non alterare lo stato dell'attività di test per altri run.
+  test("TC-414 - il gestore può impostare la modalità di prenotazione e il minimo giorni", async ({ page }) => {
+    test.skip(!isRealDeployment, "Richiede un deploy con Supabase configurato, migration_11 applicata e l'account Gestore di test.");
+    await loginAs(page, "center_admin");
+    await page.goto("/center/activities");
+
+    const card = page.locator("div.rounded-lg.border").filter({ hasText: "[TEST] Attività BuddyKids" });
+    await card.getByRole("link", { name: "Modifica scheda" }).click();
+    await expect(page).toHaveURL(/\/center\/activities\/[^/]+$/);
+
+    await expect(page.getByText("Modalità di prenotazione")).toBeVisible();
+    await page.getByRole("button", { name: "Solo Giorni spot" }).click();
+    await expect(page.getByText("Il genitore può prenotare solo singoli giorni")).toBeVisible();
+
+    await page.getByPlaceholder("Nessun minimo").fill("2");
+    await page.getByRole("button", { name: /Salva modifiche/ }).click();
+    await expect(page.getByText(/Salvato su Supabase|Salvato \(demo\)/)).toBeVisible();
+
+    // Ripristino il default 'mixed' per non alterare i run successivi.
+    await page.getByRole("button", { name: "Settimana e Giorni spot" }).click();
+    await page.getByRole("button", { name: /Salva modifiche/ }).click();
+  });
+
 });
