@@ -79,6 +79,16 @@ export interface Activity {
   schedule: { time: string; label: string; color: string }[];
   weeksAvailable: string;
   shuttlePrice: number;
+  // TRAMA ONE Build Sprint 2 (DEC-32): modalità di prenotazione ammesse per
+  // questa attività — "week_only" (solo a settimana, activity_weeks),
+  // "day_only" (solo Giorni spot, activity_days), "mixed" (entrambe, il
+  // comportamento implicito di ogni attività prima di questo sprint).
+  // Default "mixed" per non alterare nulla per le attività esistenti.
+  bookingMode?: "week_only" | "day_only" | "mixed";
+  // TRAMA ONE Build Sprint 2 (DEC-32): minimo di giorni consecutivi richiesti
+  // per una prenotazione a Giorni spot (nessun minimo se assente/undefined —
+  // comportamento AS-IS invariato).
+  minDaysPerBooking?: number;
   reviews: { initials: string; name: string; text: string; color: string }[];
   preService?: ServiceOption; // ingresso anticipato
   postService?: ServiceOption; // uscita posticipata

@@ -14,7 +14,7 @@ const SELECT_COLUMNS = `
   price_per_week, shuttle_price, description, schedule, meal_option, dietary_options,
   pre_service, post_service, rating, reviews_count, img_gradient, days, hours,
   distance_km, spots_left, show_exact_spots, weeks_available, pills, badges, center_id,
-  cover_image_url, gallery_urls,
+  cover_image_url, gallery_urls, booking_mode, min_days_per_booking,
   centers ( slug, name, emoji, gradient, has_bar, accessible, accessible_note, multiweek_discount_percent, family_discount_tiers, group_discount_tiers ),
   activity_tags ( tag_id, tags ( label, emoji, bg_color ) )
 `;
@@ -64,6 +64,8 @@ interface RawActivityRow {
   center_id: string;
   cover_image_url: string | null;
   gallery_urls: string[] | null;
+  booking_mode: string | null;
+  min_days_per_booking: number | null;
   centers: RawCenterRef | RawCenterRef[] | null;
   activity_tags:
     | {
@@ -142,6 +144,12 @@ export function mapRow(row: RawActivityRow): Activity {
     centerGroupDiscountTiers: center?.group_discount_tiers ?? undefined,
     coverImageUrl: row.cover_image_url ?? undefined,
     galleryUrls: row.gallery_urls ?? undefined,
+    // TRAMA ONE Build Sprint 2 (DEC-32): "mixed" è il default di schema, ma
+    // lo riapplichiamo qui esplicitamente anche per le righe legacy/seed che
+    // non hanno ancora la colonna popolata (null) — nessun comportamento
+    // nuovo, solo esplicitazione dello stato AS-IS implicito.
+    bookingMode: (row.booking_mode as Activity["bookingMode"]) ?? "mixed",
+    minDaysPerBooking: row.min_days_per_booking ?? undefined,
   };
 }
 
