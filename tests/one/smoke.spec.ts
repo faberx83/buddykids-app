@@ -36,7 +36,15 @@ test.describe("TRAMA ONE — /one smoke cross-portale", () => {
   test("TC-N303 - Partner: /one con flag disattivato (default) fa fallback a '/center' senza loop", async ({ page }) => {
     test.skip(!isRealDeployment, "Richiede un deploy con Supabase configurato e l'account gestore di test.");
     await loginAs(page, "center_admin");
-    await page.goto("/one");
+    // Corretto in fase di certificazione post-deploy (vedi Decision Log):
+    // "/one" sul dominio principale di test risolve sempre al layout
+    // Parent (app/one/layout.tsx) — il routing verso app/center/one/* è
+    // basato sull'HOST (buddykids-partner.vercel.app via proxy.ts), non sul
+    // ruolo dell'utente loggato, e i test smoke girano tutti contro un
+    // singolo TEST_BASE_URL. Si naviga quindi direttamente al path fisico
+    // "/center/one" (stesso layout che proxy.ts raggiungerebbe da host
+    // partner), che è indipendente dall'host e verifica lo stesso fallback.
+    await page.goto("/center/one");
     await expect(page).toHaveURL(/\/center\/?$/);
     await expect(page.locator("body")).not.toContainText("Application error");
   });
@@ -44,7 +52,10 @@ test.describe("TRAMA ONE — /one smoke cross-portale", () => {
   test("TC-N304 - Admin: /one con flag disattivato (default) fa fallback a '/admin' senza loop", async ({ page }) => {
     test.skip(!isRealDeployment, "Richiede un deploy con Supabase configurato e l'account admin di test.");
     await loginAs(page, "platform_admin");
-    await page.goto("/one");
+    // Stessa correzione di TC-N303: si naviga al path fisico "/admin/one"
+    // invece di "/one", per lo stesso motivo (routing host-based via
+    // proxy.ts non esercitato da un singolo TEST_BASE_URL).
+    await page.goto("/admin/one");
     await expect(page).toHaveURL(/\/admin\/?$/);
     await expect(page.locator("body")).not.toContainText("Application error");
   });
