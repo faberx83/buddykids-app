@@ -45,6 +45,21 @@ function isExpired(expiresAt: string | null, now: Date): boolean {
   return parsed <= now.getTime();
 }
 
+// Normalizzazione deterministica per gli scope environment/role/tenant/cohort
+// — coerente con l'unique index parziale di
+// supabase/migration_07_feature_flags_foundation.sql
+// (idx_feature_flag_overrides_unique_scoped, lower(trim(scope_value))): due
+// valori che differiscono solo per maiuscole/minuscole o spazi ai bordi
+// vengono trattati come lo stesso scope sia in fase di unicità (DB) sia in
+// fase di confronto (qui). MAI applicata allo scope "user": un userId è un
+// UUID e non va alterato semanticamente (Fabrizio, Pre-Migration Hardening
+// punto 5) — per "user" si usa sempre uguaglianza esatta, vedi
+// scopeMatchesContext sotto.
+function normalizeScopeValue(value: string | null | undefined): string | null {
+  if (value == null) return null;
+  return value.trim().toLowerCase();
+}
+
 function scopeMatchesContext(
   scopeType: FeatureFlagScope,
   scopeValue: string | null,
@@ -54,15 +69,19 @@ function scopeMatchesContext(
     case "global":
       return true;
     case "environment":
-      return scopeValue != null && scopeValue === context.environment;
+      return scopeValue != null && normalizeScopeValue(scopeValue) === normalizeScopeValue(context.environment);
     case "user":
+      // Confronto ESATTO, mai normalizzato: scopeValue è un UUID.
       return scopeValue != null && scopeValue === context.userId;
     case "role":
-      return scopeValue != null && scopeValue === context.role;
+      return scopeValue != null && normalizeScopeValue(scopeValue) === normalizeScopeValue(context.role);
     case "tenant":
-      return scopeValue != null && scopeValue === context.tenant;
+      return scopeValue != null && normalizeScopeValue(scopeValue) === normalizeScopeValue(context.tenant);
     case "cohort":
-      return scopeValue != null && (context.cohortKeys ?? []).includes(scopeValue);
+      return (
+        scopeValue != null &&
+        (context.cohortKeys ?? []).some((key) => normalizeScopeValue(key) === normalizeScopeValue(scopeValue))
+      );
     default:
       return false;
   }
