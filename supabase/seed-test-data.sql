@@ -157,6 +157,61 @@ where name = '[TEST] Bimbo Prova'
 
 
 -- ─────────────────────────────────────────────
+-- STEP 7 — TRAMA ONE Build Sprint 3: "Giorni spot" per l'attività di test —
+-- richiede migration_11 (booking_mode/min_days_per_booking) e migration_12
+-- (booking_days) già applicate. Serve dati reali e deterministici per
+-- tests/genitori/giorni-spot.spec.ts, che altrimenti si limiterebbe a uno
+-- skip esplicito (nessuna attività reale con Giorni spot configurata).
+-- Idempotente: non duplica righe se rilanciato.
+-- ─────────────────────────────────────────────
+update public.activities
+set booking_mode = 'mixed'
+where slug = 'attivita-test-buddykids';
+
+do $$
+declare
+  v_activity_id uuid;
+  v_year int := extract(year from current_date);
+  v_june1 date := make_date(v_year, 6, 1);
+  v_dow int := extract(dow from v_june1);
+  v_days_to_monday int := (8 - v_dow) % 7;
+  v_first_monday date := v_june1 + v_days_to_monday; -- stesso lunedì di STEP 3
+  i int;
+begin
+  select id into v_activity_id
+  from public.activities
+  where slug = 'attivita-test-buddykids';
+
+  if v_activity_id is null then
+    raise notice 'Attività di test non trovata — esegui prima lo STEP 2.';
+  elsif exists (select 1 from public.activity_days where activity_id = v_activity_id) then
+    raise notice 'Giorni spot già presenti per l''attività di test — nessuna azione.';
+  else
+    -- 5 giorni feriali della prima settimana di test (stessa "Settimana 1" di
+    -- STEP 3) — un giorno scontato (mercoledì, -15%) per esercitare anche
+    -- quel ramo del calcolo prezzo (lib/day-pricing.ts).
+    for i in 0..4 loop
+      insert into public.activity_days (
+        activity_id, date, is_open, capacity, spots_left,
+        single_day_bookable, discount_percent, last_minute,
+        special_label, special_emoji
+      )
+      values (
+        v_activity_id,
+        v_first_monday + i,
+        true, 10, 10,
+        true,
+        case when i = 2 then 15.0 else null end,
+        false,
+        case when i = 2 then '[TEST] Giornata scontata' else null end,
+        case when i = 2 then '🧪' else null end
+      );
+    end loop;
+  end if;
+end $$;
+
+
+-- ─────────────────────────────────────────────
 -- VERIFICA — esegui questa select per controllare che tutto sia a posto:
 -- ─────────────────────────────────────────────
 -- select email, role, center_id from public.profiles
@@ -166,3 +221,7 @@ where name = '[TEST] Bimbo Prova'
 -- select label, start_date, end_date, spots_left from public.activity_weeks
 --   where activity_id = (select id from public.activities where slug = 'attivita-test-buddykids')
 --   order by start_date;
+-- select booking_mode, min_days_per_booking from public.activities where slug = 'attivita-test-buddykids';
+-- select date, is_open, spots_left, discount_percent, special_label from public.activity_days
+--   where activity_id = (select id from public.activities where slug = 'attivita-test-buddykids')
+--   order by date;
