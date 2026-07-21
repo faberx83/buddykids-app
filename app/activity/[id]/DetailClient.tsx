@@ -47,6 +47,14 @@ export default function DetailClient({
   // avanti anche da qui, cosi in Prenotazione risulta già spuntato quello
   // giusto invece del primo della lista.
   const kidParam = searchParams.get("kid");
+  // TRAMA ONE Build Sprint 3 — "context object" leggero: source/cid arrivano
+  // dalla card di Ricerca (Legacy o NextGen, vedi ActivityCardHorizontal.tsx
+  // / ActivityCard.tsx) e proseguono verso la Prenotazione cosi il log a
+  // valle puo essere correlato allo stesso percorso ricerca→dettaglio→
+  // richiesta (vedi lib/telemetry/correlation.ts). Facoltativi: se assenti,
+  // comportamento invariato.
+  const sourceParam = searchParams.get("source");
+  const cidParam = searchParams.get("cid");
   // TRAMA ONE Build Sprint 3 — "Giorni spot": selezione giorni singoli,
   // attiva solo quando ci sono giorni configurati dal Gestore e l'attività
   // non è a sola settimana intera. Ordinati per data, solo quelli aperti.
@@ -75,6 +83,8 @@ export default function DetailClient({
     if (weekParam) params.set("week", weekParam);
     if (kidParam) params.set("kid", kidParam);
     if (selectedDayDates.length > 0) params.set("days", [...selectedDayDates].sort().join(","));
+    if (sourceParam) params.set("source", sourceParam);
+    if (cidParam) params.set("cid", cidParam);
     const query = params.toString();
     return query ? `/booking/${activity.id}?${query}` : `/booking/${activity.id}`;
   })();

@@ -6,6 +6,8 @@ export default function ActivityCardHorizontal({
   activity,
   week,
   kid,
+  source,
+  correlationId,
 }: {
   activity: Activity;
   // Settimana (startDate ISO) selezionata in Cerca da "Riempi" nel Planner —
@@ -16,10 +18,20 @@ export default function ActivityCardHorizontal({
   // figli), portiamo avanti anche quello: cosi in Prenotazione risulta già
   // spuntato il bambino giusto invece del primo della lista.
   kid?: string | null;
+  // TRAMA ONE Build Sprint 3 — "context object" leggero (source/
+  // correlationId): da dove arriva il click (es. "search") e un id univoco
+  // per correlare i log dell'intero percorso ricerca→dettaglio→richiesta
+  // (vedi lib/telemetry/correlation.ts). Facoltativi: se assenti, il link
+  // resta esattamente quello di prima (nessun impatto sui punti che non li
+  // passano ancora).
+  source?: string;
+  correlationId?: string;
 }) {
   const params = new URLSearchParams();
   if (week) params.set("week", week);
   if (kid) params.set("kid", kid);
+  if (source) params.set("source", source);
+  if (correlationId) params.set("cid", correlationId);
   const query = params.toString();
 
   return (

@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
 import { getSeasonWeekRanges, overlaps } from "@/lib/season-weeks";
 import { getSeasonYear } from "@/lib/data/season-year";
+import { logTelemetryEvent } from "@/lib/telemetry/correlation";
 
 export interface CreateBookingInput {
   activityDbId: string;
@@ -33,6 +34,14 @@ export interface CreateBookingInput {
   // (alcune famiglie vogliono più attività nella stessa settimana, es.
   // mattina/pomeriggio — per questo non è un blocco rigido).
   confirmOverlap?: boolean;
+  // TRAMA ONE Build Sprint 3 — "context object" leggero: arrivano dalla card
+  // di Ricerca (Legacy o NextGen) attraverso dettaglio→prenotazione (vedi
+  // ActivityCardHorizontal.tsx/ActivityCard.tsx, DetailClient.tsx,
+  // BookingClient.tsx). Usati SOLO per un log server-side minimo (vedi sotto,
+  // logTelemetryEvent) — mai persistiti sulla riga booking stessa, mai dati
+  // personali (lib/telemetry/correlation.ts::TELEMETRY_FORBIDDEN_FIELDS).
+  source?: string;
+  correlationId?: string;
 }
 
 export interface BookingWeekConflict {
@@ -234,6 +243,19 @@ export async function createBookingAction(
     // automatico su prenotazioni successive di questo genitore.
     await supabase.rpc("redeem_invite_discount", { p_invite_id: input.inviteId });
   }
+
+  // TRAMA ONE Build Sprint 3 — "context object" leggero: log minimo,
+  // server-side, correlato al percorso ricerca→dettaglio→prenotazione se
+  // source/correlationId sono arrivati (facoltativi, nessun impatto se
+  // assenti). Nessun dato personale, nessuna persistenza (vedi
+  // lib/telemetry/correlation.ts).
+  logTelemetryEvent({
+    event: "booking_created",
+    correlationId: input.correlationId,
+    tenant: "family",
+    role: "parent",
+    detail: input.source ? `source=${input.source}` : null,
+  });
 
   return { bookingId };
 }

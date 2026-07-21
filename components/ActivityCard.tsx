@@ -8,15 +8,30 @@ import { pillClasses } from "@/lib/colors";
 export default function ActivityCard({
   activity,
   matchPercent,
+  source,
+  correlationId,
 }: {
   activity: Activity;
   matchPercent?: number;
+  // TRAMA ONE Build Sprint 3 — "context object" leggero (source/
+  // correlationId), stesso trattamento già applicato a
+  // ActivityCardHorizontal.tsx (card LEGACY): da dove arriva il click (es.
+  // "nextgen_search") e un id univoco per correlare i log dell'intero
+  // percorso ricerca→dettaglio→richiesta (vedi lib/telemetry/correlation.ts).
+  // Facoltativi: se assenti, il link resta quello di prima (nessun impatto
+  // sui punti che non li passano ancora).
+  source?: string;
+  correlationId?: string;
 }) {
   const [fav, setFav] = useState(false);
+  const params = new URLSearchParams();
+  if (source) params.set("source", source);
+  if (correlationId) params.set("cid", correlationId);
+  const query = params.toString();
 
   return (
     <Link
-      href={`/activity/${activity.id}`}
+      href={query ? `/activity/${activity.id}?${query}` : `/activity/${activity.id}`}
       className="mb-3 block cursor-pointer overflow-hidden rounded-lg border border-[#F0F2F5] bg-white transition-transform hover:scale-[0.985] hover:shadow-md"
     >
       <div

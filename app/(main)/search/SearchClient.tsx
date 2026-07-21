@@ -9,6 +9,7 @@ import { categories } from "@/lib/mock-data";
 import { haversineKm } from "@/lib/geo";
 import { getSeasonWeekRanges, isoDate, formatShortRange } from "@/lib/season-weeks";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
+import { generateCorrelationId } from "@/lib/telemetry/correlation";
 
 // Leaflet usa `window`, quindi la mappa va caricata solo lato client.
 const ActivityMap = dynamic(() => import("@/components/ActivityMap"), {
@@ -20,7 +21,7 @@ const ActivityMap = dynamic(() => import("@/components/ActivityMap"), {
   ),
 });
 
-type FilterPanel = "eta" | "prezzo" | "zona" | "tag" | "servizi" | "data" | null;
+type FilterPanel = "eta" | "prezzo" | "zona" | "tag" | "servizi" | "data" | "giorni" | null;
 type ViewMode = "lista" | "mappa";
 
 interface ServiceFilters {
@@ -66,6 +67,7 @@ export default function SearchClient({
   seasonYear,
   kids,
   availabilityByWeek,
+  activitiesWithDaySpots = [],
 }: {
   initialActivities: Activity[];
   // Anno "di stagione" condiviso da tutta l'app (lib/data/season-year.ts) —
@@ -84,6 +86,11 @@ export default function SearchClient({
   // di interrogare "activity_weeks", non disponibile nell'oggetto Activity
   // (che ha solo uno "spotsLeft" aggregato, non per-settimana).
   availabilityByWeek: Record<string, string[]>;
+  // TRAMA ONE Build Sprint 3 — "Giorni spot": dbId delle attività con almeno
+  // un activity_day aperto/prenotabile/con posti (lib/data/activities.ts
+  // #getActivitiesWithOpenDaySpots) — calcolato lato server con una sola
+  // query batched, stesso principio di availabilityByWeek sopra.
+  activitiesWithDaySpots?: string[];
 }) {
   const searchParams = useSearchParams();
   const latParam = searchParams.get("lat");
@@ -211,6 +218,20 @@ export default function SearchClient({
   const [zone, setZone] = useState("");
   const [services, setServices] = useState<ServiceFilters>(EMPTY_SERVICES);
   const [radiusKm, setRadiusKm] = useState(DEFAULT_RADIUS_KM);
+  // TRAMA ONE Build Sprint 3 — "Giorni spot": filtro "solo attività con
+  // Giorni spot disponibili" (non una data precisa — la selezione del
+  // giorno esatto resta nel dettaglio attività, vedi DetailClient.tsx).
+  const [onlyDaySpots, setOnlyDaySpots] = useState(false);
+  const daySpotsSet = useMemo(() => new Set(activitiesWithDaySpots), [activitiesWithDaySpots]);
+
+  // TRAMA ONE Build Sprint 3 — "context object" leggero (SPRINT_3_FEATURE_
+  // PRESERVATION_MATRIX.md): un correlationId generato una volta per questa
+  // sessione di ricerca (non per ogni card), propagato a ogni attività
+  // aperta da qui cosi il journey ricerca→dettaglio→richiesta è correlabile
+  // nei log server-side (vedi lib/telemetry/correlation.ts, già esistente da
+  // Sprint 0 — qui riusato, non duplicato). "source" identifica il punto di
+  // ingresso ("search" = Cerca Legacy).
+  const [searchCorrelationId] = useState(() => generateCorrelationId());
 
   const zoneOptions = useMemo(() => {
     // Solo vie/zone/comuni, MAI il nome del centro o dell'attività:
@@ -235,6 +256,7 @@ export default function SearchClient({
     (hasGeo ? 1 : 0) +
     (selectedWeekStart ? 1 : 0) +
     (selectedTagIds.length > 0 ? 1 : 0) +
+    (onlyDaySpots ? 1 : 0) +
     Object.values(services).filter(Boolean).length;
 
   const withDistance = useMemo(() => {
@@ -273,6 +295,7 @@ export default function SearchClient({
       if (services.attivitaExtra && a.badges.length === 0) return false;
       if (availableIdsForWeek && a.dbId && !availableIdsForWeek.has(a.dbId)) return false;
       if (selectedTagIds.length > 0 && !a.tagIds.some((id) => selectedTagIds.includes(id))) return false;
+      if (onlyDaySpots && (!a.dbId || !daySpotsSet.has(a.dbId))) return false;
       return true;
     });
   }, [
@@ -286,6 +309,8 @@ export default function SearchClient({
     selectedWeekStart,
     availabilityByWeek,
     selectedTagIds,
+    onlyDaySpots,
+    daySpotsSet,
   ]);
 
   // Se c'e' una posizione, dividiamo in "Nella tua zona" / "Fuori dalla
@@ -315,6 +340,7 @@ export default function SearchClient({
     clearGeo();
     setSelectedWeekStart(null);
     setSelectedTagIds([]);
+    setOnlyDaySpots(false);
   }
 
   const mapItems = useMemo(
@@ -336,6 +362,7 @@ export default function SearchClient({
     },
     { key: "servizi", icon: "ti-adjustments-horizontal", label: "Servizi" },
     { key: "data", icon: "ti-calendar", label: selectedWeekInfo ? `Settimana ${selectedWeekInfo.index}` : "Date" },
+    { key: "giorni", icon: "ti-calendar-time", label: "Giorni spot" },
   ];
 
   return (
@@ -399,6 +426,18 @@ export default function SearchClient({
                     onClick={(e) => {
                       e.stopPropagation();
                       setSelectedTagIds([]);
+                    }}
+                    className={`ti ti-x flex h-3.5 w-3.5 items-center justify-center rounded-full text-[10px] ${
+                      openPanel === f.key ? "bg-white/25" : "bg-ink-3/20"
+                    }`}
+                  />
+                )}
+                {f.key === "giorni" && onlyDaySpots && (
+                  <span
+                    role="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setOnlyDaySpots(false);
                     }}
                     className={`ti ti-x flex h-3.5 w-3.5 items-center justify-center rounded-full text-[10px] ${
                       openPanel === f.key ? "bg-white/25" : "bg-ink-3/20"
@@ -640,6 +679,31 @@ export default function SearchClient({
             )}
           </div>
         )}
+
+        {/* TRAMA ONE Build Sprint 3 — "Giorni spot": filtro Parent per
+            disponibilità giornaliera (SPRINT_3_FEATURE_PRESERVATION_MATRIX.md).
+            Non seleziona una data precisa (quella scelta resta nel dettaglio
+            attività, DetailClient.tsx) — qui riduce solo ai centri/attività
+            che offrono la modalità a giorni, con almeno un giorno davvero
+            prenotabile oggi. */}
+        {openPanel === "giorni" && (
+          <div className="mt-3 rounded-lg border border-[#E8EBF0] bg-bg p-3">
+            <label className="flex items-center gap-2 text-sm text-ink">
+              <input
+                type="checkbox"
+                checked={onlyDaySpots}
+                onChange={(e) => setOnlyDaySpots(e.target.checked)}
+              />
+              Solo attività con Giorni spot disponibili
+            </label>
+            <p className="mt-2 text-[11px] text-ink-3">
+              Attività prenotabili anche a singolo giorno, non solo a settimana intera — la scelta del
+              giorno esatto si fa nella scheda attività.
+              {!isSupabaseConfigured &&
+                " In questo ambiente demo il filtro non riduce i risultati (i dati di esempio non hanno Giorni spot configurati)."}
+            </p>
+          </div>
+        )}
       </div>
 
       {(requestedWeekLabel || (targetKid && selectedTagIds.length > 0)) && (
@@ -716,7 +780,14 @@ export default function SearchClient({
             Nella tua zona (entro {radiusKm} km) — {nearby.length}
           </div>
           {nearby.map(({ activity: a, distanceKm }) => (
-            <ActivityCardHorizontal key={a.id} activity={{ ...a, distanceKm }} week={weekParam} kid={kidParam} />
+            <ActivityCardHorizontal
+              key={a.id}
+              activity={{ ...a, distanceKm }}
+              week={weekParam}
+              kid={kidParam}
+              source="search"
+              correlationId={searchCorrelationId}
+            />
           ))}
           {nearby.length === 0 && (
             <p className="px-5 pb-3 text-sm text-ink-2">Nessuna attività entro {radiusKm} km.</p>
@@ -728,7 +799,14 @@ export default function SearchClient({
                 Fuori dalla tua zona — {far.length}
               </div>
               {far.map(({ activity: a, distanceKm }) => (
-                <ActivityCardHorizontal key={a.id} activity={{ ...a, distanceKm }} week={weekParam} kid={kidParam} />
+                <ActivityCardHorizontal
+              key={a.id}
+              activity={{ ...a, distanceKm }}
+              week={weekParam}
+              kid={kidParam}
+              source="search"
+              correlationId={searchCorrelationId}
+            />
               ))}
             </>
           )}
@@ -736,7 +814,14 @@ export default function SearchClient({
       ) : (
         <>
           {results.map(({ activity: a, distanceKm }) => (
-            <ActivityCardHorizontal key={a.id} activity={{ ...a, distanceKm }} week={weekParam} kid={kidParam} />
+            <ActivityCardHorizontal
+              key={a.id}
+              activity={{ ...a, distanceKm }}
+              week={weekParam}
+              kid={kidParam}
+              source="search"
+              correlationId={searchCorrelationId}
+            />
           ))}
           {results.length === 0 && (
             <p className="px-5 py-8 text-center text-sm text-ink-2">

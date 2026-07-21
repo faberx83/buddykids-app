@@ -12,6 +12,7 @@ import ActivityCard from "@/components/ActivityCard";
 import PageHeader from "@/components/PageHeader";
 import NextgenBadge from "@/components/nextgen/NextgenBadge";
 import DecorativeIntroCard from "@/components/nextgen/DecorativeIntroCard";
+import { generateCorrelationId } from "@/lib/telemetry/correlation";
 
 // Leaflet usa `window`, quindi la mappa va caricata solo lato client — stesso
 // pattern già usato in LEGACY (app/(main)/search/SearchClient.tsx) e nel
@@ -40,7 +41,7 @@ const ActivityMap = dynamic(() => import("@/components/ActivityMap"), {
 // continua a occuparsi solo di punteggio/ordinamento/motivazioni sui
 // risultati già filtrati. Il motore stesso (lib/nextgen/smart-search.ts) non
 // viene toccato.
-type FilterPanel = "bambini" | "eta" | "prezzo" | "zona" | "tag" | "servizi" | "data" | null;
+type FilterPanel = "bambini" | "eta" | "prezzo" | "zona" | "tag" | "servizi" | "data" | "giorni" | null;
 type ViewMode = "lista" | "mappa";
 type GeoStatus = "idle" | "loading" | "error";
 
@@ -123,7 +124,16 @@ function ServiceCheckbox({
   );
 }
 
-function ResultCard({ match }: { match: SmartMatch }) {
+function ResultCard({
+  match,
+  correlationId,
+}: {
+  match: SmartMatch;
+  // TRAMA ONE Build Sprint 3 — "context object" leggero: propagato ad
+  // ActivityCard.tsx insieme a source="nextgen_search" (vedi chiamate a
+  // ResultCard sotto).
+  correlationId?: string;
+}) {
   return (
     <div>
       {match.reasons.length > 0 && (
@@ -135,7 +145,12 @@ function ResultCard({ match }: { match: SmartMatch }) {
           ))}
         </div>
       )}
-      <ActivityCard activity={match.activity} matchPercent={Math.min(99, Math.round(match.score))} />
+      <ActivityCard
+        activity={match.activity}
+        matchPercent={Math.min(99, Math.round(match.score))}
+        source="nextgen_search"
+        correlationId={correlationId}
+      />
     </div>
   );
 }
@@ -147,6 +162,7 @@ export default function SearchDiscoveryClient({
   uncoveredWeekStart,
   uncoveredWeekLabel,
   availabilityByWeek,
+  activitiesWithDaySpots = [],
 }: {
   activities: Activity[];
   kids: Kid[];
@@ -154,6 +170,10 @@ export default function SearchDiscoveryClient({
   uncoveredWeekStart: string | null;
   uncoveredWeekLabel: string | null;
   availabilityByWeek: Record<string, string[]>;
+  // TRAMA ONE Build Sprint 3 — "Giorni spot": stesso dato/stessa fonte di
+  // LEGACY (app/(main)/search/SearchClient.tsx), lib/data/activities.ts
+  // #getActivitiesWithOpenDaySpots.
+  activitiesWithDaySpots?: string[];
 }) {
   const router = useRouter();
   const [query, setQuery] = useState("");
@@ -174,6 +194,18 @@ export default function SearchDiscoveryClient({
   // interessano", non "disponibile in tutte").
   const [selectedWeekStarts, setSelectedWeekStarts] = useState<string[]>([]);
   const [radiusKm, setRadiusKm] = useState(DEFAULT_RADIUS_KM);
+  // TRAMA ONE Build Sprint 3 — "Giorni spot": stesso filtro/stesso principio
+  // di LEGACY (SearchClient.tsx) — "solo attività con Giorni spot
+  // disponibili", non una data precisa.
+  const [onlyDaySpots, setOnlyDaySpots] = useState(false);
+  const daySpotsSet = useMemo(() => new Set(activitiesWithDaySpots), [activitiesWithDaySpots]);
+
+  // TRAMA ONE Build Sprint 3 — "context object" leggero: un correlationId
+  // generato una volta per sessione di ricerca (stesso principio di
+  // LEGACY SearchClient.tsx), propagato alle card risultato cosi il log a
+  // valle (dettaglio → prenotazione) puo essere correlato allo stesso
+  // percorso utente. Vedi lib/telemetry/correlation.ts.
+  const [searchCorrelationId] = useState(() => generateCorrelationId());
 
   const [geo, setGeo] = useState<{ lat: number; lng: number } | null>(() => readStoredGeo());
   const [geoStatus, setGeoStatus] = useState<GeoStatus>("idle");
@@ -236,6 +268,7 @@ export default function SearchDiscoveryClient({
     setSelectedKidId(null);
     setOpenPanel(null);
     clearGeo();
+    setOnlyDaySpots(false);
   }
 
   const seasonWeekRanges = useMemo(() => getSeasonWeekRanges(seasonYear), [seasonYear]);
@@ -262,6 +295,7 @@ export default function SearchDiscoveryClient({
     (selectedWeekStarts.length > 0 ? 1 : 0) +
     (selectedTagIds.length > 0 ? 1 : 0) +
     (selectedKidId !== null ? 1 : 0) +
+    (onlyDaySpots ? 1 : 0) +
     Object.values(services).filter(Boolean).length;
 
   const selectedKids = useMemo(
@@ -296,9 +330,23 @@ export default function SearchDiscoveryClient({
       if (services.dieteGestite && !(a.dietaryOptions && a.dietaryOptions.length > 0)) return false;
       if (availableIdsForWeeks && a.dbId && !availableIdsForWeeks.has(a.dbId)) return false;
       if (selectedTagIds.length > 0 && !a.tagIds.some((id) => selectedTagIds.includes(id))) return false;
+      if (onlyDaySpots && (!a.dbId || !daySpotsSet.has(a.dbId))) return false;
       return true;
     });
-  }, [activities, query, minAge, maxAge, maxPrice, zone, services, selectedTagIds, selectedWeekStarts, availabilityByWeek]);
+  }, [
+    activities,
+    query,
+    minAge,
+    maxAge,
+    maxPrice,
+    zone,
+    services,
+    selectedTagIds,
+    selectedWeekStarts,
+    availabilityByWeek,
+    onlyDaySpots,
+    daySpotsSet,
+  ]);
 
   const matches = useMemo(
     () => computeSmartMatches(filteredActivities, selectedKids, { geo, uncoveredWeekStart, availabilityByWeek }),
@@ -360,6 +408,7 @@ export default function SearchDiscoveryClient({
       icon: "ti-calendar",
       label: selectedWeekStarts.length > 0 ? `Settimane (${selectedWeekStarts.length})` : "Date",
     },
+    { key: "giorni", icon: "ti-calendar-time", label: "Giorni spot" },
   ];
 
   return (
@@ -450,6 +499,18 @@ export default function SearchDiscoveryClient({
                     onClick={(e) => {
                       e.stopPropagation();
                       setSelectedKidId(null);
+                    }}
+                    className={`ti ti-x flex h-3.5 w-3.5 items-center justify-center rounded-full text-[10px] active:scale-95 ${
+                      openPanel === f.key ? "bg-white/25" : "bg-ink-3/20"
+                    }`}
+                  />
+                )}
+                {f.key === "giorni" && onlyDaySpots && (
+                  <span
+                    role="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setOnlyDaySpots(false);
                     }}
                     className={`ti ti-x flex h-3.5 w-3.5 items-center justify-center rounded-full text-[10px] active:scale-95 ${
                       openPanel === f.key ? "bg-white/25" : "bg-ink-3/20"
@@ -741,6 +802,25 @@ export default function SearchDiscoveryClient({
           </div>
         )}
 
+        {/* TRAMA ONE Build Sprint 3 — "Giorni spot": stesso principio di
+            LEGACY, filtro booleano (non una data precisa). */}
+        {openPanel === "giorni" && (
+          <div className="mb-3 rounded-lg border border-[#E8EBF0] bg-bg p-3">
+            <label className="flex items-center gap-2 text-sm text-ink">
+              <input
+                type="checkbox"
+                checked={onlyDaySpots}
+                onChange={(e) => setOnlyDaySpots(e.target.checked)}
+              />
+              Solo attività con Giorni spot disponibili
+            </label>
+            <p className="mt-2 text-[11px] text-ink-3">
+              Attività prenotabili anche a singolo giorno, non solo a settimana intera — la scelta del
+              giorno esatto si fa nella scheda attività.
+            </p>
+          </div>
+        )}
+
         {/* SPRINT 3 correttivo (feedback Fabrizio: "quando si apre un filtro
             con selezione multipla, deve esserci una linea separatrice
             leggera prima di 'X attività trovate' e 'Lista/Mappa', per
@@ -802,7 +882,7 @@ export default function SearchDiscoveryClient({
               Nella tua zona (entro {radiusKm} km) — {nearby.length}
             </div>
             {nearby.map((m) => (
-              <ResultCard key={m.activity.id} match={m} />
+              <ResultCard key={m.activity.id} match={m} correlationId={searchCorrelationId} />
             ))}
             {nearby.length === 0 && <p className="pb-3 text-sm text-ink-2">Nessuna attività entro {radiusKm} km.</p>}
 
@@ -810,7 +890,7 @@ export default function SearchDiscoveryClient({
               <>
                 <div className="pb-1.5 pt-4 text-xs font-bold text-ink-2">Fuori dalla tua zona — {far.length}</div>
                 {far.map((m) => (
-                  <ResultCard key={m.activity.id} match={m} />
+                  <ResultCard key={m.activity.id} match={m} correlationId={searchCorrelationId} />
                 ))}
               </>
             )}
@@ -818,7 +898,7 @@ export default function SearchDiscoveryClient({
         ) : (
           <div className="flex flex-col gap-1">
             {matches.map((m) => (
-              <ResultCard key={m.activity.id} match={m} />
+              <ResultCard key={m.activity.id} match={m} correlationId={searchCorrelationId} />
             ))}
           </div>
         )}

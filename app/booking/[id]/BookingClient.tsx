@@ -64,6 +64,14 @@ export default function BookingClient({
   // posto del primo bambino della lista.
   const requestedKidId = searchParams.get("kid");
 
+  // TRAMA ONE Build Sprint 3 — "context object" leggero: source/cid arrivano
+  // dal dettaglio attività (a sua volta dalla card di Ricerca), propagati
+  // qui e poi passati a createBookingAction per un log server-side
+  // correlato (event "booking_created", vedi actions.ts e
+  // lib/telemetry/correlation.ts). Facoltativi.
+  const sourceParam = searchParams.get("source");
+  const cidParam = searchParams.get("cid");
+
   // TRAMA ONE Build Sprint 3 — "Giorni spot": presente SOLO quando il
   // genitore ha scelto giorni singoli nella scheda attività (DetailClient) —
   // in quel caso questa prenotazione è "a giorni", non a settimana: lo step 1
@@ -208,6 +216,8 @@ export default function BookingClient({
       paymentMethod: paymentMethodMap[payMethod] ?? "card",
       inviteId: inviteDiscountAmount > 0 ? inviteDiscount?.inviteId : undefined,
       confirmOverlap,
+      source: sourceParam ?? undefined,
+      correlationId: cidParam ?? undefined,
     });
     setSubmitting(false);
 
