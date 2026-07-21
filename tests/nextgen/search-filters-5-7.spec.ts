@@ -198,4 +198,39 @@ test.describe("NEXTGEN - Ricerca Sprint 5.7 (filtri + Vista Mappa)", () => {
     await page.getByText("Prezzo", { exact: true }).click();
     await expect(divider).toHaveCount(0);
   });
+
+  // TRAMA ONE Build Sprint 3 — "Giorni spot": stesso filtro/stesso dato di
+  // LEGACY (tests/genitori/cerca.spec.ts TC-N502), qui nel pannello NEXTGEN.
+  test("TC-N504 - Il filtro 'Giorni spot' è raggiungibile, selezionabile e azzerabile", async ({ page }) => {
+    await page.getByText("Giorni spot", { exact: true }).click();
+    const checkbox = page.getByText("Solo attività con Giorni spot disponibili");
+    await expect(checkbox).toBeVisible();
+
+    await checkbox.click();
+    await expect(page.getByRole("button", { name: /^Azzera/ })).toBeVisible();
+
+    await page.getByRole("button", { name: /^Azzera/ }).click();
+    await expect(page.getByRole("button", { name: /^Azzera/ })).toHaveCount(0);
+  });
+
+  // TRAMA ONE Build Sprint 3 — "context object" leggero: stessa verifica di
+  // LEGACY (TC-N503), qui con source=nextgen_search (ActivityCard.tsx +
+  // SearchDiscoveryClient.tsx).
+  test("TC-N505 - source=nextgen_search e un correlationId propagano dalla card al link 'Prenota ora'", async ({
+    page,
+  }) => {
+    const firstCard = page.locator('a[href^="/activity/"]').first();
+    await expect(firstCard).toBeVisible();
+    const cardHref = await firstCard.getAttribute("href");
+    expect(cardHref).toMatch(/[?&]source=nextgen_search\b/);
+    expect(cardHref).toMatch(/[?&]cid=[0-9a-f-]{36}/i);
+
+    await firstCard.click();
+    await expect(page).toHaveURL(/\/activity\/.*[?&]source=nextgen_search/);
+
+    const prenotaLink = page.getByRole("link", { name: "Prenota ora" });
+    const bookingHref = await prenotaLink.getAttribute("href");
+    expect(bookingHref).toMatch(/[?&]source=nextgen_search\b/);
+    expect(bookingHref).toMatch(/[?&]cid=[0-9a-f-]{36}/i);
+  });
 });

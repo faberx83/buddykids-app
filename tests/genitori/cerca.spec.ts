@@ -175,4 +175,47 @@ test.describe("Genitori - Cerca", () => {
     expect(req).not.toBeNull();
   });
 
+  // TRAMA ONE Build Sprint 3 — "Giorni spot": filtro "solo attività con
+  // Giorni spot disponibili" (lib/data/activities.ts#getActivitiesWithOpenDaySpots).
+  // In ambiente demo/senza dati seminati per STEP 7 il filtro può azzerare
+  // i risultati (nessuna attività ha Giorni spot configurati) — verifichiamo
+  // solo che il chip/pannello funzioni e sia azzerabile, non un conteggio
+  // specifico ("never overstate proof" su dati che potrebbero non esistere).
+  test("TC-N502 - Il filtro 'Giorni spot' è raggiungibile, selezionabile e azzerabile", async ({ page }) => {
+    await page.getByText("Giorni spot", { exact: true }).click();
+    const checkbox = page.getByText("Solo attività con Giorni spot disponibili");
+    await expect(checkbox).toBeVisible();
+
+    await checkbox.click();
+    await expect(page.getByRole("button", { name: /^Azzera/ })).toBeEnabled();
+
+    // La X sul chip azzera solo questo filtro.
+    await page.locator(".ti-x").first().click();
+    await expect(page.getByText("Giorni spot", { exact: true })).toBeVisible();
+  });
+
+  // TRAMA ONE Build Sprint 3 — "context object" leggero: verifica che il
+  // click su una card risultato porti source=search + un cid (uuid) nel
+  // link al dettaglio (vedi ActivityCardHorizontal.tsx/SearchClient.tsx),
+  // e che il dettaglio li propaghi a sua volta nel link "Prenota ora"
+  // (DetailClient.tsx) — puramente client-side, non richiede dati Supabase
+  // specifici oltre alla singola attività di test già usata altrove.
+  test("TC-N503 - source=search e un correlationId propagano dalla card di Ricerca al link 'Prenota ora'", async ({
+    page,
+  }) => {
+    const firstCard = page.locator('a[href^="/activity/"]').first();
+    await expect(firstCard).toBeVisible();
+    const cardHref = await firstCard.getAttribute("href");
+    expect(cardHref).toMatch(/[?&]source=search\b/);
+    expect(cardHref).toMatch(/[?&]cid=[0-9a-f-]{36}/i);
+
+    await firstCard.click();
+    await expect(page).toHaveURL(/\/activity\/.*[?&]source=search/);
+
+    const prenotaLink = page.getByRole("link", { name: "Prenota ora" });
+    const bookingHref = await prenotaLink.getAttribute("href");
+    expect(bookingHref).toMatch(/[?&]source=search\b/);
+    expect(bookingHref).toMatch(/[?&]cid=[0-9a-f-]{36}/i);
+  });
+
 });
