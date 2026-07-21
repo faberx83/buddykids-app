@@ -239,6 +239,27 @@ export async function getActivityAvailabilityByWeek(seasonYear: number): Promise
   return result;
 }
 
+/// TRAMA ONE Build Sprint 3 — "Giorni spot": filtro Parent per disponibilità
+// giornaliera in Cerca/Ricerca NextGen. Stesso pattern di
+// getActivityAvailabilityByWeek() sopra (una sola query batched su TUTTE le
+// attività, invece di una query per attività — evita N+1), ma qui basta un
+// Set di id (nessun bisogno di raggruppare per data: il filtro è un
+// semplice "ha almeno un giorno prenotabile aperto", non una data precisa).
+export async function getActivitiesWithOpenDaySpots(): Promise<Set<string>> {
+  if (!isSupabaseConfigured) return new Set(); // demo: nessuna attività ha un dbId da confrontare
+
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("activity_days")
+    .select("activity_id")
+    .eq("is_open", true)
+    .eq("single_day_bookable", true)
+    .gt("spots_left", 0);
+
+  if (error || !data) return new Set();
+  return new Set((data as { activity_id: string }[]).map((row) => row.activity_id));
+}
+
 // Attività di UN centro specifico — usata dalla dashboard Gestore centro.
 // `centerDbId` è l'uuid reale (colonna activities.center_id); se assente
 // (demo, o centro non ancora assegnato) si torna ai dati mock filtrati per
