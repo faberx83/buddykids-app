@@ -28,7 +28,13 @@ test.describe("TRAMA ONE — Onboarding Centro: auto-inizializzazione LEAD (Spri
     await loginAs(page, "platform_admin");
     await page.goto("/admin/centers");
     await page.getByRole("button", { name: "+ Nuovo centro" }).click();
-    await page.getByLabel("Nome del centro").fill(centerName);
+    // BUG DI TEST CORRETTO: getByLabel non funziona qui perché
+    // components/admin/NewCenterForm.tsx non associa <label> e <input> né
+    // con htmlFor/id né con nesting (sono elementi fratelli in un <div>) —
+    // stesso motivo per cui il resto della suite (es. TC-198) non usa mai
+    // getByLabel su questi form, ma getByText(...).locator("..").locator(...)
+    // per risalire al div contenitore e trovare l'input fratello.
+    await page.getByText("Nome del centro").locator("..").locator("input").fill(centerName);
     await page.getByRole("button", { name: "Crea centro" }).click();
     await expect(page.getByText(new RegExp(`Centro "${centerName}" creato`))).toBeVisible();
 
@@ -52,7 +58,7 @@ test.describe("TRAMA ONE — Onboarding Centro: auto-inizializzazione LEAD (Spri
     await loginAs(page, "platform_admin");
     await page.goto("/admin/centers");
     await page.getByRole("button", { name: "+ Nuovo centro" }).click();
-    await page.getByLabel("Nome del centro").fill(centerName);
+    await page.getByText("Nome del centro").locator("..").locator("input").fill(centerName);
     await page.getByRole("button", { name: "Crea centro" }).click();
     await expect(page.getByText(new RegExp(`Centro "${centerName}" creato`))).toBeVisible();
 
