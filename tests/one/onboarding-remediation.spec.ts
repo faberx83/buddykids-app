@@ -34,9 +34,18 @@ test.describe("TRAMA ONE — Onboarding Centro: auto-inizializzazione LEAD (Spri
     // stesso motivo per cui il resto della suite (es. TC-198) non usa mai
     // getByLabel su questi form, ma getByText(...).locator("..").locator(...)
     // per risalire al div contenitore e trovare l'input fratello.
+    // BUG DI TEST CORRETTO (2° giro): new RegExp(`...${centerName}...`) con
+    // centerName contenente "[TEST]" veniva interpretato come CLASSE DI
+    // CARATTERI regex ([T,E,S,T], un carattere singolo qualunque tra questi),
+    // non come testo letterale "[TEST]" — il messaggio di successo era
+    // realmente in pagina (confermato via error-context.md di Playwright:
+    // "Centro "[TEST] Centro Auto LEAD ..." creato." presente nello snapshot)
+    // ma il match falliva sempre per questo motivo, non per un problema del
+    // salvataggio. getByText con una stringa fa match letterale (substring),
+    // nessuna regex necessaria qui.
     await page.getByText("Nome del centro").locator("..").locator("input").fill(centerName);
     await page.getByRole("button", { name: "Crea centro" }).click();
-    await expect(page.getByText(new RegExp(`Centro "${centerName}" creato`))).toBeVisible();
+    await expect(page.getByText(`Centro "${centerName}" creato`)).toBeVisible();
 
     // Nessun INSERT manuale eseguito qui: se migration_10 (trigger AFTER
     // INSERT su public.centers) funziona, il nuovo centro ha già una riga
@@ -60,7 +69,7 @@ test.describe("TRAMA ONE — Onboarding Centro: auto-inizializzazione LEAD (Spri
     await page.getByRole("button", { name: "+ Nuovo centro" }).click();
     await page.getByText("Nome del centro").locator("..").locator("input").fill(centerName);
     await page.getByRole("button", { name: "Crea centro" }).click();
-    await expect(page.getByText(new RegExp(`Centro "${centerName}" creato`))).toBeVisible();
+    await expect(page.getByText(`Centro "${centerName}" creato`)).toBeVisible();
 
     await page.goto("/admin/one/onboarding");
     await page.reload();
