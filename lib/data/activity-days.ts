@@ -7,6 +7,7 @@ import { createClient } from "@/lib/supabase/server";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
 
 interface RawDayRow {
+  id: string;
   date: string;
   is_open: boolean;
   capacity: number;
@@ -25,6 +26,7 @@ function weekdayOf(dateStr: string): number {
 
 function mapRow(row: RawDayRow): DayAvailability {
   return {
+    id: row.id,
     date: row.date,
     weekday: weekdayOf(row.date),
     isOpen: row.is_open,
@@ -47,7 +49,7 @@ export async function getActivityDays(activity: Activity): Promise<DayAvailabili
   const { data, error } = await supabase
     .from("activity_days")
     .select(
-      "date, is_open, capacity, spots_left, single_day_bookable, discount_percent, last_minute, special_label, special_emoji"
+      "id, date, is_open, capacity, spots_left, single_day_bookable, discount_percent, last_minute, special_label, special_emoji"
     )
     .eq("activity_id", activity.dbId)
     .order("date", { ascending: true });

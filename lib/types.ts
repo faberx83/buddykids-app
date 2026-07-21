@@ -385,6 +385,11 @@ export interface Center {
 // Disponibilità di un singolo giorno per un'attività — pensata per una
 // vista "calendario" stile booking (righe = settimane, colonne = giorni).
 export interface DayAvailability {
+  // TRAMA ONE Build Sprint 3: id della riga activity_days (assente sui dati
+  // mock/demo, dove non serve — la prenotazione demo non scrive su
+  // Supabase). Serve come FK per booking_days quando un genitore prenota
+  // giorni singoli su un deploy reale (vedi migration_12).
+  id?: string;
   date: string; // ISO yyyy-mm-dd
   weekday: number; // 0=Lun … 6=Dom
   isOpen: boolean;

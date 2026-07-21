@@ -9,6 +9,12 @@ export interface CreateBookingInput {
   activityDbId: string;
   weekIds: string[];
   kidIds: string[];
+  // TRAMA ONE Build Sprint 3 — "Giorni spot": presente SOLO quando il
+  // genitore ha prenotato giorni singoli invece di settimane intere
+  // (weekIds resta [] in quel caso). Ogni voce è un activity_days.id +
+  // il prezzo di QUEL giorno già calcolato (lib/day-pricing.ts), da
+  // congelare in booking_days.price (vedi migration_12).
+  dayBookings?: { activityDayId: string; price: number }[];
   totalAmount: number;
   discountAmount: number;
   shuttleIncluded: boolean;
@@ -197,6 +203,27 @@ export async function createBookingAction(
       await supabase
         .from("booking_kids")
         .insert(realKidIds.map((kidId) => ({ booking_id: bookingId, kid_id: kidId })));
+    }
+  }
+
+  // TRAMA ONE Build Sprint 3 — "Giorni spot": stesso pattern di
+  // booking_weeks sopra (solo id "reali" uuid, mock ignorati in silenzio).
+  // Tabella booking_days additiva (migration_12) — se non ancora applicata
+  // in produzione, questo insert fallisce silenziosamente (best-effort,
+  // come già fatto sopra per gli altri insert secondari) senza annullare la
+  // prenotazione già creata: al peggio manca il dettaglio giorno-per-giorno,
+  // non la prenotazione stessa.
+  if (input.dayBookings && input.dayBookings.length > 0) {
+    const isUuid = (v: string) => /^[0-9a-f-]{36}$/i.test(v);
+    const realDayBookings = input.dayBookings.filter((d) => isUuid(d.activityDayId));
+    if (realDayBookings.length > 0) {
+      await supabase.from("booking_days").insert(
+        realDayBookings.map((d) => ({
+          booking_id: bookingId,
+          activity_day_id: d.activityDayId,
+          price: d.price,
+        }))
+      );
     }
   }
 

@@ -7,12 +7,13 @@ import StepIndicator from "@/components/StepIndicator";
 import WeekCard from "@/components/WeekCard";
 import KidRow from "@/components/KidRow";
 import PayMethodCard from "@/components/PayMethodCard";
-import { Activity, Kid, Week } from "@/lib/types";
+import { Activity, DayAvailability, Kid, Week } from "@/lib/types";
 import { createBookingAction, BookingWeekConflict } from "./actions";
 import { cancelBookingAction } from "@/app/actions/bookings";
 import AddKidForm from "@/components/AddKidForm";
 import { ComingSoonBadge } from "@/components/StatusBadge";
 import { buildFamilyTiers, familyDiscountAmount } from "@/lib/family-discount";
+import { calculateDayBookingCost, dayPrice } from "@/lib/day-pricing";
 import type { EligibleInviteDiscount } from "@/lib/data/invites";
 
 const paymentMethodMap: Record<string, "card" | "apple_pay" | "bank_transfer"> = {
@@ -36,6 +37,7 @@ export default function BookingClient({
   kids: initialKids,
   bookedWeekIds: bookedWeekIdsList,
   inviteDiscount,
+  days = [],
 }: {
   activity: Activity;
   weeks: Week[];
@@ -45,6 +47,11 @@ export default function BookingClient({
   // con un codice invito del Gestore) — al massimo uno, si applica una sola
   // volta alla prima prenotazione idonea (vedi lib/data/invites.ts).
   inviteDiscount: EligibleInviteDiscount | null;
+  // TRAMA ONE Build Sprint 3 — "Giorni spot": disponibilità giorno-per-
+  // giorno, valorizzata da app/booking/[id]/page.tsx solo quando
+  // bookingMode !== "week_only". Vuoto per ogni altra attività — nessun
+  // cambio di comportamento lì.
+  days?: DayAvailability[];
 }) {
   const bookedWeekIds = useMemo(() => new Set(bookedWeekIdsList), [bookedWeekIdsList]);
   const router = useRouter();
@@ -56,6 +63,28 @@ export default function BookingClient({
   // figli con esigenze diverse), lo ritroviamo qui e lo preselezioniamo al
   // posto del primo bambino della lista.
   const requestedKidId = searchParams.get("kid");
+
+  // TRAMA ONE Build Sprint 3 — "Giorni spot": presente SOLO quando il
+  // genitore ha scelto giorni singoli nella scheda attività (DetailClient) —
+  // in quel caso questa prenotazione è "a giorni", non a settimana: lo step 1
+  // mostra il riepilogo dei giorni scelti invece della griglia settimanale, e
+  // selectedWeeks resta sempre vuoto (vedi inizializzazione più sotto).
+  const requestedDayDates = useMemo(() => {
+    const raw = searchParams.get("days");
+    return raw ? raw.split(",").filter(Boolean) : [];
+  }, [searchParams]);
+  const dayBookingMode = requestedDayDates.length > 0;
+  const selectedDayRows = useMemo(
+    () =>
+      days
+        .filter((d) => requestedDayDates.includes(d.date))
+        .sort((a, b) => a.date.localeCompare(b.date)),
+    [days, requestedDayDates]
+  );
+  const daysCostPerChild = useMemo(
+    () => calculateDayBookingCost(days, requestedDayDates, activity.pricePerWeek),
+    [days, requestedDayDates, activity.pricePerWeek]
+  );
 
   // Settimana su cui centrare il selettore: quella richiesta dal Planner se
   // questa attività la copre davvero, altrimenti la prima disponibile —
@@ -82,7 +111,7 @@ export default function BookingClient({
   const [step, setStep] = useState<1 | 2 | 3>(1);
   const [kids, setKids] = useState<Kid[]>(initialKids);
   const [selectedWeeks, setSelectedWeeks] = useState<string[]>(() =>
-    focusWeek && bookable(focusWeek, bookedWeekIds) ? [focusWeek.id] : []
+    !dayBookingMode && focusWeek && bookable(focusWeek, bookedWeekIds) ? [focusWeek.id] : []
   );
   // Di default si vede solo la settimana scelta + quella prima/dopo (utile
   // per lo sconto multi-settimana) — "Vedi tutte" espande alla griglia
@@ -120,14 +149,19 @@ export default function BookingClient({
 
   const nWeeks = selectedWeeks.length || 1;
   const kidsCount = selectedKids.length || 1;
-  // Prezzo di UN bambino (settimane × prezzo a settimana), usato come base
-  // sia per il totale sia per calcolare lo sconto famiglia dal 2° bambino.
-  const perChildSubtotal = nWeeks * activity.pricePerWeek;
+  // Prezzo di UN bambino, usato come base sia per il totale sia per
+  // calcolare lo sconto famiglia dal 2° bambino — a settimane (× prezzo a
+  // settimana) come sempre, OPPURE a Giorni spot (somma dei giorni scelti,
+  // sconto per-giorno già incluso — lib/day-pricing.ts) quando dayBookingMode.
+  const perChildSubtotal = dayBookingMode ? daysCostPerChild : nWeeks * activity.pricePerWeek;
   const subtotal = perChildSubtotal * kidsCount;
   // Il gestore può personalizzare la % multi-settimana per il proprio centro
   // (activity.centerMultiweekDiscountPercent) — 5% resta il default storico.
+  // Non si applica a Giorni spot: non è "multi-settimana", ed eventuali sconti
+  // per-giorno sono già dentro daysCostPerChild.
   const multiweekPercent = activity.centerMultiweekDiscountPercent ?? 5;
-  const weekDiscount = nWeeks >= 2 ? Math.round(subtotal * (multiweekPercent / 100)) : 0;
+  const weekDiscount =
+    !dayBookingMode && nWeeks >= 2 ? Math.round(subtotal * (multiweekPercent / 100)) : 0;
   const familyTiers = buildFamilyTiers(activity.centerFamilyDiscountTiers);
   const familyDiscount = familyDiscountAmount(perChildSubtotal, kidsCount, familyTiers);
   // Sconto invito: sul subtotale prima degli altri sconti, come gli altri —
@@ -136,7 +170,12 @@ export default function BookingClient({
     ? Math.round(subtotal * (inviteDiscount.percent / 100))
     : 0;
   const groupDiscount = weekDiscount + familyDiscount + inviteDiscountAmount;
-  const shuttleCost = activity.shuttlePrice * nWeeks * kidsCount;
+  // Navetta: prezzo definito oggi solo "a settimana" (activity.shuttlePrice) —
+  // nessuna regola di proporzionamento a giorno singolo è stata definita
+  // ("selezione servizi per giorno" resta esplicitamente MANCANTE, vedi
+  // SPRINT_3_FEATURE_PRESERVATION_MATRIX.md): niente costo navetta su
+  // prenotazioni a Giorni spot invece di inventare una tariffa non richiesta.
+  const shuttleCost = dayBookingMode ? 0 : activity.shuttlePrice * nWeeks * kidsCount;
   const total = subtotal - groupDiscount + shuttleCost;
 
   const toggleWeek = (w: Week) => {
@@ -156,11 +195,16 @@ export default function BookingClient({
     setSubmitError(null);
     const result = await createBookingAction({
       activityDbId: activity.dbId!,
-      weekIds: selectedWeeks,
+      weekIds: dayBookingMode ? [] : selectedWeeks,
       kidIds: selectedKids,
+      dayBookings: dayBookingMode
+        ? selectedDayRows
+            .filter((d) => Boolean(d.id))
+            .map((d) => ({ activityDayId: d.id!, price: dayPrice(d, activity.pricePerWeek) }))
+        : undefined,
       totalAmount: total,
       discountAmount: groupDiscount,
-      shuttleIncluded: activity.shuttlePrice > 0,
+      shuttleIncluded: !dayBookingMode && activity.shuttlePrice > 0,
       paymentMethod: paymentMethodMap[payMethod] ?? "card",
       inviteId: inviteDiscountAmount > 0 ? inviteDiscount?.inviteId : undefined,
       confirmOverlap,
@@ -252,7 +296,53 @@ export default function BookingClient({
       <StepIndicator step={step} />
 
       <div ref={scrollRef} className="no-scrollbar flex-1 overflow-y-auto px-5 py-[18px]">
-        {step === 1 && (
+        {step === 1 && dayBookingMode && (
+          <div>
+            <div className="mb-1 text-base font-bold text-ink">Giorni scelti</div>
+            <div className="mb-3 text-[13px] text-ink-2">
+              Hai selezionato questi giorni dalla scheda attività — torna indietro per cambiarli
+            </div>
+            {selectedDayRows.length === 0 ? (
+              <p className="mb-3 text-xs font-medium text-orange">
+                Nessuno dei giorni scelti risulta più disponibile — torna alla scheda attività e riprova.
+              </p>
+            ) : (
+              <div className="mb-3 flex flex-wrap gap-2">
+                {selectedDayRows.map((d) => {
+                  const dateObj = new Date(d.date + "T00:00:00Z");
+                  return (
+                    <span
+                      key={d.date}
+                      className="rounded-md bg-sky-light px-2.5 py-1.5 text-[12px] font-semibold text-ink"
+                    >
+                      {dateObj.toLocaleDateString("it-IT", { day: "numeric", month: "short", timeZone: "UTC" })}
+                      {d.specialEmoji ? ` ${d.specialEmoji}` : ""}
+                    </span>
+                  );
+                })}
+              </div>
+            )}
+            <div className="rounded-md bg-bg p-3.5">
+              <Row
+                label={`${selectedDayRows.length} giorn${selectedDayRows.length === 1 ? "o" : "i"} × ${kidsCount} bambin${kidsCount === 1 ? "o" : "i"}`}
+                value={`€${subtotal}`}
+              />
+              {familyDiscount > 0 && (
+                <Row label="Sconto famiglia 👨‍👩‍👧‍👦" value={`-€${familyDiscount}`} valueClass="text-green" />
+              )}
+              {inviteDiscountAmount > 0 && (
+                <Row
+                  label={`Sconto invito 🎁 (-${inviteDiscount!.percent}%)`}
+                  value={`-€${inviteDiscountAmount}`}
+                  valueClass="text-green"
+                />
+              )}
+              <Row label="Totale stimato" value={`€${subtotal - groupDiscount}`} total />
+            </div>
+          </div>
+        )}
+
+        {step === 1 && !dayBookingMode && (
           <div>
             <div className="mb-1 text-base font-bold text-ink">Scegli le settimane</div>
             <div className="mb-3 text-[13px] text-ink-2">
@@ -393,12 +483,19 @@ export default function BookingClient({
               onSelect={() => setPayMethod("bank")}
             />
             <div className="mt-4 rounded-md bg-bg p-3.5">
-              <Row label={`${activity.name} (${nWeeks} sett.)`} value={`€${subtotal}`} />
+              <Row
+                label={
+                  dayBookingMode
+                    ? `${activity.name} (${selectedDayRows.length} giorni)`
+                    : `${activity.name} (${nWeeks} sett.)`
+                }
+                value={`€${subtotal}`}
+              />
               <Row
                 label={`${kidNames.join(", ") || "Bambino"} — ${selectedKids.length} bambino${selectedKids.length === 1 ? "" : "i"}`}
                 value={`×${selectedKids.length || 1}`}
               />
-              {activity.shuttlePrice > 0 && (
+              {shuttleCost > 0 && (
                 <Row label={`Navetta (${nWeeks} sett. × ${kidsCount})`} value={`€${shuttleCost}`} />
               )}
               {weekDiscount > 0 && (
@@ -474,7 +571,11 @@ export default function BookingClient({
 
         <button
           onClick={handleNext}
-          disabled={submitting || (step === 2 && selectedKids.length === 0)}
+          disabled={
+            submitting ||
+            (step === 1 && dayBookingMode && selectedDayRows.length === 0) ||
+            (step === 2 && selectedKids.length === 0)
+          }
           className="w-full rounded-lg bg-sky py-[15px] text-[15px] font-bold text-white transition-colors hover:bg-[#3A9FDC] disabled:cursor-not-allowed disabled:opacity-60"
         >
           {submitting ? "Attendere…" : step === 3 ? "Conferma e paga" : "Continua"}

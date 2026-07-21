@@ -1,22 +1,25 @@
 "use client";
 
 import { useRouter, useSearchParams } from "next/navigation";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import Link from "next/link";
-import { Activity, CertificationItem, Promotion } from "@/lib/types";
+import { Activity, CertificationItem, DayAvailability, Promotion } from "@/lib/types";
 import { badgeClasses } from "@/lib/colors";
 import ImageLightbox from "@/components/ImageLightbox";
 import ContactCenterButton from "@/components/ContactCenterButton";
 import { toggleFavoriteAction } from "@/app/actions/favorites";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
+import { calculateDayBookingCost, dayPrice, meetsMinDaysRequirement } from "@/lib/day-pricing";
 
 const weekdayLabels = ["lunedì", "martedì", "mercoledì", "giovedì", "venerdì"];
+const weekdayShort = ["Lun", "Mar", "Mer", "Gio", "Ven", "Sab", "Dom"];
 
 export default function DetailClient({
   activity,
   promotions,
   initialFavorite,
   certifications = [],
+  days = [],
 }: {
   activity: Activity;
   promotions: Promotion[];
@@ -28,6 +31,11 @@ export default function DetailClient({
   // richiesta di Fabrizio: badge per certificazioni del servizio esposto
   // (es. "Istruttori certificati FISE per equitazione").
   certifications?: CertificationItem[];
+  // TRAMA ONE Build Sprint 3 — "Giorni spot": disponibilità giorno-per-
+  // giorno, già filtrata a monte (app/activity/[id]/page.tsx la valorizza
+  // solo quando activity.bookingMode !== "week_only"). Vuoto per ogni
+  // attività a sola settimana intera — nessun cambio di comportamento lì.
+  days?: DayAvailability[];
 }) {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -39,10 +47,34 @@ export default function DetailClient({
   // avanti anche da qui, cosi in Prenotazione risulta già spuntato quello
   // giusto invece del primo della lista.
   const kidParam = searchParams.get("kid");
+  // TRAMA ONE Build Sprint 3 — "Giorni spot": selezione giorni singoli,
+  // attiva solo quando ci sono giorni configurati dal Gestore e l'attività
+  // non è a sola settimana intera. Ordinati per data, solo quelli aperti.
+  const bookableDays = useMemo(
+    () => days.filter((d) => d.isOpen).sort((a, b) => a.date.localeCompare(b.date)),
+    [days]
+  );
+  const showDaySelection = activity.bookingMode !== "week_only" && bookableDays.length > 0;
+  const [selectedDayDates, setSelectedDayDates] = useState<string[]>([]);
+  const toggleDay = (day: DayAvailability) => {
+    if (!day.singleDayBookable || day.spotsLeft <= 0) return;
+    setSelectedDayDates((prev) =>
+      prev.includes(day.date) ? prev.filter((d) => d !== day.date) : [...prev, day.date]
+    );
+  };
+  const daysCost = useMemo(
+    () => calculateDayBookingCost(bookableDays, selectedDayDates, activity.pricePerWeek),
+    [bookableDays, selectedDayDates, activity.pricePerWeek]
+  );
+  const meetsMinDays = meetsMinDaysRequirement(selectedDayDates.length, activity.minDaysPerBooking);
+  // Se il genitore ha scelto almeno un giorno, prevale sulla settimana
+  // (bookingHref porta le date scelte, così Prenotazione parte già da lì) —
+  // altrimenti comportamento invariato (solo ?week=/?kid=).
   const bookingHref = (() => {
     const params = new URLSearchParams();
     if (weekParam) params.set("week", weekParam);
     if (kidParam) params.set("kid", kidParam);
+    if (selectedDayDates.length > 0) params.set("days", [...selectedDayDates].sort().join(","));
     const query = params.toString();
     return query ? `/booking/${activity.id}?${query}` : `/booking/${activity.id}`;
   })();
@@ -230,6 +262,84 @@ export default function DetailClient({
         </div>
         <div className="my-3 h-px bg-[#F0F2F5]" />
 
+        {/* TRAMA ONE Build Sprint 3 — "Giorni spot": selezione di singoli
+            giorni invece della settimana intera, solo per attività dove il
+            Gestore l'ha configurata (bookingMode "day_only"/"mixed" +
+            almeno un activity_day aperto). Comportamento invariato per
+            tutte le altre attività: questa sezione semplicemente non
+            esiste per loro. */}
+        {showDaySelection && (
+          <>
+            <div className="mb-1 flex items-center justify-between">
+              <div className="text-sm font-bold text-ink">Giorni spot</div>
+              {activity.minDaysPerBooking && activity.minDaysPerBooking > 1 && (
+                <span className="text-[11px] font-medium text-ink-2">
+                  Minimo {activity.minDaysPerBooking} giorni
+                </span>
+              )}
+            </div>
+            <div className="mb-2.5 text-[13px] text-ink-2">
+              Scegli solo i giorni che ti servono, invece dell&apos;intera settimana
+            </div>
+            <div className="mb-2 flex flex-wrap gap-2">
+              {bookableDays.map((day) => {
+                const soldOut = day.spotsLeft <= 0 || !day.singleDayBookable;
+                const selected = selectedDayDates.includes(day.date);
+                const price = dayPrice(day, activity.pricePerWeek);
+                const dateObj = new Date(day.date + "T00:00:00Z");
+                const dayNum = dateObj.getUTCDate();
+                const monthShort = dateObj.toLocaleDateString("it-IT", { month: "short", timeZone: "UTC" });
+                return (
+                  <button
+                    key={day.date}
+                    type="button"
+                    disabled={soldOut}
+                    onClick={() => toggleDay(day)}
+                    className={`flex min-w-[64px] flex-col items-center rounded-md border-[1.5px] px-2.5 py-2 text-center transition-colors ${
+                      soldOut
+                        ? "cursor-not-allowed border-[#E8EBF0] bg-[#FAFBFD] text-ink-3"
+                        : selected
+                        ? "border-sky bg-sky-light text-ink"
+                        : "border-[#E8EBF0] bg-white text-ink hover:border-sky"
+                    }`}
+                  >
+                    <span className="text-[10px] font-semibold uppercase text-ink-2">
+                      {weekdayShort[day.weekday]}
+                    </span>
+                    <span className="text-sm font-bold">
+                      {dayNum} {monthShort}
+                    </span>
+                    {day.specialEmoji && <span className="text-xs">{day.specialEmoji}</span>}
+                    <span className="text-[11px] font-semibold text-sky">
+                      {soldOut ? "Pieno" : `€${price}`}
+                    </span>
+                    {day.discountPercent ? (
+                      <span className="text-[10px] font-medium text-green">-{day.discountPercent}%</span>
+                    ) : null}
+                  </button>
+                );
+              })}
+            </div>
+            {selectedDayDates.length > 0 && (
+              <div className="mb-3.5 rounded-md bg-bg p-3">
+                <div className="flex justify-between text-[15px] font-bold text-ink">
+                  <span>
+                    {selectedDayDates.length} giorn{selectedDayDates.length === 1 ? "o" : "i"} selezionat
+                    {selectedDayDates.length === 1 ? "o" : "i"}
+                  </span>
+                  <span className="text-sky">€{daysCost}</span>
+                </div>
+                {!meetsMinDays && activity.minDaysPerBooking && (
+                  <p className="mt-1.5 text-[11.5px] font-medium text-orange">
+                    Servono almeno {activity.minDaysPerBooking} giorni per prenotare Giorni spot su questa attività.
+                  </p>
+                )}
+              </div>
+            )}
+            <div className="my-3 h-px bg-[#F0F2F5]" />
+          </>
+        )}
+
         <InfoRow icon="ti-coin-euro" label="Costo settimana" value={`€${activity.pricePerWeek}`} valueColor="text-sky" />
         <InfoRow icon="ti-calendar" label="Settimane disponibili" value={activity.weeksAvailable} />
         <InfoRow
@@ -359,16 +469,35 @@ export default function DetailClient({
       </div>
 
       <div className="flex flex-shrink-0 items-center justify-between border-t border-[#F0F2F5] bg-white px-5 py-3.5">
-        <div>
-          <div className="text-xl font-bold text-ink">€{activity.pricePerWeek}</div>
-          <div className="text-[11px] text-ink-2">per settimana</div>
-        </div>
-        <Link
-          href={bookingHref}
-          className="rounded-lg bg-sky px-7 py-3.5 text-[15px] font-bold text-white transition-all hover:scale-[0.97] hover:bg-[#3A9FDC]"
-        >
-          Prenota ora
-        </Link>
+        {selectedDayDates.length > 0 ? (
+          <div>
+            <div className="text-xl font-bold text-ink">€{daysCost}</div>
+            <div className="text-[11px] text-ink-2">
+              {selectedDayDates.length} giorn{selectedDayDates.length === 1 ? "o" : "i"}
+            </div>
+          </div>
+        ) : (
+          <div>
+            <div className="text-xl font-bold text-ink">€{activity.pricePerWeek}</div>
+            <div className="text-[11px] text-ink-2">per settimana</div>
+          </div>
+        )}
+        {selectedDayDates.length > 0 && !meetsMinDays ? (
+          <button
+            type="button"
+            disabled
+            className="cursor-not-allowed rounded-lg bg-[#C5CDD8] px-7 py-3.5 text-[15px] font-bold text-white"
+          >
+            Prenota ora
+          </button>
+        ) : (
+          <Link
+            href={bookingHref}
+            className="rounded-lg bg-sky px-7 py-3.5 text-[15px] font-bold text-white transition-all hover:scale-[0.97] hover:bg-[#3A9FDC]"
+          >
+            Prenota ora
+          </Link>
+        )}
       </div>
     </div>
   );

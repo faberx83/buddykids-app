@@ -3,6 +3,7 @@ import { getActivityBySlug } from "@/lib/data/activities";
 import { getWeeksForActivity, getBookedWeekIdsForActivity } from "@/lib/data/weeks";
 import { getKidsForUser } from "@/lib/data/kids";
 import { getEligibleInviteDiscount } from "@/lib/data/invites";
+import { getActivityDays } from "@/lib/data/activity-days";
 import { createClient } from "@/lib/supabase/server";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
 import PhoneShell from "@/components/PhoneShell";
@@ -37,13 +38,19 @@ export default async function BookingPage({
   const activity = await getActivityBySlug(id);
   if (!activity) return notFound();
 
-  const [weeks, kids, bookedWeekIdsSet, inviteDiscount] = await Promise.all([
+  // TRAMA ONE Build Sprint 3 — "Giorni spot": stessa condizione della
+  // scheda attività (app/activity/[id]/page.tsx) — solo per attività dove il
+  // Gestore l'ha configurata, invariato per tutte le altre.
+  const wantsDayAvailability = activity.bookingMode && activity.bookingMode !== "week_only";
+
+  const [weeks, kids, bookedWeekIdsSet, inviteDiscount, days] = await Promise.all([
     getWeeksForActivity(activity),
     getKidsForUser(),
     activity.dbId
       ? getBookedWeekIdsForActivity(activity.dbId, requestedKidId)
       : Promise.resolve(new Set<string>()),
     getEligibleInviteDiscount(),
+    wantsDayAvailability ? getActivityDays(activity) : Promise.resolve([]),
   ]);
   const bookedWeekIds = Array.from(bookedWeekIdsSet);
 
@@ -55,6 +62,7 @@ export default async function BookingPage({
         kids={kids}
         bookedWeekIds={bookedWeekIds}
         inviteDiscount={inviteDiscount}
+        days={days}
       />
     </PhoneShell>
   );
