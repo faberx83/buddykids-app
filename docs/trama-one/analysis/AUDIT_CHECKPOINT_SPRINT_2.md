@@ -12,7 +12,11 @@ Documento autosufficiente per chi non ha seguito la conversazione. Per decisione
 2. **Giorni spot Partner — modalità/minimo giorni**: colmata l'unica lacuna reale identificata dalla riconciliazione AS-IS (`SPRINT_2_FEATURE_PRESERVATION_MATRIX.md`) con 2 colonne additive (`booking_mode`, `min_days_per_booking`) su `activities`, UI wizard corrispondente, test Playwright (TC-414), riga xlsx.
 3. **Walkthrough attività (Partner)**: chiusa riusando il motore generico costruito in Sprint 1 senza modifiche — una nuova voce di registry (`activity_creation_partner`) e una riga di wiring in `app/center/one/page.tsx` (DEC-35), test Playwright (TC-N414/TC-N415), righe xlsx.
 
-**Stato**: **READY FOR CONTINUATION a livello di codice/test statici/documentazione. Un gate manuale resta aperto, con un rischio concreto già in corso in produzione — vedi §11, priorità massima**: `supabase/migration_11_activity_booking_mode.sql` non è ancora stata applicata in produzione da Fabrizio (applicazione di migrazione SQL è uno dei gate manuali espliciti, DEC-31 — non eseguibile da Claude), MA `lib/data/activities.ts::SELECT_COLUMNS` include già esplicitamente `booking_mode, min_days_per_booking` nella query verso Supabase, e questa modifica (commit `a7e4cf1`) risulta committata PRIMA dell'ultimo deploy noto in produzione (commit `b5842ca`, eseguito da Fabrizio con `SKIP_TESTS=1 bash deploy.sh`). Se `a7e4cf1` era già incluso in quel deploy, la query verso `activities` sta fallendo in produzione in questo momento (colonne inesistenti lato Postgres) — con degrado silenzioso, non crash, perché ogni funzione chiamante ha un fallback (vedi §11). I 3 nuovi test (TC-414, TC-N414, TC-N415) restano non eseguibili dal vivo (`test.skip(!isRealDeployment, ...)`), quindi ancora classificati "DA TESTARE" in xlsx, onestamente non "OK".
+**Stato**: **READY FOR CONTINUATION.** Il rischio segnalato in questa sezione (vedi cronologia sotto) si è confermato reale ed è stato chiuso da Fabrizio nella stessa sessione.
+
+**Incidente reale confermato e chiuso** (vedi anche DEC-36, `DECISION_LOG.md`): prima dell'applicazione di `migration_11`, la dashboard Gestore `/center/activities` mostrava "Nessuna attività trovata per il tuo centro" con l'account di test — screenshot fornito da Fabrizio, coerente esattamente con la previsione di questo checkpoint (`getActivitiesForCenter()` che ricade su `[]` perché `SELECT_COLUMNS` chiede colonne inesistenti). Causa: `lib/data/activities.ts::SELECT_COLUMNS` (commit `a7e4cf1`) richiedeva già `booking_mode, min_days_per_booking`, committato prima dell'ultimo deploy noto (`b5842ca`), mentre `migration_11_activity_booking_mode.sql` non era ancora stata applicata in produzione — un ordine invertito rispetto a quanto sarebbe stato sicuro (migrazione prima del deploy, non dopo).
+
+**Fix applicato da Fabrizio** (SQL Editor Supabase, produzione): eseguito il blocco DDL di `migration_11_activity_booking_mode.sql`. Post-check reale confermato: colonna `booking_mode` presente con `column_default = 'mixed'::text`; `select booking_mode, count(*) from public.activities group by booking_mode` → 1 riga, `booking_mode = 'mixed'`, count = 11 (tutte le 11 attività esistenti, nessuna eccezione — comportamento AS-IS preservato esattamente come previsto). Dopo il fix, `/center/activities` mostra di nuovo le attività reali. `min_days_per_booking` non è stata verificata con una query indipendente da Fabrizio, ma fa parte dello stesso blocco `begin;...commit;` di `booking_mode` — se una colonna è stata creata, anche l'altra lo è per costruzione (stessa transazione atomica).
 
 ## 2. Repository State
 
@@ -49,12 +53,9 @@ Documento autosufficiente per chi non ha seguito la conversazione. Per decisione
 
 - **Migrazione**: `supabase/migration_11_activity_booking_mode.sql`.
 - **Contenuto**: `alter table public.activities add column if not exists booking_mode text not null default 'mixed' check (booking_mode in ('week_only','day_only','mixed'))`; `alter table public.activities add column if not exists min_days_per_booking integer`; commenti descrittivi sulle colonne.
-- **Stato di applicazione**: **NON ANCORA APPLICATA in produzione.** File pronto, pre-check/post-check/rollback documentati nel file stesso come query SQL commentate, stesso schema già usato per `migration_09`/`migration_10`. Nessuna connessione diretta a Supabase da parte di Claude: l'applicazione resta un gate manuale (DEC-31).
-- **Impatto dell'attesa — verificato nel codice, non solo teorico**: `lib/data/activities.ts::SELECT_COLUMNS` include esplicitamente `booking_mode, min_days_per_booking` nella stringa passata a `.select()` verso Supabase/PostgREST. Se queste colonne non esistono ancora (migrazione non applicata), la query stessa fallisce con un errore Postgres (`column "booking_mode" of relation "activities" does not exist`), non con un valore null silenzioso — l'errore avviene PRIMA che `mapRow()` (con i suoi fallback `?? "mixed"`/`?? undefined`) venga mai chiamato. Ogni funzione che usa `SELECT_COLUMNS` ha però un proprio fallback che intercetta l'errore, quindi il sito NON va in crash visibile, ma degrada silenziosamente:
-  - `getActivities()` → ricade sui dati mock/demo (lista attività reali invisibile).
-  - `getActivitiesForCenter()` → ritorna `[]` (la dashboard Gestore "Le tue attività" risulterebbe vuota per un centro con attività reali in Supabase).
-  - `getActivityBySlug()` → ricade sul lookup nei dati mock per slug (una vera attività reale risulterebbe introvabile/404), con un `console.error` loggato (visibile nei log Vercel).
-  - **Verificare l'ordine dei commit**: `a7e4cf1` (che introduce questa query) precede `b5842ca` (l'ultimo deploy noto, eseguito da Fabrizio) nel log Git lineare di `main` — se quel deploy ha effettivamente incluso `a7e4cf1`, questo degrado è **già in corso in produzione ora**, non solo un rischio futuro. Segnalato esplicitamente a Fabrizio in chat con priorità massima, prima di qualunque altro lavoro.
+- **Stato di applicazione**: **APPLICATA in produzione da Fabrizio (SQL Editor Supabase) e verificata funzionante.** Pre-check/post-check/rollback erano documentati nel file stesso come query SQL commentate, stesso schema già usato per `migration_09`/`migration_10`. Nessuna connessione diretta a Supabase da parte di Claude in nessun momento: applicazione ed esecuzione sempre e solo da parte di Fabrizio.
+- **Evidenza reale del post-check** (riportata da Fabrizio): colonna `booking_mode` presente in `information_schema.columns` con `column_default = 'mixed'::text`; `select booking_mode, count(*) from public.activities group by booking_mode` → 1 riga, `booking_mode = 'mixed'`, count = 11 — tutte le 11 attività esistenti in produzione risultano `mixed`, zero eccezioni, comportamento AS-IS preservato esattamente come da disegno della migrazione. `min_days_per_booking` non interrogata indipendentemente, ma creata nella stessa transazione `begin;...commit;` di `booking_mode`.
+- **Incidente reale confermato prima del fix**: `lib/data/activities.ts::SELECT_COLUMNS` (commit `a7e4cf1`, precedente al deploy noto `b5842ca`) richiedeva già `booking_mode, min_days_per_booking` in produzione mentre la migrazione non era ancora applicata — `getActivitiesForCenter()` ricadeva sul suo fallback `[]`, mostrando "Nessuna attività trovata per il tuo centro" nella dashboard Gestore (screenshot confermato da Fabrizio con l'account di test). Dopo l'applicazione della migrazione, le attività reali sono tornate visibili (confermato da Fabrizio). Vedi DEC-36.
 
 ## 7. Security and Privacy
 
@@ -69,7 +70,7 @@ Documento autosufficiente per chi non ha seguito la conversazione. Per decisione
 | `npx tsc --noEmit` | **Eseguito, pulito** (incluso dopo l'aggiunta della voce Walkthrough e del wiring in `app/center/one/page.tsx`) |
 | `npm run lint` | **Eseguito, 0 errori** (128 warning pre-esistenti invariati, nessun nuovo warning) |
 | `npm run build` | **Eseguito, pulito** — `/center/one` confermata `ƒ Dynamic` insieme a tutte le altre route |
-| `tests/gestore/attivita.spec.ts` (TC-414) | Scritto, gated `test.skip(!isRealDeployment, ...)` — **non ancora eseguito dal vivo**, richiede migration_11 applicata |
+| `tests/gestore/attivita.spec.ts` (TC-414) | Scritto, gated `test.skip(!isRealDeployment, ...)` — precondizione (migration_11 applicata) ora soddisfatta, ma **il test Playwright stesso non è ancora stato rieseguito dal vivo** dopo il fix |
 | `tests/one/walkthrough-partner.spec.ts` (TC-N414, TC-N415) | Scritto, gated `test.skip(!isRealDeployment, ...)` — **non ancora eseguito dal vivo**, richiede un browser reale contro un deploy con l'account center_admin di test (override TRAMA_ONE_ENABLED, DEC-34) |
 | Suite browser completa (`TEST_SCOPE=all`) | **NON ESEGUITA — decisione di delivery esplicita (DEC-29)**, differita all'Integration Gate dopo Build Sprint 4 |
 
@@ -93,12 +94,12 @@ Più i commit di questa chiusura (Walkthrough attività + test + xlsx + document
 
 ## 10. Decisions and Assumptions
 
-**Nuove decisioni**: DEC-32 (Offering, riconciliazione), DEC-35 (Walkthrough attività riusa il motore Sprint 1 senza modifiche, chiude lo scope Sprint 2).
+**Nuove decisioni**: DEC-32 (Offering, riconciliazione), DEC-35 (Walkthrough attività riusa il motore Sprint 1 senza modifiche, chiude lo scope Sprint 2), DEC-36 (incidente reale: dashboard Gestore vuota per ordine invertito codice/migrazione, causa confermata e chiusa da Fabrizio con evidenza reale).
 
 ## 11. Risks
 
-- **Gate aperto (non blocker per il codice, ma blocker per l'uso reale della capability)**: `migration_11_activity_booking_mode.sql` non applicata in produzione. Finché non lo è, ogni lettura di `activities` che passa da `lib/data/activities.ts::mapRow()` fallirebbe con `column does not exist`, perché `SELECT_COLUMNS` ora richiede esplicitamente `booking_mode, min_days_per_booking`. **Questo significa che il deploy di questo sprint in produzione NON deve avvenire prima dell'applicazione della migrazione** — a differenza di Sprint 1 (dove il codice applicativo era già tollerante all'assenza della tabella), qui l'ordine è invertito: prima migration_11, poi deploy. Segnalare esplicitamente a Fabrizio prima di qualunque deploy di questo batch.
-- **Rischio basso**: i 3 nuovi test (TC-414, TC-N414, TC-N415) restano non verificati dal vivo fino al prossimo ciclo Gate 1+Gate 2 (stesso pattern già seguito per la remediation Sprint 1).
+- **Chiuso, era un blocker reale, non solo teorico**: `migration_11_activity_booking_mode.sql` non era applicata mentre il codice già richiedeva le sue colonne (ordine invertito rispetto a quanto sarebbe stato sicuro). Confermato dal vivo (dashboard Gestore vuota) e risolto da Fabrizio applicando la migrazione in produzione — vedi §1/§6/DEC-36. **Lezione operativa per i prossimi sprint**: quando una migrazione introduce colonne già lette da una `SELECT` esplicita (non solo scritte), va segnalato come precondizione al deploy, non solo come nota a margine — questo checkpoint lo segnalava già in §11 della bozza precedente, ma il deploy era già avvenuto prima che la segnalazione potesse essere utile. Da questo momento, ogni migrazione che introduce colonne lette da una query esistente va verificata contro l'ordine reale dei commit/deploy PRIMA di scrivere il checkpoint, non durante.
+- **Rischio basso, ancora aperto**: i 3 nuovi test (TC-414, TC-N414, TC-N415) non sono ancora stati rieseguiti dal vivo dopo il fix — la precondizione (migration_11 applicata) è ora soddisfatta, manca solo il run Playwright reale.
 
 ## 12. Rollback
 
@@ -108,9 +109,9 @@ Più i commit di questa chiusura (Walkthrough attività + test + xlsx + document
 
 ## 13. Sprint 3 Readiness / Gate rimanenti
 
-**Gate migrazione — `migration_11`**: **APERTO.** Da applicare da Fabrizio in produzione **prima** di qualunque deploy che includa questo batch (vedi §11 — a differenza delle remediation precedenti, qui l'ordine è invertito: la migrazione deve precedere il deploy, non seguirlo).
+**Gate migrazione — `migration_11`**: **CHIUSO.** Applicata da Fabrizio in produzione via SQL Editor Supabase, post-check confermato (booking_mode presente, default 'mixed', 11/11 attività esistenti invariate). Incidente reale (dashboard Gestore vuota) confermato e risolto — vedi §1/§6/DEC-36.
 
-**Gate test browser**: **APERTO**, dipende dal gate precedente. Dopo l'applicazione di migration_11 e il deploy, comando suggerito (stesso pattern Gate 2 di Sprint 1):
+**Gate test browser**: **APERTO.** Precondizione ora soddisfatta (migration_11 applicata); manca il run Playwright reale. Comando suggerito (stesso pattern Gate 2 di Sprint 1):
 ```
 source .env.test
 TEST_BASE_URL=<url produzione> npx playwright test tests/gestore/attivita.spec.ts tests/one/walkthrough-partner.spec.ts --reporter=list --workers=1
@@ -120,6 +121,6 @@ TEST_BASE_URL=<url produzione> npx playwright test tests/gestore/attivita.spec.t
 
 ## 14. Audit Conclusion
 
-**AUDIT STATUS: READY FOR CONTINUATION (codice/test statici/documentazione), GATE MIGRAZIONE APERTO (verifica reale pendente)**
+**AUDIT STATUS: READY FOR CONTINUATION**
 
-Tutto lo scope di Build Sprint 2 (`SPRINT_GOVERNANCE.md`) è implementato, staticamente verificato (`tsc`/`lint`/`build` puliti) e documentato (`DECISION_LOG.md` DEC-32/DEC-35, `SPRINT_2_FEATURE_PRESERVATION_MATRIX.md`, xlsx TC-414/TC-N414/TC-N415). Nessuna capability AS-IS a rischio, nessuna feature eliminata. A differenza di Sprint 1, qui il gate di migrazione è più stringente: applicare `migration_11` **prima** di ogni deploy di questo batch, non dopo — segnalato esplicitamente a Fabrizio. Nessun blocker per iniziare in parallelo l'analisi di Build Sprint 3 (Parent discovery/selezione giorni), che comunque richiede la propria Feature Preservation Matrix estesa e la chiusura di V2 di `ASSUMPTION_LOG.md` (CR↔capability epic E06) prima dell'implementazione, per governance invariata.
+Tutto lo scope di Build Sprint 2 (`SPRINT_GOVERNANCE.md`) è implementato, staticamente verificato (`tsc`/`lint`/`build` puliti) e documentato (`DECISION_LOG.md` DEC-32/DEC-35/DEC-36, `SPRINT_2_FEATURE_PRESERVATION_MATRIX.md`, xlsx TC-414/TC-N414/TC-N415). Nessuna capability AS-IS a rischio, nessuna feature eliminata. L'incidente reale scoperto durante questa chiusura (dashboard Gestore vuota per ordine invertito codice/migrazione) è stato confermato e risolto da Fabrizio con evidenza reale (post-check SQL, verifica visiva del sito). Unico residuo non bloccante: i 3 test nuovi (TC-414, TC-N414, TC-N415) non sono ancora stati rieseguiti dal vivo dopo il fix — la precondizione tecnica è ora soddisfatta. Nessun blocker per iniziare in parallelo l'analisi di Build Sprint 3 (Parent discovery/selezione giorni), che comunque richiede la propria Feature Preservation Matrix estesa e la chiusura di V2 di `ASSUMPTION_LOG.md` (CR↔capability epic E06) prima dell'implementazione, per governance invariata.
