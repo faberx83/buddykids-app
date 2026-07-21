@@ -6,9 +6,9 @@ Documento autosufficiente per un auditor esterno che non ha seguito la conversaz
 
 **Obiettivo di questa remediation**: chiudere le tre condizioni poste dall'audit esterno sul checkpoint originale di Build Sprint 1, senza riaprire l'architettura generale dello sprint (state machine Center, checklist, verifica identità, Admin review, Walkthrough — tutti già implementati e deployati in precedenza).
 
-**Risultato**: le tre condizioni sono state chiuse a livello di codice, test e documentazione. La migrazione che introduce l'auto-inizializzazione (`migration_10_center_onboarding_auto_lead.sql`) è pronta ma **non ancora applicata** in produzione (Gate 1, in fondo a questo documento) — nessuna capability nuova può dirsi verificata end-to-end finché non è applicata e ri-testata dal vivo.
+**Risultato**: le tre condizioni sono state chiuse a livello di codice, test e documentazione, **e ora anche verificate end-to-end contro il deploy reale**. `migration_10_center_onboarding_auto_lead.sql` è stata applicata da Fabrizio in produzione (Gate 1 chiuso) e ri-testata con un browser reale (Gate 2): TC-N407 (creazione centro → riga LEAD automatica, nessun INSERT manuale) e TC-N408 (idempotenza del trigger) sono **passed** contro `https://buddykids-app.vercel.app`, su chromium e mobile-chrome. Il primo run reale aveva rivelato 3 bug nei *test* stessi (locator `getByLabel` non associato label/input, `new RegExp()` che interpretava `[TEST]` come classe di caratteri, un livello di risalita DOM di troppo nel locator della riga) — tutti corretti e ricommittati (`65248e2`, `64924c0`, `b5842ca`), nessun bug nel prodotto.
 
-**Stato**: **READY FOR CONTINUATION** (governance aggiornata da Fabrizio dopo l'audit esterno, DEC-29/30/31: la cadenza "audit esterno ad ogni sprint" è sostituita da un unico Integration Gate dopo Build Sprint 4; questo checkpoint resta un documento interno di continuità, non richiede condivisione con un nuovo audit esterno). Migration_10 resta da applicare in produzione da Fabrizio (Gate 1) — questo non blocca l'avvio di Build Sprint 2, che procede in parallelo per decisione esplicita di delivery.
+**Stato**: **READY FOR CONTINUATION, capability core verificata dal vivo**. TC-N409 (percorso CHANGES_REQUESTED) fallisce ancora perché richiede una precondizione SQL manuale non ancora eseguita (documentata nel test stesso, non bloccante); TC-N411 resta skippato per mancanza di una seconda utenza center_admin di test (noto, non bloccante). Governance DEC-29/30/31 invariata: la cadenza "audit esterno ad ogni sprint" resta sostituita da un unico Integration Gate dopo Build Sprint 4; questo checkpoint resta un documento interno di continuità.
 
 ## 2. Repository State
 
@@ -17,7 +17,7 @@ Documento autosufficiente per un auditor esterno che non ha seguito la conversaz
 - **Commit finali di questa remediation**: `8462f9a` (migration_10), `f3ef87c` (registry etichette italiane), `9f6e1f8` (test).
 - **Diff di questa remediation** (`4a81add...9f6e1f8`): 7 file, +618/-39 righe, **zero file eliminati**.
 - **Working tree**: pulito subito dopo questi 3 commit; questo stesso file e gli altri aggiornamenti documentali (§13) sono un quarto commit successivo.
-- **Push/deploy**: nessuno di questi commit è stato ancora pubblicato/deployato — resta da fare da Fabrizio con `bash deploy.sh` DOPO l'applicazione di migration_10 (Gate 1).
+- **Push/deploy**: pubblicato e deployato da Fabrizio (`SKIP_TESTS=1 bash deploy.sh`, commit `b5842ca` in produzione su `https://buddykids-app.vercel.app`) DOPO l'applicazione di migration_10 (Gate 1).
 
 ## 3. Scope
 
@@ -94,7 +94,7 @@ Nessuna route nuova o modificata in questa remediation — stesse due route di S
 ## 9. Database
 
 - **Migrazione**: `migration_10_center_onboarding_auto_lead.sql`, hash SHA-256: `d8445ec4e634fd045893db5279cc356a58cdaf57915fb4d78ddf8a4e26f5529d`.
-- **Stato di applicazione**: **NON ANCORA APPLICATA**. Nessuna connessione a Supabase da parte di Claude in nessun momento. Da applicare da Fabrizio (Gate 1).
+- **Stato di applicazione**: **APPLICATA in produzione da Fabrizio (Gate 1 chiuso)** e verificata funzionante da un test browser reale (TC-N407/N408, passed su chromium e mobile-chrome contro `https://buddykids-app.vercel.app`) — trigger crea la riga LEAD automaticamente, idempotente, nessun backfill sui centri preesistenti. Nessuna connessione diretta a Supabase da parte di Claude in nessun momento: applicazione ed esecuzione sempre e solo da parte di Fabrizio.
 - **Oggetti introdotti**: funzione `public.init_center_onboarding_lead()` (SECURITY DEFINER), trigger `trg_init_center_onboarding_lead` su `public.centers`.
 - **Pre-check/post-check/rollback**: documentati nel file stesso, query pronte da eseguire una alla volta.
 
@@ -115,7 +115,7 @@ Nessuna route nuova o modificata in questa remediation — stesse due route di S
 | `bash -n deploy.sh` / `bash -n test-deploy.sh` | **Eseguito, sintassi OK** |
 | Unit test onboarding + walkthrough + feature-flags + registry italiano (`tests/one/onboarding.spec.ts`, `tests/one/feature-flags.spec.ts`) | **Eseguito, 72/72 passed** (36 test unici × 2 progetti browser), incluse le 9 nuove assertion TC-N410a..i su valori tecnici invariati, etichette differenziate, CTA corrette, storico tradotto, assenza di "Reclama" |
 | `tests/one/onboarding-remediation.spec.ts` — sintassi/list | **Eseguito, `--list` conferma 12 test (6 ID × 2 browser) senza errori di parsing** |
-| `tests/one/onboarding-remediation.spec.ts` — esecuzione reale (TC-N407/408/409/411/412/413) | **PENDING LOCAL VERIFICATION** — richiede migration_10 applicata + deploy reale (Gate 1 + Gate 2), non eseguibile nel sandbox (nessun browser, nessuna credenziale Supabase) |
+| `tests/one/onboarding-remediation.spec.ts` — esecuzione reale (Gate 2, eseguito da Fabrizio) | **TC-N407, TC-N408, TC-N412, TC-N413: passed** (chromium + mobile-chrome, contro `https://buddykids-app.vercel.app`, post-applicazione migration_10). **TC-N409: failed** — richiede una precondizione SQL manuale (reset del centro di test a SUBMITTED) documentata nel test stesso, non ancora eseguita: non è un bug. **TC-N411: skipped** — richiede una seconda utenza center_admin di test non ancora provisionata, come documentato. Il primo run reale aveva rivelato 3 bug nei *test* (non nel prodotto): locator `getByLabel` non associato a `NewCenterForm.tsx` (nessun `htmlFor`/`id`), `new RegExp()` che interpretava `[TEST]` come classe di caratteri regex invece di testo letterale, un livello di risalita DOM di troppo nel locator di riga — tutti corretti (commit `65248e2`, `64924c0`, `b5842ca`) e riverificati verdi. |
 | Suite browser completa (`TEST_SCOPE=all`) | **NON ESEGUITA — decisione di delivery esplicita (DEC-29), non una dimenticanza.** Verifiche per questa chiusura limitate a: test statici (tsc/lint/build), unit test onboarding/walkthrough/feature-flags/registry italiano, test mirati auto-LEAD e microcopy, smoke delle route Sprint 1, fallback essenziali `/one`. La regressione completa (`TEST_SCOPE=all` confrontata con `PRE_EXISTING_TEST_FAILURE_BASELINE.md`) è differita all'Integration Gate dopo Build Sprint 4 (DEC-30) |
 
 **Suite browser completa non eseguita per decisione di delivery. Verifiche limitate a test statici, unitari, smoke mirati e flusso funzionale Sprint 1. Regressione completa differita all'Integration Gate dopo Build Sprint 4.**
@@ -152,8 +152,9 @@ Più questo commit di documentazione (`docs(trama-one): document Sprint 1 audit 
 
 ## 16. Risks
 
-- **Blocker**: nessuno per il codice/test/documentazione. **Bloccante per la chiusura READY piena**: migration_10 non ancora applicata in produzione.
-- **Rischio basso**: baseline dei 7 fallimenti preesistenti ancora parzialmente qualitativa (DEC-28) — si chiude al Gate 2.
+- **Blocker**: nessuno. `migration_10` applicata e verificata funzionante in produzione (Gate 1 + Gate 2 core chiusi con evidenza reale).
+- **Rischio basso**: TC-N409 (percorso CHANGES_REQUESTED) non ancora rieseguito con successo — richiede una precondizione SQL manuale (reset a SUBMITTED) che Fabrizio non ha ancora applicato; nessun impatto sulla capability verificata (auto-LEAD).
+- **Rischio basso**: baseline dei 7 fallimenti preesistenti ancora parzialmente qualitativa (DEC-28) — si chiude quando verrà eseguita la suite completa (`TEST_SCOPE=all`) all'Integration Gate di Sprint 4.
 - **Rischio basso**: TC-N411 (isolamento center_admin cross-centro) non automatizzabile con le utenze di test attuali (una sola utenza center_admin esiste) — documentato, non bloccante per il pilot.
 
 ## 17. Rollback
@@ -165,31 +166,21 @@ Più questo commit di documentazione (`docs(trama-one): document Sprint 1 audit 
 
 ## 18. Sprint 2 Readiness / Gate rimanenti
 
-**Gate 1 — Applicazione migration_10** (Fabrizio):
-- File: `supabase/migration_10_center_onboarding_auto_lead.sql`, SHA-256 `d8445ec4e634fd045893db5279cc356a58cdaf57915fb4d78ddf8a4e26f5529d`.
-- Procedura: aprire Supabase SQL Editor, eseguire prima le query di PRE-CHECK (una alla volta, sola lettura), poi il blocco `begin;...commit;`, poi le query di POST-CHECK.
-- Risultato atteso: post-check punto 6 (trigger+funzione presenti), punto 7 (conteggio `center_onboarding_state` invariato = nessun backfill), punto 8-9 (nuovo centro di test riceve LEAD, nessun duplicato).
-- Cosa riportare: l'output di ciascuna query di post-check (in particolare punto 7, il conteggio prima/dopo).
+**Gate 1 — Applicazione migration_10**: **CHIUSO.** Fabrizio ha applicato `supabase/migration_10_center_onboarding_auto_lead.sql` (SHA-256 `d8445ec4e634fd045893db5279cc356a58cdaf57915fb4d78ddf8a4e26f5529d`) in produzione.
 
-**Gate 2 — Test browser sul Mac** (Fabrizio), DOPO Gate 1 e un redeploy del codice di questa remediation:
+**Gate 2 — Test browser sul Mac**: **CHIUSO per la capability core.** Comando eseguito da Fabrizio contro `https://buddykids-app.vercel.app` (post-migration_10, post-deploy):
 ```
-cd <cartella del progetto>
 source .env.test
-TEST_BASE_URL=https://buddykids-app.vercel.app npx playwright test tests/one/onboarding-remediation.spec.ts tests/one/smoke.spec.ts --reporter=list --workers=1
+TEST_BASE_URL=https://buddykids-app.vercel.app npx playwright test tests/one/onboarding-remediation.spec.ts --reporter=list --workers=1
 ```
-Poi, per la baseline (§12), un secondo comando separato con la suite intera:
-```
-TEST_BASE_URL=https://buddykids-app.vercel.app npx playwright test --reporter=list
-```
-- Environment richieste (già presenti in `.env.test`, non mostrarne i valori): `TEST_PARENT_EMAIL/PASSWORD`, `TEST_CENTER_ADMIN_EMAIL/PASSWORD`, `TEST_PLATFORM_ADMIN_EMAIL/PASSWORD`.
-- Risultato atteso: tutti i test di `onboarding-remediation.spec.ts` e `smoke.spec.ts` passed (eccetto TC-N411, skippato per mancanza di seconda utenza — atteso); nella suite intera, esattamente le stesse 4 aree/7 fallimenti della baseline, nessun fallimento nuovo.
-- File da conservare: output testuale completo di entrambi i comandi (per chiudere `PRE_EXISTING_TEST_FAILURE_BASELINE.md` con i dati esatti).
-- Cosa incollarmi: l'output testuale di entrambi i comandi.
+Risultato reale (dopo 3 correzioni di locator nel test — nessuna nel prodotto): **8 passed** (TC-N407, TC-N408, TC-N412, TC-N413 × 2 browser), **2 failed** (TC-N409, richiede precondizione SQL manuale non ancora eseguita — documentata nel test, non bloccante), **2 skipped** (TC-N411, seconda utenza non provisionata — noto). La suite `smoke.spec.ts` non è stata rilanciata insieme (conflitto noto e documentato: gli stessi account di test hanno un override `TRAMA_ONE_ENABLED` attivo, necessario perché i test di onboarding raggiungano `/admin/one/onboarding` — questo rende i test "flag disattivato di default" di quella suite strutturalmente incompatibili con gli stessi account, non una regressione).
 
-**Gate 3 — Merge e deploy**: non pianificato in questo momento — nessun merge multi-branch è in corso (lavoro già su `main`); il "deploy" è lo stesso `bash deploy.sh` di sempre, da eseguire da Fabrizio dopo Gate 1 e prima di Gate 2 (serve il codice in produzione per testare contro un deploy reale). Nessuna azione di merge/deploy eseguita da Claude.
+Residuo facoltativo, non bloccante: se si vuole chiudere anche TC-N409, eseguire la precondizione SQL documentata nel test stesso (reset di un centro di test a `SUBMITTED`) e rilanciare.
+
+**Gate 3 — Merge e deploy**: non pianificato — nessun merge multi-branch in corso (lavoro già su `main`); il deploy di questa remediation è già stato eseguito da Fabrizio (`bash deploy.sh`, commit `b5842ca`).
 
 ## 19. Audit Conclusion
 
 **AUDIT STATUS: READY FOR CONTINUATION**
 
-Remediation Sprint 1 completata: codice, test statici/unitari/mirati (72/72 passed) e documentazione completi e verificati. Nessuna capability AS-IS a rischio, nessun valore tecnico rinominato, "Reclama" rimosso e verificato, nessuna regressione introdotta nei test eseguiti. Nessun blocker noto per l'avvio di Build Sprint 2. `migration_10` resta da applicare in produzione (Gate 1, non bloccante per l'avvio di Sprint 2 per decisione di delivery). Suite browser completa differita all'Integration Gate dopo Build Sprint 4 (DEC-29/30) — questo checkpoint è un documento interno di continuità, non richiede un nuovo audit esterno.
+Remediation Sprint 1 completata e **verificata end-to-end contro il deploy reale**: codice, test statici/unitari/mirati (72/72 passed) e ora anche la capability core della migrazione (auto-LEAD, nessun INSERT manuale, idempotenza) confermata da un browser reale contro produzione. Nessuna capability AS-IS a rischio, nessun valore tecnico rinominato, "Reclama" rimosso e verificato, nessuna regressione introdotta nei test eseguiti. Nessun blocker noto per la prosecuzione di Build Sprint 2 (già in corso in parallelo). Residui non bloccanti, entrambi documentati onestamente: TC-N409 richiede una precondizione SQL manuale non ancora eseguita; TC-N411 richiede una seconda utenza di test non ancora provisionata. Suite browser completa (`TEST_SCOPE=all`) resta differita all'Integration Gate dopo Build Sprint 4 (DEC-29/30) — questo checkpoint è un documento interno di continuità, non richiede un nuovo audit esterno.
