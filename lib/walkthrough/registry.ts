@@ -49,6 +49,52 @@ export const WALKTHROUGH_REGISTRY: Record<string, WalkthroughDefinition> = {
       },
     ],
   },
+  // TRAMA ONE Build Sprint 2 — percorso Partner per la creazione di
+  // un'attività, come richiesto dallo scope Sprint 2 (SPRINT_GOVERNANCE.md:
+  // "step Walkthrough attività: crea attività/configura settimane/prezzi/
+  // Giorni spot/pubblica/dashboard"). Riusa lo stesso motore generico di
+  // welcome_parent, nessuna modifica al motore stesso — solo una nuova
+  // definizione di percorso e la sua pagina di collegamento (/center/one).
+  // Ogni step linka la pagina reale AS-IS dove l'azione va fatta (nessuna
+  // logica di business duplicata qui: il percorso è solo una checklist
+  // guidata, la scrittura reale resta in ActivityEditForm.tsx/
+  // saveActivityDaysAction, invariati da questo sprint).
+  activity_creation_partner: {
+    key: "activity_creation_partner",
+    title: "Pubblica la tua prima attività",
+    steps: [
+      {
+        key: "create_activity",
+        title: "Crea l'attività",
+        description: "Vai su \"Le tue attività\" e crea una nuova scheda: nome, fascia d'età, descrizione.",
+      },
+      {
+        key: "configure_weeks",
+        title: "Configura le settimane",
+        description: "Imposta le settimane disponibili, la capacità e il prezzo a settimana.",
+      },
+      {
+        key: "configure_pricing",
+        title: "Rivedi prezzi e servizi",
+        description: "Controlla prezzo, navetta, pasto e servizi extra (ingresso anticipato/uscita posticipata).",
+      },
+      {
+        key: "configure_spot_days",
+        title: "Configura i Giorni spot",
+        description: "Apri il Calendario disponibilità e scegli quali giorni sono prenotabili singolarmente, con eventuale sconto o minimo giorni.",
+      },
+      {
+        key: "publish",
+        title: "Pubblica",
+        description: "Salva la scheda: da questo momento è visibile ai genitori in ricerca.",
+      },
+      {
+        key: "dashboard",
+        title: "Monitora dalla dashboard",
+        description: "Segui prenotazioni, presenze e richieste ricevute dal pannello Gestore.",
+      },
+    ],
+  },
 };
 
 export function isKnownTutorial(tutorialKey: string): boolean {
