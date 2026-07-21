@@ -51,7 +51,16 @@ test.describe("TRAMA ONE — Onboarding Centro: auto-inizializzazione LEAD (Spri
     // INSERT su public.centers) funziona, il nuovo centro ha già una riga
     // LEAD in center_onboarding_state e compare subito nella coda Admin.
     await page.goto("/admin/one/onboarding");
-    const row = page.getByText(centerName).locator("..").locator("..");
+    // BUG DI TEST CORRETTO (3° giro): un ".." di troppo — in
+    // AdminOnboardingReviewClient.tsx ogni riga è un <div> che contiene
+    // DIRETTAMENTE sia il nome del centro sia il badge di stato (un solo
+    // livello di nesting, non due). Risalendo di due livelli si atterrava sul
+    // contenitore <div className="divide-y..."> che avvolge TUTTE le righe
+    // della lista "Altri stati", per questo getByText("Da attivare") dentro
+    // trovava 5-7 elementi invece di 1 (strict mode violation) — non un
+    // problema del trigger: TC-N408 (idempotenza, stesso centro) passava già
+    // con successo, a conferma che la riga LEAD viene creata correttamente.
+    const row = page.getByText(centerName).locator("..");
     await expect(row.getByText("Da attivare")).toBeVisible();
   });
 
