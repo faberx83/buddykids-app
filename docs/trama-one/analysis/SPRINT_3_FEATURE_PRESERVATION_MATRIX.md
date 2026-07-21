@@ -38,12 +38,13 @@ Artefatto obbligatorio prerequisito richiesto da `SPRINT_GOVERNANCE.md` (Sprint 
 
 Nessuna capability AS-IS a rischio: tutte le estensioni previste sono additive (nuove sezioni UI condizionali, nuova logica di calcolo attivata solo quando `bookingMode !== "week_only"`), il flusso esistente a settimana intera resta il comportamento di default per ogni attività non ancora configurata a Giorni spot lato Partner. Prerequisito Sprint 3 soddisfatto: matrice prodotta, V2 di `ASSUMPTION_LOG.md` verificata per l'epic E06 (vedi voce dedicata).
 
-## Precondizione esplicita ancora aperta (blocca l'implementazione, non l'analisi)
+## Precondizione esplicita — CHIUSA con evidenza reale (2026-07-21)
 
-Per `SPRINT_GOVERNANCE.md` §Sprint 3, "Artefatti obbligatori" richiede: **suite di regressione booking Legacy/NextGen eseguita e verde come precondizione esplicita (condizione GO WITH CONDITIONS #3)**, prima di scrivere qualunque codice di Sprint 3. Questo è un test locale con browser reale — non eseguibile nel sandbox Claude (stessa limitazione già documentata per Gate 2 di Sprint 1/2). Comando da eseguire sul Mac di Fabrizio, PRIMA che Claude inizi a scrivere codice di Sprint 3:
+Per `SPRINT_GOVERNANCE.md` §Sprint 3, "Artefatti obbligatori" richiedeva: **suite di regressione booking Legacy/NextGen eseguita e verde come precondizione esplicita (condizione GO WITH CONDITIONS #3)**, prima di scrivere qualunque codice di Sprint 3. Fabrizio ha eseguito:
 
 ```
-npx playwright test tests/genitori/prenotazione.spec.ts --reporter=list
+source .env.test
+TEST_BASE_URL=https://buddykids-app.vercel.app npx playwright test tests/genitori/prenotazione.spec.ts --reporter=list
 ```
 
-(Copre il flusso booking Legacy, condiviso da NextGen: `/nextgen/search` instrada alla stessa `/activity/[id]`/`/booking/[id]` di Legacy, nessuna route booking separata esiste oggi.) Se la suite risulta verde (o con soli fallimenti già noti e documentati in `PRE_EXISTING_TEST_FAILURE_BASELINE.md`), la precondizione è soddisfatta e l'implementazione di Sprint 3 può iniziare senza ulteriori conferme, per l'istruzione permanente di procedere autonomamente. Se emergono fallimenti NUOVI, vanno segnalati e non silenziati.
+**Risultato: 9 passed, 0 failed, 45 skipped** (chromium + mobile-chrome). Vedi DEC-37 per il dettaglio (due run precedenti erano falliti per un comando incompleto dato da Claude — mancava `TEST_BASE_URL`, non un bug del prodotto). Precondizione soddisfatta: l'implementazione di Sprint 3 può iniziare.
