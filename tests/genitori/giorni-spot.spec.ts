@@ -93,7 +93,9 @@ test.describe("Genitori - Giorni spot", () => {
     }
     await page.getByRole("button", { name: "Continua" }).click();
 
-    await expect(page.getByText("Pagamento")).toBeVisible();
+    // "Pagamento" da solo è ambiguo (compare sia nello StepIndicator sia nel
+    // titolo dello step): il sottotitolo è univoco nella pagina.
+    await expect(page.getByText("Scegli il metodo di pagamento")).toBeVisible();
     await page.getByRole("button", { name: "Conferma e paga" }).click();
 
     await page.waitForURL(/\/booking\/.*\/success/);

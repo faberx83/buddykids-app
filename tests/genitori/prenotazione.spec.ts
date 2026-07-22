@@ -21,6 +21,19 @@ async function gotoTestActivityBooking(page: import("@playwright/test").Page) {
 }
 
 test.describe("Genitori - Prenotazione", () => {
+  // Serial, non parallelo: molti test qui sotto leggono/scrivono DAVVERO le
+  // stesse prenotazioni condivise sull'account genitore di test reale (es.
+  // TC-191 cambia le settimane, TC-294 annulla per davvero). Con
+  // `fullyParallel: true` di default, questi test potevano girare
+  // contemporaneamente su worker diversi e "vedersi" a metà di una
+  // mutazione altrui — causa concreta osservata del fallimento
+  // intermittente di TC-293 ("nessuna settimana" nel pop-up di conferma,
+  // spiegabile con `bookedWeeksLabel` letto mentre un altro test stava
+  // cancellando/modificando proprio quella prenotazione). Il fix corretto è
+  // qui, non nell'app: questi test condividono stato reale mutabile, quindi
+  // vanno eseguiti in ordine, non in parallelo tra loro.
+  test.describe.configure({ mode: "serial" });
+
   // Priorita: Alta | Precondizioni: Attivita con settimane disponibili, almeno un bambino inserito
   // Passi: Apri attivita -> 'Prenota' -> step 1 scegli settimane -> step 2 scegli bambino/i -> step 3 scegli pagamento -> conferma
   // Risultato atteso: Prenotazione creata in Supabase (bookings/booking_weeks/booking_kids), redirect a schermata di successo
