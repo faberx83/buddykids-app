@@ -14,3 +14,8 @@ test-results
 
 # Log automatici di deploy.sh (deploy.sh + gate di test) — solo locali
 logs
+
+# Cache incrementale del compilatore TypeScript — locale, si rigenera da
+# sola a ogni `tsc`/`next build`, non va versionata (causava "working tree
+# sporco" spurio a ogni deploy).
+tsconfig.tsbuildinfo
