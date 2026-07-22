@@ -21,7 +21,20 @@ const ActivityMap = dynamic(() => import("@/components/ActivityMap"), {
   ),
 });
 
-type FilterPanel = "eta" | "prezzo" | "zona" | "tag" | "servizi" | "data" | "giorni" | null;
+type FilterPanel = "eta" | "prezzo" | "zona" | "tag" | "servizi" | "data" | "copertura" | null;
+
+// Fabrizio (2026-07-22): stesso principio applicato in NEXTGEN
+// (SearchDiscoveryClient.tsx) — "Copertura" sostituisce il booleano "Giorni
+// spot" con un filtro sulla modalità di prenotazione supportata
+// (activities.booking_mode), mantenendo nello stesso pannello anche la
+// disponibilità reale ("Giorni spot aperti ora").
+type CoverageMode = "week_only" | "day_only" | "mixed";
+const COVERAGE_MODE_LABELS: Record<CoverageMode, string> = {
+  week_only: "Settimana intera",
+  day_only: "Giorni singoli",
+  mixed: "Entrambe",
+};
+const COVERAGE_MODE_ORDER: CoverageMode[] = ["week_only", "day_only", "mixed"];
 type ViewMode = "lista" | "mappa";
 
 interface ServiceFilters {
@@ -223,6 +236,11 @@ export default function SearchClient({
   // giorno esatto resta nel dettaglio attività, vedi DetailClient.tsx).
   const [onlyDaySpots, setOnlyDaySpots] = useState(false);
   const daySpotsSet = useMemo(() => new Set(activitiesWithDaySpots), [activitiesWithDaySpots]);
+  const [selectedCoverageModes, setSelectedCoverageModes] = useState<CoverageMode[]>([]);
+
+  function toggleCoverageMode(mode: CoverageMode) {
+    setSelectedCoverageModes((prev) => (prev.includes(mode) ? prev.filter((m) => m !== mode) : [...prev, mode]));
+  }
 
   // TRAMA ONE Build Sprint 3 — "context object" leggero (SPRINT_3_FEATURE_
   // PRESERVATION_MATRIX.md): un correlationId generato una volta per questa
@@ -257,6 +275,7 @@ export default function SearchClient({
     (selectedWeekStart ? 1 : 0) +
     (selectedTagIds.length > 0 ? 1 : 0) +
     (onlyDaySpots ? 1 : 0) +
+    (selectedCoverageModes.length > 0 ? 1 : 0) +
     Object.values(services).filter(Boolean).length;
 
   const withDistance = useMemo(() => {
@@ -296,6 +315,8 @@ export default function SearchClient({
       if (availableIdsForWeek && a.dbId && !availableIdsForWeek.has(a.dbId)) return false;
       if (selectedTagIds.length > 0 && !a.tagIds.some((id) => selectedTagIds.includes(id))) return false;
       if (onlyDaySpots && (!a.dbId || !daySpotsSet.has(a.dbId))) return false;
+      if (selectedCoverageModes.length > 0 && !selectedCoverageModes.includes((a.bookingMode ?? "mixed") as CoverageMode))
+        return false;
       return true;
     });
   }, [
@@ -311,6 +332,7 @@ export default function SearchClient({
     selectedTagIds,
     onlyDaySpots,
     daySpotsSet,
+    selectedCoverageModes,
   ]);
 
   // Se c'e' una posizione, dividiamo in "Nella tua zona" / "Fuori dalla
@@ -341,6 +363,7 @@ export default function SearchClient({
     setSelectedWeekStart(null);
     setSelectedTagIds([]);
     setOnlyDaySpots(false);
+    setSelectedCoverageModes([]);
   }
 
   const mapItems = useMemo(
@@ -351,9 +374,20 @@ export default function SearchClient({
     [results]
   );
 
+  // Fabrizio (2026-07-22): stesso riordino applicato in NEXTGEN — "quando"
+  // (Data + Copertura) prima di prezzo/zona/categoria, coerente con come un
+  // genitore pensa davvero una ricerca di camp.
   const filters: { key: FilterPanel; icon: string; label: string }[] = [
+    { key: "data", icon: "ti-calendar", label: selectedWeekInfo ? `Settimana ${selectedWeekInfo.index}` : "Date" },
+    {
+      key: "copertura",
+      icon: "ti-calendar-time",
+      label:
+        selectedCoverageModes.length > 0 || onlyDaySpots
+          ? `Copertura (${selectedCoverageModes.length + (onlyDaySpots ? 1 : 0)})`
+          : "Copertura",
+    },
     { key: "eta", icon: "ti-users", label: "Età" },
-    { key: "prezzo", icon: "ti-coin-euro", label: "Prezzo" },
     { key: "zona", icon: "ti-map-pin", label: hasGeo ? "Zona (vicino a te)" : "Zona" },
     {
       key: "tag",
@@ -361,8 +395,7 @@ export default function SearchClient({
       label: selectedTagIds.length > 0 ? `Tipo attività (${selectedTagIds.length})` : "Tipo attività",
     },
     { key: "servizi", icon: "ti-adjustments-horizontal", label: "Servizi" },
-    { key: "data", icon: "ti-calendar", label: selectedWeekInfo ? `Settimana ${selectedWeekInfo.index}` : "Date" },
-    { key: "giorni", icon: "ti-calendar-time", label: "Giorni spot" },
+    { key: "prezzo", icon: "ti-coin-euro", label: "Prezzo" },
   ];
 
   return (
@@ -432,11 +465,12 @@ export default function SearchClient({
                     }`}
                   />
                 )}
-                {f.key === "giorni" && onlyDaySpots && (
+                {f.key === "copertura" && (selectedCoverageModes.length > 0 || onlyDaySpots) && (
                   <span
                     role="button"
                     onClick={(e) => {
                       e.stopPropagation();
+                      setSelectedCoverageModes([]);
                       setOnlyDaySpots(false);
                     }}
                     className={`ti ti-x flex h-3.5 w-3.5 items-center justify-center rounded-full text-[10px] ${
@@ -680,24 +714,42 @@ export default function SearchClient({
           </div>
         )}
 
-        {/* TRAMA ONE Build Sprint 3 — "Giorni spot": filtro Parent per
-            disponibilità giornaliera (SPRINT_3_FEATURE_PRESERVATION_MATRIX.md).
-            Non seleziona una data precisa (quella scelta resta nel dettaglio
-            attività, DetailClient.tsx) — qui riduce solo ai centri/attività
-            che offrono la modalità a giorni, con almeno un giorno davvero
-            prenotabile oggi. */}
-        {openPanel === "giorni" && (
+        {/* Fabrizio (2026-07-22): "Copertura" sostituisce il vecchio filtro
+            booleano "Giorni spot" — stesso principio di NEXTGEN
+            (SearchDiscoveryClient.tsx): modalità di prenotazione supportata
+            (activities.booking_mode) + disponibilità reale ora, nello stesso
+            pannello perché è la stessa domanda vista da due angoli. */}
+        {openPanel === "copertura" && (
           <div className="mt-3 rounded-lg border border-[#E8EBF0] bg-bg p-3">
-            <label className="flex items-center gap-2 text-sm text-ink">
+            <div className="mb-2 text-xs font-semibold text-ink-2">Modalità di prenotazione</div>
+            <div className="mb-3 flex flex-wrap gap-2">
+              {COVERAGE_MODE_ORDER.map((mode) => {
+                const active = selectedCoverageModes.includes(mode);
+                return (
+                  <button
+                    key={mode}
+                    type="button"
+                    onClick={() => toggleCoverageMode(mode)}
+                    className={`rounded-full border-[1.5px] px-3 py-1.5 text-xs font-medium transition-colors ${
+                      active ? "border-sky bg-sky text-white" : "border-[#E8EBF0] bg-white text-ink-2"
+                    }`}
+                  >
+                    {COVERAGE_MODE_LABELS[mode]}
+                  </button>
+                );
+              })}
+            </div>
+            <label className="flex items-center gap-2 border-t border-[#E8EBF0] pt-3 text-sm text-ink">
               <input
                 type="checkbox"
                 checked={onlyDaySpots}
                 onChange={(e) => setOnlyDaySpots(e.target.checked)}
               />
-              Solo attività con Giorni spot disponibili
+              Solo attività con Giorni spot disponibili ora
             </label>
             <p className="mt-2 text-[11px] text-ink-3">
-              Attività prenotabili anche a singolo giorno, non solo a settimana intera — la scelta del
+              La modalità indica cosa supporta l&apos;attività; &quot;Giorni spot disponibili ora&quot;
+              indica se ci sono davvero posti aperti a singolo giorno in questo momento — la scelta del
               giorno esatto si fa nella scheda attività.
               {!isSupabaseConfigured &&
                 " In questo ambiente demo il filtro non riduce i risultati (i dati di esempio non hanno Giorni spot configurati)."}

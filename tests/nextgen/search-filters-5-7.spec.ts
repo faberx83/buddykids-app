@@ -201,8 +201,12 @@ test.describe("NEXTGEN - Ricerca Sprint 5.7 (filtri + Vista Mappa)", () => {
 
   // TRAMA ONE Build Sprint 3 — "Giorni spot": stesso filtro/stesso dato di
   // LEGACY (tests/genitori/cerca.spec.ts TC-N502), qui nel pannello NEXTGEN.
-  test("TC-N504 - Il filtro 'Giorni spot' è raggiungibile, selezionabile e azzerabile", async ({ page }) => {
-    await page.getByText("Giorni spot", { exact: true }).click();
+  // Fabrizio (2026-07-22): il chip/pannello "Giorni spot" è diventato
+  // "Copertura" (modalità di prenotazione + disponibilità reale nello stesso
+  // pannello) — il checkbox di disponibilità reale resta lo stesso dato,
+  // solo raggiunto da un chip diverso.
+  test("TC-N504 - Il filtro 'Copertura' è raggiungibile, selezionabile e azzerabile", async ({ page }) => {
+    await page.getByText("Copertura", { exact: true }).click();
     const checkbox = page.getByText("Solo attività con Giorni spot disponibili");
     await expect(checkbox).toBeVisible();
 
@@ -211,6 +215,23 @@ test.describe("NEXTGEN - Ricerca Sprint 5.7 (filtri + Vista Mappa)", () => {
 
     await page.getByRole("button", { name: /^Azzera/ }).click();
     await expect(page.getByRole("button", { name: /^Azzera/ })).toHaveCount(0);
+  });
+
+  // Fabrizio (2026-07-22): nuovo asse di filtro dentro "Copertura" — modalità
+  // di prenotazione (activities.booking_mode), separata dalla categoria
+  // ("Tipo attività").
+  test("TC-N506 - Il filtro 'Copertura' permette di selezionare la modalità di prenotazione", async ({ page }) => {
+    await page.getByText("Copertura", { exact: true }).click();
+
+    const modeButton = page.getByRole("button", { name: "Giorni singoli", exact: true });
+    await expect(modeButton).toBeVisible();
+    await modeButton.click();
+
+    await expect(page.getByText("Copertura (1)", { exact: true })).toBeVisible();
+    await expect(page.getByRole("button", { name: /^Azzera/ })).toBeVisible();
+
+    await page.getByRole("button", { name: /^Azzera/ }).click();
+    await expect(page.getByText("Copertura (1)", { exact: true })).toHaveCount(0);
   });
 
   // TRAMA ONE Build Sprint 3 — "context object" leggero: stessa verifica di

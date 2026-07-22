@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-07-22T09:45:15.836Z",
+  "generatedAt": "2026-07-22T10:09:23.518Z",
   "target": "partner",
   "label": "Partner / Gestori",
   "project": "mobile-chrome",
@@ -62,7 +62,7 @@
       "url": "https://buddykids-app.vercel.app/center/account/preferenze",
       "pathname": "/center/account/preferenze",
       "title": "TRAMA — Attività per bambini",
-      "heading": "",
+      "heading": "Preferenze",
       "kind": "partner",
       "calledBy": [
         "https://buddykids-app.vercel.app/center/account"
@@ -72,7 +72,7 @@
       "url": "https://buddykids-app.vercel.app/center/account/privacy",
       "pathname": "/center/account/privacy",
       "title": "TRAMA — Attività per bambini",
-      "heading": "",
+      "heading": "Privacy e account",
       "kind": "partner",
       "calledBy": [
         "https://buddykids-app.vercel.app/center/account"
@@ -82,7 +82,7 @@
       "url": "https://buddykids-app.vercel.app/center/account/sicurezza",
       "pathname": "/center/account/sicurezza",
       "title": "TRAMA — Attività per bambini",
-      "heading": "",
+      "heading": "Sicurezza",
       "kind": "partner",
       "calledBy": [
         "https://buddykids-app.vercel.app/center/account"

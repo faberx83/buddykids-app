@@ -181,8 +181,11 @@ test.describe("Genitori - Cerca", () => {
   // i risultati (nessuna attività ha Giorni spot configurati) — verifichiamo
   // solo che il chip/pannello funzioni e sia azzerabile, non un conteggio
   // specifico ("never overstate proof" su dati che potrebbero non esistere).
-  test("TC-N502 - Il filtro 'Giorni spot' è raggiungibile, selezionabile e azzerabile", async ({ page }) => {
-    await page.getByText("Giorni spot", { exact: true }).click();
+  // Fabrizio (2026-07-22): il chip/pannello è diventato "Copertura" (modalità
+  // di prenotazione + disponibilità reale nello stesso pannello) — il
+  // checkbox resta lo stesso dato, raggiunto da un chip diverso.
+  test("TC-N502 - Il filtro 'Copertura' è raggiungibile, selezionabile e azzerabile", async ({ page }) => {
+    await page.getByText("Copertura", { exact: true }).click();
     const checkbox = page.getByText("Solo attività con Giorni spot disponibili");
     await expect(checkbox).toBeVisible();
 
@@ -191,7 +194,22 @@ test.describe("Genitori - Cerca", () => {
 
     // La X sul chip azzera solo questo filtro.
     await page.locator(".ti-x").first().click();
-    await expect(page.getByText("Giorni spot", { exact: true })).toBeVisible();
+    await expect(page.getByText("Copertura", { exact: true })).toBeVisible();
+  });
+
+  // Fabrizio (2026-07-22): nuovo asse di filtro dentro "Copertura" — modalità
+  // di prenotazione (activities.booking_mode), separata dalla categoria.
+  test("TC-N507 - Il filtro 'Copertura' permette di selezionare la modalità di prenotazione (LEGACY)", async ({
+    page,
+  }) => {
+    await page.getByText("Copertura", { exact: true }).click();
+
+    const modeButton = page.getByRole("button", { name: "Giorni singoli", exact: true });
+    await expect(modeButton).toBeVisible();
+    await modeButton.click();
+
+    await expect(page.getByText("Copertura (1)", { exact: true })).toBeVisible();
+    await expect(page.getByRole("button", { name: /^Azzera/ })).toBeEnabled();
   });
 
   // TRAMA ONE Build Sprint 3 — "context object" leggero: verifica che il
