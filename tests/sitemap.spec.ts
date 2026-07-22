@@ -491,6 +491,71 @@ function shouldQueueLink(
   return sourceKind === "nextgen" && targetKind === "legacy";
 }
 
+// Fabrizio (2026-07-22): le pagine di dettaglio dinamiche (una per ogni
+// attività/centro/community reali su Supabase) affollavano il grafo senza
+// aggiungere informazione strutturale — la sitemap serve a vedere le SEZIONI
+// dell'app, non ogni singola riga di dati. Le famiglie di route sotto vengono
+// "collassate": solo la prima istanza incontrata durante il crawl diventa un
+// nodo nel grafo; le istanze successive della stessa famiglia vengono
+// ricondotte a quel nodo (l'edge resta visibile, non si perde il collegamento
+// — semplicemente non si apre un nodo/pagina in più per ciascuna).
+// Le route statiche che assomigliano a un segmento dinamico (es. "new") sono
+// escluse esplicitamente per non essere fuse per errore con le pagine dati.
+const DYNAMIC_ROUTE_PATTERNS: Array<{
+  regex: RegExp;
+  family: string;
+  excludedSegments?: string[];
+}> = [
+  { regex: /^\/activity\/([^/]+)$/, family: "/activity/:slug" },
+  {
+    regex: /^\/center\/activities\/([^/]+)\/calendar$/,
+    family: "/center/activities/:slug/calendar",
+    excludedSegments: ["new"],
+  },
+  {
+    regex: /^\/center\/activities\/([^/]+)$/,
+    family: "/center/activities/:slug",
+    excludedSegments: ["new"],
+  },
+  { regex: /^\/admin\/centers\/([^/]+)$/, family: "/admin/centers/:slug" },
+  {
+    regex: /^\/nextgen\/community\/([^/]+)$/,
+    family: "/nextgen/community/:id",
+  },
+];
+
+function dynamicRouteFamily(urlValue: string): string | null {
+  let pathname: string;
+  try {
+    pathname = new URL(urlValue).pathname;
+  } catch {
+    return null;
+  }
+
+  for (const pattern of DYNAMIC_ROUTE_PATTERNS) {
+    const match = pathname.match(pattern.regex);
+    if (!match) continue;
+    if (pattern.excludedSegments?.includes(match[1])) return null;
+    return pattern.family;
+  }
+
+  return null;
+}
+
+function collapseDynamicRoute(
+  link: string,
+  familyRepresentative: Map<string, string>
+): string {
+  const family = dynamicRouteFamily(link);
+  if (!family) return link;
+
+  const existing = familyRepresentative.get(family);
+  if (existing) return existing;
+
+  familyRepresentative.set(family, link);
+  return link;
+}
+
 function isMutatingOrUnsafeText(value: string): boolean {
   const normalized = cleanText(value).toLowerCase();
 
@@ -771,6 +836,7 @@ async function scanTarget(
   const nodes = new Map<string, SitemapNode>();
   const edges = new Map<string, SitemapEdge>();
   const calledByByUrl = new Map<string, Set<string>>();
+  const familyRepresentative = new Map<string, string>();
   const errors: SitemapError[] = [];
 
   while (queue.length > 0 && visited.size < config.maximumPages) {
@@ -841,8 +907,10 @@ async function scanTarget(
 
       const links = await extractInternalLinks(page, actualUrl, config);
 
-      for (const link of links) {
-        if (!shouldQueueLink(actualUrl, link, config)) continue;
+      for (const rawLink of links) {
+        if (!shouldQueueLink(actualUrl, rawLink, config)) continue;
+
+        const link = collapseDynamicRoute(rawLink, familyRepresentative);
 
         const edgeKey = `${actualUrl} -> ${link}`;
         edges.set(edgeKey, { from: actualUrl, to: link });

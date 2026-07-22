@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-07-20T14:06:31.811Z",
+  "generatedAt": "2026-07-22T09:11:33.268Z",
   "target": "parent",
   "label": "Genitore",
   "project": "mobile-chrome",
@@ -25,6 +25,10 @@
       "heading": "",
       "kind": "legacy",
       "calledBy": [
+        "https://buddykids-app.vercel.app/nextgen",
+        "https://buddykids-app.vercel.app/nextgen/community/1de3de66-31ac-4d1a-bef6-9896885e5592",
+        "https://buddykids-app.vercel.app/nextgen/planner",
+        "https://buddykids-app.vercel.app/nextgen/planner?mode=calendario",
         "https://buddykids-app.vercel.app/nextgen/search"
       ]
     },
@@ -36,6 +40,7 @@
       "kind": "legacy",
       "calledBy": [
         "https://buddykids-app.vercel.app/nextgen",
+        "https://buddykids-app.vercel.app/nextgen/community/1de3de66-31ac-4d1a-bef6-9896885e5592",
         "https://buddykids-app.vercel.app/nextgen/planner",
         "https://buddykids-app.vercel.app/nextgen/planner?mode=calendario",
         "https://buddykids-app.vercel.app/nextgen/search"
@@ -48,9 +53,6 @@
       "heading": "",
       "kind": "legacy",
       "calledBy": [
-        "https://buddykids-app.vercel.app/nextgen",
-        "https://buddykids-app.vercel.app/nextgen/planner",
-        "https://buddykids-app.vercel.app/nextgen/planner?mode=calendario",
         "https://buddykids-app.vercel.app/nextgen/search"
       ]
     },
@@ -107,6 +109,46 @@
       ]
     },
     {
+      "url": "https://buddykids-app.vercel.app/activity/test-attivita-auto-1784584252195",
+      "pathname": "/activity/test-attivita-auto-1784584252195",
+      "title": "TRAMA — Attività per bambini",
+      "heading": "",
+      "kind": "legacy",
+      "calledBy": [
+        "https://buddykids-app.vercel.app/nextgen/search"
+      ]
+    },
+    {
+      "url": "https://buddykids-app.vercel.app/activity/test-attivita-auto-1784584711438",
+      "pathname": "/activity/test-attivita-auto-1784584711438",
+      "title": "TRAMA — Attività per bambini",
+      "heading": "",
+      "kind": "legacy",
+      "calledBy": [
+        "https://buddykids-app.vercel.app/nextgen/search"
+      ]
+    },
+    {
+      "url": "https://buddykids-app.vercel.app/activity/test-attivita-auto-1784692060221",
+      "pathname": "/activity/test-attivita-auto-1784692060221",
+      "title": "TRAMA — Attività per bambini",
+      "heading": "",
+      "kind": "legacy",
+      "calledBy": [
+        "https://buddykids-app.vercel.app/nextgen/search"
+      ]
+    },
+    {
+      "url": "https://buddykids-app.vercel.app/activity/test-attivita-auto-1784704788022",
+      "pathname": "/activity/test-attivita-auto-1784704788022",
+      "title": "TRAMA — Attività per bambini",
+      "heading": "",
+      "kind": "legacy",
+      "calledBy": [
+        "https://buddykids-app.vercel.app/nextgen/search"
+      ]
+    },
+    {
       "url": "https://buddykids-app.vercel.app/nextgen",
       "pathname": "/nextgen",
       "title": "TRAMA",
@@ -114,6 +156,7 @@
       "kind": "nextgen",
       "calledBy": [
         "https://buddykids-app.vercel.app/nextgen",
+        "https://buddykids-app.vercel.app/nextgen/community/1de3de66-31ac-4d1a-bef6-9896885e5592",
         "https://buddykids-app.vercel.app/nextgen/planner",
         "https://buddykids-app.vercel.app/nextgen/planner/famiglia",
         "https://buddykids-app.vercel.app/nextgen/planner/indirizzi",
@@ -127,6 +170,16 @@
       ]
     },
     {
+      "url": "https://buddykids-app.vercel.app/nextgen/community/1de3de66-31ac-4d1a-bef6-9896885e5592",
+      "pathname": "/nextgen/community/1de3de66-31ac-4d1a-bef6-9896885e5592",
+      "title": "TRAMA",
+      "heading": "Community di test 1783951494773",
+      "kind": "nextgen",
+      "calledBy": [
+        "https://buddykids-app.vercel.app/nextgen"
+      ]
+    },
+    {
       "url": "https://buddykids-app.vercel.app/nextgen/planner",
       "pathname": "/nextgen/planner",
       "title": "TRAMA",
@@ -134,6 +187,7 @@
       "kind": "nextgen",
       "calledBy": [
         "https://buddykids-app.vercel.app/nextgen",
+        "https://buddykids-app.vercel.app/nextgen/community/1de3de66-31ac-4d1a-bef6-9896885e5592",
         "https://buddykids-app.vercel.app/nextgen/planner",
         "https://buddykids-app.vercel.app/nextgen/planner/famiglia",
         "https://buddykids-app.vercel.app/nextgen/planner/indirizzi",
@@ -194,6 +248,7 @@
       "kind": "nextgen",
       "calledBy": [
         "https://buddykids-app.vercel.app/nextgen",
+        "https://buddykids-app.vercel.app/nextgen/community/1de3de66-31ac-4d1a-bef6-9896885e5592",
         "https://buddykids-app.vercel.app/nextgen/planner",
         "https://buddykids-app.vercel.app/nextgen/planner/famiglia",
         "https://buddykids-app.vercel.app/nextgen/planner/indirizzi",
@@ -244,6 +299,7 @@
       "kind": "nextgen",
       "calledBy": [
         "https://buddykids-app.vercel.app/nextgen",
+        "https://buddykids-app.vercel.app/nextgen/community/1de3de66-31ac-4d1a-bef6-9896885e5592",
         "https://buddykids-app.vercel.app/nextgen/planner",
         "https://buddykids-app.vercel.app/nextgen/planner/famiglia",
         "https://buddykids-app.vercel.app/nextgen/planner/indirizzi",
@@ -274,6 +330,7 @@
       "kind": "legacy",
       "calledBy": [
         "https://buddykids-app.vercel.app/nextgen",
+        "https://buddykids-app.vercel.app/nextgen/community/1de3de66-31ac-4d1a-bef6-9896885e5592",
         "https://buddykids-app.vercel.app/nextgen/planner",
         "https://buddykids-app.vercel.app/nextgen/planner/famiglia",
         "https://buddykids-app.vercel.app/nextgen/planner/indirizzi",
@@ -340,11 +397,11 @@
   "edges": [
     {
       "from": "https://buddykids-app.vercel.app/nextgen",
-      "to": "https://buddykids-app.vercel.app/activity/laboratorio-arti-creative"
+      "to": "https://buddykids-app.vercel.app/activity/coding-robotica-kids"
     },
     {
       "from": "https://buddykids-app.vercel.app/nextgen",
-      "to": "https://buddykids-app.vercel.app/activity/soccer-academy-estate"
+      "to": "https://buddykids-app.vercel.app/activity/laboratorio-arti-creative"
     },
     {
       "from": "https://buddykids-app.vercel.app/nextgen",
@@ -353,6 +410,10 @@
     {
       "from": "https://buddykids-app.vercel.app/nextgen",
       "to": "https://buddykids-app.vercel.app/nextgen"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/nextgen",
+      "to": "https://buddykids-app.vercel.app/nextgen/community/1de3de66-31ac-4d1a-bef6-9896885e5592"
     },
     {
       "from": "https://buddykids-app.vercel.app/nextgen",
@@ -371,16 +432,44 @@
       "to": "https://buddykids-app.vercel.app/prenotazioni"
     },
     {
+      "from": "https://buddykids-app.vercel.app/nextgen/community/1de3de66-31ac-4d1a-bef6-9896885e5592",
+      "to": "https://buddykids-app.vercel.app/activity/coding-robotica-kids"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/nextgen/community/1de3de66-31ac-4d1a-bef6-9896885e5592",
+      "to": "https://buddykids-app.vercel.app/activity/laboratorio-arti-creative"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/nextgen/community/1de3de66-31ac-4d1a-bef6-9896885e5592",
+      "to": "https://buddykids-app.vercel.app/nextgen"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/nextgen/community/1de3de66-31ac-4d1a-bef6-9896885e5592",
+      "to": "https://buddykids-app.vercel.app/nextgen/planner"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/nextgen/community/1de3de66-31ac-4d1a-bef6-9896885e5592",
+      "to": "https://buddykids-app.vercel.app/nextgen/profile"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/nextgen/community/1de3de66-31ac-4d1a-bef6-9896885e5592",
+      "to": "https://buddykids-app.vercel.app/nextgen/search"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/nextgen/community/1de3de66-31ac-4d1a-bef6-9896885e5592",
+      "to": "https://buddykids-app.vercel.app/prenotazioni"
+    },
+    {
       "from": "https://buddykids-app.vercel.app/nextgen/planner",
       "to": "https://buddykids-app.vercel.app/activity/attivita-test-buddykids"
     },
     {
       "from": "https://buddykids-app.vercel.app/nextgen/planner",
-      "to": "https://buddykids-app.vercel.app/activity/laboratorio-arti-creative"
+      "to": "https://buddykids-app.vercel.app/activity/coding-robotica-kids"
     },
     {
       "from": "https://buddykids-app.vercel.app/nextgen/planner",
-      "to": "https://buddykids-app.vercel.app/activity/soccer-academy-estate"
+      "to": "https://buddykids-app.vercel.app/activity/laboratorio-arti-creative"
     },
     {
       "from": "https://buddykids-app.vercel.app/nextgen/planner",
@@ -412,11 +501,11 @@
     },
     {
       "from": "https://buddykids-app.vercel.app/nextgen/planner?mode=calendario",
-      "to": "https://buddykids-app.vercel.app/activity/laboratorio-arti-creative"
+      "to": "https://buddykids-app.vercel.app/activity/coding-robotica-kids"
     },
     {
       "from": "https://buddykids-app.vercel.app/nextgen/planner?mode=calendario",
-      "to": "https://buddykids-app.vercel.app/activity/soccer-academy-estate"
+      "to": "https://buddykids-app.vercel.app/activity/laboratorio-arti-creative"
     },
     {
       "from": "https://buddykids-app.vercel.app/nextgen/planner?mode=calendario",
@@ -665,6 +754,22 @@
     {
       "from": "https://buddykids-app.vercel.app/nextgen/search",
       "to": "https://buddykids-app.vercel.app/activity/test-attivita-auto-1784108193968"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/nextgen/search",
+      "to": "https://buddykids-app.vercel.app/activity/test-attivita-auto-1784584252195"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/nextgen/search",
+      "to": "https://buddykids-app.vercel.app/activity/test-attivita-auto-1784584711438"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/nextgen/search",
+      "to": "https://buddykids-app.vercel.app/activity/test-attivita-auto-1784692060221"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/nextgen/search",
+      "to": "https://buddykids-app.vercel.app/activity/test-attivita-auto-1784704788022"
     },
     {
       "from": "https://buddykids-app.vercel.app/nextgen/search",
