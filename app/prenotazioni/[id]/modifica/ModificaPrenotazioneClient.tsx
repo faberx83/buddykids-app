@@ -8,7 +8,7 @@ import { Activity, Week } from "@/lib/types";
 import { MyBooking } from "@/lib/data/my-bookings";
 import { buildFamilyTiers, familyDiscountAmount } from "@/lib/family-discount";
 import { updateBookingWeeksAction, cancelBookingAction } from "@/app/actions/bookings";
-import { shortWeekLabel } from "@/lib/season-weeks";
+import { shortWeekLabel, formatShortRange } from "@/lib/season-weeks";
 
 // NOTA (limite noto, accettabile per questa funzionalità "di test"): WeekCard
 // non permette di deselezionare una settimana risultata "piena" nel
@@ -79,9 +79,23 @@ export default function ModificaPrenotazioneClient({
   // mostrato nel pop-up di conferma (feedback Fabrizio: "nel pop-up 'Vuoi
   // annullare la prenotazione' deve essere indicata la settimana di
   // riferimento").
-  const bookedWeeksLabel = weeks
-    .filter((w) => booking.weekIds.includes(w.id))
-    .map((w) => `${w.dates} (${shortWeekLabel(w.label)})`)
+  // BUG TROVATO (Sprint 4 gate, TC-293): prima incrociava booking.weekIds
+  // con `weeks` (le settimane "offerte ORA" per il picker di nuove
+  // settimane, che escludono deliberatamente quelle già concluse — vedi
+  // dropPastWeeks in lib/data/weeks.ts). Per una prenotazione il cui
+  // settimana prenotata è nel frattempo passata (fuori dalla finestra di
+  // preavviso, quindi già non più annullabile in autonomia — vedi
+  // canCancelOrModify in lib/data/my-bookings.ts), quella settimana non
+  // compare più in `weeks`: l'incrocio non trovava mai nulla e il pop-up
+  // mostrava "nessuna settimana" invece della settimana vera. `booking.weeks`
+  // (da getMyBookingsForParent, lib/data/my-bookings.ts) ha già le settimane
+  // REALMENTE prenotate con le loro date, indipendentemente da cosa sia
+  // "offerto" oggi per nuove prenotazioni — è la fonte corretta qui.
+  const bookedWeeksLabel = booking.weeks
+    .map(
+      (w) =>
+        `${formatShortRange(new Date(w.startDate + "T00:00:00Z"), new Date(w.endDate + "T00:00:00Z"))} (${shortWeekLabel(w.label)})`
+    )
     .join(", ");
 
   const expiredWindowMessage = `La finestra di ${booking.cancellationWindowDays} giorni di preavviso richiesta da questo centro è terminata${
