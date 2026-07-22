@@ -113,6 +113,30 @@ di `gotoAsRole()` — è il pattern seguito da tutti i test aggiunti dopo questa
 scoperta (`home-planner.spec.ts`, TC-108+ in `prenotazione.spec.ts`,
 `gestore/invites.spec.ts`).
 
+**`tests/genitori/prenotazione.spec.ts` contro un deploy reale — usare
+`--workers=1`**: molti test in questo file (TC-191, TC-292/293/294/295...)
+leggono/scrivono DAVVERO le stesse prenotazioni condivise sull'unico account
+genitore di test. Il file ha `test.describe.configure({ mode: "serial" })`
+per evitare che questi test corrano in ordine sparso all'interno dello
+stesso progetto Playwright — ma Playwright esegue comunque il progetto
+`chromium` e il progetto `mobile-chrome` in parallelo tra loro di default,
+quindi le due esecuzioni seriali possono ancora sovrapporsi UNA CONTRO
+L'ALTRA sullo stesso account reale (osservato: TC-293 su mobile-chrome che
+legge "nessuna settimana" mentre TC-294 su chromium sta cancellando per
+davvero la stessa prenotazione, nello stesso istante). Per un gate
+affidabile contro produzione, esegui questo file (da solo o insieme a
+`giorni-spot.spec.ts`) con `--workers=1`:
+
+```
+TEST_BASE_URL=<url> npx playwright test tests/genitori/prenotazione.spec.ts tests/genitori/giorni-spot.spec.ts --reporter=list --workers=1
+```
+
+Con più worker (il default `deploy.sh`/`test-deploy.sh` per la suite
+completa) qualche fallimento intermittente su questo file specifico è
+possibile per questo motivo — non indica di per se' una regressione
+applicativa, ma va comunque confermato con un rerun `--workers=1` prima di
+concludere che sia solo rumore.
+
 ## Struttura
 
 ```
