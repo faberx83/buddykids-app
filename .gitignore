@@ -11,3 +11,6 @@ npm-debug.log*
 # Output generato dai test Playwright (tests/) — mai da versionare/deployare
 playwright-report
 test-results
+
+# Log automatici di deploy.sh (deploy.sh + gate di test) — solo locali
+logs

@@ -34,6 +34,21 @@
 set -e
 
 # ────────────────────────────────────────────────────────────────
+# Logging automatico su file: ogni esecuzione di questo script scrive il
+# proprio output (stdout+stderr, identico a quanto visto a terminale) in
+# logs/deploy-<timestamp>.log, così non serve più copiare a mano l'output dal
+# terminale. `tee` mantiene comunque l'output a schermo in tempo reale.
+# Override: NO_LOG_FILE=1 bash deploy.sh per disattivare (es. debug rapido).
+# ────────────────────────────────────────────────────────────────
+if [ -z "$NO_LOG_FILE" ]; then
+  mkdir -p logs
+  LOG_FILE="logs/deploy-$(date +%Y%m%d-%H%M%S).log"
+  exec > >(tee "$LOG_FILE") 2>&1
+  echo "📝 Log completo di questa esecuzione salvato in: $LOG_FILE"
+  echo ""
+fi
+
+# ────────────────────────────────────────────────────────────────
 # ONLY_SITEMAP: intercettato PRIMA di qualunque git push / vercel --prod /
 # alias set / cleanup completo / suite Playwright ordinaria, e PRIMA dei
 # preflight branch/working-tree sottostanti (non produce un deploy, quindi
