@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-07-20T14:08:10.965Z",
+  "generatedAt": "2026-07-22T09:45:39.031Z",
   "target": "admin",
   "label": "Admin",
   "project": "chromium",
@@ -18,11 +18,7 @@
         "https://buddykids-app.vercel.app/admin/analytics",
         "https://buddykids-app.vercel.app/admin/bookings",
         "https://buddykids-app.vercel.app/admin/centers",
-        "https://buddykids-app.vercel.app/admin/centers/accademia-crearte",
-        "https://buddykids-app.vercel.app/admin/centers/campo-brera",
         "https://buddykids-app.vercel.app/admin/centers/centro-sportivo-lido",
-        "https://buddykids-app.vercel.app/admin/centers/scuola-musica-aria",
-        "https://buddykids-app.vercel.app/admin/centers/techkids-milano",
         "https://buddykids-app.vercel.app/admin/certifications",
         "https://buddykids-app.vercel.app/admin/group-requests",
         "https://buddykids-app.vercel.app/admin/partner-offers",
@@ -45,11 +41,7 @@
         "https://buddykids-app.vercel.app/admin/analytics",
         "https://buddykids-app.vercel.app/admin/bookings",
         "https://buddykids-app.vercel.app/admin/centers",
-        "https://buddykids-app.vercel.app/admin/centers/accademia-crearte",
-        "https://buddykids-app.vercel.app/admin/centers/campo-brera",
         "https://buddykids-app.vercel.app/admin/centers/centro-sportivo-lido",
-        "https://buddykids-app.vercel.app/admin/centers/scuola-musica-aria",
-        "https://buddykids-app.vercel.app/admin/centers/techkids-milano",
         "https://buddykids-app.vercel.app/admin/certifications",
         "https://buddykids-app.vercel.app/admin/group-requests",
         "https://buddykids-app.vercel.app/admin/partner-offers",
@@ -72,11 +64,7 @@
         "https://buddykids-app.vercel.app/admin/analytics",
         "https://buddykids-app.vercel.app/admin/bookings",
         "https://buddykids-app.vercel.app/admin/centers",
-        "https://buddykids-app.vercel.app/admin/centers/accademia-crearte",
-        "https://buddykids-app.vercel.app/admin/centers/campo-brera",
         "https://buddykids-app.vercel.app/admin/centers/centro-sportivo-lido",
-        "https://buddykids-app.vercel.app/admin/centers/scuola-musica-aria",
-        "https://buddykids-app.vercel.app/admin/centers/techkids-milano",
         "https://buddykids-app.vercel.app/admin/certifications",
         "https://buddykids-app.vercel.app/admin/group-requests",
         "https://buddykids-app.vercel.app/admin/partner-offers",
@@ -99,11 +87,7 @@
         "https://buddykids-app.vercel.app/admin/analytics",
         "https://buddykids-app.vercel.app/admin/bookings",
         "https://buddykids-app.vercel.app/admin/centers",
-        "https://buddykids-app.vercel.app/admin/centers/accademia-crearte",
-        "https://buddykids-app.vercel.app/admin/centers/campo-brera",
         "https://buddykids-app.vercel.app/admin/centers/centro-sportivo-lido",
-        "https://buddykids-app.vercel.app/admin/centers/scuola-musica-aria",
-        "https://buddykids-app.vercel.app/admin/centers/techkids-milano",
         "https://buddykids-app.vercel.app/admin/certifications",
         "https://buddykids-app.vercel.app/admin/group-requests",
         "https://buddykids-app.vercel.app/admin/partner-offers",
@@ -126,11 +110,7 @@
         "https://buddykids-app.vercel.app/admin/analytics",
         "https://buddykids-app.vercel.app/admin/bookings",
         "https://buddykids-app.vercel.app/admin/centers",
-        "https://buddykids-app.vercel.app/admin/centers/accademia-crearte",
-        "https://buddykids-app.vercel.app/admin/centers/campo-brera",
         "https://buddykids-app.vercel.app/admin/centers/centro-sportivo-lido",
-        "https://buddykids-app.vercel.app/admin/centers/scuola-musica-aria",
-        "https://buddykids-app.vercel.app/admin/centers/techkids-milano",
         "https://buddykids-app.vercel.app/admin/certifications",
         "https://buddykids-app.vercel.app/admin/group-requests",
         "https://buddykids-app.vercel.app/admin/partner-offers",
@@ -142,54 +122,10 @@
       ]
     },
     {
-      "url": "https://buddykids-app.vercel.app/admin/centers/accademia-crearte",
-      "pathname": "/admin/centers/accademia-crearte",
-      "title": "TRAMA — Attività per bambini",
-      "heading": "Accademia CreArte",
-      "kind": "admin",
-      "calledBy": [
-        "https://buddykids-app.vercel.app/admin",
-        "https://buddykids-app.vercel.app/admin/centers"
-      ]
-    },
-    {
-      "url": "https://buddykids-app.vercel.app/admin/centers/campo-brera",
-      "pathname": "/admin/centers/campo-brera",
-      "title": "TRAMA — Attività per bambini",
-      "heading": "Campo Brera",
-      "kind": "admin",
-      "calledBy": [
-        "https://buddykids-app.vercel.app/admin",
-        "https://buddykids-app.vercel.app/admin/centers"
-      ]
-    },
-    {
       "url": "https://buddykids-app.vercel.app/admin/centers/centro-sportivo-lido",
       "pathname": "/admin/centers/centro-sportivo-lido",
       "title": "TRAMA — Attività per bambini",
       "heading": "Centro Sportivo Lido",
-      "kind": "admin",
-      "calledBy": [
-        "https://buddykids-app.vercel.app/admin",
-        "https://buddykids-app.vercel.app/admin/centers"
-      ]
-    },
-    {
-      "url": "https://buddykids-app.vercel.app/admin/centers/scuola-musica-aria",
-      "pathname": "/admin/centers/scuola-musica-aria",
-      "title": "TRAMA — Attività per bambini",
-      "heading": "Scuola di Musica Aria",
-      "kind": "admin",
-      "calledBy": [
-        "https://buddykids-app.vercel.app/admin",
-        "https://buddykids-app.vercel.app/admin/centers"
-      ]
-    },
-    {
-      "url": "https://buddykids-app.vercel.app/admin/centers/techkids-milano",
-      "pathname": "/admin/centers/techkids-milano",
-      "title": "TRAMA — Attività per bambini",
-      "heading": "TechKids Milano",
       "kind": "admin",
       "calledBy": [
         "https://buddykids-app.vercel.app/admin",
@@ -208,11 +144,7 @@
         "https://buddykids-app.vercel.app/admin/analytics",
         "https://buddykids-app.vercel.app/admin/bookings",
         "https://buddykids-app.vercel.app/admin/centers",
-        "https://buddykids-app.vercel.app/admin/centers/accademia-crearte",
-        "https://buddykids-app.vercel.app/admin/centers/campo-brera",
         "https://buddykids-app.vercel.app/admin/centers/centro-sportivo-lido",
-        "https://buddykids-app.vercel.app/admin/centers/scuola-musica-aria",
-        "https://buddykids-app.vercel.app/admin/centers/techkids-milano",
         "https://buddykids-app.vercel.app/admin/certifications",
         "https://buddykids-app.vercel.app/admin/group-requests",
         "https://buddykids-app.vercel.app/admin/partner-offers",
@@ -235,11 +167,7 @@
         "https://buddykids-app.vercel.app/admin/analytics",
         "https://buddykids-app.vercel.app/admin/bookings",
         "https://buddykids-app.vercel.app/admin/centers",
-        "https://buddykids-app.vercel.app/admin/centers/accademia-crearte",
-        "https://buddykids-app.vercel.app/admin/centers/campo-brera",
         "https://buddykids-app.vercel.app/admin/centers/centro-sportivo-lido",
-        "https://buddykids-app.vercel.app/admin/centers/scuola-musica-aria",
-        "https://buddykids-app.vercel.app/admin/centers/techkids-milano",
         "https://buddykids-app.vercel.app/admin/certifications",
         "https://buddykids-app.vercel.app/admin/group-requests",
         "https://buddykids-app.vercel.app/admin/partner-offers",
@@ -262,11 +190,7 @@
         "https://buddykids-app.vercel.app/admin/analytics",
         "https://buddykids-app.vercel.app/admin/bookings",
         "https://buddykids-app.vercel.app/admin/centers",
-        "https://buddykids-app.vercel.app/admin/centers/accademia-crearte",
-        "https://buddykids-app.vercel.app/admin/centers/campo-brera",
         "https://buddykids-app.vercel.app/admin/centers/centro-sportivo-lido",
-        "https://buddykids-app.vercel.app/admin/centers/scuola-musica-aria",
-        "https://buddykids-app.vercel.app/admin/centers/techkids-milano",
         "https://buddykids-app.vercel.app/admin/certifications",
         "https://buddykids-app.vercel.app/admin/group-requests",
         "https://buddykids-app.vercel.app/admin/partner-offers",
@@ -289,11 +213,7 @@
         "https://buddykids-app.vercel.app/admin/analytics",
         "https://buddykids-app.vercel.app/admin/bookings",
         "https://buddykids-app.vercel.app/admin/centers",
-        "https://buddykids-app.vercel.app/admin/centers/accademia-crearte",
-        "https://buddykids-app.vercel.app/admin/centers/campo-brera",
         "https://buddykids-app.vercel.app/admin/centers/centro-sportivo-lido",
-        "https://buddykids-app.vercel.app/admin/centers/scuola-musica-aria",
-        "https://buddykids-app.vercel.app/admin/centers/techkids-milano",
         "https://buddykids-app.vercel.app/admin/certifications",
         "https://buddykids-app.vercel.app/admin/group-requests",
         "https://buddykids-app.vercel.app/admin/partner-offers",
@@ -316,11 +236,7 @@
         "https://buddykids-app.vercel.app/admin/analytics",
         "https://buddykids-app.vercel.app/admin/bookings",
         "https://buddykids-app.vercel.app/admin/centers",
-        "https://buddykids-app.vercel.app/admin/centers/accademia-crearte",
-        "https://buddykids-app.vercel.app/admin/centers/campo-brera",
         "https://buddykids-app.vercel.app/admin/centers/centro-sportivo-lido",
-        "https://buddykids-app.vercel.app/admin/centers/scuola-musica-aria",
-        "https://buddykids-app.vercel.app/admin/centers/techkids-milano",
         "https://buddykids-app.vercel.app/admin/certifications",
         "https://buddykids-app.vercel.app/admin/group-requests",
         "https://buddykids-app.vercel.app/admin/partner-offers",
@@ -343,11 +259,7 @@
         "https://buddykids-app.vercel.app/admin/analytics",
         "https://buddykids-app.vercel.app/admin/bookings",
         "https://buddykids-app.vercel.app/admin/centers",
-        "https://buddykids-app.vercel.app/admin/centers/accademia-crearte",
-        "https://buddykids-app.vercel.app/admin/centers/campo-brera",
         "https://buddykids-app.vercel.app/admin/centers/centro-sportivo-lido",
-        "https://buddykids-app.vercel.app/admin/centers/scuola-musica-aria",
-        "https://buddykids-app.vercel.app/admin/centers/techkids-milano",
         "https://buddykids-app.vercel.app/admin/certifications",
         "https://buddykids-app.vercel.app/admin/group-requests",
         "https://buddykids-app.vercel.app/admin/partner-offers",
@@ -370,11 +282,7 @@
         "https://buddykids-app.vercel.app/admin/analytics",
         "https://buddykids-app.vercel.app/admin/bookings",
         "https://buddykids-app.vercel.app/admin/centers",
-        "https://buddykids-app.vercel.app/admin/centers/accademia-crearte",
-        "https://buddykids-app.vercel.app/admin/centers/campo-brera",
         "https://buddykids-app.vercel.app/admin/centers/centro-sportivo-lido",
-        "https://buddykids-app.vercel.app/admin/centers/scuola-musica-aria",
-        "https://buddykids-app.vercel.app/admin/centers/techkids-milano",
         "https://buddykids-app.vercel.app/admin/certifications",
         "https://buddykids-app.vercel.app/admin/group-requests",
         "https://buddykids-app.vercel.app/admin/partner-offers",
@@ -397,11 +305,7 @@
         "https://buddykids-app.vercel.app/admin/analytics",
         "https://buddykids-app.vercel.app/admin/bookings",
         "https://buddykids-app.vercel.app/admin/centers",
-        "https://buddykids-app.vercel.app/admin/centers/accademia-crearte",
-        "https://buddykids-app.vercel.app/admin/centers/campo-brera",
         "https://buddykids-app.vercel.app/admin/centers/centro-sportivo-lido",
-        "https://buddykids-app.vercel.app/admin/centers/scuola-musica-aria",
-        "https://buddykids-app.vercel.app/admin/centers/techkids-milano",
         "https://buddykids-app.vercel.app/admin/certifications",
         "https://buddykids-app.vercel.app/admin/group-requests",
         "https://buddykids-app.vercel.app/admin/partner-offers",
@@ -436,26 +340,10 @@
     },
     {
       "from": "https://buddykids-app.vercel.app/admin",
-      "to": "https://buddykids-app.vercel.app/admin/centers/accademia-crearte"
-    },
-    {
-      "from": "https://buddykids-app.vercel.app/admin",
-      "to": "https://buddykids-app.vercel.app/admin/centers/campo-brera"
-    },
-    {
-      "from": "https://buddykids-app.vercel.app/admin",
       "to": "https://buddykids-app.vercel.app/admin/centers/centro-sportivo-lido"
     },
     {
       "from": "https://buddykids-app.vercel.app/admin",
-      "to": "https://buddykids-app.vercel.app/admin/centers/scuola-musica-aria"
-    },
-    {
-      "from": "https://buddykids-app.vercel.app/admin",
-      "to": "https://buddykids-app.vercel.app/admin/centers/techkids-milano"
-    },
-    {
-      "from": "https://buddykids-app.vercel.app/admin",
       "to": "https://buddykids-app.vercel.app/admin/certifications"
     },
     {
@@ -661,14 +549,6 @@
     {
       "from": "https://buddykids-app.vercel.app/admin/centers",
       "to": "https://buddykids-app.vercel.app/admin/centers"
-    },
-    {
-      "from": "https://buddykids-app.vercel.app/admin/centers",
-      "to": "https://buddykids-app.vercel.app/admin/centers/accademia-crearte"
-    },
-    {
-      "from": "https://buddykids-app.vercel.app/admin/centers",
-      "to": "https://buddykids-app.vercel.app/admin/centers/campo-brera"
     },
     {
       "from": "https://buddykids-app.vercel.app/admin/centers",
@@ -676,14 +556,6 @@
     },
     {
       "from": "https://buddykids-app.vercel.app/admin/centers",
-      "to": "https://buddykids-app.vercel.app/admin/centers/scuola-musica-aria"
-    },
-    {
-      "from": "https://buddykids-app.vercel.app/admin/centers",
-      "to": "https://buddykids-app.vercel.app/admin/centers/techkids-milano"
-    },
-    {
-      "from": "https://buddykids-app.vercel.app/admin/centers",
       "to": "https://buddykids-app.vercel.app/admin/certifications"
     },
     {
@@ -712,110 +584,6 @@
     },
     {
       "from": "https://buddykids-app.vercel.app/admin/centers",
-      "to": "https://buddykids-app.vercel.app/admin/tags"
-    },
-    {
-      "from": "https://buddykids-app.vercel.app/admin/centers/accademia-crearte",
-      "to": "https://buddykids-app.vercel.app/admin"
-    },
-    {
-      "from": "https://buddykids-app.vercel.app/admin/centers/accademia-crearte",
-      "to": "https://buddykids-app.vercel.app/admin/activities"
-    },
-    {
-      "from": "https://buddykids-app.vercel.app/admin/centers/accademia-crearte",
-      "to": "https://buddykids-app.vercel.app/admin/analytics"
-    },
-    {
-      "from": "https://buddykids-app.vercel.app/admin/centers/accademia-crearte",
-      "to": "https://buddykids-app.vercel.app/admin/bookings"
-    },
-    {
-      "from": "https://buddykids-app.vercel.app/admin/centers/accademia-crearte",
-      "to": "https://buddykids-app.vercel.app/admin/centers"
-    },
-    {
-      "from": "https://buddykids-app.vercel.app/admin/centers/accademia-crearte",
-      "to": "https://buddykids-app.vercel.app/admin/certifications"
-    },
-    {
-      "from": "https://buddykids-app.vercel.app/admin/centers/accademia-crearte",
-      "to": "https://buddykids-app.vercel.app/admin/group-requests"
-    },
-    {
-      "from": "https://buddykids-app.vercel.app/admin/centers/accademia-crearte",
-      "to": "https://buddykids-app.vercel.app/admin/partner-offers"
-    },
-    {
-      "from": "https://buddykids-app.vercel.app/admin/centers/accademia-crearte",
-      "to": "https://buddykids-app.vercel.app/admin/preferiti"
-    },
-    {
-      "from": "https://buddykids-app.vercel.app/admin/centers/accademia-crearte",
-      "to": "https://buddykids-app.vercel.app/admin/presenze"
-    },
-    {
-      "from": "https://buddykids-app.vercel.app/admin/centers/accademia-crearte",
-      "to": "https://buddykids-app.vercel.app/admin/richieste"
-    },
-    {
-      "from": "https://buddykids-app.vercel.app/admin/centers/accademia-crearte",
-      "to": "https://buddykids-app.vercel.app/admin/segnalazioni-beta"
-    },
-    {
-      "from": "https://buddykids-app.vercel.app/admin/centers/accademia-crearte",
-      "to": "https://buddykids-app.vercel.app/admin/tags"
-    },
-    {
-      "from": "https://buddykids-app.vercel.app/admin/centers/campo-brera",
-      "to": "https://buddykids-app.vercel.app/admin"
-    },
-    {
-      "from": "https://buddykids-app.vercel.app/admin/centers/campo-brera",
-      "to": "https://buddykids-app.vercel.app/admin/activities"
-    },
-    {
-      "from": "https://buddykids-app.vercel.app/admin/centers/campo-brera",
-      "to": "https://buddykids-app.vercel.app/admin/analytics"
-    },
-    {
-      "from": "https://buddykids-app.vercel.app/admin/centers/campo-brera",
-      "to": "https://buddykids-app.vercel.app/admin/bookings"
-    },
-    {
-      "from": "https://buddykids-app.vercel.app/admin/centers/campo-brera",
-      "to": "https://buddykids-app.vercel.app/admin/centers"
-    },
-    {
-      "from": "https://buddykids-app.vercel.app/admin/centers/campo-brera",
-      "to": "https://buddykids-app.vercel.app/admin/certifications"
-    },
-    {
-      "from": "https://buddykids-app.vercel.app/admin/centers/campo-brera",
-      "to": "https://buddykids-app.vercel.app/admin/group-requests"
-    },
-    {
-      "from": "https://buddykids-app.vercel.app/admin/centers/campo-brera",
-      "to": "https://buddykids-app.vercel.app/admin/partner-offers"
-    },
-    {
-      "from": "https://buddykids-app.vercel.app/admin/centers/campo-brera",
-      "to": "https://buddykids-app.vercel.app/admin/preferiti"
-    },
-    {
-      "from": "https://buddykids-app.vercel.app/admin/centers/campo-brera",
-      "to": "https://buddykids-app.vercel.app/admin/presenze"
-    },
-    {
-      "from": "https://buddykids-app.vercel.app/admin/centers/campo-brera",
-      "to": "https://buddykids-app.vercel.app/admin/richieste"
-    },
-    {
-      "from": "https://buddykids-app.vercel.app/admin/centers/campo-brera",
-      "to": "https://buddykids-app.vercel.app/admin/segnalazioni-beta"
-    },
-    {
-      "from": "https://buddykids-app.vercel.app/admin/centers/campo-brera",
       "to": "https://buddykids-app.vercel.app/admin/tags"
     },
     {
@@ -868,110 +636,6 @@
     },
     {
       "from": "https://buddykids-app.vercel.app/admin/centers/centro-sportivo-lido",
-      "to": "https://buddykids-app.vercel.app/admin/tags"
-    },
-    {
-      "from": "https://buddykids-app.vercel.app/admin/centers/scuola-musica-aria",
-      "to": "https://buddykids-app.vercel.app/admin"
-    },
-    {
-      "from": "https://buddykids-app.vercel.app/admin/centers/scuola-musica-aria",
-      "to": "https://buddykids-app.vercel.app/admin/activities"
-    },
-    {
-      "from": "https://buddykids-app.vercel.app/admin/centers/scuola-musica-aria",
-      "to": "https://buddykids-app.vercel.app/admin/analytics"
-    },
-    {
-      "from": "https://buddykids-app.vercel.app/admin/centers/scuola-musica-aria",
-      "to": "https://buddykids-app.vercel.app/admin/bookings"
-    },
-    {
-      "from": "https://buddykids-app.vercel.app/admin/centers/scuola-musica-aria",
-      "to": "https://buddykids-app.vercel.app/admin/centers"
-    },
-    {
-      "from": "https://buddykids-app.vercel.app/admin/centers/scuola-musica-aria",
-      "to": "https://buddykids-app.vercel.app/admin/certifications"
-    },
-    {
-      "from": "https://buddykids-app.vercel.app/admin/centers/scuola-musica-aria",
-      "to": "https://buddykids-app.vercel.app/admin/group-requests"
-    },
-    {
-      "from": "https://buddykids-app.vercel.app/admin/centers/scuola-musica-aria",
-      "to": "https://buddykids-app.vercel.app/admin/partner-offers"
-    },
-    {
-      "from": "https://buddykids-app.vercel.app/admin/centers/scuola-musica-aria",
-      "to": "https://buddykids-app.vercel.app/admin/preferiti"
-    },
-    {
-      "from": "https://buddykids-app.vercel.app/admin/centers/scuola-musica-aria",
-      "to": "https://buddykids-app.vercel.app/admin/presenze"
-    },
-    {
-      "from": "https://buddykids-app.vercel.app/admin/centers/scuola-musica-aria",
-      "to": "https://buddykids-app.vercel.app/admin/richieste"
-    },
-    {
-      "from": "https://buddykids-app.vercel.app/admin/centers/scuola-musica-aria",
-      "to": "https://buddykids-app.vercel.app/admin/segnalazioni-beta"
-    },
-    {
-      "from": "https://buddykids-app.vercel.app/admin/centers/scuola-musica-aria",
-      "to": "https://buddykids-app.vercel.app/admin/tags"
-    },
-    {
-      "from": "https://buddykids-app.vercel.app/admin/centers/techkids-milano",
-      "to": "https://buddykids-app.vercel.app/admin"
-    },
-    {
-      "from": "https://buddykids-app.vercel.app/admin/centers/techkids-milano",
-      "to": "https://buddykids-app.vercel.app/admin/activities"
-    },
-    {
-      "from": "https://buddykids-app.vercel.app/admin/centers/techkids-milano",
-      "to": "https://buddykids-app.vercel.app/admin/analytics"
-    },
-    {
-      "from": "https://buddykids-app.vercel.app/admin/centers/techkids-milano",
-      "to": "https://buddykids-app.vercel.app/admin/bookings"
-    },
-    {
-      "from": "https://buddykids-app.vercel.app/admin/centers/techkids-milano",
-      "to": "https://buddykids-app.vercel.app/admin/centers"
-    },
-    {
-      "from": "https://buddykids-app.vercel.app/admin/centers/techkids-milano",
-      "to": "https://buddykids-app.vercel.app/admin/certifications"
-    },
-    {
-      "from": "https://buddykids-app.vercel.app/admin/centers/techkids-milano",
-      "to": "https://buddykids-app.vercel.app/admin/group-requests"
-    },
-    {
-      "from": "https://buddykids-app.vercel.app/admin/centers/techkids-milano",
-      "to": "https://buddykids-app.vercel.app/admin/partner-offers"
-    },
-    {
-      "from": "https://buddykids-app.vercel.app/admin/centers/techkids-milano",
-      "to": "https://buddykids-app.vercel.app/admin/preferiti"
-    },
-    {
-      "from": "https://buddykids-app.vercel.app/admin/centers/techkids-milano",
-      "to": "https://buddykids-app.vercel.app/admin/presenze"
-    },
-    {
-      "from": "https://buddykids-app.vercel.app/admin/centers/techkids-milano",
-      "to": "https://buddykids-app.vercel.app/admin/richieste"
-    },
-    {
-      "from": "https://buddykids-app.vercel.app/admin/centers/techkids-milano",
-      "to": "https://buddykids-app.vercel.app/admin/segnalazioni-beta"
-    },
-    {
-      "from": "https://buddykids-app.vercel.app/admin/centers/techkids-milano",
       "to": "https://buddykids-app.vercel.app/admin/tags"
     },
     {

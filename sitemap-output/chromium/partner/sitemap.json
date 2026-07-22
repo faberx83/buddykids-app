@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-07-20T14:07:43.088Z",
+  "generatedAt": "2026-07-22T09:45:16.095Z",
   "target": "partner",
   "label": "Partner / Gestori",
   "project": "chromium",
@@ -22,10 +22,6 @@
         "https://buddykids-app.vercel.app/center/activities/attivita-test-buddykids",
         "https://buddykids-app.vercel.app/center/activities/attivita-test-buddykids/calendar",
         "https://buddykids-app.vercel.app/center/activities/new",
-        "https://buddykids-app.vercel.app/center/activities/test-attivita-auto-1784107753260",
-        "https://buddykids-app.vercel.app/center/activities/test-attivita-auto-1784107753260/calendar",
-        "https://buddykids-app.vercel.app/center/activities/test-attivita-auto-1784108193968",
-        "https://buddykids-app.vercel.app/center/activities/test-attivita-auto-1784108193968/calendar",
         "https://buddykids-app.vercel.app/center/attendance",
         "https://buddykids-app.vercel.app/center/group-requests",
         "https://buddykids-app.vercel.app/center/invites",
@@ -52,10 +48,6 @@
         "https://buddykids-app.vercel.app/center/activities/attivita-test-buddykids",
         "https://buddykids-app.vercel.app/center/activities/attivita-test-buddykids/calendar",
         "https://buddykids-app.vercel.app/center/activities/new",
-        "https://buddykids-app.vercel.app/center/activities/test-attivita-auto-1784107753260",
-        "https://buddykids-app.vercel.app/center/activities/test-attivita-auto-1784107753260/calendar",
-        "https://buddykids-app.vercel.app/center/activities/test-attivita-auto-1784108193968",
-        "https://buddykids-app.vercel.app/center/activities/test-attivita-auto-1784108193968/calendar",
         "https://buddykids-app.vercel.app/center/attendance",
         "https://buddykids-app.vercel.app/center/group-requests",
         "https://buddykids-app.vercel.app/center/invites",
@@ -112,10 +104,6 @@
         "https://buddykids-app.vercel.app/center/activities/attivita-test-buddykids",
         "https://buddykids-app.vercel.app/center/activities/attivita-test-buddykids/calendar",
         "https://buddykids-app.vercel.app/center/activities/new",
-        "https://buddykids-app.vercel.app/center/activities/test-attivita-auto-1784107753260",
-        "https://buddykids-app.vercel.app/center/activities/test-attivita-auto-1784107753260/calendar",
-        "https://buddykids-app.vercel.app/center/activities/test-attivita-auto-1784108193968",
-        "https://buddykids-app.vercel.app/center/activities/test-attivita-auto-1784108193968/calendar",
         "https://buddykids-app.vercel.app/center/attendance",
         "https://buddykids-app.vercel.app/center/group-requests",
         "https://buddykids-app.vercel.app/center/invites",
@@ -159,50 +147,6 @@
       ]
     },
     {
-      "url": "https://buddykids-app.vercel.app/center/activities/test-attivita-auto-1784107753260",
-      "pathname": "/center/activities/test-attivita-auto-1784107753260",
-      "title": "TRAMA — Attività per bambini",
-      "heading": "[TEST] Attività auto 1784107753260",
-      "kind": "partner",
-      "calledBy": [
-        "https://buddykids-app.vercel.app/center/activities",
-        "https://buddykids-app.vercel.app/center/activities/test-attivita-auto-1784107753260/calendar"
-      ]
-    },
-    {
-      "url": "https://buddykids-app.vercel.app/center/activities/test-attivita-auto-1784107753260/calendar",
-      "pathname": "/center/activities/test-attivita-auto-1784107753260/calendar",
-      "title": "TRAMA — Attività per bambini",
-      "heading": "Calendario disponibilità",
-      "kind": "partner",
-      "calledBy": [
-        "https://buddykids-app.vercel.app/center/activities",
-        "https://buddykids-app.vercel.app/center/activities/test-attivita-auto-1784107753260"
-      ]
-    },
-    {
-      "url": "https://buddykids-app.vercel.app/center/activities/test-attivita-auto-1784108193968",
-      "pathname": "/center/activities/test-attivita-auto-1784108193968",
-      "title": "TRAMA — Attività per bambini",
-      "heading": "[TEST] Attività auto 1784108193968",
-      "kind": "partner",
-      "calledBy": [
-        "https://buddykids-app.vercel.app/center/activities",
-        "https://buddykids-app.vercel.app/center/activities/test-attivita-auto-1784108193968/calendar"
-      ]
-    },
-    {
-      "url": "https://buddykids-app.vercel.app/center/activities/test-attivita-auto-1784108193968/calendar",
-      "pathname": "/center/activities/test-attivita-auto-1784108193968/calendar",
-      "title": "TRAMA — Attività per bambini",
-      "heading": "Calendario disponibilità",
-      "kind": "partner",
-      "calledBy": [
-        "https://buddykids-app.vercel.app/center/activities",
-        "https://buddykids-app.vercel.app/center/activities/test-attivita-auto-1784108193968"
-      ]
-    },
-    {
       "url": "https://buddykids-app.vercel.app/center/attendance",
       "pathname": "/center/attendance",
       "title": "TRAMA — Attività per bambini",
@@ -218,10 +162,6 @@
         "https://buddykids-app.vercel.app/center/activities/attivita-test-buddykids",
         "https://buddykids-app.vercel.app/center/activities/attivita-test-buddykids/calendar",
         "https://buddykids-app.vercel.app/center/activities/new",
-        "https://buddykids-app.vercel.app/center/activities/test-attivita-auto-1784107753260",
-        "https://buddykids-app.vercel.app/center/activities/test-attivita-auto-1784107753260/calendar",
-        "https://buddykids-app.vercel.app/center/activities/test-attivita-auto-1784108193968",
-        "https://buddykids-app.vercel.app/center/activities/test-attivita-auto-1784108193968/calendar",
         "https://buddykids-app.vercel.app/center/attendance",
         "https://buddykids-app.vercel.app/center/group-requests",
         "https://buddykids-app.vercel.app/center/invites",
@@ -258,10 +198,6 @@
         "https://buddykids-app.vercel.app/center/activities/attivita-test-buddykids",
         "https://buddykids-app.vercel.app/center/activities/attivita-test-buddykids/calendar",
         "https://buddykids-app.vercel.app/center/activities/new",
-        "https://buddykids-app.vercel.app/center/activities/test-attivita-auto-1784107753260",
-        "https://buddykids-app.vercel.app/center/activities/test-attivita-auto-1784107753260/calendar",
-        "https://buddykids-app.vercel.app/center/activities/test-attivita-auto-1784108193968",
-        "https://buddykids-app.vercel.app/center/activities/test-attivita-auto-1784108193968/calendar",
         "https://buddykids-app.vercel.app/center/attendance",
         "https://buddykids-app.vercel.app/center/group-requests",
         "https://buddykids-app.vercel.app/center/invites",
@@ -288,10 +224,6 @@
         "https://buddykids-app.vercel.app/center/activities/attivita-test-buddykids",
         "https://buddykids-app.vercel.app/center/activities/attivita-test-buddykids/calendar",
         "https://buddykids-app.vercel.app/center/activities/new",
-        "https://buddykids-app.vercel.app/center/activities/test-attivita-auto-1784107753260",
-        "https://buddykids-app.vercel.app/center/activities/test-attivita-auto-1784107753260/calendar",
-        "https://buddykids-app.vercel.app/center/activities/test-attivita-auto-1784108193968",
-        "https://buddykids-app.vercel.app/center/activities/test-attivita-auto-1784108193968/calendar",
         "https://buddykids-app.vercel.app/center/attendance",
         "https://buddykids-app.vercel.app/center/group-requests",
         "https://buddykids-app.vercel.app/center/invites",
@@ -318,10 +250,6 @@
         "https://buddykids-app.vercel.app/center/activities/attivita-test-buddykids",
         "https://buddykids-app.vercel.app/center/activities/attivita-test-buddykids/calendar",
         "https://buddykids-app.vercel.app/center/activities/new",
-        "https://buddykids-app.vercel.app/center/activities/test-attivita-auto-1784107753260",
-        "https://buddykids-app.vercel.app/center/activities/test-attivita-auto-1784107753260/calendar",
-        "https://buddykids-app.vercel.app/center/activities/test-attivita-auto-1784108193968",
-        "https://buddykids-app.vercel.app/center/activities/test-attivita-auto-1784108193968/calendar",
         "https://buddykids-app.vercel.app/center/attendance",
         "https://buddykids-app.vercel.app/center/group-requests",
         "https://buddykids-app.vercel.app/center/invites",
@@ -348,10 +276,6 @@
         "https://buddykids-app.vercel.app/center/activities/attivita-test-buddykids",
         "https://buddykids-app.vercel.app/center/activities/attivita-test-buddykids/calendar",
         "https://buddykids-app.vercel.app/center/activities/new",
-        "https://buddykids-app.vercel.app/center/activities/test-attivita-auto-1784107753260",
-        "https://buddykids-app.vercel.app/center/activities/test-attivita-auto-1784107753260/calendar",
-        "https://buddykids-app.vercel.app/center/activities/test-attivita-auto-1784108193968",
-        "https://buddykids-app.vercel.app/center/activities/test-attivita-auto-1784108193968/calendar",
         "https://buddykids-app.vercel.app/center/attendance",
         "https://buddykids-app.vercel.app/center/group-requests",
         "https://buddykids-app.vercel.app/center/invites",
@@ -378,10 +302,6 @@
         "https://buddykids-app.vercel.app/center/activities/attivita-test-buddykids",
         "https://buddykids-app.vercel.app/center/activities/attivita-test-buddykids/calendar",
         "https://buddykids-app.vercel.app/center/activities/new",
-        "https://buddykids-app.vercel.app/center/activities/test-attivita-auto-1784107753260",
-        "https://buddykids-app.vercel.app/center/activities/test-attivita-auto-1784107753260/calendar",
-        "https://buddykids-app.vercel.app/center/activities/test-attivita-auto-1784108193968",
-        "https://buddykids-app.vercel.app/center/activities/test-attivita-auto-1784108193968/calendar",
         "https://buddykids-app.vercel.app/center/attendance",
         "https://buddykids-app.vercel.app/center/group-requests",
         "https://buddykids-app.vercel.app/center/invites",
@@ -408,10 +328,6 @@
         "https://buddykids-app.vercel.app/center/activities/attivita-test-buddykids",
         "https://buddykids-app.vercel.app/center/activities/attivita-test-buddykids/calendar",
         "https://buddykids-app.vercel.app/center/activities/new",
-        "https://buddykids-app.vercel.app/center/activities/test-attivita-auto-1784107753260",
-        "https://buddykids-app.vercel.app/center/activities/test-attivita-auto-1784107753260/calendar",
-        "https://buddykids-app.vercel.app/center/activities/test-attivita-auto-1784108193968",
-        "https://buddykids-app.vercel.app/center/activities/test-attivita-auto-1784108193968/calendar",
         "https://buddykids-app.vercel.app/center/attendance",
         "https://buddykids-app.vercel.app/center/group-requests",
         "https://buddykids-app.vercel.app/center/invites",
@@ -438,10 +354,6 @@
         "https://buddykids-app.vercel.app/center/activities/attivita-test-buddykids",
         "https://buddykids-app.vercel.app/center/activities/attivita-test-buddykids/calendar",
         "https://buddykids-app.vercel.app/center/activities/new",
-        "https://buddykids-app.vercel.app/center/activities/test-attivita-auto-1784107753260",
-        "https://buddykids-app.vercel.app/center/activities/test-attivita-auto-1784107753260/calendar",
-        "https://buddykids-app.vercel.app/center/activities/test-attivita-auto-1784108193968",
-        "https://buddykids-app.vercel.app/center/activities/test-attivita-auto-1784108193968/calendar",
         "https://buddykids-app.vercel.app/center/attendance",
         "https://buddykids-app.vercel.app/center/group-requests",
         "https://buddykids-app.vercel.app/center/invites",
@@ -712,22 +624,6 @@
     },
     {
       "from": "https://buddykids-app.vercel.app/center/activities",
-      "to": "https://buddykids-app.vercel.app/center/activities/test-attivita-auto-1784107753260"
-    },
-    {
-      "from": "https://buddykids-app.vercel.app/center/activities",
-      "to": "https://buddykids-app.vercel.app/center/activities/test-attivita-auto-1784107753260/calendar"
-    },
-    {
-      "from": "https://buddykids-app.vercel.app/center/activities",
-      "to": "https://buddykids-app.vercel.app/center/activities/test-attivita-auto-1784108193968"
-    },
-    {
-      "from": "https://buddykids-app.vercel.app/center/activities",
-      "to": "https://buddykids-app.vercel.app/center/activities/test-attivita-auto-1784108193968/calendar"
-    },
-    {
-      "from": "https://buddykids-app.vercel.app/center/activities",
       "to": "https://buddykids-app.vercel.app/center/attendance"
     },
     {
@@ -896,198 +792,6 @@
     },
     {
       "from": "https://buddykids-app.vercel.app/center/activities/new",
-      "to": "https://buddykids-app.vercel.app/center/servizi-consigliati"
-    },
-    {
-      "from": "https://buddykids-app.vercel.app/center/activities/test-attivita-auto-1784107753260",
-      "to": "https://buddykids-app.vercel.app/center"
-    },
-    {
-      "from": "https://buddykids-app.vercel.app/center/activities/test-attivita-auto-1784107753260",
-      "to": "https://buddykids-app.vercel.app/center/account"
-    },
-    {
-      "from": "https://buddykids-app.vercel.app/center/activities/test-attivita-auto-1784107753260",
-      "to": "https://buddykids-app.vercel.app/center/activities"
-    },
-    {
-      "from": "https://buddykids-app.vercel.app/center/activities/test-attivita-auto-1784107753260",
-      "to": "https://buddykids-app.vercel.app/center/activities/test-attivita-auto-1784107753260/calendar"
-    },
-    {
-      "from": "https://buddykids-app.vercel.app/center/activities/test-attivita-auto-1784107753260",
-      "to": "https://buddykids-app.vercel.app/center/attendance"
-    },
-    {
-      "from": "https://buddykids-app.vercel.app/center/activities/test-attivita-auto-1784107753260",
-      "to": "https://buddykids-app.vercel.app/center/group-requests"
-    },
-    {
-      "from": "https://buddykids-app.vercel.app/center/activities/test-attivita-auto-1784107753260",
-      "to": "https://buddykids-app.vercel.app/center/invites"
-    },
-    {
-      "from": "https://buddykids-app.vercel.app/center/activities/test-attivita-auto-1784107753260",
-      "to": "https://buddykids-app.vercel.app/center/profile"
-    },
-    {
-      "from": "https://buddykids-app.vercel.app/center/activities/test-attivita-auto-1784107753260",
-      "to": "https://buddykids-app.vercel.app/center/promotions"
-    },
-    {
-      "from": "https://buddykids-app.vercel.app/center/activities/test-attivita-auto-1784107753260",
-      "to": "https://buddykids-app.vercel.app/center/report-presenze"
-    },
-    {
-      "from": "https://buddykids-app.vercel.app/center/activities/test-attivita-auto-1784107753260",
-      "to": "https://buddykids-app.vercel.app/center/richieste"
-    },
-    {
-      "from": "https://buddykids-app.vercel.app/center/activities/test-attivita-auto-1784107753260",
-      "to": "https://buddykids-app.vercel.app/center/servizi-consigliati"
-    },
-    {
-      "from": "https://buddykids-app.vercel.app/center/activities/test-attivita-auto-1784107753260/calendar",
-      "to": "https://buddykids-app.vercel.app/center"
-    },
-    {
-      "from": "https://buddykids-app.vercel.app/center/activities/test-attivita-auto-1784107753260/calendar",
-      "to": "https://buddykids-app.vercel.app/center/account"
-    },
-    {
-      "from": "https://buddykids-app.vercel.app/center/activities/test-attivita-auto-1784107753260/calendar",
-      "to": "https://buddykids-app.vercel.app/center/activities"
-    },
-    {
-      "from": "https://buddykids-app.vercel.app/center/activities/test-attivita-auto-1784107753260/calendar",
-      "to": "https://buddykids-app.vercel.app/center/activities/test-attivita-auto-1784107753260"
-    },
-    {
-      "from": "https://buddykids-app.vercel.app/center/activities/test-attivita-auto-1784107753260/calendar",
-      "to": "https://buddykids-app.vercel.app/center/attendance"
-    },
-    {
-      "from": "https://buddykids-app.vercel.app/center/activities/test-attivita-auto-1784107753260/calendar",
-      "to": "https://buddykids-app.vercel.app/center/group-requests"
-    },
-    {
-      "from": "https://buddykids-app.vercel.app/center/activities/test-attivita-auto-1784107753260/calendar",
-      "to": "https://buddykids-app.vercel.app/center/invites"
-    },
-    {
-      "from": "https://buddykids-app.vercel.app/center/activities/test-attivita-auto-1784107753260/calendar",
-      "to": "https://buddykids-app.vercel.app/center/profile"
-    },
-    {
-      "from": "https://buddykids-app.vercel.app/center/activities/test-attivita-auto-1784107753260/calendar",
-      "to": "https://buddykids-app.vercel.app/center/promotions"
-    },
-    {
-      "from": "https://buddykids-app.vercel.app/center/activities/test-attivita-auto-1784107753260/calendar",
-      "to": "https://buddykids-app.vercel.app/center/report-presenze"
-    },
-    {
-      "from": "https://buddykids-app.vercel.app/center/activities/test-attivita-auto-1784107753260/calendar",
-      "to": "https://buddykids-app.vercel.app/center/richieste"
-    },
-    {
-      "from": "https://buddykids-app.vercel.app/center/activities/test-attivita-auto-1784107753260/calendar",
-      "to": "https://buddykids-app.vercel.app/center/servizi-consigliati"
-    },
-    {
-      "from": "https://buddykids-app.vercel.app/center/activities/test-attivita-auto-1784108193968",
-      "to": "https://buddykids-app.vercel.app/center"
-    },
-    {
-      "from": "https://buddykids-app.vercel.app/center/activities/test-attivita-auto-1784108193968",
-      "to": "https://buddykids-app.vercel.app/center/account"
-    },
-    {
-      "from": "https://buddykids-app.vercel.app/center/activities/test-attivita-auto-1784108193968",
-      "to": "https://buddykids-app.vercel.app/center/activities"
-    },
-    {
-      "from": "https://buddykids-app.vercel.app/center/activities/test-attivita-auto-1784108193968",
-      "to": "https://buddykids-app.vercel.app/center/activities/test-attivita-auto-1784108193968/calendar"
-    },
-    {
-      "from": "https://buddykids-app.vercel.app/center/activities/test-attivita-auto-1784108193968",
-      "to": "https://buddykids-app.vercel.app/center/attendance"
-    },
-    {
-      "from": "https://buddykids-app.vercel.app/center/activities/test-attivita-auto-1784108193968",
-      "to": "https://buddykids-app.vercel.app/center/group-requests"
-    },
-    {
-      "from": "https://buddykids-app.vercel.app/center/activities/test-attivita-auto-1784108193968",
-      "to": "https://buddykids-app.vercel.app/center/invites"
-    },
-    {
-      "from": "https://buddykids-app.vercel.app/center/activities/test-attivita-auto-1784108193968",
-      "to": "https://buddykids-app.vercel.app/center/profile"
-    },
-    {
-      "from": "https://buddykids-app.vercel.app/center/activities/test-attivita-auto-1784108193968",
-      "to": "https://buddykids-app.vercel.app/center/promotions"
-    },
-    {
-      "from": "https://buddykids-app.vercel.app/center/activities/test-attivita-auto-1784108193968",
-      "to": "https://buddykids-app.vercel.app/center/report-presenze"
-    },
-    {
-      "from": "https://buddykids-app.vercel.app/center/activities/test-attivita-auto-1784108193968",
-      "to": "https://buddykids-app.vercel.app/center/richieste"
-    },
-    {
-      "from": "https://buddykids-app.vercel.app/center/activities/test-attivita-auto-1784108193968",
-      "to": "https://buddykids-app.vercel.app/center/servizi-consigliati"
-    },
-    {
-      "from": "https://buddykids-app.vercel.app/center/activities/test-attivita-auto-1784108193968/calendar",
-      "to": "https://buddykids-app.vercel.app/center"
-    },
-    {
-      "from": "https://buddykids-app.vercel.app/center/activities/test-attivita-auto-1784108193968/calendar",
-      "to": "https://buddykids-app.vercel.app/center/account"
-    },
-    {
-      "from": "https://buddykids-app.vercel.app/center/activities/test-attivita-auto-1784108193968/calendar",
-      "to": "https://buddykids-app.vercel.app/center/activities"
-    },
-    {
-      "from": "https://buddykids-app.vercel.app/center/activities/test-attivita-auto-1784108193968/calendar",
-      "to": "https://buddykids-app.vercel.app/center/activities/test-attivita-auto-1784108193968"
-    },
-    {
-      "from": "https://buddykids-app.vercel.app/center/activities/test-attivita-auto-1784108193968/calendar",
-      "to": "https://buddykids-app.vercel.app/center/attendance"
-    },
-    {
-      "from": "https://buddykids-app.vercel.app/center/activities/test-attivita-auto-1784108193968/calendar",
-      "to": "https://buddykids-app.vercel.app/center/group-requests"
-    },
-    {
-      "from": "https://buddykids-app.vercel.app/center/activities/test-attivita-auto-1784108193968/calendar",
-      "to": "https://buddykids-app.vercel.app/center/invites"
-    },
-    {
-      "from": "https://buddykids-app.vercel.app/center/activities/test-attivita-auto-1784108193968/calendar",
-      "to": "https://buddykids-app.vercel.app/center/profile"
-    },
-    {
-      "from": "https://buddykids-app.vercel.app/center/activities/test-attivita-auto-1784108193968/calendar",
-      "to": "https://buddykids-app.vercel.app/center/promotions"
-    },
-    {
-      "from": "https://buddykids-app.vercel.app/center/activities/test-attivita-auto-1784108193968/calendar",
-      "to": "https://buddykids-app.vercel.app/center/report-presenze"
-    },
-    {
-      "from": "https://buddykids-app.vercel.app/center/activities/test-attivita-auto-1784108193968/calendar",
-      "to": "https://buddykids-app.vercel.app/center/richieste"
-    },
-    {
-      "from": "https://buddykids-app.vercel.app/center/activities/test-attivita-auto-1784108193968/calendar",
       "to": "https://buddykids-app.vercel.app/center/servizi-consigliati"
     },
     {

@@ -501,30 +501,48 @@ function shouldQueueLink(
 // — semplicemente non si apre un nodo/pagina in più per ciascuna).
 // Le route statiche che assomigliano a un segmento dinamico (es. "new") sono
 // escluse esplicitamente per non essere fuse per errore con le pagine dati.
+// Fabrizio (2026-07-22, seconda passata): non basta collassare le istanze
+// ripetute — anche quando esiste UN SOLO dato reale (l'unica community di
+// test, l'unica attività di test, l'unico centro), quel nodo mostrava comunque
+// il nome reale scraped dalla pagina ("[TEST] Attività BuddyKids", il nome
+// della community) invece di rappresentare la SEZIONE. Ogni famiglia ha quindi
+// anche un "displayLabel" fisso, usato SEMPRE per quella famiglia (a
+// prescindere da quante istanze reali vengono collassate su di essa, anche
+// una sola) — vedi dynamicRouteFamilyLabel() e il suo uso in buildMermaid().
 const DYNAMIC_ROUTE_PATTERNS: Array<{
   regex: RegExp;
   family: string;
+  displayLabel: string;
   excludedSegments?: string[];
 }> = [
-  { regex: /^\/activity\/([^/]+)$/, family: "/activity/:slug" },
+  { regex: /^\/activity\/([^/]+)$/, family: "/activity/:slug", displayLabel: "Dettaglio attività" },
   {
     regex: /^\/center\/activities\/([^/]+)\/calendar$/,
     family: "/center/activities/:slug/calendar",
+    displayLabel: "Calendario disponibilità",
     excludedSegments: ["new"],
   },
   {
     regex: /^\/center\/activities\/([^/]+)$/,
     family: "/center/activities/:slug",
+    displayLabel: "Dettaglio attività (Gestore)",
     excludedSegments: ["new"],
   },
-  { regex: /^\/admin\/centers\/([^/]+)$/, family: "/admin/centers/:slug" },
+  {
+    regex: /^\/admin\/centers\/([^/]+)$/,
+    family: "/admin/centers/:slug",
+    displayLabel: "Dettaglio centro (Admin)",
+  },
   {
     regex: /^\/nextgen\/community\/([^/]+)$/,
     family: "/nextgen/community/:id",
+    displayLabel: "Dettaglio Community",
   },
 ];
 
-function dynamicRouteFamily(urlValue: string): string | null {
+function matchDynamicRoutePattern(
+  urlValue: string
+): (typeof DYNAMIC_ROUTE_PATTERNS)[number] | null {
   let pathname: string;
   try {
     pathname = new URL(urlValue).pathname;
@@ -536,10 +554,21 @@ function dynamicRouteFamily(urlValue: string): string | null {
     const match = pathname.match(pattern.regex);
     if (!match) continue;
     if (pattern.excludedSegments?.includes(match[1])) return null;
-    return pattern.family;
+    return pattern;
   }
 
   return null;
+}
+
+function dynamicRouteFamily(urlValue: string): string | null {
+  return matchDynamicRoutePattern(urlValue)?.family ?? null;
+}
+
+// Etichetta di sezione fissa per una pagina di dettaglio dinamica — usata
+// SEMPRE al posto del titolo/heading scraped dalla pagina reale (vedi
+// buildMermaid), anche quando la famiglia ha una sola istanza collassata.
+function dynamicRouteFamilyLabel(urlValue: string): string | null {
+  return matchDynamicRoutePattern(urlValue)?.displayLabel ?? null;
 }
 
 function collapseDynamicRoute(
@@ -881,13 +910,33 @@ async function scanTarget(
       visited.add(actualUrl);
 
       const title = cleanText(await page.title().catch(() => ""));
-      const heading = cleanText(
-        await page
-          .locator("h1:visible, h2:visible")
-          .first()
-          .textContent({ timeout: 4_000 })
-          .catch(() => "")
-      );
+      // Fabrizio (2026-07-22): molte pagine (es. app/center/account/*, e in
+      // generale ogni pagina che usa components/PageHeader.tsx come unico
+      // titolo) non hanno NESSUN h1/h2 — il titolo reale della pagina
+      // ("Preferenze", "Privacy", "Sicurezza", ...) è un <h3> dentro
+      // PageHeader. Con un solo selettore combinato "h1:visible, h2:visible"
+      // queste pagine restavano senza heading e il grafo cadeva sul
+      // document.title, che è lo stesso per OGNI pagina del tenant (vedi
+      // lib/tenant.ts, generateMetadata in app/layout.tsx: il <title> varia
+      // per sottodominio, non per pagina) — da qui il bug segnalato ("n
+      // pagine con lo stesso titolo generico, sotto solo il path a
+      // distinguerle"). Prova in ordine di priorità reale (h1 > h2 > h3 > h4,
+      // non "primo nel DOM tra tutti") e si ferma al primo tag con un match
+      // visibile.
+      let heading = "";
+      for (const tag of ["h1", "h2", "h3", "h4"]) {
+        const candidate = cleanText(
+          await page
+            .locator(`${tag}:visible`)
+            .first()
+            .textContent({ timeout: 4_000 })
+            .catch(() => "")
+        );
+        if (candidate) {
+          heading = candidate;
+          break;
+        }
+      }
 
       const parsed = new URL(actualUrl);
       const existing = nodes.get(actualUrl);
@@ -1027,7 +1076,18 @@ function buildMermaid(
 
   for (const node of nodes) {
     const nodeId = nodeIdByUrl.get(node.url)!;
-    const mainLabel = node.heading || node.title || node.pathname || "Pagina";
+    // Fabrizio (2026-07-22): per le pagine di dettaglio dinamiche (una
+    // famiglia = una sezione), l'etichetta è SEMPRE quella fissa della
+    // famiglia — mai il nome reale scraped dalla pagina (attività/centro/
+    // community di test o reali che siano). Vale anche con una sola istanza
+    // collassata sulla famiglia: non è una questione di "troppi duplicati",
+    // è che il nome riga-dato non è mai informazione di sezione.
+    const mainLabel =
+      dynamicRouteFamilyLabel(node.url) ||
+      node.heading ||
+      node.title ||
+      node.pathname ||
+      "Pagina";
     const compactLabel = cleanText(mainLabel).slice(0, 70);
     const label =
       `<b>${escapeHtml(compactLabel)}</b>` +
