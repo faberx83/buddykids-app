@@ -8,13 +8,15 @@ import PrenotazioniClient from "./PrenotazioniClient";
 // periodo, prossime attività e statistiche sintetiche, con Vista/
 // Raggruppamento/Ordinamento separati e azioni rapide (Modifica, Annulla,
 // Dettagli, Contatta) su ogni prenotazione. "?kid=" (arrivato da "Già
-// prenotato per [bambino]" in Home) preseleziona il filtro bambino.
+// prenotato per [bambino]" in Home) preseleziona il filtro bambino. "?bookingId="
+// (Task #357, arrivato dal Planner cliccando una settimana coperta) evidenzia
+// e scrolla in vista la prenotazione specifica.
 export default async function PrenotazioniPage({
   searchParams,
 }: {
-  searchParams: Promise<{ kid?: string }>;
+  searchParams: Promise<{ kid?: string; bookingId?: string }>;
 }) {
-  const { kid } = await searchParams;
+  const { kid, bookingId } = await searchParams;
   const [bookings, planner, kids] = await Promise.all([
     getMyBookingsForParent(),
     getPlannerData(),
@@ -23,7 +25,13 @@ export default async function PrenotazioniPage({
 
   return (
     <div className="animate-fade-in">
-      <PrenotazioniClient bookings={bookings} planner={planner} kids={kids} initialKidFilter={kid ?? null} />
+      <PrenotazioniClient
+        bookings={bookings}
+        planner={planner}
+        kids={kids}
+        initialKidFilter={kid ?? null}
+        initialHighlightBookingId={bookingId ?? null}
+      />
     </div>
   );
 }

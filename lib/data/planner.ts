@@ -34,6 +34,14 @@ export interface KidCoverage {
   // invariato: prima di questo sprint "confirmed" non era mai raggiungibile,
   // quindi ogni settimana "coperta" era in realtà solo "richiesta").
   partnerDecision: "pending" | "accepted" | "rejected" | "proposed";
+  // Task #357 (Fabrizio: il click su una settimana coperta deve mostrare LA
+  // MIA prenotazione, non la scheda marketing dell'attività) — id della
+  // prenotazione reale che copre questa settimana per questo bambino, per
+  // poter linkare a "Le mie prenotazioni" (?bookingId=) invece che a
+  // /activity/{slug}. Deciso REUSE di quella pagina già esistente (vedi
+  // FEATURE_PARITY_MATRIX.md/DECISION_LOG.md, DEC-06/DEC-42: il Planner resta
+  // una proiezione in sola lettura, nessuno stato mutabile proprio).
+  bookingId: string;
 }
 
 export interface SeasonWeek {
@@ -46,6 +54,10 @@ export interface SeasonWeek {
   activityName?: string; // vista aggregata: nome della PRIMA attività trovata per questa settimana
   activityTagColor?: PillColor; // colore della prima categoria dell'attività, per la tinta della card in Home
   activitySlug?: string; // vista aggregata: slug della PRIMA attività trovata (per "Aggiungi [bambino]")
+  // Task #357: id della PRIMA prenotazione trovata per questa settimana —
+  // usato dal Planner per linkare a "Le mie prenotazioni" (?bookingId=)
+  // quando covered è true, invece della scheda marketing dell'attività.
+  bookingId?: string;
   coveredKids: KidCoverage[]; // dettaglio per bambino — per capire se la copertura è parziale o per chi
   dismissed: boolean; // il genitore l'ha segnata "non mi serve" (ferie, nonni, ecc.)
   // TRAMA ONE Build Sprint 4 (DEC-42, Task #345): true se questa settimana è
@@ -78,6 +90,7 @@ interface RawActivityRef {
 }
 
 interface RawBookingRow {
+  id: string;
   status: string | null;
   partner_decision: "pending" | "accepted" | "rejected" | "proposed" | null;
   activities: RawActivityRef | RawActivityRef[] | null;
@@ -135,7 +148,7 @@ export async function getPlannerData(): Promise<PlannerData> {
   const { data, error } = await supabase
     .from("bookings")
     .select(
-      "status, partner_decision, activities ( slug, name, pills ), booking_weeks ( activity_weeks ( start_date, end_date ) ), booking_kids ( kid_id )"
+      "id, status, partner_decision, activities ( slug, name, pills ), booking_weeks ( activity_weeks ( start_date, end_date ) ), booking_kids ( kid_id )"
     )
     .eq("parent_id", user.id)
     .neq("status", "cancelled");
@@ -178,10 +191,11 @@ export async function getPlannerData(): Promise<PlannerData> {
             seasonWeek.activityName = activityName;
             seasonWeek.activityTagColor = activityTagColor;
             seasonWeek.activitySlug = activitySlug;
+            seasonWeek.bookingId = row.id;
           }
           for (const kidId of kidIds) {
             if (!seasonWeek.coveredKids.some((c) => c.kidId === kidId)) {
-              seasonWeek.coveredKids.push({ kidId, activityName, activityTagColor, activitySlug, partnerDecision });
+              seasonWeek.coveredKids.push({ kidId, activityName, activityTagColor, activitySlug, partnerDecision, bookingId: row.id });
             }
           }
         }

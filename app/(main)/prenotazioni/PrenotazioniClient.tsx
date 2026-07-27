@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { MyBooking, BookingStatus } from "@/lib/data/my-bookings";
@@ -125,15 +125,35 @@ export default function PrenotazioniClient({
   planner,
   kids,
   initialKidFilter,
+  initialHighlightBookingId,
 }: {
   bookings: MyBooking[];
   planner: PlannerData;
   kids: Kid[];
   initialKidFilter: string | null;
+  initialHighlightBookingId: string | null;
 }) {
   const router = useRouter();
   const [view, setView] = useState<ViewKey>("elenco");
   const [kidFilter, setKidFilter] = useState<string | null>(initialKidFilter);
+  // Task #357 (arrivo dal Planner, click su una settimana coperta): evidenzia
+  // e scrolla in vista la prenotazione indicata da "?bookingId=" — stesso
+  // pattern già usato per "Stato per settimana" nel Planner NEXTGEN
+  // (highlightedWeekIndex + scrollIntoView + auto-clear dopo 1600ms).
+  const [highlightedBookingId, setHighlightedBookingId] = useState<string | null>(initialHighlightBookingId);
+  useEffect(() => {
+    if (!initialHighlightBookingId) return;
+    const scrollTimeout = window.setTimeout(() => {
+      document
+        .getElementById(`booking-${initialHighlightBookingId}`)
+        ?.scrollIntoView({ behavior: "smooth", block: "center" });
+    }, 80);
+    const clearTimeout = window.setTimeout(() => setHighlightedBookingId(null), 1600);
+    return () => {
+      window.clearTimeout(scrollTimeout);
+      window.clearTimeout(clearTimeout);
+    };
+  }, [initialHighlightBookingId]);
   const [groupBy, setGroupBy] = useState<GroupKey>("week");
   const [sortKey, setSortKey] = useState<SortKey>("date");
   const [confirmCancelId, setConfirmCancelId] = useState<string | null>(null);
@@ -352,6 +372,7 @@ export default function PrenotazioniClient({
                             <BookingCard
                               key={b.id}
                               booking={b}
+                              highlighted={highlightedBookingId === b.id}
                               confirming={confirmCancelId === b.id}
                               cancelling={cancellingId === b.id}
                               onAskCancel={() => setConfirmCancelId(b.id)}
@@ -478,6 +499,7 @@ function CoperturaView({ planner, kids }: { planner: PlannerData; kids: Kid[] })
 
 function BookingCard({
   booking: b,
+  highlighted,
   confirming,
   cancelling,
   onAskCancel,
@@ -485,6 +507,7 @@ function BookingCard({
   onCancelAbort,
 }: {
   booking: MyBooking;
+  highlighted: boolean;
   confirming: boolean;
   cancelling: boolean;
   onAskCancel: () => void;
@@ -492,7 +515,12 @@ function BookingCard({
   onCancelAbort: () => void;
 }) {
   return (
-    <div className="rounded-xl border border-[#E8EBF0] bg-white p-3.5 shadow-[0_1px_2px_rgba(16,24,40,0.04)]">
+    <div
+      id={`booking-${b.id}`}
+      className={`rounded-xl border border-[#E8EBF0] bg-white p-3.5 shadow-[0_1px_2px_rgba(16,24,40,0.04)] transition-shadow ${
+        highlighted ? "ring-2 ring-trama-violet" : ""
+      }`}
+    >
       <div className="flex gap-3">
         <div
           className="flex h-14 w-14 flex-shrink-0 items-center justify-center overflow-hidden rounded-lg bg-cover bg-center text-2xl"

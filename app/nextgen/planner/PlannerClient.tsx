@@ -687,18 +687,33 @@ export default function PlannerClient({
                                 la riga è davvero cliccabile (attività con
                                 slug reale), in aggiunta all'icona di stato
                                 sopra, non al suo posto. */}
-                            {w.covered && w.activitySlug && (
+                            {w.covered && w.bookingId && (
                               <i className="ti ti-chevron-right flex-shrink-0 text-base text-ink-3" />
                             )}
                           </>
                         );
 
-                        if (w.covered && w.activitySlug) {
+                        // FIX (Task #357, segnalato da Fabrizio: "il click porta
+                        // alla sezione del centro... ma non mi dà info della mia
+                        // prenotazione") — per una settimana coperta il click
+                        // portava a /activity/{slug}, la scheda marketing
+                        // "Prenota ora", che non mostra affatto lo stato della
+                        // prenotazione già fatta (accettata/in attesa/rifiutata,
+                        // azioni modifica/annulla). Decisione presa in coerenza
+                        // con la documentazione TRAMA ONE (FEATURE_PARITY_MATRIX/
+                        // DECISION_LOG DEC-06/DEC-42: il Planner resta una
+                        // proiezione in sola lettura, senza stato mutabile
+                        // proprio) — REUSE di "Le mie prenotazioni", che ha già
+                        // stato/decisione/azioni per ogni prenotazione, invece di
+                        // un nuovo pannello inline che duplicherebbe quella
+                        // logica. ?bookingId= evidenzia/scrolla la prenotazione
+                        // specifica (vedi PrenotazioniClient.tsx).
+                        if (w.covered && w.bookingId) {
                           return (
                             <Link
                               key={w.index}
                               id={`week-row-${w.index}`}
-                              href={`/activity/${w.activitySlug}`}
+                              href={`/prenotazioni?bookingId=${w.bookingId}`}
                               className={`flex items-center gap-3 rounded-xl p-3 transition-colors hover:bg-black/[0.03] active:bg-black/[0.06] ${rowBg} ${
                                 isHighlighted ? "ring-2 ring-trama-violet" : ""
                               }`}

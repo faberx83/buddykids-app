@@ -28,6 +28,10 @@ interface ResolvedWeek extends SeasonWeek {
   viewActivityName?: string;
   viewActivityTagColor?: PillColor;
   viewActivitySlug?: string;
+  // Task #357 (stessa correzione della gemella NEXTGEN, PlannerClient.tsx):
+  // id della prenotazione reale, per linkare a "Le mie prenotazioni" invece
+  // che alla scheda marketing dell'attività.
+  viewBookingId?: string;
   // Solo in vista aggregata con più bambini: la settimana è coperta ma non
   // per TUTTI — utile a non far credere al genitore che sia a posto quando
   // in realtà manca ancora un figlio.
@@ -75,6 +79,7 @@ export default function PlannerView({
           viewActivityName: w.activityName,
           viewActivityTagColor: w.activityTagColor,
           viewActivitySlug: w.activitySlug,
+          viewBookingId: w.bookingId,
           partialForKids,
         };
       }
@@ -85,6 +90,7 @@ export default function PlannerView({
         viewActivityName: entry?.activityName,
         viewActivityTagColor: entry?.activityTagColor,
         viewActivitySlug: entry?.activitySlug,
+        viewBookingId: entry?.bookingId,
         partialForKids: [],
       };
     });
@@ -276,8 +282,15 @@ export default function PlannerView({
                         scheda dell'attività (thumbnail + testo cliccabili). Le
                         chip "+ Aggiungi" restano fuori dal link (un <a>
                         dentro un altro <a> non è valido) — vedi sotto. */}
+                    {/* FIX (Task #357, stessa correzione della gemella NEXTGEN):
+                        linkava a /activity/{slug} (scheda marketing "Prenota
+                        ora"), che non mostra nulla della prenotazione già
+                        fatta — ora punta a "Le mie prenotazioni" con quella
+                        prenotazione evidenziata (REUSE, coerente con
+                        DECISION_LOG DEC-06/DEC-42: il Planner resta una
+                        proiezione senza stato mutabile proprio). */}
                     <Link
-                      href={w.viewActivitySlug ? `/activity/${w.viewActivitySlug}` : "#"}
+                      href={w.viewBookingId ? `/prenotazioni?bookingId=${w.viewBookingId}` : "#"}
                       // Segnalazione di Fabrizio: "manca un pò la UX che fa
                       // percepire il click che porta alla pagina di
                       // dettaglio del camp" — aggiunto hover/active feedback
