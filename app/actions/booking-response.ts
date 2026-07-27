@@ -21,11 +21,18 @@ import { sendEmail, isEmailConfigured } from "@/lib/email";
 // già usato in app/actions/attendance.ts::setAttendanceAction (un eventuale
 // errore di invio non fa mai fallire la risposta del centro, che è già stata
 // salvata su bookings prima di questa chiamata).
+// Task #360 (PT-MVP-12/backlog #355) — esteso per accettare un'etichetta di
+// giorno opzionale: la stessa email serve sia per la risposta a livello di
+// intera prenotazione (dayLabel assente) sia per la risposta a un singolo
+// "Giorno spot" (dayLabel = data formattata), riusando lo stesso testo/subject
+// invece di duplicare la funzione per il caso per-giorno introdotto da
+// respondToBookingDayAction.
 async function notifyParentOfBookingResponse(
   supabase: Awaited<ReturnType<typeof createClient>>,
   bookingId: string,
   decision: "accepted" | "rejected" | "proposed",
-  proposalNote?: string
+  proposalNote?: string,
+  dayLabel?: string
 ) {
   if (!isEmailConfigured) return;
   try {
@@ -45,17 +52,18 @@ async function notifyParentOfBookingResponse(
 
     const greeting = `Ciao${parentRow.full_name ? " " + parentRow.full_name.split(" ")[0] : ""},`;
     const activityName = activity?.name ?? "la tua prenotazione";
+    const forWhat = dayLabel ? `<strong>${activityName}</strong> per il giorno <strong>${dayLabel}</strong>` : `<strong>${activityName}</strong>`;
     let subject: string;
     let body: string;
     if (decision === "accepted") {
-      subject = `Prenotazione accettata: ${activityName}`;
-      body = `<p>${greeting}</p><p>Il centro ha <strong>accettato</strong> la tua prenotazione per <strong>${activityName}</strong>.</p>`;
+      subject = dayLabel ? `Giorno confermato: ${activityName} (${dayLabel})` : `Prenotazione accettata: ${activityName}`;
+      body = `<p>${greeting}</p><p>Il centro ha <strong>accettato</strong> la tua prenotazione per ${forWhat}.</p>`;
     } else if (decision === "rejected") {
-      subject = `Prenotazione non accettata: ${activityName}`;
-      body = `<p>${greeting}</p><p>Il centro non ha potuto accettare la tua prenotazione per <strong>${activityName}</strong>. Contatta il centro per maggiori informazioni.</p>`;
+      subject = dayLabel ? `Giorno non accettato: ${activityName} (${dayLabel})` : `Prenotazione non accettata: ${activityName}`;
+      body = `<p>${greeting}</p><p>Il centro non ha potuto accettare la tua prenotazione per ${forWhat}. Contatta il centro per maggiori informazioni.</p>`;
     } else {
       subject = `Il centro ha una proposta per te: ${activityName}`;
-      body = `<p>${greeting}</p><p>Il centro ha inviato una proposta alternativa per <strong>${activityName}</strong>:</p><p>${proposalNote ?? ""}</p>`;
+      body = `<p>${greeting}</p><p>Il centro ha inviato una proposta alternativa per ${forWhat}:</p><p>${proposalNote ?? ""}</p>`;
     }
     await sendEmail({ to: parentRow.email, subject, html: body });
   } catch {
@@ -226,6 +234,22 @@ export async function respondToBookingDayAction(input: {
     .from("bookings")
     .update({ read_by_parent: false, read_by_center: true, responded_at: new Date().toISOString() })
     .eq("id", input.bookingId);
+
+  // Task #360 (PT-MVP-12/backlog #355) — gap individuato durante il check di
+  // coerenza TRAMA ONE del 27/07: la risposta a livello di INTERA prenotazione
+  // (respondToBookingAction) già inviava l'email al genitore da Sprint 4, ma
+  // la risposta per SINGOLO GIORNO (questa funzione) non lo faceva — il
+  // genitore vedeva l'esito solo come badge in-app. Stesso pattern
+  // best-effort, dopo che lo stato è già stato salvato.
+  const { data: activityDay } = await supabase
+    .from("activity_days")
+    .select("date")
+    .eq("id", input.activityDayId)
+    .single();
+  const dayLabel = activityDay?.date
+    ? new Date(activityDay.date + "T00:00:00").toLocaleDateString("it-IT", { day: "numeric", month: "long" })
+    : undefined;
+  await notifyParentOfBookingResponse(supabase, input.bookingId, input.decision, undefined, dayLabel);
 
   revalidateBookingPaths();
   return {};
