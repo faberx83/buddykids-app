@@ -138,6 +138,23 @@ else
   TEST_EXIT_CODE=$?
 fi
 
+# Gap trovato preparando l'Integration Gate (AUDIT_CHECKPOINT_INTEGRATION_
+# SPRINT_1_4.md, 27/07): playwright-report/results.json viene sovrascritto
+# dal run successivo (anche uno smoke veloce), quindi l'unica prova
+# dettagliata di un run TEST_SCOPE=all andava persa entro il run successivo
+# — è già successo: i dati esatti dei 70 test "did not run" di quel run non
+# erano più recuperabili al momento di scrivere l'audit. Archiviamo quindi
+# una copia timestampata (stesso principio già in uso per logs/deploy-*.log,
+# vedi sopra) PRIMA che il prossimo run la sovrascriva. Cartella gitignored
+# (playwright-report-archive), come logs/ e playwright-report/ stesse — solo
+# evidenza locale, mai committata.
+if [ -d "playwright-report" ]; then
+  REPORT_ARCHIVE_DIR="playwright-report-archive/$(date +%Y%m%d-%H%M%S)"
+  mkdir -p "$REPORT_ARCHIVE_DIR"
+  cp -r playwright-report/. "$REPORT_ARCHIVE_DIR/" 2>/dev/null || true
+  echo "🗄️  Report Playwright archiviato in: $REPORT_ARCHIVE_DIR (playwright-report/ verrà sovrascritto dal prossimo run)"
+fi
+
 echo ""
 if [ -n "$RUN_SITEMAP" ]; then
   echo "🗺️ Genero la sitemap (RUN_SITEMAP=1)..."
