@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-07-22T10:09:24.732Z",
+  "generatedAt": "2026-07-27T08:43:13.888Z",
   "target": "partner",
   "label": "Partner / Gestori",
   "project": "chromium",
@@ -25,6 +25,7 @@
         "https://buddykids-app.vercel.app/center/attendance",
         "https://buddykids-app.vercel.app/center/group-requests",
         "https://buddykids-app.vercel.app/center/invites",
+        "https://buddykids-app.vercel.app/center/prenotazioni",
         "https://buddykids-app.vercel.app/center/profile",
         "https://buddykids-app.vercel.app/center/promotions",
         "https://buddykids-app.vercel.app/center/report-presenze",
@@ -51,6 +52,7 @@
         "https://buddykids-app.vercel.app/center/attendance",
         "https://buddykids-app.vercel.app/center/group-requests",
         "https://buddykids-app.vercel.app/center/invites",
+        "https://buddykids-app.vercel.app/center/prenotazioni",
         "https://buddykids-app.vercel.app/center/profile",
         "https://buddykids-app.vercel.app/center/promotions",
         "https://buddykids-app.vercel.app/center/report-presenze",
@@ -107,6 +109,7 @@
         "https://buddykids-app.vercel.app/center/attendance",
         "https://buddykids-app.vercel.app/center/group-requests",
         "https://buddykids-app.vercel.app/center/invites",
+        "https://buddykids-app.vercel.app/center/prenotazioni",
         "https://buddykids-app.vercel.app/center/profile",
         "https://buddykids-app.vercel.app/center/promotions",
         "https://buddykids-app.vercel.app/center/report-presenze",
@@ -165,6 +168,7 @@
         "https://buddykids-app.vercel.app/center/attendance",
         "https://buddykids-app.vercel.app/center/group-requests",
         "https://buddykids-app.vercel.app/center/invites",
+        "https://buddykids-app.vercel.app/center/prenotazioni",
         "https://buddykids-app.vercel.app/center/profile",
         "https://buddykids-app.vercel.app/center/promotions",
         "https://buddykids-app.vercel.app/center/report-presenze",
@@ -201,6 +205,7 @@
         "https://buddykids-app.vercel.app/center/attendance",
         "https://buddykids-app.vercel.app/center/group-requests",
         "https://buddykids-app.vercel.app/center/invites",
+        "https://buddykids-app.vercel.app/center/prenotazioni",
         "https://buddykids-app.vercel.app/center/profile",
         "https://buddykids-app.vercel.app/center/promotions",
         "https://buddykids-app.vercel.app/center/report-presenze",
@@ -227,6 +232,34 @@
         "https://buddykids-app.vercel.app/center/attendance",
         "https://buddykids-app.vercel.app/center/group-requests",
         "https://buddykids-app.vercel.app/center/invites",
+        "https://buddykids-app.vercel.app/center/prenotazioni",
+        "https://buddykids-app.vercel.app/center/profile",
+        "https://buddykids-app.vercel.app/center/promotions",
+        "https://buddykids-app.vercel.app/center/report-presenze",
+        "https://buddykids-app.vercel.app/center/richieste",
+        "https://buddykids-app.vercel.app/center/servizi-consigliati"
+      ]
+    },
+    {
+      "url": "https://buddykids-app.vercel.app/center/prenotazioni",
+      "pathname": "/center/prenotazioni",
+      "title": "TRAMA — Attività per bambini",
+      "heading": "Prenotazioni",
+      "kind": "partner",
+      "calledBy": [
+        "https://buddykids-app.vercel.app/center",
+        "https://buddykids-app.vercel.app/center/account",
+        "https://buddykids-app.vercel.app/center/account/preferenze",
+        "https://buddykids-app.vercel.app/center/account/privacy",
+        "https://buddykids-app.vercel.app/center/account/sicurezza",
+        "https://buddykids-app.vercel.app/center/activities",
+        "https://buddykids-app.vercel.app/center/activities/attivita-test-buddykids",
+        "https://buddykids-app.vercel.app/center/activities/attivita-test-buddykids/calendar",
+        "https://buddykids-app.vercel.app/center/activities/new",
+        "https://buddykids-app.vercel.app/center/attendance",
+        "https://buddykids-app.vercel.app/center/group-requests",
+        "https://buddykids-app.vercel.app/center/invites",
+        "https://buddykids-app.vercel.app/center/prenotazioni",
         "https://buddykids-app.vercel.app/center/profile",
         "https://buddykids-app.vercel.app/center/promotions",
         "https://buddykids-app.vercel.app/center/report-presenze",
@@ -253,6 +286,7 @@
         "https://buddykids-app.vercel.app/center/attendance",
         "https://buddykids-app.vercel.app/center/group-requests",
         "https://buddykids-app.vercel.app/center/invites",
+        "https://buddykids-app.vercel.app/center/prenotazioni",
         "https://buddykids-app.vercel.app/center/profile",
         "https://buddykids-app.vercel.app/center/promotions",
         "https://buddykids-app.vercel.app/center/report-presenze",
@@ -279,6 +313,7 @@
         "https://buddykids-app.vercel.app/center/attendance",
         "https://buddykids-app.vercel.app/center/group-requests",
         "https://buddykids-app.vercel.app/center/invites",
+        "https://buddykids-app.vercel.app/center/prenotazioni",
         "https://buddykids-app.vercel.app/center/profile",
         "https://buddykids-app.vercel.app/center/promotions",
         "https://buddykids-app.vercel.app/center/report-presenze",
@@ -305,6 +340,7 @@
         "https://buddykids-app.vercel.app/center/attendance",
         "https://buddykids-app.vercel.app/center/group-requests",
         "https://buddykids-app.vercel.app/center/invites",
+        "https://buddykids-app.vercel.app/center/prenotazioni",
         "https://buddykids-app.vercel.app/center/profile",
         "https://buddykids-app.vercel.app/center/promotions",
         "https://buddykids-app.vercel.app/center/report-presenze",
@@ -331,6 +367,7 @@
         "https://buddykids-app.vercel.app/center/attendance",
         "https://buddykids-app.vercel.app/center/group-requests",
         "https://buddykids-app.vercel.app/center/invites",
+        "https://buddykids-app.vercel.app/center/prenotazioni",
         "https://buddykids-app.vercel.app/center/profile",
         "https://buddykids-app.vercel.app/center/promotions",
         "https://buddykids-app.vercel.app/center/report-presenze",
@@ -357,6 +394,7 @@
         "https://buddykids-app.vercel.app/center/attendance",
         "https://buddykids-app.vercel.app/center/group-requests",
         "https://buddykids-app.vercel.app/center/invites",
+        "https://buddykids-app.vercel.app/center/prenotazioni",
         "https://buddykids-app.vercel.app/center/profile",
         "https://buddykids-app.vercel.app/center/promotions",
         "https://buddykids-app.vercel.app/center/report-presenze",
@@ -389,6 +427,10 @@
     {
       "from": "https://buddykids-app.vercel.app/center",
       "to": "https://buddykids-app.vercel.app/center/invites"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/center",
+      "to": "https://buddykids-app.vercel.app/center/prenotazioni"
     },
     {
       "from": "https://buddykids-app.vercel.app/center",
@@ -448,6 +490,10 @@
     },
     {
       "from": "https://buddykids-app.vercel.app/center/account",
+      "to": "https://buddykids-app.vercel.app/center/prenotazioni"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/center/account",
       "to": "https://buddykids-app.vercel.app/center/profile"
     },
     {
@@ -492,6 +538,10 @@
     },
     {
       "from": "https://buddykids-app.vercel.app/center/account/preferenze",
+      "to": "https://buddykids-app.vercel.app/center/prenotazioni"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/center/account/preferenze",
       "to": "https://buddykids-app.vercel.app/center/profile"
     },
     {
@@ -536,6 +586,10 @@
     },
     {
       "from": "https://buddykids-app.vercel.app/center/account/privacy",
+      "to": "https://buddykids-app.vercel.app/center/prenotazioni"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/center/account/privacy",
       "to": "https://buddykids-app.vercel.app/center/profile"
     },
     {
@@ -577,6 +631,10 @@
     {
       "from": "https://buddykids-app.vercel.app/center/account/sicurezza",
       "to": "https://buddykids-app.vercel.app/center/invites"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/center/account/sicurezza",
+      "to": "https://buddykids-app.vercel.app/center/prenotazioni"
     },
     {
       "from": "https://buddykids-app.vercel.app/center/account/sicurezza",
@@ -636,6 +694,10 @@
     },
     {
       "from": "https://buddykids-app.vercel.app/center/activities",
+      "to": "https://buddykids-app.vercel.app/center/prenotazioni"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/center/activities",
       "to": "https://buddykids-app.vercel.app/center/profile"
     },
     {
@@ -681,6 +743,10 @@
     {
       "from": "https://buddykids-app.vercel.app/center/activities/attivita-test-buddykids",
       "to": "https://buddykids-app.vercel.app/center/invites"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/center/activities/attivita-test-buddykids",
+      "to": "https://buddykids-app.vercel.app/center/prenotazioni"
     },
     {
       "from": "https://buddykids-app.vercel.app/center/activities/attivita-test-buddykids",
@@ -732,6 +798,10 @@
     },
     {
       "from": "https://buddykids-app.vercel.app/center/activities/attivita-test-buddykids/calendar",
+      "to": "https://buddykids-app.vercel.app/center/prenotazioni"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/center/activities/attivita-test-buddykids/calendar",
       "to": "https://buddykids-app.vercel.app/center/profile"
     },
     {
@@ -776,6 +846,10 @@
     },
     {
       "from": "https://buddykids-app.vercel.app/center/activities/new",
+      "to": "https://buddykids-app.vercel.app/center/prenotazioni"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/center/activities/new",
       "to": "https://buddykids-app.vercel.app/center/profile"
     },
     {
@@ -820,6 +894,10 @@
     },
     {
       "from": "https://buddykids-app.vercel.app/center/attendance",
+      "to": "https://buddykids-app.vercel.app/center/prenotazioni"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/center/attendance",
       "to": "https://buddykids-app.vercel.app/center/profile"
     },
     {
@@ -864,6 +942,10 @@
     },
     {
       "from": "https://buddykids-app.vercel.app/center/group-requests",
+      "to": "https://buddykids-app.vercel.app/center/prenotazioni"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/center/group-requests",
       "to": "https://buddykids-app.vercel.app/center/profile"
     },
     {
@@ -908,6 +990,10 @@
     },
     {
       "from": "https://buddykids-app.vercel.app/center/invites",
+      "to": "https://buddykids-app.vercel.app/center/prenotazioni"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/center/invites",
       "to": "https://buddykids-app.vercel.app/center/profile"
     },
     {
@@ -924,6 +1010,54 @@
     },
     {
       "from": "https://buddykids-app.vercel.app/center/invites",
+      "to": "https://buddykids-app.vercel.app/center/servizi-consigliati"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/center/prenotazioni",
+      "to": "https://buddykids-app.vercel.app/center"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/center/prenotazioni",
+      "to": "https://buddykids-app.vercel.app/center/account"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/center/prenotazioni",
+      "to": "https://buddykids-app.vercel.app/center/activities"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/center/prenotazioni",
+      "to": "https://buddykids-app.vercel.app/center/attendance"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/center/prenotazioni",
+      "to": "https://buddykids-app.vercel.app/center/group-requests"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/center/prenotazioni",
+      "to": "https://buddykids-app.vercel.app/center/invites"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/center/prenotazioni",
+      "to": "https://buddykids-app.vercel.app/center/prenotazioni"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/center/prenotazioni",
+      "to": "https://buddykids-app.vercel.app/center/profile"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/center/prenotazioni",
+      "to": "https://buddykids-app.vercel.app/center/promotions"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/center/prenotazioni",
+      "to": "https://buddykids-app.vercel.app/center/report-presenze"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/center/prenotazioni",
+      "to": "https://buddykids-app.vercel.app/center/richieste"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/center/prenotazioni",
       "to": "https://buddykids-app.vercel.app/center/servizi-consigliati"
     },
     {
@@ -952,6 +1086,10 @@
     },
     {
       "from": "https://buddykids-app.vercel.app/center/profile",
+      "to": "https://buddykids-app.vercel.app/center/prenotazioni"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/center/profile",
       "to": "https://buddykids-app.vercel.app/center/profile"
     },
     {
@@ -996,6 +1134,10 @@
     },
     {
       "from": "https://buddykids-app.vercel.app/center/promotions",
+      "to": "https://buddykids-app.vercel.app/center/prenotazioni"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/center/promotions",
       "to": "https://buddykids-app.vercel.app/center/profile"
     },
     {
@@ -1040,6 +1182,10 @@
     },
     {
       "from": "https://buddykids-app.vercel.app/center/report-presenze",
+      "to": "https://buddykids-app.vercel.app/center/prenotazioni"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/center/report-presenze",
       "to": "https://buddykids-app.vercel.app/center/profile"
     },
     {
@@ -1081,6 +1227,10 @@
     {
       "from": "https://buddykids-app.vercel.app/center/richieste",
       "to": "https://buddykids-app.vercel.app/center/invites"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/center/richieste",
+      "to": "https://buddykids-app.vercel.app/center/prenotazioni"
     },
     {
       "from": "https://buddykids-app.vercel.app/center/richieste",
@@ -1129,6 +1279,10 @@
     {
       "from": "https://buddykids-app.vercel.app/center/servizi-consigliati",
       "to": "https://buddykids-app.vercel.app/center/invites"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/center/servizi-consigliati",
+      "to": "https://buddykids-app.vercel.app/center/prenotazioni"
     },
     {
       "from": "https://buddykids-app.vercel.app/center/servizi-consigliati",
