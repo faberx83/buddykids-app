@@ -87,3 +87,44 @@ export async function uploadCertificationDocument(
   if (error) return { path: null, error: toFriendlyError(error.message) };
   return { path, error: null };
 }
+
+// Gap P0 MVP (PT-MVP-02, DEC-22) — Documento di supporto per la Verifica
+// identità del Centro (Sprint 1 aveva predisposto solo la colonna
+// center_identity_verifications.document_url, senza collegarla a un upload
+// reale — vedi commento sulla tabella in migration_09). Stesso identico
+// pattern di uploadCertificationDocument sopra: bucket PRIVATO dedicato
+// (mai lo stesso bucket delle certificazioni — sono documenti diversi con
+// policy diverse, vedi supabase/migration_15_identity_verification_storage.sql),
+// path "<centerId>/<file>", nessun URL pubblico (richiede un link firmato
+// generato lato server, vedi getIdentityVerificationDocumentUrlAction in
+// app/actions/onboarding.ts).
+export const IDENTITY_VERIFICATIONS_BUCKET = "buddykids-identity-verifications";
+
+export interface IdentityDocumentUploadResult {
+  path: string | null;
+  error: string | null;
+}
+
+export async function uploadIdentityVerificationDocument(
+  centerId: string,
+  file: File
+): Promise<IdentityDocumentUploadResult> {
+  if (!CERT_ALLOWED_TYPES.includes(file.type)) {
+    return { path: null, error: "Formato non supportato — usa PDF, JPG, PNG o WEBP." };
+  }
+  if (file.size > CERT_MAX_SIZE_BYTES) {
+    return { path: null, error: "File troppo grande — massimo 10MB." };
+  }
+
+  const supabase = createClient();
+  const ext = file.name.split(".").pop() || "pdf";
+  const path = `${centerId}/${crypto.randomUUID()}.${ext}`;
+
+  const { error } = await supabase.storage.from(IDENTITY_VERIFICATIONS_BUCKET).upload(path, file, {
+    cacheControl: "3600",
+    upsert: false,
+  });
+
+  if (error) return { path: null, error: toFriendlyError(error.message) };
+  return { path, error: null };
+}

@@ -4,6 +4,7 @@ import { useState } from "react";
 import {
   adminReviewOnboardingAction,
   adminReviewIdentityVerificationAction,
+  getIdentityVerificationDocumentUrlAction,
 } from "@/app/actions/onboarding";
 import {
   ONBOARDING_STATUS_REGISTRY,
@@ -51,6 +52,18 @@ export default function AdminOnboardingReviewClient({
     if (detail) detail.identity = { ...detail.identity, status: decision };
   }
 
+  // Gap P0 MVP (PT-MVP-02, DEC-22) — l'Admin deve poter vedere il documento
+  // caricato dal centro (se presente) prima di decidere verified/rejected,
+  // non solo la nota testuale. Stesso pattern signed-URL delle Certificazioni.
+  async function viewIdentityDocument(centerId: string) {
+    const detail = details.get(centerId);
+    if (!detail?.identity.documentUrl) return;
+    setError(null);
+    const result = await getIdentityVerificationDocumentUrlAction(detail.identity.documentUrl);
+    if (result.error) return setError(result.error);
+    if (result.url) window.open(result.url, "_blank", "noopener,noreferrer");
+  }
+
   const submitted = centers.filter((c) => c.status === "SUBMITTED");
   const other = centers.filter((c) => c.status !== "SUBMITTED");
 
@@ -91,6 +104,17 @@ export default function AdminOnboardingReviewClient({
                     <div className="text-xs text-ink-2">
                       Identità: <span className="font-semibold">{detail.identity.status}</span>
                       {detail.identity.note && <span className="italic"> — &ldquo;{detail.identity.note}&rdquo;</span>}
+                      {detail.identity.documentUrl && (
+                        <>
+                          {" "}
+                          <button
+                            onClick={() => viewIdentityDocument(c.centerId)}
+                            className="font-semibold text-sky underline"
+                          >
+                            Vedi documento
+                          </button>
+                        </>
+                      )}
                     </div>
                   )}
                 </div>

@@ -7,7 +7,9 @@ import {
   submitOnboardingAction,
   toggleChecklistItemAction,
   submitIdentityVerificationAction,
+  getIdentityVerificationDocumentUrlAction,
 } from "@/app/actions/onboarding";
+import { uploadIdentityVerificationDocument } from "@/lib/storage";
 import { ONBOARDING_CHECKLIST_REGISTRY, isRequiredChecklistComplete } from "@/lib/onboarding/checklist-registry";
 import {
   ONBOARDING_STATUS_REGISTRY,
@@ -46,6 +48,10 @@ export default function OnboardingClient({
   const [checklist, setChecklist] = useState(initialChecklist);
   const [identity, setIdentity] = useState(initialIdentity);
   const [identityNote, setIdentityNote] = useState(initialIdentity.note ?? "");
+  // Gap P0 MVP (PT-MVP-02, DEC-22) — file scelto ma non ancora caricato
+  // (l'upload avviene solo al momento dell'invio, non alla selezione, per
+  // non lasciare file orfani sul bucket se il centro poi non invia).
+  const [identityFile, setIdentityFile] = useState<File | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -79,10 +85,35 @@ export default function OnboardingClient({
   async function handleSubmitIdentity() {
     setBusy(true);
     setError(null);
-    const result = await submitIdentityVerificationAction(centerId!, identityNote);
+
+    let documentPath: string | undefined;
+    if (identityFile) {
+      const upload = await uploadIdentityVerificationDocument(centerId!, identityFile);
+      if (upload.error) {
+        setBusy(false);
+        return setError(upload.error);
+      }
+      documentPath = upload.path ?? undefined;
+    }
+
+    const result = await submitIdentityVerificationAction(centerId!, identityNote, documentPath);
     setBusy(false);
     if (result.error) return setError(result.error);
-    setIdentity((i) => ({ ...i, status: "pending", note: identityNote }));
+    setIdentity((i) => ({
+      ...i,
+      status: "pending",
+      note: identityNote,
+      documentUrl: documentPath ?? i.documentUrl,
+    }));
+    setIdentityFile(null);
+  }
+
+  async function handleViewIdentityDocument() {
+    if (!identity.documentUrl) return;
+    setError(null);
+    const result = await getIdentityVerificationDocumentUrlAction(identity.documentUrl);
+    if (result.error) return setError(result.error);
+    if (result.url) window.open(result.url, "_blank", "noopener,noreferrer");
   }
 
   async function handleSubmitOnboarding() {
@@ -177,6 +208,32 @@ export default function OnboardingClient({
               className="w-full rounded-md border border-[#E8EBF0] bg-bg px-3 py-2 text-sm outline-none focus:border-sky disabled:opacity-60"
               placeholder="Nota per l'Admin..."
             />
+            {/* Gap P0 MVP (PT-MVP-02, DEC-22) — upload facoltativo di un
+                documento reale (visura, documento del rappresentante legale,
+                ecc.) a supporto della sola nota testuale. Facoltativo: la
+                verifica resta valida anche solo con la nota, come prima di
+                questo gap-fix, per non introdurre un blocco non richiesto. */}
+            {identity.status !== "verified" && identity.status !== "rejected" && (
+              <div className="mt-2 flex flex-wrap items-center gap-2">
+                <label className="cursor-pointer rounded-md border border-[#E8EBF0] px-3.5 py-1.5 text-xs font-semibold text-ink-2">
+                  {identityFile ? identityFile.name : "Allega documento (facoltativo)"}
+                  <input
+                    type="file"
+                    accept="application/pdf,image/jpeg,image/png,image/webp"
+                    className="hidden"
+                    onChange={(e) => setIdentityFile(e.target.files?.[0] ?? null)}
+                  />
+                </label>
+                {identity.documentUrl && !identityFile && (
+                  <button
+                    onClick={handleViewIdentityDocument}
+                    className="text-xs font-semibold text-sky underline"
+                  >
+                    Vedi documento già caricato
+                  </button>
+                )}
+              </div>
+            )}
             {identity.status !== "verified" && identity.status !== "rejected" && (
               <button
                 onClick={handleSubmitIdentity}
@@ -184,6 +241,14 @@ export default function OnboardingClient({
                 className="mt-2 rounded-md border border-[#E8EBF0] px-3.5 py-1.5 text-xs font-semibold text-ink disabled:opacity-60"
               >
                 {identity.status === "pending" ? "Aggiorna nota" : "Invia per verifica"}
+              </button>
+            )}
+            {(identity.status === "verified" || identity.status === "rejected") && identity.documentUrl && (
+              <button
+                onClick={handleViewIdentityDocument}
+                className="mt-2 text-xs font-semibold text-sky underline"
+              >
+                Vedi documento inviato
               </button>
             )}
           </div>
