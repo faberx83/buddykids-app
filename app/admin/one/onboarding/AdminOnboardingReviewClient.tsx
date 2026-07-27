@@ -11,6 +11,7 @@ import {
   getOnboardingStatusBadgeClassName,
 } from "@/lib/onboarding/status-copy";
 import type { CenterForReview, IdentityVerificationState, OnboardingAuditEntry } from "@/lib/onboarding/types";
+import type { CenterTrustSignals } from "@/lib/data/trust-signals";
 
 interface CenterDetail {
   centerId: string;
@@ -18,15 +19,47 @@ interface CenterDetail {
   auditLog: OnboardingAuditEntry[];
 }
 
+// Gap P1 (PT-MVP-11/A-MVP-07, trust telemetry minima) — formattazione di
+// sola lettura dei segnali grezzi, MAI uno score o "Partnership Level"
+// (vincolo esplicito, vedi lib/data/trust-signals.ts).
+function TrustSignalsRow({ signals }: { signals: CenterTrustSignals | undefined }) {
+  if (!signals) return null;
+  const fmtHours = (h: number | null) => (h === null ? "—" : h < 1 ? "<1h" : `${Math.round(h)}h`);
+  const fmtDays = (d: number | null) => (d === null ? "—" : d < 1 ? "oggi" : `${Math.round(d)}g fa`);
+  return (
+    <div className="mt-2 flex flex-wrap gap-1.5 text-[11px] text-ink-2">
+      <span className="rounded-full bg-[#F0F2F5] px-2 py-0.5">
+        Checklist: {signals.completenessPercent === null ? "—" : `${signals.completenessPercent}%`}
+      </span>
+      <span className="rounded-full bg-[#F0F2F5] px-2 py-0.5">
+        Ultima attività: {fmtDays(signals.contentFreshnessDays)}
+      </span>
+      <span className="rounded-full bg-[#F0F2F5] px-2 py-0.5">
+        SLA prenotazioni: {fmtHours(signals.bookingAvgResponseHours)} ({signals.bookingPendingCount} in attesa)
+      </span>
+      <span className="rounded-full bg-[#F0F2F5] px-2 py-0.5">
+        SLA richieste: {fmtHours(signals.inquiryAvgResponseHours)} ({signals.inquiryOpenCount} aperte)
+      </span>
+      <span className="rounded-full bg-[#F0F2F5] px-2 py-0.5">
+        Cancellazioni centro: {signals.cancellationRatePercent === null ? "—" : `${signals.cancellationRatePercent}%`}
+        {signals.totalBookingsIncludingCancelled > 0 && ` (${signals.cancelledByCenterCount}/${signals.totalBookingsIncludingCancelled})`}
+      </span>
+    </div>
+  );
+}
+
 export default function AdminOnboardingReviewClient({
   initialCenters,
   initialDetails,
+  initialTrustSignals,
 }: {
   initialCenters: CenterForReview[];
   initialDetails: CenterDetail[];
+  initialTrustSignals?: CenterTrustSignals[];
 }) {
   const [centers, setCenters] = useState(initialCenters);
   const [details] = useState(new Map(initialDetails.map((d) => [d.centerId, d])));
+  const [trustSignals] = useState(new Map((initialTrustSignals ?? []).map((s) => [s.centerId, s])));
   const [busyId, setBusyId] = useState<string | null>(null);
   const [noteDraft, setNoteDraft] = useState<Record<string, string>>({});
   const [error, setError] = useState<string | null>(null);
@@ -119,6 +152,8 @@ export default function AdminOnboardingReviewClient({
                   )}
                 </div>
 
+                <TrustSignalsRow signals={trustSignals.get(c.centerId)} />
+
                 {detail && detail.identity.status === "pending" && (
                   <div className="mt-2 flex gap-2">
                     <button
@@ -176,22 +211,25 @@ export default function AdminOnboardingReviewClient({
         </div>
         <div className="divide-y divide-[#F0F2F5]">
           {other.map((c) => (
-            <div key={c.centerId} className="flex flex-wrap items-center justify-between gap-3 px-4 py-3">
-              <div className="text-sm font-semibold text-ink">{c.centerName}</div>
-              <div className="flex items-center gap-2">
-                <span className={`rounded-full px-2.5 py-1 text-[11px] font-semibold ${getOnboardingStatusBadgeClassName(c.status)}`}>
-                  {ONBOARDING_STATUS_REGISTRY[c.status].admin.label}
-                </span>
-                {c.status === "APPROVED" && (
-                  <button
-                    onClick={() => review(c.centerId, "suspend")}
-                    disabled={busyId === c.centerId}
-                    className="rounded-md border border-[#E8EBF0] px-2.5 py-1 text-[11px] font-semibold text-ink disabled:opacity-60"
-                  >
-                    {ONBOARDING_STATUS_REGISTRY.APPROVED.admin.primaryAction}
-                  </button>
-                )}
+            <div key={c.centerId} className="px-4 py-3">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div className="text-sm font-semibold text-ink">{c.centerName}</div>
+                <div className="flex items-center gap-2">
+                  <span className={`rounded-full px-2.5 py-1 text-[11px] font-semibold ${getOnboardingStatusBadgeClassName(c.status)}`}>
+                    {ONBOARDING_STATUS_REGISTRY[c.status].admin.label}
+                  </span>
+                  {c.status === "APPROVED" && (
+                    <button
+                      onClick={() => review(c.centerId, "suspend")}
+                      disabled={busyId === c.centerId}
+                      className="rounded-md border border-[#E8EBF0] px-2.5 py-1 text-[11px] font-semibold text-ink disabled:opacity-60"
+                    >
+                      {ONBOARDING_STATUS_REGISTRY.APPROVED.admin.primaryAction}
+                    </button>
+                  )}
+                </div>
               </div>
+              <TrustSignalsRow signals={trustSignals.get(c.centerId)} />
             </div>
           ))}
           {other.length === 0 && (
