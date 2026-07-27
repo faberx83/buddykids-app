@@ -1,46 +1,255 @@
 flowchart LR
   N0["<b>Centro Sportivo Lido</b><br/><span style='font-size:12px'>/center</span>"]:::partner
-  N1["<b>Richieste Gruppo</b><br/><span style='font-size:12px'>/center/group-requests</span>"]:::partner
-  N2["<b>Inviti</b><br/><span style='font-size:12px'>/center/invites</span>"]:::partner
-  N3["<b>Prenotazioni</b><br/><span style='font-size:12px'>/center/prenotazioni</span>"]:::partner
-  N4["<b>Report presenze</b><br/><span style='font-size:12px'>/center/report-presenze</span>"]:::partner
-  N5["<b>Le mie richieste</b><br/><span style='font-size:12px'>/center/richieste</span>"]:::partner
+  N1["<b>TRAMA — Attività per bambini</b><br/><span style='font-size:12px'>/center/account</span>"]:::partner
+  N2["<b>Preferenze</b><br/><span style='font-size:12px'>/center/account/preferenze</span>"]:::partner
+  N3["<b>Privacy e account</b><br/><span style='font-size:12px'>/center/account/privacy</span>"]:::partner
+  N4["<b>Sicurezza</b><br/><span style='font-size:12px'>/center/account/sicurezza</span>"]:::partner
+  N5["<b>Le tue attività</b><br/><span style='font-size:12px'>/center/activities</span>"]:::partner
+  N6["<b>Dettaglio attività (Gestore)</b><br/><span style='font-size:12px'>/center/activities/attivita-test-buddykids</span>"]:::partner
+  N7["<b>Calendario disponibilità</b><br/><span style='font-size:12px'>/center/activities/attivita-test-buddykids/calendar</span>"]:::partner
+  N8["<b>Nuova attività</b><br/><span style='font-size:12px'>/center/activities/new</span>"]:::partner
+  N9["<b>Registro presenze</b><br/><span style='font-size:12px'>/center/attendance</span>"]:::partner
+  N10["<b>404</b><br/><span style='font-size:12px'>/center/gianni</span>"]:::partner
+  N11["<b>Richieste Gruppo</b><br/><span style='font-size:12px'>/center/group-requests</span>"]:::partner
+  N12["<b>Inviti</b><br/><span style='font-size:12px'>/center/invites</span>"]:::partner
+  N13["<b>Prenotazioni</b><br/><span style='font-size:12px'>/center/prenotazioni</span>"]:::partner
+  N14["<b>Il mio centro</b><br/><span style='font-size:12px'>/center/profile</span>"]:::partner
+  N15["<b>Promozioni</b><br/><span style='font-size:12px'>/center/promotions</span>"]:::partner
+  N16["<b>Report presenze</b><br/><span style='font-size:12px'>/center/report-presenze</span>"]:::partner
+  N17["<b>Le mie richieste</b><br/><span style='font-size:12px'>/center/richieste</span>"]:::partner
+  N18["<b>Servizi consigliati</b><br/><span style='font-size:12px'>/center/servizi-consigliati</span>"]:::partner
   N0 --> N1
-  N0 --> N2
-  N0 --> N3
-  N0 --> N4
   N0 --> N5
+  N0 --> N9
+  N0 --> N11
+  N0 --> N12
+  N0 --> N13
+  N0 --> N14
+  N0 --> N15
+  N0 --> N16
+  N0 --> N17
+  N0 --> N18
   N1 --> N0
   N1 --> N2
   N1 --> N3
   N1 --> N4
   N1 --> N5
+  N1 --> N9
+  N1 --> N11
+  N1 --> N12
+  N1 --> N13
+  N1 --> N14
+  N1 --> N15
+  N1 --> N16
+  N1 --> N17
+  N1 --> N18
   N2 --> N0
   N2 --> N1
-  N2 --> N3
-  N2 --> N4
   N2 --> N5
+  N2 --> N9
+  N2 --> N11
+  N2 --> N12
+  N2 --> N13
+  N2 --> N14
+  N2 --> N15
+  N2 --> N16
+  N2 --> N17
+  N2 --> N18
   N3 --> N0
   N3 --> N1
-  N3 --> N2
-  N3 --> N4
   N3 --> N5
+  N3 --> N9
+  N3 --> N11
+  N3 --> N12
+  N3 --> N13
+  N3 --> N14
+  N3 --> N15
+  N3 --> N16
+  N3 --> N17
+  N3 --> N18
   N4 --> N0
   N4 --> N1
-  N4 --> N2
-  N4 --> N3
   N4 --> N5
+  N4 --> N9
+  N4 --> N11
+  N4 --> N12
+  N4 --> N13
+  N4 --> N14
+  N4 --> N15
+  N4 --> N16
+  N4 --> N17
+  N4 --> N18
   N5 --> N0
   N5 --> N1
-  N5 --> N2
-  N5 --> N3
-  N5 --> N4
+  N5 --> N6
+  N5 --> N7
+  N5 --> N8
+  N5 --> N9
+  N5 --> N11
+  N5 --> N12
+  N5 --> N13
+  N5 --> N14
+  N5 --> N15
+  N5 --> N16
+  N5 --> N17
+  N5 --> N18
+  N6 --> N0
+  N6 --> N1
+  N6 --> N5
+  N6 --> N7
+  N6 --> N9
+  N6 --> N11
+  N6 --> N12
+  N6 --> N13
+  N6 --> N14
+  N6 --> N15
+  N6 --> N16
+  N6 --> N17
+  N6 --> N18
+  N7 --> N0
+  N7 --> N1
+  N7 --> N5
+  N7 --> N6
+  N7 --> N9
+  N7 --> N11
+  N7 --> N12
+  N7 --> N13
+  N7 --> N14
+  N7 --> N15
+  N7 --> N16
+  N7 --> N17
+  N7 --> N18
+  N8 --> N0
+  N8 --> N1
+  N8 --> N5
+  N8 --> N9
+  N8 --> N11
+  N8 --> N12
+  N8 --> N13
+  N8 --> N14
+  N8 --> N15
+  N8 --> N16
+  N8 --> N17
+  N8 --> N18
+  N9 --> N0
+  N9 --> N1
+  N9 --> N5
+  N9 --> N11
+  N9 --> N12
+  N9 --> N13
+  N9 --> N14
+  N9 --> N15
+  N9 --> N16
+  N9 --> N17
+  N9 --> N18
+  N11 --> N0
+  N11 --> N1
+  N11 --> N5
+  N11 --> N9
+  N11 --> N12
+  N11 --> N13
+  N11 --> N14
+  N11 --> N15
+  N11 --> N16
+  N11 --> N17
+  N11 --> N18
+  N12 --> N0
+  N12 --> N1
+  N12 --> N5
+  N12 --> N9
+  N12 --> N11
+  N12 --> N13
+  N12 --> N14
+  N12 --> N15
+  N12 --> N16
+  N12 --> N17
+  N12 --> N18
+  N13 --> N0
+  N13 --> N1
+  N13 --> N5
+  N13 --> N9
+  N13 --> N11
+  N13 --> N12
+  N13 --> N14
+  N13 --> N15
+  N13 --> N16
+  N13 --> N17
+  N13 --> N18
+  N14 --> N0
+  N14 --> N1
+  N14 --> N5
+  N14 --> N9
+  N14 --> N11
+  N14 --> N12
+  N14 --> N13
+  N14 --> N15
+  N14 --> N16
+  N14 --> N17
+  N14 --> N18
+  N15 --> N0
+  N15 --> N1
+  N15 --> N5
+  N15 --> N9
+  N15 --> N11
+  N15 --> N12
+  N15 --> N13
+  N15 --> N14
+  N15 --> N16
+  N15 --> N17
+  N15 --> N18
+  N16 --> N0
+  N16 --> N1
+  N16 --> N5
+  N16 --> N9
+  N16 --> N11
+  N16 --> N12
+  N16 --> N13
+  N16 --> N14
+  N16 --> N15
+  N16 --> N17
+  N16 --> N18
+  N17 --> N0
+  N17 --> N1
+  N17 --> N5
+  N17 --> N9
+  N17 --> N11
+  N17 --> N12
+  N17 --> N13
+  N17 --> N14
+  N17 --> N15
+  N17 --> N16
+  N17 --> N18
+  N18 --> N0
+  N18 --> N1
+  N18 --> N5
+  N18 --> N9
+  N18 --> N10
+  N18 --> N11
+  N18 --> N12
+  N18 --> N13
+  N18 --> N14
+  N18 --> N15
+  N18 --> N16
+  N18 --> N17
   click N0 "https://buddykids-app.vercel.app/center" "Apri pagina" _blank
-  click N1 "https://buddykids-app.vercel.app/center/group-requests" "Apri pagina" _blank
-  click N2 "https://buddykids-app.vercel.app/center/invites" "Apri pagina" _blank
-  click N3 "https://buddykids-app.vercel.app/center/prenotazioni" "Apri pagina" _blank
-  click N4 "https://buddykids-app.vercel.app/center/report-presenze" "Apri pagina" _blank
-  click N5 "https://buddykids-app.vercel.app/center/richieste" "Apri pagina" _blank
+  click N1 "https://buddykids-app.vercel.app/center/account" "Apri pagina" _blank
+  click N2 "https://buddykids-app.vercel.app/center/account/preferenze" "Apri pagina" _blank
+  click N3 "https://buddykids-app.vercel.app/center/account/privacy" "Apri pagina" _blank
+  click N4 "https://buddykids-app.vercel.app/center/account/sicurezza" "Apri pagina" _blank
+  click N5 "https://buddykids-app.vercel.app/center/activities" "Apri pagina" _blank
+  click N6 "https://buddykids-app.vercel.app/center/activities/attivita-test-buddykids" "Apri pagina" _blank
+  click N7 "https://buddykids-app.vercel.app/center/activities/attivita-test-buddykids/calendar" "Apri pagina" _blank
+  click N8 "https://buddykids-app.vercel.app/center/activities/new" "Apri pagina" _blank
+  click N9 "https://buddykids-app.vercel.app/center/attendance" "Apri pagina" _blank
+  click N10 "https://buddykids-app.vercel.app/center/gianni" "Apri pagina" _blank
+  click N11 "https://buddykids-app.vercel.app/center/group-requests" "Apri pagina" _blank
+  click N12 "https://buddykids-app.vercel.app/center/invites" "Apri pagina" _blank
+  click N13 "https://buddykids-app.vercel.app/center/prenotazioni" "Apri pagina" _blank
+  click N14 "https://buddykids-app.vercel.app/center/profile" "Apri pagina" _blank
+  click N15 "https://buddykids-app.vercel.app/center/promotions" "Apri pagina" _blank
+  click N16 "https://buddykids-app.vercel.app/center/report-presenze" "Apri pagina" _blank
+  click N17 "https://buddykids-app.vercel.app/center/richieste" "Apri pagina" _blank
+  click N18 "https://buddykids-app.vercel.app/center/servizi-consigliati" "Apri pagina" _blank
 
   classDef nextgen fill:#dcfce7,stroke:#15803d,stroke-width:2px,color:#14532d;
   classDef legacy fill:#ffedd5,stroke:#ea580c,stroke-width:2px,color:#7c2d12;

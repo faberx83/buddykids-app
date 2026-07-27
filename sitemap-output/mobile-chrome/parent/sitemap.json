@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-07-27T13:49:24.455Z",
+  "generatedAt": "2026-07-27T15:06:27.108Z",
   "target": "parent",
   "label": "Genitore",
   "project": "mobile-chrome",
@@ -32,6 +32,7 @@
         "https://buddykids-app.vercel.app/nextgen/planner",
         "https://buddykids-app.vercel.app/nextgen/planner/famiglia",
         "https://buddykids-app.vercel.app/nextgen/planner/indirizzi",
+        "https://buddykids-app.vercel.app/nextgen/planner/promemoria",
         "https://buddykids-app.vercel.app/nextgen/planner?mode=calendario",
         "https://buddykids-app.vercel.app/nextgen/profile",
         "https://buddykids-app.vercel.app/nextgen/profile/famiglia",
@@ -62,6 +63,7 @@
         "https://buddykids-app.vercel.app/nextgen/planner",
         "https://buddykids-app.vercel.app/nextgen/planner/famiglia",
         "https://buddykids-app.vercel.app/nextgen/planner/indirizzi",
+        "https://buddykids-app.vercel.app/nextgen/planner/promemoria",
         "https://buddykids-app.vercel.app/nextgen/planner?mode=calendario",
         "https://buddykids-app.vercel.app/nextgen/profile",
         "https://buddykids-app.vercel.app/nextgen/profile/famiglia",
@@ -101,6 +103,16 @@
       ]
     },
     {
+      "url": "https://buddykids-app.vercel.app/nextgen/planner/promemoria",
+      "pathname": "/nextgen/planner/promemoria",
+      "title": "TRAMA",
+      "heading": "Promemoria",
+      "kind": "nextgen",
+      "calledBy": [
+        "https://buddykids-app.vercel.app/nextgen/profile/famiglia"
+      ]
+    },
+    {
       "url": "https://buddykids-app.vercel.app/nextgen/profile",
       "pathname": "/nextgen/profile",
       "title": "TRAMA",
@@ -112,6 +124,7 @@
         "https://buddykids-app.vercel.app/nextgen/planner",
         "https://buddykids-app.vercel.app/nextgen/planner/famiglia",
         "https://buddykids-app.vercel.app/nextgen/planner/indirizzi",
+        "https://buddykids-app.vercel.app/nextgen/planner/promemoria",
         "https://buddykids-app.vercel.app/nextgen/planner?mode=calendario",
         "https://buddykids-app.vercel.app/nextgen/profile",
         "https://buddykids-app.vercel.app/nextgen/profile/famiglia",
@@ -162,6 +175,7 @@
         "https://buddykids-app.vercel.app/nextgen/planner",
         "https://buddykids-app.vercel.app/nextgen/planner/famiglia",
         "https://buddykids-app.vercel.app/nextgen/planner/indirizzi",
+        "https://buddykids-app.vercel.app/nextgen/planner/promemoria",
         "https://buddykids-app.vercel.app/nextgen/planner?mode=calendario",
         "https://buddykids-app.vercel.app/nextgen/profile",
         "https://buddykids-app.vercel.app/nextgen/profile/famiglia",
@@ -192,6 +206,7 @@
         "https://buddykids-app.vercel.app/nextgen/planner",
         "https://buddykids-app.vercel.app/nextgen/planner/famiglia",
         "https://buddykids-app.vercel.app/nextgen/planner/indirizzi",
+        "https://buddykids-app.vercel.app/nextgen/planner/promemoria",
         "https://buddykids-app.vercel.app/nextgen/planner?mode=calendario",
         "https://buddykids-app.vercel.app/nextgen/profile",
         "https://buddykids-app.vercel.app/nextgen/profile/famiglia",
@@ -208,6 +223,36 @@
       "kind": "legacy",
       "calledBy": [
         "https://buddykids-app.vercel.app/nextgen/profile"
+      ]
+    },
+    {
+      "url": "https://buddykids-app.vercel.app/profile/preferenze",
+      "pathname": "/profile/preferenze",
+      "title": "TRAMA — Attività per bambini",
+      "heading": "Preferenze",
+      "kind": "legacy",
+      "calledBy": [
+        "https://buddykids-app.vercel.app/nextgen/profile/impostazioni"
+      ]
+    },
+    {
+      "url": "https://buddykids-app.vercel.app/profile/privacy",
+      "pathname": "/profile/privacy",
+      "title": "TRAMA — Attività per bambini",
+      "heading": "Privacy e account",
+      "kind": "legacy",
+      "calledBy": [
+        "https://buddykids-app.vercel.app/nextgen/profile/impostazioni"
+      ]
+    },
+    {
+      "url": "https://buddykids-app.vercel.app/profile/sicurezza",
+      "pathname": "/profile/sicurezza",
+      "title": "TRAMA — Attività per bambini",
+      "heading": "Sicurezza",
+      "kind": "legacy",
+      "calledBy": [
+        "https://buddykids-app.vercel.app/nextgen/profile/impostazioni"
       ]
     },
     {
@@ -363,6 +408,26 @@
       "to": "https://buddykids-app.vercel.app/prenotazioni"
     },
     {
+      "from": "https://buddykids-app.vercel.app/nextgen/planner/promemoria",
+      "to": "https://buddykids-app.vercel.app/nextgen"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/nextgen/planner/promemoria",
+      "to": "https://buddykids-app.vercel.app/nextgen/planner"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/nextgen/planner/promemoria",
+      "to": "https://buddykids-app.vercel.app/nextgen/profile"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/nextgen/planner/promemoria",
+      "to": "https://buddykids-app.vercel.app/nextgen/search"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/nextgen/planner/promemoria",
+      "to": "https://buddykids-app.vercel.app/prenotazioni"
+    },
+    {
       "from": "https://buddykids-app.vercel.app/nextgen/profile",
       "to": "https://buddykids-app.vercel.app/nextgen"
     },
@@ -428,6 +493,10 @@
     },
     {
       "from": "https://buddykids-app.vercel.app/nextgen/profile/famiglia",
+      "to": "https://buddykids-app.vercel.app/nextgen/planner/promemoria"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/nextgen/profile/famiglia",
       "to": "https://buddykids-app.vercel.app/nextgen/profile"
     },
     {
@@ -457,6 +526,18 @@
     {
       "from": "https://buddykids-app.vercel.app/nextgen/profile/impostazioni",
       "to": "https://buddykids-app.vercel.app/prenotazioni"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/nextgen/profile/impostazioni",
+      "to": "https://buddykids-app.vercel.app/profile/preferenze"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/nextgen/profile/impostazioni",
+      "to": "https://buddykids-app.vercel.app/profile/privacy"
+    },
+    {
+      "from": "https://buddykids-app.vercel.app/nextgen/profile/impostazioni",
+      "to": "https://buddykids-app.vercel.app/profile/sicurezza"
     },
     {
       "from": "https://buddykids-app.vercel.app/nextgen/profile/segnalazioni",
@@ -503,22 +584,5 @@
       "to": "https://buddykids-app.vercel.app/prenotazioni"
     }
   ],
-  "errors": [
-    {
-      "url": "https://buddykids-app.vercel.app/nextgen/planner/promemoria",
-      "message": "page.goto: Timeout 25000ms exceeded.\nCall log:\n\u001b[2m  - navigating to \"https://buddykids-app.vercel.app/nextgen/planner/promemoria\", waiting until \"domcontentloaded\"\u001b[22m\n"
-    },
-    {
-      "url": "https://buddykids-app.vercel.app/profile/sicurezza",
-      "message": "page.goto: net::ERR_TIMED_OUT at https://buddykids-app.vercel.app/profile/sicurezza\nCall log:\n\u001b[2m  - navigating to \"https://buddykids-app.vercel.app/profile/sicurezza\", waiting until \"domcontentloaded\"\u001b[22m\n"
-    },
-    {
-      "url": "https://buddykids-app.vercel.app/profile/preferenze",
-      "message": "page.goto: Navigation to \"https://buddykids-app.vercel.app/profile/preferenze\" is interrupted by another navigation to \"chrome-error://chromewebdata/\"\nCall log:\n\u001b[2m  - navigating to \"https://buddykids-app.vercel.app/profile/preferenze\", waiting until \"domcontentloaded\"\u001b[22m\n"
-    },
-    {
-      "url": "https://buddykids-app.vercel.app/profile/privacy",
-      "message": "page.goto: Navigation to \"https://buddykids-app.vercel.app/profile/privacy\" is interrupted by another navigation to \"https://buddykids-app.vercel.app/profile/preferenze\"\nCall log:\n\u001b[2m  - navigating to \"https://buddykids-app.vercel.app/profile/privacy\", waiting until \"domcontentloaded\"\u001b[22m\n"
-    }
-  ]
+  "errors": []
 }
