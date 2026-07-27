@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-07-27T12:52:25.941Z",
+  "generatedAt": "2026-07-27T14:10:49.290Z",
   "target": "admin",
   "label": "Admin",
   "project": "mobile-chrome",
@@ -18,14 +18,6 @@
         "https://buddykids-app.vercel.app/admin/analytics",
         "https://buddykids-app.vercel.app/admin/bookings",
         "https://buddykids-app.vercel.app/admin/centers",
-        "https://buddykids-app.vercel.app/admin/centers/centro-sportivo-lido",
-        "https://buddykids-app.vercel.app/admin/certifications",
-        "https://buddykids-app.vercel.app/admin/group-requests",
-        "https://buddykids-app.vercel.app/admin/partner-offers",
-        "https://buddykids-app.vercel.app/admin/preferiti",
-        "https://buddykids-app.vercel.app/admin/presenze",
-        "https://buddykids-app.vercel.app/admin/richieste",
-        "https://buddykids-app.vercel.app/admin/segnalazioni-beta",
         "https://buddykids-app.vercel.app/admin/tags"
       ]
     },
@@ -41,14 +33,6 @@
         "https://buddykids-app.vercel.app/admin/analytics",
         "https://buddykids-app.vercel.app/admin/bookings",
         "https://buddykids-app.vercel.app/admin/centers",
-        "https://buddykids-app.vercel.app/admin/centers/centro-sportivo-lido",
-        "https://buddykids-app.vercel.app/admin/certifications",
-        "https://buddykids-app.vercel.app/admin/group-requests",
-        "https://buddykids-app.vercel.app/admin/partner-offers",
-        "https://buddykids-app.vercel.app/admin/preferiti",
-        "https://buddykids-app.vercel.app/admin/presenze",
-        "https://buddykids-app.vercel.app/admin/richieste",
-        "https://buddykids-app.vercel.app/admin/segnalazioni-beta",
         "https://buddykids-app.vercel.app/admin/tags"
       ]
     },
@@ -64,14 +48,6 @@
         "https://buddykids-app.vercel.app/admin/analytics",
         "https://buddykids-app.vercel.app/admin/bookings",
         "https://buddykids-app.vercel.app/admin/centers",
-        "https://buddykids-app.vercel.app/admin/centers/centro-sportivo-lido",
-        "https://buddykids-app.vercel.app/admin/certifications",
-        "https://buddykids-app.vercel.app/admin/group-requests",
-        "https://buddykids-app.vercel.app/admin/partner-offers",
-        "https://buddykids-app.vercel.app/admin/preferiti",
-        "https://buddykids-app.vercel.app/admin/presenze",
-        "https://buddykids-app.vercel.app/admin/richieste",
-        "https://buddykids-app.vercel.app/admin/segnalazioni-beta",
         "https://buddykids-app.vercel.app/admin/tags"
       ]
     },
@@ -87,14 +63,6 @@
         "https://buddykids-app.vercel.app/admin/analytics",
         "https://buddykids-app.vercel.app/admin/bookings",
         "https://buddykids-app.vercel.app/admin/centers",
-        "https://buddykids-app.vercel.app/admin/centers/centro-sportivo-lido",
-        "https://buddykids-app.vercel.app/admin/certifications",
-        "https://buddykids-app.vercel.app/admin/group-requests",
-        "https://buddykids-app.vercel.app/admin/partner-offers",
-        "https://buddykids-app.vercel.app/admin/preferiti",
-        "https://buddykids-app.vercel.app/admin/presenze",
-        "https://buddykids-app.vercel.app/admin/richieste",
-        "https://buddykids-app.vercel.app/admin/segnalazioni-beta",
         "https://buddykids-app.vercel.app/admin/tags"
       ]
     },
@@ -110,186 +78,6 @@
         "https://buddykids-app.vercel.app/admin/analytics",
         "https://buddykids-app.vercel.app/admin/bookings",
         "https://buddykids-app.vercel.app/admin/centers",
-        "https://buddykids-app.vercel.app/admin/centers/centro-sportivo-lido",
-        "https://buddykids-app.vercel.app/admin/certifications",
-        "https://buddykids-app.vercel.app/admin/group-requests",
-        "https://buddykids-app.vercel.app/admin/partner-offers",
-        "https://buddykids-app.vercel.app/admin/preferiti",
-        "https://buddykids-app.vercel.app/admin/presenze",
-        "https://buddykids-app.vercel.app/admin/richieste",
-        "https://buddykids-app.vercel.app/admin/segnalazioni-beta",
-        "https://buddykids-app.vercel.app/admin/tags"
-      ]
-    },
-    {
-      "url": "https://buddykids-app.vercel.app/admin/centers/centro-sportivo-lido",
-      "pathname": "/admin/centers/centro-sportivo-lido",
-      "title": "TRAMA — Attività per bambini",
-      "heading": "Centro Sportivo Lido",
-      "kind": "admin",
-      "calledBy": [
-        "https://buddykids-app.vercel.app/admin",
-        "https://buddykids-app.vercel.app/admin/centers"
-      ]
-    },
-    {
-      "url": "https://buddykids-app.vercel.app/admin/certifications",
-      "pathname": "/admin/certifications",
-      "title": "TRAMA — Attività per bambini",
-      "heading": "Certificazioni servizio",
-      "kind": "admin",
-      "calledBy": [
-        "https://buddykids-app.vercel.app/admin",
-        "https://buddykids-app.vercel.app/admin/activities",
-        "https://buddykids-app.vercel.app/admin/analytics",
-        "https://buddykids-app.vercel.app/admin/bookings",
-        "https://buddykids-app.vercel.app/admin/centers",
-        "https://buddykids-app.vercel.app/admin/centers/centro-sportivo-lido",
-        "https://buddykids-app.vercel.app/admin/certifications",
-        "https://buddykids-app.vercel.app/admin/group-requests",
-        "https://buddykids-app.vercel.app/admin/partner-offers",
-        "https://buddykids-app.vercel.app/admin/preferiti",
-        "https://buddykids-app.vercel.app/admin/presenze",
-        "https://buddykids-app.vercel.app/admin/richieste",
-        "https://buddykids-app.vercel.app/admin/segnalazioni-beta",
-        "https://buddykids-app.vercel.app/admin/tags"
-      ]
-    },
-    {
-      "url": "https://buddykids-app.vercel.app/admin/group-requests",
-      "pathname": "/admin/group-requests",
-      "title": "TRAMA — Attività per bambini",
-      "heading": "Richieste Gruppo — tutti i centri",
-      "kind": "admin",
-      "calledBy": [
-        "https://buddykids-app.vercel.app/admin",
-        "https://buddykids-app.vercel.app/admin/activities",
-        "https://buddykids-app.vercel.app/admin/analytics",
-        "https://buddykids-app.vercel.app/admin/bookings",
-        "https://buddykids-app.vercel.app/admin/centers",
-        "https://buddykids-app.vercel.app/admin/centers/centro-sportivo-lido",
-        "https://buddykids-app.vercel.app/admin/certifications",
-        "https://buddykids-app.vercel.app/admin/group-requests",
-        "https://buddykids-app.vercel.app/admin/partner-offers",
-        "https://buddykids-app.vercel.app/admin/preferiti",
-        "https://buddykids-app.vercel.app/admin/presenze",
-        "https://buddykids-app.vercel.app/admin/richieste",
-        "https://buddykids-app.vercel.app/admin/segnalazioni-beta",
-        "https://buddykids-app.vercel.app/admin/tags"
-      ]
-    },
-    {
-      "url": "https://buddykids-app.vercel.app/admin/partner-offers",
-      "pathname": "/admin/partner-offers",
-      "title": "TRAMA — Attività per bambini",
-      "heading": "Fornitori consigliati",
-      "kind": "admin",
-      "calledBy": [
-        "https://buddykids-app.vercel.app/admin",
-        "https://buddykids-app.vercel.app/admin/activities",
-        "https://buddykids-app.vercel.app/admin/analytics",
-        "https://buddykids-app.vercel.app/admin/bookings",
-        "https://buddykids-app.vercel.app/admin/centers",
-        "https://buddykids-app.vercel.app/admin/centers/centro-sportivo-lido",
-        "https://buddykids-app.vercel.app/admin/certifications",
-        "https://buddykids-app.vercel.app/admin/group-requests",
-        "https://buddykids-app.vercel.app/admin/partner-offers",
-        "https://buddykids-app.vercel.app/admin/preferiti",
-        "https://buddykids-app.vercel.app/admin/presenze",
-        "https://buddykids-app.vercel.app/admin/richieste",
-        "https://buddykids-app.vercel.app/admin/segnalazioni-beta",
-        "https://buddykids-app.vercel.app/admin/tags"
-      ]
-    },
-    {
-      "url": "https://buddykids-app.vercel.app/admin/preferiti",
-      "pathname": "/admin/preferiti",
-      "title": "TRAMA — Attività per bambini",
-      "heading": "Preferiti — segnale di domanda",
-      "kind": "admin",
-      "calledBy": [
-        "https://buddykids-app.vercel.app/admin",
-        "https://buddykids-app.vercel.app/admin/activities",
-        "https://buddykids-app.vercel.app/admin/analytics",
-        "https://buddykids-app.vercel.app/admin/bookings",
-        "https://buddykids-app.vercel.app/admin/centers",
-        "https://buddykids-app.vercel.app/admin/centers/centro-sportivo-lido",
-        "https://buddykids-app.vercel.app/admin/certifications",
-        "https://buddykids-app.vercel.app/admin/group-requests",
-        "https://buddykids-app.vercel.app/admin/partner-offers",
-        "https://buddykids-app.vercel.app/admin/preferiti",
-        "https://buddykids-app.vercel.app/admin/presenze",
-        "https://buddykids-app.vercel.app/admin/richieste",
-        "https://buddykids-app.vercel.app/admin/segnalazioni-beta",
-        "https://buddykids-app.vercel.app/admin/tags"
-      ]
-    },
-    {
-      "url": "https://buddykids-app.vercel.app/admin/presenze",
-      "pathname": "/admin/presenze",
-      "title": "TRAMA — Attività per bambini",
-      "heading": "Presenze — confronto tra centri",
-      "kind": "admin",
-      "calledBy": [
-        "https://buddykids-app.vercel.app/admin",
-        "https://buddykids-app.vercel.app/admin/activities",
-        "https://buddykids-app.vercel.app/admin/analytics",
-        "https://buddykids-app.vercel.app/admin/bookings",
-        "https://buddykids-app.vercel.app/admin/centers",
-        "https://buddykids-app.vercel.app/admin/centers/centro-sportivo-lido",
-        "https://buddykids-app.vercel.app/admin/certifications",
-        "https://buddykids-app.vercel.app/admin/group-requests",
-        "https://buddykids-app.vercel.app/admin/partner-offers",
-        "https://buddykids-app.vercel.app/admin/preferiti",
-        "https://buddykids-app.vercel.app/admin/presenze",
-        "https://buddykids-app.vercel.app/admin/richieste",
-        "https://buddykids-app.vercel.app/admin/segnalazioni-beta",
-        "https://buddykids-app.vercel.app/admin/tags"
-      ]
-    },
-    {
-      "url": "https://buddykids-app.vercel.app/admin/richieste",
-      "pathname": "/admin/richieste",
-      "title": "TRAMA — Attività per bambini",
-      "heading": "Richieste — SLA per centro",
-      "kind": "admin",
-      "calledBy": [
-        "https://buddykids-app.vercel.app/admin",
-        "https://buddykids-app.vercel.app/admin/activities",
-        "https://buddykids-app.vercel.app/admin/analytics",
-        "https://buddykids-app.vercel.app/admin/bookings",
-        "https://buddykids-app.vercel.app/admin/centers",
-        "https://buddykids-app.vercel.app/admin/centers/centro-sportivo-lido",
-        "https://buddykids-app.vercel.app/admin/certifications",
-        "https://buddykids-app.vercel.app/admin/group-requests",
-        "https://buddykids-app.vercel.app/admin/partner-offers",
-        "https://buddykids-app.vercel.app/admin/preferiti",
-        "https://buddykids-app.vercel.app/admin/presenze",
-        "https://buddykids-app.vercel.app/admin/richieste",
-        "https://buddykids-app.vercel.app/admin/segnalazioni-beta",
-        "https://buddykids-app.vercel.app/admin/tags"
-      ]
-    },
-    {
-      "url": "https://buddykids-app.vercel.app/admin/segnalazioni-beta",
-      "pathname": "/admin/segnalazioni-beta",
-      "title": "TRAMA — Attività per bambini",
-      "heading": "Segnalazioni BETA",
-      "kind": "admin",
-      "calledBy": [
-        "https://buddykids-app.vercel.app/admin",
-        "https://buddykids-app.vercel.app/admin/activities",
-        "https://buddykids-app.vercel.app/admin/analytics",
-        "https://buddykids-app.vercel.app/admin/bookings",
-        "https://buddykids-app.vercel.app/admin/centers",
-        "https://buddykids-app.vercel.app/admin/centers/centro-sportivo-lido",
-        "https://buddykids-app.vercel.app/admin/certifications",
-        "https://buddykids-app.vercel.app/admin/group-requests",
-        "https://buddykids-app.vercel.app/admin/partner-offers",
-        "https://buddykids-app.vercel.app/admin/preferiti",
-        "https://buddykids-app.vercel.app/admin/presenze",
-        "https://buddykids-app.vercel.app/admin/richieste",
-        "https://buddykids-app.vercel.app/admin/segnalazioni-beta",
         "https://buddykids-app.vercel.app/admin/tags"
       ]
     },
@@ -305,14 +93,6 @@
         "https://buddykids-app.vercel.app/admin/analytics",
         "https://buddykids-app.vercel.app/admin/bookings",
         "https://buddykids-app.vercel.app/admin/centers",
-        "https://buddykids-app.vercel.app/admin/centers/centro-sportivo-lido",
-        "https://buddykids-app.vercel.app/admin/certifications",
-        "https://buddykids-app.vercel.app/admin/group-requests",
-        "https://buddykids-app.vercel.app/admin/partner-offers",
-        "https://buddykids-app.vercel.app/admin/preferiti",
-        "https://buddykids-app.vercel.app/admin/presenze",
-        "https://buddykids-app.vercel.app/admin/richieste",
-        "https://buddykids-app.vercel.app/admin/segnalazioni-beta",
         "https://buddykids-app.vercel.app/admin/tags"
       ]
     }
@@ -340,38 +120,6 @@
     },
     {
       "from": "https://buddykids-app.vercel.app/admin",
-      "to": "https://buddykids-app.vercel.app/admin/centers/centro-sportivo-lido"
-    },
-    {
-      "from": "https://buddykids-app.vercel.app/admin",
-      "to": "https://buddykids-app.vercel.app/admin/certifications"
-    },
-    {
-      "from": "https://buddykids-app.vercel.app/admin",
-      "to": "https://buddykids-app.vercel.app/admin/group-requests"
-    },
-    {
-      "from": "https://buddykids-app.vercel.app/admin",
-      "to": "https://buddykids-app.vercel.app/admin/partner-offers"
-    },
-    {
-      "from": "https://buddykids-app.vercel.app/admin",
-      "to": "https://buddykids-app.vercel.app/admin/preferiti"
-    },
-    {
-      "from": "https://buddykids-app.vercel.app/admin",
-      "to": "https://buddykids-app.vercel.app/admin/presenze"
-    },
-    {
-      "from": "https://buddykids-app.vercel.app/admin",
-      "to": "https://buddykids-app.vercel.app/admin/richieste"
-    },
-    {
-      "from": "https://buddykids-app.vercel.app/admin",
-      "to": "https://buddykids-app.vercel.app/admin/segnalazioni-beta"
-    },
-    {
-      "from": "https://buddykids-app.vercel.app/admin",
       "to": "https://buddykids-app.vercel.app/admin/tags"
     },
     {
@@ -393,34 +141,6 @@
     {
       "from": "https://buddykids-app.vercel.app/admin/activities",
       "to": "https://buddykids-app.vercel.app/admin/centers"
-    },
-    {
-      "from": "https://buddykids-app.vercel.app/admin/activities",
-      "to": "https://buddykids-app.vercel.app/admin/certifications"
-    },
-    {
-      "from": "https://buddykids-app.vercel.app/admin/activities",
-      "to": "https://buddykids-app.vercel.app/admin/group-requests"
-    },
-    {
-      "from": "https://buddykids-app.vercel.app/admin/activities",
-      "to": "https://buddykids-app.vercel.app/admin/partner-offers"
-    },
-    {
-      "from": "https://buddykids-app.vercel.app/admin/activities",
-      "to": "https://buddykids-app.vercel.app/admin/preferiti"
-    },
-    {
-      "from": "https://buddykids-app.vercel.app/admin/activities",
-      "to": "https://buddykids-app.vercel.app/admin/presenze"
-    },
-    {
-      "from": "https://buddykids-app.vercel.app/admin/activities",
-      "to": "https://buddykids-app.vercel.app/admin/richieste"
-    },
-    {
-      "from": "https://buddykids-app.vercel.app/admin/activities",
-      "to": "https://buddykids-app.vercel.app/admin/segnalazioni-beta"
     },
     {
       "from": "https://buddykids-app.vercel.app/admin/activities",
@@ -448,34 +168,6 @@
     },
     {
       "from": "https://buddykids-app.vercel.app/admin/analytics",
-      "to": "https://buddykids-app.vercel.app/admin/certifications"
-    },
-    {
-      "from": "https://buddykids-app.vercel.app/admin/analytics",
-      "to": "https://buddykids-app.vercel.app/admin/group-requests"
-    },
-    {
-      "from": "https://buddykids-app.vercel.app/admin/analytics",
-      "to": "https://buddykids-app.vercel.app/admin/partner-offers"
-    },
-    {
-      "from": "https://buddykids-app.vercel.app/admin/analytics",
-      "to": "https://buddykids-app.vercel.app/admin/preferiti"
-    },
-    {
-      "from": "https://buddykids-app.vercel.app/admin/analytics",
-      "to": "https://buddykids-app.vercel.app/admin/presenze"
-    },
-    {
-      "from": "https://buddykids-app.vercel.app/admin/analytics",
-      "to": "https://buddykids-app.vercel.app/admin/richieste"
-    },
-    {
-      "from": "https://buddykids-app.vercel.app/admin/analytics",
-      "to": "https://buddykids-app.vercel.app/admin/segnalazioni-beta"
-    },
-    {
-      "from": "https://buddykids-app.vercel.app/admin/analytics",
       "to": "https://buddykids-app.vercel.app/admin/tags"
     },
     {
@@ -497,34 +189,6 @@
     {
       "from": "https://buddykids-app.vercel.app/admin/bookings",
       "to": "https://buddykids-app.vercel.app/admin/centers"
-    },
-    {
-      "from": "https://buddykids-app.vercel.app/admin/bookings",
-      "to": "https://buddykids-app.vercel.app/admin/certifications"
-    },
-    {
-      "from": "https://buddykids-app.vercel.app/admin/bookings",
-      "to": "https://buddykids-app.vercel.app/admin/group-requests"
-    },
-    {
-      "from": "https://buddykids-app.vercel.app/admin/bookings",
-      "to": "https://buddykids-app.vercel.app/admin/partner-offers"
-    },
-    {
-      "from": "https://buddykids-app.vercel.app/admin/bookings",
-      "to": "https://buddykids-app.vercel.app/admin/preferiti"
-    },
-    {
-      "from": "https://buddykids-app.vercel.app/admin/bookings",
-      "to": "https://buddykids-app.vercel.app/admin/presenze"
-    },
-    {
-      "from": "https://buddykids-app.vercel.app/admin/bookings",
-      "to": "https://buddykids-app.vercel.app/admin/richieste"
-    },
-    {
-      "from": "https://buddykids-app.vercel.app/admin/bookings",
-      "to": "https://buddykids-app.vercel.app/admin/segnalazioni-beta"
     },
     {
       "from": "https://buddykids-app.vercel.app/admin/bookings",
@@ -552,454 +216,6 @@
     },
     {
       "from": "https://buddykids-app.vercel.app/admin/centers",
-      "to": "https://buddykids-app.vercel.app/admin/centers/centro-sportivo-lido"
-    },
-    {
-      "from": "https://buddykids-app.vercel.app/admin/centers",
-      "to": "https://buddykids-app.vercel.app/admin/certifications"
-    },
-    {
-      "from": "https://buddykids-app.vercel.app/admin/centers",
-      "to": "https://buddykids-app.vercel.app/admin/group-requests"
-    },
-    {
-      "from": "https://buddykids-app.vercel.app/admin/centers",
-      "to": "https://buddykids-app.vercel.app/admin/partner-offers"
-    },
-    {
-      "from": "https://buddykids-app.vercel.app/admin/centers",
-      "to": "https://buddykids-app.vercel.app/admin/preferiti"
-    },
-    {
-      "from": "https://buddykids-app.vercel.app/admin/centers",
-      "to": "https://buddykids-app.vercel.app/admin/presenze"
-    },
-    {
-      "from": "https://buddykids-app.vercel.app/admin/centers",
-      "to": "https://buddykids-app.vercel.app/admin/richieste"
-    },
-    {
-      "from": "https://buddykids-app.vercel.app/admin/centers",
-      "to": "https://buddykids-app.vercel.app/admin/segnalazioni-beta"
-    },
-    {
-      "from": "https://buddykids-app.vercel.app/admin/centers",
-      "to": "https://buddykids-app.vercel.app/admin/tags"
-    },
-    {
-      "from": "https://buddykids-app.vercel.app/admin/centers/centro-sportivo-lido",
-      "to": "https://buddykids-app.vercel.app/admin"
-    },
-    {
-      "from": "https://buddykids-app.vercel.app/admin/centers/centro-sportivo-lido",
-      "to": "https://buddykids-app.vercel.app/admin/activities"
-    },
-    {
-      "from": "https://buddykids-app.vercel.app/admin/centers/centro-sportivo-lido",
-      "to": "https://buddykids-app.vercel.app/admin/analytics"
-    },
-    {
-      "from": "https://buddykids-app.vercel.app/admin/centers/centro-sportivo-lido",
-      "to": "https://buddykids-app.vercel.app/admin/bookings"
-    },
-    {
-      "from": "https://buddykids-app.vercel.app/admin/centers/centro-sportivo-lido",
-      "to": "https://buddykids-app.vercel.app/admin/centers"
-    },
-    {
-      "from": "https://buddykids-app.vercel.app/admin/centers/centro-sportivo-lido",
-      "to": "https://buddykids-app.vercel.app/admin/certifications"
-    },
-    {
-      "from": "https://buddykids-app.vercel.app/admin/centers/centro-sportivo-lido",
-      "to": "https://buddykids-app.vercel.app/admin/group-requests"
-    },
-    {
-      "from": "https://buddykids-app.vercel.app/admin/centers/centro-sportivo-lido",
-      "to": "https://buddykids-app.vercel.app/admin/partner-offers"
-    },
-    {
-      "from": "https://buddykids-app.vercel.app/admin/centers/centro-sportivo-lido",
-      "to": "https://buddykids-app.vercel.app/admin/preferiti"
-    },
-    {
-      "from": "https://buddykids-app.vercel.app/admin/centers/centro-sportivo-lido",
-      "to": "https://buddykids-app.vercel.app/admin/presenze"
-    },
-    {
-      "from": "https://buddykids-app.vercel.app/admin/centers/centro-sportivo-lido",
-      "to": "https://buddykids-app.vercel.app/admin/richieste"
-    },
-    {
-      "from": "https://buddykids-app.vercel.app/admin/centers/centro-sportivo-lido",
-      "to": "https://buddykids-app.vercel.app/admin/segnalazioni-beta"
-    },
-    {
-      "from": "https://buddykids-app.vercel.app/admin/centers/centro-sportivo-lido",
-      "to": "https://buddykids-app.vercel.app/admin/tags"
-    },
-    {
-      "from": "https://buddykids-app.vercel.app/admin/certifications",
-      "to": "https://buddykids-app.vercel.app/admin"
-    },
-    {
-      "from": "https://buddykids-app.vercel.app/admin/certifications",
-      "to": "https://buddykids-app.vercel.app/admin/activities"
-    },
-    {
-      "from": "https://buddykids-app.vercel.app/admin/certifications",
-      "to": "https://buddykids-app.vercel.app/admin/analytics"
-    },
-    {
-      "from": "https://buddykids-app.vercel.app/admin/certifications",
-      "to": "https://buddykids-app.vercel.app/admin/bookings"
-    },
-    {
-      "from": "https://buddykids-app.vercel.app/admin/certifications",
-      "to": "https://buddykids-app.vercel.app/admin/centers"
-    },
-    {
-      "from": "https://buddykids-app.vercel.app/admin/certifications",
-      "to": "https://buddykids-app.vercel.app/admin/certifications"
-    },
-    {
-      "from": "https://buddykids-app.vercel.app/admin/certifications",
-      "to": "https://buddykids-app.vercel.app/admin/group-requests"
-    },
-    {
-      "from": "https://buddykids-app.vercel.app/admin/certifications",
-      "to": "https://buddykids-app.vercel.app/admin/partner-offers"
-    },
-    {
-      "from": "https://buddykids-app.vercel.app/admin/certifications",
-      "to": "https://buddykids-app.vercel.app/admin/preferiti"
-    },
-    {
-      "from": "https://buddykids-app.vercel.app/admin/certifications",
-      "to": "https://buddykids-app.vercel.app/admin/presenze"
-    },
-    {
-      "from": "https://buddykids-app.vercel.app/admin/certifications",
-      "to": "https://buddykids-app.vercel.app/admin/richieste"
-    },
-    {
-      "from": "https://buddykids-app.vercel.app/admin/certifications",
-      "to": "https://buddykids-app.vercel.app/admin/segnalazioni-beta"
-    },
-    {
-      "from": "https://buddykids-app.vercel.app/admin/certifications",
-      "to": "https://buddykids-app.vercel.app/admin/tags"
-    },
-    {
-      "from": "https://buddykids-app.vercel.app/admin/group-requests",
-      "to": "https://buddykids-app.vercel.app/admin"
-    },
-    {
-      "from": "https://buddykids-app.vercel.app/admin/group-requests",
-      "to": "https://buddykids-app.vercel.app/admin/activities"
-    },
-    {
-      "from": "https://buddykids-app.vercel.app/admin/group-requests",
-      "to": "https://buddykids-app.vercel.app/admin/analytics"
-    },
-    {
-      "from": "https://buddykids-app.vercel.app/admin/group-requests",
-      "to": "https://buddykids-app.vercel.app/admin/bookings"
-    },
-    {
-      "from": "https://buddykids-app.vercel.app/admin/group-requests",
-      "to": "https://buddykids-app.vercel.app/admin/centers"
-    },
-    {
-      "from": "https://buddykids-app.vercel.app/admin/group-requests",
-      "to": "https://buddykids-app.vercel.app/admin/certifications"
-    },
-    {
-      "from": "https://buddykids-app.vercel.app/admin/group-requests",
-      "to": "https://buddykids-app.vercel.app/admin/group-requests"
-    },
-    {
-      "from": "https://buddykids-app.vercel.app/admin/group-requests",
-      "to": "https://buddykids-app.vercel.app/admin/partner-offers"
-    },
-    {
-      "from": "https://buddykids-app.vercel.app/admin/group-requests",
-      "to": "https://buddykids-app.vercel.app/admin/preferiti"
-    },
-    {
-      "from": "https://buddykids-app.vercel.app/admin/group-requests",
-      "to": "https://buddykids-app.vercel.app/admin/presenze"
-    },
-    {
-      "from": "https://buddykids-app.vercel.app/admin/group-requests",
-      "to": "https://buddykids-app.vercel.app/admin/richieste"
-    },
-    {
-      "from": "https://buddykids-app.vercel.app/admin/group-requests",
-      "to": "https://buddykids-app.vercel.app/admin/segnalazioni-beta"
-    },
-    {
-      "from": "https://buddykids-app.vercel.app/admin/group-requests",
-      "to": "https://buddykids-app.vercel.app/admin/tags"
-    },
-    {
-      "from": "https://buddykids-app.vercel.app/admin/partner-offers",
-      "to": "https://buddykids-app.vercel.app/admin"
-    },
-    {
-      "from": "https://buddykids-app.vercel.app/admin/partner-offers",
-      "to": "https://buddykids-app.vercel.app/admin/activities"
-    },
-    {
-      "from": "https://buddykids-app.vercel.app/admin/partner-offers",
-      "to": "https://buddykids-app.vercel.app/admin/analytics"
-    },
-    {
-      "from": "https://buddykids-app.vercel.app/admin/partner-offers",
-      "to": "https://buddykids-app.vercel.app/admin/bookings"
-    },
-    {
-      "from": "https://buddykids-app.vercel.app/admin/partner-offers",
-      "to": "https://buddykids-app.vercel.app/admin/centers"
-    },
-    {
-      "from": "https://buddykids-app.vercel.app/admin/partner-offers",
-      "to": "https://buddykids-app.vercel.app/admin/certifications"
-    },
-    {
-      "from": "https://buddykids-app.vercel.app/admin/partner-offers",
-      "to": "https://buddykids-app.vercel.app/admin/group-requests"
-    },
-    {
-      "from": "https://buddykids-app.vercel.app/admin/partner-offers",
-      "to": "https://buddykids-app.vercel.app/admin/partner-offers"
-    },
-    {
-      "from": "https://buddykids-app.vercel.app/admin/partner-offers",
-      "to": "https://buddykids-app.vercel.app/admin/preferiti"
-    },
-    {
-      "from": "https://buddykids-app.vercel.app/admin/partner-offers",
-      "to": "https://buddykids-app.vercel.app/admin/presenze"
-    },
-    {
-      "from": "https://buddykids-app.vercel.app/admin/partner-offers",
-      "to": "https://buddykids-app.vercel.app/admin/richieste"
-    },
-    {
-      "from": "https://buddykids-app.vercel.app/admin/partner-offers",
-      "to": "https://buddykids-app.vercel.app/admin/segnalazioni-beta"
-    },
-    {
-      "from": "https://buddykids-app.vercel.app/admin/partner-offers",
-      "to": "https://buddykids-app.vercel.app/admin/tags"
-    },
-    {
-      "from": "https://buddykids-app.vercel.app/admin/preferiti",
-      "to": "https://buddykids-app.vercel.app/admin"
-    },
-    {
-      "from": "https://buddykids-app.vercel.app/admin/preferiti",
-      "to": "https://buddykids-app.vercel.app/admin/activities"
-    },
-    {
-      "from": "https://buddykids-app.vercel.app/admin/preferiti",
-      "to": "https://buddykids-app.vercel.app/admin/analytics"
-    },
-    {
-      "from": "https://buddykids-app.vercel.app/admin/preferiti",
-      "to": "https://buddykids-app.vercel.app/admin/bookings"
-    },
-    {
-      "from": "https://buddykids-app.vercel.app/admin/preferiti",
-      "to": "https://buddykids-app.vercel.app/admin/centers"
-    },
-    {
-      "from": "https://buddykids-app.vercel.app/admin/preferiti",
-      "to": "https://buddykids-app.vercel.app/admin/certifications"
-    },
-    {
-      "from": "https://buddykids-app.vercel.app/admin/preferiti",
-      "to": "https://buddykids-app.vercel.app/admin/group-requests"
-    },
-    {
-      "from": "https://buddykids-app.vercel.app/admin/preferiti",
-      "to": "https://buddykids-app.vercel.app/admin/partner-offers"
-    },
-    {
-      "from": "https://buddykids-app.vercel.app/admin/preferiti",
-      "to": "https://buddykids-app.vercel.app/admin/preferiti"
-    },
-    {
-      "from": "https://buddykids-app.vercel.app/admin/preferiti",
-      "to": "https://buddykids-app.vercel.app/admin/presenze"
-    },
-    {
-      "from": "https://buddykids-app.vercel.app/admin/preferiti",
-      "to": "https://buddykids-app.vercel.app/admin/richieste"
-    },
-    {
-      "from": "https://buddykids-app.vercel.app/admin/preferiti",
-      "to": "https://buddykids-app.vercel.app/admin/segnalazioni-beta"
-    },
-    {
-      "from": "https://buddykids-app.vercel.app/admin/preferiti",
-      "to": "https://buddykids-app.vercel.app/admin/tags"
-    },
-    {
-      "from": "https://buddykids-app.vercel.app/admin/presenze",
-      "to": "https://buddykids-app.vercel.app/admin"
-    },
-    {
-      "from": "https://buddykids-app.vercel.app/admin/presenze",
-      "to": "https://buddykids-app.vercel.app/admin/activities"
-    },
-    {
-      "from": "https://buddykids-app.vercel.app/admin/presenze",
-      "to": "https://buddykids-app.vercel.app/admin/analytics"
-    },
-    {
-      "from": "https://buddykids-app.vercel.app/admin/presenze",
-      "to": "https://buddykids-app.vercel.app/admin/bookings"
-    },
-    {
-      "from": "https://buddykids-app.vercel.app/admin/presenze",
-      "to": "https://buddykids-app.vercel.app/admin/centers"
-    },
-    {
-      "from": "https://buddykids-app.vercel.app/admin/presenze",
-      "to": "https://buddykids-app.vercel.app/admin/certifications"
-    },
-    {
-      "from": "https://buddykids-app.vercel.app/admin/presenze",
-      "to": "https://buddykids-app.vercel.app/admin/group-requests"
-    },
-    {
-      "from": "https://buddykids-app.vercel.app/admin/presenze",
-      "to": "https://buddykids-app.vercel.app/admin/partner-offers"
-    },
-    {
-      "from": "https://buddykids-app.vercel.app/admin/presenze",
-      "to": "https://buddykids-app.vercel.app/admin/preferiti"
-    },
-    {
-      "from": "https://buddykids-app.vercel.app/admin/presenze",
-      "to": "https://buddykids-app.vercel.app/admin/presenze"
-    },
-    {
-      "from": "https://buddykids-app.vercel.app/admin/presenze",
-      "to": "https://buddykids-app.vercel.app/admin/richieste"
-    },
-    {
-      "from": "https://buddykids-app.vercel.app/admin/presenze",
-      "to": "https://buddykids-app.vercel.app/admin/segnalazioni-beta"
-    },
-    {
-      "from": "https://buddykids-app.vercel.app/admin/presenze",
-      "to": "https://buddykids-app.vercel.app/admin/tags"
-    },
-    {
-      "from": "https://buddykids-app.vercel.app/admin/richieste",
-      "to": "https://buddykids-app.vercel.app/admin"
-    },
-    {
-      "from": "https://buddykids-app.vercel.app/admin/richieste",
-      "to": "https://buddykids-app.vercel.app/admin/activities"
-    },
-    {
-      "from": "https://buddykids-app.vercel.app/admin/richieste",
-      "to": "https://buddykids-app.vercel.app/admin/analytics"
-    },
-    {
-      "from": "https://buddykids-app.vercel.app/admin/richieste",
-      "to": "https://buddykids-app.vercel.app/admin/bookings"
-    },
-    {
-      "from": "https://buddykids-app.vercel.app/admin/richieste",
-      "to": "https://buddykids-app.vercel.app/admin/centers"
-    },
-    {
-      "from": "https://buddykids-app.vercel.app/admin/richieste",
-      "to": "https://buddykids-app.vercel.app/admin/certifications"
-    },
-    {
-      "from": "https://buddykids-app.vercel.app/admin/richieste",
-      "to": "https://buddykids-app.vercel.app/admin/group-requests"
-    },
-    {
-      "from": "https://buddykids-app.vercel.app/admin/richieste",
-      "to": "https://buddykids-app.vercel.app/admin/partner-offers"
-    },
-    {
-      "from": "https://buddykids-app.vercel.app/admin/richieste",
-      "to": "https://buddykids-app.vercel.app/admin/preferiti"
-    },
-    {
-      "from": "https://buddykids-app.vercel.app/admin/richieste",
-      "to": "https://buddykids-app.vercel.app/admin/presenze"
-    },
-    {
-      "from": "https://buddykids-app.vercel.app/admin/richieste",
-      "to": "https://buddykids-app.vercel.app/admin/richieste"
-    },
-    {
-      "from": "https://buddykids-app.vercel.app/admin/richieste",
-      "to": "https://buddykids-app.vercel.app/admin/segnalazioni-beta"
-    },
-    {
-      "from": "https://buddykids-app.vercel.app/admin/richieste",
-      "to": "https://buddykids-app.vercel.app/admin/tags"
-    },
-    {
-      "from": "https://buddykids-app.vercel.app/admin/segnalazioni-beta",
-      "to": "https://buddykids-app.vercel.app/admin"
-    },
-    {
-      "from": "https://buddykids-app.vercel.app/admin/segnalazioni-beta",
-      "to": "https://buddykids-app.vercel.app/admin/activities"
-    },
-    {
-      "from": "https://buddykids-app.vercel.app/admin/segnalazioni-beta",
-      "to": "https://buddykids-app.vercel.app/admin/analytics"
-    },
-    {
-      "from": "https://buddykids-app.vercel.app/admin/segnalazioni-beta",
-      "to": "https://buddykids-app.vercel.app/admin/bookings"
-    },
-    {
-      "from": "https://buddykids-app.vercel.app/admin/segnalazioni-beta",
-      "to": "https://buddykids-app.vercel.app/admin/centers"
-    },
-    {
-      "from": "https://buddykids-app.vercel.app/admin/segnalazioni-beta",
-      "to": "https://buddykids-app.vercel.app/admin/certifications"
-    },
-    {
-      "from": "https://buddykids-app.vercel.app/admin/segnalazioni-beta",
-      "to": "https://buddykids-app.vercel.app/admin/group-requests"
-    },
-    {
-      "from": "https://buddykids-app.vercel.app/admin/segnalazioni-beta",
-      "to": "https://buddykids-app.vercel.app/admin/partner-offers"
-    },
-    {
-      "from": "https://buddykids-app.vercel.app/admin/segnalazioni-beta",
-      "to": "https://buddykids-app.vercel.app/admin/preferiti"
-    },
-    {
-      "from": "https://buddykids-app.vercel.app/admin/segnalazioni-beta",
-      "to": "https://buddykids-app.vercel.app/admin/presenze"
-    },
-    {
-      "from": "https://buddykids-app.vercel.app/admin/segnalazioni-beta",
-      "to": "https://buddykids-app.vercel.app/admin/richieste"
-    },
-    {
-      "from": "https://buddykids-app.vercel.app/admin/segnalazioni-beta",
-      "to": "https://buddykids-app.vercel.app/admin/segnalazioni-beta"
-    },
-    {
-      "from": "https://buddykids-app.vercel.app/admin/segnalazioni-beta",
       "to": "https://buddykids-app.vercel.app/admin/tags"
     },
     {
@@ -1021,39 +237,44 @@
     {
       "from": "https://buddykids-app.vercel.app/admin/tags",
       "to": "https://buddykids-app.vercel.app/admin/centers"
-    },
-    {
-      "from": "https://buddykids-app.vercel.app/admin/tags",
-      "to": "https://buddykids-app.vercel.app/admin/certifications"
-    },
-    {
-      "from": "https://buddykids-app.vercel.app/admin/tags",
-      "to": "https://buddykids-app.vercel.app/admin/group-requests"
-    },
-    {
-      "from": "https://buddykids-app.vercel.app/admin/tags",
-      "to": "https://buddykids-app.vercel.app/admin/partner-offers"
-    },
-    {
-      "from": "https://buddykids-app.vercel.app/admin/tags",
-      "to": "https://buddykids-app.vercel.app/admin/preferiti"
-    },
-    {
-      "from": "https://buddykids-app.vercel.app/admin/tags",
-      "to": "https://buddykids-app.vercel.app/admin/presenze"
-    },
-    {
-      "from": "https://buddykids-app.vercel.app/admin/tags",
-      "to": "https://buddykids-app.vercel.app/admin/richieste"
-    },
-    {
-      "from": "https://buddykids-app.vercel.app/admin/tags",
-      "to": "https://buddykids-app.vercel.app/admin/segnalazioni-beta"
     },
     {
       "from": "https://buddykids-app.vercel.app/admin/tags",
       "to": "https://buddykids-app.vercel.app/admin/tags"
     }
   ],
-  "errors": []
+  "errors": [
+    {
+      "url": "https://buddykids-app.vercel.app/admin/group-requests",
+      "message": "page.goto: net::ERR_TIMED_OUT at https://buddykids-app.vercel.app/admin/group-requests\nCall log:\n\u001b[2m  - navigating to \"https://buddykids-app.vercel.app/admin/group-requests\", waiting until \"domcontentloaded\"\u001b[22m\n"
+    },
+    {
+      "url": "https://buddykids-app.vercel.app/admin/richieste",
+      "message": "page.goto: Navigation to \"https://buddykids-app.vercel.app/admin/richieste\" is interrupted by another navigation to \"chrome-error://chromewebdata/\"\nCall log:\n\u001b[2m  - navigating to \"https://buddykids-app.vercel.app/admin/richieste\", waiting until \"domcontentloaded\"\u001b[22m\n"
+    },
+    {
+      "url": "https://buddykids-app.vercel.app/admin/certifications",
+      "message": "page.goto: Navigation to \"https://buddykids-app.vercel.app/admin/certifications\" is interrupted by another navigation to \"https://buddykids-app.vercel.app/admin/richieste\"\nCall log:\n\u001b[2m  - navigating to \"https://buddykids-app.vercel.app/admin/certifications\", waiting until \"domcontentloaded\"\u001b[22m\n"
+    },
+    {
+      "url": "https://buddykids-app.vercel.app/admin/presenze",
+      "message": "page.goto: Navigation to \"https://buddykids-app.vercel.app/admin/presenze\" is interrupted by another navigation to \"https://buddykids-app.vercel.app/admin/certifications\"\nCall log:\n\u001b[2m  - navigating to \"https://buddykids-app.vercel.app/admin/presenze\", waiting until \"domcontentloaded\"\u001b[22m\n"
+    },
+    {
+      "url": "https://buddykids-app.vercel.app/admin/preferiti",
+      "message": "page.goto: Navigation to \"https://buddykids-app.vercel.app/admin/preferiti\" is interrupted by another navigation to \"https://buddykids-app.vercel.app/admin/presenze\"\nCall log:\n\u001b[2m  - navigating to \"https://buddykids-app.vercel.app/admin/preferiti\", waiting until \"domcontentloaded\"\u001b[22m\n"
+    },
+    {
+      "url": "https://buddykids-app.vercel.app/admin/partner-offers",
+      "message": "page.goto: Navigation to \"https://buddykids-app.vercel.app/admin/partner-offers\" is interrupted by another navigation to \"https://buddykids-app.vercel.app/admin/preferiti\"\nCall log:\n\u001b[2m  - navigating to \"https://buddykids-app.vercel.app/admin/partner-offers\", waiting until \"domcontentloaded\"\u001b[22m\n"
+    },
+    {
+      "url": "https://buddykids-app.vercel.app/admin/segnalazioni-beta",
+      "message": "page.goto: Navigation to \"https://buddykids-app.vercel.app/admin/segnalazioni-beta\" is interrupted by another navigation to \"https://buddykids-app.vercel.app/admin/partner-offers\"\nCall log:\n\u001b[2m  - navigating to \"https://buddykids-app.vercel.app/admin/segnalazioni-beta\", waiting until \"domcontentloaded\"\u001b[22m\n"
+    },
+    {
+      "url": "https://buddykids-app.vercel.app/admin/centers/centro-sportivo-lido",
+      "message": "page.goto: Navigation to \"https://buddykids-app.vercel.app/admin/centers/centro-sportivo-lido\" is interrupted by another navigation to \"https://buddykids-app.vercel.app/admin/segnalazioni-beta\"\nCall log:\n\u001b[2m  - navigating to \"https://buddykids-app.vercel.app/admin/centers/centro-sportivo-lido\", waiting until \"domcontentloaded\"\u001b[22m\n"
+    }
+  ]
 }
