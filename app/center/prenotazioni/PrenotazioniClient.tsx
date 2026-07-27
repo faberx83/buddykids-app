@@ -205,10 +205,22 @@ export default function PrenotazioniClient({
               </span>
             </div>
           </div>
-          <div className="mb-2 text-xs text-ink-2">
-            {b.parentName}
-            {b.parentEmail ? ` · ${b.parentEmail}` : ""}
-            {b.kidNames.length > 0 ? ` · ${b.kidNames.join(", ")}` : ""}
+          <div className="mb-2 flex flex-wrap items-center gap-1.5 text-xs text-ink-2">
+            {/* Segnalazione di Fabrizio: senza un'etichetta esplicita non si
+                capisce a colpo d'occhio se una prenotazione è "Giorni spot"
+                (accettazione per singolo giorno, niente pulsanti a livello di
+                card) o a settimana intera (pulsanti Accetta/Rifiuta/Proponi
+                sulla card). */}
+            {b.isDayBased && (
+              <span className="rounded-full bg-sky-light px-2 py-0.5 text-[10.5px] font-semibold text-sky">
+                Giorni spot
+              </span>
+            )}
+            <span>
+              {b.parentName}
+              {b.parentEmail ? ` · ${b.parentEmail}` : ""}
+              {b.kidNames.length > 0 ? ` · ${b.kidNames.join(", ")}` : ""}
+            </span>
           </div>
 
           {b.isDayBased ? (
