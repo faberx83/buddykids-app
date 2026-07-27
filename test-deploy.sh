@@ -11,6 +11,7 @@
 #   bash test-deploy.sh https://altro-url.vercel.app           # contro un altro URL (es. un preview)
 #   TEST_SCOPE=smoke bash test-deploy.sh                       # solo smoke cross-portale (lista esplicita, vedi sotto)
 #   TEST_SCOPE=journeys bash test-deploy.sh                    # solo journey cross-portale approvate (vuoto in Sprint 0)
+#   TEST_SCOPE=critical bash test-deploy.sh                    # 18 journey critiche Sprint 1-4 (Integration Stabilization Gate D)
 #   TEST_SCOPE=all bash test-deploy.sh                         # suite intera, esplicito (= comportamento di default)
 #   ALLOW_TEST_FAILURES=1 bash test-deploy.sh                  # non blocca sull'esito test (comportamento esplicito, non più il default)
 #   RUN_SITEMAP=1 bash test-deploy.sh                          # esegue ANCHE la sitemap dopo la suite (skip di default, vedi sotto)
@@ -63,6 +64,39 @@ SMOKE_TEST_FILES="tests/genitori/login.spec.ts tests/nextgen/smoke.spec.ts tests
 # lifecycle, Booking e Offering sono tutti fuori scope) — lista vuota,
 # popolata a partire da Build Sprint 3-4.
 JOURNEY_TEST_FILES=""
+
+# Integration Stabilization Sprint (Gate D, luglio 2026) — le 18 journey
+# critiche indicate da Fabrizio, mappate su file ESISTENTI (riuso puro,
+# nessun test nuovo scritto solo per popolare questa lista) dove la copertura
+# c'è già. Dove non c'è, il file più vicino resta elencato per non perdere
+# copertura collaterale ma il gap è segnalato esplicitamente qui sotto — non
+# dichiariamo "critical" verde su qualcosa che non è mai stato testato.
+#
+# Mappatura (journey -> file):
+#  1. Nuovo centro -> LEAD automatico              tests/one/onboarding-remediation.spec.ts (TC-N407/408)
+#  2. Attivazione->checklist->submit->approvazione tests/one/onboarding-remediation.spec.ts (TC-N409), tests/one/onboarding.spec.ts
+#  3. Creazione attività                           tests/gestore/attivita.spec.ts (TC-074)
+#  4. Configurazione settimana intera               tests/genitori/prenotazione.spec.ts
+#  5. Configurazione Giorni spot                    tests/gestore/attivita.spec.ts (TC-414), tests/genitori/giorni-spot.spec.ts
+#  6. Prezzo e capacità                             tests/gestore/attivita.spec.ts (TC-074/075 — nessun test dedicato a un
+#                                                    aggiornamento di capacità con verifica del limite: GAP, vedi AUDIT_CHECKPOINT)
+#  7. Visibilità lato genitore                      tests/genitori/cerca.spec.ts, tests/genitori/attivita.spec.ts
+#  8. Selezione bambino/giorno                      tests/genitori/giorni-spot.spec.ts (TC-N500/501)
+#  9. Costo dinamico                                tests/genitori/giorni-spot.spec.ts (TC-N500 — nessun unit test su
+#                                                    lib/day-pricing.ts isolato: GAP, vedi AUDIT_CHECKPOINT)
+# 10. Invio richiesta                               tests/genitori/prenotazione.spec.ts
+# 11. Accettazione totale                           tests/gestore/prenotazioni.spec.ts (TC-508)
+# 12. Accettazione parziale                         NESSUN TEST E2E DEDICATO — GAP (vedi AUDIT_CHECKPOINT), risposta
+#                                                    Partner per-giorno introdotta in Sprint 4 senza test parziale esplicito
+# 13. Proposta alternativa                          NESSUN TEST E2E DEDICATO — GAP (vedi AUDIT_CHECKPOINT)
+# 14. Creazione prenotazione                         tests/genitori/prenotazione.spec.ts, tests/gestore/prenotazioni.spec.ts (TC-509)
+# 15. Sync Planner                                  tests/genitori/home-planner.spec.ts (copertura settimane/stato, non lo
+#                                                    stato "awaiting" per-giorno introdotto in Sprint 4: GAP PARZIALE)
+# 16. Aggiornamento capacità                        NESSUN TEST E2E DEDICATO — GAP (vedi AUDIT_CHECKPOINT)
+# 17. Fallback flag disattivato                     tests/one/feature-flags.spec.ts
+# 18. Isolamento ruoli e RLS                        tests/one/onboarding-remediation.spec.ts (TC-N411 skip — manca 2a
+#                                                    utenza center_admin —, TC-N412/413), tests/admin/nuovi-pannelli.spec.ts
+CRITICAL_TEST_FILES="tests/one/onboarding-remediation.spec.ts tests/one/onboarding.spec.ts tests/gestore/attivita.spec.ts tests/genitori/prenotazione.spec.ts tests/genitori/giorni-spot.spec.ts tests/genitori/cerca.spec.ts tests/genitori/attivita.spec.ts tests/gestore/prenotazioni.spec.ts tests/genitori/home-planner.spec.ts tests/one/feature-flags.spec.ts tests/admin/nuovi-pannelli.spec.ts"
 
 apri_sitemap_se_richiesto() {
   if [ -n "$SITEMAP_OPEN_BROWSER" ]; then
@@ -118,6 +152,9 @@ case "$TEST_SCOPE" in
     else
       TEST_TARGET="$JOURNEY_TEST_FILES"
     fi
+    ;;
+  critical)
+    TEST_TARGET="$CRITICAL_TEST_FILES"
     ;;
   all|"")
     TEST_TARGET="" # nessun argomento = intera suite, comportamento invariato
