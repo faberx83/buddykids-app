@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-07-27T15:06:27.108Z",
+  "generatedAt": "2026-07-27T16:24:40.342Z",
   "target": "parent",
   "label": "Genitore",
   "project": "mobile-chrome",
@@ -7,8 +7,8 @@
   "startPath": "/nextgen",
   "pages": [
     {
-      "url": "https://buddykids-app.vercel.app/activity/summer-camp-acquatico",
-      "pathname": "/activity/summer-camp-acquatico",
+      "url": "https://buddykids-app.vercel.app/activity/laboratorio-arti-creative",
+      "pathname": "/activity/laboratorio-arti-creative",
       "title": "TRAMA — Attività per bambini",
       "heading": "",
       "kind": "legacy",
@@ -269,7 +269,7 @@
   "edges": [
     {
       "from": "https://buddykids-app.vercel.app/nextgen",
-      "to": "https://buddykids-app.vercel.app/activity/summer-camp-acquatico"
+      "to": "https://buddykids-app.vercel.app/activity/laboratorio-arti-creative"
     },
     {
       "from": "https://buddykids-app.vercel.app/nextgen",
@@ -297,7 +297,7 @@
     },
     {
       "from": "https://buddykids-app.vercel.app/nextgen/community/1de3de66-31ac-4d1a-bef6-9896885e5592",
-      "to": "https://buddykids-app.vercel.app/activity/summer-camp-acquatico"
+      "to": "https://buddykids-app.vercel.app/activity/laboratorio-arti-creative"
     },
     {
       "from": "https://buddykids-app.vercel.app/nextgen/community/1de3de66-31ac-4d1a-bef6-9896885e5592",
@@ -321,7 +321,7 @@
     },
     {
       "from": "https://buddykids-app.vercel.app/nextgen/planner",
-      "to": "https://buddykids-app.vercel.app/activity/summer-camp-acquatico"
+      "to": "https://buddykids-app.vercel.app/activity/laboratorio-arti-creative"
     },
     {
       "from": "https://buddykids-app.vercel.app/nextgen/planner",
@@ -345,7 +345,7 @@
     },
     {
       "from": "https://buddykids-app.vercel.app/nextgen/planner?mode=calendario",
-      "to": "https://buddykids-app.vercel.app/activity/summer-camp-acquatico"
+      "to": "https://buddykids-app.vercel.app/activity/laboratorio-arti-creative"
     },
     {
       "from": "https://buddykids-app.vercel.app/nextgen/planner?mode=calendario",
@@ -561,7 +561,7 @@
     },
     {
       "from": "https://buddykids-app.vercel.app/nextgen/search",
-      "to": "https://buddykids-app.vercel.app/activity/summer-camp-acquatico"
+      "to": "https://buddykids-app.vercel.app/activity/laboratorio-arti-creative"
     },
     {
       "from": "https://buddykids-app.vercel.app/nextgen/search",
