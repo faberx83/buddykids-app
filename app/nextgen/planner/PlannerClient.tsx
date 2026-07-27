@@ -621,7 +621,17 @@ export default function PlannerClient({
                               {w.dismissed ? (
                                 <span className="text-[12px] text-ink-3">Non ti serve</span>
                               ) : w.covered ? (
-                                <span className="truncate text-[12.5px] font-semibold text-ink">
+                                // BUGFIX (segnalato da Fabrizio: "la scritta si
+                                // sovrappone" sull'icona a destra, testo lungo
+                                // tipo "in attesa di conferma del centro") —
+                                // "truncate" di Tailwind (overflow/ellipsis/
+                                // nowrap) non ha alcun effetto su un elemento
+                                // inline di default: senza "block" lo span non
+                                // viene mai vincolato alla larghezza del
+                                // contenitore flex-1, quindi il testo lungo
+                                // trabocca visivamente sopra le icone a destra
+                                // invece di troncarsi con "…".
+                                <span className="block truncate text-[12.5px] font-semibold text-ink">
                                   {w.activityName}
                                   {/* "awaiting" ha priorità: comunica prima
                                       che il centro non ha ancora risposto,
