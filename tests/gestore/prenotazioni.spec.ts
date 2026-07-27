@@ -26,7 +26,13 @@ test.describe("Gestore - Prenotazioni (risposta Partner)", () => {
     await loginAs(page, "center_admin");
     await page.goto("/center/prenotazioni");
 
-    const row = page.locator("div").filter({ hasText: TEST_ACTIVITY_NAME }).last();
+    // getByTestId invece del pattern generico "div".filter({hasText}).last():
+    // in questa Inbox il nome attività e il badge di stato vivono in due
+    // <div> fratelli separati (vedi PrenotazioniClient.tsx), quindi ".last()"
+    // su un locator "div" generico può risolvere al <div> più annidato che
+    // contiene SOLO il nome attività, senza il badge — falso negativo su
+    // "Da rispondere" pur essendo entrambi visibili nella stessa riga.
+    const row = page.getByTestId("booking-row").filter({ hasText: TEST_ACTIVITY_NAME }).last();
     await expect(row).toBeVisible();
     await expect(row.getByText("Da rispondere")).toBeVisible();
 

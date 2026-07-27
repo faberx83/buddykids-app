@@ -184,7 +184,7 @@ export default function PrenotazioniClient({
   function renderBooking(b: CenterBooking) {
     const busyKey = busyId === b.id;
     return (
-      <div key={b.id} className="flex gap-2.5 px-4 py-3.5">
+      <div key={b.id} data-testid="booking-row" className="flex gap-2.5 px-4 py-3.5">
         <input
           type="checkbox"
           checked={selected.has(b.id)}
