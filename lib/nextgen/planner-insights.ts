@@ -216,10 +216,10 @@ export function computePriorityWeekIndex(
 // sparso, solo per il colore di sfondo) nella riga della Timeline di
 // PlannerClient.tsx — estratta qui come funzione pura riusabile, cosi la
 // striscia compatta e la Timeline restano sempre coerenti fra loro.
-export type WeekStatus = "dismissed" | "covered" | "partial" | "conflict" | "priority" | "uncovered";
+export type WeekStatus = "dismissed" | "covered" | "partial" | "conflict" | "priority" | "uncovered" | "awaiting";
 
 export function computeWeekStatus(
-  week: { covered: boolean; dismissed: boolean; coveredKids: { kidId: string }[] },
+  week: { covered: boolean; dismissed: boolean; coveredKids: { kidId: string }[]; awaitingPartnerConfirmation?: boolean },
   totalKids: number,
   hasOverlap: boolean,
   isPriority: boolean
@@ -227,6 +227,12 @@ export function computeWeekStatus(
   if (week.dismissed) return "dismissed";
   if (week.covered) {
     if (hasOverlap) return "conflict";
+    // TRAMA ONE Build Sprint 4 (DEC-42, Task #345): "richiesta" ma non ancora
+    // accettata dal centro — distinto da "covered" (confermata) invece di
+    // essere mostrata come già a posto, ora che "confirmed" è raggiungibile
+    // davvero (prima di questo sprint bookings.status non usciva mai da
+    // pending, quindi questa distinzione non era rappresentabile).
+    if (week.awaitingPartnerConfirmation) return "awaiting";
     if (totalKids > 1 && week.coveredKids.length > 0 && week.coveredKids.length < totalKids) return "partial";
     return "covered";
   }
@@ -240,6 +246,7 @@ export const WEEK_STATUS_BAR_CLASS: Record<WeekStatus, string> = {
   conflict: "bg-[#E8543E]",
   priority: "bg-trama-violet",
   uncovered: "bg-[#EEF0F4]",
+  awaiting: "bg-sky",
 };
 
 // SPRINT 2 (Organizzazione, feedback Fabrizio: "la Timeline potrebbe

@@ -28,6 +28,12 @@ export interface KidCoverage {
   // passare da Cerca (si conosce già l'attività: è quella prenotata per il
   // fratello/sorella che ha coperto questa settimana).
   activitySlug?: string;
+  // TRAMA ONE Build Sprint 4 (DEC-42, Task #345) — risposta del Partner alla
+  // prenotazione che copre questa settimana per questo bambino. "pending"
+  // per ogni prenotazione mai gestita dal centro (comportamento AS-IS
+  // invariato: prima di questo sprint "confirmed" non era mai raggiungibile,
+  // quindi ogni settimana "coperta" era in realtà solo "richiesta").
+  partnerDecision: "pending" | "accepted" | "rejected" | "proposed";
 }
 
 export interface SeasonWeek {
@@ -42,6 +48,11 @@ export interface SeasonWeek {
   activitySlug?: string; // vista aggregata: slug della PRIMA attività trovata (per "Aggiungi [bambino]")
   coveredKids: KidCoverage[]; // dettaglio per bambino — per capire se la copertura è parziale o per chi
   dismissed: boolean; // il genitore l'ha segnata "non mi serve" (ferie, nonni, ecc.)
+  // TRAMA ONE Build Sprint 4 (DEC-42, Task #345): true se questa settimana è
+  // "covered" ma NESSUNA delle prenotazioni che la coprono è stata ancora
+  // accettata dal centro (tutte pending/proposed) — il Planner può così
+  // distinguere una settimana davvero confermata da una solo richiesta.
+  awaitingPartnerConfirmation: boolean;
 }
 
 export interface PlannerData {
@@ -68,6 +79,7 @@ interface RawActivityRef {
 
 interface RawBookingRow {
   status: string | null;
+  partner_decision: "pending" | "accepted" | "rejected" | "proposed" | null;
   activities: RawActivityRef | RawActivityRef[] | null;
   booking_weeks: { activity_weeks: { start_date: string; end_date: string } | { start_date: string; end_date: string }[] | null }[] | null;
   booking_kids: { kid_id: string }[] | null;
@@ -89,6 +101,7 @@ function buildBaseWeeks(year: number): SeasonWeek[] {
     covered: false,
     coveredKids: [],
     dismissed: false,
+    awaitingPartnerConfirmation: false,
   }));
 }
 
@@ -122,7 +135,7 @@ export async function getPlannerData(): Promise<PlannerData> {
   const { data, error } = await supabase
     .from("bookings")
     .select(
-      "status, activities ( slug, name, pills ), booking_weeks ( activity_weeks ( start_date, end_date ) ), booking_kids ( kid_id )"
+      "status, partner_decision, activities ( slug, name, pills ), booking_weeks ( activity_weeks ( start_date, end_date ) ), booking_kids ( kid_id )"
     )
     .eq("parent_id", user.id)
     .neq("status", "cancelled");
@@ -146,6 +159,7 @@ export async function getPlannerData(): Promise<PlannerData> {
     const activityName = activity?.name;
     const activityTagColor = activity?.pills?.[0]?.color;
     const activitySlug = activity?.slug;
+    const partnerDecision = row.partner_decision ?? "pending";
     const kidIds = (row.booking_kids ?? []).map((bk) => bk.kid_id);
     if (kidIds.length === 0 || !activityName) continue;
 
@@ -167,7 +181,7 @@ export async function getPlannerData(): Promise<PlannerData> {
           }
           for (const kidId of kidIds) {
             if (!seasonWeek.coveredKids.some((c) => c.kidId === kidId)) {
-              seasonWeek.coveredKids.push({ kidId, activityName, activityTagColor, activitySlug });
+              seasonWeek.coveredKids.push({ kidId, activityName, activityTagColor, activitySlug, partnerDecision });
             }
           }
         }
@@ -179,6 +193,15 @@ export async function getPlannerData(): Promise<PlannerData> {
 }
 
 function finalize(weeks: SeasonWeek[]): PlannerData {
+  // TRAMA ONE Build Sprint 4 (DEC-42, Task #345): una settimana "covered" ma
+  // dove NESSUNA copertura è stata ancora "accepted" dal centro resta in
+  // attesa di conferma — il Planner può segnalarlo senza doverla trattare
+  // come scoperta (il genitore ha comunque fatto la richiesta).
+  for (const w of weeks) {
+    w.awaitingPartnerConfirmation =
+      w.covered && w.coveredKids.length > 0 && w.coveredKids.every((k) => k.partnerDecision !== "accepted");
+  }
+
   const coveredCount = weeks.filter((w) => w.covered).length;
   const coveredNeededCount = weeks.filter((w) => w.covered && !w.dismissed).length;
   // Le settimane "non mi serve" non contano come da riempire: non suggeriamo

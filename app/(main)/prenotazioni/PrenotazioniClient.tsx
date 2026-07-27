@@ -502,7 +502,12 @@ function BookingCard({
         </div>
         <div className="min-w-0 flex-1">
           <div className="mb-0.5 flex flex-wrap items-center justify-between gap-2">
-            <span className="text-sm font-bold text-ink">{b.activityName}</span>
+            <span className="flex items-center gap-1.5 text-sm font-bold text-ink">
+              {!b.readByParent && (
+                <span className="h-2 w-2 flex-shrink-0 rounded-full bg-[#FF6B6B]" aria-label="Novità dal centro" />
+              )}
+              {b.activityName}
+            </span>
             <span className={`flex-shrink-0 rounded-full px-2.5 py-1 text-[10px] font-bold ${STATUS_CLASS[b.status]}`}>
               {STATUS_LABEL[b.status]}
             </span>
@@ -510,6 +515,17 @@ function BookingCard({
           <div className="text-xs text-ink-2">{b.weeksLabel}</div>
           {b.centerName && <div className="text-xs text-ink-3">{b.centerName}{b.centerCity ? ` · ${b.centerCity}` : ""}</div>}
           {b.kidNames.length > 0 && <div className="mt-0.5 text-xs text-ink-2">{b.kidNames.join(", ")}</div>}
+          {/* TRAMA ONE Build Sprint 4 (DEC-42): il centro ha risposto con una
+              proposta alternativa (partner_decision = "proposed") — la
+              prenotazione resta "pending" finché il genitore non decide,
+              quindi va segnalato qui esplicitamente, non solo con lo status
+              badge sopra (che mostrerebbe ancora "In attesa"). */}
+          {b.partnerDecision === "proposed" && b.partnerProposalNote && (
+            <div className="mt-1.5 rounded-md bg-sky-light p-2 text-[11px] text-ink">
+              <span className="font-semibold text-sky">Proposta del centro: </span>
+              {b.partnerProposalNote}
+            </div>
+          )}
           <div className="mt-1 text-xs font-semibold text-ink">
             €{netPrice(b)}
             {b.discountAmount > 0 && <span className="ml-1 font-normal text-ink-3 line-through">€{b.totalAmount}</span>}

@@ -7,6 +7,7 @@ import { getGroupRequestsForCenter } from "@/lib/data/group-requests";
 import { getGestoreAccountProfile } from "@/lib/data/profile";
 import { getUnreadCountForCenter } from "@/lib/data/inquiries";
 import { getUnconfirmedParentCheckinsCount } from "@/lib/data/attendance";
+import { getUnreadBookingsCountForCenter } from "@/lib/data/center-bookings";
 
 export default async function CenterLayout({ children }: { children: React.ReactNode }) {
   // Con Supabase collegato, il ruolo reale (da profiles.role) sostituisce del
@@ -48,6 +49,11 @@ export default async function CenterLayout({ children }: { children: React.React
   // fatto per "Le mie richieste" su ogni sezione con un avviso da una
   // parte all'altra.
   const unconfirmedCheckins = await getUnconfirmedParentCheckinsCount();
+
+  // Badge rosso su "Prenotazioni" (Sprint 4, PCR-029 P0) col numero di
+  // prenotazioni non lette dal centro — stesso trattamento delle altre
+  // sezioni con notifica da una parte all'altra.
+  const unreadBookings = await getUnreadBookingsCountForCenter();
 
   // Badge profilo in alto a destra (coerente con l'app genitore) — vedi
   // AccountBadge in components/dashboard/DashboardLayout.tsx.
@@ -94,6 +100,13 @@ export default async function CenterLayout({ children }: { children: React.React
       sectionLabel: "Presenze",
     },
 
+    {
+      href: "/center/prenotazioni",
+      label: "Prenotazioni",
+      icon: "ti-calendar-event",
+      sectionLabel: "Richieste",
+      badgeCount: unreadBookings,
+    },
     {
       href: "/center/group-requests",
       label: "Richieste Gruppo",

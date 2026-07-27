@@ -212,6 +212,50 @@ end $$;
 
 
 -- ─────────────────────────────────────────────
+-- STEP 8 — TRAMA ONE Build Sprint 4: prenotazione "pending" deterministica
+-- per l'attività di test, con partner_decision = 'pending' (default della
+-- colonna, migration_13) — serve dati reali per
+-- tests/center/booking-response.spec.ts (Inbox Partner: accetta/rifiuta/
+-- proponi, accettazione per giorno), che altrimenti si limiterebbe a uno
+-- skip esplicito (nessuna prenotazione reale in attesa di risposta).
+-- Richiede migration_13_booking_partner_response.sql già applicata, oltre a
+-- STEP 2/3/6 sopra. Idempotente: non duplica righe se rilanciato (verifica
+-- una prenotazione "marcatore" via total_amount = 0.01, valore che
+-- createBookingAction non produce mai in condizioni normali).
+-- ─────────────────────────────────────────────
+do $$
+declare
+  v_parent_id uuid;
+  v_activity_id uuid;
+  v_kid_id uuid;
+  v_week_id uuid;
+  v_booking_id uuid;
+begin
+  select id into v_parent_id from public.profiles where email = 'faberx83+test-genitore@gmail.com';
+  select id into v_activity_id from public.activities where slug = 'attivita-test-buddykids';
+  select id into v_kid_id from public.kids where parent_id = v_parent_id and name = '[TEST] Bimbo Prova';
+  select id into v_week_id from public.activity_weeks
+    where activity_id = v_activity_id and label = 'Settimana 2';
+
+  if v_parent_id is null or v_activity_id is null or v_kid_id is null or v_week_id is null then
+    raise notice 'Prerequisiti mancanti (parent/attività/bambino/settimana di test) — esegui prima gli STEP 2/3/6.';
+  elsif exists (
+    select 1 from public.bookings
+    where parent_id = v_parent_id and activity_id = v_activity_id and total_amount = 0.01
+  ) then
+    raise notice 'Prenotazione di test "pending" già presente — nessuna azione.';
+  else
+    insert into public.bookings (parent_id, activity_id, status, total_amount, discount_amount)
+    values (v_parent_id, v_activity_id, 'pending', 0.01, 0)
+    returning id into v_booking_id;
+
+    insert into public.booking_weeks (booking_id, week_id) values (v_booking_id, v_week_id);
+    insert into public.booking_kids (booking_id, kid_id) values (v_booking_id, v_kid_id);
+  end if;
+end $$;
+
+
+-- ─────────────────────────────────────────────
 -- VERIFICA — esegui questa select per controllare che tutto sia a posto:
 -- ─────────────────────────────────────────────
 -- select email, role, center_id from public.profiles

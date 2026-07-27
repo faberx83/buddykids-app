@@ -73,6 +73,15 @@ export interface MyBooking {
   // dalla finestra di preavviso il pulsante resta comunque visibile, ma
   // disabilitato con una nota "Contatta il centro").
   canCancelOrModify: boolean;
+  // TRAMA ONE Build Sprint 4 (DEC-42) — risposta del Partner, additiva.
+  // "pending" per ogni prenotazione mai gestita dal centro (comportamento
+  // AS-IS invariato per chi non usa ancora la nuova UI di risposta).
+  partnerDecision: "pending" | "accepted" | "rejected" | "proposed";
+  partnerProposalNote: string | null;
+  // "Letta" dal punto di vista del genitore — stesso pattern read_by_parent
+  // di activity_inquiries: falso quando il centro ha appena risposto, così
+  // il genitore vede un badge "il centro ha risposto".
+  readByParent: boolean;
 }
 
 function firstOf<T>(value: T | T[] | null | undefined): T | null {
@@ -114,6 +123,9 @@ interface RawRow {
   total_amount: number;
   discount_amount: number;
   created_at: string;
+  partner_decision: "pending" | "accepted" | "rejected" | "proposed" | null;
+  partner_proposal_note: string | null;
+  read_by_parent: boolean | null;
   activities: RawActivityRef | RawActivityRef[] | null;
   booking_weeks: { activity_weeks: RawWeekRef | RawWeekRef[] | null }[] | null;
   booking_kids: { kids: { id: string; name: string } | { id: string; name: string }[] | null }[] | null;
@@ -131,7 +143,7 @@ export async function getMyBookingsForParent(): Promise<MyBooking[]> {
   const { data, error } = await supabase
     .from("bookings")
     .select(
-      "id, status, total_amount, discount_amount, created_at, activities ( id, slug, name, cover_image_url, emoji, img_gradient, centers ( name, city, cancellation_window_days ) ), booking_weeks ( activity_weeks ( id, label, start_date, end_date ) ), booking_kids ( kids ( id, name ) )"
+      "id, status, total_amount, discount_amount, created_at, partner_decision, partner_proposal_note, read_by_parent, activities ( id, slug, name, cover_image_url, emoji, img_gradient, centers ( name, city, cancellation_window_days ) ), booking_weeks ( activity_weeks ( id, label, start_date, end_date ) ), booking_kids ( kids ( id, name ) )"
     )
     .eq("parent_id", user.id)
     .order("created_at", { ascending: false });
@@ -205,6 +217,9 @@ export async function getMyBookingsForParent(): Promise<MyBooking[]> {
       cancellationWindowDays,
       daysUntilStart,
       canCancelOrModify,
+      partnerDecision: row.partner_decision ?? "pending",
+      partnerProposalNote: row.partner_proposal_note,
+      readByParent: row.read_by_parent ?? true,
     };
   });
 }
