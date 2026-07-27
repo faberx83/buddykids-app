@@ -562,15 +562,31 @@ export default function PlannerClient({
                   {isMonthExpanded && (
                     <div className="flex flex-col gap-1.5 px-1.5 pb-1.5">
                       {group.weeks.map((w) => {
-                        const isPartial = w.covered && w.coveredKids.length > 0 && w.coveredKids.length < kids.length;
                         const hasOverlap = overlapsByWeekIndex.has(w.index);
+                        // FIX (segnalato da Fabrizio: "c'è qualcosa che non
+                        // quadra, né nei dati né nei colori" — screenshot con
+                        // la striscia "Stato per settimana" che mostrava
+                        // sky/"in attesa" per una settimana, mentre la riga
+                        // Timeline sotto la stessa settimana la mostrava
+                        // arancione/"manca 1 bambino"): questa riga calcolava
+                        // il proprio stato con una isPartial locale che
+                        // ignorava del tutto w.awaitingPartnerConfirmation
+                        // (Sprint 4, DEC-42) — le due viste potevano quindi
+                        // disaccordarsi sulla stessa settimana. Ora entrambe
+                        // usano la STESSA computeWeekStatus, garantendo che
+                        // striscia e Timeline siano sempre coerenti.
+                        const status = computeWeekStatus(w, kids.length, hasOverlap, w.index === priorityIndex);
+                        const isPartial = status === "partial";
+                        const isAwaiting = status === "awaiting";
                         const color = w.activityTagColor ?? "sky";
                         const rowBg = w.dismissed
                           ? "bg-white"
                           : w.covered
-                            ? isPartial || hasOverlap
-                              ? "bg-[#FFF7E8]"
-                              : lightBgClasses[color]
+                            ? isAwaiting
+                              ? "bg-sky-light"
+                              : isPartial || hasOverlap
+                                ? "bg-[#FFF7E8]"
+                                : lightBgClasses[color]
                             : w.index === priorityIndex
                               ? "bg-trama-lilac/20"
                               : "bg-white";
@@ -607,7 +623,13 @@ export default function PlannerClient({
                               ) : w.covered ? (
                                 <span className="truncate text-[12.5px] font-semibold text-ink">
                                   {w.activityName}
-                                  {isPartial && ` · manca ${kids.length - w.coveredKids.length} bambino/i`}
+                                  {/* "awaiting" ha priorità: comunica prima
+                                      che il centro non ha ancora risposto,
+                                      il conteggio bambini scoperti è un
+                                      dettaglio secondario in quel caso. */}
+                                  {isAwaiting
+                                    ? " · in attesa di conferma del centro"
+                                    : isPartial && ` · manca ${kids.length - w.coveredKids.length} bambino/i`}
                                 </span>
                               ) : (
                                 <span className="text-[12px] font-medium text-ink-3">
@@ -637,7 +659,17 @@ export default function PlannerClient({
                               <i className="ti ti-alert-triangle flex-shrink-0 text-base text-[#9a6b00]" />
                             )}
                             {w.covered && !hasOverlap && (
-                              <i className={`ti ti-circle-check-filled flex-shrink-0 text-[18px] ${isPartial ? "text-[#9a6b00]" : "text-green"}`} />
+                              // FIX: una settimana "awaiting" è prenotata ma
+                              // NON ancora accettata dal centro — mostrare
+                              // uno spuntone verde/arancione (come per
+                              // covered/partial) comunicherebbe "fatto",
+                              // fuorviante. Icona a orologio + colore sky,
+                              // coerente con la barra "Stato per settimana".
+                              <i
+                                className={`ti ${isAwaiting ? "ti-clock-filled" : "ti-circle-check-filled"} flex-shrink-0 text-[18px] ${
+                                  isAwaiting ? "text-sky" : isPartial ? "text-[#9a6b00]" : "text-green"
+                                }`}
+                              />
                             )}
                             {/* SPRINT 2 (feedback Fabrizio: "la riga di una
                                 settimana coperta non porta da nessuna
