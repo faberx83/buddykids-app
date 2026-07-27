@@ -37,9 +37,28 @@ Inventario delle capability AS-IS realmente presenti nel repository (Parent Lega
 | 25 | PWA multi-tenant (manifest/icone/splash per host) | Tutti | `lib/tenant.ts`, `proxy.ts` regola 1 | — | `tests/manual/multi-tenant-pwa.spec.ts` | Invariato, `/one` riusa lo stesso meccanismo host | RETAIN_AS_IS | — | — | Non avviata |
 | 26 | Sitemap crawler | Tooling | — | `tests/sitemap.spec.ts` | Sé stesso | Invariato (solo il comportamento `ONLY_SITEMAP` in `deploy.sh` viene adattato, non il crawler) | RETAIN_AS_IS | Build Sprint 0 (solo script deploy) | Sitemap generata identica | Non avviata |
 
+## Stato cumulativo reale (aggiornato dopo Build Sprint 4, luglio 2026)
+
+Questa tabella resta il documento di pianificazione originale di Sprint 0 (colonna "Stato migrazione" invariata a "Non avviata" di proposito, vedi nota sotto). Per lo stato REALE di ciò che è stato effettivamente implementato negli sprint successivi, non aggiornare questa colonna riga per riga: fare riferimento alla matrice di preservazione dello sprint specifico, più aggiornata e dettagliata. Riepilogo di collegamento:
+
+| # | Capability | Toccata da | Esito reale (vedi matrice sprint) |
+|---|---|---|---|
+| 4 | Ricerca/filtri attività | Build Sprint 3 | Estesa con filtro Giorni spot e disponibilità giornaliera — vedi `SPRINT_3_FEATURE_PRESERVATION_MATRIX.md` |
+| 5 | Dettaglio attività + booking flow | Build Sprint 3-4 | Booking a giorni (Sprint 3) + risposta Partner/capacità/cancellazioni per giorno (Sprint 4) — vedi `SPRINT_4_FEATURE_PRESERVATION_MATRIX.md`. Righe con gap noti ancora aperti: accettazione parziale/capacità per giorno, selezione servizi per giorno (non regressioni, scope dichiarato rinviato) |
+| 6 | Le mie prenotazioni (dashboard familiare) | Build Sprint 4 | Evidenzia/scrolla la prenotazione dal Planner (Task #357); sync con risposta Partner |
+| 7 | Modifica/annullamento prenotazione + policy cancellazione | Build Sprint 4 | Estesa a cancellazioni/rimborsi per giorno (parziale: solo prenotazione intera, nessun rimborso reale per assenza integrazione pagamenti) |
+| 8 | Planner Organizzazione/Budget/Calendario/Mappa/Gruppi | Build Sprint 4 | Decisione presa: resta proiezione calcolata, nessuna tabella `planner_items` (DEC-42, chiude DEC-06) |
+| 12 | Contatta il gestore / Richieste (ticketing) | Build Sprint 4 | **Non unificata in un'unica tabella "Request"**: `activity_inquiries` resta messaggistica separata; `bookings`/`booking_days` hanno ricevuto colonne additive di risposta Partner che riusano lo stesso pattern (`read_by_parent`/`read_by_center`) — WRAP additivo, non merge (DEC-42). SLA engine (ACR-022) resta implementato solo lato messaggistica, non lato prenotazioni: gap esplicito, vedi Assumption Log V2 |
+| 16 | Accesso disabili / Diete e intolleranze (badge) | Build Sprint 1-2 | Riuso confermato nel dettaglio Offering |
+| 17 | Certificazione servizio | Build Sprint 1 | Nessuna estensione a Trust telemetry ancora fatta — PT-MVP-11/A-MVP-07 non avviate |
+| 18 | Onboarding/profilo/attività Partner | Build Sprint 1-2 | State machine Center + wizard attività + Giorni spot Partner implementati |
+| 21 | Admin: candidature/attività/prenotazioni/centri/tag | Build Sprint 4 (parziale) | `/admin/bookings` esiste ma è ancora su dati mock (`bookingsMock`), non collegata a `bookings` reale — gap aperto, Command Center completo resta Sprint 6 |
+
+Righe non elencate sopra non sono ancora state toccate da nessuno sprint eseguito.
+
 ## Note di lettura
 
-- Le classificazioni `ADAPT`/`WRAP` indicano lavoro previsto ma non ancora iniziato: nessuna di queste modifiche è stata implementata, questa matrice è un documento di pianificazione (Fase A/analisi), non un changelog.
-- La riga #5 (booking flow) e la riga #12 (richieste/ticketing) sono le due con rischio di regressione più alto (confluenza in E06, Request/Booking lifecycle unificato) — qualunque sprint le tocchi deve eseguire la suite di regressione completa prima e dopo, non solo gli smoke test.
-- Nessuna riga richiede oggi `REPLACE_AFTER_PARITY`: nessuna dismissione è stata proposta né approvata in questa fase.
-- Questa matrice copre le capability a livello di prodotto (Sprint 0). Prima di Build Sprint 1 va prodotta, come documento separato, la matrice pagina-per-pagina/route-per-route richiesta dal Feature Preservation Gate per le capability specifiche coinvolte in quello sprint (vedi `TRAMA_ONE_Impact_Assessment_v1.0.md` §9 e `ASSUMPTION_LOG.md` V5).
+- Le classificazioni `ADAPT`/`WRAP` indicavano, a Sprint 0, lavoro previsto ma non ancora iniziato. **Aggiornamento**: dopo Build Sprint 1-4, gran parte di queste modifiche è stata effettivamente implementata — vedi la tabella "Stato cumulativo reale" sopra per il collegamento riga-per-riga alla matrice di preservazione dello sprint che l'ha eseguita. La colonna "Stato migrazione" di questa tabella resta volutamente "Non avviata" perché questo documento è l'artefatto di pianificazione originale di Sprint 0 (Fase A/analisi): riscriverlo riga per riga rischierebbe di perdere il dettaglio già registrato, con maggiore fedeltà, nelle matrici sprint-specifiche.
+- La riga #5 (booking flow) e la riga #12 (richieste/ticketing) erano le due con rischio di regressione più alto (confluenza in E06, Request/Booking lifecycle unificato): confermato a posteriori, sono le due righe più toccate da Sprint 3-4. La suite di regressione booking Legacy/NextGen è stata rieseguita prima di Sprint 3 (DEC-37) e di nuovo, fresca, prima di Sprint 4 (gate più severo della sequenza, vedi `SPRINT_GOVERNANCE.md`).
+- Nessuna riga ha ancora raggiunto `REPLACE_AFTER_PARITY`: nessuna dismissione è stata proposta né approvata, in nessuno sprint eseguito finora (regola permanente DEC-15).
+- Questa matrice copre le capability a livello di prodotto (Sprint 0). Le matrici pagina-per-pagina/route-per-route richieste dal Feature Preservation Gate per ogni sprint specifico sono: `SPRINT_1_FEATURE_PRESERVATION_MATRIX.md`, `SPRINT_2_FEATURE_PRESERVATION_MATRIX.md`, `SPRINT_3_FEATURE_PRESERVATION_MATRIX.md`, `SPRINT_4_FEATURE_PRESERVATION_MATRIX.md`. **Debito di governance aperto**: manca ancora l'Integration Gate (`AUDIT_CHECKPOINT_INTEGRATION_SPRINT_1_4.md`, dovuto da DEC-30 a chiusura di Sprint 4 con `TEST_SCOPE=all`), non risulta prodotto al 27/07/2026.
