@@ -59,6 +59,41 @@ function formatDate(iso: string): string {
   return new Date(iso + "T00:00:00Z").toLocaleDateString("it-IT", { day: "numeric", month: "short" });
 }
 
+// Redesign richiesto da Fabrizio dopo il deploy Sprint 4: "le sezioni Da
+// rispondere/Storico devono essere raggruppabili, la navigazione è
+// complessa" + "un grafico di sintesi in alto con i KPI principali,
+// cliccabili, che rimandano alla sezione giusta". Invece di anchor/scroll
+// (che con 2 sole sezioni non risolverebbe la lamentela), i KPI qui
+// FILTRANO la lista a una sola vista mirata — più utile quando ci sono
+// molte prenotazioni miste (accettate/rifiutate/proposte tutte dentro
+// "Storico" oggi). "Tutte" (nessun filtro attivo) torna alla vista
+// originale a due sezioni, invariata per chi la preferisce.
+type FilterKey = "pending" | "proposed" | "accepted" | "rejected";
+
+const KPI_CONFIG: Record<FilterKey, { label: string; cls: string; predicate: (b: CenterBooking) => boolean }> = {
+  pending: {
+    label: "Da rispondere",
+    cls: "text-trama-orange",
+    predicate: (b) => b.status !== "cancelled" && b.partnerDecision === "pending",
+  },
+  proposed: {
+    label: "Proposte in attesa del genitore",
+    cls: "text-sky",
+    predicate: (b) => b.status !== "cancelled" && b.partnerDecision === "proposed",
+  },
+  accepted: {
+    label: "Accettate",
+    cls: "text-[#2d8f52]",
+    predicate: (b) => b.status !== "cancelled" && b.partnerDecision === "accepted",
+  },
+  rejected: {
+    label: "Rifiutate",
+    cls: "text-ink-3",
+    predicate: (b) => b.status === "cancelled" && b.cancelledBy === "center",
+  },
+};
+const KPI_ORDER: FilterKey[] = ["pending", "proposed", "accepted", "rejected"];
+
 export default function PrenotazioniClient({
   initialBookings,
 }: {
@@ -71,6 +106,19 @@ export default function PrenotazioniClient({
   const [errorId, setErrorId] = useState<string | null>(null);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [bulkBusy, setBulkBusy] = useState(false);
+  const [activeFilter, setActiveFilter] = useState<FilterKey | null>(null);
+  // Gruppi mese comprimibili (stesso pattern di
+  // app/(main)/prenotazioni/PrenotazioniClient.tsx) — chiave prefissata con
+  // la sezione per evitare collisioni tra "Da rispondere"/"Storico"/filtro.
+  const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
+  function toggleGroupCollapsed(groupKey: string) {
+    setCollapsedGroups((prev) => {
+      const next = new Set(prev);
+      if (next.has(groupKey)) next.delete(groupKey);
+      else next.add(groupKey);
+      return next;
+    });
+  }
 
   function patchBooking(id: string, patch: Partial<CenterBooking>) {
     setBookings((prev) => prev.map((b) => (b.id === id ? { ...b, ...patch } : b)));
@@ -180,6 +228,34 @@ export default function PrenotazioniClient({
   const allSelected = bookings.length > 0 && selected.size === bookings.length;
   const pendingBuckets = useMonthBuckets(pending);
   const decidedBuckets = useMonthBuckets(decided);
+
+  const filteredList = activeFilter ? bookings.filter(KPI_CONFIG[activeFilter].predicate) : null;
+  const filteredBuckets = useMonthBuckets(filteredList ?? []);
+
+  function renderBucketSection(sectionKey: string, buckets: { label: string; items: CenterBooking[] }[], emptyMessage: string) {
+    if (buckets.length === 0) {
+      return <p className="px-4 py-6 text-center text-sm text-ink-2">{emptyMessage}</p>;
+    }
+    return buckets.map((bucket) => {
+      const groupKey = `${sectionKey}:${bucket.label}`;
+      const collapsed = collapsedGroups.has(groupKey);
+      return (
+        <div key={bucket.label}>
+          <button
+            type="button"
+            onClick={() => toggleGroupCollapsed(groupKey)}
+            className="flex w-full items-center justify-between bg-bg px-4 py-1.5 text-left text-[10.5px] font-bold uppercase tracking-wide text-ink-3"
+          >
+            <span>
+              {bucket.label} · {bucket.items.length}
+            </span>
+            <i className={`ti ti-chevron-${collapsed ? "down" : "up"} text-[13px]`} />
+          </button>
+          {!collapsed && bucket.items.map(renderBooking)}
+        </div>
+      );
+    });
+  }
 
   function renderBooking(b: CenterBooking) {
     const busyKey = busyId === b.id;
@@ -402,47 +478,74 @@ export default function PrenotazioniClient({
         </div>
       )}
 
-      <div className="mb-5 rounded-lg border border-[#E8EBF0] bg-white">
-        <div className="border-b border-[#E8EBF0] px-4 py-3 text-sm font-bold text-ink">
-          Da rispondere ({pending.length})
-        </div>
-        <div className="divide-y divide-[#F0F2F5]">
-          {pendingBuckets.map((bucket) => (
-            <div key={bucket.label}>
-              <div className="bg-bg px-4 py-1.5 text-[10.5px] font-bold uppercase tracking-wide text-ink-3">
-                {bucket.label}
-              </div>
-              {bucket.items.map(renderBooking)}
-            </div>
-          ))}
-          {pending.length === 0 && (
-            <p className="px-4 py-6 text-center text-sm text-ink-2">
-              Nessuna prenotazione in attesa di risposta.
-            </p>
-          )}
-        </div>
+      {/* Strip KPI — segnalazione di Fabrizio: "un grafico di sintesi in alto
+          con i KPI principali, cliccabili, che rimandano alla sezione
+          giusta". Click su una card attiva/disattiva il filtro; "Tutte"
+          torna alla vista originale a due sezioni. */}
+      <div className="mb-5 grid grid-cols-2 gap-2 sm:grid-cols-4">
+        {KPI_ORDER.map((key) => {
+          const cfg = KPI_CONFIG[key];
+          const count = bookings.filter(cfg.predicate).length;
+          const active = activeFilter === key;
+          return (
+            <button
+              key={key}
+              type="button"
+              onClick={() => setActiveFilter(active ? null : key)}
+              className={`rounded-lg border px-3 py-2.5 text-left transition ${
+                active ? "border-trama-violet bg-trama-violet/5" : "border-[#E8EBF0] bg-white"
+              }`}
+            >
+              <div className={`text-xl font-bold ${cfg.cls}`}>{count}</div>
+              <div className="text-[11px] font-medium text-ink-2">{cfg.label}</div>
+            </button>
+          );
+        })}
       </div>
+      {activeFilter && (
+        <button
+          type="button"
+          onClick={() => setActiveFilter(null)}
+          className="mb-3 text-[11.5px] font-semibold text-trama-violet"
+        >
+          ← Tutte le prenotazioni
+        </button>
+      )}
 
-      <div className="rounded-lg border border-[#E8EBF0] bg-white">
-        <div className="border-b border-[#E8EBF0] px-4 py-3 text-sm font-bold text-ink">
-          Storico ({decided.length})
+      {activeFilter ? (
+        <div className="rounded-lg border border-[#E8EBF0] bg-white">
+          <div className="border-b border-[#E8EBF0] px-4 py-3 text-sm font-bold text-ink">
+            {KPI_CONFIG[activeFilter].label} ({filteredList?.length ?? 0})
+          </div>
+          <div className="divide-y divide-[#F0F2F5]">
+            {renderBucketSection(
+              `filter-${activeFilter}`,
+              filteredBuckets,
+              "Nessuna prenotazione in questa categoria."
+            )}
+          </div>
         </div>
-        <div className="divide-y divide-[#F0F2F5]">
-          {decidedBuckets.map((bucket) => (
-            <div key={bucket.label}>
-              <div className="bg-bg px-4 py-1.5 text-[10.5px] font-bold uppercase tracking-wide text-ink-3">
-                {bucket.label}
-              </div>
-              {bucket.items.map(renderBooking)}
+      ) : (
+        <>
+          <div className="mb-5 rounded-lg border border-[#E8EBF0] bg-white">
+            <div className="border-b border-[#E8EBF0] px-4 py-3 text-sm font-bold text-ink">
+              Da rispondere ({pending.length})
             </div>
-          ))}
-          {decided.length === 0 && (
-            <p className="px-4 py-6 text-center text-sm text-ink-2">
-              Ancora nessuna prenotazione gestita.
-            </p>
-          )}
-        </div>
-      </div>
+            <div className="divide-y divide-[#F0F2F5]">
+              {renderBucketSection("pending", pendingBuckets, "Nessuna prenotazione in attesa di risposta.")}
+            </div>
+          </div>
+
+          <div className="rounded-lg border border-[#E8EBF0] bg-white">
+            <div className="border-b border-[#E8EBF0] px-4 py-3 text-sm font-bold text-ink">
+              Storico ({decided.length})
+            </div>
+            <div className="divide-y divide-[#F0F2F5]">
+              {renderBucketSection("decided", decidedBuckets, "Ancora nessuna prenotazione gestita.")}
+            </div>
+          </div>
+        </>
+      )}
     </div>
   );
 }
