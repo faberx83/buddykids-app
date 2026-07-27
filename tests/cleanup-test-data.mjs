@@ -55,7 +55,7 @@ async function main() {
 
   const { data: gestore } = await supabase
     .from("profiles")
-    .select("id")
+    .select("id, center_id")
     .eq("email", TEST_CENTER_ADMIN_EMAIL)
     .maybeSingle();
 
@@ -80,6 +80,9 @@ async function main() {
     extraActivities: 0,
     accountStatusReset: 0,
     attendanceRecords: 0,
+    // Integration Stabilization Sprint (Gate B, luglio 2026):
+    testCentersDeleted: 0,
+    onboardingPreconditionSet: false,
   };
 
   let testKid = null;
@@ -176,6 +179,62 @@ async function main() {
       .neq("id", seedActivity.id)
       .select("id");
     removed.extraActivities = extraActivities?.length || 0;
+  }
+
+  // ─────────────────────────────────────────────
+  // Gate B (Integration Stabilization Sprint) — punto 1/2: i centri
+  // "[TEST] Centro Auto LEAD ..." / "[TEST] Centro Idempotenza ..." creati da
+  // tests/one/onboarding-remediation.spec.ts (TC-N407/TC-N408) via il form
+  // reale "+ Nuovo centro" non venivano mai ripuliti: si accumulano ad ogni
+  // run (ognuno con timestamp diverso nel nome, quindi mai deduplicati) e
+  // finiscono nella sezione "Altri stati" di /admin/one/onboarding SEMPRE in
+  // cima (ordinati per updated_at desc) — questo è il motivo per cui
+  // TC-N409 (che clicca ".first()" sul bottone "Richiedi modifiche", visibile
+  // SOLO per il centro in stato SUBMITTED) va in timeout: quel bottone non
+  // esiste affatto finché nessun centro è in SUBMITTED (vedi punto 2 sotto).
+  // Cascade su center_onboarding_state/checklist/identity/audit_log tramite
+  // "on delete cascade" (migration_09) — cancellare da "centers" basta.
+  const { data: leftoverCenters } = await supabase
+    .from("centers")
+    .select("id, slug")
+    .neq("slug", SEED_CENTER_SLUG)
+    .or("name.ilike.[TEST] Centro Auto LEAD%,name.ilike.[TEST] Centro Idempotenza%");
+  if (leftoverCenters && leftoverCenters.length > 0) {
+    const { data: deletedCenters } = await supabase
+      .from("centers")
+      .delete()
+      .in("id", leftoverCenters.map((c) => c.id))
+      .select("id");
+    removed.testCentersDeleted = deletedCenters?.length || 0;
+  }
+
+  // Gate B, punto 2/2 — automatizza la precondizione DEC-33 (DECISION_LOG.md)
+  // per TC-N409: prima richiedeva un UPDATE manuale in SQL Editor prima di
+  // ogni run per riportare il centro di test del gestore a SUBMITTED. Stessa
+  // identica operazione, eseguita qui via service-role (stesso principio già
+  // in uso in questo script per account_status/attendance_records) — NON
+  // aggira la macchina a stati applicativa in produzione (nessun utente reale
+  // la attraversa così), è solo il fixture di un test che richiede quello
+  // stato di partenza, upsert idempotente sulla unique (center_id) di
+  // center_onboarding_state.
+  if (gestore?.center_id) {
+    const { error: onboardingUpsertError } = await supabase
+      .from("center_onboarding_state")
+      .upsert(
+        { center_id: gestore.center_id, status: "SUBMITTED" },
+        { onConflict: "center_id" }
+      );
+    removed.onboardingPreconditionSet = !onboardingUpsertError;
+    if (onboardingUpsertError) {
+      console.warn(
+        "⚠️  Impossibile impostare la precondizione SUBMITTED per TC-N409:",
+        onboardingUpsertError.message
+      );
+    }
+  } else {
+    console.log(
+      "ℹ️  Nessun center_id sul profilo gestore di test: precondizione TC-N409 non impostata (il test resta skippato/in timeout se eseguito)."
+    );
   }
 
   console.log("✅ Pulizia completata:", removed);

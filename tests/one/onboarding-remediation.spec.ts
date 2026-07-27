@@ -88,12 +88,15 @@ test.describe("TRAMA ONE — Onboarding Centro: auto-inizializzazione LEAD (Spri
   test("TC-N409 - Percorso con integrazioni: SUBMITTED -> CHANGES_REQUESTED -> SUBMITTED -> APPROVED", async ({
     page,
   }) => {
-    test.skip(
-      !isRealDeployment,
-      "Richiede un deploy con Supabase configurato. PRECONDIZIONE MANUALE: portare '[TEST] Centro BuddyKids' (o il centro di test collegato a TEST_CENTER_ADMIN_EMAIL) allo stato SUBMITTED prima di eseguire questo test, es.: " +
-        "update public.center_onboarding_state set status='SUBMITTED' where center_id = '<id centro di test>'; " +
-        "(nessuna riga di audit viene falsificata: la transizione reale CLAIMED->SUBMITTED va comunque eseguita una volta dal Partner via UI per popolare lo storico correttamente; questo reset serve solo a ripartire da SUBMITTED per un secondo giro di test)."
-    );
+    test.skip(!isRealDeployment, "Richiede un deploy con Supabase configurato.");
+    // Integration Stabilization Sprint (Gate B, DEC-33 chiusa): la
+    // precondizione "centro di test in stato SUBMITTED" NON è più manuale —
+    // tests/cleanup-test-data.mjs la imposta automaticamente (upsert
+    // idempotente) ad ogni run di test-deploy.sh, prima della suite. Se
+    // questo test va in timeout sul bottone "Richiedi modifiche" ("In
+    // revisione" vuota), il primo sospetto è che cleanup-test-data.mjs sia
+    // stato SALTATO (manca SUPABASE_SERVICE_ROLE_KEY in .env.test), non che
+    // sia tornato un problema applicativo.
 
     // Admin richiede modifiche.
     await loginAs(page, "platform_admin");
