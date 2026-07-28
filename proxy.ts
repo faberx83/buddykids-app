@@ -80,12 +80,20 @@ export async function proxy(request: NextRequest) {
     // otteneva un redirect 302 verso /auth/login al posto del manifest JSON.
     // Chrome, non trovando un manifest valido (riceve HTML invece di JSON),
     // segnava la PWA come non installabile. Stessa esclusione ora anche qui.
+    // BUG TROVATO+CORRETTO (Gate C, run reale del 28/07, TC-N64): mancava
+    // anche l'esclusione per /share — le pagine di condivisione pubblica
+    // (es. app/share/planner/[token]/page.tsx, che deve restare visitabile
+    // da chi non ha ancora un account e mostrare "Link non disponibile" per
+    // i token scaduti/invalidi) venivano rimandate al login invece di
+    // essere servite. Stessa esclusione già presente correttamente nel
+    // blocco 3) più in basso — qui mancava.
     if (
       isSupabaseConfigured &&
       !pathname.startsWith("/auth") &&
       !pathname.startsWith("/api") &&
       !pathname.startsWith("/internal") &&
       !pathname.startsWith("/manifest") &&
+      !pathname.startsWith("/share") &&
       pathname !== "/sw.js"
     ) {
       const userId = await getRequestUserId(request);
