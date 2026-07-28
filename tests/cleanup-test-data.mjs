@@ -124,18 +124,39 @@ async function main() {
     removed.accountStatusReset = resetRows?.length || 0;
   }
 
-  if (parent) {
-    // Prenotazioni del genitore di test (cascade -> booking_weeks, booking_kids)
-    const { data: bookings, error: bookingsDeleteError } = await supabase
-      .from("bookings")
-      .delete()
-      .eq("parent_id", parent.id)
-      .select("id");
+  if (parent || seedActivity) {
+    // Prenotazioni del genitore di test (cascade -> booking_weeks, booking_kids).
+    //
+    // Gate C follow-up (28/07, run serale): TC-508 in strict-mode violation
+    // con 3 righe "Da rispondere" per la stessa attività di test, nonostante
+    // questo blocco cancelli tutte le prenotazioni del genitore di test PRIMA
+    // di ricreare i fixture. Causa: l'Inbox del Gestore (getBookingsForCenter)
+    // mostra le prenotazioni di TUTTI i genitori sulle attività del centro,
+    // non solo quelle del genitore di test — altri flussi di test (es.
+    // creazione prenotazione reale in tests/genitori/prenotazione.spec.ts,
+    // eseguiti da account genitore diversi o falliti a metà senza pulizia)
+    // lasciano prenotazioni "pending" accumulate sulla STESSA attività di
+    // test, sempre visibili nell'Inbox del centro insieme al marcatore
+    // ricreato qui sotto. "[TEST] Attività BuddyKids" è un'attività
+    // interamente sintetica (mai una prenotazione reale) — è sicuro
+    // cancellare TUTTE le prenotazioni su di essa, non solo quelle del
+    // genitore di test, per garantire un solo "Da rispondere" alla volta.
+    let bookingsQuery = supabase.from("bookings").delete().select("id");
+    if (parent && seedActivity) {
+      bookingsQuery = bookingsQuery.or(`parent_id.eq.${parent.id},activity_id.eq.${seedActivity.id}`);
+    } else if (parent) {
+      bookingsQuery = bookingsQuery.eq("parent_id", parent.id);
+    } else {
+      bookingsQuery = bookingsQuery.eq("activity_id", seedActivity.id);
+    }
+    const { data: bookings, error: bookingsDeleteError } = await bookingsQuery;
     if (bookingsDeleteError) {
       console.warn("⚠️  Errore cancellazione prenotazioni genitore di test:", bookingsDeleteError.message);
     }
     removed.bookings = bookings?.length || 0;
+  }
 
+  if (parent) {
     // Gruppi creati dal genitore di test (cascade -> group_members, group_kids, group_requests)
     const { data: groups } = await supabase
       .from("groups")
