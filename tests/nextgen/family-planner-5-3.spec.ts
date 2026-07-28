@@ -132,7 +132,15 @@ test.describe("NEXTGEN - Family Planner Sprint 5.3 (Logistica/Chi fa cosa/Condiv
       test.skip(true, "Tutte le celle già assegnate per questa settimana nell'account di test.");
     }
     await cell.click();
-    await page.getByRole("button", { name: /Partner/ }).click();
+    // Gate C (28/07): "Partner" compare in DUE pannelli visibili
+    // contemporaneamente — il quick-select "Applica a tutta la settimana"
+    // (sempre in cima, riga 625) e il popup di assegnazione della singola
+    // cella (aperto sotto, riga 752, DOPO il click sulla cella) — stessa
+    // RESPONSIBLE_OPTIONS.map in entrambi. getByRole senza scoping risolve a
+    // 2 elementi (strict mode violation). Il popup per-cella è sempre
+    // l'ultimo nel DOM quando aperto: .last() seleziona quello giusto,
+    // non il quick-select bulk (che TC-N70 testa a parte con .first()).
+    await page.getByRole("button", { name: /Partner/ }).last().click();
 
     await expect(page.getByText("Assegnato!")).toBeVisible();
   });
@@ -176,12 +184,15 @@ test.describe("NEXTGEN - Family Planner Sprint 5.3 (Logistica/Chi fa cosa/Condiv
     }
     // Prima cella -> Partner (Andata, Lun)
     await cells.nth(0).click();
-    await page.getByRole("button", { name: /Partner/ }).click();
+    // Gate C (28/07): stesso strict-mode violation di TC-N60 — "Partner" è
+    // sia nel quick-select bulk sempre visibile sia nel popup per-cella:
+    // .last() prende il popup appena aperto.
+    await page.getByRole("button", { name: /Partner/ }).last().click();
     await expect(page.getByText("Assegnato!")).toBeVisible();
 
     // Seconda cella -> Nonno, deve restare indipendente dalla prima.
     await cells.nth(0).click(); // ora la lista "Nessuno assegnato" è scalata di uno
-    await page.getByRole("button", { name: /Nonno/ }).click();
+    await page.getByRole("button", { name: /Nonno/ }).last().click();
     await expect(page.getByText("Assegnato!")).toBeVisible();
 
     await expect(page.locator('button[title="Partner"]').first()).toBeVisible();
