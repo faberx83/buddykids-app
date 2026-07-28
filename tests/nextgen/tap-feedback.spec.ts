@@ -48,13 +48,16 @@ test.describe("NEXTGEN Sprint 6 - Feedback visivo al tap", () => {
     await loginAs(page, "parent");
     await page.goto("/nextgen/search");
 
-    // Il chip filtro è un <div onClick=...>, non un <button> — stesso
-    // pattern xpath già usato altrove in questa suite per raggiungere il
-    // contenitore cliccabile a partire dall'etichetta.
-    const chip = page
-      .getByText("Servizi", { exact: true })
-      .locator("xpath=ancestor::div[contains(@class,'cursor-pointer')]")
-      .first();
+    // Gate C (28/07): il chip filtro è un <div onClick=...> il cui UNICO
+    // figlio di testo è "Servizi" stesso (SearchDiscoveryClient.tsx righe
+    // 495-505: icona <i> senza testo + {f.label} diretto, nessuno <span>
+    // di incapsulamento) — getByText risolve quindi GIÀ al div cliccabile
+    // stesso (cursor-pointer/active:scale-95 sono sue classi dirette).
+    // L'xpath `ancestor::` precedente cercava un ANTENATO più in alto con
+    // quella classe (l'asse ancestor esclude il nodo di contesto stesso),
+    // che non esiste — 0 risultati, locator vuoto, assert in timeout.
+    // HARNESS, non bug applicativo.
+    const chip = page.getByText("Servizi", { exact: true });
     await expect(chip).toHaveClass(/active:scale-95/);
   });
 });
