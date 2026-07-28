@@ -239,8 +239,6 @@ async function main() {
     );
   }
 
-  console.log("✅ Pulizia completata:", removed);
-
   // ─────────────────────────────────────────────
   // Ricrea una prenotazione "fixture" per il Registro presenze del Gestore
   // (tests/gestore/attendance.spec.ts, TC-139/TC-140): il bambino di test
@@ -372,6 +370,17 @@ async function main() {
       );
     }
   }
+
+  // Gate C (Cluster F, luglio 2026) — BUG TROVATO+CORRETTO: questo log di
+  // riepilogo veniva stampato PRIMA dei tre blocchi di ricreazione fixture
+  // qui sopra (Registro presenze, estensione check-in odierno, TC-508 "Da
+  // rispondere"). Il valore di `removed.partnerResponseFixtureReset`
+  // stampato era quindi SEMPRE `false` (il default impostato in cima alla
+  // funzione), indipendentemente dall'esito reale della ricreazione — un
+  // log fuorviante, non una prova di fallimento effettivo. Spostato qui, a
+  // fine funzione, dopo che tutti i blocchi hanno avuto modo di aggiornare
+  // `removed`.
+  console.log("✅ Pulizia completata:", removed);
 }
 
 main().catch((err) => {
