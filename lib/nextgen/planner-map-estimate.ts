@@ -19,6 +19,11 @@ export function estimateDistance(activityId: string): DistanceEstimate {
   for (let i = 0; i < activityId.length; i++) hash = (hash * 31 + activityId.charCodeAt(i)) >>> 0;
   // Range plausibile per spostamenti urbani/periferici: 2-22 km, 5-35 min.
   const km = 2 + (hash % 20);
-  const minutes = 5 + ((hash >> 3) % 30);
+  // BUG TROVATO+CORRETTO (Gate C, run reale del 28/07, TC-N66): `>>` è uno
+  // shift con segno — JS converte prima hash a Int32, quindi per valori di
+  // hash >= 2^31 il risultato diventa negativo, e "% 30" su un negativo
+  // resta negativo (es. "~20 km · -8 min" visto nello snapshot del test).
+  // ">>> 3" (shift SENZA segno) evita la conversione a negativo.
+  const minutes = 5 + ((hash >>> 3) % 30);
   return { km, minutes };
 }
