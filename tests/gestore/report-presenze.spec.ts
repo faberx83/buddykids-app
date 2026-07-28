@@ -38,6 +38,19 @@ test.describe("Gestore - Report presenze", () => {
     await loginAs(page, "center_admin");
     await page.goto("/center");
 
+    // Gate C (28/07): su mobile (mobile-chrome) la nav vive dietro un
+    // cassetto (drawer) aperto da un bottone hamburger, renderizzato SOLO
+    // quando drawerOpen=true (DashboardLayout.tsx righe 286/321 — `md:hidden`
+    // + `{drawerOpen && (...)}`) — su desktop la sidebar è sempre nel DOM. Il
+    // test cercava il link direttamente, che su mobile non esiste ancora nel
+    // DOM finché il drawer non viene aperto: timeout. Apriamo il drawer solo
+    // se il bottone hamburger è presente (mobile), altrimenti il link è già
+    // raggiungibile come su desktop.
+    const hamburger = page.getByRole("button", { name: "Apri il menu" });
+    if (await hamburger.isVisible().catch(() => false)) {
+      await hamburger.click();
+    }
+
     await page.getByRole("link", { name: "Report presenze" }).click();
     await expect(page).toHaveURL(/\/center\/report-presenze/);
     await expect(page.getByRole("heading", { name: "Report presenze" })).toBeVisible();
