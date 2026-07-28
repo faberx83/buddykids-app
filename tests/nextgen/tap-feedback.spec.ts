@@ -15,7 +15,13 @@ test.describe("NEXTGEN Sprint 6 - Feedback visivo al tap", () => {
     await loginAs(page, "parent");
     await page.goto("/nextgen");
 
-    await expect(page.locator('a[href="/nextgen/planner"]')).toHaveClass(/active:scale-90/);
+    // href="/nextgen/planner" compare due volte in Home: la card CTA nel
+    // contenuto (active:scale-[0.97]) e il link della bottom nav
+    // (active:scale-90) — strict mode violation trovata nel run reale del
+    // 28/07 (Gate C Cluster A). app/nextgen/layout.tsx renderizza
+    // {children} PRIMA di <NextgenBottomNav/>, quindi .last() è sempre il
+    // link di nav.
+    await expect(page.locator('a[href="/nextgen/planner"]').last()).toHaveClass(/active:scale-90/);
   });
 
   test("TC-N294 - Una card del Profilo (HubCard) ha uno stato :active", async ({ page }) => {

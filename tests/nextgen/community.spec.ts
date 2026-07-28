@@ -63,7 +63,11 @@ test.describe("NEXTGEN - Community (Sprint 4)", () => {
     await page.getByRole("button", { name: "Condividi proposta" }).click();
 
     await expect(page.getByText("Le attività della community")).toBeVisible();
-    await expect(page.getByRole("button", { name: /Mi interessa/ })).toBeVisible();
+    // Con più proposte accumulate da run precedenti (community di test mai
+    // svuotata tra un run e l'altro) ci sono più bottoni "Mi interessa" in
+    // pagina — strict mode violation trovata nel run reale del 28/07 (Gate C
+    // Cluster A/B): basta che ne esista almeno uno.
+    await expect(page.getByRole("button", { name: /Mi interessa/ }).first()).toBeVisible();
   });
 
   test("TC-N36 - Esprimere interesse aggiorna il contatore e lo stato del pulsante", async ({ page }) => {
@@ -74,7 +78,11 @@ test.describe("NEXTGEN - Community (Sprint 4)", () => {
 
     const interestButton = page.getByRole("button", { name: /Mi interessa|Interessato/ }).first();
     await interestButton.click();
-    await expect(page.getByRole("button", { name: "Interessato · 1" })).toBeVisible();
+    // Asserire sulla STESSA reference invece di una nuova query page-wide:
+    // con proposte accumulate da run precedenti più bottoni possono già
+    // mostrare "Interessato · 1" contemporaneamente — strict mode violation
+    // trovata nel run reale del 28/07 (Gate C Cluster A/B).
+    await expect(interestButton).toHaveText(/Interessato · 1/);
   });
 
   // ESCLUSO dall'automazione: verificare "N famiglie già iscritte" richiede

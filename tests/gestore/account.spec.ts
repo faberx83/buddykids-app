@@ -20,9 +20,14 @@ test.describe("Gestore - Il mio account", () => {
     await loginAs(page, "center_admin");
     await page.goto("/center/account");
 
-    // Non è il profilo del centro: niente campo "Nome del centro" o heading "Il mio centro".
-    await expect(page.getByText("Il mio centro")).toHaveCount(0);
-    await expect(page.getByText("Nome del centro")).toHaveCount(0);
+    // Non è il profilo del centro: niente campo "Nome del centro" o heading
+    // "Il mio centro" nel CONTENUTO (scoped a <main>). "Il mio centro" è
+    // anche la label della voce di nav condivisa su tutte le pagine /center/*
+    // (app/center/layout.tsx) — un controllo page-wide darebbe sempre 1,
+    // indipendentemente dal contenuto reale della pagina.
+    const main = page.getByRole("main");
+    await expect(main.getByText("Il mio centro")).toHaveCount(0);
+    await expect(main.getByText("Nome del centro")).toHaveCount(0);
 
     // Sezioni del profilo personale, condivise con il profilo genitore —
     // raggruppate sotto "Impostazioni" > Sicurezza/Preferenze/Notifiche/

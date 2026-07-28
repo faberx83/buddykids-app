@@ -44,7 +44,13 @@ test.describe("NEXTGEN - Planner (Sprint 3)", () => {
     await loginAs(page, "parent");
     await page.goto("/nextgen");
 
-    await page.getByRole("link", { name: "Planner" }).click();
+    // getByRole con "name" fa match per substring sul nome accessibile: la
+    // card CTA "Apri Planner Organizzazione, ..." matcha anche lei, oltre al
+    // link della bottom nav — strict mode violation trovata nel run reale
+    // del 28/07 (Gate C Cluster A). app/nextgen/layout.tsx renderizza
+    // {children} PRIMA di <NextgenBottomNav/>, quindi .last() è sempre il
+    // link di nav.
+    await page.getByRole("link", { name: "Planner" }).last().click();
     await expect(page).toHaveURL(/\/nextgen\/planner/);
     await page.getByRole("link", { name: "Scopri" }).click();
     await expect(page).toHaveURL(/\/nextgen\/search/);

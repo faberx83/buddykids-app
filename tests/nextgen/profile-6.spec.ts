@@ -19,7 +19,10 @@ test.describe("NEXTGEN - Profilo (Sprint 6)", () => {
   });
 
   test("TC-N105 - /nextgen/profile ha PageHeader con icona brand colorata e titolo 'Profilo'", async ({ page }) => {
-    await expect(page.getByText("Profilo", { exact: true })).toBeVisible();
+    // "Profilo" compare anche nel link della bottom nav — scoping
+    // all'heading del PageHeader per evitare la strict mode violation
+    // trovata nel run reale del 28/07 (Gate C Cluster A).
+    await expect(page.getByRole("heading", { name: "Profilo", exact: true })).toBeVisible();
     await expect(page.locator('img[src="/brand/trama-logo-mark.png"]')).toBeVisible();
   });
 

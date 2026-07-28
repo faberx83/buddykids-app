@@ -63,7 +63,11 @@ test.describe("Gestore - Profilo Centro", () => {
     await loginAs(page, "center_admin");
     await page.goto("/center/profile");
 
-    await expect(page.getByText("Accessibilità")).toBeVisible();
+    // getByText fa match case-insensitive per substring: senza exact,
+    // "Accessibilità" matcha anche la label "Nota accessibilità (facoltativa)"
+    // poco più sotto — strict mode violation trovata nel run reale del
+    // 28/07 (Gate C Cluster A).
+    await expect(page.getByText("Accessibilità", { exact: true })).toBeVisible();
     const accessibleCheckbox = page.getByText("Il centro è accessibile (rampe, bagno attrezzato, ecc.)").locator("..").locator("input[type='checkbox']");
     await accessibleCheckbox.setChecked(true);
     await expect(page.getByPlaceholder("Es. Rampa d'accesso, bagno attrezzato")).toBeVisible();

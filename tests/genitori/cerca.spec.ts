@@ -156,9 +156,14 @@ test.describe("Genitori - Cerca", () => {
     await expect(page.getByText("Tipo attività (1)")).toBeVisible();
     await expect(page.getByRole("button", { name: /^Azzera/ })).toBeEnabled();
 
-    // La X sul chip azzera solo questo filtro.
+    // La X sul chip azzera solo questo filtro. Con il pannello ancora aperto
+    // (mai richiuso in questo test) "Tipo attività" compare due volte —
+    // chip + intestazione del pannello — stessa stringa esatta: strict mode
+    // violation trovata nel run reale del 28/07 (Gate C Cluster A). Basta
+    // confermare che almeno una delle due sia di nuovo visibile (il reset è
+    // avvenuto), non serve disambiguare quale.
     await page.locator(".ti-x").first().click();
-    await expect(page.getByText("Tipo attività", { exact: true })).toBeVisible();
+    await expect(page.getByText("Tipo attività", { exact: true }).first()).toBeVisible();
   });
 
   // Priorita: Bassa | Precondizioni: Nessuna

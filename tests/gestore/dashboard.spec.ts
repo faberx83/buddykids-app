@@ -32,12 +32,18 @@ test.describe("Gestore - Dashboard", () => {
     await loginAs(page, "center_admin");
     await page.goto("/center");
 
+    // "Prenotazioni" ha lo stesso problema di ambiguità di "Attività" (nota
+    // sopra): compare anche come voce di nav (sidebar/pillola mobile), oltre
+    // che come label della card KPI dentro <main> — scoping a <main> isola
+    // il contenuto reale della pagina (BUG DI TEST TROVATO+CORRETTO nel run
+    // reale del 28/07: strict mode violation, 2 elementi).
+    const main = page.getByRole("main");
     await expect(kpiAttivita(page)).toBeVisible();
-    await expect(page.getByText("Prenotazioni", { exact: true })).toBeVisible();
-    await expect(page.getByText("Promo attive")).toBeVisible();
-    await expect(page.getByText("Fatturato confermato")).toBeVisible();
-    await expect(page.getByText("Occupazione settimanale")).toBeVisible();
-    await expect(page.getByText("Attività recente")).toBeVisible();
+    await expect(main.getByText("Prenotazioni", { exact: true })).toBeVisible();
+    await expect(main.getByText("Promo attive")).toBeVisible();
+    await expect(main.getByText("Fatturato confermato")).toBeVisible();
+    await expect(main.getByText("Occupazione settimanale")).toBeVisible();
+    await expect(main.getByText("Attività recente")).toBeVisible();
   });
   // Priorita: Media | Precondizioni: Login Gestore, almeno una Richiesta Gruppo in sospeso
   // Passi: Apri /center, osserva il menu laterale
@@ -48,6 +54,13 @@ test.describe("Gestore - Dashboard", () => {
   // la sidebar è "display:none" per design, sostituita da una pillola di nav
   // orizzontale SENZA intestazioni di sezione. Forziamo un viewport desktop:
   // la funzionalità testata (raggruppamento sezioni) è intrinsecamente desktop.
+  // TEST OBSOLETO (trovato nel run reale del 28/07, Gate C Cluster C):
+  // "Gestione" non esiste più come singola intestazione — vedi
+  // app/center/layout.tsx, commento su navItems: il gruppo unico "Gestione"
+  // (7 voci) è stato diviso in sotto-gruppi tematici ("Attività"/"Presenze"/
+  // "Richieste"/"Team"/"Account") in uno sprint successivo a questo test,
+  // che non era mai stato aggiornato di conseguenza. Verifichiamo ora i
+  // sotto-gruppi reali invece dell'intestazione unica ormai inesistente.
   test("TC-119 - Nuova navigazione con raggruppamento sezioni e badge richieste in sospeso", async ({ page }) => {
     test.skip(!isRealDeployment, "Richiede un deploy con Supabase configurato e l'account Gestore di test.");
     await page.setViewportSize({ width: 1280, height: 800 });
@@ -55,7 +68,9 @@ test.describe("Gestore - Dashboard", () => {
     await page.goto("/center");
 
     await expect(page.getByText("Oggi", { exact: true })).toBeVisible();
-    await expect(page.getByText("Gestione", { exact: true })).toBeVisible();
+    await expect(page.getByText("Attività", { exact: true }).first()).toBeVisible();
+    await expect(page.getByText("Presenze", { exact: true }).first()).toBeVisible();
+    await expect(page.getByText("Richieste", { exact: true }).first()).toBeVisible();
     await expect(page.getByRole("link", { name: /Richieste Gruppo/ })).toBeVisible();
     // Il badge (pallino rosso col conteggio) è opzionale in modalità demo
     // (0 richieste in sospeso -> nascosto per design, vedi DashboardLayout.tsx):
