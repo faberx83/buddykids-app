@@ -130,6 +130,68 @@ Entrambi **HARNESS** (selettore/scope sbagliato), non regressioni applicative. F
 
 Tutti e 4 confermati con evidenza file:line, nessuna ipotesi residua.
 
+## Rerun 28/07 (secondo full run, TEST_SCOPE=all diretto) — nuovi elementi
+
+Confermato stabile rispetto al run precedente (stesso identico set di falliti,
+Cluster G residuo invariato): TC-176/TC-160/TC-204/TC-208/TC-069/TC-N64/TC-N66
+restano risolti, nessuna regressione sui fix già applicati. Novità:
+
+### TC-508 — riaperto: la teoria "si autoripara" (Cluster F) è falsificata dai dati
+
+Cluster F aveva concluso "nessuna azione necessaria, la fixture si ricrea da
+sola ad ogni run". **Verificato via query di sola lettura che non è così**: la
+prenotazione marcatore (`total_amount=0.01`) è tuttora `status='confirmed'`,
+`created_at` **27/07 08:20** — cioè la stessa identica riga vista nel controllo
+di Cluster F, mai cancellata/ricreata nonostante almeno due run completi
+successivi (28/07). Ho anche verificato che oggi tutte le entità del guard
+(`parent`, `gestore.center_id`, `seedActivity`, `testKid`, "Settimana 2")
+esistono correttamente — quindi non è un problema strutturale dei dati.
+
+**Causa non ancora isolata con certezza**: ogni lookup Supabase nello script
+scartava silenziosamente l'oggetto `error` (solo `data` destrutturato), quindi
+un fallimento di rete/permessi sarebbe stato indistinguibile da un "non
+trovato" legittimo, senza traccia nei log — e la delete incondizionata delle
+prenotazioni del genitore (che dovrebbe comunque rimuovere quella riga del
+27/07 a prescindere dal resto) non sembra essere stata eseguita nei run
+successivi. Aggiunto log esplicito per ogni lookup/delete coinvolta (commit
+`35ccbd5`) — **il prossimo `bash test-deploy.sh` dirà la causa esatta** invece
+di doverla ipotizzare. Riclassificato **DATA PRECONDITION, causa in verifica**
+(non più HARNESS/nessuna-azione come concluso in Cluster F).
+
+### TC-273 — nuovo, TEST OBSOLETO risolto
+
+Mai comparso nei run precedenti; flaky su mobile-chrome in questo run. Causa
+trovata per lettura statica del codice: il test cercava un link
+`a[href^="/activity/"]` aspettandosi che una riga Timeline coperta aprisse la
+scheda marketing dell'attività — ma il **Task #357** (già completato,
+`PlannerClient.tsx` righe 696-724) ha deliberatamente cambiato quel
+comportamento: il click su una settimana coperta porta ora a
+`/prenotazioni?bookingId=...` (mostra la prenotazione già fatta con
+stato/azioni), non più alla scheda marketing. Il test non è mai stato
+aggiornato dopo quella modifica: il selettore generico non trovava più alcun
+link `/activity/` nella Timeline e in alcuni run agganciava per caso un link
+`/activity/` non correlato più in basso in pagina (sezione "Consigliate") —
+da cui la flakiness. **Classificazione: TEST OBSOLETO.** Fix applicato: test
+scopato a `[id^="week-row-"] a[href^="/prenotazioni?bookingId="]`, asserzione
+URL aggiornata. Commit `fc33b28`, tsc/eslint puliti.
+
+### TC-163 — nuovo/intermittente, non ancora risolto
+
+Compare failed su chromium e flaky su mobile-chrome in questo run, mai visto
+prima. Il test fa un giro end-to-end con due login reali sequenziali (genitore
+poi gestore, context browser separati) sullo stesso worker — non rientra nel
+problema di concorrenza già noto di Gate B (quello riguarda login
+CONCORRENTI su worker diversi), ma resta comunque un doppio login reale su
+account condivisi, con margini di latenza. Nessuna causa applicativa trovata
+per lettura statica (`richieste.spec.ts`, `ContactCenterButton.tsx`,
+`lib/data/inquiries.ts`): il locator è già scopato al messaggio con timestamp
+univoco, non è un problema di dati accumulati. **Ipotesi più probabile:
+HARNESS/timing** (stessa famiglia dei fallimenti da latenza Auth già
+documentati in Gate B), da confermare con un rerun live mirato
+(`TEST_SCOPE=all bash test-deploy.sh -- tests/gestore/richieste.spec.ts` o
+simile) prima di decidere se serve un fix (es. `expect.timeout` più alto solo
+per questo test, o `retries` dedicati).
+
 ## Raccomandazione per il prossimo giro
 
 1. ~~Fix meccanico Cluster A (selettori)~~ — **fatto** (commit `9beec2a`).
