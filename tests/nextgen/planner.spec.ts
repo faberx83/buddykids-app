@@ -20,11 +20,20 @@ test.describe("NEXTGEN - Planner (Sprint 3)", () => {
     await expect(page.locator("body")).not.toContainText("Application error");
   });
 
-  test("TC-N14 - Budget impegnato sempre visibile nel Planner", async ({ page }) => {
+  // Gate C (28/07): questo test (Sprint 3, "sempre visibile") è in
+  // contraddizione diretta con TC-263 (Sprint correttivo,
+  // planner-organizzazione-sprint1.spec.ts), che verifica l'esatto
+  // contrario per una decisione di design deliberata di Fabrizio ("il
+  // Budget impegnato non mi interessa qui, c'è una sezione dedicata no?"):
+  // la card è stata rimossa dal tab Organizzazione e vive solo nel tab
+  // Budget (PlannerClient.tsx righe 753-756). TEST OBSOLETO: aggiornato per
+  // riflettere il comportamento attuale invece di contraddire TC-263.
+  test("TC-N14 - Budget impegnato visibile nel tab Budget del Planner", async ({ page }) => {
     test.skip(!isRealDeployment, "Richiede un deploy con Supabase configurato e l'account genitore di test.");
     await loginAs(page, "parent");
     await page.goto("/nextgen/planner");
 
+    await page.getByRole("button", { name: "Budget" }).click();
     await expect(page.getByText("Budget impegnato")).toBeVisible();
   });
 
