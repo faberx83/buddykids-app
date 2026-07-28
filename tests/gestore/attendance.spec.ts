@@ -267,6 +267,16 @@ test.describe("Gestore - Registro presenze", () => {
     try {
       await loginAs(gestorePage, "center_admin");
       await gestorePage.goto("/center");
+      // Gate C (28/07): stesso pattern di TC-166 (report-presenze.spec.ts) —
+      // su mobile (mobile-chrome) la nav vive dietro un cassetto (drawer)
+      // aperto da un bottone hamburger, renderizzato SOLO quando
+      // drawerOpen=true (DashboardLayout.tsx). Su desktop la sidebar è
+      // sempre nel DOM, quindi il bottone hamburger non esiste: apriamo il
+      // drawer solo se presente.
+      const hamburger = gestorePage.getByRole("button", { name: "Apri il menu" });
+      if (await hamburger.isVisible().catch(() => false)) {
+        await hamburger.click();
+      }
       const navItem = gestorePage.locator("a", { hasText: "Registro presenze" }).first();
       await expect(navItem).toBeVisible();
       // Il badge è un elemento figlio col conteggio — verifichiamo solo che
