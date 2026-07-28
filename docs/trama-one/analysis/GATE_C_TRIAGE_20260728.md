@@ -60,6 +60,46 @@ Il comando è stato lanciato con `npx playwright test ... ` DIRETTO, non con `ba
 
 `tests/gestore`: 9 did not run. `tests/genitori`: 16 did not run. `tests/nextgen`: 0. Pattern coerente con test in `describe` non-serial dove un fallimento in un `beforeEach`/test precedente nello stesso worker consuma il tempo/stato e Playwright salta i successivi test dipendenti dello stesso file quando il worker viene riavviato dopo troppi retry — non un fenomeno casuale, correlato 1:1 con i file che hanno anche fallimenti (gestore e genitori ne hanno, nextgen in questo run non ne ha nonostante 34 falliti, quindi il collegamento non è "ogni fallimento causa un did-not-run" ma probabile interruzione di worker su fallimenti in serie/hook). Da approfondire con `--reporter=json` e ispezione diretta, non ancora fatto.
 
+## Rerun live 28/07 (bash test-deploy.sh) — post fix Cluster A/B/D
+
+Rerun completo (882 test, chromium+mobile-chrome): 96 failed (di cui ~48 distinti, duplicati sui due browser), 1 flaky, 324 skipped, 43 did not run, 418 passed.
+
+**Conferma dei fix**: nessuno dei TC-N43/N44/N50/N54/N100 (Cluster D) né dei TC-138(parziale)/N35/N36/N50-adjacenti/N105(parziale)/N293/N296(parziale) del Cluster A originale è ricomparso nella forma già corretta — i fix reggono. TC-508/TC-123/TC-139 (Cluster B) idem, tranne TC-508 (vedi sotto).
+
+Fix meccanici aggiuntivi applicati in questo giro (stesso pattern Cluster A/D, commit `d651da1`):
+- TC-N105/TC-N89: `img[src=".../trama-logo-mark.png"]` matchava anche il logo grande (h-20 w-20, nessun `aria-hidden`) di `AppSplashOverlay.tsx`, ancora nel DOM durante il fade-out — aggiunto `[aria-hidden="true"]` per isolare l'icona decorativa vera (PageHeader/titolo Home/Community).
+- TC-N99: stesso principio di TC-N50/54 ma sul locator "Vai al dettaglio della Settimana 1" — regex con virgola finale per escludere Settimana 10/11/12/13 senza hardcodare le date della stagione.
+- TC-N01/N02/N03: "NextGen" sostituito dal ribbon "Beta" (sprint correttivo, `NextgenBadge.tsx`) — TEST OBSOLETO.
+- TC-N11: link Home "Scopri attività" non esiste più, sostituito da "Scopri" in bottom nav — TEST OBSOLETO.
+- TC-N12: testo cambiato in "Nessuna attività corrisponde ai filtri scelti." — TEST OBSOLETO.
+
+### Cluster E — ⚠️ POSSIBILE PROBLEMA DI CONFIGURAZIONE PRODUZIONE (priorità alta, da verificare con Fabrizio prima di Gate F)
+
+TC-N302/303/304 (`one/smoke.spec.ts`) e TC-N401/402 si aspettano che con il flag `TRAMA_ONE_ENABLED` OFF (default), visitare `/one`, `/center/one`, `/admin/one`, `/center/one/onboarding`, `/admin/one/onboarding` faccia un redirect di fallback verso `/`, `/center`, `/admin`. Nel run reale **nessun redirect è avvenuto**: tutti e tre i ruoli (parent, center_admin, platform_admin) restano sulla route `/one/*` e vedono la shell TRAMA ONE reale (error-context.md conferma testo "TRAMA ONE — Parent"/"Benvenuto in TRAMA ONE" invece del redirect). Coerentemente, TC-N414/N415 (walkthrough Partner) falliscono parzialmente: la pagina `/center/one` mostra "Pubblica la tua prima attività" ma non il bottone "Inizia".
+
+**Analisi statica del codice** (`app/one/layout.tsx:58-75`, `app/center/one/layout.tsx:50-67`, `app/admin/one/layout.tsx:50-67`, `lib/feature-flags/registry.ts:41` `defaultValue: false`, `lib/feature-flags/evaluate.ts:63-120`): la logica di redirect e la precedenza degli scope sono corrette, nessun bug trovato lato codice. Per far risultare il flag "enabled" per TUTTI i ruoli contemporaneamente serve una riga in `feature_flag_overrides` con scope ampio (es. `environment`/`Production` o `global`, `enabled=true`). **Ipotesi concreta**: `SPRINT_0_ACTIVATION_RUNBOOK.md` §2 istruisce di inserire manualmente una riga di verifica `('TRAMA_ONE_ENABLED','environment','Production',true)` per testare l'unique index, seguita da una `DELETE` da eseguire a mano — se quella `DELETE` non è mai stata eseguita, questa riga da sola spiegherebbe il comportamento osservato. Il task #336 ("Abilitare TRAMA ONE via override") risulta ancora `pending`, quindi non è un'attivazione intenzionale.
+
+**Non posso verificare né correggere questo da solo** (accesso diretto al DB di produzione fuori mandato). Query di sola lettura per Fabrizio, da eseguire nel SQL Editor di Supabase:
+
+```sql
+SELECT scope_type, scope_value, enabled, expires_at, created_at
+FROM feature_flag_overrides
+WHERE flag_name = 'TRAMA_ONE_ENABLED'
+ORDER BY created_at DESC;
+```
+
+Se emerge una riga `environment`/`Production` (o `global`) con `enabled = true` e nessuna `expires_at` passata, è quasi certamente la causa. La rimozione (o l'impostazione `enabled = false`) andrebbe fatta da Fabrizio, non da me.
+
+### Cluster F — DATA PRECONDITION persistente: TC-508 (fix Gate C precedente non attivato in questo run)
+
+Il log di `cleanup-test-data.mjs` di questo run mostra `partnerResponseFixtureReset: false` — il blocco di recreate aggiunto nel Cluster B non è scattato (nessun errore/warning stampato, quindi il guard `if (parent && seedActivity && testKid)` deve aver fallito silenziosamente, oppure "Settimana 2" non è stata trovata). Da investigare nel prossimo giro: aggiungere un log esplicito quando il guard iniziale fallisce, per capire quale delle tre variabili è nulla in questo ambiente.
+
+### Cluster G — Nuovi fallimenti non ancora classificati (da investigare prima di Gate F, non ancora toccati)
+
+Elenco (non esaustivo, deduplicato tra chromium/mobile-chrome): TC-176 (Admin Presenze, strict violation "Media piattaforma" — HARNESS probabile, fix meccanico rimandato), TC-160/TC-026 (freccia indietro/preferito — possibile regressione o floating button BETA che intercetta i click), TC-102/153 (Planner filtro/colore bambino), TC-204/208 (Login splash overlay), TC-069/TC-141 (Profilo/Home — nome salvato non trovato, avatar click instabile), TC-138 (residuo: "Notifiche" non più voce di menu separata), TC-186 (badge "Oggi" registro presenze), TC-075 (nav highlight, già noto), TC-200/TC-127 (certificazione/invito — testo cambiato o dato non trovato), TC-178/163 (richieste, timing/timeout), TC-N300 (beta pipeline, bottone ancora visibile), TC-N59/61/64/66 (Chi fa cosa/Mappa/Condivisione — stesso dubbio già sollevato, MAI investigato con error-context.md dedicato), TC-N73/76/80 (Famiglia/Community), TC-N24 (Settimana 12/13), TC-263/N14 ("Budget impegnato" non trovato — due test indipendenti, stesso sintomo, da verificare se è dato-dipendente), TC-N108/112/114 (Profilo restructuring, già noto Cluster C), TC-N10 (posizione — testo esiste nel codice ma non renderizzato al primo load, struttura cambiata), TC-N296 (chip "Servizi" Cerca), TC-N409 (precondizione non impostata, causa nota — vedi sopra), TC-166 (mobile: link "Report presenze" timeout).
+
+**Classificazione: NON ANCORA FATTA.** Richiede lo stesso trattamento di Cluster D (error-context.md o investigazione codice mirata) prima di poter distinguere HARNESS/TEST OBSOLETO/APPLICATION BUG. Dato il volume, raccomando di procedere per sotto-gruppi tematici (Login/Splash, Profilo/Impostazioni, Chi fa cosa/Mappa, Registro presenze) nel prossimo giro.
+
 ## Raccomandazione per il prossimo giro
 
 1. ~~Fix meccanico Cluster A (selettori)~~ — **fatto** (commit `9beec2a`).
