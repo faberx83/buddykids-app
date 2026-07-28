@@ -73,7 +73,7 @@ Fix meccanici aggiuntivi applicati in questo giro (stesso pattern Cluster A/D, c
 - TC-N11: link Home "Scopri attività" non esiste più, sostituito da "Scopri" in bottom nav — TEST OBSOLETO.
 - TC-N12: testo cambiato in "Nessuna attività corrisponde ai filtri scelti." — TEST OBSOLETO.
 
-### Cluster E — ⚠️ POSSIBILE PROBLEMA DI CONFIGURAZIONE PRODUZIONE (priorità alta, da verificare con Fabrizio prima di Gate F)
+### Cluster E — ✅ RISOLTO: dato residuo, non bug applicativo (DELETE eseguita da Fabrizio)
 
 TC-N302/303/304 (`one/smoke.spec.ts`) e TC-N401/402 si aspettano che con il flag `TRAMA_ONE_ENABLED` OFF (default), visitare `/one`, `/center/one`, `/admin/one`, `/center/one/onboarding`, `/admin/one/onboarding` faccia un redirect di fallback verso `/`, `/center`, `/admin`. Nel run reale **nessun redirect è avvenuto**: tutti e tre i ruoli (parent, center_admin, platform_admin) restano sulla route `/one/*` e vedono la shell TRAMA ONE reale (error-context.md conferma testo "TRAMA ONE — Parent"/"Benvenuto in TRAMA ONE" invece del redirect). Coerentemente, TC-N414/N415 (walkthrough Partner) falliscono parzialmente: la pagina `/center/one` mostra "Pubblica la tua prima attività" ma non il bottone "Inizia".
 
@@ -87,6 +87,10 @@ FROM feature_flag_overrides
 WHERE flag_name = 'TRAMA_ONE_ENABLED'
 ORDER BY created_at DESC;
 ```
+
+**Esito verificato**: la riga `global` (enabled=true) risultava già scaduta (`expires_at` 22/07, run eseguito il 28/07 — `evaluate.ts#isExpired` la esclude correttamente, non era la causa). La causa reale erano 3 righe `scope_type='user'` con `expires_at = null` (mai scadono), quasi certamente corrispondenti proprio ai 3 account di test (parent/center_admin/platform_admin) usati dalla suite Playwright — abilitazione manuale permanente lasciata da un giro di verifica manuale precedente (Sprint 1-4), non un'attivazione di produzione intenzionale né un bug applicativo: per gli utenti reali il flag era già correttamente OFF.
+
+Fabrizio ha eseguito la `DELETE` mirata sulle 3 righe `user` (mantenendo intatta la riga `global` scaduta, innocua). **Da confermare con il prossimo rerun live**: TC-N302/303/304/401/402 e TC-N414/N415 dovrebbero tornare verdi.
 
 Se emerge una riga `environment`/`Production` (o `global`) con `enabled = true` e nessuna `expires_at` passata, è quasi certamente la causa. La rimozione (o l'impostazione `enabled = false`) andrebbe fatta da Fabrizio, non da me.
 
