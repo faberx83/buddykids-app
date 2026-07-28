@@ -87,8 +87,23 @@ test.describe("NEXTGEN - Home (rifinitura)", () => {
   // invece di misurare a pixel un font-size specifico.
   test("TC-N24 - Le etichette 'Settimana 12'/'Settimana 13' nel Planner non vanno a capo", async ({ page }) => {
     test.skip(!isRealDeployment, "Richiede un deploy con Supabase configurato e l'account genitore di test.");
+    // Gate C (28/07): il test cercava `getByText("Settimana 12", {exact:
+    // true})` visibile al solo caricamento della pagina — ma da quando la
+    // Timeline è stata raggruppata per mese e resa pieghevole (Sprint 2), la
+    // riga con quel testo esatto (PlannerClient.tsx riga 617,
+    // `whitespace-nowrap ... Settimana {w.index}`, la stessa che porta la
+    // whitespace-nowrap del bugfix originale) è visibile solo se il mese di
+    // quella settimana è aperto. TEST OBSOLETO, non riflette più il layout
+    // attuale: apriamo tutti i mesi (stesso pattern di TC-273) prima di
+    // cercare l'etichetta, invece di assumerla visibile da subito.
     await loginAs(page, "parent");
     await page.goto("/nextgen/planner");
+
+    const monthButtons = page.locator('button[aria-expanded="false"]');
+    const count = await monthButtons.count();
+    for (let i = 0; i < count; i++) {
+      await monthButtons.nth(0).click();
+    }
 
     for (const label of ["Settimana 12", "Settimana 13"]) {
       const el = page.getByText(label, { exact: true });
