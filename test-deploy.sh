@@ -11,8 +11,11 @@
 #   bash test-deploy.sh https://altro-url.vercel.app           # contro un altro URL (es. un preview)
 #   TEST_SCOPE=smoke bash test-deploy.sh                       # solo smoke cross-portale (lista esplicita, vedi sotto)
 #   TEST_SCOPE=journeys bash test-deploy.sh                    # solo journey cross-portale approvate (vuoto in Sprint 0)
-#   TEST_SCOPE=critical bash test-deploy.sh                    # 18 journey critiche Sprint 1-4 (Integration Stabilization Gate D)
-#   TEST_SCOPE=all bash test-deploy.sh                         # suite intera, esplicito (= comportamento di default)
+#   TEST_SCOPE=critical bash test-deploy.sh                    # 18 journey critiche Sprint 1-4, solo chromium (Gate D) — è
+#                                                               # il default quando lanciato da deploy.sh (28/07)
+#   INCLUDE_MOBILE=1 TEST_SCOPE=critical bash test-deploy.sh   # come sopra ma include anche mobile-chrome
+#   TEST_SCOPE=all bash test-deploy.sh                         # suite intera, entrambi i browser (default SOLO se
+#                                                               # invocato direttamente senza deploy.sh, vedi sotto)
 #   ALLOW_TEST_FAILURES=1 bash test-deploy.sh                  # non blocca sull'esito test (comportamento esplicito, non più il default)
 #   RUN_SITEMAP=1 bash test-deploy.sh                          # esegue ANCHE la sitemap dopo la suite (skip di default, vedi sotto)
 #   ONLY_SITEMAP=1 SITEMAP_OPEN_BROWSER=1 bash test-deploy.sh  # solo sitemap, apertura browser opzionale
@@ -141,6 +144,23 @@ if [ -n "$ALLOW_TEST_FAILURES" ]; then
 fi
 echo ""
 
+# Ottimizzazione tempo/costo (28/07, richiesta esplicita di Fabrizio — la
+# suite intera x2 browser ad ogni singolo deploy era troppo lenta e pesava
+# sull'Active CPU Vercel del piano gratuito, es. avviso "75% della soglia
+# mensile"): TEST_SCOPE=critical (l'unico scope pensato per girare dopo OGNI
+# deploy, vedi deploy.sh) salta di default il progetto "mobile-chrome" — i
+# bug mobile-specifici sono una minoranza rispetto ai bug cross-cutting che
+# lo scope critico deve individuare, e correre due volte (desktop+mobile)
+# ogni singolo file raddoppia invocazioni/tempo senza un beneficio
+# proporzionale per un controllo post-deploy veloce. La suite intera
+# (TEST_SCOPE=all, da lanciare periodicamente/prima di un rilascio, non ad
+# ogni deploy) continua a coprire entrambi i progetti come prima — nessuna
+# perdita di copertura, solo di frequenza per il mobile.
+# Override: INCLUDE_MOBILE=1 bash test-deploy.sh (o TEST_SCOPE=critical
+# INCLUDE_MOBILE=1 bash deploy.sh) per includere mobile-chrome anche nello
+# scope critico quando serve verificarlo espressamente.
+PROJECT_FLAG=""
+
 case "$TEST_SCOPE" in
   smoke)
     TEST_TARGET="$SMOKE_TEST_FILES"
@@ -155,6 +175,10 @@ case "$TEST_SCOPE" in
     ;;
   critical)
     TEST_TARGET="$CRITICAL_TEST_FILES"
+    if [ -z "$INCLUDE_MOBILE" ]; then
+      PROJECT_FLAG="--project=chromium"
+      echo "ℹ️  TEST_SCOPE=critical: solo progetto 'chromium' (mobile-chrome saltato per velocità — INCLUDE_MOBILE=1 per includerlo)."
+    fi
     ;;
   all|"")
     TEST_TARGET="" # nessun argomento = intera suite, comportamento invariato
@@ -168,10 +192,10 @@ esac
 if [ "$TEST_TARGET" = "__EMPTY__" ]; then
   TEST_EXIT_CODE=0
 elif [ -n "$ALLOW_TEST_FAILURES" ]; then
-  TEST_BASE_URL="$BASE_URL" npx playwright test $TEST_TARGET || true
+  TEST_BASE_URL="$BASE_URL" npx playwright test $TEST_TARGET $PROJECT_FLAG || true
   TEST_EXIT_CODE=0
 else
-  TEST_BASE_URL="$BASE_URL" npx playwright test $TEST_TARGET
+  TEST_BASE_URL="$BASE_URL" npx playwright test $TEST_TARGET $PROJECT_FLAG
   TEST_EXIT_CODE=$?
 fi
 

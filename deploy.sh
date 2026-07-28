@@ -4,15 +4,27 @@
 # test Playwright automatica contro il deploy appena pubblicato.
 #
 # Uso: dalla cartella del progetto, esegui:
-#   bash deploy.sh
+#   bash deploy.sh                                 # deploy + TEST_SCOPE=critical (default, veloce — vedi sotto)
+#   TEST_SCOPE=all bash deploy.sh                  # deploy + suite Playwright INTERA (entrambi i browser) — usarlo
+#                                                   # prima di un rilascio o periodicamente, non ad ogni deploy
 #   SKIP_TESTS=1 bash deploy.sh                    # salta i test (deploy rapido, senza verifica)
 #   ONLY_SITEMAP=1 bash deploy.sh                  # SOLO sitemap, nessun deploy (vedi sotto)
 #   TEST_BASE_URL=<url> ONLY_SITEMAP=1 bash deploy.sh  # sitemap contro <url> invece della produzione
 #   ALLOW_TEST_FAILURES=1 bash deploy.sh           # non blocca su test falliti (passato a test-deploy.sh)
-#   TEST_SCOPE=smoke|journeys|all bash deploy.sh   # scope dei test (passato a test-deploy.sh)
+#   TEST_SCOPE=smoke|journeys|critical|all bash deploy.sh  # scope dei test (passato a test-deploy.sh)
+#   INCLUDE_MOBILE=1 bash deploy.sh                # include il progetto mobile-chrome anche in TEST_SCOPE=critical
 #   ALLOW_PROD_FROM_NON_MAIN=1 bash deploy.sh      # override esplicito per deployare da un branch diverso da main
 #   ALLOW_DIRTY_PROD=1 bash deploy.sh              # override esplicito per deployare con working tree sporco
 #   ALLOW_PUSH_FAILURES=1 bash deploy.sh           # override esplicito per proseguire anche se il push fallisce
+#
+# Ottimizzazione tempo/costo (28/07, richiesta di Fabrizio): il passo [5/5]
+# di verifica post-deploy usa ora TEST_SCOPE=critical di default — 18 journey
+# critiche, solo browser desktop — invece della suite intera x2 browser
+# (~880 test), che restava la scelta giusta prima ma era troppo lenta ad ogni
+# singolo deploy e pesava sull'Active CPU del piano gratuito Vercel (4h/mese
+# incluse su Hobby — vedi https://vercel.com/docs/functions/usage-and-pricing).
+# La suite intera resta disponibile con TEST_SCOPE=all, da usare prima di un
+# rilascio o con una cadenza periodica a scelta, non dopo ogni deploy.
 #
 # TRAMA ONE Build Sprint 0 — Pre-Migration Hardening (vedi
 # docs/trama-one/analysis/SPRINT_0_TECH_NOTES.md per il dettaglio):
@@ -168,7 +180,17 @@ if [ -n "$SKIP_TESTS" ]; then
   echo ""
   echo "⏭️  Test saltati (SKIP_TESTS impostato)."
 else
+  # Ottimizzazione tempo/costo (28/07): il default di questo passo era
+  # sempre TEST_SCOPE=all (~880 test x 2 browser) DOPO OGNI SINGOLO DEPLOY —
+  # troppo lento e pesante sull'Active CPU Vercel del piano gratuito.
+  # Default ora "critical" (18 journey critiche, solo chromium — vedi
+  # test-deploy.sh), pensato apposta per un controllo veloce post-deploy.
+  # La suite intera resta un comando esplicito quando serve una copertura
+  # completa (prima di un rilascio, o periodicamente): TEST_SCOPE=all bash
+  # deploy.sh. Se TEST_SCOPE è già valorizzato (dall'utente) non viene
+  # toccato: questo default si applica solo quando non specificato.
+  TEST_SCOPE="${TEST_SCOPE:-critical}"
   echo ""
-  echo "[5/5] 🧪 Verifico con la suite di test..."
-  bash test-deploy.sh https://buddykids-app.vercel.app
+  echo "[5/5] 🧪 Verifico con la suite di test (TEST_SCOPE=$TEST_SCOPE — usa TEST_SCOPE=all bash deploy.sh per la suite intera)..."
+  TEST_SCOPE="$TEST_SCOPE" bash test-deploy.sh https://buddykids-app.vercel.app
 fi
