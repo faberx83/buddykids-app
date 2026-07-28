@@ -11,7 +11,7 @@
 // sessionStorage); altrimenti l'header compare già "a posto", senza delay.
 export default function TramaLoginHeader({ animate }: { animate: boolean }) {
   return (
-    <div className="mb-6 flex flex-col items-center gap-2">
+    <div className="mb-6 flex flex-col items-center gap-2" data-testid="trama-login-header">
       <img
         src="/brand/trama-logo-mark.png"
         alt=""

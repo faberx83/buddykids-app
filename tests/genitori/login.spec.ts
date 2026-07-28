@@ -19,8 +19,18 @@ test.describe("TRAMA - Login (header animato)", () => {
     test.skip(!isRealDeployment, "Richiede un deploy con Supabase configurato (tenant famiglia).");
     await page.goto("/auth/login");
 
-    await expect(page.getByRole("img", { name: "TRAMA" })).toBeVisible();
-    await expect(page.getByText("Organizing childhood. Together.")).toBeVisible();
+    // Scoped su [data-testid="trama-login-header"] (aggiunto a
+    // TramaLoginHeader.tsx apposta per questo): senza, "Organizing
+    // childhood. Together." matcha ANCHE il <p> di AppSplashOverlay.tsx, che
+    // renderizza lo stesso claim e resta nel DOM per HOLD_MS+FADE_MS=1250ms
+    // dopo il mount — coesistenza legittima (splash + header reale), ma
+    // strict mode violation su getByText trovata nel run reale del 28/07
+    // (Gate C). getByRole("img") non ne soffriva già (l'overlay ha
+    // aria-hidden="true" sul contenitore, escluso dall'a11y tree), ma
+    // scopiamo comunque entrambe le asserzioni per chiarezza e simmetria.
+    const header = page.getByTestId("trama-login-header");
+    await expect(header.getByRole("img", { name: "TRAMA" })).toBeVisible();
+    await expect(header.getByText("Organizing childhood. Together.")).toBeVisible();
     await expect(page.getByLabel(/email/i)).toBeVisible();
     await expect(page.getByLabel(/password/i)).toBeVisible();
     await expect(page.getByRole("button", { name: "Accedi" })).toBeVisible();
@@ -67,8 +77,15 @@ test.describe("TRAMA - Login (header animato)", () => {
     test.skip(!isRealDeployment, "Richiede un deploy con Supabase configurato (tenant famiglia).");
     await page.goto("/auth/login");
 
+    // ".app-shell" specifico: il selettore generico precedente ("body > div,
+    // #__next > div, main, div") prendeva il PRIMO div nel documento, che è
+    // ".app-backdrop" (PhoneShell.tsx) — il suo sfondo sfumato (globals.css
+    // "background: linear-gradient(...)") azzera background-color a
+    // transparent per via dello shorthand CSS. Il bianco puro atteso vive su
+    // ".app-shell" (il div interno, globals.css "background: #ffffff") —
+    // strict/wrong-element mismatch trovato nel run reale del 28/07 (Gate C).
     const bgColor = await page.evaluate(() => {
-      const el = document.querySelector("body > div, #__next > div, main, div");
+      const el = document.querySelector(".app-shell");
       return el ? getComputedStyle(el).backgroundColor : null;
     });
     // bg-white di Tailwind -> rgb(255, 255, 255)
