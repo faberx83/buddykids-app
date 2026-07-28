@@ -117,6 +117,7 @@ export default function DetailClient({
             e.stopPropagation();
             router.back();
           }}
+          aria-label="Indietro"
           className="absolute left-[18px] top-[18px] z-10 flex h-[38px] w-[38px] items-center justify-center rounded-full bg-white/90 text-lg text-ink backdrop-blur-sm transition-transform hover:scale-110"
         >
           <i className="ti ti-arrow-left" />
