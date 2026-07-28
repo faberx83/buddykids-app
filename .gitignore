@@ -20,3 +20,16 @@ logs
 # sola a ogni `tsc`/`next build`, non va versionata (causava "working tree
 # sporco" spurio a ogni deploy).
 tsconfig.tsbuildinfo
+
+# next-env.d.ts — file boilerplate rigenerato automaticamente da Next.js ad
+# ogni `next dev`/`next build` (il percorso interno cambia tra dev e build,
+# es. ".next/dev/types" vs ".next/types"). Stesso principio di
+# tsconfig.tsbuildinfo sopra: causava "working tree sporco" spurio in
+# deploy.sh (bloccato il 28/07 da modifiche locali non intenzionali).
+
+next-env.d.ts
+
+# Output della sitemap visuale (tests/sitemap.spec.ts, RUN_SITEMAP=1 /
+# ONLY_SITEMAP=1) — report locale rigenerato ad ogni esecuzione, stesso
+# principio di playwright-report sopra: mai da versionare/deployare.
+sitemap-output
