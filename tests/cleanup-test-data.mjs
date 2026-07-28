@@ -47,29 +47,50 @@ const supabase = createClient(SUPABASE_URL, SERVICE_ROLE_KEY, {
 async function main() {
   console.log("🧹 Pulizia dati generati dai test in corso...");
 
-  const { data: parent } = await supabase
+  // Gate C follow-up (28/07): tutte le lookup sotto scartavano silenziosamente
+  // `error` (solo `data` destrutturato) — se una fallisce (rete, permessi,
+  // >1 riga), `data` risulta `null`/falsy esattamente come "non trovato",
+  // e il blocco dipendente viene saltato senza alcuna traccia nel log. Il
+  // fixture TC-508 (booking marcatore 0.01) risulta "confirmed" invariato da
+  // più run consecutivi nonostante il log finale mostri
+  // `partnerResponseFixtureReset: false` — sintomo compatibile con una di
+  // queste lookup che fallisce silenziosamente. Log esplicito per rendere
+  // la causa verificabile al prossimo run invece di doverla ipotizzare.
+  const { data: parent, error: parentError } = await supabase
     .from("profiles")
     .select("id")
     .eq("email", TEST_PARENT_EMAIL)
     .maybeSingle();
+  if (parentError) {
+    console.warn("⚠️  Errore lookup profilo genitore di test:", parentError.message);
+  }
 
-  const { data: gestore } = await supabase
+  const { data: gestore, error: gestoreError } = await supabase
     .from("profiles")
     .select("id, center_id")
     .eq("email", TEST_CENTER_ADMIN_EMAIL)
     .maybeSingle();
+  if (gestoreError) {
+    console.warn("⚠️  Errore lookup profilo gestore di test:", gestoreError.message);
+  }
 
-  const { data: seedCenter } = await supabase
+  const { data: seedCenter, error: seedCenterError } = await supabase
     .from("centers")
     .select("id")
     .eq("slug", SEED_CENTER_SLUG)
     .maybeSingle();
+  if (seedCenterError) {
+    console.warn("⚠️  Errore lookup centro seed:", seedCenterError.message);
+  }
 
-  const { data: seedActivity } = await supabase
+  const { data: seedActivity, error: seedActivityError } = await supabase
     .from("activities")
     .select("id")
     .eq("slug", SEED_ACTIVITY_SLUG)
     .maybeSingle();
+  if (seedActivityError) {
+    console.warn("⚠️  Errore lookup attività seed:", seedActivityError.message);
+  }
 
   let removed = {
     bookings: 0,
@@ -105,11 +126,14 @@ async function main() {
 
   if (parent) {
     // Prenotazioni del genitore di test (cascade -> booking_weeks, booking_kids)
-    const { data: bookings } = await supabase
+    const { data: bookings, error: bookingsDeleteError } = await supabase
       .from("bookings")
       .delete()
       .eq("parent_id", parent.id)
       .select("id");
+    if (bookingsDeleteError) {
+      console.warn("⚠️  Errore cancellazione prenotazioni genitore di test:", bookingsDeleteError.message);
+    }
     removed.bookings = bookings?.length || 0;
 
     // Gruppi creati dal genitore di test (cascade -> group_members, group_kids, group_requests)
@@ -143,12 +167,15 @@ async function main() {
     // del reset finale) o da un test manuale in UI persiste indefinitamente e
     // falsa l'assunzione "stato di default: assente" di TC-140/TC-149/TC-152.
     // Va ripulito ad ogni run, non solo alla fine dei test.
-    const { data: testKidRow } = await supabase
+    const { data: testKidRow, error: testKidError } = await supabase
       .from("kids")
       .select("id")
       .eq("parent_id", parent.id)
       .eq("name", SEED_KID_NAME)
       .maybeSingle();
+    if (testKidError) {
+      console.warn("⚠️  Errore lookup bambino seed:", testKidError.message);
+    }
     testKid = testKidRow;
 
     if (testKid) {
@@ -327,12 +354,15 @@ async function main() {
   // originale, così da non toccare "Settimana 1"/la settimana odierna già
   // occupate dalla fixture di Registro presenze.
   if (parent && seedActivity && testKid) {
-    const { data: week2 } = await supabase
+    const { data: week2, error: week2Error } = await supabase
       .from("activity_weeks")
       .select("id")
       .eq("activity_id", seedActivity.id)
       .eq("label", "Settimana 2")
       .maybeSingle();
+    if (week2Error) {
+      console.warn("⚠️  Errore lookup 'Settimana 2':", week2Error.message);
+    }
 
     if (week2) {
       // total_amount fisso a 0.01: è esattamente il marcatore che
@@ -369,6 +399,15 @@ async function main() {
         "ℹ️  'Settimana 2' non trovata per l'attività di test: prenotazione fixture 'Da rispondere' (TC-508) non ricreata."
       );
     }
+  } else {
+    // Nessuno dei tre log "⚠️ Errore lookup..." sopra E comunque
+    // partnerResponseFixtureReset resta false: questo ramo dice esattamente
+    // quale precondizione manca, invece di dover ipotizzare guardando solo
+    // il flag finale.
+    console.log(
+      `ℹ️  Prenotazione fixture 'Da rispondere' (TC-508) non ricreata: ` +
+        `parent=${Boolean(parent)} seedActivity=${Boolean(seedActivity)} testKid=${Boolean(testKid)}.`
+    );
   }
 
   // Gate C (Cluster F, luglio 2026) — BUG TROVATO+CORRETTO: questo log di
