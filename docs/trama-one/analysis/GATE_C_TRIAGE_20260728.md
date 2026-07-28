@@ -192,6 +192,77 @@ documentati in Gate B), da confermare con un rerun live mirato
 simile) prima di decidere se serve un fix (es. `expect.timeout` più alto solo
 per questo test, o `retries` dedicati).
 
+## Chiusura Cluster G residuo (28/07, seconda parte)
+
+Triage per lettura statica (codice + confronto test/componente) di tutto
+l'elenco residuo del Cluster G. Riepilogo:
+
+**Bug reali nel TEST (HARNESS), corretti:**
+- **TC-N80** — `getByText("Le tue Community").locator("..")` risaliva di un
+  solo livello DOM, che in `PlannerGroupsView.tsx` è il div che contiene
+  ANCHE il link "Vedi tutte"/"Crea o entra" (stesso testo, href
+  `/nextgen/community` senza id) — le card Community vere vivono in un div
+  fratello sotto. Il test cliccava sempre "Vedi tutte", mai una card.
+  Scopato all'href reale (`a[href^="/nextgen/community/"]`). Commit `a9da29d`.
+- **TC-N296** — xpath `ancestor::div[contains(@class,'cursor-pointer')]`
+  cercava un antenato più in alto con quella classe, ma il chip "Servizi"
+  (`SearchDiscoveryClient.tsx`) è esso stesso quel div (nessuno span di
+  incapsulamento) — l'asse `ancestor::` esclude il nodo di contesto: 0
+  risultati, locator vuoto, timeout. Rimosso l'xpath. Commit `bcaa670`.
+- **TC-166** — su mobile-chrome la nav Gestore vive dietro un cassetto
+  (drawer) renderizzato in DOM solo a `drawerOpen=true`
+  (`DashboardLayout.tsx`); il test cercava il link senza aprire il drawer
+  prima. Aggiunta apertura condizionale dell'hamburger. Commit `30efd44`.
+- **TC-N300** — confermava una card "in coda per la pipeline" ma asseriva
+  `toHaveCount(0)` sul bottone per NOME su tutta la pagina: con più
+  segnalazioni ancora in coda, restano bottoni identici sulle altre card e
+  l'assert falliva anche a comportamento corretto. Scopato alla card
+  specifica. Commit `aec77b1`.
+
+**TEST OBSOLETO, corretti (contraddicevano un redesign successivo già
+completato):**
+- **TC-N24** — cercava "Settimana 12"/"13" visibili al solo caricamento,
+  ma dalla Timeline-per-mese pieghevole (Sprint 2) quel testo esiste solo a
+  mese aperto. Aggiunta apertura di tutti i mesi. Commit `975e920`.
+- **TC-N14** — asseriva "Budget impegnato sempre visibile" in
+  Organizzazione, ma **TC-263** (Sprint correttivo, richiesta esplicita di
+  Fabrizio) verifica l'esatto contrario: rimossa da lì, vive solo nel tab
+  Budget. I due test erano in contraddizione diretta. Aggiornato TC-N14 per
+  aprire il tab Budget. Commit `d5b56e3`.
+
+**Verificati senza trovare alcun bug (codice e test coerenti tra loro),
+classificazione invariata "da confermare al prossimo rerun live":**
+TC-N98/N99 (copertura per bambino/evidenziazione riga — stato iniziale
+pulito, nessuna persistenza sospetta), TC-N73/N76/N77 (Famiglia — guardie
+di skip corrette, selettori verificati), TC-N108/N112/N114 (Profilo — hub
+card, sotto-pagine e back-nav già allineati al redesign Sprint 7, sembrano
+già risolti da un commit precedente a questa sessione), TC-075/TC-200
+(Attività/Certificazione — nav highlight e flusso invio verificati, nessuna
+ambiguità trovata), TC-127 (Inviti — email univoca per run, nessuna
+ambiguità).
+
+**Non risolvibili da soli (richiedono un rerun live mirato):**
+- **TC-163/TC-178** (Richieste, entrambi i lati) — pattern identico: due
+  login reali sequenziali (genitore poi gestore) nello stesso test. Non
+  rientra nel problema di concorrenza già noto di Gate B (quello è su
+  worker diversi), ma resta un doppio login reale su account condivisi.
+  Nessuna causa applicativa trovata per lettura statica. Ipotesi più
+  probabile: HARNESS/timing.
+
+**Non ancora affrontato in questo giro:** "did not run" (Obiettivo 4) —
+richiede ispezione diretta di `playwright-report/results.json` da un rerun
+live, non deducibile da sola lettura del codice.
+
+**Nota collaterale (non nell'elenco originale, stessa causa di TC-N24):**
+**TC-N13** ("mostra la timeline completa delle 13 settimane") assume
+"Settimana 1"/"Settimana 13" visibili al solo caricamento pagina, ma solo
+UN mese è espanso di default (quello della settimana prioritaria) — quasi
+certamente soffre dello stesso problema di TC-N24 già corretto sopra. Non
+era nell'elenco dei falliti riportato da Fabrizio in questo run (forse
+già falliva altrove senza essere notato, o il mese di default copre per
+coincidenza una delle due). Da tenere d'occhio al prossimo rerun; non
+corretto qui per restare scoped all'elenco Cluster G originale.
+
 ## Raccomandazione per il prossimo giro
 
 1. ~~Fix meccanico Cluster A (selettori)~~ — **fatto** (commit `9beec2a`).
