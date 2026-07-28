@@ -40,7 +40,16 @@ test.describe("NEXTGEN - Family Planner Sprint 5.6 (Vista Gruppi)", () => {
     await page.goto("/nextgen/planner");
     await page.getByRole("button", { name: "Gruppi" }).click();
 
-    const communityCard = page.getByText("Le tue Community").locator("..").locator("a").first();
+    // Gate C (28/07): `getByText("Le tue Community").locator("..")` risale
+    // di UN SOLO livello, che in PlannerGroupsView.tsx (righe 82-88) è il div
+    // flex che contiene anche il link "Vedi tutte"/"Crea o entra" (stesso
+    // href /nextgen/community, SENZA id) — non le card Community vere, che
+    // vivono in un div fratello più sotto (riga 90-94). Il locator
+    // agganciava quindi quel link, non una card: clic -> /nextgen/community
+    // (lista), che non matcha mai /\/nextgen\/community\/.+/. Scopato ora
+    // direttamente all'href reale delle card (CommunityCard, riga 28:
+    // /nextgen/community/${community.id}).
+    const communityCard = page.locator('a[href^="/nextgen/community/"]').first();
     if (!(await communityCard.isVisible().catch(() => false))) {
       test.skip(true, "L'account di test non fa parte di nessuna Community.");
     }
