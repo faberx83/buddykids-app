@@ -85,7 +85,12 @@ test.describe("NEXTGEN - Planner (Sprint 3)", () => {
     await loginAs(page, "parent");
     await page.goto("/nextgen");
 
-    await page.getByRole("link", { name: "Prenotazioni" }).click();
+    // Gate C (28/07): la Home mostra ANCHE "Gestisci tutte le prenotazioni →"
+    // (card riepilogo) — getByRole senza {exact:true} matcha per default in
+    // modo case-insensitive/substring, quindi "Prenotazioni" risolveva a
+    // entrambi i link (strict mode violation). {exact:true} isola il link
+    // della bottom nav (nome accessibile esattamente "Prenotazioni").
+    await page.getByRole("link", { name: "Prenotazioni", exact: true }).click();
     await expect(page).toHaveURL(/\/prenotazioni/);
     await page.goto("/nextgen");
     await page.getByRole("link", { name: "Profilo" }).click();
