@@ -43,10 +43,22 @@ test.describe("Gestore - Inviti", () => {
   // Passi: In 'Inviti', usa 'Carica file', seleziona il CSV, conferma
   // Risultato atteso: Un invito viene creato per ciascun contatto valido nel file, con lo stesso sconto/scadenza impostati; i contatti senza email valida restano generabili solo come link (nessuna email inviata)
   test("TC-123 - Caricamento contatti da file per invio multiplo", async ({ page }) => {
+    // Nomi univoci per run (stesso principio già applicato a TC-122): con
+    // "Contatto Uno"/"Contatto Due" fissi, ogni run diretto senza passare da
+    // test-deploy.sh (che pulisce gli inviti del gestore di test prima della
+    // suite, vedi tests/cleanup-test-data.mjs) accumula righe con lo stesso
+    // nome — strict mode violation trovata nel run reale del 28/07 (13-14
+    // elementi, Gate C Cluster B). Nomi univoci rendono il test corretto
+    // indipendentemente da quando/come viene rilanciato, senza sostituire la
+    // pulizia (che resta comunque la soluzione per non far crescere la
+    // tabella all'infinito in produzione).
+    const uniqueId = Date.now();
+    const nameOne = `Contatto Uno ${uniqueId}`;
+    const nameTwo = `Contatto Due ${uniqueId}`;
     const csv = [
       "nome,email,telefono",
-      `Contatto Uno,test.bulk1.${Date.now()}@buddykids.it,`,
-      `Contatto Due,test.bulk2.${Date.now()}@buddykids.it,`,
+      `${nameOne},test.bulk1.${uniqueId}@buddykids.it,`,
+      `${nameTwo},test.bulk2.${uniqueId}@buddykids.it,`,
     ].join("\n");
 
     const fileChooserPromise = page.waitForEvent("filechooser");
@@ -61,8 +73,8 @@ test.describe("Gestore - Inviti", () => {
     // Il componente ricarica la pagina al termine (window.location.reload()) —
     // aspettiamo la navigazione e poi verifichiamo che i 2 contatti compaiano.
     await page.waitForURL(/\/center\/invites/, { timeout: 15_000 });
-    await expect(page.getByText("Contatto Uno")).toBeVisible({ timeout: 10_000 });
-    await expect(page.getByText("Contatto Due")).toBeVisible();
+    await expect(page.getByText(nameOne)).toBeVisible({ timeout: 10_000 });
+    await expect(page.getByText(nameTwo)).toBeVisible();
   });
 
   // Priorita: Bassa | Precondizioni: Un invito appena creato con contatto email

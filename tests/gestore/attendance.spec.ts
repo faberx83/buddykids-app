@@ -50,8 +50,11 @@ test.describe("Gestore - Registro presenze", () => {
 
     // Il bambino di test è iscritto (nome reale, non anonimizzato: a
     // differenza dei Gruppi tra famiglie diverse, qui il centro vede i propri
-    // iscritti — vedi le RLS aggiuntive in migration_06).
-    await expect(page.getByText("[TEST] Bimbo Prova")).toBeVisible();
+    // iscritti — vedi le RLS aggiuntive in migration_06). exact:true: senza,
+    // matcha anche il riepilogo "Assenti: [TEST] Bimbo Prova, ..." se il
+    // bambino risulta assente — strict mode violation trovata nel run reale
+    // del 28/07 (Gate C Cluster A).
+    await expect(page.getByText("[TEST] Bimbo Prova", { exact: true })).toBeVisible();
   });
 
   // TC-140 - Segnare presente/assente per un giorno specifico persiste

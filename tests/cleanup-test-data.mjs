@@ -83,6 +83,8 @@ async function main() {
     // Integration Stabilization Sprint (Gate B, luglio 2026):
     testCentersDeleted: 0,
     onboardingPreconditionSet: false,
+    // Integration Stabilization Sprint (Gate C, luglio 2026):
+    partnerResponseFixtureReset: false,
   };
 
   let testKid = null;
@@ -308,6 +310,66 @@ async function main() {
       } else if (bookingError) {
         console.warn("⚠️  Impossibile ricreare la prenotazione fixture:", bookingError.message);
       }
+    }
+  }
+
+  // ─────────────────────────────────────────────
+  // Gate C (Integration Stabilization Sprint, luglio 2026) — root cause
+  // trovata nel run reale del 28/07: il blocco sopra ("bookings.delete
+  // .eq(parent_id, parent.id)") cancella INCONDIZIONATAMENTE tutte le
+  // prenotazioni del genitore di test, inclusa la prenotazione "pending"
+  // marcatore (total_amount = 0.01) seminata una tantum da
+  // supabase/seed-test-data.sql STEP 8 per tests/gestore/prenotazioni.spec.ts
+  // (TC-508, Inbox Partner "Da rispondere"). A differenza della fixture di
+  // Registro presenze qui sopra, questa non veniva mai ricreata — la prima
+  // volta che questo script gira, la elimina per sempre e TC-508 non trova
+  // più nulla in "Da rispondere" finché qualcuno non rilancia lo STEP 8 a
+  // mano in SQL Editor. Stesso principio "ricrea ad ogni run" già in uso
+  // sopra, sulla stessa identica settimana (Settimana 2) usata dal seed
+  // originale, così da non toccare "Settimana 1"/la settimana odierna già
+  // occupate dalla fixture di Registro presenze.
+  if (parent && seedActivity && testKid) {
+    const { data: week2 } = await supabase
+      .from("activity_weeks")
+      .select("id")
+      .eq("activity_id", seedActivity.id)
+      .eq("label", "Settimana 2")
+      .maybeSingle();
+
+    if (week2) {
+      // total_amount fisso a 0.01: è esattamente il marcatore che
+      // supabase/seed-test-data.sql STEP 8 usa per riconoscere questa riga
+      // (mai prodotto da createBookingAction in condizioni normali), non un
+      // prezzo reale — non serve leggere activities.price_per_week qui.
+      const { data: pendingBooking, error: pendingBookingError } = await supabase
+        .from("bookings")
+        .insert({
+          parent_id: parent.id,
+          activity_id: seedActivity.id,
+          status: "pending",
+          total_amount: 0.01,
+          discount_amount: 0,
+          payment_method: "card",
+          shuttle_included: false,
+        })
+        .select("id")
+        .single();
+
+      if (!pendingBookingError && pendingBooking) {
+        await supabase.from("booking_weeks").insert({ booking_id: pendingBooking.id, week_id: week2.id });
+        await supabase.from("booking_kids").insert({ booking_id: pendingBooking.id, kid_id: testKid.id });
+        removed.partnerResponseFixtureReset = true;
+        console.log("✅ Prenotazione fixture 'Da rispondere' (marcatore 0.01) ricreata per TC-508.");
+      } else if (pendingBookingError) {
+        console.warn(
+          "⚠️  Impossibile ricreare la prenotazione fixture 'Da rispondere' per TC-508:",
+          pendingBookingError.message
+        );
+      }
+    } else {
+      console.log(
+        "ℹ️  'Settimana 2' non trovata per l'attività di test: prenotazione fixture 'Da rispondere' (TC-508) non ricreata."
+      );
     }
   }
 }
