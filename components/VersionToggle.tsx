@@ -43,7 +43,17 @@ function isStandaloneDisplay(): boolean {
 // Condivisione Piano), aperta anche da chi non ha mai installato/usato
 // l'app (nonni, tata) — non deve mostrare il toggle LEGACY/NEXTGEN né
 // tentare redirect di preferenza versione.
-const HIDDEN_PREFIXES = ["/center", "/admin", "/nextgen/center", "/nextgen/admin", "/auth", "/share"];
+//
+// Gate C (28/07) — "/activity" aggiunto: BUG REALE trovato dal run live
+// (TC-026, mobile-chrome). La scheda attività (app/activity/[id]/DetailClient.tsx)
+// ha già i suoi controlli in alto a destra (bottone preferito, top-[18px]
+// right-[18px], z-10) — questo toggle (fixed, top-4 right-4, z-50) ci si
+// sovrappone sullo stesso angolo su viewport stretti, e vincendo per
+// z-index intercetta il click destinato al cuore ("intercepts pointer
+// events", confermato dal trace Playwright). Stesso principio delle altre
+// esclusioni sopra: pagine con i propri controlli dedicati in quell'angolo
+// non devono competere con lo switch versione globale.
+const HIDDEN_PREFIXES = ["/center", "/admin", "/nextgen/center", "/nextgen/admin", "/auth", "/share", "/activity"];
 
 export default function VersionToggle() {
   const pathname = usePathname() ?? "/";
