@@ -31,6 +31,14 @@ test.describe("NEXTGEN - Planner Organizzazione, sprint correttivo (feedback det
   // Fabrizio: "il Budget impegnato non mi interessa qui, c'è una sezione
   // dedicata no?" — rimossa la card duplicata dal tab Organizzazione,
   // resta solo nel tab Budget.
+  //
+  // Gate C (28/07): la card "Budget impegnato" del vecchio riepilogo in
+  // Organizzazione è stata SOSTITUITA (non solo spostata) da PlannerBudgetView
+  // — la card nel tab Budget usa un'etichetta diversa ("Budget estate" come
+  // intestazione sezione, "Budget pianificato"/"Speso finora" come dati),
+  // "Budget impegnato" non esiste più da nessuna parte nel codice. TEST
+  // OBSOLETO: la seconda asserzione va aggiornata all'etichetta reale,
+  // altrimenti fallisce anche dopo aver aperto il tab giusto.
   test("TC-263 - 'Budget impegnato' non è più duplicato nel tab Organizzazione", async ({ page }) => {
     test.skip(!isRealDeployment, "Richiede un deploy con Supabase configurato e l'account genitore di test.");
     await loginAs(page, "parent");
@@ -38,7 +46,7 @@ test.describe("NEXTGEN - Planner Organizzazione, sprint correttivo (feedback det
 
     await expect(page.getByText("Budget impegnato")).toHaveCount(0);
     await page.getByRole("button", { name: "Budget" }).click();
-    await expect(page.getByText("Budget impegnato")).toBeVisible();
+    await expect(page.getByText("Budget estate")).toBeVisible();
   });
 
   // Fabrizio: "le notifiche nascoste... devono avere una CTA?" — ogni

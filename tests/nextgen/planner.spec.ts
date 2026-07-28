@@ -28,13 +28,18 @@ test.describe("NEXTGEN - Planner (Sprint 3)", () => {
   // la card è stata rimossa dal tab Organizzazione e vive solo nel tab
   // Budget (PlannerClient.tsx righe 753-756). TEST OBSOLETO: aggiornato per
   // riflettere il comportamento attuale invece di contraddire TC-263.
+  //
+  // Gate C (28/07), seconda ondata: la card nel tab Budget (PlannerBudgetView)
+  // non usa più la scritta "Budget impegnato" — rinominata in "Budget estate"
+  // (intestazione)/"Budget pianificato" (dato) nel redesign Sprint 5.1.
+  // Etichetta obsoleta anche qui, aggiornata a quella reale.
   test("TC-N14 - Budget impegnato visibile nel tab Budget del Planner", async ({ page }) => {
     test.skip(!isRealDeployment, "Richiede un deploy con Supabase configurato e l'account genitore di test.");
     await loginAs(page, "parent");
     await page.goto("/nextgen/planner");
 
     await page.getByRole("button", { name: "Budget" }).click();
-    await expect(page.getByText("Budget impegnato")).toBeVisible();
+    await expect(page.getByText("Budget estate")).toBeVisible();
   });
 
   // SPRINT 5.1: TC-N15 aggiornato al testo reale della CTA in Home ("Apri
