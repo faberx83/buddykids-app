@@ -60,7 +60,13 @@ test.describe("NEXTGEN - Planner, Organizzazione semplificata", () => {
     await page.goto("/nextgen/planner");
 
     await expect(page.getByText("Stato per settimana")).toBeVisible();
-    await page.getByRole("button", { name: "Vai al dettaglio della Settimana 1" }).click();
+    // Regex con virgola finale: "Vai al dettaglio della Settimana 1" per
+    // substring matcha anche "...Settimana 10/11/12/13" (nome accessibile
+    // completo include ", GIU 1-5" ecc. dopo il numero) — strict mode
+    // violation trovata nel run reale del 28/07 (Gate C). La virgola dopo
+    // "Settimana 1" esclude quei bottoni senza dover hardcodare l'intervallo
+    // di date (variabile in base alla stagione).
+    await page.getByRole("button", { name: /Vai al dettaglio della Settimana 1,/ }).click();
 
     const row = page.locator("#week-row-1");
     await expect(row).toBeVisible();

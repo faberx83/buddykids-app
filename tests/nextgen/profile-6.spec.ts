@@ -23,7 +23,12 @@ test.describe("NEXTGEN - Profilo (Sprint 6)", () => {
     // all'heading del PageHeader per evitare la strict mode violation
     // trovata nel run reale del 28/07 (Gate C Cluster A).
     await expect(page.getByRole("heading", { name: "Profilo", exact: true })).toBeVisible();
-    await expect(page.locator('img[src="/brand/trama-logo-mark.png"]')).toBeVisible();
+    // [aria-hidden="true"]: senza, matcha anche il logo grande (h-20 w-20,
+    // NO aria-hidden) di AppSplashOverlay.tsx, sempre nel DOM durante il
+    // fade-out dello splash — strict mode violation trovata nel run reale
+    // del 28/07 (Gate C). L'icona del PageHeader (h-5, aria-hidden="true",
+    // vedi components/PageHeader.tsx) è quella decorativa accanto al titolo.
+    await expect(page.locator('img[src="/brand/trama-logo-mark.png"][aria-hidden="true"]')).toBeVisible();
   });
 
   test("TC-N106 - la bottom nav NEXTGEN porta 'Profilo' a /nextgen/profile (non più /profile LEGACY)", async ({

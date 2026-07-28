@@ -8,11 +8,16 @@ import { loginAs, isRealDeployment } from "../fixtures/roles";
 // autenticazione condivisa e guard sui ruoli nel nuovo namespace /nextgen.
 
 test.describe("NEXTGEN - Setup (Sprint 0)", () => {
-  test("TC-N01 - /nextgen è raggiungibile da un genitore autenticato e mostra il badge NextGen", async ({ page }) => {
+  // TEST OBSOLETO corretto qui: il pill "NEXTGEN" inline è stato sostituito
+  // da un ribbon diagonale "Beta" (vedi components/nextgen/NextgenBadge.tsx,
+  // sprint correttivo su feedback Fabrizio) — il testo "NextGen" non compare
+  // più da nessuna parte in queste pagine, confermato via error-context.md
+  // del run reale del 28/07 (Gate C). Non è una regressione.
+  test("TC-N01 - /nextgen è raggiungibile da un genitore autenticato e mostra il ribbon Beta", async ({ page }) => {
     test.skip(!isRealDeployment, "Richiede un deploy con Supabase configurato e l'account genitore di test.");
     await loginAs(page, "parent");
     await page.goto("/nextgen");
-    await expect(page.getByText("NextGen")).toBeVisible();
+    await expect(page.getByText("Beta", { exact: true })).toBeVisible();
     await expect(page.locator("body")).not.toContainText("Application error");
   });
 
@@ -20,7 +25,7 @@ test.describe("NEXTGEN - Setup (Sprint 0)", () => {
     test.skip(!isRealDeployment, "Richiede un deploy con Supabase configurato e l'account gestore di test.");
     await loginAs(page, "center_admin");
     await page.goto("/nextgen/center");
-    await expect(page.getByText("NextGen")).toBeVisible();
+    await expect(page.getByText("Beta", { exact: true })).toBeVisible();
     await expect(page.locator("body")).not.toContainText("Application error");
   });
 
@@ -28,7 +33,7 @@ test.describe("NEXTGEN - Setup (Sprint 0)", () => {
     test.skip(!isRealDeployment, "Richiede un deploy con Supabase configurato e l'account admin di test.");
     await loginAs(page, "platform_admin");
     await page.goto("/nextgen/admin");
-    await expect(page.getByText("NextGen")).toBeVisible();
+    await expect(page.getByText("Beta", { exact: true })).toBeVisible();
   });
 
   test("TC-N04 - Un genitore che apre /nextgen/center viene rediretto (nessun accesso non autorizzato)", async ({ page }) => {
@@ -71,11 +76,16 @@ test.describe("NEXTGEN - Setup (Sprint 0)", () => {
     test.skip(!isRealDeployment, "Richiede un deploy con Supabase configurato e l'account genitore di test.");
     await loginAs(page, "parent");
 
+    // [aria-hidden="true"]: senza, matcha anche il logo grande (h-20 w-20,
+    // NO aria-hidden) di AppSplashOverlay.tsx, ancora nel DOM durante il
+    // fade-out — strict mode violation trovata nel run reale del 28/07
+    // (Gate C). L'icona h-6 accanto al titolo (HomeDashboardClient.tsx /
+    // CommunityListClient.tsx) ha aria-hidden="true".
     await page.goto("/nextgen");
-    await expect(page.locator('img[src="/brand/trama-logo-mark.png"]')).toBeVisible();
+    await expect(page.locator('img[src="/brand/trama-logo-mark.png"][aria-hidden="true"]')).toBeVisible();
 
     await page.goto("/nextgen/community");
-    await expect(page.locator('img[src="/brand/trama-logo-mark.png"]')).toBeVisible();
+    await expect(page.locator('img[src="/brand/trama-logo-mark.png"][aria-hidden="true"]')).toBeVisible();
   });
 
   // SPRINT CORRETTIVO (feedback Fabrizio): "l'icona della pwa e' piccola" +
