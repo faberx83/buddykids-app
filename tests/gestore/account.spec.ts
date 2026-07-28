@@ -35,8 +35,13 @@ test.describe("Gestore - Il mio account", () => {
     await expect(page.getByRole("button", { name: "Modifica" })).toBeVisible();
     await expect(page.getByText("Impostazioni", { exact: true })).toBeVisible();
     await expect(page.getByRole("link", { name: /Sicurezza/ })).toBeVisible();
+    // TEST OBSOLETO corretto qui: "Notifiche" non è più una voce di menu
+    // separata — ProfileSettingsSection.tsx la unisce dentro "Preferenze"
+    // (richiesto da Fabrizio: "le notifiche le metterei dentro le
+    // preferenze"). Verifichiamo "Preferenze" e il suo sottotitolo, che
+    // menziona esplicitamente le notifiche, invece di un link inesistente.
     await expect(page.getByRole("link", { name: /Preferenze/ })).toBeVisible();
-    await expect(page.getByRole("link", { name: /Notifiche/ })).toBeVisible();
+    await expect(page.getByText("Lingua, tema, notifiche")).toBeVisible();
     await expect(page.getByRole("link", { name: /Privacy e account/ })).toBeVisible();
 
     // Il selettore "Sei: Padre/Madre/Tutore" non ha senso per un gestore.
