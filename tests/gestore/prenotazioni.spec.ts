@@ -26,13 +26,19 @@ test.describe("Gestore - Prenotazioni (risposta Partner)", () => {
     await loginAs(page, "center_admin");
     await page.goto("/center/prenotazioni");
 
-    // getByTestId invece del pattern generico "div".filter({hasText}).last():
-    // in questa Inbox il nome attività e il badge di stato vivono in due
-    // <div> fratelli separati (vedi PrenotazioniClient.tsx), quindi ".last()"
-    // su un locator "div" generico può risolvere al <div> più annidato che
-    // contiene SOLO il nome attività, senza il badge — falso negativo su
-    // "Da rispondere" pur essendo entrambi visibili nella stessa riga.
-    const row = page.getByTestId("booking-row").filter({ hasText: TEST_ACTIVITY_NAME }).last();
+    // Gate C (28/07): con cleanup-test-data.mjs ora funzionante end-to-end
+    // (fix chiave API Supabase), esistono STABILMENTE più righe per la stessa
+    // TEST_ACTIVITY_NAME (fixture Registro presenze già accettata + fixture
+    // "Da rispondere" di questo test) — getBookingsForCenter ordina per
+    // created_at DESC (lib/data/center-bookings.ts riga 169), quindi la riga
+    // più recente (il marcatore pending appena ricreato) è la PRIMA nel DOM,
+    // non l'ultima: ".last()" risolveva alla riga più VECCHIA (già accettata,
+    // senza bottone "Accetta") → timeout. Disambiguiamo filtrando anche per
+    // "Da rispondere", indipendentemente dall'ordine.
+    const row = page
+      .getByTestId("booking-row")
+      .filter({ hasText: TEST_ACTIVITY_NAME })
+      .filter({ hasText: "Da rispondere" });
     await expect(row).toBeVisible();
     await expect(row.getByText("Da rispondere")).toBeVisible();
 
