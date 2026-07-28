@@ -77,12 +77,19 @@ test.describe("NEXTGEN - Planner, Organizzazione semplificata", () => {
     await loginAs(page, "parent");
     await page.goto("/nextgen/planner");
 
-    const toggle = page.getByRole("button", { name: "Calendario", exact: true });
+    // NO exact:true su "Calendario": vedi commento su TC-N43
+    // (family-planner-5-1.spec.ts) — icona Tabler Icons inquina il nome
+    // accessibile del bottone (Gate C Cluster D).
+    const toggle = page.getByRole("button", { name: "Calendario" });
     await expect(toggle).toHaveAttribute("aria-expanded", "false");
     await toggle.click();
     await expect(toggle).toHaveAttribute("aria-expanded", "true");
-    await expect(page.getByRole("button", { name: "Mese" })).toBeVisible();
-    await expect(page.getByRole("button", { name: "Settimana" })).toBeVisible();
+    // exact:true invece qui: "Mese"/"Settimana" senza matchano per substring
+    // anche i bottoni "Mese precedente"/"Vai al dettaglio della Settimana N"
+    // della sezione "Stato per settimana", sempre presente in questa stessa
+    // pagina (stesso strict mode violation di TC-N50/TC-N54).
+    await expect(page.getByRole("button", { name: "Mese", exact: true })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Settimana", exact: true })).toBeVisible();
 
     await toggle.click();
     await expect(toggle).toHaveAttribute("aria-expanded", "false");

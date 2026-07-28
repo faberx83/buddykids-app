@@ -36,13 +36,19 @@ Sintomo: elemento cercato semplicemente assente, non ambiguo — la pagina è ca
 
 **Classificazione: TEST OBSOLETO** (in maggioranza). Fix: aggiornare i test ai testi/href correnti — richiede uno sguardo diretto alla UI attuale pagina per pagina, non meccanico come il Cluster A.
 
-## Cluster D — Da investigare come possibile regressione reale
+## Cluster D — RISOLTO: falso allarme, non una regressione (HARNESS)
 
-- TC-N43/44: bottoni "Organizzazione"/"Mappa"/"Budget"/"Gruppi" del Planner non trovati affatto (non ambigui, assenti) — se la UI reale ha ancora questi tab con questi nomi esatti, è un regressione; se sono stati rinominati in uno sprint successivo, è Cluster C. **Non ancora determinato — priorità alta per prossimo giro, tocca la journey Planner (critica, #15 Gate D).**
-- TC-N59/61 ("Nessuno assegnato" — Chi fa cosa) e TC-N66 (Mappa distanza) — stesso dubbio, journey "Planner Sync"/Mappa.
-- TC-160 ("Indietro" bottone dettaglio attività) — questa è una regressione già corretta in passato (bug #22); se è ricomparsa merita priorità P1.
+**Aggiornamento post-analisi `error-context.md` (fornito da Fabrizio per TC-N43):** non è una regressione applicativa. I bottoni dei tab del Planner (`PlannerModeTabs.tsx`) e il riquadro pieghevole "Calendario" (`PlannerClient.tsx`) renderizzano un'icona Tabler Icons (`<i className="ti ti-...">`) prima dell'etichetta testuale. Quell'icona lascia un carattere glifo (o comunque uno spazio) nel nome accessibile calcolato dal browser — l'accessibility-tree snapshot dell'errore mostra `button " Organizzazione"`, `button " Mappa"`, `button " Budget"`, `button "﨡 Gruppi"`, non i testi letterali attesi. I bottoni **esistono e funzionano**: il test falliva solo perché usava `{exact: true}`, che pretende una corrispondenza esatta col nome accessibile (inclusi i caratteri spuri dell'icona). Conferma indipendente: `TC-N295` (`tap-feedback.spec.ts`) usa lo stesso locator SENZA `exact:true` ed era verde in questo stesso run.
 
-**Classificazione: DA VERIFICARE.** Nessuna fix applicata — richiede uno screenshot/trace reale (già disponibili in `test-results/*/test-failed-1.png`, generati da questo run) prima di decidere HARNESS/OBSOLETO/BUG.
+- TC-N43/44 (`family-planner-5-1.spec.ts`): rimosso `exact: true` dai bottoni "Organizzazione"/"Mappa"/"Budget"/"Gruppi"/"Calendario" — ora match per substring, coerente con TC-N295.
+- TC-N50/54 (`planner-calendar-5-2.spec.ts`): problema opposto e complementare — i bottoni "Mese"/"Settimana" del toggle vista (`PlannerCalendarView.tsx`) sono testo puro, SENZA icona, ma matchavano per substring anche "Mese precedente"/"Mese successivo" e ogni bottone "Vai al dettaglio della Settimana N...". Aggiunto `exact: true` per disambiguare.
+- TC-N100 (`planner-organizzazione-semplificata.spec.ts`): stesso bottone "Calendario" di TC-N43 (rimosso `exact:true`) + stesso problema di TC-N50/54 sui bottoni "Mese"/"Settimana" annidati nello stesso riquadro (aggiunto `exact:true`) — entrambe le direzioni del fix coesistono in questo test perché apre il riquadro Calendario dentro Organizzazione, dove "Stato per settimana" (bottoni "Vai al dettaglio della Settimana N") resta sempre visibile.
+
+**Classificazione: HARNESS** (stesso principio del Cluster A: selettore non allineato al nome accessibile reale, non un bug applicativo). Fix applicato e verificato (`tsc`/`eslint` puliti su tutti i file toccati). Non ancora verificato con un rerun live — da confermare al prossimo `bash test-deploy.sh`.
+
+- TC-N59/61 ("Nessuno assegnato" — Chi fa cosa) e TC-N66 (Mappa distanza) — non ancora investigati con lo stesso livello di dettaglio: stesso dubbio, journey "Planner Sync"/Mappa. Non è chiaro se condividano la causa (icona/accessible-name) o siano un problema distinto — serve error-context.md dedicato.
+- TC-160 ("Indietro" bottone dettaglio attività) — questa è una regressione già corretta in passato (bug #22); se è ricomparsa merita priorità P1. Non ancora investigato in questo giro.
+- TC-N98 (bottone aria-expanded rimasto 1 invece di 0) resta in Cluster A (stato residuo, non locator) — non toccato in questo giro. TC-N99 ("Stato per settimana" → evidenzia riga Timeline) non presenta alcun sintomo riconducibile all'icona/accessible-name nel codice del test: locator già univoco (`"Vai al dettaglio della Settimana 1"`, nome completo, nessun `exact` in gioco) — causa del fallimento ancora da determinare con un rerun live, non classificabile da sola lettura del codice.
 
 ## TC-N409 — ancora fallita, causa nota e diversa dai cluster sopra
 
@@ -56,7 +62,8 @@ Il comando è stato lanciato con `npx playwright test ... ` DIRETTO, non con `ba
 
 ## Raccomandazione per il prossimo giro
 
-1. Fix meccanico Cluster A (selettori) — basso rischio, alto numero di test recuperati.
-2. Estendere `cleanup-test-data.mjs` per Cluster B (inviti, prenotazioni test, certificazioni).
-3. Verificare con screenshot Cluster D prima di toccare codice applicativo — priorità Planner (journey critica).
-4. Rieseguire SEMPRE via `bash test-deploy.sh`, mai `npx playwright test` a mano, per non perdere il cleanup automatico.
+1. ~~Fix meccanico Cluster A (selettori)~~ — **fatto** (commit `9beec2a`).
+2. ~~Estendere `cleanup-test-data.mjs` per Cluster B~~ — **fatto** (commit `c1f4cb2`, incluso il root cause TC-508).
+3. ~~Verificare con screenshot Cluster D~~ — **fatto**: falso allarme (icona accessible-name), non regressione. Fix applicato su TC-N43/44/50/54/100.
+4. Rimane da investigare: TC-N59/61/66 (Chi fa cosa/Mappa), TC-160 (Indietro, possibile regressione bug #22), TC-N98/N99, TC-119/153/204/208/N24 (Cluster C, testi/href da aggiornare), "did not run" (Obiettivo 4).
+5. Rieseguire SEMPRE via `bash test-deploy.sh`, mai `npx playwright test` a mano, per non perdere il cleanup automatico — prossimo rerun live necessario per confermare tutti i fix di questo giro prima di Gate F.

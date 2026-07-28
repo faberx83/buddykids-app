@@ -62,12 +62,19 @@ test.describe("NEXTGEN - Family Planner (Sprint 5.1)", () => {
     await loginAs(page, "parent");
     await page.goto("/nextgen/planner");
 
+    // NO exact:true: i bottoni dei tab (PlannerModeTabs.tsx) e il riquadro
+    // pieghevole "Calendario" (PlannerClient.tsx) renderizzano un'icona
+    // Tabler Icons (<i className="ti ...">) prima dell'etichetta, che
+    // inquina il nome accessibile con un carattere glifo (es. "﨡 Gruppi",
+    // " Organizzazione") — confermato via error-context.md del run reale
+    // del 28/07 (Gate C Cluster D: falso allarme, non una regressione,
+    // vedi anche TC-N295 che usa lo stesso pattern senza exact ed è verde).
     for (const label of ["Organizzazione", "Mappa", "Budget", "Gruppi"]) {
-      await expect(page.getByRole("button", { name: label, exact: true })).toBeVisible();
+      await expect(page.getByRole("button", { name: label })).toBeVisible();
     }
     // Il riquadro pieghevole "Calendario" e' dentro Organizzazione (mode di
     // default), non un tab della barra in alto.
-    await expect(page.getByRole("button", { name: "Calendario", exact: true })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Calendario" })).toBeVisible();
   });
 
   // TEST DEBT corretto en passant: questo test era rimasto fermo alla 5.2
@@ -80,11 +87,13 @@ test.describe("NEXTGEN - Family Planner (Sprint 5.1)", () => {
     await loginAs(page, "parent");
     await page.goto("/nextgen/planner");
 
-    await page.getByRole("button", { name: "Mappa", exact: true }).click();
+    // NO exact:true: vedi commento su TC-N43 sopra (icona Tabler Icons
+    // inquina il nome accessibile dei tab).
+    await page.getByRole("button", { name: "Mappa" }).click();
     await expect(page.getByText("Vista Mappa in arrivo")).toHaveCount(0);
     await expect(page.locator("body")).not.toContainText("Application error");
 
-    await page.getByRole("button", { name: "Gruppi", exact: true }).click();
+    await page.getByRole("button", { name: "Gruppi" }).click();
     await expect(page.getByText("Vista Gruppi in arrivo")).toHaveCount(0);
     await expect(page.locator("body")).not.toContainText("Application error");
   });

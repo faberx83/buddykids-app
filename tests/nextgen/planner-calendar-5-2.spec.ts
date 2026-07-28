@@ -21,8 +21,13 @@ test.describe("NEXTGEN - Planner Calendario (Sprint 5.2)", () => {
     await page.goto("/nextgen/planner");
     await page.getByRole("button", { name: "Calendario" }).click();
 
-    await expect(page.getByRole("button", { name: "Mese" })).toBeVisible();
-    await expect(page.getByRole("button", { name: "Settimana" })).toBeVisible();
+    // exact:true: senza, "Mese"/"Settimana" matchano per substring anche
+    // "Mese precedente"/"Mese successivo" e ogni bottone "Vai al dettaglio
+    // della Settimana N..." — strict mode violation trovata nel run reale
+    // del 28/07 (Gate C Cluster D, verificato via error-context.md: i
+    // bottoni Mese/Settimana esistono e funzionano, non è una regressione).
+    await expect(page.getByRole("button", { name: "Mese", exact: true })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Settimana", exact: true })).toBeVisible();
     // Header del mese (es. "Giugno 2026") — non verifichiamo il mese esatto
     // (dipende dalla data odierna e dalla stagione dell'account di test).
     await expect(page.locator("body")).not.toContainText("Application error");
@@ -74,7 +79,9 @@ test.describe("NEXTGEN - Planner Calendario (Sprint 5.2)", () => {
     await loginAs(page, "parent");
     await page.goto("/nextgen/planner");
     await page.getByRole("button", { name: "Calendario" }).click();
-    await page.getByRole("button", { name: "Settimana" }).click();
+    // exact:true: vedi commento su TC-N50 sopra (stesso strict mode
+    // violation con "Mese precedente"/"Vai al dettaglio della Settimana N...").
+    await page.getByRole("button", { name: "Settimana", exact: true }).click();
 
     await expect(page.getByText("Sett. 1", { exact: true })).toBeVisible();
     await expect(page.getByText("Sett. 13", { exact: true })).toBeVisible();
