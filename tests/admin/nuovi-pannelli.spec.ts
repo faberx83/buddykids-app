@@ -26,7 +26,11 @@ test.describe("Admin - Nuovi pannelli cross-centro", () => {
   test("TC-176 - 'Presenze' mostra il confronto tra centri o lo stato vuoto", async ({ page }) => {
     await page.goto("/admin/presenze");
     await expect(page.getByRole("heading", { name: "Presenze — confronto tra centri" })).toBeVisible();
-    await expect(page.getByText("Media piattaforma")).toBeVisible();
+    // Gate C (rerun 28/07): "Media piattaforma" come substring case-insensitive
+    // matchava ANCHE la frase descrittiva sopra ("...rispetto alla media
+    // piattaforma"), causando strict mode violation (2 elementi). Scopiamo
+    // all'etichetta esatta della card numerica, non alla frase discorsiva.
+    await expect(page.getByText("Media piattaforma", { exact: true })).toBeVisible();
   });
 
   // Priorita: Media | Precondizioni: Nessuna (gestisce anche lo stato vuoto)
