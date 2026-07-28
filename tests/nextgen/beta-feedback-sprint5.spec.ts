@@ -136,13 +136,24 @@ test.describe("NEXTGEN Sprint 5 - Segnala un problema (BETA)", () => {
     await loginAs(page, "platform_admin");
     await page.goto("/admin/segnalazioni-beta");
 
-    const confirmButton = page.getByRole("button", { name: "Conferma e metti in pipeline" }).first();
-    if (!(await confirmButton.isVisible().catch(() => false))) {
+    // Gate C (28/07): il test asseriva `confirmButton.toHaveCount(0)` sul
+    // locator globale per nome — ma con più segnalazioni ancora
+    // `pipelineStatus='none'` in coda (SegnalazioniBetaAdminClient.tsx righe
+    // 163-209, una card per item, ognuna col proprio bottone), confermarne
+    // UNA lascia comunque visibile lo stesso bottone sulle altre card, e
+    // l'assert falliva anche a comportamento applicativo corretto. Scopiamo
+    // ora entrambe le verifiche alla riga (card) specifica su cui abbiamo
+    // cliccato, non all'intera lista.
+    const row = page
+      .locator(".divide-y > div")
+      .filter({ has: page.getByRole("button", { name: "Conferma e metti in pipeline" }) })
+      .first();
+    if (!(await row.isVisible().catch(() => false))) {
       test.skip(true, "Nessuna segnalazione con pipeline_status='none' per l'account di test.");
     }
-    await confirmButton.click();
+    await row.getByRole("button", { name: "Conferma e metti in pipeline" }).click();
 
-    await expect(page.getByText("In coda per la pipeline", { exact: true }).first()).toBeVisible();
-    await expect(confirmButton).toHaveCount(0);
+    await expect(row.getByText("In coda per la pipeline", { exact: true })).toBeVisible();
+    await expect(row.getByRole("button", { name: "Conferma e metti in pipeline" })).toHaveCount(0);
   });
 });
