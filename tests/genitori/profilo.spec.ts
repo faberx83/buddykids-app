@@ -56,6 +56,14 @@ test.describe("Genitori - Profilo", () => {
     await page.getByRole("button", { name: "Modifica" }).click();
     const uniqueName = `Genitore Test ${Date.now()}`;
     await page.getByRole("textbox").first().fill(uniqueName);
+    // TEST OBSOLETO corretto qui: ProfileHeaderClient.tsx#handleSave blocca
+    // il salvataggio ("Inserisci nome e cognome e scegli un ruolo") se
+    // showRoleSelector è true (default) e nessun ruolo "Sei" è selezionato —
+    // il test compilava solo il nome, il salvataggio falliva silenziosamente
+    // e il nome non veniva mai visualizzato. Fallimento trovato nel run
+    // reale del 28/07 (Gate C). Selezioniamo "Madre" (valore arbitrario, il
+    // test verifica solo che il nome venga salvato).
+    await page.getByRole("button", { name: "Madre" }).click();
     await page.getByRole("button", { name: "Salva" }).click();
 
     await expect(page.getByText(uniqueName)).toBeVisible();
