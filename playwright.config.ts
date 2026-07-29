@@ -53,9 +53,18 @@ export default defineConfig({
   ],
   use: {
     baseURL,
+    // Ottimizzazione tempo/risorse (29/07, richiesta esplicita di Fabrizio):
+    // video disattivato. La codifica/salvataggio video su ogni fallimento
+    // (e ogni retry) è l'artefatto più pesante in CPU/disco dei tre, e su
+    // run con molti fallimenti/retry (es. instabilità di rete) l'overhead
+    // cresce parecchio. Trace "retain-on-failure" resta invariato e da solo
+    // copre già DOM snapshot, rete e timeline passo-passo per il triage —
+    // nessuna perdita reale di diagnostica per i casi normali, solo per la
+    // rilettura "a video" di un fallimento (comunque ricostruibile dal
+    // trace viewer).
     trace: "retain-on-failure",
     screenshot: "only-on-failure",
-    video: "retain-on-failure",
+    video: "off",
   },
   projects: [
     { name: "chromium", use: { ...devices["Desktop Chrome"] } },
