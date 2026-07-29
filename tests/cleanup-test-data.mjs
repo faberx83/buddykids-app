@@ -106,6 +106,9 @@ async function main() {
     onboardingPreconditionSet: false,
     // Integration Stabilization Sprint (Gate C, luglio 2026):
     partnerResponseFixtureReset: false,
+    // Gate C, quarta ondata (29/07):
+    addressLabelsReset: 0,
+    walkthroughProgressReset: 0,
   };
 
   let testKid = null;
@@ -207,6 +210,24 @@ async function main() {
         .select("id");
       removed.attendanceRecords = attendanceRows?.length || 0;
     }
+
+    // Gate C, quarta ondata (29/07) — TC-N56 falliva IN OGNI run dopo il
+    // primo: TC-N284 (family-planner-5-3.spec.ts) assegna un nome
+    // personalizzato ("Casa della nonna") all'indirizzo kind="casa" e non lo
+    // ripristina mai, e cleanup-test-data.mjs non toccava parent_addresses —
+    // una volta che TC-N284 girava con successo UNA volta, l'etichetta
+    // "Casa" letterale (IndirizziClient.tsx#AddressCard: `saved.label ||
+    // ADDRESS_KIND_LABELS[kind]`) spariva per sempre, facendo fallire
+    // TC-N56 (`getByText("Casa", {exact:true})`) permanentemente. Reset del
+    // nome personalizzato ad ogni run, stesso principio già in uso per
+    // attendance_records sopra (stato che un test muta e nessuno ripristina).
+    const { data: addressLabelRows } = await supabase
+      .from("parent_addresses")
+      .update({ label: null })
+      .eq("parent_id", parent.id)
+      .not("label", "is", null)
+      .select("kind");
+    removed.addressLabelsReset = addressLabelRows?.length || 0;
   }
 
   if (gestore) {
@@ -217,6 +238,24 @@ async function main() {
       .eq("created_by", gestore.id)
       .select("id");
     removed.invites = invites?.length || 0;
+
+    // Gate C, quarta ondata (29/07) — stesso pattern di TC-N56/TC-N284 ma per
+    // il motore Walkthrough: TC-N415 (walkthrough-partner.spec.ts) avvia
+    // davvero il primo step del percorso "activity_creation_partner" per
+    // verificarne la persistenza (tutorial_progress, non solo useState
+    // locale) e non lo resetta mai. TC-N414, eseguito PRIMA nello stesso file
+    // ma senza garanzia d'ordine reale (fullyParallel:true, nessun
+    // describe.configure serial in questo file), si aspetta lo stato INIZIALE
+    // "not_started" (bottone "Inizia"): dopo la prima esecuzione riuscita di
+    // TC-N415, il percorso resta "in_progress" per sempre e TC-N414 fallisce
+    // da quel momento in poi ("Inizia" sostituito da "Continua").
+    const { data: walkthroughRows } = await supabase
+      .from("tutorial_progress")
+      .delete()
+      .eq("user_id", gestore.id)
+      .eq("tutorial_key", "activity_creation_partner")
+      .select("step_key");
+    removed.walkthroughProgressReset = walkthroughRows?.length || 0;
   }
 
   if (seedCenter && seedActivity) {
