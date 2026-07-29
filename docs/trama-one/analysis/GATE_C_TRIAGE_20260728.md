@@ -309,3 +309,28 @@ Fabrizio ha rilanciato subito dopo i 3 fix della seconda ondata. Risultato: **55
 **Nuovi item emersi in questo run, NON ancora investigati** (nessuna evidenza raccolta, servono verifica live o lettura codice dedicata prima di ipotizzare un fix): TC-101 (Settimana count 14 vs 13 attese — controllare se legato a TC-N24/N13 già noti o distinto), TC-070 ("Navetta" ComingSoon non trovato), TC-N56/N57 (Indirizzi: "Casa" non trovato, "Indirizzo salvato!" non trovato — possibile regressione reale nel flusso Indirizzi), TC-N73/N76 (link "Famiglia" timeout, "Copiato!" non trovato), TC-N10 (Posizione in Ricerca), TC-N19 (Codice check-in in Home), TC-N25 (Consigliati per voi — 1 solo bambino distinto invece di >1), TC-178 (due context, `browserContext.close` — timing/HARNESS sospetto), TC-144/TC-293 (flaky, timeout login — infrastruttura/rete, non applicativo), TC-N284 (flaky, stesso test in entrambi i progetti), l'intero cluster `tests/one/*.spec.ts` (TC-N407/408/409/414/415, onboarding/walkthrough TRAMA ONE — non toccato in nessuna delle 3 ondate di oggi).
 
 **Raccomandazione:** rilanciare `TEST_SCOPE=all bash test-deploy.sh` con questi ultimi 3 fix per confermare la chiusura di TC-508/TC-N88/TC-026/TC-187, poi concentrare il prossimo giro di analisi sul cluster Indirizzi (TC-N56/57, sembra una regressione reale non un problema di test) e sul cluster `tests/one/*` (mai investigato oggi).
+
+## Quarta ondata (29/07) — validazione ottimizzazioni + conferma cluster aperti
+
+Fabrizio ha incollato l'output di due esecuzioni consecutive di `TEST_SCOPE=all bash test-deploy.sh`. La prima corrisponde numero per numero (190 failed, 25 flaky, 284 skipped, 54 did not run, 329 passed, 15.5h, 882 test) alla run già analizzata in precedenza in questa stessa giornata — quasi certamente un doppio incollato accidentale (scrollback/clipboard), non una nuova esecuzione. La seconda è invece la prima run realmente nuova dopo i due commit di ottimizzazione (`1987478` skip mobile-chrome su `TEST_SCOPE=all`, `48d55e9` video disattivato).
+
+**Ottimizzazioni confermate efficaci**: la seconda run stampa esplicitamente `TEST_SCOPE=all: solo progetto 'chromium'`, esegue 441 test (contro 882, mobile-chrome escluso come previsto) e termina in **26.2 minuti** (contro 15.5 ore) — **46 failed, 4 flaky, 152 skipped, 17 did not run, 222 passed**. Nessun allegato video in nessun fallimento. Entrambe le ottimizzazioni funzionano come da commit.
+
+**Rumore di rete ancora presente, ma molto più contenuto**: anche nella seconda run compare un blocco consecutivo di fallimenti con `net::ERR_INTERNET_DISCONNECTED`/`net::ERR_ADDRESS_UNREACHABLE`/`browserType.launch: Timeout 180000ms exceeded` (cluster Famiglia/Community/Mappa: TC-N62/63/64/66/67/68/69/73/74/75/76/77/78/79/101/102/109/114/115/116/117) — sintomo di una disconnessione di rete avvenuta a metà run, non 53 bug distinti. Questi vanno esclusi dal conteggio "reale" finché non si rifà un run su connessione stabile per tutta la durata.
+
+**Confermati per la quarta volta consecutiva (stessi identici sintomi, nessuna interferenza di rete su questi — sono assertion failure applicative, non errori di rete)**, quindi da trattare ora come priorità concreta, non più solo "da investigare":
+- TC-101 (Settimana 14 vs 13 attese, `genitori/home-planner.spec.ts`)
+- TC-070 ("Navetta" ComingSoon non trovato, `genitori/profilo.spec.ts`)
+- TC-075 (nav "Attività" senza classe evidenziazione, `gestore/attivita.spec.ts`)
+- TC-200 (conferma Certificazione non trovata, `gestore/attivita.spec.ts`)
+- TC-127 ("Crea un account" non trovato dopo invito, `gestore/invites.spec.ts`)
+- TC-508 (`booking-row` "Da rispondere" risolve ancora a 2 elementi — il fix `efea04d` della terza ondata non ha chiuso il problema, serve un quinto giro di analisi su questo)
+- TC-N56/N57/N59/N61 (Indirizzi/"Chi fa cosa?": "Casa", "Indirizzo salvato!", bottone "Nessuno assegnato" non trovati)
+- l'intero cluster `tests/one/*.spec.ts` (TC-N407/408/409/414/415, onboarding-remediation e walkthrough-partner — mai investigato in nessuna delle ondate precedenti, ora con 4 conferme di fila)
+
+**Nuovi candidati emersi in questa run** (non ancora distinguibili da rumore di rete residuo, ma senza errori `ERR_*` associati — quindi probabili assertion failure reali):
+- TC-N13 (`planner.spec.ts`, "Settimana 13" non trovata — verosimilmente stessa causa di TC-N24 già corretto, timeline a mesi ripiegabili: da verificare se il fix di TC-N24 copre anche questo test o se serve applicarlo qui a parte)
+- TC-N112/TC-N88/TC-N108/TC-N10 (`profile-6.spec.ts`/`planner.spec.ts`/`search.spec.ts`: href "Famiglia"/"Preferiti" e testo "Usa la mia posizione" non trovati — TC-N88 era già stato corretto per un problema diverso di `{exact:true}` in terza ondata, quindi qui è probabilmente una causa distinta)
+- TC-N300 (flaky, "In coda per la pipeline" non trovato — già corretto in seconda parte Cluster G con scoping alla card specifica, commit `aec77b1`; se ricompare flaky serve capire se il fix regge sotto un timing diverso)
+
+**Raccomandazione**: dato che TC-508 e il cluster `tests/one/*` sono ormai confermati stabilmente per la quarta volta senza alcuna interferenza di rete, sono la priorità concreta per il prossimo giro di investigazione (codice), prima di Gate F. Consigliato inoltre un run su connessione stabile (cablata, se possibile) per eliminare del tutto il rumore `ERR_INTERNET_DISCONNECTED` residuo e ottenere un segnale pulito sugli ultimi item ancora incerti.
