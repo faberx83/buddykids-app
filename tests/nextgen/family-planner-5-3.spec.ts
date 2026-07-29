@@ -56,6 +56,22 @@ test.describe("NEXTGEN - Family Planner Sprint 5.3 (Logistica/Chi fa cosa/Condiv
     await loginAs(page, "parent");
     await page.goto("/nextgen/planner/indirizzi");
 
+    // Gate C (29/07, quinta ondata) — root cause trovata via query di sola
+    // lettura (Supabase MCP): l'account di test ha ormai un indirizzo salvato
+    // per "casa"/"lavoro_genitore1"/"lavoro_genitore2" (accumulato da run
+    // passati, mai svuotato — cleanup-test-data.mjs resetta solo il `label`
+    // personalizzato, non l'indirizzo). L'UNICO slot ancora in modalità
+    // modifica è quindi sempre "altro", il cui `label` è OBBLIGATORIO
+    // (setAddressAction: `kind === "altro" && !label` -> errore, niente
+    // toast). Il test compilava solo l'indirizzo, mai il nome: su "altro"
+    // il salvataggio falliva silenziosamente con un errore inline, non un
+    // problema applicativo. Compiliamo anche il campo "Nome" quando presente
+    // (innocuo per gli altri kind, obbligatorio per "altro").
+    const card = page.getByPlaceholder("Via, città...").first().locator("..");
+    const nameInput = card.locator('input[placeholder*="Nome"]');
+    if (await nameInput.isVisible().catch(() => false)) {
+      await nameInput.fill("Indirizzo di test");
+    }
     const input = page.getByPlaceholder("Via, città...").first();
     await input.fill("Via Roma 1, Milano");
     await page.getByRole("button", { name: "Salva" }).first().click();
