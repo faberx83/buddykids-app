@@ -34,7 +34,17 @@ export default function MenuItem({
       </div>
       <div className="flex-1">
         <div className="flex items-center gap-1.5 text-[13px] font-semibold text-ink">
-          {main}
+          {/* Gate C, settima ondata (29/07) — root cause di TC-070, MAI
+              spiegato nelle sei ondate precedenti: {main} era un nodo di
+              testo semplice, fratello dello span di ComingSoonBadge, nello
+              STESSO div. Per le righe comingSoon (Navetta, Metodi di
+              pagamento, Ricevute e fatture) il testo "posseduto" da questo
+              div diventava "Navetta" + "Presto" concatenati — nessun
+              elemento nel DOM aveva MAI il testo esatto "Navetta", quindi
+              getByText(label, {exact:true}) non trovava nulla. Wrappare
+              main nel proprio span isola il testo esatto dal badge
+              adiacente, senza cambiare nulla visivamente (stesso flex/gap). */}
+          <span>{main}</span>
           {comingSoon && <ComingSoonBadge />}
         </div>
         {sub && <div className="mt-px text-[11px] text-ink-2">{sub}</div>}
