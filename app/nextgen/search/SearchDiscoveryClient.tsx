@@ -12,6 +12,7 @@ import ActivityCard from "@/components/ActivityCard";
 import PageHeader from "@/components/PageHeader";
 import NextgenBadge from "@/components/nextgen/NextgenBadge";
 import DecorativeIntroCard from "@/components/nextgen/DecorativeIntroCard";
+import SuggestCenterCard from "@/components/nextgen/SuggestCenterCard";
 import { generateCorrelationId } from "@/lib/telemetry/correlation";
 
 // Leaflet usa `window`, quindi la mappa va caricata solo lato client — stesso
@@ -947,9 +948,24 @@ export default function SearchDiscoveryClient({
             )}
           </div>
         ) : matches.length === 0 ? (
-          <p className="rounded-lg border border-dashed border-[#D8DEE8] bg-white p-5 text-center text-sm text-ink-2">
-            Nessuna attività corrisponde ai filtri scelti.
-          </p>
+          <div className="flex flex-col gap-3">
+            <p className="rounded-lg border border-dashed border-[#D8DEE8] bg-white p-5 text-center text-sm text-ink-2">
+              Nessuna attività corrisponde ai filtri scelti.
+            </p>
+            {/* TRAMA ONE Build Sprint 5 — J11: punto di ingresso "Suggerisci un
+                centro" nello stato zero-risultati (§B.2.1 fonte di design,
+                Opzione A raccomandata). demandContext raccoglie SOLO segnali
+                automatici già presenti (route, tag categoria, correlationId),
+                mai testo libero arbitrario oltre a quanto l'utente digita nel
+                form stesso. */}
+            <SuggestCenterCard
+              demandContext={{
+                sourceRoute: "/nextgen/search",
+                categoryTagIds: selectedTagIds,
+                correlationId: searchCorrelationId,
+              }}
+            />
+          </div>
         ) : hasGeo ? (
           <div className="flex flex-col gap-1">
             <div className="pb-1.5 pt-1 text-xs font-bold text-ink-2">

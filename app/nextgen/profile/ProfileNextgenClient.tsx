@@ -121,6 +121,17 @@ export default function ProfileNextgenClient({
           title="Le presenze"
           subtitle="Storico presenze, ritardi e assenze per i tuoi bambini"
         />
+        {/* TRAMA ONE Build Sprint 5 — J11: "I tuoi suggerimenti" (CenterLead),
+            stessa collocazione delle altre pagine sola-lettura sull'attività
+            del genitore (prenotazioni/preferiti/presenze). */}
+        <HubCard
+          href="/center-leads"
+          icon="ti-map-pin-plus"
+          iconBg="#F3EEFF"
+          iconColor="#6C4FE0"
+          title="I tuoi suggerimenti"
+          subtitle="Centri che hai segnalato perché non ancora su TRAMA"
+        />
 
         {/* SPRINT 7 (feedback Fabrizio: "Logistica e Famiglia non devono
             diventare una sezione ad hoc?") — Indirizzi/Famiglia/Condivisione
