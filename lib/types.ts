@@ -39,6 +39,48 @@ export interface CertificationItem {
   createdAt: string;
 }
 
+// TRAMA ONE Build Sprint 5 — CenterLead (suggerimento di un centro non
+// iscritto). Vedi supabase/migration_17_center_leads.sql per lo schema
+// completo e docs/trama-one/derived/TRAMA_Product_Architecture_CX_Handbook_
+// Draft_1.2_Referral_Incentives.md §B.2/§B.4 per la fonte di design. Scope
+// deliberatamente ridotto (SPRINT_GOVERNANCE.md): nessuna automazione
+// economica reale, reward/commission sono solo annotazioni manuali.
+export type CenterLeadStatus = "suggested" | "qualified" | "contacted" | "claimed" | "rejected" | "expired";
+export type CenterLeadRewardStatus =
+  | "not_applicable"
+  | "pending_manual_review"
+  | "marked_eligible_manual"
+  | "marked_paid_manual_offline";
+
+// DemandContext minimizzato (§B.2.2): raccolto automaticamente lato client,
+// mai testo libero arbitrario dell'utente.
+export interface CenterLeadDemandContext {
+  sourceRoute?: string; // es. "/nextgen/search" o "/search"
+  locality?: string; // area/città cercata al momento della segnalazione
+  categoryTagIds?: string[]; // tag/categoria attiva nei filtri, se presente
+  weekLabel?: string; // settimana/periodo cercato, se presente
+  correlationId?: string; // stesso context object leggero di Sprint 3 (search→detail→booking)
+}
+
+export interface CenterLeadItem {
+  id: string;
+  suggestedName: string;
+  suggestedLocality?: string;
+  suggestedContact?: string;
+  demandContext: CenterLeadDemandContext;
+  dedupeKey: string;
+  status: CenterLeadStatus;
+  duplicateOf?: string;
+  suggestedByName?: string; // solo per la vista Admin (join su profiles)
+  adminNote?: string; // MAI esposto alla vista Genitore (vedi lib/data/center-leads.ts)
+  claimedCenterId?: string;
+  claimedCenterName?: string;
+  claimedAt?: string;
+  rewardStatus: CenterLeadRewardStatus;
+  rewardNote?: string;
+  createdAt: string;
+}
+
 export interface Activity {
   id: string;
   name: string;

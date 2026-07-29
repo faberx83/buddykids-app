@@ -1,0 +1,148 @@
+// TRAMA ONE Build Sprint 5 — CenterLead: un genitore segnala un centro non
+// ancora iscritto a TRAMA. Vedi supabase/migration_17_center_leads.sql per
+// lo schema/RLS e docs/trama-one/analysis/SPRINT_5_FEATURE_PRESERVATION_
+// MATRIX.md per la riconciliazione con l'AS-IS (in particolare: NON è la
+// stessa cosa di public.invites, che è il codice promo Partner→Genitore).
+//
+// Scope Sprint 5 (deliberatamente ridotto, SPRINT_GOVERNANCE.md): nessuna
+// automazione economica reale. reward_status/reward_note sono annotazioni
+// manuali dell'Admin, mai calcolate o erogate da questo codice.
+
+import { CenterLeadDemandContext, CenterLeadItem, CenterLeadRewardStatus, CenterLeadStatus } from "@/lib/types";
+import { createClient } from "@/lib/supabase/server";
+import { isSupabaseConfigured } from "@/lib/supabase/env";
+
+function firstOf<T>(value: T | T[] | null | undefined): T | null {
+  if (!value) return null;
+  return Array.isArray(value) ? (value[0] ?? null) : value;
+}
+
+// Normalizzazione per la dedupe (Must, §B.2.2 della fonte di design):
+// lower-case, trim, rimozione accenti/punteggiatura/spazi multipli. Fatta
+// lato applicativo (non con l'estensione Postgres "unaccent", non installata
+// in questo progetto — coerente con la scelta generale di questo repository
+// di tenere la logica di dominio in TypeScript puro, non in funzioni SQL).
+export function normalizeDedupeKey(name: string, locality?: string | null): string {
+  const strip = (s: string) =>
+    s
+      .normalize("NFD")
+      .replace(/[̀-ͯ]/g, "") // rimuove i diacritici (é->e, à->a, ecc.)
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, " ")
+      .trim()
+      .replace(/\s+/g, " ");
+  const namePart = strip(name);
+  const localityPart = locality ? strip(locality) : "";
+  return localityPart ? `${namePart}|${localityPart}` : namePart;
+}
+
+interface RawRow {
+  id: string;
+  suggested_name: string;
+  suggested_locality: string | null;
+  suggested_contact: string | null;
+  demand_context: CenterLeadDemandContext | null;
+  dedupe_key: string;
+  status: CenterLeadStatus;
+  duplicate_of: string | null;
+  admin_note: string | null;
+  claimed_center_id: string | null;
+  claimed_at: string | null;
+  reward_status: CenterLeadRewardStatus;
+  reward_note: string | null;
+  created_at: string;
+  profiles: { full_name: string | null } | { full_name: string | null }[] | null;
+  centers: { name: string } | { name: string }[] | null;
+}
+
+// Colonne complete (include admin_note) — SOLO per la vista Admin. La vista
+// Genitore usa PARENT_SELECT_COLUMNS sotto, che non include admin_note: la
+// RLS è a livello di riga (il genitore può leggere solo le proprie righe),
+// non di colonna, quindi la riservatezza di admin_note verso il genitore è
+// garantita qui, nel data layer, non dal database (AC-049-05).
+const ADMIN_SELECT_COLUMNS =
+  "id, suggested_name, suggested_locality, suggested_contact, demand_context, dedupe_key, status, duplicate_of, admin_note, claimed_center_id, claimed_at, reward_status, reward_note, created_at, profiles ( full_name ), centers ( name )";
+
+const PARENT_SELECT_COLUMNS =
+  "id, suggested_name, suggested_locality, demand_context, dedupe_key, status, claimed_center_id, claimed_at, reward_status, reward_note, created_at, centers ( name )";
+
+function mapRow(row: RawRow, includeAdminNote: boolean): CenterLeadItem {
+  return {
+    id: row.id,
+    suggestedName: row.suggested_name,
+    suggestedLocality: row.suggested_locality ?? undefined,
+    suggestedContact: row.suggested_contact ?? undefined,
+    demandContext: row.demand_context ?? {},
+    dedupeKey: row.dedupe_key,
+    status: row.status,
+    duplicateOf: row.duplicate_of ?? undefined,
+    suggestedByName: firstOf(row.profiles)?.full_name ?? undefined,
+    adminNote: includeAdminNote ? (row.admin_note ?? undefined) : undefined,
+    claimedCenterId: row.claimed_center_id ?? undefined,
+    claimedCenterName: firstOf(row.centers)?.name ?? undefined,
+    claimedAt: row.claimed_at ?? undefined,
+    rewardStatus: row.reward_status,
+    rewardNote: row.reward_note ?? undefined,
+    createdAt: row.created_at,
+  };
+}
+
+// Le PROPRIE segnalazioni del genitore loggato — usata da "I tuoi
+// suggerimenti" (Genitore). Non include admin_note (vedi sopra).
+export async function getMyCenterLeads(): Promise<CenterLeadItem[]> {
+  if (!isSupabaseConfigured) return [];
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return [];
+
+  const { data, error } = await supabase
+    .from("center_leads")
+    .select(PARENT_SELECT_COLUMNS)
+    .eq("suggested_by", user.id)
+    .order("created_at", { ascending: false });
+
+  if (error || !data) return [];
+  return (data as unknown as RawRow[]).map((r) => mapRow(r, false));
+}
+
+// Tutte le segnalazioni, qualunque stato — usata dalla coda Admin
+// (/admin/center-leads). Le RLS lasciano passare tutte le righe solo se
+// l'utente è davvero platform_admin.
+export async function getAllCenterLeadsForAdmin(): Promise<CenterLeadItem[]> {
+  if (!isSupabaseConfigured) return [];
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("center_leads")
+    .select(ADMIN_SELECT_COLUMNS)
+    .order("created_at", { ascending: false });
+
+  if (error || !data) return [];
+  return (data as unknown as RawRow[]).map((r) => mapRow(r, true));
+}
+
+// Elenco leggero id+nome di tutti i centri — usato SOLO dal picker "Claim"
+// della coda Admin per collegare un lead al centro reale che ha completato
+// l'onboarding (public.centers è a lettura pubblica, nessun dato sensibile).
+export async function getCentersForClaimPicker(): Promise<{ id: string; name: string }[]> {
+  if (!isSupabaseConfigured) return [];
+  const supabase = await createClient();
+  const { data, error } = await supabase.from("centers").select("id, name").order("name", { ascending: true });
+  if (error || !data) return [];
+  return data;
+}
+
+// Possibili duplicati per un dedupe_key dato — usata dall'Admin durante il
+// triage per decidere se marcare una nuova segnalazione come duplicate_of di
+// una già esistente. Sola lettura, nessuna scrittura automatica.
+export async function findPossibleDuplicates(dedupeKey: string, excludeId?: string): Promise<CenterLeadItem[]> {
+  if (!isSupabaseConfigured) return [];
+  const supabase = await createClient();
+  let query = supabase.from("center_leads").select(ADMIN_SELECT_COLUMNS).eq("dedupe_key", dedupeKey);
+  if (excludeId) query = query.neq("id", excludeId);
+  const { data, error } = await query.order("created_at", { ascending: true });
+
+  if (error || !data) return [];
+  return (data as unknown as RawRow[]).map((r) => mapRow(r, true));
+}
