@@ -165,7 +165,16 @@ test.describe("Gestore - Attivita", () => {
 
     // Ripristino: ritiro la richiesta di test appena creata (bottone cestino,
     // visibile solo per le richieste ancora "pending").
-    const row = page.locator("div").filter({ hasText: label }).last();
+    // Gate C, settima ondata (29/07) — bug scoperto SOLO ora che
+    // migration_16 ha creato la tabella (prima il test falliva sempre PRIMA
+    // di questa riga): .last() su un div.filter({hasText: label}) prendeva
+    // il div PIÙ INTERNO che contiene quel testo (ActivityEditForm.tsx: il
+    // div con solo {cert.label}, dentro min-w-0/flex-1), non la card riga
+    // intera — che è invece il PIÙ ESTERNO dei div che matchano (in ordine
+    // documento i div antenati precedono sempre i loro discendenti). Quel
+    // div interno non contiene il bottone "Ritira la richiesta" (fratello,
+    // non discendente), quindi il click andava sempre in timeout.
+    const row = page.locator("div").filter({ hasText: label }).first();
     await row.locator("button[title='Ritira la richiesta']").click();
     await expect(page.getByText(label)).not.toBeVisible();
   });

@@ -109,6 +109,9 @@ async function main() {
     // Gate C, quarta ondata (29/07):
     addressLabelsReset: 0,
     walkthroughProgressReset: 0,
+    // Gate C, settima ondata (29/07): richieste di Certificazione servizio
+    // di test rimaste "pending" da run precedenti (vedi sotto).
+    certificationsReset: 0,
   };
 
   let testKid = null;
@@ -284,6 +287,23 @@ async function main() {
       .neq("id", seedActivity.id)
       .select("id");
     removed.extraActivities = extraActivities?.length || 0;
+
+    // Gate C, settima ondata (29/07) — TC-200 crea una richiesta di
+    // Certificazione ad ogni run e la ritira a fine test (bottone "Ritira la
+    // richiesta"), ma se il test fallisce PRIMA di quel punto (come nel primo
+    // run dopo l'applicazione di migration_16, o per il bug del locator
+    // .last() invece di .first() sul div riga — vedi attivita.spec.ts) la
+    // richiesta resta "pending" per sempre, accumulandosi ad ogni run
+    // successivo. Puliamo solo le nostre (label con prefisso di test), mai
+    // richieste reali di un centro vero.
+    const { data: certRows } = await supabase
+      .from("activity_certifications")
+      .delete()
+      .eq("activity_id", seedActivity.id)
+      .eq("status", "pending")
+      .ilike("label", "[TEST] Certificazione Playwright%")
+      .select("id");
+    removed.certificationsReset = certRows?.length || 0;
   }
 
   // ─────────────────────────────────────────────
