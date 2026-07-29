@@ -116,7 +116,11 @@ test.describe("TRAMA ONE — Onboarding Centro: auto-inizializzazione LEAD (Spri
     await page.goto("/center/one/onboarding");
     await expect(page.getByText("Integrazioni richieste", { exact: true })).toBeVisible();
     await page.getByRole("button", { name: "Invia nuovamente per verifica" }).click();
-    await expect(page.getByText("In verifica")).toBeVisible();
+    // Gate C, nona ondata (29/07): stesso pattern HARNESS di riga 117 — senza
+    // {exact:true}, "In verifica" (substring) risolve ANCHE alle righe di
+    // audit log con la freccia ("In verifica → Integrazioni richieste",
+    // "Attivazione avviata → In verifica", ecc.), mai raggiunte prima.
+    await expect(page.getByText("In verifica", { exact: true })).toBeVisible();
 
     // Admin approva definitivamente.
     await loginAs(page, "platform_admin");
