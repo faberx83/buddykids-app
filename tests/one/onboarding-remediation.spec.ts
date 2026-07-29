@@ -105,9 +105,16 @@ test.describe("TRAMA ONE — Onboarding Centro: auto-inizializzazione LEAD (Spri
     await expect(page.getByText("Modifiche richieste")).toBeVisible();
 
     // Partner vede "Integrazioni richieste" e rinvia con la CTA corretta.
+    // Gate C, ottava ondata (29/07): HARNESS, strict mode violation — raggiunto
+    // per la prima volta ora che il flag TRAMA_ONE_ENABLED è permanente (prima
+    // il test falliva prima, sul redirect). getByText("Integrazioni richieste")
+    // (substring, non exact) risolveva a 2 elementi: il badge di stato vero e
+    // proprio (testo esatto "Integrazioni richieste") E una riga di log/nota
+    // "In verifica → Integrazioni richieste" che lo contiene come sottostringa.
+    // {exact:true} isola solo il badge.
     await loginAs(page, "center_admin");
     await page.goto("/center/one/onboarding");
-    await expect(page.getByText("Integrazioni richieste")).toBeVisible();
+    await expect(page.getByText("Integrazioni richieste", { exact: true })).toBeVisible();
     await page.getByRole("button", { name: "Invia nuovamente per verifica" }).click();
     await expect(page.getByText("In verifica")).toBeVisible();
 
