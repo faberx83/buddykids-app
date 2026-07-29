@@ -247,7 +247,15 @@ export default function PlannerView({
         </span>
       </div>
 
-      <div className="mb-4 space-y-2.5">
+      {/* data-testid: Gate C, settima ondata (29/07) — TC-101 usava un
+          locator page-wide (text=/Settimana \d+/) che intercettava ANCHE la
+          card di check-in in cima alla Home ("Questa settimana · Settimana
+          N", CheckinPrompt.tsx), non solo le 13 righe di questa lista —
+          risultato: 14 invece di 13, senza alcun bug reale nella griglia
+          stagionale (verificato: SEASON_TOTAL_WEEKS=13, buildBaseWeeks non
+          duplica mai). Scoping esplicito perché il test possa isolare SOLO
+          questa lista. */}
+      <div className="mb-4 space-y-2.5" data-testid="planner-week-list">
         {resolvedWeeks.map((w) => {
           const color = w.viewActivityTagColor ?? "sky";
           // Copertura parziale (aggregato, manca almeno un bambino): sfondo
