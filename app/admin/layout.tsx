@@ -25,6 +25,9 @@ const navItems = [
   // SPRINT 5 (NEXTGEN) — coda "Segnala un problema" della floating CTA
   // BETA (richiesta di Fabrizio): stessa lista flat, nessuna sotto-voce.
   { href: "/admin/segnalazioni-beta", label: "Segnalazioni BETA", icon: "ti-message-report" },
+  // TRAMA ONE Build Sprint 5 — coda CenterLead (J11, suggerimento centro non
+  // iscritto): stessa lista flat, nessuna sotto-voce.
+  { href: "/admin/center-leads", label: "Segnalazioni centri", icon: "ti-map-pin-plus" },
 ];
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
