@@ -57,7 +57,21 @@ test.describe("Gestore - Attivita", () => {
     await expect(page).toHaveURL(/\/center\/activities\/[^/]+$/);
 
     // Nav "Attività" evidenziata anche sulla sotto-rotta di modifica.
-    await expect(page.getByRole("link", { name: /^\s*Attività$/ }).first()).toHaveClass(/bg-partner-light|bg-partner\b/);
+    // Gate C, settima ondata (29/07) — root cause del fallimento MAI
+    // spiegato nelle sei ondate precedenti: getByRole("link", {name:
+    // /^\s*Attività$/}) non ha MAI potuto matchare nulla. L'icona
+    // (<i className="ti ti-list-details">, DashboardLayout.tsx) è un
+    // glifo da font-icona (Private Use Area, es. U+F02C per
+    // ti-list-details) che Chrome include nel nome accessibile calcolato
+    // del link, PRIMA del vero spazio e dell'etichetta ("
+    // Dashboard", verificato via hex dump di error-context.md) — un
+    // carattere non-whitespace che \s* non può consumare, quindi
+    // l'ancora ^ fallisce sempre. Nessun bug applicativo: la classe
+    // attiva era corretta, il locator non trovava mai l'elemento.
+    // Selettore robusto sull'href, indipendente dall'icona/nome accessibile.
+    await expect(page.locator('nav a[href="/center/activities"]').first()).toHaveClass(
+      /bg-partner-light|bg-partner\b/
+    );
 
     // Geolocalizzazione: stesso pattern del filtro Home genitore.
     await context.grantPermissions(["geolocation"]);
