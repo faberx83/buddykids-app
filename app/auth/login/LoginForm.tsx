@@ -146,7 +146,28 @@ export default function LoginForm({
       }`}
     >
       {isFamily ? (
-        <TramaLoginHeader animate={animateHeader} />
+        <>
+          <TramaLoginHeader animate={animateHeader} />
+          {/* Gate C, settima ondata (29/07) — root cause di TC-127, MAI
+              spiegato nelle sei ondate precedenti: dal REBRAND TRAMA Sprint
+              2 (introduzione di TramaLoginHeader, task #180), il tenant
+              famiglia mostra SOLO logo + wordmark + tagline fissa
+              ("Organizing childhood. Together.") — la {heading} dinamica
+              ("Accedi a TRAMA" / "Crea un account TRAMA" / "Recupera la
+              password", già presente e invariata nel ramo Partner/Admin
+              qui sotto) non è mai stata riportata quando l'header è stato
+              animato. Bug reale, non solo del test: un genitore che passa
+              a "Registrati" o arriva da un link d'invito non ha alcuna
+              conferma testuale di essere in modalità creazione account.
+              Riaggiunta qui, stessa animazione fade-up delle altre righe
+              del tenant famiglia. */}
+          <p
+            className={`text-sm text-ink-2 ${animateHeader ? "trama-fade-up" : ""}`}
+            style={animateHeader ? { animationDelay: "2.1s" } : undefined}
+          >
+            {heading}
+          </p>
+        </>
       ) : (
         <>
           {/* Badge emoji sostituito col vero logo TRAMA (brand kit): variante
