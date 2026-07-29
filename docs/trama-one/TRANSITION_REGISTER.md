@@ -42,6 +42,14 @@ Sprint 2 (Offering/Giorni spot Partner) e Sprint 3 (Parent discovery/selezione g
 
 - **Risposta Partner ↔ Booking/booking_days** e **Backfill `partner_decision`**: vedi le due righe aggiunte alla tabella sopra. È il primo vero adapter WRAP della sequenza (colonne additive su tabelle di business esistenti, non solo su tabelle di supporto onboarding come in Sprint 1) — coerente con la nota della Feature Parity Matrix che segnalava la riga #12 (richieste/ticketing) come rischio di regressione più alto.
 
+## Integration Gate (Sprint 1-4) — completato
+
+`AUDIT_CHECKPOINT_INTEGRATION_SPRINT_1_4.md` (dovuto da DEC-30) è stato prodotto e chiuso (Gate A→F, poi evidence patch §16, stato finale READY WITH CONDITIONS — vedi il documento per il dettaglio). Nessun ponte aggiuntivo emerso durante il gate oltre a quelli già registrati sopra.
+
+## Aggiunti in Build Sprint 5 (CenterLead, referral e incentivi)
+
+Nessun vero adapter di business verso `invites`/`profiles`: `center_leads` (migration_17) è una tabella NUOVA e indipendente, non un ponte verso uno stato AS-IS preesistente. `public.invites` (codice promo Partner→Genitore, esistente) e `public.family_invites` (inviti Famiglia, Sprint 5.5 NextGen) restano intatti e non referenziati in alcun modo — confermato in `SPRINT_5_FEATURE_PRESERVATION_MATRIX.md`. Gli unici collegamenti sono FK ordinarie verso `profiles(id)` (`suggested_by`, `reward_marked_by`) e verso `centers(id)` (`claimed_center_id`, valorizzato solo a posteriori quando un lead viene collegato a un centro che ha già completato l'onboarding esistente, DEC-46) — stesso pattern di riuso già visto per le altre tabelle additive del progetto (es. `activity_certifications`), non un adapter nel senso Master Prompt.
+
 ## Prossimo aggiornamento previsto
 
-Alla chiusura di TRAMA ONE Build Sprint 5 (CenterLead/referral) — se quello sprint introduce un ponte verso `invites`/`profiles` esistenti (per il dedupe centro-non-iscritto) diverso da un semplice ADAPT, va registrato qui. Debito aperto: manca ancora l'Integration Gate (`AUDIT_CHECKPOINT_INTEGRATION_SPRINT_1_4.md`, dovuto da DEC-30) — quando verrà prodotto, andrà verificato se emergono altri ponti non ancora registrati in questo file.
+Alla chiusura di TRAMA ONE Build Sprint 6 (command center Admin, analytics, hardening walkthrough) — se quello sprint introduce ponti verso `beta_feedback`/`lib/analytics.ts` esistenti diversi da un semplice ADAPT, va registrato qui.
