@@ -152,13 +152,22 @@ echo ""
 # bug mobile-specifici sono una minoranza rispetto ai bug cross-cutting che
 # lo scope critico deve individuare, e correre due volte (desktop+mobile)
 # ogni singolo file raddoppia invocazioni/tempo senza un beneficio
-# proporzionale per un controllo post-deploy veloce. La suite intera
-# (TEST_SCOPE=all, da lanciare periodicamente/prima di un rilascio, non ad
-# ogni deploy) continua a coprire entrambi i progetti come prima — nessuna
-# perdita di copertura, solo di frequenza per il mobile.
+# proporzionale per un controllo post-deploy veloce.
+#
+# Estensione (29/07, richiesta esplicita di Fabrizio — ottimizzare tempo/
+# risorse della run periodica "all" dopo che un run TEST_SCOPE=all ha
+# impiegato 15.5h, in gran parte per instabilità di rete lato client, ma
+# durante l'analisi è emerso che la run intera x2 browser resta comunque
+# pesante anche in condizioni normali): stessa logica applicata ANCHE a
+# TEST_SCOPE=all — mobile-chrome saltato di default anche qui, non solo su
+# "critical". Questo è un cambio di comportamento rispetto a prima (la
+# suite "all" copriva sempre entrambi i progetti): la copertura mobile va
+# quindi richiesta esplicitamente quando serve un audit completo, non è più
+# automatica solo per il fatto di usare TEST_SCOPE=all.
 # Override: INCLUDE_MOBILE=1 bash test-deploy.sh (o TEST_SCOPE=critical
-# INCLUDE_MOBILE=1 bash deploy.sh) per includere mobile-chrome anche nello
-# scope critico quando serve verificarlo espressamente.
+# INCLUDE_MOBILE=1 bash deploy.sh, o TEST_SCOPE=all INCLUDE_MOBILE=1
+# bash test-deploy.sh) per includere mobile-chrome quando serve verificarlo
+# espressamente.
 PROJECT_FLAG=""
 
 case "$TEST_SCOPE" in
@@ -181,7 +190,11 @@ case "$TEST_SCOPE" in
     fi
     ;;
   all|"")
-    TEST_TARGET="" # nessun argomento = intera suite, comportamento invariato
+    TEST_TARGET="" # nessun argomento/file = intera suite (tutti gli spec)
+    if [ -z "$INCLUDE_MOBILE" ]; then
+      PROJECT_FLAG="--project=chromium"
+      echo "ℹ️  TEST_SCOPE=all: solo progetto 'chromium' (mobile-chrome saltato per velocità/risorse — INCLUDE_MOBILE=1 per includerlo, es. prima di un rilascio importante)."
+    fi
     ;;
   *)
     echo "⚠️  TEST_SCOPE sconosciuto: '$TEST_SCOPE' — eseguo l'intera suite (comportamento di default 'all')."
