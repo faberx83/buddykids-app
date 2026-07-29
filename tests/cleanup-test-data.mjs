@@ -228,6 +228,22 @@ async function main() {
       .not("label", "is", null)
       .select("kind");
     removed.addressLabelsReset = addressLabelRows?.length || 0;
+
+    // Gate C, sesta ondata (29/07) — stesso identico pattern: TC-N60/TC-N65
+    // (family-planner-5-3.spec.ts) assegnano davvero un responsabile
+    // ("Partner", "Nonno", ecc.) a celle giorno/momento della griglia "Chi fa
+    // cosa?" e non le ripristinano mai; week_responsibilities non era mai
+    // toccata da questo script. Dopo abbastanza run, TUTTE le celle della
+    // settimana coperta risultano assegnate — TC-N59/TC-N61 (che cercano
+    // esplicitamente una cella "Nessuno assegnato", cioè un giorno/momento
+    // ancora senza riga in questa tabella) falliscono per mancanza di celle
+    // libere, non per un bug applicativo. Reset ad ogni run.
+    const { data: responsibilityRows } = await supabase
+      .from("week_responsibilities")
+      .delete()
+      .eq("parent_id", parent.id)
+      .select("id");
+    removed.weekResponsibilitiesReset = responsibilityRows?.length || 0;
   }
 
   if (gestore) {
