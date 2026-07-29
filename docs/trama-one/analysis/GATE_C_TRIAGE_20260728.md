@@ -383,3 +383,86 @@ Fabrizio ha rilanciato dopo la sesta ondata: **20 failed, 3 flaky, 226 passed (1
 **Residuo non toccato in questa ondata** (nessuna nuova ipotesi): TC-178/TC-163 (HARNESS/timing, richieste.spec.ts due-context), TC-N19, TC-N25, TC-N10, TC-N13, TC-N88, TC-N108, TC-N112, TC-N114 (nav/timeout, sospetta latenza Vercel/Supabase sotto carico concorrente, non confermata con evidenza diretta), TC-N407, TC-N408, TC-N409 (cluster `tests/one/*`).
 
 **Prossimo passo**: Fabrizio esegue `migration_16_activity_certifications.sql` in Supabase SQL Editor, poi rilancia `TEST_SCOPE=all bash test-deploy.sh` per confermare la chiusura di TC-101/TC-070/TC-075/TC-200/TC-127 e valutare quanto resta del cluster residuo prima di passare a Gate F.
+
+## Ottava ondata (29/07) — conferma dei 5 fix su deploy reale + causa radice TC-N407/408/409
+
+Fabrizio ha applicato `migration_16` ed eseguito `TEST_SCOPE=all bash test-deploy.sh`: risultato **20 failed/2 flaky/226 passed**, con TC-101/TC-070/TC-127 ancora falliti IDENTICI a prima (stesso sintomo byte-per-byte) mentre TC-075 era sparito. Diagnosi: `test-deploy.sh` testa contro l'URL già deployato e NON deploya codice nuovo — un fix su file `.tsx`/`.ts` (TC-101/070/127, tutti fix applicativi) non ha alcun effetto finché non viene eseguito un `deploy.sh` reale, mentre un fix solo sul file di test (TC-075, `.spec.ts`) è effettivo subito perché Playwright legge i test dal filesystem locale, non dal deploy. **Lezione da ricordare**: dopo un fix applicativo, la sequenza corretta è `bash deploy.sh` (che poi auto-lancia `TEST_SCOPE=critical`), non `test-deploy.sh` da solo.
+
+Fabrizio ha poi eseguito `bash deploy.sh` (push + build + deploy + realign alias, poi auto-run `TEST_SCOPE=critical`): **3 failed, 1 flaky, 76 passed**. **Confermati chiusi con evidenza da deploy reale**: TC-101, TC-070, TC-075, TC-127 (tutti e quattro passano). **TC-200 — confermato chiuso**: la migration_16 ha creato la tabella, e il fix del locator di cleanup (`.last()` → `.first()`, vedi sotto) ha risolto il secondo bug che la tabella ora esistente ha reso raggiungibile per la prima volta.
+
+**TC-200 — secondo bug scoperto DOPO che migration_16 ha reso la tabella esistente**: una volta che il form di richiesta certificazione ha smesso di fallire subito (tabella presente), il test ha raggiunto per la prima volta lo step di cleanup finale (`tests/gestore/attivita.spec.ts`), rivelando un bug di locator mai raggiungibile prima: `page.locator("div").filter({hasText: label}).last()` risolveva al DIV PIÙ INTERNO (il semplice contenitore `<div>{cert.label}</div>` dentro `min-w-0/flex-1`), che non contiene il bottone "Ritira la richiesta" — sibling nella struttura reale di `ActivityEditForm.tsx`, non discendente. In ordine documento (pre-order), `.first()` di un locator "div contiene X" risolve sempre al div PIÙ ESTERNO (la card/riga), `.last()` al più interno — un'inversione facile da confondere. Fix: `.last()` → `.first()`. Commit `8c8273d`, insieme all'estensione di `cleanup-test-data.mjs` per pulire le 2 righe "pending" orfane accumulate dai retry falliti (`certificationsReset`, confermato `2` nel log del run di deploy).
+
+**Tutti e 5 i fallimenti ricorrenti originali (TC-101/070/075/200/127) sono ora chiusi con evidenza da un run contro il deploy realmente aggiornato**, non solo verifica statica.
+
+**TC-N407/TC-N408/TC-N409 — causa radice trovata: BLOCKER/DATA PRECONDITION, non un bug di codice.** Il run `deploy.sh` ha mostrato questi tre come unici falliti oltre al flaky TC-026. `TC-N409` ha loggato esplicitamente `navigated to "https://buddykids-app.vercel.app/admin"` invece di `/admin/one/onboarding` — un redirect, non un timeout di rete. `app/admin/one/layout.tsx` fa `redirect("/admin")` quando `resolveFeatureFlag({flagName:"TRAMA_ONE_ENABLED", ...})` ritorna `false` (righe 58-67). Verificato via query di sola lettura (Supabase MCP) su `feature_flag_overrides`:
+
+```
+flag_name          | scope_type | scope_value | enabled | expires_at                    | is_expired
+TRAMA_ONE_ENABLED  | global     | null        | true    | 2026-07-22 11:41:57.238372+00 | true
+```
+
+È l'UNICA riga presente per questo flag — nessun altro override attivo (nessuno per ruolo/coorte/tenant/utente). `evaluateFlag()` (`lib/feature-flags/evaluate.ts`, righe 111-113) esclude esplicitamente gli override scaduti da quelli applicabili, quindi da quando questa riga è scaduta (22/07, sette giorni fa) **`TRAMA_ONE_ENABLED` risolve a `false` per chiunque** (nessun override valido → `defaultValue: false` del registry, `lib/feature-flags/registry.ts` riga 41) — non solo nei test, in PRODUZIONE per qualunque utente reale che provi ad accedere a `/one`, `/center/one`, `/admin/one`. Il trigger `migration_10` (auto-LEAD) risulta correttamente installato e attivo (`tgenabled: 'O'`, verificato via query) — non è la causa: i centri di test creati da TC-N407/TC-N408 in un run precedente non sono più in tabella `centers` (0 righe `[TEST] Centro Auto LEAD/Idempotenza` al momento della verifica) perché il blocco cleanup all'inizio di `cleanup-test-data.mjs` (righe 311-333, già esistente da un'ondata precedente) li elimina a inizio di ogni run — comportamento corretto, non collegato alla causa radice.
+
+Questo È il task #336 (ancora pending, "Abilitare TRAMA ONE via override + rigenerare sitemap") — non è mai stato chiuso in modo permanente: l'override globale fu impostato con una scadenza (probabilmente pensata per un pilot a tempo) ed è scaduta senza che nessuno se ne accorgesse, perché nulla nel sistema segnala una scadenza di feature flag in avvicinamento/passata.
+
+**Nessuna scrittura SQL eseguita da me** (solo SELECT di sola lettura, come da governance). SQL pronto per Fabrizio, da eseguire manualmente in Supabase SQL Editor:
+
+```sql
+-- PRE-CHECK (sola lettura, facoltativo)
+select flag_name, scope_type, enabled, expires_at
+from public.feature_flag_overrides
+where flag_name = 'TRAMA_ONE_ENABLED';
+-- atteso ORA: 1 riga, scope_type='global', enabled=true, expires_at nel passato.
+
+-- FIX — rimuove la scadenza, rende l'override permanente (raccomandato se il
+-- pilot è ormai da considerarsi la modalità stabile, non più un test a tempo):
+update public.feature_flag_overrides
+set expires_at = null, updated_at = now()
+where flag_name = 'TRAMA_ONE_ENABLED'
+  and scope_type = 'global'
+  and scope_value is null;
+
+-- OPPURE, se preferisci restare su un pilot a tempo invece di renderlo
+-- permanente, estendi la scadenza invece di azzerarla (esegui SOLO questa,
+-- non entrambe):
+-- update public.feature_flag_overrides
+-- set expires_at = now() + interval '30 days', updated_at = now()
+-- where flag_name = 'TRAMA_ONE_ENABLED' and scope_type = 'global' and scope_value is null;
+
+-- POST-CHECK (sola lettura)
+select flag_name, scope_type, enabled, expires_at
+from public.feature_flag_overrides
+where flag_name = 'TRAMA_ONE_ENABLED';
+-- atteso: expires_at = null (permanente) oppure una nuova data futura.
+```
+
+**Raccomandazione**: questa è un'azione a priorità più alta del solito rerun di triage — finché non viene eseguita, TRAMA ONE resta silenziosamente spento in produzione per tutti, non solo per i tre test falliti. Dopo il fix, rilanciare `TEST_SCOPE=all bash test-deploy.sh` per confermare TC-N407/408/409 e verificare se lo stesso meccanismo spiega anche parte del cluster residuo TC-N19/25/10/13/88/108/112/114 — verificato in questa sessione che questi ultimi sono TUTTI in `tests/nextgen/*` (non `tests/one/*`, non gated dal flag), quindi restano un cluster distinto e non spiegato da questa causa: l'ipotesi "latenza Vercel/Supabase sotto carico" resta da confermare o smentire a parte.
+
+## Nona ondata (29/07) — conferma post-fix flag + effetto collaterale atteso sugli smoke test + 1 nuovo HARNESS
+
+Fabrizio ha eseguito l'UPDATE preparato (verificato via query di sola lettura: `expires_at = null`, override permanente e valido) e rilanciato `TEST_SCOPE=all bash test-deploy.sh`: **20 failed, 3 flaky, 228 passed (18.7m)**.
+
+**TC-N407/TC-N408 — confermati chiusi.** Non compaiono più tra i falliti: la causa radice (flag scaduto) era corretta al 100%.
+
+**TC-N409 — avanzato oltre il redirect, nuovo (secondo) bug scoperto: HARNESS, strict mode violation.** Ora che il flag lascia passare il test fino in fondo, `getByText("Integrazioni richieste")` (substring, non exact) risolveva a 2 elementi: il badge di stato vero e proprio e una riga di log/nota "In verifica → Integrazioni richieste" che lo contiene come sottostringa — mai raggiungibile prima perché il test falliva sempre prima, sul redirect. Fix: `{exact: true}` isola solo il badge. Commit `08e66e5`. Stesso pattern di tutti gli altri bug "di secondo livello" di questo sprint (TC-200, TC-N56/N414/415): un fix ne scopre un altro più a valle, mai un segno che il fix precedente fosse sbagliato.
+
+**Effetto collaterale ATTESO, non un regressione**: rendere il flag permanente ha rotto 5 smoke test (`tests/one/smoke.spec.ts`, TC-N302/303/304/401/402) che verificavano esplicitamente il comportamento di fallback quando il flag è DISATTIVATO (premessa ormai falsa, dato che ora è sempre attivo). Riscritti per verificare lo stato attuale (shell raggiungibile, nessun redirect) invece dello stato superato; TC-N306 (già scritto per lo scenario flag=true, prima skippato in attesa di un override dedicato) non richiede più lo skip. Commit `7671691`. **Da confermare al prossimo rerun** (nessuna esecuzione live di questi 6 test in questa sessione, fuori mandato — solo `tsc`/`eslint` puliti).
+
+**Residuo invariato, nessuna nuova ipotesi**: TC-173, TC-134, TC-178, TC-N57, TC-N73, TC-N19, TC-N25, TC-N13, TC-N88, TC-N108, TC-N112, TC-N10, TC-N114 — tutti già presenti nelle ondate precedenti (nessuno introdotto da questo giro), nessuno in `tests/one/*`, quindi non toccati dal fix del flag. TC-026/TC-132/TC-N414 flaky (non falliti in modo consistente) — TC-N414/415 sono nel file già serializzato (`mode:"serial"`, quinta ondata), quindi la flakiness osservata qui è compatibile con rumore residuo piuttosto che una regressione della serializzazione; da riconfermare, non da correggere alla cieca.
+
+**Stato dei 5 fallimenti originali del mandato ("cerchiamo di chiudere ed andare avanti") + il cluster `tests/one/*` collegato**: tutti e otto (TC-101/070/075/200/127 + TC-N407/408/409) hanno ora una causa precisa, un fix applicato e conferma da un run reale (tranne TC-N409, il cui SECONDO bug è appena stato corretto e attende il prossimo rerun per la conferma finale). Il cluster residuo che resta genuinamente da investigare per Gate F è quello sospettato di latenza Vercel/Supabase (`tests/nextgen/*`), invariato da questa sessione.
+
+## Decima ondata (29/07) — ULTIMO run di questo ciclo (per direttiva esplicita di Fabrizio), chiusura Gate C
+
+Fabrizio: "che sia l'ultima, altrimenti non usciamo da questo loop" — rilanciato un'ultima volta `TEST_SCOPE=all bash test-deploy.sh`: **16 failed, 2 flaky, 237 passed (16.3m)**. Da qui in avanti si passa a Gate F indipendentemente dal residuo, salvo blocker reali (nessuno trovato).
+
+**Confermati chiusi definitivamente**: TC-N302/303/304/306/401/402 (i 6 smoke test riscritti) non compaiono più tra i falliti. TC-N407/408 restano chiusi.
+
+**TC-N409 — TERZO bug, stesso pattern HARNESS, corretto senza nuovo rerun**: `getByText("In verifica")` (riga 119, subito dopo il fix della riga 117) risolveva a 4-6 elementi — badge di stato PIÙ righe di audit log con freccia che contengono "In verifica" come sottostringa ("In verifica → Integrazioni richieste", "Attivazione avviata → In verifica", ecc.), mai raggiunte finché non è stata risolta la riga precedente. Fix: `{exact:true}`, commit `e5e1a9a`. `tsc`/`eslint` puliti. Non richiesto un altro rerun per governance esplicita di Fabrizio — il fix resta da confermare al prossimo run naturale (es. in Gate F o in un futuro sprint), non blocca la chiusura del gate.
+
+**Residuo, NESSUNO bloccante — classificato e congelato per Gate F**:
+- **Non toccati da questa sessione, invariati da più ondate** (sospetta latenza Vercel/Supabase, nessuna nuova evidenza): TC-N19, TC-N25, TC-N13, TC-N88, TC-N108, TC-N112, TC-N114, TC-N10, TC-N57, TC-N73, TC-178.
+- **Nuovi in questo run, non ancora spiegati** (TC-112, TC-159 in `prenotazione.spec.ts`: timeout su `/search`; TC-147 in `profilo.spec.ts`: checkbox non persistita dopo reload) — compatibili con lo stesso sospetto di latenza/contesa Vercel-Supabase sotto carico concorrente (stesso file/pattern di TC-132/TC-134, già flaky in run precedenti), non confermati con evidenza diretta.
+- **TC-N414 (flaky) / TC-N415 (fallito)** in `walkthrough-partner.spec.ts`: fallito in modo simile per la seconda run consecutiva (prima flaky+fallito, ora flaky+fallito di nuovo) nonostante la serializzazione già applicata (quinta ondata). Il fatto che si ripeta con lo stesso pattern in due run consecutive lo rende il candidato più solido per essere un bug reale di persistenza (non rumore), ma NON è un blocker per nessun flusso core (booking/auth/pagamenti/presenze) — resta un item da investigare a parte, fuori da questo ciclo di triage per esplicita richiesta di chiusura.
+
+**Nessun blocker trovato**: nessuno dei 16 falliti/2 flaky tocca login, prenotazione core (le prenotazioni reali TC-111/TC-112 booking flow di base passano — TC-112/159 falliscono solo sulla RICERCA dell'attività, non sul booking in sé), pagamenti, o RLS/sicurezza. **Si procede a Gate F.**

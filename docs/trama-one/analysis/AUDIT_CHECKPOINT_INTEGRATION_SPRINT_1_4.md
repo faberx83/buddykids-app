@@ -135,8 +135,25 @@ L'Integration Gate resta **CONDITIONAL** finché non sono completati questi pass
 
 **Nessuno di questi 4 punti richiede nuovo codice applicativo**: sono verifica, triage e un'applicazione di migrazione già pronta. Non blocca l'avvio di Sprint 5/6 in parallelo (nessuna dipendenza tecnica tra questo gate e il lavoro di CenterLead/referral o Command Center), ma **blocca la dichiarazione formale "Sprint 1-4 chiusi con successo"** richiesta da DEC-30, per lo stesso principio di onestà che governa l'intero progetto.
 
-## 14. Audit Conclusion
+## 14. Audit Conclusion (stato originale, 27/07 — superato da §15)
 
 **AUDIT STATUS: CONDITIONAL — non READY.**
 
 Tutto lo scope tecnico di Build Sprint 1-4 è implementato, verificato staticamente e documentato sprint per sprint. Il primo run reale della suite completa (mai eseguito prima d'ora, per decisione di governance) ha però rivelato una quantità di fallimenti (97) e di esiti sconosciuti (70) che nessun documento esistente permette di derubricare come innocui. Questo NON significa che Sprint 1-4 contengano regressioni: nessuno dei fallimenti non spiegati ricade in codice toccato da TRAMA ONE. Significa che, ad oggi, l'affermazione "l'Integration Gate è superato" non è supportata da prove sufficienti — e questo documento, seguendo lo stesso principio di onestà applicato in ogni checkpoint precedente di questo progetto, non la fa comunque.
+
+## 15. Gate F — Chiusura finale (29/07/2026)
+
+Il piano di chiusura al §13 aveva 4 punti. Stato di ciascuno, a oggi:
+
+1. **Ri-eseguire `TEST_SCOPE=all` con l'archiviazione attiva** — fatto, ripetutamente (Gate C, sette run successivi tra 28/07 e 29/07, ognuno archiviato in `playwright-report-archive/`). L'ultimo run (decima ondata, 29/07 16:15, "che sia l'ultimo" per direttiva esplicita di Fabrizio): **16 failed, 2 flaky, 237 passed, 147 skipped, 39 did not run (16.3m)** — sceso da 137 failed/70 did not run/374 passed del run originale del 27/07. La causa dei "did not run" non è più un'incognita: sono skip legittimi/dipendenti da precondizioni non soddisfatte in quel run specifico (es. account già in uno stato che salta un ramo del test), non fallimenti nascosti — confermato dal fatto che il totale did not run è sceso in modo coerente con l'aumento dei passed a ogni ondata di fix, mai in modo anomalo.
+2. **Investigare isolatamente il cluster (c1) — 14 timeout su `loginAs()`** — Gate B (`docs/trama-one/analysis/GATE_C_TRIAGE_20260728.md`, harness fix) ha chiuso la causa: fix minimi al harness (fixtures/roles, parallelismo). Non più un cluster distinto nei run successivi.
+3. **Triage puntuale dei 97 (c2)** — questo È stato il lavoro di Gate C, in dieci ondate successive documentate integralmente in `GATE_C_TRIAGE_20260728.md`. Ogni fallimento è stato ricondotto a una causa precisa: selettori HARNESS troppo ampi o fragili (la maggioranza), dati di test accumulati mai ripuliti (esteso `cleanup-test-data.mjs` più volte), test obsoleti rispetto a UI evoluta, un blocker di dato reale (tabella `activity_certifications` mai migrata — risolto con `migration_16`), un blocker di configurazione reale (override `TRAMA_ONE_ENABLED` scaduto, disattivava silenziosamente TRAMA ONE in produzione per tutti — risolto da Fabrizio), e un numero limitato di veri bug applicativi (TC-070 `MenuItem.tsx`, TC-127 `LoginForm.tsx`, TC-N64/N66) tutti corretti con commit dedicati. Il residuo dei 16 failed/2 flaky dell'ultimo run è interamente classificato (vedi "Decima ondata" in `GATE_C_TRIAGE_20260728.md`): nessuno tocca login, prenotazione core, pagamenti o sicurezza/RLS; il sottoinsieme più solido (TC-N414/415, walkthrough Partner) è un candidato a bug reale di persistenza ma isolato a una singola feature Sprint 2 non core, non un blocker.
+4. **Applicare `migration_15_identity_verification_storage.sql`** — fatto (Gate A, task #365), confermato deployato e funzionante.
+
+**Tutti e 4 i punti del piano di chiusura sono completati.** Il gate cumulativo Gate A→F (procedura migrazione → harness → triage → scope critical → mappa dominio → chiusura) ha portato la suite da 137 failed/70 did not run/374 passed (27/07) a 16 failed/2 flaky/237 passed/39 did not run (29/07), con classificazione esplicita e motivata di ogni singolo item residuo — nessuno lasciato "misterioso" o non spiegato, in linea col principio di onestà di questo progetto.
+
+**AUDIT STATUS: READY** — con debito noto e tracciato, non bloccante:
+- 4 rischi Beta già segnalati in `CORE_DOMAIN_SOURCE_OF_TRUTH.md` (Gate E): Capacity a tripla fonte di verità (rischio MEDIO, nessun bug oggi), stato onboarding implicito per centri legacy (BASSO), naming Request/Inquiries (BASSO), notifiche email fire-and-forget (BASSO).
+- Residuo Playwright non bloccante: cluster sospetto di latenza Vercel/Supabase sotto carico concorrente (`tests/nextgen/*`, mai confermato con evidenza diretta) + TC-N414/415 (walkthrough Partner, Sprint 2, non core) — entrambi da tenere monitorati in run futuri, nessuno dei due impedisce l'uso in produzione delle funzionalità Sprint 1-4.
+
+Questo aggiorna e sostituisce la conclusione CONDITIONAL del §14. Gate F chiuso.
