@@ -108,6 +108,8 @@ A differenza degli sprint precedenti, questo audit ha prodotto una modifica tecn
 
 **Documentazione prodotta/aggiornata da questo Integration Gate**: `docs/trama-one/analysis/PRE_EXISTING_TEST_FAILURE_BASELINE.md` (aggiornato con dati reali), `docs/trama-one/analysis/DECISION_LOG.md` (DEC-44, DEC-45), questo file.
 
+**Evidence Patch (29/07/2026, sera, §16)**: aggiornamento di questo stesso file (revisione conclusione a READY WITH CONDITIONS) e di `docs/trama-one/analysis/SPRINT_GOVERNANCE.md` (backlog vincolante Sprint 6, §16.6) — nessun file applicativo toccato.
+
 **Codice modificato**: `test-deploy.sh`, `.gitignore`.
 
 **File intenzionalmente non modificati**: nessun file applicativo di Sprint 1-4 toccato da questo gate — è un audit, non uno sprint di sviluppo.
@@ -152,8 +154,82 @@ Il piano di chiusura al §13 aveva 4 punti. Stato di ciascuno, a oggi:
 
 **Tutti e 4 i punti del piano di chiusura sono completati.** Il gate cumulativo Gate A→F (procedura migrazione → harness → triage → scope critical → mappa dominio → chiusura) ha portato la suite da 137 failed/70 did not run/374 passed (27/07) a 16 failed/2 flaky/237 passed/39 did not run (29/07), con classificazione esplicita e motivata di ogni singolo item residuo — nessuno lasciato "misterioso" o non spiegato, in linea col principio di onestà di questo progetto.
 
-**AUDIT STATUS: READY** — con debito noto e tracciato, non bloccante:
+**AUDIT STATUS: READY** — con debito noto e tracciato, non bloccante (stato del 29/07, mattina — **rivisto da §16**, vedi sotto):
 - 4 rischi Beta già segnalati in `CORE_DOMAIN_SOURCE_OF_TRUTH.md` (Gate E): Capacity a tripla fonte di verità (rischio MEDIO, nessun bug oggi), stato onboarding implicito per centri legacy (BASSO), naming Request/Inquiries (BASSO), notifiche email fire-and-forget (BASSO).
 - Residuo Playwright non bloccante: cluster sospetto di latenza Vercel/Supabase sotto carico concorrente (`tests/nextgen/*`, mai confermato con evidenza diretta) + TC-N414/415 (walkthrough Partner, Sprint 2, non core) — entrambi da tenere monitorati in run futuri, nessuno dei due impedisce l'uso in produzione delle funzionalità Sprint 1-4.
 
-Questo aggiorna e sostituisce la conclusione CONDITIONAL del §14. Gate F chiuso.
+Questo aggiorna e sostituisce la conclusione CONDITIONAL del §14. **Nota (29/07, sera): questa conclusione READY era prematura sul perimetro effettivamente testato — vedi §16 per la revisione onesta a READY WITH CONDITIONS.**
+
+## 16. Evidence Patch (29/07/2026, sera) — chiarimenti puntuali richiesti da Fabrizio dopo §15
+
+Fabrizio ha approvato la sostanza della chiusura Gate F ma ha richiesto un'evidence patch mirata su 7 punti precisi, non un nuovo sprint di stabilizzazione né un permesso di ri-triage. Di seguito le risposte, punto per punto, con solo evidenza verificata (nessuna inferenza numerica non supportata).
+
+### 16.1 Discrepanza 882 vs 441 — perimetro chiarito
+
+I due numeri **non sono confrontabili**: sono perimetri diversi, non un risultato migliore/peggiore.
+
+- **882** (run originale, 27/07, `logs/deploy-20260727-152424.log`): "Running 882 tests using 4 workers" — 441 test × **2 project** (`chromium` + `mobile-chrome`, confermato: l'indice 441 nel log segna esattamente il confine chromium→mobile-chrome).
+- **441** (tutti i run dal 29/07 mattina in poi, incluso il run "decima ondata" di §15): stesso identico set di 441 test, ma su **1 solo project** (`chromium`). Confermato confrontando la lista `config.projects` negli archivi di `playwright-report-archive/` prima e dopo le 09:47 del 29/07: il comando `TEST_SCOPE=all` (e `TEST_SCOPE=critical`) è passato a chromium-only di default a partire dal task #387 (29/07), richiede `INCLUDE_MOBILE=1` per includere di nuovo `mobile-chrome`.
+- **Nessun run separato su mobile-chrome esiste dopo il fix del flag**: l'ultimo run che ha incluso `mobile-chrome` è `playwright-report-archive/20260729-094746/`, precedente al fix dell'override scaduto e alla maggior parte dei fix Gate C — quindi **stale**, non rappresentativo dello stato attuale. In quel run, mobile-chrome mostrava 118 unexpected contro i 72 di chromium nello stesso run — un tasso di fallimento sistematicamente più alto, mai triagiato nemmeno allora.
+- **Non ripeto l'intera suite**: per la direttiva esplicita di Fabrizio ("non rilanciare tutta la suite a meno che non ci sia davvero nessuna evidenza sull'altro browser"), e poiché è vero che manca evidenza fresca su mobile-chrome, la richiesta minima e sufficiente è **una sola esecuzione mirata**: `INCLUDE_MOBILE=1 TEST_SCOPE=critical bash test-deploy.sh` — chromium e mobile-chrome sui soli 18 journey critici, non gli 882/441 test completi. Questo comando è **da eseguire da Fabrizio**, non da me.
+
+### 16.2 `TEST_SCOPE=critical` — documentazione esplicita
+
+Unico run archiviato con questo scope: `playwright-report-archive/20260729-151428/`.
+
+- **Comando eseguito**: `TEST_SCOPE=critical bash test-deploy.sh` (chromium-only, default pre-`INCLUDE_MOBILE`).
+- **Browser/project**: solo `chromium`.
+- **Conteggi**: 132 test totali — 76 expected (passed), 52 skipped, 3 unexpected (failed), 1 flaky.
+- **Commit testato**: precedente al fix dell'override `TRAMA_ONE_ENABLED` (i 3 unexpected di quel run sono, con alta probabilità, proprio TC-N407/408/409 nella loro forma pre-fix — coerente con la causa radice poi risolta lo stesso giorno) — **quindi questo run è stale rispetto a HEAD attuale**, non utilizzabile come prova di stato corrente.
+- **Ambiente**: `https://buddykids-app.vercel.app`.
+- **Condizione posta da Fabrizio per procedere** ("critical journeys verdi su tutti i browser supportati, zero fallimenti su onboarding/catalogo/giorni spot/richiesta/risposta Partner/Booking/Planner Sync/capacità/RLS"): **non pienamente verificabile con l'evidenza disponibile oggi** — nessun run `TEST_SCOPE=critical` esiste successivo al fix del flag e ai fix Gate C su ENTRAMBI i browser contemporaneamente. Il run "decima ondata" (`TEST_SCOPE=all`, chromium-only) copre sì i journey critici post-fix, ma solo su chromium. Su mobile-chrome, l'ultima evidenza è stale e mai triagiata.
+- **Azione richiesta**: lo stesso comando indicato in §16.1 chiude anche questo punto.
+
+### 16.3 I 39 "did not run" — identificazione precisa da `results.json`
+
+Fonte: `playwright-report-archive/20260729-161559/results.json` (run "decima ondata"), analizzato programmaticamente (non per inferenza numerica): ogni test con status finale `skipped`, **zero annotazioni** (né `type:'fixme'` né `type:'skip'` con motivo) e `workerIndex: -1` su tutti i tentativi — segno che il test è stato pianificato ma mai assegnato a un worker, perché un test precedente nello STESSO file ha mandato in crash/hang il worker/browser, e tutti i test successivi nel file sono stati abbandonati dall'orchestratore.
+
+| File | N. test abbandonati | Test che ha causato il crash | File è in `CRITICAL_TEST_FILES`? | Impatto su journey critici |
+|---|---|---|---|---|
+| `tests/genitori/prenotazione.spec.ts` | 12 | TC-159 | **Sì** | Nessuno: TC-108/109/110/111/112 (creazione prenotazione, il journey critico vero e proprio) sono posizionati PRIMA di TC-159 nel file e sono tutti passati prima del crash. I 12 abbandonati sono tutti test non-critici di "Le mie prenotazioni" (dashboard/filtri). |
+| `tests/genitori/profilo.spec.ts` | 5 | TC-147/area TC-134 | No | Nessuno (file non critico). |
+| `tests/gestore/richieste.spec.ts` | 2 | TC-178 | No | Nessuno (file non critico). |
+| `tests/nextgen/family-planner-5-3.spec.ts` | 12 | TC-N57 | No | Nessuno (file non critico). |
+| `tests/nextgen/family-planner-5-5.spec.ts` | 8 | TC-N73 | No | Nessuno (file non critico). |
+| **Totale** | **39** | — | — | — |
+
+**Conferma esplicita richiesta da Fabrizio**: nessun journey critico è stato lasciato senza un esito in questo run, per i "did not run" propriamente detti. L'unica eccezione — distinta e già tracciata separatamente, NON un "did not run" — è TC-N409, che in questo stesso run ha prodotto un FALLIMENTO reale (non un'astensione), poi corretto con il commit `e5e1a9a` ma **non ancora riverificato da un run live successivo**: resta l'unico gap concreto sui journey critici, ed è chiuso dallo stesso comando richiesto in §16.1/16.2.
+
+Non è stato "corretto" nulla dei 39: sono skip legittimi nel senso tecnico (conseguenza di un crash a monte nello stesso file, non un bug nei test abbandonati stessi), coerentemente con l'istruzione di Fabrizio di non "aggiustare" skip legittimi.
+
+### 16.4 Stato repository/produzione
+
+- **HEAD attuale**: `e266373`, branch `main`, working tree pulito (`git status --short` vuoto).
+- **Commit deployato in produzione**: `8c8273d` (confermato da `logs/deploy-20260729-145549.log`, `e6bee1d..8c8273d main -> main`).
+- **Commit su cui è girato l'ultimo test reale ("decima ondata")**: `8c8273d` (nessun commit applicativo tra il deploy e quel run).
+- **Diff tra deployato (`8c8273d`) e HEAD (`e266373`)**: `git diff --stat 8c8273d..e266373 -- app/ lib/ components/ supabase/` → **vuoto, zero righe**. L'unico diff riguarda `tests/one/onboarding-remediation.spec.ts`, `tests/one/smoke.spec.ts` e 2 file di documentazione (`GATE_C_TRIAGE_20260728.md`, questo stesso file). **Conclusione**: il comportamento dell'app live è invariato e coerente con tutto ciò che è stato testato/documentato; solo asserzioni di test e documentazione sono evolute dopo l'ultimo deploy — non serve un nuovo deploy prima del prossimo run di verifica.
+- **Elenco sintetico commit Gate A→F** (non esaustivo di ogni micro-commit, solo i marcatori di gate): Gate A `migration_15` + task #365 (identity verification storage); Gate B harness fixes (`fixtures/roles.ts`, parallelismo); Gate C dieci ondate di triage (`GATE_C_TRIAGE_20260728.md`), inclusi `03e6dce` (migration_16), i fix flag/override, `08e66e5`/`7671691`/`e5e1a9a` (TC-N409 + rewrite smoke test); Gate D scope critical chromium-only default; Gate E `CORE_DOMAIN_SOURCE_OF_TRUTH.md` (mappa 10 domini); Gate F `e266373` (chiusura §15 + questo evidence patch).
+- **Ambiente**: `https://buddykids-app.vercel.app`.
+
+### 16.5 Registrazione `migration_16`
+
+- **File**: `supabase/migration_16_activity_certifications.sql`.
+- **SHA-256**: `1931027b640523254b6fa66ab37082872a602cbdbbb0c5494c4f769c90c60713`.
+- **Commit**: `03e6dce`.
+- **Oggetti creati**: tabella `activity_certifications` (certificazioni attività, gap emerso durante Gate C triage).
+- **RLS/policy**: RLS abilitata, 5 policy presenti (verificato via query read-only diretta a Supabase, progetto `eagsgfxunwyyxwwilldy`).
+- **Data/ambiente di applicazione**: applicata in produzione da Fabrizio durante Gate C (29/07).
+- **Post-check**: query read-only di verifica eseguita oggi — `table_exists: true, rls_enabled: true, policy_count: 5, row_count: 1`. Tabella esiste, RLS attiva, almeno una riga reale presente.
+- **Esito**: **migration_16 è confermata applicata e funzionante in produzione.** Nessuna azione di rollback necessaria.
+
+### 16.6 Backlog Sprint 6 — 4 item vincolanti inseriti
+
+Inseriti verbatim in `docs/trama-one/analysis/SPRINT_GOVERNANCE.md`, nuova sottosezione "Backlog vincolante di Sprint 6" sotto la sezione Sprint 6 esistente: P1 Capacity a tripla fonte di verità (servizio canonico, invarianti, reservation/release, test); P1 feature flag override expiry (visibilità Admin, alert, telemetria, prevenzione fallback silenzioso); P2 notifiche email fire-and-forget (stato di consegna, logging, retry minimo); P2 TC-N414/N415 persistenza Walkthrough Partner. Commit separato da questo file (vedi §10 aggiornato, prossimo commit).
+
+### 16.7 Conclusione rivista — AUDIT STATUS: READY WITH CONDITIONS
+
+Applicando i criteri espliciti posti da Fabrizio per mantenere "READY" (perimetro chiarito ✅; suite critical verde su TUTTI i browser supportati ⚠️ non verificabile — manca evidenza fresca su mobile-chrome; i 39 did-not-run identificati ✅; nessun journey critico senza esito ✅ con l'eccezione tracciata di TC-N409; HEAD e deploy allineati ✅; migration_16 applicata e verificata ✅): **non tutte le condizioni sono soddisfatte**. Mancano esattamente due evidenze, entrambe chiuse dallo stesso singolo comando:
+
+**`INCLUDE_MOBILE=1 TEST_SCOPE=critical bash test-deploy.sh`** — da eseguire da Fabrizio (nessun run Playwright è mai eseguito da Claude). Questo run: (a) fornirebbe la prima evidenza fresca sui journey critici su `mobile-chrome` dopo tutti i fix Gate C; (b) riverificherebbe il fix `e5e1a9a` di TC-N409 su chromium, l'unico fix di questo intero ciclo mai confermato da un run live.
+
+**AUDIT STATUS: READY WITH CONDITIONS.** Non READY incondizionato, per lo stesso principio di onestà di questo progetto: dichiarare "verde su tutti i browser supportati" senza avere quell'evidenza violerebbe la condizione posta esplicitamente da Fabrizio stesso. Le condizioni sono 2, precise, non bloccanti per l'avvio di Sprint 5 (nessuna dipendenza tecnica: CenterLead/referral non tocca capacità/flag/onboarding), e tracciate qui per la chiusura definitiva quando il run sopra sarà disponibile.
