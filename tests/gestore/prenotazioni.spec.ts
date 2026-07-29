@@ -26,19 +26,26 @@ test.describe("Gestore - Prenotazioni (risposta Partner)", () => {
     await loginAs(page, "center_admin");
     await page.goto("/center/prenotazioni");
 
-    // Gate C (28/07): con cleanup-test-data.mjs ora funzionante end-to-end
-    // (fix chiave API Supabase), esistono STABILMENTE più righe per la stessa
-    // TEST_ACTIVITY_NAME (fixture Registro presenze già accettata + fixture
-    // "Da rispondere" di questo test) — getBookingsForCenter ordina per
-    // created_at DESC (lib/data/center-bookings.ts riga 169), quindi la riga
-    // più recente (il marcatore pending appena ricreato) è la PRIMA nel DOM,
-    // non l'ultima: ".last()" risolveva alla riga più VECCHIA (già accettata,
-    // senza bottone "Accetta") → timeout. Disambiguiamo filtrando anche per
-    // "Da rispondere", indipendentemente dall'ordine.
+    // Gate C (28/07, quarta ondata): il filtro "Da rispondere" da solo NON
+    // basta a isolare il marcatore, nemmeno dopo aver esteso la DELETE di
+    // cleanup-test-data.mjs a activity_id (commit efea04d) — perché la causa
+    // non è più dato residuo tra run, ma CONCORRENZA dentro lo stesso run.
+    // tests/genitori/prenotazione.spec.ts (TC-111/TC-112) completa
+    // prenotazioni REALI sulla stessa TEST_ACTIVITY_NAME e con
+    // fullyParallel:true + workers:2 (playwright.config.ts) può girare in
+    // parallelo a questo file su un worker diverso: quella prenotazione nasce
+    // con partner_decision='pending' ("Da rispondere") e resta tale finché
+    // nessuno la accetta/rifiuta — una seconda riga legittima, non un dato
+    // sporco. Il marcatore seed (STEP 8) è invece l'UNICA prenotazione con
+    // total_amount = 0.01 (mai il prezzo reale dell'attività): filtriamo
+    // anche su "€0.01" per isolarlo indipendentemente da quante altre
+    // prenotazioni "Da rispondere" esistano in quel momento sulla stessa
+    // attività.
     const row = page
       .getByTestId("booking-row")
       .filter({ hasText: TEST_ACTIVITY_NAME })
-      .filter({ hasText: "Da rispondere" });
+      .filter({ hasText: "Da rispondere" })
+      .filter({ hasText: "€0.01" });
     await expect(row).toBeVisible();
     await expect(row.getByText("Da rispondere")).toBeVisible();
 
