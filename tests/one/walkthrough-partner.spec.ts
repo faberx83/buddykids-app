@@ -16,6 +16,17 @@ import { loginAs, isRealDeployment } from "../fixtures/roles";
 // (DEC-34) — lo stesso già usato da tests/one/onboarding-remediation.spec.ts.
 
 test.describe("TRAMA ONE — Walkthrough attività (Partner, Sprint 2)", () => {
+  // Gate C, quarta ondata (29/07) — TC-N414 si aspetta lo stato INIZIALE
+  // "not_started" del percorso ("Inizia"), TC-N415 lo avvia davvero
+  // (persistenza reale su tutorial_progress, non solo useState). Senza
+  // serializzazione esplicita, fullyParallel:true non garantisce che N414
+  // (che legge lo stato) vada prima di N415 (che lo muta) neppure DENTRO la
+  // stessa run — stesso principio già applicato in
+  // tests/nextgen/family-planner-5-3.spec.ts per TC-N56/TC-N284. Il reset di
+  // tutorial_progress tra un run e l'altro (cleanup-test-data.mjs) risolve la
+  // persistenza TRA run diverse, non la corsa dentro la stessa run.
+  test.describe.configure({ mode: "serial" });
+
   test("TC-N414 - Partner: /center/one mostra il percorso guidato 'Pubblica la tua prima attività' con il primo step", async ({
     page,
   }) => {
