@@ -41,10 +41,19 @@ test.describe("Gestore - Prenotazioni (risposta Partner)", () => {
     // anche su "€0.01" per isolarlo indipendentemente da quante altre
     // prenotazioni "Da rispondere" esistano in quel momento sulla stessa
     // attività.
+    //
+    // Gate C (29/07, quinta ondata): il locator "row" NON deve includere
+    // "Da rispondere" nel filtro usato DOPO il click su "Accetta" — quel
+    // testo sparisce dalla riga non appena patchBooking() aggiorna lo stato
+    // locale a "accepted" (PrenotazioniClient.tsx#respond), quindi un
+    // locator ancora filtrato su "Da rispondere" smette di matchare
+    // qualunque elemento e "row.getByText('Accettata')" resta vuoto per
+    // costruzione, non per un problema applicativo. Il locator stabile (solo
+    // attività + marcatore prezzo) resta valido PRIMA e DOPO l'azione; "Da
+    // rispondere" viene verificato separatamente, solo prima del click.
     const row = page
       .getByTestId("booking-row")
       .filter({ hasText: TEST_ACTIVITY_NAME })
-      .filter({ hasText: "Da rispondere" })
       .filter({ hasText: "€0.01" });
     await expect(row).toBeVisible();
     await expect(row.getByText("Da rispondere")).toBeVisible();
