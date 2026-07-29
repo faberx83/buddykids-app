@@ -18,6 +18,17 @@ import { loginAs, isRealDeployment } from "../fixtures/roles";
 // conseguenza, TC-N65 aggiunto per verificare l'indipendenza fra celle.
 
 test.describe("NEXTGEN - Family Planner Sprint 5.3 (Logistica/Chi fa cosa/Condivisione)", () => {
+  // Gate C, quarta ondata (29/07) — TC-N56 falliva in modo intermittente
+  // (oltre al problema permanente di TC-N284 risolto in cleanup-test-data.mjs)
+  // perché senza serializzazione esplicita, fullyParallel:true può eseguire
+  // TC-N56 e TC-N284 in PARALLELO su worker diversi: se TC-N284 (che rinomina
+  // l'indirizzo "Casa" in "Casa della nonna") finisce prima, TC-N56
+  // (`getByText("Casa", {exact:true})`) fallisce anche nella stessa run in
+  // cui il cleanup ha appena resettato l'etichetta. Stesso principio già in
+  // uso in tests/genitori/prenotazione.spec.ts e prenotazioni.spec.ts per
+  // test che mutano davvero lo stesso stato condiviso.
+  test.describe.configure({ mode: "serial" });
+
   // SPRINT 7: "Indirizzi di famiglia" non è più un link diretto sotto ogni
   // modalità del Planner, né passa più dall'hub /nextgen/planner/logistica
   // (eliminato) — ora è una vera sezione dentro Profilo (feedback Fabrizio:
