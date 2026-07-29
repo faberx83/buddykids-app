@@ -18,6 +18,18 @@ import { loginAs, isRealDeployment } from "../fixtures/roles";
 // con due account reali prima del rilascio a Fabrizio.
 
 test.describe("NEXTGEN - Family Planner Sprint 5.5 (Profilo Famiglia multi-genitore)", () => {
+  // Gate C, quinta ondata (29/07) — questi test leggono/scrivono TUTTI lo
+  // stesso stato reale di appartenenza famiglia dell'account genitore di
+  // test (crea/entra/esci/invita), e molti hanno precondizioni esplicite
+  // sull'ordine ("esegui prima TC-N74", vedi commenti sotto) MAI applicate
+  // con test.describe.configure — con fullyParallel:true (playwright.config)
+  // potevano quindi girare in parallelo su worker diversi, con un test che
+  // esce dalla famiglia (TC-N77) mentre un altro assume di esserci ancora
+  // dentro (TC-N76/114/115/116/117), o viceversa. Stesso principio già
+  // applicato oggi a prenotazione.spec.ts/prenotazioni.spec.ts (TC-508) e
+  // family-planner-5-3.spec.ts (TC-N56).
+  test.describe.configure({ mode: "serial" });
+
   // AGGIORNATO (era già stale rispetto a Sprint 7 — feedback Fabrizio
   // "Logistica e Famiglia non devono diventare una sezione ad hoc?": il
   // link non vive più dentro il Planner, ma in Profilo. SPRINT CORRETTIVO —
