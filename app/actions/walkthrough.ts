@@ -11,6 +11,20 @@ import { createClient } from "@/lib/supabase/server";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
 import { revalidatePath } from "next/cache";
 import { isKnownTutorial, getTutorialDefinition } from "@/lib/walkthrough/registry";
+import { generateCorrelationId } from "@/lib/telemetry/correlation";
+import { persistProductEvent } from "@/lib/telemetry/events";
+
+// TRAMA ONE Build Sprint 6 (E11) — una Server Action non ha un
+// correlationId "di richiesta" in ingresso come un Server Component (i tre
+// layout /one ne generano uno all'inizio del render): ogni chiamata a
+// queste action ne genera quindi uno nuovo, che correla comunque tutti gli
+// eventi (qui solo uno per chiamata) e le eventuali righe DB scritte nella
+// stessa azione — sufficiente per il tracciamento "quando/quale step",
+// senza introdurre propagazione cross-richiesta (fuori scope, vedi
+// lib/telemetry/correlation.ts).
+function walkthroughCorrelationId(): string {
+  return generateCorrelationId();
+}
 
 // TRAMA ONE Build Sprint 6 (backlog vincolante P2, TC-N414/N415, DEC-50) —
 // il motore è generico per costruzione (registry.ts ospita percorsi sia
@@ -70,6 +84,11 @@ export async function startWalkthroughStepAction(
 
   const { error } = await upsertStep(supabase, user.id, tutorialKey, stepKey, "in_progress");
   if (error) return { error: error.message };
+  await persistProductEvent({
+    event: "walkthrough_step_started",
+    correlationId: walkthroughCorrelationId(),
+    detail: `${tutorialKey}/${stepKey}`,
+  });
   revalidateAllWalkthroughPortals();
   return {};
 }
@@ -85,6 +104,11 @@ export async function completeWalkthroughStepAction(
 
   const { error } = await upsertStep(supabase, user.id, tutorialKey, stepKey, "completed");
   if (error) return { error: error.message };
+  await persistProductEvent({
+    event: "walkthrough_step_completed",
+    correlationId: walkthroughCorrelationId(),
+    detail: `${tutorialKey}/${stepKey}`,
+  });
   revalidateAllWalkthroughPortals();
   return {};
 }
@@ -100,6 +124,11 @@ export async function skipWalkthroughStepAction(
 
   const { error } = await upsertStep(supabase, user.id, tutorialKey, stepKey, "skipped");
   if (error) return { error: error.message };
+  await persistProductEvent({
+    event: "walkthrough_step_skipped",
+    correlationId: walkthroughCorrelationId(),
+    detail: `${tutorialKey}/${stepKey}`,
+  });
   revalidateAllWalkthroughPortals();
   return {};
 }
@@ -117,6 +146,11 @@ export async function restartWalkthroughAction(tutorialKey: string): Promise<{ e
     .eq("user_id", user.id)
     .eq("tutorial_key", tutorialKey);
   if (error) return { error: error.message };
+  await persistProductEvent({
+    event: "walkthrough_restarted",
+    correlationId: walkthroughCorrelationId(),
+    detail: tutorialKey,
+  });
   revalidateAllWalkthroughPortals();
   return {};
 }
