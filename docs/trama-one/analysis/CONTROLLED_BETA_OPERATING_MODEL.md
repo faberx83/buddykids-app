@@ -27,14 +27,14 @@ Nessun nuovo strumento: tre superfici Admin già esistenti, da controllare con q
 | Segnalazioni pilota | `/admin/segnalazioni-beta` (CR-050, DEC-53, riuso puro) | Settimanale, o su notifica | Nuove segnalazioni dalla floating CTA BETA, owner/SLA già presenti |
 | Avanzamento Walkthrough/Spotlight | `/admin/one`, sezione Walkthrough (DEC-54) | Settimanale | Funnel/drop-off per step, calcolato da `tutorial_progress` (sempre disponibile, non dipende da `product_events`) |
 
-## 4. Limite reale verificato: la telemetria evento-per-evento non è ancora attiva
+## 4. Telemetria: entrambe le migrazioni risultano già applicate
 
-Verificato oggi in sola lettura: **la tabella `public.product_events` non esiste** (`migration_20_product_events.sql`, DEC-52, non ancora applicata) e **le colonne `bookings.email_delivery_status`/`email_delivery_error`/`email_delivery_attempted_at` non esistono** (`migration_19_bookings_email_delivery_status.sql`, DEC-49, non ancora applicata). Conseguenze concrete per questo modello operativo, non ipotetiche:
+Correzione rispetto a una prima verifica di questo stesso giorno (errore di metodo: una query con più statement in una sola chiamata `execute_sql` restituisce solo il risultato dell'ultimo statement, non di tutti — le query successive, eseguite singolarmente, hanno dato un esito diverso e più accurato). Verificato singolarmente:
 
-- Gli eventi `spotlight_shown`/`spotlight_target_not_found`/`spotlight_dismissed` (DEC-60) e `walkthrough_step_*` (DEC-52) vengono SOLO loggati su console Vercel in questo momento — nessuna query aggregata è possibile finché `migration_20` non è applicata. Il funnel Walkthrough visibile in `/admin/one` resta comunque affidabile (si basa su `tutorial_progress`, non su `product_events`, per costruzione — DEC-54), ma non c'è visibilità sul tasso di "target non trovato" dello Spotlight né sui dismiss, che sarebbero i segnali più diretti di attrito nel nuovo overlay.
-- Non c'è alcuna visibilità sullo stato di consegna delle email Partner accetta/rifiuta durante il pilot — se un centro pilota non riceve conferme via email, non c'è modo di distinguere "email non inviata" da "email finita in spam" senza guardare i log Vercel a mano.
+- **`public.product_events` esiste ed è già popolata**: 46 righe, `event_name` distinti trovati oggi: `one_route_access` (44) e `walkthrough_step_started` (2) — `migration_20_product_events.sql` (DEC-52) risulta applicata. Nessun evento `spotlight_*` (DEC-60) ancora presente, atteso: il codice Spotlight di questa sessione non è ancora stato deployato in produzione al momento di questa verifica.
+- **Le colonne `bookings.email_delivery_status`/`email_delivery_error`/`email_delivery_attempted_at` esistono**: `migration_19_bookings_email_delivery_status.sql` (DEC-49) risulta applicata — 1 prenotazione ha già uno stato `not_configured` registrato, 15 restano `null` (prenotazioni che non sono ancora passate per un accetta/rifiuta Partner, atteso).
 
-**Raccomandazione**: applicare `migration_19` e `migration_20` (entrambe già scritte, con intestazione "QUESTO FILE NON È STATO APPLICATO AL DATABASE" e sezioni PRE-CHECK/POST-CHECK/ROLLBACK) prima o durante la prima settimana del pilot, se si vuole il quadro di monitoraggio completo descritto in §3. Decisione di Fabrizio, non bloccante per la pubblicazione stessa (§16-17 non ne dipende).
+Conseguenza pratica per questo modello operativo: il quadro di monitoraggio descritto in §3 è **già utilizzabile oggi**, non condizionato a un'azione futura di Fabrizio. Unica cosa da tenere d'occhio dopo il deploy dello Spotlight: verificare che gli eventi `spotlight_shown`/`spotlight_target_not_found`/`spotlight_dismissed` comincino effettivamente a comparire in `product_events` (una query `select event_name, count(*) from public.product_events group by event_name` post-deploy è sufficiente).
 
 ## 5. Triage delle segnalazioni
 
