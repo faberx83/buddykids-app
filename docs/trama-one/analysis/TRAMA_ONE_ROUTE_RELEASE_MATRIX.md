@@ -9,7 +9,7 @@ Inventario di **tutte** le route TRAMA ONE realmente implementate negli Sprint 1
 
 Prima del dettaglio riga-per-riga, due fatti riguardano **tutte** le 8 route sotto e vanno risolti una volta sola, non route per route:
 
-1. **Nessuna delle 8 route ha un punto di accesso in nessuna navigazione reale.** Verificato con `grep` su `app/admin/layout.tsx`, `app/center/layout.tsx`, `components/nextgen/NextgenBottomNav.tsx`, e su tutto `app/`+`components/`+`lib/` per stringhe `"/one"`, `"/center/one"`, `"/admin/one"`: zero occorrenze fuori dai file delle route stesse. Le uniche eccezioni sono `/admin/center-leads` e `/admin/feature-flags`, già presenti in `app/admin/layout.tsx` (righe 30-31). Questo è esattamente il gap descritto nel gate: le funzionalità sono tecnicamente complete e testate, ma **non pubblicate** nel senso operativo del termine.
+1. **5 delle 8 route non hanno alcun punto di accesso in nessuna navigazione reale** (correzione: la prima stesura di questo documento diceva erroneamente "6" in prosa — vedi §4bis per il dettaglio). Verificato con `grep` su `app/admin/layout.tsx`, `app/center/layout.tsx`, `components/nextgen/NextgenBottomNav.tsx`, e su tutto `app/`+`components/`+`lib/` per stringhe `"/one"`, `"/center/one"`, `"/admin/one"`: zero occorrenze fuori dai file delle route stesse. Le 3 route già correttamente raggiungibili sono `/admin/center-leads` e `/admin/feature-flags` (menu Admin, righe 30-31 di `app/admin/layout.tsx`) e `/center-leads` (CTA contestuale legittima da ricerca senza risultati — vedi §4bis/§4ter). Le 5 route restanti sono esattamente il gap descritto nel gate: funzionalità tecnicamente complete e testate, ma **non pubblicate** nel senso operativo del termine.
 2. **`TRAMA_ONE_ENABLED` è oggi, in produzione, un override `global` permanente (`enabled=true`, `expires_at=null`)**, verificato con query diretta su `feature_flag_overrides` (id `377b5a2a…`, creato 2026-07-22, aggiornato 2026-07-29). Questo significa che `/one`, `/center/one`, `/admin/one` sono già raggiungibili da **chiunque conosca l'URL**, non solo dalla coorte Controlled Beta — in violazione diretta del requisito "non un rollout globale" di questo gate. La correzione (sostituire l'override globale con uno scoped a coorte/ruolo) è un prerequisito del gate §16, non un'azione già fatta.
 
 ## 1. PARENT
@@ -46,7 +46,7 @@ Prima del dettaglio riga-per-riga, due fatti riguardano **tutte** le 8 route sot
 - **Empty/loading/error/success state**: gestiti (fail-safe silenzioso lato dati, vedi DEC-56 — lista vuota se errore, nessun errore mostrato).
 - **Test**: `tests/one/center-leads.spec.ts` (TC-N600-N606), tutti PASSED nel run 2026-08-03 (vedi `AUDIT_CHECKPOINT_BETA_RELEASE.md`).
 - **Deploy**: live in produzione, sempre raggiungibile (non gated).
-- **Route orfana**: **parzialmente** — entry point contestuale esiste ed è corretto per il caso d'uso principale, ma manca un accesso permanente per rivedere lo storico.
+- **Route orfana**: **no** — `CONTEXTUAL_CTA` è una modalità di accesso legittima (§4ter), non un ripiego. Gap residuo, diverso dall'essere orfana: manca un secondo accesso stabile per rivedere lo storico delle segnalazioni già inviate, fuori dal momento della ricerca senza risultati.
 
 ## 2. PARTNER
 
@@ -154,20 +154,43 @@ Prima del dettaglio riga-per-riga, due fatti riguardano **tutte** le 8 route sot
 - **Deploy**: live.
 - **Route orfana**: **no**.
 
-## 4. Riepilogo tabellare
+## 4. Riepilogo tabellare — CORRETTO (vedi §4bis per la correzione richiesta)
 
-| Route | Portale | Sprint | In IA? | Flag | Stato visivo | Orfana |
-|---|---|---|---|---|---|---|
-| `/one` | Parent | 0/1 | No | `TRAMA_ONE_ENABLED` | Scaffold non stilizzato | **Sì** |
-| `/center-leads` | Parent | 5 | Contestuale solo | Nessuno | Coerente | Parziale |
-| `/center/one` | Partner | 0/1/2 | No | `TRAMA_ONE_ENABLED` | Scaffold, colore hardcoded | **Sì** |
-| `/center/one/onboarding` | Partner | 1 | No (2° hop da route orfana) | `TRAMA_ONE_ENABLED` | Coerente | **Sì** |
-| `/admin/one` | Admin | 6 | No | `TRAMA_ONE_ENABLED` | Scaffold, tutto inline/hardcoded | **Sì** |
-| `/admin/one/onboarding` | Admin | 1 | No (2° hop da route orfana) | `TRAMA_ONE_ENABLED` | Coerente | **Sì** |
-| `/admin/center-leads` | Admin | 5 | **Sì** | Nessuno | Coerente | No |
-| `/admin/feature-flags` | Admin | 6 | **Sì** | Nessuno | Coerente | No |
+| # | Route | Portale | Sprint | In IA? | Flag | Stato visivo | Orfana |
+|---|---|---|---|---|---|---|---|
+| 1 | `/one` | Parent | 0/1 | No | `TRAMA_ONE_ENABLED` | Scaffold non stilizzato | **Sì** |
+| 2 | `/center-leads` | Parent | 5 | Contestuale (CTA legittima) | Nessuno | Coerente | **No** |
+| 3 | `/center/one` | Partner | 0/1/2 | No | `TRAMA_ONE_ENABLED` | Scaffold, colore hardcoded | **Sì** |
+| 4 | `/center/one/onboarding` | Partner | 1 | No (2° hop da route orfana) | `TRAMA_ONE_ENABLED` | Coerente | **Sì** |
+| 5 | `/admin/one` | Admin | 6 | No | `TRAMA_ONE_ENABLED` | Scaffold, tutto inline/hardcoded | **Sì** |
+| 6 | `/admin/one/onboarding` | Admin | 1 | No (2° hop da route orfana) | `TRAMA_ONE_ENABLED` | Coerente | **Sì** |
+| 7 | `/admin/center-leads` | Admin | 5 | Sì (menu) | Nessuno | Coerente | No |
+| 8 | `/admin/feature-flags` | Admin | 6 | Sì (menu) | Nessuno | Coerente | No |
 
-**6 route su 8 sono orfane** (nessun accesso da navigazione reale). Le uniche 2 già correttamente pubblicate sono quelle Sprint 5-6 non gated da `TRAMA_ONE_ENABLED`. Le 3 "shell" (`/one`, `/center/one`, `/admin/one`) sono inoltre gli unici 3 file rimasti allo stadio di scaffold Sprint 0 non più aggiornato, nonostante ospitino/aggreghino funzionalità mature costruite sopra negli sprint successivi.
+## 4bis. Correzione richiesta: il numero "6 su 8" della prima stesura era sbagliato
+
+Fabrizio ha segnalato correttamente un'incoerenza: la prima stesura dichiarava in prosa "6 route su 8 sono orfane" ma la tabella ne marcava **Sì** solo 5, con `/center-leads` etichettata "Parziale" — un valore terzo non definito, che non doveva esistere.
+
+**Correzione**: le route realmente orfane (nessun accesso da IA reale, in nessuna forma) sono **5**, non 6: `/one`, `/center/one`, `/center/one/onboarding`, `/admin/one`, `/admin/one/onboarding`. `/center-leads` NON è orfana: ha un `CONTEXTUAL_CTA` reale e funzionante (`components/nextgen/SuggestCenterCard.tsx`, mostrata quando una ricerca non produce risultati) — è un pattern di accesso legittimo secondo la tassonomia richiesta (§4ter), non un accesso di ripiego. L'errore della prima stesura è stato scrivere "6" in prosa (sommando erroneamente anche il caso "parziale") mentre la tabella, correttamente, ne marcava 5. La tabella sopra è stata corretta eliminando il valore "Parziale" e classificando esplicitamente `/center-leads` come non orfana.
+
+Resta un gap reale su `/center-leads`, ma è un gap diverso e più piccolo: nessun accesso permanente per **rivedere lo storico** delle proprie segnalazioni già inviate (l'unico ingresso è il momento della ricerca senza risultati) — vedi classificazione §4ter e nota in §5.
+
+## 4ter. Classificazione dell'entry point — una sola modalità per route
+
+Tassonomia richiesta: `PRIMARY_NAV`, `SECONDARY_NAV`, `CONTEXTUAL_CTA`, `POST_LOGIN_REDIRECT`, `DETAIL_DEEP_LINK`, `INTERNAL_ONLY`, `DEPRECATE_AFTER_PARITY`. Assegnazione basata su funzione reale, non su dove capita di essere linkata oggi. Questa classificazione è un input per l'IA (§3, ancora da fare) — **nessuna di queste route viene aggiunta a un menu in questo passaggio**: è solo l'etichetta della modalità corretta, il wiring resta bloccato fino al gate SQL.
+
+| Route | Classificazione proposta | Motivazione |
+|---|---|---|
+| `/one` | `INTERNAL_ONLY` | Nessuna capability di dominio propria (solo un contenitore per la card Walkthrough placeholder). Non merita una voce di navigazione autonoma finché non ospita il vero Spotlight (§5/§7) — a quel punto la sua funzione reale si sposta nel motore Spotlight stesso, non nella route come destinazione deliberata. |
+| `/center-leads` | `CONTEXTUAL_CTA` | Già corretto così (ricerca senza risultati). Manca però un secondo punto di ingresso stabile per rivedere lo storico — da valutare in §3 se aggiungere una riga in Profilo/Le mie richieste (non un nuovo `PRIMARY_NAV`). |
+| `/center/one` | `INTERNAL_ONLY` | Stesso ragionamento di `/one`: nessun contenuto di dominio proprio, solo un link verso l'onboarding e una card Walkthrough. |
+| `/center/one/onboarding` | `POST_LOGIN_REDIRECT` | Per un `center_admin` il cui centro non è ancora `APPROVED`, questo è letteralmente il prossimo passo obbligato — coerente con §12 ("il walkthrough Partner si avvia solo quando il centro è APPROVED/attivo": l'onboarding è quindi il gate PRIMA del walkthrough, non un'alternativa ad esso). Dopo l'approvazione, il suo ruolo si esaurisce (nessun bisogno di restare raggiungibile con la stessa prominenza). |
+| `/admin/one` | `PRIMARY_NAV` | È il Command Center — per funzione (aggrega 7 code operative con priorità) è l'hub operativo Admin descritto negli Handbook, non un dettaglio. Merita una voce di menu permanente, non un accesso secondario. |
+| `/admin/one/onboarding` | `DETAIL_DEEP_LINK` | Drill-in naturale da una riga del Command Center (`lib/data/command-center.ts` già la linka così) — non serve una propria voce di menu se `/admin/one` diventa `PRIMARY_NAV`. |
+| `/admin/center-leads` | `PRIMARY_NAV` (già così) | Nessun cambiamento: già corretto. |
+| `/admin/feature-flags` | `PRIMARY_NAV` (già così) | Nessun cambiamento: già corretto. |
+
+**Nota di metodo**: questa classificazione è la base di partenza per l'IA (§3), non la sua conclusione — §3 deve ancora definire landing per audience, cosa segue il login e cosa segue un'azione completata (approvazione centro, pubblicazione attività) in modo coerente per Parent/Partner/Admin nel loro insieme, non route per route isolatamente. La riprendo quando il gate SQL sarà confermato.
 
 ## 5. Implicazioni per §3 (IA/navigazione) e §16 (Controlled Publication)
 
