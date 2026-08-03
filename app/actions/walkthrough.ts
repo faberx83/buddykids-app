@@ -12,6 +12,25 @@ import { isSupabaseConfigured } from "@/lib/supabase/env";
 import { revalidatePath } from "next/cache";
 import { isKnownTutorial, getTutorialDefinition } from "@/lib/walkthrough/registry";
 
+// TRAMA ONE Build Sprint 6 (backlog vincolante P2, TC-N414/N415, DEC-50) —
+// il motore è generico per costruzione (registry.ts ospita percorsi sia
+// Parent sia Partner, e in futuro Admin) ma finora ogni action revalidava
+// SOLO "/one" (il portale Parent), mai "/center/one" (Partner, aggiunto in
+// Sprint 2) né "/admin/one". Non è la causa del bug intermittente TC-N414/
+// N415 (risolto a monte in WalkthroughCard.tsx: le pagine /one* usano già
+// cookies() quindi Next.js le rende dinamiche di default, bypassando la
+// Full Route Cache indipendentemente da revalidatePath), ma resta
+// un'inconsistenza reale da chiudere: un futuro cambio di rendering
+// strategy per una di queste route riesumerebbe silenziosamente lo stesso
+// sintomo. Revalidare tutte e tre le route è innocuo (revalidatePath su una
+// route non renderizzata di recente è un no-op) e corretto per un motore
+// pensato per essere riusato da più tenant.
+function revalidateAllWalkthroughPortals() {
+  revalidatePath("/one");
+  revalidatePath("/center/one");
+  revalidatePath("/admin/one");
+}
+
 async function requireUser() {
   const supabase = await createClient();
   const {
@@ -51,7 +70,7 @@ export async function startWalkthroughStepAction(
 
   const { error } = await upsertStep(supabase, user.id, tutorialKey, stepKey, "in_progress");
   if (error) return { error: error.message };
-  revalidatePath("/one");
+  revalidateAllWalkthroughPortals();
   return {};
 }
 
@@ -66,7 +85,7 @@ export async function completeWalkthroughStepAction(
 
   const { error } = await upsertStep(supabase, user.id, tutorialKey, stepKey, "completed");
   if (error) return { error: error.message };
-  revalidatePath("/one");
+  revalidateAllWalkthroughPortals();
   return {};
 }
 
@@ -81,7 +100,7 @@ export async function skipWalkthroughStepAction(
 
   const { error } = await upsertStep(supabase, user.id, tutorialKey, stepKey, "skipped");
   if (error) return { error: error.message };
-  revalidatePath("/one");
+  revalidateAllWalkthroughPortals();
   return {};
 }
 
@@ -98,6 +117,6 @@ export async function restartWalkthroughAction(tutorialKey: string): Promise<{ e
     .eq("user_id", user.id)
     .eq("tutorial_key", tutorialKey);
   if (error) return { error: error.message };
-  revalidatePath("/one");
+  revalidateAllWalkthroughPortals();
   return {};
 }
