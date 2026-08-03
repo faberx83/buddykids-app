@@ -108,7 +108,56 @@ test.describe("TRAMA ONE — Spotlight reale Partner (Controlled Beta, §7-14)",
     // su ActivityEditForm.tsx per un'attività già esistente): lo Spotlight
     // deve quindi mostrare il badge "target non trovato" con il titolo dello
     // step successivo, non restare ancorato al pulsante ormai scomparso.
-    const missingBadge = page.getByRole("status").filter({ hasText: "Configura le settimane" });
+    // Titolo aggiornato da "Configura le settimane" a "Informazioni di base"
+    // (DEC-69, Visual Acceptance Gate §15): il target reale di questo step è
+    // la card "Informazioni generali", che non contiene affatto settimane/
+    // capacità — testo corretto per non fuorviare l'utente.
+    const missingBadge = page.getByRole("status").filter({ hasText: "Informazioni di base" });
     await expect(missingBadge).toBeVisible();
+    // Nessun link "Vai al..." qui: /new non è un'attività reale (nessun id),
+    // il badge non deve offrire un link che porterebbe a un 404.
+    await expect(missingBadge.getByRole("link")).toHaveCount(0);
+  });
+
+  // DEC-69 (Visual Acceptance Gate §15) — bug reale trovato da Fabrizio: il
+  // badge "target non trovato" per lo step "Configura i Giorni spot" dava
+  // solo testo ("apri il calendario disponibilità...") senza un modo
+  // cliccabile per arrivarci quando lo step diventa corrente sulla pagina di
+  // modifica (dopo aver pubblicato). Verifica diretta della funzione pura
+  // matchesSpotlightRoute/costruzione del link è già coperta da
+  // tests/one/spotlight-position.spec.ts; qui verifichiamo il link REALE nel
+  // badge, che richiede il motore Walkthrough completo (server action +
+  // persistenza) — non estraibile in un test "no browser".
+  test("TC-N615 - il badge 'target non trovato' per Giorni spot mostra un link reale verso il Calendario disponibilità (non solo testo)", async ({
+    page,
+  }) => {
+    test.skip(
+      !isRealDeployment,
+      "Richiede un deploy con Supabase configurato, l'account center_admin di test e un'attività esistente nel centro collegato."
+    );
+
+    await loginAs(page, "center_admin");
+    // Apre un'attività esistente del centro di test (il centro collegato
+    // all'account TEST_CENTER_ADMIN_EMAIL ne ha già almeno una, vedi
+    // TRAMA_ONE_PRODUCTION_HYGIENE.md §3): click reale sulla prima card, non
+    // un URL con id inventato.
+    await page.goto("/center/activities");
+    await page.locator("a[href^='/center/activities/']").first().click();
+    await expect(page).toHaveURL(/\/center\/activities\/[^/]+$/);
+
+    // Porta il percorso fino allo step "configure_spot_days" cliccando
+    // realmente sui 3 elementi precedenti (Informazioni generali -> Servizi
+    // extra e pasto -> Salva modifiche), lo stesso meccanismo di TC-N416.
+    await page.locator('[data-spotlight="configure_weeks"]').click();
+    await page.locator('[data-spotlight="configure_pricing"]').click();
+    await page.locator('[data-spotlight="publish"]').click();
+
+    const missingBadge = page.getByRole("status").filter({ hasText: "Configura i Giorni spot" });
+    await expect(missingBadge).toBeVisible();
+    const link = missingBadge.getByRole("link", { name: "Vai al Calendario disponibilità →" });
+    await expect(link).toBeVisible();
+    await expect(link).toHaveAttribute("href", /\/center\/activities\/[^/]+\/calendar$/);
+    await link.click();
+    await expect(page).toHaveURL(/\/center\/activities\/[^/]+\/calendar$/);
   });
 });
