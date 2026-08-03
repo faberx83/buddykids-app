@@ -60,8 +60,18 @@ interface RawRow {
 // RLS è a livello di riga (il genitore può leggere solo le proprie righe),
 // non di colonna, quindi la riservatezza di admin_note verso il genitore è
 // garantita qui, nel data layer, non dal database (AC-049-05).
+// "profiles!suggested_by" (non il generico "profiles") è OBBLIGATORIO qui:
+// center_leads ha DUE foreign key verso profiles (suggested_by e
+// reward_marked_by, vedi migration_17_center_leads.sql) — con l'hint
+// generico PostgREST non sa quale usare e la query fallisce con "more than
+// one relationship was found", un errore che getAllCenterLeadsForAdmin()
+// intercetta e traduce silenziosamente in lista vuota (stesso fail-safe
+// "mai un errore visibile all'utente" adottato in tutto questo repository).
+// Root cause di TC-N603 (coda Admin sempre vuota nonostante righe reali nel
+// DB): stesso pattern di disambiguazione già in uso in
+// lib/data/center-bookings.ts e lib/data/inquiries.ts ("profiles!parent_id").
 const ADMIN_SELECT_COLUMNS =
-  "id, suggested_name, suggested_locality, suggested_contact, demand_context, dedupe_key, status, duplicate_of, admin_note, claimed_center_id, claimed_at, reward_status, reward_note, created_at, profiles ( full_name ), centers ( name )";
+  "id, suggested_name, suggested_locality, suggested_contact, demand_context, dedupe_key, status, duplicate_of, admin_note, claimed_center_id, claimed_at, reward_status, reward_note, created_at, profiles!suggested_by ( full_name ), centers ( name )";
 
 const PARENT_SELECT_COLUMNS =
   "id, suggested_name, suggested_locality, demand_context, dedupe_key, status, claimed_center_id, claimed_at, reward_status, reward_note, created_at, centers ( name )";
