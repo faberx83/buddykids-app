@@ -58,6 +58,10 @@ Nessun vero adapter di business: `lib/capacity/service.ts` centralizza logica gi
 
 Nessun adapter di business: `/admin/feature-flags` (nuova pagina) e `lib/data/feature-flag-overrides.ts`/`app/actions/feature-flag-overrides.ts` (nuovi) sono un normale CRUD Admin su `feature_flag_overrides`, tabella già esistente da Sprint 0 — nessuna nuova tabella, nessuna colonna nuova. `lib/feature-flags/evaluate.ts`/`resolve.ts` estesi (non sostituiti) con `findRecentlyExpiredMatchingOverride` e un evento di telemetria aggiuntivo. Vedi DEC-48.
 
+## Aggiunti in Build Sprint 6 (in corso) — Email fire-and-forget
+
+Nessun adapter di business: chiusura del debito P2 già registrato in `CORE_DOMAIN_SOURCE_OF_TRUTH.md` §8 (notifiche email Partner accetta/rifiuta senza stato di consegna). `lib/email.ts` estesa (non sostituita) con retry minimo (un secondo tentativo automatico) e logging esplicito; 3 colonne additive su `public.bookings` (`email_delivery_status`/`email_delivery_error`/`email_delivery_attempted_at`, `migration_19_bookings_email_delivery_status.sql`) per persistere l'esito dell'ultimo tentativo. Vedi DEC-49.
+
 ## Prossimo aggiornamento previsto
 
 Alla chiusura di TRAMA ONE Build Sprint 6 (command center Admin, analytics, hardening walkthrough) — se quello sprint introduce ponti verso `beta_feedback`/`lib/analytics.ts` esistenti diversi da un semplice ADAPT, va registrato qui.
