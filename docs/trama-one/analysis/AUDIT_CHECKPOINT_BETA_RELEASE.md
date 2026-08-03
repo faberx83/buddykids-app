@@ -12,9 +12,11 @@ Documento autosufficiente per chi non ha seguito la conversazione. È il gate fi
 
 **Verifica statica eseguita per questo gate**: `tsc --noEmit` pulito sull'intero progetto. `eslint` pulito su tutti i file toccati in Sprint 6 (`lib/`, `app/actions/`, `app/one/`, `app/admin/one/`, `app/center/one/`); un tentativo di `eslint .` sull'intero repository è andato in timeout per limiti dell'ambiente di esecuzione (non per errori di lint) — non è la stessa cosa di un lint pulito su tutto il repository, vedi §8.1. L'intera suite di unit test "no browser" del repository (130 test, tutti i file `tests/**/*.spec.ts`) è verde su chromium e mobile-chrome. `BuddyKids_Test_Case.xlsx` ricalcolato senza errori.
 
-**Verifica live sul database di produzione (sola lettura, MCP Supabase, progetto `eagsgfxunwyyxwwilldy`)**, eseguita specificamente per questo documento per non affermare lo stato delle migrazioni per sola memoria/documentazione pregressa — vedi §6 per il dettaglio: `migration_15` e `migration_16` **confermate applicate dal vivo in questo momento**; `migration_17`, `migration_18`, `migration_19`, `migration_20` **confermate NON applicate dal vivo in questo momento** (nessuna delle tabelle/colonne che introducono esiste nel database).
+**Verifica live sul database di produzione (sola lettura, MCP Supabase, progetto `eagsgfxunwyyxwwilldy`)**, eseguita specificamente per questo documento per non affermare lo stato delle migrazioni per sola memoria/documentazione pregressa — vedi §6 per il dettaglio: al momento di produrre questo documento, `migration_15` e `migration_16` risultavano applicate; `migration_17`, `migration_18`, `migration_19`, `migration_20` risultavano NON applicate.
 
-**Perché non "READY" ma "READY FOR CONTINUATION"**: nessun `TEST_SCOPE=all` dal vivo è stato eseguito da quando è stato superato l'Integration Gate di Sprint 4 (`AUDIT STATUS: READY WITH CONDITIONS` in quel documento, poi risolto). Per costruzione di questa governance (DEC-29/30), questo non è un requisito di chiusura sprint — è un requisito di Fabrizio, da eseguire quando lo riterrà opportuno, idealmente dopo aver applicato le migrazioni mancanti elencate in §6 e §13.
+**Aggiornamento (stesso giorno, post-produzione di questo documento)**: Fabrizio ha applicato manualmente `migration_17_center_leads.sql`, `migration_18_capacity_service.sql`, `migration_19_bookings_email_delivery_status.sql`, `migration_20_product_events.sql` (blocco principale di ciascun file — le sezioni PRE-CHECK/POST-CHECK/ROLLBACK sono commentate riga per riga con `--` e non vengono eseguite lanciando il file intero). Riverificato dal vivo subito dopo: `public.center_leads`, `public.product_events` presenti; `booking_weeks.capacity_decremented` presente; `bookings.email_delivery_status`/`email_delivery_attempted_at`/`email_delivery_error` presenti. **Tutte e 6 le migrazioni Sprint 5-6 (15-20) risultano ora applicate in produzione.** Vedi §6 per la tabella aggiornata.
+
+**Perché non "READY" ma "READY FOR CONTINUATION"**: nessun `TEST_SCOPE=all` dal vivo è stato eseguito da quando è stato superato l'Integration Gate di Sprint 4 (`AUDIT STATUS: READY WITH CONDITIONS` in quel documento, poi risolto). Per costruzione di questa governance (DEC-29/30), questo non è un requisito di chiusura sprint — è un requisito di Fabrizio, da eseguire quando lo riterrà opportuno. Con le migrazioni ora tutte applicate, l'unico passo residuo per la chiusura piena è il deploy del codice (se non già online) seguito da `TEST_SCOPE=all` dal vivo — vedi §13.
 
 **Stato: `AUDIT STATUS: READY FOR CONTINUATION`** — vedi §13 per il piano di chiusura esatto e cosa resta esclusivamente a Fabrizio.
 
@@ -55,18 +57,14 @@ Stato delle migrazioni Sprint 5-6, **verificato dal vivo in sola lettura sul pro
 |---|---|---|
 | `migration_15_identity_verification_storage.sql` | Bucket storage `buddykids-identity-verifications` + policy | **Applicata** — bucket presente in `storage.buckets` |
 | `migration_16_activity_certifications.sql` | Tabella `public.activity_certifications` | **Applicata** — tabella presente, 1 riga |
-| `migration_17_center_leads.sql` | Tabella `public.center_leads` | **Non applicata** — tabella assente da `information_schema` |
-| `migration_18_capacity_service.sql` | Colonna `booking_weeks.capacity_decremented` | **Non applicata** — colonna assente |
-| `migration_19_bookings_email_delivery_status.sql` | 3 colonne di stato consegna email su `bookings` | **Non applicata** — colonne assenti |
-| `migration_20_product_events.sql` | Tabella `public.product_events` | **Non applicata** — tabella assente |
+| `migration_17_center_leads.sql` | Tabella `public.center_leads` | **Applicata** (da Fabrizio, post-produzione di questo documento) — tabella presente |
+| `migration_18_capacity_service.sql` | Colonna `booking_weeks.capacity_decremented` | **Applicata** (da Fabrizio, post-produzione di questo documento) — colonna presente |
+| `migration_19_bookings_email_delivery_status.sql` | 3 colonne di stato consegna email su `bookings` | **Applicata** (da Fabrizio, post-produzione di questo documento) — colonne presenti |
+| `migration_20_product_events.sql` | Tabella `public.product_events` | **Applicata** (da Fabrizio, post-produzione di questo documento) — tabella presente |
 
-Nessuna di queste migrazioni è stata applicata da Claude, per costruzione della governance permanente: ognuna è un file SQL con intestazione "QUESTO FILE NON È STATO APPLICATO AL DATABASE" e sezioni PRE-CHECK/POST-CHECK/ROLLBACK separate, pronta per essere eseguita manualmente da Fabrizio nel SQL Editor di Supabase quando lo riterrà opportuno.
+Tutte e 6 le migrazioni Sprint 5-6 sono ora applicate in produzione, riverificato dal vivo in sola lettura. Nessuna è stata applicata da Claude, per costruzione della governance permanente: ognuna era un file SQL con intestazione "QUESTO FILE NON È STATO APPLICATO AL DATABASE" e sezioni PRE-CHECK/POST-CHECK/ROLLBACK separate (commentate riga per riga con `--`, quindi ininfluenti se il file viene lanciato per intero), eseguita manualmente da Fabrizio nel SQL Editor di Supabase.
 
-**Impatto pratico dell'attuale stato "non applicata" di `migration_17`/`18`/`19`/`20`** (nessuno è bloccante, tutti degradano con fallback):
-- CenterLead (Sprint 5): la coda Admin e il claim non hanno dati reali finché `center_leads` non esiste — funzionalità scritta e testabile ma non popolata in produzione.
-- Capacity service (DEC-47): `capacity_decremented` non esiste ancora, il servizio canonico opera secondo il suo fallback documentato in DEC-47.
-- Email delivery status (DEC-49): le 3 colonne non esistono, il fire-and-forget email continua a funzionare (comportamento invariato) ma senza stato di consegna persistito.
-- Product events (E11): `persistProductEvent()` fa fallback silenzioso a solo-log quando la tabella non esiste (verificato in `lib/telemetry/events.ts`); il funnel Walkthrough resta pienamente funzionante (fonte `tutorial_progress`); solo il conteggio riavvii mostra "N/D".
+**Impatto pratico ora che `migration_17`/`18`/`19`/`20` sono applicate**: CenterLead (Sprint 5), capacity service (DEC-47), stato consegna email (DEC-49) e product events (E11) sono ora pienamente operativi con dati reali, non più in modalità fallback. Resta da confermare solo tramite `TEST_SCOPE=all` dal vivo (§13) che il comportamento a runtime sia quello atteso.
 
 ## 7. Security and Privacy
 
@@ -107,7 +105,7 @@ Nessuna. Questo documento è un gate di verifica e consolidamento, non introduce
 
 Vedi §2 per l'elenco commit di Sprint 6. Riepilogo file principali toccati in questo arco (Sprint 5 già coperto da `SPRINT_5_FEATURE_PRESERVATION_MATRIX.md`, non ripetuto):
 
-- `supabase/migration_17_center_leads.sql`, `migration_18_capacity_service.sql`, `migration_19_bookings_email_delivery_status.sql`, `migration_20_product_events.sql` — tutte non applicate.
+- `supabase/migration_17_center_leads.sql`, `migration_18_capacity_service.sql`, `migration_19_bookings_email_delivery_status.sql`, `migration_20_product_events.sql` — tutte applicate da Fabrizio (vedi §6).
 - `lib/telemetry/known-events.ts` (nuovo), `lib/telemetry/events.ts` (riscritto), `lib/walkthrough/funnel.ts` (nuovo), `lib/walkthrough/data.ts` (esteso).
 - `app/one/layout.tsx`, `app/center/one/layout.tsx`, `app/admin/one/layout.tsx`, `lib/feature-flags/resolve.ts`, `app/actions/walkthrough.ts` — wiring `persistProductEvent()`.
 - `app/admin/one/page.tsx`, `app/one/WalkthroughCard.tsx` — Command Center + hardening walkthrough.
@@ -118,8 +116,7 @@ Vedi §2 per l'elenco commit di Sprint 6. Riepilogo file principali toccati in q
 
 | Rischio | Impatto | Mitigazione attuale |
 |---|---|---|
-| `migration_17`/`18`/`19`/`20` non applicate | Funzionalità Sprint 5-6 non popolate/parzialmente degradate in produzione fino all'esecuzione manuale | Fallback silenzioso documentato in ogni punto di lettura/scrittura; nessuna funzionalità preesistente è bloccata |
-| Nessun `TEST_SCOPE=all` dal vivo dall'Integration Gate di Sprint 4 | 6 nuove TC (`TC-N607`..`TC-N613`) e la regressione `tests/admin/*` non hanno evidenza reale di esecuzione | Unit test "no browser" (130/130) coprono la logica pura; resta a Fabrizio l'esecuzione UI-driven quando lo riterrà opportuno |
+| Nessun `TEST_SCOPE=all` dal vivo dall'Integration Gate di Sprint 4, ora con le migrazioni applicate | 6 nuove TC (`TC-N607`..`TC-N613`) e la regressione `tests/admin/*` non hanno ancora evidenza reale di esecuzione contro il nuovo schema | Unit test "no browser" (130/130) coprono la logica pura; resta a Fabrizio l'esecuzione UI-driven quando lo riterrà opportuno |
 | `eslint .` non eseguito sull'intero repository in un'unica passata in questo gate | Porzioni di codice non toccate da Sprint 5-6 non ri-verificate in questo documento | Rischio basso: quelle porzioni non sono state modificate in questo arco, restano allo stato verificato nei checkpoint precedenti |
 | CR-050 chiusa per riuso puro | Nessuno — è una conferma di completezza pregressa, non un rischio nuovo | DEC-53 documenta esplicitamente il ragionamento |
 
@@ -127,13 +124,13 @@ Vedi §2 per l'elenco commit di Sprint 6. Riepilogo file principali toccati in q
 
 Nessuna azione irreversibile eseguita da Claude in questo arco. Rollback disponibile a due livelli:
 - **Codice**: ogni commit di Sprint 6 è granulare e singolarmente revertibile (`git revert <sha>`), nessuna dipendenza tra sprint diversi che impedisca un rollback parziale.
-- **Database**: ciascuna delle 4 migrazioni non applicate (`17`-`20`) ha una sezione ROLLBACK dedicata nel proprio file SQL, da eseguire solo dopo l'eventuale applicazione.
+- **Database**: ciascuna delle 4 migrazioni ora applicate (`17`-`20`) ha una sezione ROLLBACK dedicata nel proprio file SQL, disponibile se Fabrizio dovesse aver bisogno di tornare indietro.
 
 ## 13. Piano di chiusura — cosa resta esclusivamente a Fabrizio
 
-1. Applicare (quando ritenuto opportuno, nell'ordine che preferisce) `migration_17_center_leads.sql`, `migration_18_capacity_service.sql`, `migration_19_bookings_email_delivery_status.sql`, `migration_20_product_events.sql` nel SQL Editor di Supabase — ciascuna con pre-check/post-check/rollback separati.
+1. ~~Applicare le migrazioni~~ — fatto (§6, verificato dal vivo).
 2. Deploy del codice di Sprint 5-6 (se non già fatto) sull'ambiente di produzione.
-3. Eseguire `TEST_SCOPE=all` dal vivo e confrontare con la baseline già nota (`PRE_EXISTING_TEST_FAILURE_BASELINE.md`), prestando attenzione in particolare a `TC-N607`..`TC-N613` e alla regressione `tests/admin/*`.
+3. Eseguire `TEST_SCOPE=all` dal vivo e confrontare con la baseline già nota (`PRE_EXISTING_TEST_FAILURE_BASELINE.md`), prestando attenzione in particolare a `TC-N607`..`TC-N613` e alla regressione `tests/admin/*` — ora con lo schema completo, questo run può verificare il comportamento reale (non più il fallback) di CenterLead, capacity, email delivery e product events.
 4. Nessun'altra azione di sviluppo è richiesta per dichiarare Sprint 5-6 chiusi dal lato codice — questo documento marca il gate finale dell'arco autorizzato.
 
 ## 14. Audit Conclusion
