@@ -28,6 +28,17 @@ export const KNOWN_PRODUCT_EVENTS = [
   "walkthrough_step_completed",
   "walkthrough_step_skipped",
   "walkthrough_restarted",
+  // CONTROLLED BETA EXPERIENCE GATE (§7-14) — components/spotlight/
+  // SpotlightOverlay.tsx, app/actions/spotlight.ts. Distinti dai
+  // walkthrough_step_* sopra (che tracciano l'avanzamento dello step nel
+  // registry): questi tracciano il comportamento del MOTORE VISIVO Spotlight
+  // in sé (overlay mostrato/scartato/target non trovato), utile per capire
+  // se il Controlled Beta pilot vede davvero l'overlay o se il target reale
+  // manca/è cambiato nel frattempo (regressione UI silenziosa altrimenti
+  // invisibile, stesso principio di osservabilità di DEC-48).
+  "spotlight_shown",
+  "spotlight_target_not_found",
+  "spotlight_dismissed",
 ] as const;
 
 export type KnownProductEvent = (typeof KNOWN_PRODUCT_EVENTS)[number];
