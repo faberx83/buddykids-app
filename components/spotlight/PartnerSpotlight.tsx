@@ -25,6 +25,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { usePathname } from "next/navigation";
+import Link from "next/link";
 import type { WalkthroughProgressSummary } from "@/lib/walkthrough/data";
 import { computeCutoutRect, computePopoverPosition, matchesSpotlightRoute, Rect } from "@/lib/spotlight/position";
 import { startWalkthroughStepAction, completeWalkthroughStepAction, skipWalkthroughStepAction } from "@/app/actions/walkthrough";
@@ -184,6 +185,16 @@ export default function PartnerSpotlight({ progress }: { progress: WalkthroughPr
   if (!targetRect && !targetMissing) return null;
 
   if (targetMissing) {
+    // Visual Acceptance Gate (§15, DEC-69) — bug reale trovato da Fabrizio:
+    // quando il target di questo step vive su un'altra pagina, il badge
+    // dava solo una descrizione testuale ("apri il calendario...") senza un
+    // modo cliccabile per arrivarci — l'utente doveva indovinare l'URL.
+    // Se lo step lo prevede (spotlightMissingHint), aggiungiamo un link
+    // reale verso `pathname corrente + suffix` — MAI su /new (nessuna
+    // attività reale esiste ancora a quell'id, il link porterebbe a un
+    // 404) né sulla pagina lista (nessun id nel pathname).
+    const hint = current.spotlightMissingHint;
+    const canLinkFromHere = /^\/center\/activities\/[^/]+$/.test(pathname) && !pathname.endsWith("/new");
     return (
       <div
         role="status"
@@ -191,6 +202,11 @@ export default function PartnerSpotlight({ progress }: { progress: WalkthroughPr
       >
         <p className="text-xs font-semibold text-ink">{current.title}</p>
         <p className="mt-0.5 text-[11px] text-ink-2">{current.description}</p>
+        {hint && canLinkFromHere && (
+          <Link href={`${pathname}${hint.suffix}`} className="mt-2 block text-[11px] font-bold text-trama-violet">
+            {hint.label}
+          </Link>
+        )}
       </div>
     );
   }
