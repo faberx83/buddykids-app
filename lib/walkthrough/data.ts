@@ -16,6 +16,12 @@ export interface WalkthroughStepProgress {
   title: string;
   description: string;
   status: WalkthroughStepStatus;
+  // CONTROLLED BETA EXPERIENCE GATE (§7-14) — propagati dal registry (vedi
+  // WalkthroughStepDefinition) fino al client Spotlight, che non deve
+  // importare il registry direttamente: stesso principio di incapsulamento
+  // già seguito per WalkthroughCard (riceve solo WalkthroughProgressSummary).
+  spotlightTarget?: string;
+  spotlightRoute?: string;
 }
 
 export interface WalkthroughProgressSummary {
@@ -38,6 +44,8 @@ export async function getWalkthroughProgress(
     title: s.title,
     description: s.description,
     status: "not_started",
+    spotlightTarget: s.spotlightTarget,
+    spotlightRoute: s.spotlightRoute,
   }));
 
   if (!isSupabaseConfigured || !userId) {

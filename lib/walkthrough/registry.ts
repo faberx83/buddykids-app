@@ -19,6 +19,17 @@ export interface WalkthroughStepDefinition {
   key: string;
   title: string;
   description: string;
+  // CONTROLLED BETA EXPERIENCE GATE (§7-14) — campi OPZIONALI per il vero
+  // motore Spotlight (components/spotlight/SpotlightOverlay.tsx): quando
+  // presenti, questo step ha un elemento reale nell'interfaccia da
+  // evidenziare (non solo una card testuale). `spotlightTarget` è il valore
+  // dell'attributo `data-spotlight` sull'elemento reale nella pagina;
+  // `spotlightRoute` è il pattern di path dove quell'elemento si trova (vedi
+  // lib/spotlight/position.ts::matchesSpotlightRoute per la sintassi `*`).
+  // Percorsi che NON li impostano (es. welcome_parent) restano serviti dal
+  // vecchio WalkthroughCard testuale — nessuna regressione, puro opt-in.
+  spotlightTarget?: string;
+  spotlightRoute?: string;
 }
 
 export interface WalkthroughDefinition {
@@ -67,31 +78,43 @@ export const WALKTHROUGH_REGISTRY: Record<string, WalkthroughDefinition> = {
         key: "create_activity",
         title: "Crea l'attività",
         description: "Vai su \"Le tue attività\" e crea una nuova scheda: nome, fascia d'età, descrizione.",
+        spotlightTarget: "create_activity",
+        spotlightRoute: "/center/activities",
       },
       {
         key: "configure_weeks",
         title: "Configura le settimane",
         description: "Imposta le settimane disponibili, la capacità e il prezzo a settimana.",
+        spotlightTarget: "configure_weeks",
+        spotlightRoute: "/center/activities/*",
       },
       {
         key: "configure_pricing",
         title: "Rivedi prezzi e servizi",
         description: "Controlla prezzo, navetta, pasto e servizi extra (ingresso anticipato/uscita posticipata).",
+        spotlightTarget: "configure_pricing",
+        spotlightRoute: "/center/activities/*",
       },
       {
         key: "configure_spot_days",
         title: "Configura i Giorni spot",
         description: "Apri il Calendario disponibilità e scegli quali giorni sono prenotabili singolarmente, con eventuale sconto o minimo giorni.",
+        spotlightTarget: "configure_spot_days",
+        spotlightRoute: "/center/activities/*/calendar",
       },
       {
         key: "publish",
         title: "Pubblica",
         description: "Salva la scheda: da questo momento è visibile ai genitori in ricerca.",
+        spotlightTarget: "publish",
+        spotlightRoute: "/center/activities/*",
       },
       {
         key: "dashboard",
         title: "Monitora dalla dashboard",
         description: "Segui prenotazioni, presenze e richieste ricevute dal pannello Gestore.",
+        spotlightTarget: "dashboard",
+        spotlightRoute: "*",
       },
     ],
   },
