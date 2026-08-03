@@ -1,5 +1,7 @@
 import { test, expect } from "@playwright/test";
-import { evaluateFlag } from "../../lib/feature-flags/evaluate";
+import { loginAs, isRealDeployment } from "../fixtures/roles";
+import { evaluateFlag, findRecentlyExpiredMatchingOverride } from "../../lib/feature-flags/evaluate";
+import { computeOverrideStatus } from "../../lib/data/feature-flag-overrides";
 
 // TRAMA ONE — unit test puri per lib/feature-flags/evaluate.ts (Build Sprint 0).
 //
@@ -214,5 +216,138 @@ test.describe("TRAMA ONE — normalizzazione scope_value [no browser]", () => {
       ]
     );
     expect(result).toBe(false);
+  });
+});
+
+// ────────────────────────────────────────────────────────────────
+// TRAMA ONE Build Sprint 6 (backlog vincolante P1, "Feature flag override
+// expiry") — findRecentlyExpiredMatchingOverride() e computeOverrideStatus(),
+// le due funzioni pure che rendono visibile il caso "override scaduto senza
+// che nessuno se ne accorgesse" (causa radice di TC-N409, Gate C ottava
+// ondata). Stesso principio "no browser" del resto di questo file.
+// ────────────────────────────────────────────────────────────────
+test.describe("TRAMA ONE Sprint 6 — findRecentlyExpiredMatchingOverride [no browser]", () => {
+  test("override enabled=true scaduto da 1h (dentro la grazia 72h) viene trovato", () => {
+    const now = new Date("2026-08-01T12:00:00.000Z");
+    const match = findRecentlyExpiredMatchingOverride(
+      { environment: "production" },
+      [{ scopeType: "environment", scopeValue: "production", enabled: true, expiresAt: "2026-08-01T11:00:00.000Z" }],
+      now
+    );
+    expect(match).not.toBeNull();
+    expect(match?.scopeType).toBe("environment");
+  });
+
+  test("override scaduto da più di 72h NON viene segnalato (troppo vecchio per essere 'un incidente recente')", () => {
+    const now = new Date("2026-08-10T12:00:00.000Z");
+    const match = findRecentlyExpiredMatchingOverride(
+      { environment: "production" },
+      [{ scopeType: "environment", scopeValue: "production", enabled: true, expiresAt: "2026-08-01T00:00:00.000Z" }],
+      now
+    );
+    expect(match).toBeNull();
+  });
+
+  test("override ancora attivo (non scaduto) non viene mai segnalato da questa funzione", () => {
+    const now = new Date("2026-08-01T00:00:00.000Z");
+    const match = findRecentlyExpiredMatchingOverride(
+      { environment: "production" },
+      [{ scopeType: "environment", scopeValue: "production", enabled: true, expiresAt: "2026-09-01T00:00:00.000Z" }],
+      now
+    );
+    expect(match).toBeNull();
+  });
+
+  test("override scaduto ma enabled=false non viene mai segnalato (nessun 'fallback sospetto': era già disattivato)", () => {
+    const now = new Date("2026-08-01T12:00:00.000Z");
+    const match = findRecentlyExpiredMatchingOverride(
+      { environment: "production" },
+      [{ scopeType: "environment", scopeValue: "production", enabled: false, expiresAt: "2026-08-01T11:00:00.000Z" }],
+      now
+    );
+    expect(match).toBeNull();
+  });
+
+  test("override scaduto che non matcha il contesto (scope_value diverso) non viene segnalato", () => {
+    const now = new Date("2026-08-01T12:00:00.000Z");
+    const match = findRecentlyExpiredMatchingOverride(
+      { environment: "staging" },
+      [{ scopeType: "environment", scopeValue: "production", enabled: true, expiresAt: "2026-08-01T11:00:00.000Z" }],
+      now
+    );
+    expect(match).toBeNull();
+  });
+});
+
+test.describe("TRAMA ONE Sprint 6 — computeOverrideStatus [no browser]", () => {
+  test("expiresAt nullo -> no_expiry", () => {
+    expect(computeOverrideStatus(null)).toBe("no_expiry");
+  });
+
+  test("data nel passato -> expired", () => {
+    expect(computeOverrideStatus("2020-01-01T00:00:00.000Z")).toBe("expired");
+  });
+
+  test("data non valida -> expired (fail-safe, stessa scelta di evaluate.ts::isExpired)", () => {
+    expect(computeOverrideStatus("non-una-data")).toBe("expired");
+  });
+
+  test("data entro 72h nel futuro -> expiring_soon", () => {
+    const now = new Date("2026-08-01T00:00:00.000Z");
+    const in24h = new Date("2026-08-02T00:00:00.000Z").toISOString();
+    expect(computeOverrideStatus(in24h, now)).toBe("expiring_soon");
+  });
+
+  test("data oltre 72h nel futuro -> active", () => {
+    const now = new Date("2026-08-01T00:00:00.000Z");
+    const in10Days = new Date("2026-08-11T00:00:00.000Z").toISOString();
+    expect(computeOverrideStatus(in10Days, now)).toBe("active");
+  });
+
+  test("esattamente al limite (ora corrente) -> expired (confine incluso nello scaduto, coerente con isExpired '<=')", () => {
+    const now = new Date("2026-08-01T00:00:00.000Z");
+    expect(computeOverrideStatus(now.toISOString(), now)).toBe("expired");
+  });
+});
+
+// ────────────────────────────────────────────────────────────────
+// TRAMA ONE Build Sprint 6 (backlog vincolante P1, "Feature flag override
+// expiry") — UI Admin /admin/feature-flags. Usa deliberatamente scope
+// "user" con un UUID inventato (mai un utente reale) invece di "global": un
+// secondo override globale per TRAMA_ONE_ENABLED violerebbe l'unique index
+// idx_feature_flag_overrides_unique_global se Fabrizio ne ha già uno attivo
+// per abilitare le route /one in produzione (molto probabile, dato che
+// l'intero arco TRAMA ONE le richiede) — questo test non deve mai
+// interferire con quell'override reale. Pulizia nello stesso test (elimina
+// l'override creato prima di terminare), stesso principio di TC-N606.
+// ────────────────────────────────────────────────────────────────
+test.describe("TRAMA ONE Sprint 6 — Admin /admin/feature-flags [UI]", () => {
+  const FAKE_TEST_USER_ID = "00000000-0000-0000-0000-000000000e2e";
+
+  test("TC-N609 - Admin crea, vede lo stato e poi elimina un override di test (scope 'user', mai un utente reale)", async ({
+    page,
+  }) => {
+    test.skip(!isRealDeployment, "Richiede un deploy con Supabase configurato e migration_07 applicata.");
+
+    await loginAs(page, "platform_admin");
+    await page.goto("/admin/feature-flags");
+    await expect(page.getByText("Feature flag — Override")).toBeVisible();
+    await expect(page.getByText("TRAMA_ONE_ENABLED")).toBeVisible();
+
+    const card = page.locator("div").filter({ hasText: "TRAMA_ONE_ENABLED" }).last();
+    await card.locator("select").selectOption("user");
+    await card.getByPlaceholder(/valore \(userId/).fill(FAKE_TEST_USER_ID);
+    await card.getByRole("button", { name: "Aggiungi override" }).click();
+
+    // createOverride() ricarica la pagina dopo il successo (vedi
+    // FeatureFlagsAdminClient.tsx) — riattendiamo il caricamento e la riga
+    // con lo scope_value appena creato.
+    await page.waitForLoadState("networkidle");
+    const row = page.locator("div").filter({ hasText: `user: ${FAKE_TEST_USER_ID}` }).last();
+    await expect(row).toBeVisible({ timeout: 10_000 });
+    await expect(row.getByText("Senza scadenza")).toBeVisible();
+
+    await row.getByRole("button", { name: "Elimina" }).click();
+    await expect(page.locator("div").filter({ hasText: `user: ${FAKE_TEST_USER_ID}` })).toHaveCount(0);
   });
 });
