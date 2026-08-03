@@ -74,6 +74,10 @@ Nessun adapter di business: `lib/data/command-center.ts` aggrega SOLO letture gi
 
 Nessun adapter verso `lib/analytics.ts` (esplicitamente invariato, "affianca senza sostituire" per mandato di `SPRINT_GOVERNANCE.md`). Nuova tabella additiva `public.product_events` (`migration_20_product_events.sql`, non applicata) e nuovo modulo `lib/telemetry/events.ts::persistProductEvent()`, che estende — senza sostituire — `lib/telemetry/correlation.ts::logTelemetryEvent()` (Sprint 0, invariato, resta solo console). Whitelist `KNOWN_PRODUCT_EVENTS` isolata in `lib/telemetry/known-events.ts` (nessuna dipendenza I/O). Wiring: i tre layout `/one` (`one_route_access`/`one_route_fallback`), l'evento critico DEC-48 (`feature_flag_silent_fallback_expired_override`), e quattro nuovi eventi Walkthrough (`app/actions/walkthrough.ts`: started/completed/skipped/restarted). Vedi DEC-52.
 
+## Aggiunti in Build Sprint 6 (in corso) — Hardening Walkthrough (funnel, microcopy, accessibilità, performance)
+
+Nessun adapter di business: `lib/walkthrough/funnel.ts` (pura) e `getWalkthroughRestartCount` (in `lib/walkthrough/data.ts`, primo consumatore reale di `product_events`, best-effort/"N/D" finché migration_20 non è applicata) estendono la vista Admin già esistente (`/admin/one`, DEC-51) con due colonne aggiuntive — nessuna nuova tabella, nessuna pagina nuova. `WalkthroughCard.tsx` riceve hardening di accessibilità (`aria-live`, `aria-describedby`, `role="region"`) e microcopy più chiara, nessun cambio di logica. `persistProductEvent()` accetta ora un `context` opzionale per riuso client/sessione (performance), retro-compatibile. Vedi DEC-54.
+
 ## Prossimo aggiornamento previsto
 
-Alla chiusura di TRAMA ONE Build Sprint 6 (hardening walkthrough, task #418) — se quel task introduce una lettura aggregata di `product_events` (es. funnel/drop-off per step), va registrato qui come primo consumatore reale della tabella introdotta da E11.
+Alla chiusura di TRAMA ONE Build Sprint 6 (task #419-420, test finali e verifica statica) — se emergesse la necessità di una pagina Admin dedicata allo stream `product_events` (finora deliberatamente non costruita, vedi DEC-52), va registrata qui.
