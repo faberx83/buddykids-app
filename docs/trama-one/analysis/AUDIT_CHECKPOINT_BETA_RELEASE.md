@@ -16,9 +16,15 @@ Documento autosufficiente per chi non ha seguito la conversazione. È il gate fi
 
 **Aggiornamento (stesso giorno, post-produzione di questo documento)**: Fabrizio ha applicato manualmente `migration_17_center_leads.sql`, `migration_18_capacity_service.sql`, `migration_19_bookings_email_delivery_status.sql`, `migration_20_product_events.sql` (blocco principale di ciascun file — le sezioni PRE-CHECK/POST-CHECK/ROLLBACK sono commentate riga per riga con `--` e non vengono eseguite lanciando il file intero). Riverificato dal vivo subito dopo: `public.center_leads`, `public.product_events` presenti; `booking_weeks.capacity_decremented` presente; `bookings.email_delivery_status`/`email_delivery_attempted_at`/`email_delivery_error` presenti. **Tutte e 6 le migrazioni Sprint 5-6 (15-20) risultano ora applicate in produzione.** Vedi §6 per la tabella aggiornata.
 
-**Perché non "READY" ma "READY FOR CONTINUATION"**: nessun `TEST_SCOPE=all` dal vivo è stato eseguito da quando è stato superato l'Integration Gate di Sprint 4 (`AUDIT STATUS: READY WITH CONDITIONS` in quel documento, poi risolto). Per costruzione di questa governance (DEC-29/30), questo non è un requisito di chiusura sprint — è un requisito di Fabrizio, da eseguire quando lo riterrà opportuno. Con le migrazioni ora tutte applicate, l'unico passo residuo per la chiusura piena è il deploy del codice (se non già online) seguito da `TEST_SCOPE=all` dal vivo — vedi §13.
+**Perché non "READY" ma "READY FOR CONTINUATION"** (stato al momento della prima stesura di questo documento): nessun `TEST_SCOPE=all` dal vivo era stato eseguito da quando era stato superato l'Integration Gate di Sprint 4. Per costruzione di questa governance (DEC-29/30), questo non è un requisito di chiusura sprint — è un requisito di Fabrizio, da eseguire quando lo riterrà opportuno. Superato subito dopo — vedi aggiornamento sotto.
 
-**Stato: `AUDIT STATUS: READY FOR CONTINUATION`** — vedi §13 per il piano di chiusura esatto e cosa resta esclusivamente a Fabrizio.
+**Aggiornamento (stesso giorno, secondo ciclo — DEC-56): primo `TEST_SCOPE=all` dal vivo eseguito da Fabrizio con le migrazioni applicate.** Deploy pubblicato (commit `38fc778`), poi run completo: 484 test totali, **277 passed, 15 failed, 3 flaky, 150 skipped, 39 did not run**. Triaggio riga per riga contro `GATE_C_TRIAGE_20260728.md`/`PRE_EXISTING_TEST_FAILURE_BASELINE.md`:
+
+- **Tutti i test UI-driven di scope Sprint 5-6 sono risultati verdi**: `TC-N607`/`TC-N608` (capacity), `TC-N609` (feature flag override, dopo fix — vedi sotto), `TC-N610` (email delivery), `TC-N611` (Command Center Admin), `TC-N612` (product events), `TC-N613` (walkthrough funnel), oltre a `TC-N600`..`TC-N606` (CenterLead, incluso `TC-N603` dopo fix) e all'intera regressione `tests/admin/*` richiesta da `SPRINT_GOVERNANCE.md` riga 137. **Nessuna riga di scope Sprint 5-6 è tra i 15 failed/3 flaky di questo run.**
+- Il run ha inizialmente rivelato **2 bug** (non di scope Sprint 5-6 in senso stretto, ma nel codice CenterLead/feature-flag toccato dalle migrazioni appena applicate): `TC-N603` (bug reale — embed PostgREST ambiguo in `getAllCenterLeadsForAdmin()`, coda Admin sempre vuota) e `TC-N609` (bug del test — locator Playwright sbagliato, la UI reale era corretta). Root cause di entrambi confermata con evidenza diretta (query SQL di sola lettura + snapshot di accessibilità Playwright catturati al fallimento, non ipotesi), fix committati (`f075bc1`, `04d7563`), documentati in DEC-56. **Riconfermati PASSED nello stesso run `TEST_SCOPE=all` sopra** (nessun rerun isolato necessario: il run che include i fix è quello riportato qui).
+- Dei restanti 15 failed + 3 flaky: **13 failed + le 3 flaky sono cross-matchati** contro `GATE_C_TRIAGE_20260728.md` come debito preesistente già documentato da settimane (latenza Vercel/Supabase sotto carico, timing di rendering, nessuno di scope Sprint 5-6) — vedi §8.3 per l'elenco puntuale. **2 failed (`TC-137`, `TC-182`) NON hanno alcun riscontro** né in `GATE_C_TRIAGE_20260728.md` né in `PRE_EXISTING_TEST_FAILURE_BASELINE.md`: sono nuovi o mai osservati prima con questo sintomo esatto. Non è stata affermata una diagnosi per questi due senza evidenza diretta (governance permanente) — restano un item aperto, vedi §11 e §13.
+
+**Stato: `AUDIT STATUS: READY` per lo scope Sprint 5-6** (tutto il codice di scope verificato live, verde su tutta la linea) **+ 1 item di follow-up non bloccante** (`TC-137`/`TC-182`, fuori scope Sprint 5-6, da investigare separatamente) — vedi §13 per il piano di chiusura esatto e le fasi successive.
 
 ## 2. Repository State
 
@@ -83,23 +89,34 @@ Tutte e 6 le migrazioni Sprint 5-6 sono ora applicate in produzione, riverificat
 
 `npx playwright test --grep "no browser"` sull'intero repository: **130 passed** (chromium + mobile-chrome), 0 failed. Copre tutta la logica pura del repository, non solo quella toccata in Sprint 6 — conferma nessuna regressione nei moduli puri preesistenti (`lib/day-pricing.ts`, `lib/command-center/priority.ts`, `lib/feature-flags/evaluate.ts`, ecc.) introdotta dalle modifiche di questo arco.
 
-### 8.3 Test UI-driven (scritti, MAI eseguiti dal vivo da Claude — per costruzione della governance)
+### 8.3 Test UI-driven (scritti da Claude, eseguiti dal vivo SOLO da Fabrizio — per costruzione della governance)
 
-Restano da eseguire da Fabrizio nel prossimo `TEST_SCOPE=all` post-deploy, tutti richiedono login reale (`isRealDeployment`):
+**Eseguiti da Fabrizio il 2026-08-03** (`TEST_SCOPE=all bash deploy.sh`, 484 test, chromium, post-deploy commit `38fc778`) — risultato PASSED per tutto lo scope Sprint 5-6:
 
-- `TC-N607`/`TC-N608` — capacity service (Sprint 6, DEC-47)
-- `TC-N609` — feature flag override expiry (DEC-48)
-- `TC-N610` — email delivery status (DEC-49)
-- `TC-N611` — Command Center Admin (E08, DEC-51)
-- `TC-N612` — eventi analytics/product_events (E11, DEC-52)
-- `TC-N613` — hardening walkthrough, funnel/accessibilità (DEC-54)
-- l'intera regressione `tests/admin/*` (dashboard, analytics, certificazioni, gestione, nuovi pannelli, richieste gruppo) — nessuna di queste ha un equivalente "no browser", richiedono tutte login reale; esplicitamente richiesta da `SPRINT_GOVERNANCE.md` come parte della Definition of Done, ma non del gate di chiusura sprint (DEC-29/30).
+| Test | Area | Esito |
+|---|---|---|
+| `TC-N600`..`TC-N606` | CenterLead (Sprint 5) | PASSED (`TC-N603` dopo fix DEC-56) |
+| `TC-N607`/`TC-N608` | Capacity service (DEC-47) | PASSED |
+| `TC-N609` | Feature flag override expiry (DEC-48) | PASSED (dopo fix locator, DEC-56) |
+| `TC-N610` | Email delivery status (DEC-49) | PASSED |
+| `TC-N611` | Command Center Admin (E08, DEC-51) | PASSED |
+| `TC-N612` | Eventi analytics/product_events (E11, DEC-52) | PASSED |
+| `TC-N613` | Hardening walkthrough, funnel/accessibilità (DEC-54) | PASSED |
+| `tests/admin/*` (dashboard, analytics, certificazioni, gestione, nuovi pannelli, richieste gruppo) | Regressione richiesta da `SPRINT_GOVERNANCE.md` riga 137 | PASSED, tutti |
 
-Nessuna di queste è stata eseguita dal vivo da Claude in questo arco, per costruzione della governance permanente (Fabrizio è l'unico ad eseguire run Playwright dal vivo/`TEST_SCOPE=all`).
+Nessuna riga di scope Sprint 5-6 compare tra i 15 failed/3 flaky del run — vedi §1 per il dettaglio dei due bug trovati e risolti (DEC-56) e per i 2 failed non di scope (`TC-137`/`TC-182`) tuttora aperti come follow-up.
+
+Claude non ha eseguito nessuno di questi run dal vivo, per costruzione della governance permanente (Fabrizio è l'unico ad eseguire Playwright dal vivo/`TEST_SCOPE=all`) — Claude ha letto gli artefatti prodotti dal run (log di output, `error-context.md`, query SQL di sola lettura) per diagnosticare i 2 bug e proporre i fix.
 
 ## 9. Modifiche di codice associate a questo documento
 
-Nessuna. Questo documento è un gate di verifica e consolidamento, non introduce nuovo codice — coerente con la stessa impostazione di `AUDIT_CHECKPOINT_SPRINT_0/1/2.md`.
+Aggiornamento post-prima-stesura: il primo `TEST_SCOPE=all` dal vivo (Fabrizio, DEC-56) ha rivelato 2 bug nel codice CenterLead/feature-flag, entrambi risolti con modifiche mirate:
+
+- `lib/data/center-leads.ts` — disambiguazione embed PostgREST (`profiles!suggested_by`), fix bug reale (coda Admin CenterLead sempre vuota). Commit `f075bc1`.
+- `tests/one/feature-flags.spec.ts` — fix locator Playwright (bug del test, non del prodotto). Commit `04d7563`.
+- `docs/trama-one/analysis/DECISION_LOG.md` — DEC-56 (diagnosi + fix) e riconferma post-rerun. Commit `38fc778`, `b846c24`.
+
+Nessuna migrazione toccata da questi fix. Nessun'altra modifica di codice associata a questo documento oltre a queste — resta comunque, per il resto, un gate di verifica e consolidamento, coerente con `AUDIT_CHECKPOINT_SPRINT_0/1/2.md`.
 
 ## 10. Commits and Files
 
@@ -110,13 +127,15 @@ Vedi §2 per l'elenco commit di Sprint 6. Riepilogo file principali toccati in q
 - `app/one/layout.tsx`, `app/center/one/layout.tsx`, `app/admin/one/layout.tsx`, `lib/feature-flags/resolve.ts`, `app/actions/walkthrough.ts` — wiring `persistProductEvent()`.
 - `app/admin/one/page.tsx`, `app/one/WalkthroughCard.tsx` — Command Center + hardening walkthrough.
 - `tests/one/product-events.spec.ts`, `tests/one/walkthrough-funnel.spec.ts` (nuovi), `tests/one/command-center.spec.ts` (aggiornato per TC-N611).
-- `docs/trama-one/analysis/DECISION_LOG.md` (DEC-52..DEC-55), `docs/trama-one/analysis/FEATURE_PARITY_MATRIX.md` (righe 21-23), `docs/trama-one/TRANSITION_REGISTER.md`, `BuddyKids_Test_Case.xlsx` (righe TC-N612, TC-N613).
+- `docs/trama-one/analysis/DECISION_LOG.md` (DEC-52..DEC-56), `docs/trama-one/analysis/FEATURE_PARITY_MATRIX.md` (righe 21-23), `docs/trama-one/TRANSITION_REGISTER.md`, `BuddyKids_Test_Case.xlsx` (righe TC-N612, TC-N613).
+- **Commit di remediation post-gate (DEC-56, dopo la prima stesura di questo documento)**: `f075bc1` (fix `lib/data/center-leads.ts`), `04d7563` (fix `tests/one/feature-flags.spec.ts`), `38fc778` (DEC-56), `b846c24` (riconferma DEC-56).
 
 ## 11. Risks
 
 | Rischio | Impatto | Mitigazione attuale |
 |---|---|---|
-| Nessun `TEST_SCOPE=all` dal vivo dall'Integration Gate di Sprint 4, ora con le migrazioni applicate | 6 nuove TC (`TC-N607`..`TC-N613`) e la regressione `tests/admin/*` non hanno ancora evidenza reale di esecuzione contro il nuovo schema | Unit test "no browser" (130/130) coprono la logica pura; resta a Fabrizio l'esecuzione UI-driven quando lo riterrà opportuno |
+| ~~Nessun `TEST_SCOPE=all` dal vivo dall'Integration Gate di Sprint 4~~ | — | **Risolto**: eseguito da Fabrizio, tutto lo scope Sprint 5-6 verde (vedi §1, §8.3) |
+| **`TC-137`/`TC-182` falliti nel run del 2026-08-03, senza riscontro in nessun documento di triage esistente** (`GATE_C_TRIAGE_20260728.md`, `PRE_EXISTING_TEST_FAILURE_BASELINE.md`) | Non di scope Sprint 5-6 (`tests/genitori/profilo.spec.ts` TC-137 "richiedere cancellazione", `tests/genitori/prenotazione.spec.ts` TC-182 "raggruppa per settimana/figlio/attività", entrambo timeout — sintomo compatibile con latenza login/rete sotto carico, MA non confermato con evidenza diretta) | Nessuna diagnosi affermata senza prove (governance permanente). Item aperto, non bloccante per la chiusura di Sprint 5-6 (codice non toccato da questo arco) — richiede un rerun mirato/isolato (§13) per capire se è transitorio o un bug reale prima di poterlo classificare |
 | `eslint .` non eseguito sull'intero repository in un'unica passata in questo gate | Porzioni di codice non toccate da Sprint 5-6 non ri-verificate in questo documento | Rischio basso: quelle porzioni non sono state modificate in questo arco, restano allo stato verificato nei checkpoint precedenti |
 | CR-050 chiusa per riuso puro | Nessuno — è una conferma di completezza pregressa, non un rischio nuovo | DEC-53 documenta esplicitamente il ragionamento |
 
@@ -126,19 +145,31 @@ Nessuna azione irreversibile eseguita da Claude in questo arco. Rollback disponi
 - **Codice**: ogni commit di Sprint 6 è granulare e singolarmente revertibile (`git revert <sha>`), nessuna dipendenza tra sprint diversi che impedisca un rollback parziale.
 - **Database**: ciascuna delle 4 migrazioni ora applicate (`17`-`20`) ha una sezione ROLLBACK dedicata nel proprio file SQL, disponibile se Fabrizio dovesse aver bisogno di tornare indietro.
 
-## 13. Piano di chiusura — cosa resta esclusivamente a Fabrizio
+## 13. Piano di chiusura e fasi successive
+
+**Chiusura Sprint 5-6 (fatto)**:
 
 1. ~~Applicare le migrazioni~~ — fatto (§6, verificato dal vivo).
-2. Deploy del codice di Sprint 5-6 (se non già fatto) sull'ambiente di produzione.
-3. Eseguire `TEST_SCOPE=all` dal vivo e confrontare con la baseline già nota (`PRE_EXISTING_TEST_FAILURE_BASELINE.md`), prestando attenzione in particolare a `TC-N607`..`TC-N613` e alla regressione `tests/admin/*` — ora con lo schema completo, questo run può verificare il comportamento reale (non più il fallback) di CenterLead, capacity, email delivery e product events.
-4. Nessun'altra azione di sviluppo è richiesta per dichiarare Sprint 5-6 chiusi dal lato codice — questo documento marca il gate finale dell'arco autorizzato.
+2. ~~Deploy del codice di Sprint 5-6~~ — fatto (commit `38fc778` e successivi).
+3. ~~Eseguire `TEST_SCOPE=all` dal vivo~~ — fatto (§1, §8.3): tutto lo scope Sprint 5-6 verde, inclusi i 2 bug trovati e risolti in corsa (DEC-56, riconfermati PASSED).
+4. **Nessun'altra azione di sviluppo è richiesta per dichiarare Sprint 5-6 chiusi dal lato codice** — lo scope tecnico di questo arco è integralmente implementato, verificato dal vivo e senza regressioni.
+
+**Controlli che restano da fare (Fabrizio, in ordine di priorità)**:
+
+1. **Investigare `TC-137`/`TC-182`** (§11): rilanciare i due test isolati (`npx playwright test tests/genitori/profilo.spec.ts --grep "TC-137"` e `tests/genitori/prenotazione.spec.ts --grep "TC-182"`, con `.env.test` sourced + `TEST_BASE_URL`) per capire se sono transitori (probabile, dato il pattern timeout-su-login già visto altrove per carico Vercel/Supabase) o un bug reale — nessuno dei due tocca codice di Sprint 5-6, quindi non blocca la chiusura di questo gate, ma va classificato prima di considerarlo "debito noto".
+2. **Decidere se aggiornare la baseline**: se `TC-137`/`TC-182` si confermano transitori, aggiungerli a `GATE_C_TRIAGE_20260728.md`/`PRE_EXISTING_TEST_FAILURE_BASELINE.md` per non doverli re-investigare al prossimo run.
+3. **Verifica finale opzionale**: `INCLUDE_MOBILE=1` (mobile-chrome, saltato di default su `TEST_SCOPE=all`) prima di un annuncio pubblico di rilascio, se lo si ritiene opportuno per questo Beta/Release.
+
+**Fasi successive (nessuno sprint futuro ancora pianificato, §3)**:
+
+1. Con Sprint 5-6 chiuso, il prossimo passo naturale è decidere lo scope del prossimo sprint/ciclo — nessuna decisione è stata presa finora, resta a Fabrizio definire priorità (nuove epic, hardening ulteriore, o pausa di stabilizzazione).
+2. Se l'obiettivo è un rilascio Beta pubblico: verificare i punti ancora "shadow mode"/manuali noti (reward/commission CenterLead, §1 di `SPRINT_5_FEATURE_PRESERVATION_MATRIX.md`) sono accettabili per il pubblico target, o vanno completati prima.
+3. Se emergono nuovi bug da `TC-137`/`TC-182` o da un futuro `TEST_SCOPE=all`, il pattern di remediation usato in DEC-56 (diagnosi con evidenza diretta — query SQL sola lettura + `error-context.md` — prima di ipotizzare un fix) resta la procedura di riferimento.
 
 ## 14. Audit Conclusion
 
-**`AUDIT STATUS: READY FOR CONTINUATION`**
+**`AUDIT STATUS: READY`** (chiusura piena dello scope Sprint 5-6, con 1 item di follow-up non bloccante fuori scope)
 
-Stessa convenzione di chiusura interna già usata per Sprint 1/2/3/4/5 (DEC-29/30): nessun audit esterno con `TEST_SCOPE=all` è richiesto alla chiusura di un singolo sprint, solo verifica statica completa più unit test "no browser" completi. Questo gate aggiunge, rispetto ai checkpoint sprint precedenti, la verifica dal vivo (sola lettura) dello stato reale delle migrazioni sul database di produzione, per evitare di affermare uno stato di persistenza per sola memoria documentale.
+Stessa convenzione di chiusura interna già usata per Sprint 1/2/3/4/5 (DEC-29/30), estesa in questo gate con un secondo ciclo: dopo la verifica statica e gli unit test "no browser" (invarianti rispetto alla prima stesura), Fabrizio ha eseguito il primo `TEST_SCOPE=all` dal vivo con le migrazioni applicate. Risultato: **tutto lo scope tecnico di Sprint 5 e Sprint 6 è verde**, inclusi i 2 bug emersi durante questo stesso run e risolti in corsa (DEC-56) — nessuna regressione introdotta, nessun test di scope Sprint 5-6 ancora rosso. Il run ha anche rivelato 15 failed/3 flaky totali: 13 failed + 3 flaky sono debito preesistente già documentato (`GATE_C_TRIAGE_20260728.md`, non di scope Sprint 5-6), 2 failed (`TC-137`, `TC-182`) sono nuovi/non ancora classificati e restano un item aperto non bloccante (§11, §13).
 
-Tutto lo scope tecnico di Sprint 5 e Sprint 6 è implementato, verificato staticamente e documentato. Non c'è alcuna regressione nota introdotta in questo arco (130/130 unit test puri verdi, nessuna colonna/capability preesistente alterata). Ciò che resta — applicazione delle 4 migrazioni e run `TEST_SCOPE=all` dal vivo — è per costruzione della governance permanente responsabilità esclusiva di Fabrizio, non un gap di lavoro di Claude.
-
-Questo è il punto di arresto designato dell'istruzione permanente che ha autorizzato l'intero arco Sprint 5-6 in autonomia. Nessuna ulteriore progressione autonoma di sprint avverrà oltre questo documento senza nuovo input di Fabrizio.
+Questo è il punto di arresto designato dell'istruzione permanente che ha autorizzato l'intero arco Sprint 5-6 in autonomia. Nessuna ulteriore progressione autonoma di sprint avverrà oltre questo documento senza nuovo input di Fabrizio — le fasi successive (§13) restano una decisione sua.
