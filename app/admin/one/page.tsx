@@ -19,11 +19,30 @@ export const dynamic = "force-dynamic";
 // dominio viene toccata o sostituita, restano l'unico posto dove l'Admin
 // AGISCE davvero (Separation of duties, Handbook Admin 1.1 §1.2): questa
 // pagina è solo un punto di ingresso più rapido con priorità già calcolata.
+//
+// CONTROLLED BETA EXPERIENCE GATE (§4-6, restyle prima del wiring/DEC-58) —
+// era la route con il gap visivo più ampio dell'inventario (§4ter del Route
+// Release Matrix): interamente in `style={{}}` inline, colori hardcoded per
+// priorità (#FDECEA/#C0392B/#FFF6E5/#B7791F/#EAF7EE/#2E7D46), `<h1>` di
+// sistema, nessuna classe Tailwind/token, nessun breakpoint responsive. Ora
+// diventerà `PRIMARY_NAV` (§6.3): non è accettabile restare così. Sostituiti
+// tutti gli inline style con classi Tailwind — stessa palette badge già in
+// uso in `FeatureFlagsAdminClient.tsx`/`RichiesteClient.tsx`
+// (bg-green-light/text-[#2d8f52], bg-orange-light/text-trama-orange,
+// bg-[#FBEAEA]/text-[#C0392B]) invece di inventarne una nuova, h1 bianco +
+// sottotitolo `text-navy-text2` (convenzione admin già stabilita: il
+// container di `DashboardLayout` per `variant="admin"` ha sfondo
+// `bg-navy` scuro, vedi `components/dashboard/DashboardLayout.tsx` riga 237).
+// Rimosso il `<main style={{padding:24}}>`: `DashboardLayout` applica già
+// `p-5 md:p-8` responsive al suo `<main>`. Aggiunto uno stato vuoto esplicito
+// per code/funnel (prima: tabella/lista vuota senza spiegazione). Nessun
+// cambio ai testi che i test verificano (label delle code, riga di sintesi,
+// titolo del funnel) — solo alla presentazione, vedi tests/one/command-center.spec.ts.
 const PRIORITY_LABEL: Record<QueuePriority, string> = { alta: "Alta", media: "Media", bassa: "Bassa" };
-const PRIORITY_COLOR: Record<QueuePriority, { bg: string; fg: string }> = {
-  alta: { bg: "#FDECEA", fg: "#C0392B" },
-  media: { bg: "#FFF6E5", fg: "#B7791F" },
-  bassa: { bg: "#EAF7EE", fg: "#2E7D46" },
+const PRIORITY_CLASS: Record<QueuePriority, string> = {
+  alta: "bg-[#FBEAEA] text-[#C0392B]",
+  media: "bg-orange-light text-trama-orange",
+  bassa: "bg-green-light text-[#2d8f52]",
 };
 
 export default async function OneAdminPage() {
@@ -36,111 +55,104 @@ export default async function OneAdminPage() {
   const funnel = computeWalkthroughFunnel(walkthroughSummary);
 
   return (
-    <main style={{ padding: 24 }}>
-      <h1>TRAMA ONE — Admin</h1>
-      <p style={{ color: "#555", fontSize: 13, marginTop: 4 }}>
-        Command Center: {summary.totalOpen} elementi in sospeso su tutte le code
-        {summary.criticalQueueCount > 0
-          ? `, ${summary.criticalQueueCount} coda${summary.criticalQueueCount === 1 ? "" : "e"} in priorità alta`
-          : ""}
-        .
-      </p>
-
-      <div style={{ marginTop: 16, display: "grid", gap: 10 }}>
-        {queues.map((q) => {
-          const colors = PRIORITY_COLOR[q.priority];
-          return (
-            <Link
-              key={q.key}
-              href={q.href}
-              style={{
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "space-between",
-                gap: 12,
-                padding: "12px 16px",
-                border: "1px solid #E8EBF0",
-                borderRadius: 8,
-                textDecoration: "none",
-                color: "inherit",
-                background: "#fff",
-              }}
-            >
-              <div>
-                <div style={{ fontWeight: 600, fontSize: 14 }}>{q.label}</div>
-                {q.detail && <div style={{ fontSize: 12, color: "#8A93A3", marginTop: 2 }}>{q.detail}</div>}
-              </div>
-              <div style={{ display: "flex", alignItems: "center", gap: 10, flexShrink: 0 }}>
-                <span
-                  style={{
-                    fontSize: 11,
-                    fontWeight: 700,
-                    padding: "2px 8px",
-                    borderRadius: 999,
-                    background: colors.bg,
-                    color: colors.fg,
-                  }}
-                >
-                  {PRIORITY_LABEL[q.priority]}
-                </span>
-                <span style={{ fontSize: 18, fontWeight: 700, minWidth: 28, textAlign: "right" }}>{q.count}</span>
-              </div>
-            </Link>
-          );
-        })}
+    <div>
+      <div className="mb-6">
+        <h1 className="text-xl font-bold text-white">TRAMA ONE — Admin</h1>
+        <p className="mt-1 text-sm text-navy-text2">
+          Command Center: {summary.totalOpen} elementi in sospeso su tutte le code
+          {summary.criticalQueueCount > 0
+            ? `, ${summary.criticalQueueCount} coda${summary.criticalQueueCount === 1 ? "" : "e"} in priorità alta`
+            : ""}
+          .
+        </p>
       </div>
 
-      <div style={{ marginTop: 28 }}>
-        <h2 style={{ fontSize: 15, fontWeight: 700, marginBottom: 4 }}>
+      {queues.length === 0 ? (
+        <div className="rounded-lg border border-dashed border-navy-3 p-6 text-center">
+          <p className="text-sm text-navy-text2">Nessuna coda operativa configurata.</p>
+        </div>
+      ) : (
+        <div className="grid gap-2.5">
+          {queues.map((q) => {
+            const badgeClass = PRIORITY_CLASS[q.priority];
+            return (
+              <Link
+                key={q.key}
+                href={q.href}
+                className="flex flex-col gap-2 rounded-lg border border-[#E8EBF0] bg-white px-4 py-3 no-underline transition-colors hover:border-trama-violet sm:flex-row sm:items-center sm:justify-between"
+              >
+                <div>
+                  <div className="text-sm font-semibold text-ink">{q.label}</div>
+                  {q.detail && <div className="mt-0.5 text-xs text-ink-2">{q.detail}</div>}
+                </div>
+                <div className="flex flex-shrink-0 items-center gap-2.5">
+                  <span className={`rounded-full px-2 py-0.5 text-[11px] font-bold ${badgeClass}`}>
+                    {PRIORITY_LABEL[q.priority]}
+                  </span>
+                  <span className="min-w-[28px] text-right text-lg font-bold text-ink">{q.count}</span>
+                </div>
+              </Link>
+            );
+          })}
+        </div>
+      )}
+
+      <div className="mt-7">
+        <h2 className="mb-1 text-[15px] font-bold text-white">
           Walkthrough &quot;Benvenuto in TRAMA ONE&quot; — avanzamento e funnel (Sprint 6, hardening)
         </h2>
-        <p style={{ fontSize: 12, color: "#8A93A3", marginBottom: 8 }}>
+        <p className="mb-2 text-xs text-navy-text2">
           &quot;Raggiunti&quot; = utenti arrivati almeno a questo step; &quot;Abbandono&quot; = persi rispetto allo
           step precedente (in corso, completato o saltato ma senza mai proseguire).
           {restartCount !== null
             ? ` Percorso ricominciato ${restartCount} volt${restartCount === 1 ? "a" : "e"} in totale.`
             : " Conteggio riavvii non disponibile (richiede migration_20_product_events.sql applicata)."}
         </p>
-        <table style={{ borderCollapse: "collapse", fontSize: 13 }}>
-          <thead>
-            <tr>
-              <th style={thStyle}>Step</th>
-              <th style={thStyle}>Raggiunti</th>
-              <th style={thStyle}>In corso</th>
-              <th style={thStyle}>Completato</th>
-              <th style={thStyle}>Saltato</th>
-              <th style={thStyle}>Abbandono vs step prec.</th>
-            </tr>
-          </thead>
-          <tbody>
-            {funnel.map((s) => (
-              <tr key={s.key}>
-                <td style={tdStyle}>{s.title}</td>
-                <td style={tdStyle}>{s.reached}</td>
-                <td style={tdStyle}>{s.inProgress}</td>
-                <td style={tdStyle}>{s.completed}</td>
-                <td style={tdStyle}>{s.skipped}</td>
-                <td style={tdStyle}>
-                  {s.dropOffFromPrevious === null ? "—" : `${s.dropOffFromPrevious} (${s.dropOffRatePercent}%)`}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+        {funnel.length === 0 ? (
+          <div className="rounded-lg border border-dashed border-navy-3 p-6 text-center">
+            <p className="text-sm text-navy-text2">Nessun dato di funnel disponibile.</p>
+          </div>
+        ) : (
+          <div className="overflow-x-auto rounded-lg border border-[#E8EBF0] bg-white">
+            <table className="w-full min-w-[560px] border-collapse text-[13px]">
+              <thead>
+                <tr>
+                  <th className="border-b border-[#E8EBF0] px-3 py-1.5 text-left font-semibold text-ink-2">Step</th>
+                  <th className="border-b border-[#E8EBF0] px-3 py-1.5 text-left font-semibold text-ink-2">
+                    Raggiunti
+                  </th>
+                  <th className="border-b border-[#E8EBF0] px-3 py-1.5 text-left font-semibold text-ink-2">
+                    In corso
+                  </th>
+                  <th className="border-b border-[#E8EBF0] px-3 py-1.5 text-left font-semibold text-ink-2">
+                    Completato
+                  </th>
+                  <th className="border-b border-[#E8EBF0] px-3 py-1.5 text-left font-semibold text-ink-2">
+                    Saltato
+                  </th>
+                  <th className="border-b border-[#E8EBF0] px-3 py-1.5 text-left font-semibold text-ink-2">
+                    Abbandono vs step prec.
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {funnel.map((s) => (
+                  <tr key={s.key}>
+                    <td className="border-b border-[#F0F2F5] px-3 py-1.5 text-ink">{s.title}</td>
+                    <td className="border-b border-[#F0F2F5] px-3 py-1.5 text-ink">{s.reached}</td>
+                    <td className="border-b border-[#F0F2F5] px-3 py-1.5 text-ink">{s.inProgress}</td>
+                    <td className="border-b border-[#F0F2F5] px-3 py-1.5 text-ink">{s.completed}</td>
+                    <td className="border-b border-[#F0F2F5] px-3 py-1.5 text-ink">{s.skipped}</td>
+                    <td className="border-b border-[#F0F2F5] px-3 py-1.5 text-ink">
+                      {s.dropOffFromPrevious === null ? "—" : `${s.dropOffFromPrevious} (${s.dropOffRatePercent}%)`}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
-    </main>
+    </div>
   );
 }
-
-const thStyle: React.CSSProperties = {
-  textAlign: "left",
-  padding: "6px 12px",
-  borderBottom: "1px solid #E8EBF0",
-  color: "#8A93A3",
-  fontWeight: 600,
-};
-
-const tdStyle: React.CSSProperties = {
-  padding: "6px 12px",
-  borderBottom: "1px solid #F0F2F5",
-};
