@@ -39,6 +39,17 @@ export default function PartnerSpotlight({ progress }: { progress: WalkthroughPr
   const popoverRef = useRef<HTMLDivElement>(null);
   const loggedShownRef = useRef<string | null>(null);
   const loggedMissingRef = useRef<string | null>(null);
+  // Visual Acceptance Gate (§15, DEC-68) — bug reale trovato da Fabrizio: un
+  // target molto più in basso della viewport corrente (pagina non ancora
+  // scrollata, es. la card "Servizi extra e pasto" o il calendario
+  // disponibilità) produceva un popover posizionato fuori dai bordi della
+  // viewport ("fixed" con top oltre l'altezza visibile) — invisibile a
+  // qualunque scroll, perché getBoundingClientRect() è relativo al viewport
+  // corrente, non al documento. Fix: quando lo step corrente CAMBIA (non ad
+  // ogni remeasure), scrollare il target reale in vista una sola volta.
+  // Tracciato per step-key (non per ogni measure()) per non combattere uno
+  // scroll manuale dell'utente durante lo stesso step.
+  const scrolledStepRef = useRef<string | null>(null);
 
   const current = steps.find((s) => s.key === currentKey) ?? null;
 
@@ -59,6 +70,10 @@ export default function PartnerSpotlight({ progress }: { progress: WalkthroughPr
       setTargetRect(null);
       setTargetMissing(true);
       return;
+    }
+    if (scrolledStepRef.current !== current.key) {
+      scrolledStepRef.current = current.key;
+      el.scrollIntoView({ behavior: "smooth", block: "center" });
     }
     const r = el.getBoundingClientRect();
     setTargetRect({ top: r.top, left: r.left, width: r.width, height: r.height });
