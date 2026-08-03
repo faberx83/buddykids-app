@@ -314,7 +314,10 @@ export default function ActivityEditForm({
         }}
         className="space-y-6"
       >
-        <div className="space-y-4 rounded-lg border border-[#E8EBF0] bg-white p-5">
+        <div
+          className="space-y-4 rounded-lg border border-[#E8EBF0] bg-white p-5"
+          data-spotlight="configure_weeks"
+        >
           <div className="text-sm font-bold text-ink">Informazioni generali</div>
 
           <Field label="Nome attività">
@@ -560,7 +563,10 @@ export default function ActivityEditForm({
           </p>
         </div>
 
-        <div className="space-y-4 rounded-lg border border-[#E8EBF0] bg-white p-5">
+        <div
+          className="space-y-4 rounded-lg border border-[#E8EBF0] bg-white p-5"
+          data-spotlight="configure_pricing"
+        >
           <div className="text-sm font-bold text-ink">Servizi extra e pasto</div>
 
           <div className="grid grid-cols-2 gap-4">
@@ -768,6 +774,7 @@ export default function ActivityEditForm({
           <button
             type="submit"
             disabled={saving}
+            data-spotlight="publish"
             className="rounded-md bg-sky px-5 py-2.5 text-sm font-bold text-white transition-colors hover:bg-[#3A9FDC] disabled:opacity-60"
           >
             {saving ? "Salvo…" : "Salva modifiche"}

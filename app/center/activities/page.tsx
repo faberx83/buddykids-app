@@ -20,6 +20,7 @@ export default async function CenterActivitiesPage() {
         {isSupabaseConfigured && (
           <Link
             href="/center/activities/new"
+            data-spotlight="create_activity"
             className="flex-shrink-0 rounded-md bg-sky px-4 py-2.5 text-sm font-bold text-white transition-colors hover:bg-[#3A9FDC]"
           >
             + Nuova attività

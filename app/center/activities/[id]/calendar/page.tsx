@@ -54,7 +54,7 @@ export default async function CenterActivityCalendarPage({
         <OccupancyChart data={occupancy} />
       </div>
 
-      <div className="rounded-lg border border-[#E8EBF0] bg-white p-4">
+      <div className="rounded-lg border border-[#E8EBF0] bg-white p-4" data-spotlight="configure_spot_days">
         <AvailabilityCalendar days={days} mode="edit" activityDbId={activity.dbId} />
       </div>
     </div>
