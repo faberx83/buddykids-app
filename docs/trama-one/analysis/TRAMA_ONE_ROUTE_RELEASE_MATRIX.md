@@ -194,7 +194,50 @@ Tassonomia richiesta: `PRIMARY_NAV`, `SECONDARY_NAV`, `CONTEXTUAL_CTA`, `POST_LO
 
 ## 5. Implicazioni per §3 (IA/navigazione) e §16 (Controlled Publication)
 
-1. Serve una voce di navigazione per `/one` (Parent), `/center/one` (Partner) e `/admin/one` (Admin) in ciascun menu — condizionata al flag come le altre voci Sprint 5-6, non un rollout permanente.
+1. Serve una voce di navigazione per `/one` (Parent), `/center/one` (Partner) e `/admin/one` (Admin) in ciascun menu — condizionata al flag come le altre voci Sprint 5-6, non un rollout permanente. **Aggiornamento (§6)**: questo punto 1 va corretto — non tutte e 3 le shell ricevono una voce di menu, vedi §6.
 2. `/center/one/onboarding` e `/admin/one/onboarding` diventano raggiungibili automaticamente una volta risolto il punto 1 (sono già linkate correttamente dalle rispettive shell).
 3. Le 3 shell vanno restyle-ate (§4, Visual Conformance) prima della pubblicazione — non è accettabile mostrare a una coorte pilota un `<h1>` di sistema e colori hardcoded.
-4. L'override globale permanente di `TRAMA_ONE_ENABLED` (§0.2) va sostituito con uno scoped a coorte/ruolo (Controlled Beta) prima o durante il deploy di questo gate — è un'azione SQL, quindi resta a Fabrizio (governance permanente), ma va programmata esplicitamente nella procedura di §16.
+4. L'override globale permanente di `TRAMA_ONE_ENABLED` (§0.2) va sostituito con uno scoped a coorte/ruolo (Controlled Beta) prima o durante il deploy di questo gate — è un'azione SQL, quindi resta a Fabrizio (governance permanente), ma va programmata esplicitamente nella procedura di §16. **RISOLTO** — vedi §0 punto 2, DEC-57.
+
+## 6. Information Architecture (§3) — decisioni finali
+
+Chiude il gate SQL essendo stato risolto (§0.2, DEC-57): questa sezione definisce l'IA reale per i tre portali, sostituendo la sintesi provvisoria di §5. Metodo: nessuna voce viene aggiunta "perché la route esiste" — ogni decisione parte dalla classificazione §4ter e da cosa l'utente deve poter fare in quel punto del suo percorso (login → azione → completamento), verificato leggendo il codice attuale, non assunto.
+
+### 6.0 Correzione: il gap dichiarato in §4bis/§5 su `/center-leads` non esiste
+
+Verificato leggendo `app/nextgen/profile/ProfileNextgenClient.tsx` (righe 124-134): esiste già una `HubCard` "I tuoi suggerimenti" → `/center-leads` dentro la sezione "Attività" del Profilo NEXTGEN, accanto a "Le mie prenotazioni"/"Preferiti"/"Le presenze" — stesso trattamento delle altre pagine di sola consultazione. Questo significa che `/center-leads` ha **già due punti di accesso legittimi**: `CONTEXTUAL_CTA` (ricerca senza risultati, per il momento della segnalazione) e un secondo accesso stabile per rivedere lo storico (Profilo, non un nuovo `PRIMARY_NAV`, esattamente il pattern che §4ter proponeva di valutare). **Correzione**: il "gap residuo" descritto in §4bis ("manca un secondo accesso stabile per rivedere lo storico") era un'affermazione non verificata contro il codice reale — non esiste. Nessuna azione richiesta su questa route.
+
+### 6.1 Parent — landing, login, IA
+
+- **Landing TRAMA ONE**: non esiste e non deve esistere una landing dedicata. `/one` resta `INTERNAL_ONLY` (§4ter, confermato): non ospita alcuna capability di dominio propria (solo un placeholder + card Walkthrough). Le capability reali TRAMA ONE per il Parent (Giorni spot, filtri disponibilità, Community, Logistica, CenterLead) sono già distribuite nelle superfici NEXTGEN esistenti (Home/Planner/Scopri/Prenotazioni/Profilo) — questo è per costruzione, non un gap da colmare.
+- **Cosa segue il login**: invariato — Home NEXTGEN (`/nextgen`). Nessuna modifica: DEC-02 (conservazione Legacy/NextGen) e la decisione già presa nello Sprint 1 rebrand (bottom nav fissata a 5 voci, `NextgenBottomNav.tsx`) restano valide. `/one` **non diventa una 6ª voce** della bottom nav: aggiungerla romperebbe un vincolo di design già deliberato (5 voci, mockup "TRAMA - Dev Handoff") per una route che oggi non ha contenuto proprio da mostrare.
+- **Ruolo futuro di `/one`**: quando il vero Spotlight (§7, task #425) sarà implementato, `/one` smette di essere una destinazione e diventa il punto di montaggio dell'overlay Spotlight, attivato contestualmente (es. trigger al primo login, non un link permanente). Decisione presa ora per evitare di cablare oggi una voce di menu che il lavoro successivo renderebbe comunque obsoleta.
+- **`/center-leads`**: nessun cambiamento — due accessi già corretti (§6.0).
+
+### 6.2 Partner — landing, login, cosa segue l'approvazione
+
+- **`/center/one`**: resta `INTERNAL_ONLY` (§4ter, confermato) — stesso ragionamento di `/one`: 36 righe, un link verso l'onboarding e una `WalkthroughCard`, nessun contenuto di dominio proprio. **Non diventa `PRIMARY_NAV`.**
+- **Cosa segue il login (gap reale trovato)**: verificato `app/center/page.tsx` — il dashboard Partner (`/center`) non controlla mai lo stato del centro (`LEAD`/`APPROVED`/ecc.) per indirizzare un centro non ancora attivo verso l'onboarding. Oggi un `center_admin` con centro non `APPROVED` atterra sul dashboard Legacy senza alcun segnale che l'onboarding esista, a meno di conoscere l'URL `/center/one/onboarding` — la classificazione `POST_LOGIN_REDIRECT` di §4ter descrive il comportamento corretto, non quello attuale. **Decisione**: quando si arriverà alla fase di wiring (E, dopo il restyle), va aggiunto un redirect/banner condizionato allo stato del centro (non un nuovo redirect strutturale in `app/center/layout.tsx`, che romperebbe DEC-02 se applicato senza guardia sul flag — va condizionato sia allo stato del centro sia a `TRAMA_ONE_ENABLED` per quella coorte). Fino a quel momento resta un gap noto e documentato, non un'azione da eseguire ora (rispetta l'ordine D→E già approvato: restyle prima di wiring).
+- **Dopo l'approvazione**: il ruolo di `/center/one/onboarding` si esaurisce (§4ter, `DETAIL_DEEP_LINK` di fatto una volta completato) — nessun bisogno di un accesso permanente post-approvazione.
+- **Walkthrough attività (`activity_creation_partner`)**: verificato `app/center/one/page.tsx` — la `WalkthroughCard` per questo percorso vive OGGI solo dentro la route orfana `/center/one`, quindi un Partner reale non la vede mai finché quella route non è raggiungibile. **Decisione IA**: la sede corretta per questo Walkthrough non è `/center/one` (che diventerà il contenitore Spotlight, §6.2 sopra) ma `/center/activities`, dove il Partner crea/gestisce davvero le attività — è lì che il percorso "creazione attività" ha senso contestualmente. Il motore generico (`registry.ts`) non cambia, cambia solo dove il componente viene montato: decisione da eseguire nella fase Spotlight (§7-14, task #425), non in questa fase IA.
+
+### 6.3 Admin — landing, hub, dettaglio
+
+- **`/admin/one`**: confermato `PRIMARY_NAV` (§4ter) — per funzione è il Command Center che aggrega le 7 code operative con priorità calcolata (DEC-51), esattamente l'hub descritto dall'Handbook Admin 1.1 ("queue-first operations"). **Decisione**: una volta restyle-ato (§4/task #424), riceve una voce di menu in `app/admin/layout.tsx`, condizionata al flag (nuova per questo repository: nessuna voce del menu Admin è oggi condizionata — `/admin/center-leads` e `/admin/feature-flags` sono sempre-on perché non gated. La condizione va risolta lato server nel layout, che già risolve `realRole`: si aggiunge la risoluzione di `TRAMA_ONE_ENABLED` nello stesso punto, prima di costruire `navItems`, filtrando la voce se `enabled=false` per quell'utente/coorte — nessuna voce di menu deve mai apparire e poi rimandare a un fallback).
+- **Posizione proposta**: prima voce dell'elenco (sopra "Dashboard"), etichetta "TRAMA ONE" o "Command Center" — decisione finale di copy rimandata al restyle (task #424), dove verrà scelta insieme a tono/naming coerenti col resto del rebrand.
+- **`/admin/one/onboarding`**: confermato `DETAIL_DEEP_LINK` (§4ter) — nessuna voce di menu propria; resta raggiungibile solo come drill-in da una riga del Command Center (già linkata così in `lib/data/command-center.ts`), esattamente come una scheda dettaglio non merita una voce di primo livello.
+- **`/admin/center-leads`, `/admin/feature-flags`**: nessun cambiamento, già `PRIMARY_NAV` corretto.
+
+### 6.4 Piano di wiring — cosa verrà cablato, in quale fase, e cosa no
+
+| Route | Diventa voce di menu? | Dove | Condizione | Fase |
+|---|---|---|---|---|
+| `/one` | **No** | — | — | Nessuna (resta `INTERNAL_ONLY`, montaggio Spotlight in §7) |
+| `/center-leads` | Già presente (2 accessi) | Ricerca senza risultati + Profilo | Nessuna (sempre-on) | Nessuna azione |
+| `/center/one` | **No** | — | — | Nessuna (resta `INTERNAL_ONLY`) |
+| `/center/one/onboarding` | Redirect/banner condizionato, non voce di menu fissa | `app/center/layout.tsx` o dashboard `/center` | Stato centro non `APPROVED` + `TRAMA_ONE_ENABLED` per la coorte dell'utente | E (wiring, dopo restyle D) |
+| `/admin/one` | **Sì** | `app/admin/layout.tsx`, prima voce | `TRAMA_ONE_ENABLED` per la coorte dell'utente (server-side, stesso punto dove si risolve `realRole`) | E (wiring, dopo restyle D) |
+| `/admin/one/onboarding` | **No** (drill-in) | Link da dentro `/admin/one` | Ereditata dal layout `/admin/one` | Nessuna azione aggiuntiva |
+| `/admin/center-leads`, `/admin/feature-flags` | Già presenti | Menu Admin | Nessuna (sempre-on) | Nessuna azione |
+
+**Nota**: questa tabella è un piano, non un'esecuzione — coerente con l'ordine approvato (D restyle shell → E wiring navigazione), nessuna voce di menu viene aggiunta al codice in questo passaggio. Il restyle (task #424) precede il wiring perché non è accettabile esporre a una coorte pilota reale un `<h1>` di sistema e colori hardcoded (§4ter, nota di metodo di Fabrizio).
