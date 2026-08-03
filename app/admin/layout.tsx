@@ -3,13 +3,15 @@ import DashboardLayout from "@/components/dashboard/DashboardLayout";
 import { createClient } from "@/lib/supabase/server";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
 import { Role } from "@/lib/types";
+import { resolveFeatureFlag } from "@/lib/feature-flags/resolve";
+import { generateCorrelationId } from "@/lib/telemetry/correlation";
 
 // Segnalazione di Fabrizio: cosa manca lato Admin tra le nuove funzionalità
 // (ticketing, presenze/check-in, preferiti)? Ho proposto e costruito 3
 // pannelli cross-centro (SLA Richieste, confronto Presenze, Preferiti come
 // segnale di domanda) — vedi lib/data/admin-inquiries.ts,
 // lib/data/admin-attendance.ts, lib/data/admin-favorites.ts.
-const navItems = [
+const baseNavItems = [
   { href: "/admin", label: "Dashboard", icon: "ti-layout-dashboard" },
   { href: "/admin/analytics", label: "Analisi", icon: "ti-chart-bar" },
   { href: "/admin/centers", label: "Centri", icon: "ti-building-community" },
@@ -36,6 +38,16 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   // tutto il selettore "ruolo demo" per decidere l'accesso a questa sezione.
   let realRole: Role | null | undefined;
 
+  // CONTROLLED BETA EXPERIENCE GATE (§3/§16, DEC-58) — fase E (wiring):
+  // `/admin/one` (Command Center, DEC-51) diventa PRIMARY_NAV, ma SOLO
+  // condizionato a TRAMA_ONE_ENABLED risolto server-side per l'utente
+  // corrente — stesso resolver già usato da app/admin/one/layout.tsx e da
+  // app/center/layout.tsx per lo Spotlight. Nessuna delle altre voci di
+  // questo menu è mai stata gated: questa è la prima, e resta additiva (se
+  // il flag risolve a false la voce semplicemente non compare, nessun'altra
+  // voce/redirect è toccata).
+  let navItems = baseNavItems;
+
   if (isSupabaseConfigured) {
     const supabase = await createClient();
     const {
@@ -50,6 +62,20 @@ export default async function AdminLayout({ children }: { children: React.ReactN
       .single();
 
     realRole = (profile?.role as Role) ?? "parent";
+
+    const oneEnabled = await resolveFeatureFlag({
+      flagName: "TRAMA_ONE_ENABLED",
+      userId: user.id,
+      role: realRole,
+      tenant: "admin",
+      correlationId: generateCorrelationId(),
+    });
+    if (oneEnabled) {
+      navItems = [
+        ...baseNavItems,
+        { href: "/admin/one", label: "Command Center", icon: "ti-target-arrow" },
+      ];
+    }
   }
 
   return (
