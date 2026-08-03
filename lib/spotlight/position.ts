@@ -47,10 +47,22 @@ export function computePopoverPosition(
   const placement: PopoverPlacement =
     spaceBelow >= popoverHeight + GAP || spaceBelow >= spaceAbove ? "bottom" : "top";
 
-  const top =
+  const idealTop =
     placement === "bottom"
       ? target.top + target.height + GAP
       : Math.max(GAP, target.top - popoverHeight - GAP);
+
+  // Clamp verticale di sicurezza: il calcolo sopra sceglie sopra/sotto in
+  // base allo spazio del TARGET rispetto alla viewport, ma non garantisce da
+  // solo che il risultato resti dentro i bordi — un target parzialmente o
+  // interamente fuori viewport (non ancora scrollato in vista, es. una card
+  // in fondo a una pagina lunga) produce altrimenti un `top` che eccede
+  // `viewport.height`, rendendo il popover "fixed" invisibile a qualunque
+  // scroll (bug reale osservato da Fabrizio durante il Visual Acceptance
+  // Gate, §15 righe 14/15 — vedi DEC-68). Il chiamante deve comunque portare
+  // il target in vista (scrollIntoView) PRIMA di chiamare questa funzione:
+  // questo clamp è una rete di sicurezza aggiuntiva, non un sostituto.
+  const top = Math.min(Math.max(GAP, idealTop), Math.max(GAP, viewport.height - popoverHeight - GAP));
 
   const idealLeft = target.left + target.width / 2 - POPOVER_WIDTH / 2;
   const left = Math.min(Math.max(GAP, idealLeft), Math.max(GAP, viewport.width - POPOVER_WIDTH - GAP));
