@@ -37,6 +37,21 @@ export { KNOWN_PRODUCT_EVENTS, isKnownProductEvent } from "./known-events";
 export type { KnownProductEvent } from "./known-events";
 
 /**
+ * Contesto opzionale per evitare una seconda chiamata a createClient()/
+ * auth.getUser() quando il chiamante ne ha già uno a disposizione (Sprint 6,
+ * hardening walkthrough, task #418 — persistProductEvent() era l'unica
+ * chiamata di rete duplicata su ogni click Walkthrough: app/actions/
+ * walkthrough.ts chiama già requireUser() che restituisce esattamente
+ * supabase+user, prima di questo cambiamento persistProductEvent() ne
+ * creava un secondo identico un attimo dopo). Se omesso, il comportamento è
+ * invariato: la funzione crea da sé client e sessione.
+ */
+export interface PersistProductEventContext {
+  supabase: Awaited<ReturnType<typeof createClient>>;
+  userId: string;
+}
+
+/**
  * Sostituto drop-in di logTelemetryEvent() per i soli eventi elencati in
  * KNOWN_PRODUCT_EVENTS: chiama SEMPRE logTelemetryEvent() per primo
  * (comportamento Sprint 0 invariato), poi tenta in più — mai in sua vece —
@@ -44,18 +59,26 @@ export type { KnownProductEvent } from "./known-events";
  * mai: i call site restano fire-and-forget esattamente come lo erano con
  * logTelemetryEvent().
  */
-export async function persistProductEvent(entry: TelemetryLogEntry): Promise<void> {
+export async function persistProductEvent(
+  entry: TelemetryLogEntry,
+  context?: PersistProductEventContext
+): Promise<void> {
   logTelemetryEvent(entry);
 
   if (!isSupabaseConfigured) return;
   if (!isKnownProductEvent(entry.event)) return;
 
   try {
-    const supabase = await createClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-    if (!user) return; // coerente con la RLS insert policy di migration_20
+    let supabase: Awaited<ReturnType<typeof createClient>>;
+    if (context) {
+      supabase = context.supabase;
+    } else {
+      supabase = await createClient();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (!user) return; // coerente con la RLS insert policy di migration_20
+    }
 
     const { error } = await supabase.from("product_events").insert({
       event_name: entry.event,

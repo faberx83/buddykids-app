@@ -84,11 +84,14 @@ export async function startWalkthroughStepAction(
 
   const { error } = await upsertStep(supabase, user.id, tutorialKey, stepKey, "in_progress");
   if (error) return { error: error.message };
-  await persistProductEvent({
-    event: "walkthrough_step_started",
-    correlationId: walkthroughCorrelationId(),
-    detail: `${tutorialKey}/${stepKey}`,
-  });
+  await persistProductEvent(
+    {
+      event: "walkthrough_step_started",
+      correlationId: walkthroughCorrelationId(),
+      detail: `${tutorialKey}/${stepKey}`,
+    },
+    { supabase, userId: user.id }
+  );
   revalidateAllWalkthroughPortals();
   return {};
 }
@@ -104,11 +107,14 @@ export async function completeWalkthroughStepAction(
 
   const { error } = await upsertStep(supabase, user.id, tutorialKey, stepKey, "completed");
   if (error) return { error: error.message };
-  await persistProductEvent({
-    event: "walkthrough_step_completed",
-    correlationId: walkthroughCorrelationId(),
-    detail: `${tutorialKey}/${stepKey}`,
-  });
+  await persistProductEvent(
+    {
+      event: "walkthrough_step_completed",
+      correlationId: walkthroughCorrelationId(),
+      detail: `${tutorialKey}/${stepKey}`,
+    },
+    { supabase, userId: user.id }
+  );
   revalidateAllWalkthroughPortals();
   return {};
 }
@@ -124,11 +130,14 @@ export async function skipWalkthroughStepAction(
 
   const { error } = await upsertStep(supabase, user.id, tutorialKey, stepKey, "skipped");
   if (error) return { error: error.message };
-  await persistProductEvent({
-    event: "walkthrough_step_skipped",
-    correlationId: walkthroughCorrelationId(),
-    detail: `${tutorialKey}/${stepKey}`,
-  });
+  await persistProductEvent(
+    {
+      event: "walkthrough_step_skipped",
+      correlationId: walkthroughCorrelationId(),
+      detail: `${tutorialKey}/${stepKey}`,
+    },
+    { supabase, userId: user.id }
+  );
   revalidateAllWalkthroughPortals();
   return {};
 }
@@ -146,11 +155,14 @@ export async function restartWalkthroughAction(tutorialKey: string): Promise<{ e
     .eq("user_id", user.id)
     .eq("tutorial_key", tutorialKey);
   if (error) return { error: error.message };
-  await persistProductEvent({
-    event: "walkthrough_restarted",
-    correlationId: walkthroughCorrelationId(),
-    detail: tutorialKey,
-  });
+  await persistProductEvent(
+    {
+      event: "walkthrough_restarted",
+      correlationId: walkthroughCorrelationId(),
+      detail: tutorialKey,
+    },
+    { supabase, userId: user.id }
+  );
   revalidateAllWalkthroughPortals();
   return {};
 }
