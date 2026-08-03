@@ -125,6 +125,13 @@ interface NavItem {
   // Numero da mostrare come pallino rosso accanto alla voce (es. richieste
   // gruppo in attesa) — nascosto se 0/assente.
   badgeCount?: number;
+  // CONTROLLED BETA EXPERIENCE GATE (§7-14) — se presente, diventa
+  // l'attributo `data-spotlight` sul `<Link>` reale: consente al motore
+  // Spotlight (components/spotlight/PartnerSpotlight.tsx) di evidenziare una
+  // voce di menu vera come target di uno step, senza duplicarla altrove.
+  // Opzionale e innocuo per ogni altra voce/variante (Admin incluso): un
+  // attributo `data-*` assente non altera resa o comportamento.
+  spotlightTarget?: string;
 }
 
 // Tema visivo del pannello: "partner" (Gestore centro, teal chiaro) o
@@ -211,6 +218,7 @@ export default function DashboardLayout({
         <Link
           href={item.href}
           onClick={onNavigate}
+          data-spotlight={item.spotlightTarget}
           className={`flex items-center gap-3 rounded-md px-3 py-2.5 text-sm font-medium transition-colors ${
             isAdmin
               ? active
