@@ -2,7 +2,8 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
 import { resolveFeatureFlag } from "@/lib/feature-flags/resolve";
-import { generateCorrelationId, logTelemetryEvent } from "@/lib/telemetry/correlation";
+import { generateCorrelationId } from "@/lib/telemetry/correlation";
+import { persistProductEvent } from "@/lib/telemetry/events";
 
 // Forza il rendering dinamico per-richiesta di /one e di tutte le sue
 // sotto-route. La risoluzione di TRAMA_ONE_ENABLED dipende da utente, ruolo,
@@ -47,7 +48,7 @@ export default async function OneParentLayout({ children }: { children: React.Re
     role = (profile?.role as string) ?? "parent";
   }
 
-  logTelemetryEvent({
+  await persistProductEvent({
     event: "one_route_access",
     correlationId,
     tenant: "family",
@@ -64,7 +65,7 @@ export default async function OneParentLayout({ children }: { children: React.Re
   });
 
   if (!enabled) {
-    logTelemetryEvent({
+    await persistProductEvent({
       event: "one_route_fallback",
       correlationId,
       tenant: "family",

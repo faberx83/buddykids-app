@@ -2,7 +2,8 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
 import { resolveFeatureFlag } from "@/lib/feature-flags/resolve";
-import { generateCorrelationId, logTelemetryEvent } from "@/lib/telemetry/correlation";
+import { generateCorrelationId } from "@/lib/telemetry/correlation";
+import { persistProductEvent } from "@/lib/telemetry/events";
 
 // Forza il rendering dinamico per-richiesta — vedi lo stesso commento in
 // app/one/layout.tsx per la motivazione completa.
@@ -39,7 +40,7 @@ export default async function OneCenterLayout({ children }: { children: React.Re
     role = (profile?.role as string) ?? "parent";
   }
 
-  logTelemetryEvent({
+  await persistProductEvent({
     event: "one_route_access",
     correlationId,
     tenant: "partner",
@@ -56,7 +57,7 @@ export default async function OneCenterLayout({ children }: { children: React.Re
   });
 
   if (!enabled) {
-    logTelemetryEvent({
+    await persistProductEvent({
       event: "one_route_fallback",
       correlationId,
       tenant: "partner",
