@@ -62,6 +62,10 @@ Nessun adapter di business: `/admin/feature-flags` (nuova pagina) e `lib/data/fe
 
 Nessun adapter di business: chiusura del debito P2 già registrato in `CORE_DOMAIN_SOURCE_OF_TRUTH.md` §8 (notifiche email Partner accetta/rifiuta senza stato di consegna). `lib/email.ts` estesa (non sostituita) con retry minimo (un secondo tentativo automatico) e logging esplicito; 3 colonne additive su `public.bookings` (`email_delivery_status`/`email_delivery_error`/`email_delivery_attempted_at`, `migration_19_bookings_email_delivery_status.sql`) per persistere l'esito dell'ultimo tentativo. Vedi DEC-49.
 
+## Aggiunti in Build Sprint 6 (in corso) — Fix bug reale TC-N414/N415 (Walkthrough Partner)
+
+Nessun adapter di business: correzione di una race condition client-side in `app/one/WalkthroughCard.tsx` (i tre handler del motore Walkthrough generico aggiornavano lo stato locale prima di attendere la conferma della Server Action) più un'inconsistenza minore in `app/actions/walkthrough.ts` (revalidava solo `/one`, mai `/center/one`/`/admin/one`). Nessuna tabella o colonna nuova. Vedi DEC-50.
+
 ## Prossimo aggiornamento previsto
 
 Alla chiusura di TRAMA ONE Build Sprint 6 (command center Admin, analytics, hardening walkthrough) — se quello sprint introduce ponti verso `beta_feedback`/`lib/analytics.ts` esistenti diversi da un semplice ADAPT, va registrato qui.
