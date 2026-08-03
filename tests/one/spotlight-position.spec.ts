@@ -57,6 +57,21 @@ test.describe("Spotlight — computePopoverPosition [no browser]", () => {
     expect(result.left).toBe(1280 - 320 - 12); // viewport.width - POPOVER_WIDTH - GAP
   });
 
+  test("clamp verticale: target non ancora scrollato in vista (top oltre la viewport) -> il popover resta comunque dentro i bordi", () => {
+    // Bug reale trovato da Fabrizio (Visual Acceptance Gate §15, righe 14/15,
+    // DEC-68): un target molto più in basso della viewport corrente (pagina
+    // non ancora scrollata) produceva un `top` calcolato oltre
+    // viewport.height, rendendo il popover "fixed" invisibile a qualunque
+    // scroll. Il chiamante deve comunque scrollare il target in vista PRIMA
+    // di chiamare questa funzione (fix primario) — questo test copre solo la
+    // rete di sicurezza aggiuntiva nella funzione pura.
+    const target = { top: 1200, left: 100, width: 120, height: 40 };
+    const viewport = { width: 1280, height: 800 };
+    const result = computePopoverPosition(target, viewport, 180);
+    expect(result.top).toBeGreaterThanOrEqual(12); // GAP
+    expect(result.top + 180).toBeLessThanOrEqual(viewport.height - 12); // GAP
+  });
+
   test("popoverHeight custom viene rispettato nel calcolo della soglia sotto/sopra", () => {
     const target = { top: 700, left: 100, width: 120, height: 40 };
     const viewport = { width: 1280, height: 900 };
