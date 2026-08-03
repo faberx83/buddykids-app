@@ -28,6 +28,7 @@ const navItems = [
   // TRAMA ONE Build Sprint 5 — coda CenterLead (J11, suggerimento centro non
   // iscritto): stessa lista flat, nessuna sotto-voce.
   { href: "/admin/center-leads", label: "Segnalazioni centri", icon: "ti-map-pin-plus" },
+  { href: "/admin/feature-flags", label: "Feature flag", icon: "ti-flag-3" },
 ];
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
