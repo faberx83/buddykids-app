@@ -95,3 +95,30 @@ export async function getWalkthroughAdminSummary(tutorialKey: string): Promise<W
   }
   return base;
 }
+
+/**
+ * TRAMA ONE Build Sprint 6 (E11 + hardening walkthrough, task #418) —
+ * conteggio dei riavvii del percorso, l'unica metrica che tutorial_progress
+ * non può dare (restartWalkthroughAction cancella le righe dell'utente, vedi
+ * app/actions/walkthrough.ts, quindi un riavvio è invisibile allo snapshot
+ * corrente ma resta come evento storico in product_events). SEMPRE
+ * best-effort: se product_events non esiste ancora (migration_20 non
+ * applicata) o la query fallisce per qualunque motivo, ritorna `null`
+ * (interpretato dal chiamante come "N/D"), mai un errore propagato — stessa
+ * filosofia non-bloccante di lib/telemetry/events.ts::persistProductEvent.
+ */
+export async function getWalkthroughRestartCount(tutorialKey: string): Promise<number | null> {
+  if (!isSupabaseConfigured) return null;
+  try {
+    const supabase = await createClient();
+    const { count, error } = await supabase
+      .from("product_events")
+      .select("id", { count: "exact", head: true })
+      .eq("event_name", "walkthrough_restarted")
+      .eq("detail", tutorialKey);
+    if (error) return null;
+    return count ?? 0;
+  } catch {
+    return null;
+  }
+}
