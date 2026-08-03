@@ -70,6 +70,10 @@ Nessun adapter di business: correzione di una race condition client-side in `app
 
 Nessun adapter di business: `lib/data/command-center.ts` aggrega SOLO letture già esistenti dei sette domini Admin (onboarding, prenotazioni, richieste, centri-lead, certificazioni, feedback BETA, feature flag) in `/admin/one` — nessuna nuova tabella, nessuna colonna, nessuna query SQL nuova. Le pagine per dominio restano invariate e sono l'unico punto d'azione reale (rollback gate esplicito). Vedi DEC-51.
 
+## Aggiunti in Build Sprint 6 (in corso) — Eventi analytics con correlationId (E11)
+
+Nessun adapter verso `lib/analytics.ts` (esplicitamente invariato, "affianca senza sostituire" per mandato di `SPRINT_GOVERNANCE.md`). Nuova tabella additiva `public.product_events` (`migration_20_product_events.sql`, non applicata) e nuovo modulo `lib/telemetry/events.ts::persistProductEvent()`, che estende — senza sostituire — `lib/telemetry/correlation.ts::logTelemetryEvent()` (Sprint 0, invariato, resta solo console). Whitelist `KNOWN_PRODUCT_EVENTS` isolata in `lib/telemetry/known-events.ts` (nessuna dipendenza I/O). Wiring: i tre layout `/one` (`one_route_access`/`one_route_fallback`), l'evento critico DEC-48 (`feature_flag_silent_fallback_expired_override`), e quattro nuovi eventi Walkthrough (`app/actions/walkthrough.ts`: started/completed/skipped/restarted). Vedi DEC-52.
+
 ## Prossimo aggiornamento previsto
 
-Alla chiusura di TRAMA ONE Build Sprint 6 (command center Admin, analytics, hardening walkthrough) — se quello sprint introduce ponti verso `beta_feedback`/`lib/analytics.ts` esistenti diversi da un semplice ADAPT, va registrato qui.
+Alla chiusura di TRAMA ONE Build Sprint 6 (hardening walkthrough, task #418) — se quel task introduce una lettura aggregata di `product_events` (es. funnel/drop-off per step), va registrato qui come primo consumatore reale della tabella introdotta da E11.
