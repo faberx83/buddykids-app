@@ -1,5 +1,6 @@
 import Link from "next/link";
-import { getWalkthroughAdminSummary } from "@/lib/walkthrough/data";
+import { getWalkthroughAdminSummary, getWalkthroughRestartCount } from "@/lib/walkthrough/data";
+import { computeWalkthroughFunnel } from "@/lib/walkthrough/funnel";
 import { getCommandCenterQueues, summarizeCommandCenterQueues } from "@/lib/data/command-center";
 import { QueuePriority } from "@/lib/command-center/priority";
 
@@ -26,11 +27,13 @@ const PRIORITY_COLOR: Record<QueuePriority, { bg: string; fg: string }> = {
 };
 
 export default async function OneAdminPage() {
-  const [queues, walkthroughSummary] = await Promise.all([
+  const [queues, walkthroughSummary, restartCount] = await Promise.all([
     getCommandCenterQueues(),
     getWalkthroughAdminSummary("welcome_parent"),
+    getWalkthroughRestartCount("welcome_parent"),
   ]);
   const summary = summarizeCommandCenterQueues(queues);
+  const funnel = computeWalkthroughFunnel(walkthroughSummary);
 
   return (
     <main style={{ padding: 24 }}>
@@ -88,25 +91,38 @@ export default async function OneAdminPage() {
       </div>
 
       <div style={{ marginTop: 28 }}>
-        <h2 style={{ fontSize: 15, fontWeight: 700, marginBottom: 8 }}>
-          Walkthrough &quot;Benvenuto in TRAMA ONE&quot; — avanzamento (visibilità minima)
+        <h2 style={{ fontSize: 15, fontWeight: 700, marginBottom: 4 }}>
+          Walkthrough &quot;Benvenuto in TRAMA ONE&quot; — avanzamento e funnel (Sprint 6, hardening)
         </h2>
+        <p style={{ fontSize: 12, color: "#8A93A3", marginBottom: 8 }}>
+          &quot;Raggiunti&quot; = utenti arrivati almeno a questo step; &quot;Abbandono&quot; = persi rispetto allo
+          step precedente (in corso, completato o saltato ma senza mai proseguire).
+          {restartCount !== null
+            ? ` Percorso ricominciato ${restartCount} volt${restartCount === 1 ? "a" : "e"} in totale.`
+            : " Conteggio riavvii non disponibile (richiede migration_20_product_events.sql applicata)."}
+        </p>
         <table style={{ borderCollapse: "collapse", fontSize: 13 }}>
           <thead>
             <tr>
               <th style={thStyle}>Step</th>
+              <th style={thStyle}>Raggiunti</th>
               <th style={thStyle}>In corso</th>
               <th style={thStyle}>Completato</th>
               <th style={thStyle}>Saltato</th>
+              <th style={thStyle}>Abbandono vs step prec.</th>
             </tr>
           </thead>
           <tbody>
-            {walkthroughSummary.map((s) => (
+            {funnel.map((s) => (
               <tr key={s.key}>
                 <td style={tdStyle}>{s.title}</td>
+                <td style={tdStyle}>{s.reached}</td>
                 <td style={tdStyle}>{s.inProgress}</td>
                 <td style={tdStyle}>{s.completed}</td>
                 <td style={tdStyle}>{s.skipped}</td>
+                <td style={tdStyle}>
+                  {s.dropOffFromPrevious === null ? "—" : `${s.dropOffFromPrevious} (${s.dropOffRatePercent}%)`}
+                </td>
               </tr>
             ))}
           </tbody>
