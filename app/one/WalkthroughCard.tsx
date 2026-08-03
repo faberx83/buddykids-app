@@ -126,23 +126,26 @@ export default function WalkthroughCard({ progress }: { progress: WalkthroughPro
   const stepPosition = currentIndex >= 0 ? currentIndex + 1 : steps.length;
   const doneCount = steps.filter((s) => s.status === "completed" || s.status === "skipped").length;
 
+  // CONTROLLED BETA EXPERIENCE GATE (§4-6, restyle shell prima del wiring) —
+  // sostituiti gli inline style con classi Tailwind/token del design system
+  // (trama-violet per la CTA primaria, stessa palette ink/ink-2 già in uso
+  // altrove, es. FeatureFlagsAdminClient.tsx/SegnalazioniClient.tsx). Zero
+  // cambi di comportamento, markup, id o testo dei pulsanti: gli attributi
+  // aria-describedby/aria-live/id="walkthrough-current-step-title" e i nomi
+  // accessibili esatti "Inizia"/"Continua"/"Salta per ora"/"Ricomincia il
+  // percorso" restano identici — i test Playwright esistenti
+  // (tests/one/walkthrough-partner.spec.ts, TC-N414/N415) li individuano per
+  // nome esatto via getByRole.
   return (
     <div
       role="region"
       aria-label={progress.title}
       aria-busy={busy}
-      style={{
-        marginTop: 16,
-        maxWidth: 480,
-        border: "1px solid #E8EBF0",
-        borderRadius: 10,
-        padding: 16,
-        background: "#fff",
-      }}
+      className="mt-4 max-w-[480px] rounded-md border border-[#E8EBF0] bg-white p-4"
     >
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
-        <strong>{progress.title}</strong>
-        <span style={{ fontSize: 12, color: "#8A93A3" }} aria-label={`${doneCount} di ${steps.length} step completati`}>
+      <div className="mb-2 flex items-center justify-between">
+        <strong className="font-poppins text-sm font-semibold text-ink">{progress.title}</strong>
+        <span className="text-xs text-ink-2" aria-label={`${doneCount} di ${steps.length} step completati`}>
           {doneCount}/{steps.length}
         </span>
       </div>
@@ -150,7 +153,7 @@ export default function WalkthroughCard({ progress }: { progress: WalkthroughPro
       <div aria-live="polite" aria-atomic="true">
         {!allDone && current && (
           <div>
-            <div style={{ fontSize: 12, color: "#8A93A3", marginBottom: 2 }}>
+            <div className="mb-0.5 text-xs text-ink-2">
               Passo {stepPosition} di {steps.length}
             </div>
             {/* id referenziato da aria-describedby sui pulsanti sotto: dà
@@ -163,17 +166,17 @@ export default function WalkthroughCard({ progress }: { progress: WalkthroughPro
                 titolo dello step (un aria-label, se presente, SOSTITUISCE
                 il nome accessibile calcolato dal contenuto testuale, non lo
                 estende). */}
-            <div id="walkthrough-current-step-title" style={{ fontWeight: 600, fontSize: 14 }}>
+            <div id="walkthrough-current-step-title" className="text-sm font-semibold text-ink">
               {current.title}
             </div>
-            <p style={{ fontSize: 13, color: "#555", margin: "4px 0 10px" }}>{current.description}</p>
-            <div style={{ display: "flex", gap: 8 }}>
+            <p className="my-1 mb-2.5 text-[13px] text-ink-2">{current.description}</p>
+            <div className="flex gap-2">
               {current.status === "not_started" ? (
                 <button
                   onClick={handleStart}
                   disabled={busy}
                   aria-describedby="walkthrough-current-step-title"
-                  style={primaryBtn}
+                  className="rounded-md bg-trama-violet px-3.5 py-2 text-[13px] font-bold text-white disabled:opacity-60"
                 >
                   Inizia
                 </button>
@@ -182,7 +185,7 @@ export default function WalkthroughCard({ progress }: { progress: WalkthroughPro
                   onClick={handleComplete}
                   disabled={busy}
                   aria-describedby="walkthrough-current-step-title"
-                  style={primaryBtn}
+                  className="rounded-md bg-trama-violet px-3.5 py-2 text-[13px] font-bold text-white disabled:opacity-60"
                 >
                   Continua
                 </button>
@@ -191,7 +194,7 @@ export default function WalkthroughCard({ progress }: { progress: WalkthroughPro
                 onClick={handleSkip}
                 disabled={busy}
                 aria-describedby="walkthrough-current-step-title"
-                style={secondaryBtn}
+                className="rounded-md border border-[#E8EBF0] bg-transparent px-3.5 py-2 text-[13px] font-semibold text-ink disabled:opacity-60"
               >
                 Salta per ora
               </button>
@@ -201,8 +204,12 @@ export default function WalkthroughCard({ progress }: { progress: WalkthroughPro
 
         {allDone && (
           <div>
-            <p style={{ fontSize: 13, color: "#555" }}>Hai completato questo percorso.</p>
-            <button onClick={handleRestart} disabled={busy} style={secondaryBtn}>
+            <p className="text-[13px] text-ink-2">Hai completato questo percorso.</p>
+            <button
+              onClick={handleRestart}
+              disabled={busy}
+              className="rounded-md border border-[#E8EBF0] bg-transparent px-3.5 py-2 text-[13px] font-semibold text-ink disabled:opacity-60"
+            >
               Ricomincia il percorso
             </button>
           </div>
@@ -211,25 +218,3 @@ export default function WalkthroughCard({ progress }: { progress: WalkthroughPro
     </div>
   );
 }
-
-const primaryBtn: React.CSSProperties = {
-  background: "#2E86DE",
-  color: "#fff",
-  border: "none",
-  borderRadius: 6,
-  padding: "8px 14px",
-  fontSize: 13,
-  fontWeight: 700,
-  cursor: "pointer",
-};
-
-const secondaryBtn: React.CSSProperties = {
-  background: "transparent",
-  color: "#333",
-  border: "1px solid #E8EBF0",
-  borderRadius: 6,
-  padding: "8px 14px",
-  fontSize: 13,
-  fontWeight: 600,
-  cursor: "pointer",
-};
