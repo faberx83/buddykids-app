@@ -97,7 +97,14 @@ test.describe("TRAMA ONE — Command Center Admin (Sprint 6, E08)", () => {
     // La sezione Walkthrough preesistente (Sprint 1) deve restare visibile:
     // il Command Center è additivo, non ha rimosso capability esistenti
     // (DEC-15, nessuna dismissione senza approvazione esplicita).
-    await expect(page.getByText('Walkthrough "Benvenuto in TRAMA ONE" — avanzamento (visibilità minima)')).toBeVisible();
+    // TRAMA ONE Build Sprint 6 (hardening walkthrough, task #418) — la
+    // sezione Walkthrough è stata estesa con funnel/drop-off (vedi
+    // tests/one/walkthrough-funnel.spec.ts), il titolo esatto è cambiato di
+    // conseguenza; resta comunque visibile sotto le code del Command
+    // Center, invariante verificata da questo stesso test.
+    await expect(
+      page.getByText('Walkthrough "Benvenuto in TRAMA ONE" — avanzamento e funnel (Sprint 6, hardening)')
+    ).toBeVisible();
 
     // Ogni coda deve linkare alla pagina Admin per dominio già esistente
     // (rollback gate: nessuna pagina viene sostituita).
