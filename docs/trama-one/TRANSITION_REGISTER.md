@@ -54,6 +54,10 @@ Nessun vero adapter di business verso `invites`/`profiles`: `center_leads` (migr
 
 Nessun vero adapter di business: `lib/capacity/service.ts` centralizza logica già esistente (decremento/incremento `activity_weeks`/`activity_days.spots_left`), non introduce un ponte verso uno stato AS-IS preesistente — è un refactoring additivo di codice già scritto in Sprint 2-4, non un adapter nel senso Master Prompt. L'unica colonna nuova è `booking_weeks.capacity_decremented` (migration_18), simmetrica a `booking_days.capacity_decremented` già esistente. Vedi DEC-47 per il dettaglio del bug reale chiuso (rilascio capacità mancante su `cancelBookingAction`).
 
+## Aggiunti in Build Sprint 6 (in corso) — Feature flag override expiry
+
+Nessun adapter di business: `/admin/feature-flags` (nuova pagina) e `lib/data/feature-flag-overrides.ts`/`app/actions/feature-flag-overrides.ts` (nuovi) sono un normale CRUD Admin su `feature_flag_overrides`, tabella già esistente da Sprint 0 — nessuna nuova tabella, nessuna colonna nuova. `lib/feature-flags/evaluate.ts`/`resolve.ts` estesi (non sostituiti) con `findRecentlyExpiredMatchingOverride` e un evento di telemetria aggiuntivo. Vedi DEC-48.
+
 ## Prossimo aggiornamento previsto
 
 Alla chiusura di TRAMA ONE Build Sprint 6 (command center Admin, analytics, hardening walkthrough) — se quello sprint introduce ponti verso `beta_feedback`/`lib/analytics.ts` esistenti diversi da un semplice ADAPT, va registrato qui.
