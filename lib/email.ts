@@ -24,9 +24,23 @@ export interface SendEmailInput {
   html: string;
 }
 
-export async function sendEmail(input: SendEmailInput): Promise<{ error?: string }> {
-  if (!RESEND_API_KEY) return { error: "not_configured" };
+// TRAMA ONE Build Sprint 6 (backlog vincolante P2, "email fire-and-forget",
+// SPRINT_GOVERNANCE.md riga 151 / CORE_DOMAIN_SOURCE_OF_TRUTH.md §8) —
+// prima di questo sprint un fallimento di rete/Resend spariva nel nulla: un
+// singolo tentativo, nessun log, nessuno stato persistito. Qui si aggiunge
+// SOLO il "retry minimo" richiesto esplicitamente dal backlog ("anche solo
+// un secondo tentativo automatico prima di arrendersi") + logging esplicito
+// su fallimento — il numero di tentativi (`attempts`) è un campo aggiuntivo
+// sul risultato, non sostituisce `error`, quindi tutti i call site esistenti
+// che fanno `const { error } = await sendEmail(...)` restano invariati.
+export interface SendEmailResult {
+  error?: string;
+  attempts: number;
+}
 
+const RETRY_DELAY_MS = 400;
+
+async function attemptSend(input: SendEmailInput): Promise<{ error?: string }> {
   try {
     const res = await fetch("https://api.resend.com/emails", {
       method: "POST",
@@ -49,4 +63,26 @@ export async function sendEmail(input: SendEmailInput): Promise<{ error?: string
   } catch (e) {
     return { error: e instanceof Error ? e.message : "Errore di rete nell'invio email" };
   }
+}
+
+export async function sendEmail(input: SendEmailInput): Promise<SendEmailResult> {
+  if (!RESEND_API_KEY) return { error: "not_configured", attempts: 0 };
+
+  let result = await attemptSend(input);
+  if (!result.error) return { attempts: 1 };
+
+  console.error(
+    `[email] Primo tentativo di invio fallito (to=${input.to}, subject="${input.subject}"): ${result.error}. Riprovo una volta...`
+  );
+  await new Promise((resolve) => setTimeout(resolve, RETRY_DELAY_MS));
+  result = await attemptSend(input);
+
+  if (result.error) {
+    console.error(
+      `[email] Secondo tentativo fallito (to=${input.to}, subject="${input.subject}"): ${result.error}. Rinuncio dopo 2 tentativi.`
+    );
+    return { error: result.error, attempts: 2 };
+  }
+  console.info(`[email] Invio riuscito al secondo tentativo (to=${input.to}, subject="${input.subject}").`);
+  return { attempts: 2 };
 }
