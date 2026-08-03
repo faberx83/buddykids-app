@@ -1,27 +1,93 @@
 import Link from "next/link";
 import { getWalkthroughAdminSummary } from "@/lib/walkthrough/data";
+import { getCommandCenterQueues, summarizeCommandCenterQueues } from "@/lib/data/command-center";
+import { QueuePriority } from "@/lib/command-center/priority";
 
 // Dipende dal ruolo dell'utente loggato (visibilità aggregata solo per
-// platform_admin, applicata dalla RLS di tutorial_progress) — stessa
-// motivazione delle altre pagine /one già forzate a dynamic.
+// platform_admin, applicata dalla RLS di tutorial_progress/onboarding/ecc.)
+// — stessa motivazione delle altre pagine /one già forzate a dynamic.
 export const dynamic = "force-dynamic";
 
-// TRAMA ONE — Admin. Sprint 0: shell/foundation. Sprint 1: coda di revisione
-// onboarding centri + visibilità minima sul motore Walkthrough, collegate da
-// qui (command center completo resta Sprint 6, fuori scope).
+// TRAMA ONE Build Sprint 6 (E08, ACR-001/008/015, DEC-51) — Command Center
+// Admin: prima di questo sprint questa pagina era solo un placeholder con
+// due link ("command center completo resta Sprint 6, fuori scope" — vedi
+// git history). Ora aggrega le code operative già esistenti nei sette
+// domini Admin (onboarding, prenotazioni, richieste, centri-lead,
+// certificazioni, segnalazioni BETA, feature flag) in un'unica vista
+// prioritizzata (lib/data/command-center.ts) — nessuna delle pagine per
+// dominio viene toccata o sostituita, restano l'unico posto dove l'Admin
+// AGISCE davvero (Separation of duties, Handbook Admin 1.1 §1.2): questa
+// pagina è solo un punto di ingresso più rapido con priorità già calcolata.
+const PRIORITY_LABEL: Record<QueuePriority, string> = { alta: "Alta", media: "Media", bassa: "Bassa" };
+const PRIORITY_COLOR: Record<QueuePriority, { bg: string; fg: string }> = {
+  alta: { bg: "#FDECEA", fg: "#C0392B" },
+  media: { bg: "#FFF6E5", fg: "#B7791F" },
+  bassa: { bg: "#EAF7EE", fg: "#2E7D46" },
+};
+
 export default async function OneAdminPage() {
-  const walkthroughSummary = await getWalkthroughAdminSummary("welcome_parent");
+  const [queues, walkthroughSummary] = await Promise.all([
+    getCommandCenterQueues(),
+    getWalkthroughAdminSummary("welcome_parent"),
+  ]);
+  const summary = summarizeCommandCenterQueues(queues);
 
   return (
     <main style={{ padding: 24 }}>
       <h1>TRAMA ONE — Admin</h1>
-      <p>
-        <Link href="/admin/one/onboarding" style={{ color: "#2E86DE", fontWeight: 600 }}>
-          Vai alla revisione onboarding centri →
-        </Link>
+      <p style={{ color: "#555", fontSize: 13, marginTop: 4 }}>
+        Command Center: {summary.totalOpen} elementi in sospeso su tutte le code
+        {summary.criticalQueueCount > 0
+          ? `, ${summary.criticalQueueCount} coda${summary.criticalQueueCount === 1 ? "" : "e"} in priorità alta`
+          : ""}
+        .
       </p>
 
-      <div style={{ marginTop: 20 }}>
+      <div style={{ marginTop: 16, display: "grid", gap: 10 }}>
+        {queues.map((q) => {
+          const colors = PRIORITY_COLOR[q.priority];
+          return (
+            <Link
+              key={q.key}
+              href={q.href}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                gap: 12,
+                padding: "12px 16px",
+                border: "1px solid #E8EBF0",
+                borderRadius: 8,
+                textDecoration: "none",
+                color: "inherit",
+                background: "#fff",
+              }}
+            >
+              <div>
+                <div style={{ fontWeight: 600, fontSize: 14 }}>{q.label}</div>
+                {q.detail && <div style={{ fontSize: 12, color: "#8A93A3", marginTop: 2 }}>{q.detail}</div>}
+              </div>
+              <div style={{ display: "flex", alignItems: "center", gap: 10, flexShrink: 0 }}>
+                <span
+                  style={{
+                    fontSize: 11,
+                    fontWeight: 700,
+                    padding: "2px 8px",
+                    borderRadius: 999,
+                    background: colors.bg,
+                    color: colors.fg,
+                  }}
+                >
+                  {PRIORITY_LABEL[q.priority]}
+                </span>
+                <span style={{ fontSize: 18, fontWeight: 700, minWidth: 28, textAlign: "right" }}>{q.count}</span>
+              </div>
+            </Link>
+          );
+        })}
+      </div>
+
+      <div style={{ marginTop: 28 }}>
         <h2 style={{ fontSize: 15, fontWeight: 700, marginBottom: 8 }}>
           Walkthrough &quot;Benvenuto in TRAMA ONE&quot; — avanzamento (visibilità minima)
         </h2>
