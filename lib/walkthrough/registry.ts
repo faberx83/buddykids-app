@@ -30,6 +30,18 @@ export interface WalkthroughStepDefinition {
   // vecchio WalkthroughCard testuale — nessuna regressione, puro opt-in.
   spotlightTarget?: string;
   spotlightRoute?: string;
+  // Visual Acceptance Gate (§15, DEC-69) — bug reale trovato da Fabrizio:
+  // quando il target reale di uno step vive su una pagina DIVERSA da quella
+  // corrente (es. "Configura i Giorni spot" richiede di navigare dalla
+  // scheda di modifica al Calendario disponibilità), il badge "target non
+  // trovato" mostrava solo del testo — nessuna azione cliccabile, l'utente
+  // doveva indovinare dove andare. Campo opzionale: quando presente, il
+  // badge aggiunge un link REALE verso `pathname corrente + suffix`.
+  // Deliberatamente semplice (un suffisso relativo al pathname corrente, non
+  // un href assoluto): un solo caso d'uso reale oggi (edit -> calendar dello
+  // STESSO id attività), non serve un meccanismo più generico finché non ne
+  // emerge un secondo.
+  spotlightMissingHint?: { suffix: string; label: string };
 }
 
 export interface WalkthroughDefinition {
@@ -70,6 +82,16 @@ export const WALKTHROUGH_REGISTRY: Record<string, WalkthroughDefinition> = {
   // logica di business duplicata qui: il percorso è solo una checklist
   // guidata, la scrittura reale resta in ActivityEditForm.tsx/
   // saveActivityDaysAction, invariati da questo sprint).
+  // Visual Acceptance Gate (§15, DEC-69) — ordine e testi rivisti dopo il
+  // riscontro di Fabrizio: la sequenza precedente (configure_spot_days
+  // PRIMA di publish) obbligava a rimbalzare tra due pagine (modifica ->
+  // calendario -> di nuovo modifica per salvare) senza che la ragione fosse
+  // evidente, e 2 step avevano una descrizione che non corrispondeva
+  // all'elemento realmente evidenziato (vedi commenti sui singoli step
+  // sotto). Nuovo ordine, che segue il percorso naturale del form: crea ->
+  // informazioni di base -> servizi extra -> pubblica (salva) -> Giorni
+  // spot (richiede di aprire un'altra pagina, ora con un link esplicito,
+  // vedi spotlightMissingHint) -> dashboard.
   activity_creation_partner: {
     key: "activity_creation_partner",
     title: "Pubblica la tua prima attività",
@@ -81,26 +103,29 @@ export const WALKTHROUGH_REGISTRY: Record<string, WalkthroughDefinition> = {
         spotlightTarget: "create_activity",
         spotlightRoute: "/center/activities",
       },
+      // Il target reale (data-spotlight="configure_weeks") è la card
+      // "Informazioni generali" di ActivityEditForm.tsx — NON contiene
+      // "settimane disponibili"/"capacità" (quello vive nel Calendario
+      // disponibilità, step successivo di Giorni spot): testo corretto per
+      // descrivere ciò che l'utente vede davvero in questa card, la chiave
+      // tecnica ("configure_weeks") resta invariata per non rompere lo
+      // storico di tutorial_progress già scritto.
       {
         key: "configure_weeks",
-        title: "Configura le settimane",
-        description: "Imposta le settimane disponibili, la capacità e il prezzo a settimana.",
+        title: "Informazioni di base",
+        description: "Compila nome, fascia d'età, prezzo a settimana e descrizione dell'attività.",
         spotlightTarget: "configure_weeks",
         spotlightRoute: "/center/activities/*",
       },
+      // Il target reale (data-spotlight="configure_pricing") è la card
+      // "Servizi extra e pasto" — non contiene "prezzo"/"navetta" (quelli
+      // sono nella card precedente): testo corretto di conseguenza.
       {
         key: "configure_pricing",
-        title: "Rivedi prezzi e servizi",
-        description: "Controlla prezzo, navetta, pasto e servizi extra (ingresso anticipato/uscita posticipata).",
+        title: "Servizi extra e pasto",
+        description: "Configura ingresso anticipato, uscita posticipata e l'opzione pasto per questa attività.",
         spotlightTarget: "configure_pricing",
         spotlightRoute: "/center/activities/*",
-      },
-      {
-        key: "configure_spot_days",
-        title: "Configura i Giorni spot",
-        description: "Apri il Calendario disponibilità e scegli quali giorni sono prenotabili singolarmente, con eventuale sconto o minimo giorni.",
-        spotlightTarget: "configure_spot_days",
-        spotlightRoute: "/center/activities/*/calendar",
       },
       {
         key: "publish",
@@ -108,6 +133,19 @@ export const WALKTHROUGH_REGISTRY: Record<string, WalkthroughDefinition> = {
         description: "Salva la scheda: da questo momento è visibile ai genitori in ricerca.",
         spotlightTarget: "publish",
         spotlightRoute: "/center/activities/*",
+      },
+      // Dopo aver salvato si resta sulla pagina di modifica: il target reale
+      // di questo step vive sul Calendario disponibilità (altra pagina),
+      // raggiungibile SOLO scrivendo l'URL a mano finché non c'è un link
+      // esplicito — spotlightMissingHint aggiunge quel link al badge
+      // "target non trovato" mostrato sulla pagina di modifica.
+      {
+        key: "configure_spot_days",
+        title: "Configura i Giorni spot",
+        description: "Apri il Calendario disponibilità e scegli quali giorni sono prenotabili singolarmente, con eventuale sconto o minimo giorni.",
+        spotlightTarget: "configure_spot_days",
+        spotlightRoute: "/center/activities/*/calendar",
+        spotlightMissingHint: { suffix: "/calendar", label: "Vai al Calendario disponibilità →" },
       },
       {
         key: "dashboard",
