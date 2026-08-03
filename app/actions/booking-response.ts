@@ -15,6 +15,11 @@ import { createClient } from "@/lib/supabase/server";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
 import { revalidatePath } from "next/cache";
 import { sendEmail, isEmailConfigured } from "@/lib/email";
+// TRAMA ONE Build Sprint 6 (backlog vincolante P1, Capacity) — reserve/release
+// centralizzati in lib/capacity/service.ts, con idempotenza esplicita
+// (booking_weeks/booking_days.capacity_decremented) invece della logica
+// sparsa qui prima presente. Vedi migration_18_capacity_service.sql.
+import { releaseDayCapacity, reserveDayCapacity, reserveWeekCapacity } from "@/lib/capacity/service";
 
 // TRAMA ONE Build Sprint 4 (DEC-42, PCR-029 P0) — notifica email al genitore
 // quando il centro risponde a una prenotazione, stesso pattern best-effort
@@ -137,32 +142,19 @@ export async function respondToBookingAction(input: {
 
   await notifyParentOfBookingResponse(supabase, input.bookingId, input.decision, input.proposalNote);
 
-  // Decremento capacità settimanale, solo su accettazione, solo se non già
-  // fatto (idempotenza equivalente a booking_days.capacity_decremented, qui
-  // verificata leggendo booking_weeks -> activity_weeks.spots_left invece di
-  // un flag dedicato: non esiste un flag per-settimana perché
-  // updateBookingWeeksAction già sostituisce l'intero set di righe, quindi
-  // una singola risposta accettata non può essere rieseguita due volte sulla
-  // stessa riga booking_weeks senza passare di nuovo da qui con lo stesso
-  // status — il controllo booking.partner_decision !== "accepted" sopra (già
-  // verificato) evita il doppio decremento).
+  // Decremento capacità settimanale, solo su accettazione — ora delegato al
+  // servizio canonico (lib/capacity/service.ts), che verifica ESSO STESSO
+  // l'idempotenza per riga (booking_weeks.capacity_decremented, migration_18)
+  // invece di fare affidamento solo sul controllo booking.partner_decision
+  // qui sopra: due risposte quasi simultanee sulla stessa riga non possono
+  // più decrementare due volte.
   if (input.decision === "accepted" && booking.partner_decision !== "accepted") {
     const { data: weeks } = await supabase
       .from("booking_weeks")
       .select("week_id")
       .eq("booking_id", input.bookingId);
     for (const w of weeks ?? []) {
-      const { data: activityWeek } = await supabase
-        .from("activity_weeks")
-        .select("spots_left")
-        .eq("id", w.week_id)
-        .single();
-      if (activityWeek && activityWeek.spots_left > 0) {
-        await supabase
-          .from("activity_weeks")
-          .update({ spots_left: activityWeek.spots_left - 1 })
-          .eq("id", w.week_id);
-      }
+      await reserveWeekCapacity(supabase, input.bookingId, w.week_id);
     }
   }
 
@@ -204,27 +196,11 @@ export async function respondToBookingDayAction(input: {
     .eq("activity_day_id", input.activityDayId);
   if (error) return { error: error.message };
 
-  // Decremento capacità del giorno (activity_days.spots_left), solo su
-  // accettazione e solo se non già fatto — guard di idempotenza esplicito
-  // (capacity_decremented), a differenza delle settimane sopra dove non
-  // esiste un flag dedicato.
+  // Decremento capacità del giorno, ora delegato al servizio canonico
+  // (lib/capacity/service.ts) — stesso comportamento di prima (idempotenza
+  // via booking_days.capacity_decremented), solo centralizzato.
   if (input.decision === "accepted" && !day.capacity_decremented) {
-    const { data: activityDay } = await supabase
-      .from("activity_days")
-      .select("spots_left")
-      .eq("id", input.activityDayId)
-      .single();
-    if (activityDay && activityDay.spots_left > 0) {
-      await supabase
-        .from("activity_days")
-        .update({ spots_left: activityDay.spots_left - 1 })
-        .eq("id", input.activityDayId);
-    }
-    await supabase
-      .from("booking_days")
-      .update({ capacity_decremented: true })
-      .eq("booking_id", input.bookingId)
-      .eq("activity_day_id", input.activityDayId);
+    await reserveDayCapacity(supabase, input.bookingId, input.activityDayId);
   }
 
   // Notifica/badge a livello di intera prenotazione, coerente col pattern
@@ -293,19 +269,11 @@ export async function cancelBookingDayAction(input: {
   if (booking.status === "cancelled") return { error: "Questa prenotazione è già stata annullata" };
 
   // Ripristina la capacità se era stata decrementata (accettazione revocata
-  // dalla cancellazione).
+  // dalla cancellazione) — delegato al servizio canonico, che clampa il
+  // rilascio a `capacity` (mai sopra il totale posti), invarianza esplicita
+  // richiesta dal backlog vincolante Sprint 6.
   if (day.capacity_decremented) {
-    const { data: activityDay } = await supabase
-      .from("activity_days")
-      .select("spots_left")
-      .eq("id", input.activityDayId)
-      .single();
-    if (activityDay) {
-      await supabase
-        .from("activity_days")
-        .update({ spots_left: activityDay.spots_left + 1 })
-        .eq("id", input.activityDayId);
-    }
+    await releaseDayCapacity(supabase, input.bookingId, input.activityDayId);
   }
 
   const { error: delError } = await supabase
