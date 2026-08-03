@@ -334,7 +334,18 @@ test.describe("TRAMA ONE Sprint 6 — Admin /admin/feature-flags [UI]", () => {
     await expect(page.getByText("Feature flag — Override")).toBeVisible();
     await expect(page.getByText("TRAMA_ONE_ENABLED")).toBeVisible();
 
-    const card = page.locator("div").filter({ hasText: "TRAMA_ONE_ENABLED" }).last();
+    // ".first()", non ".last()": "div" (locator generico) matcha OGNI div
+    // annidato il cui testo complessivo contiene "TRAMA_ONE_ENABLED" — non
+    // solo la card intera (il div più esterno, che contiene anche il
+    // <select>), ma anche i div via via più interni fino al singolo div che
+    // avvolge solo il nome del flag. L'ordine dei match segue l'ordine del
+    // documento (antenati prima dei discendenti), quindi ".first()" è il div
+    // più esterno (la card completa) mentre ".last()" è il div più interno
+    // e più piccolo — che qui non contiene affatto il <select>, causando un
+    // timeout. Root cause di TC-N609 (bug del test, non del prodotto: la
+    // pagina Admin renderizza il <select> correttamente, verificato dallo
+    // snapshot di accessibilità catturato al fallimento).
+    const card = page.locator("div").filter({ hasText: "TRAMA_ONE_ENABLED" }).first();
     await card.locator("select").selectOption("user");
     await card.getByPlaceholder(/valore \(userId/).fill(FAKE_TEST_USER_ID);
     await card.getByRole("button", { name: "Aggiungi override" }).click();
@@ -342,8 +353,21 @@ test.describe("TRAMA ONE Sprint 6 — Admin /admin/feature-flags [UI]", () => {
     // createOverride() ricarica la pagina dopo il successo (vedi
     // FeatureFlagsAdminClient.tsx) — riattendiamo il caricamento e la riga
     // con lo scope_value appena creato.
+    //
+    // Qui ".first()" da solo NON basta: TRAMA_ONE_ENABLED ha già un override
+    // "global" preesistente (con il suo bottone "Elimina"), quindi il div
+    // più esterno che contiene il testo univoco `user: ${FAKE_TEST_USER_ID}`
+    // (la card intera) contiene ANCHE quel bottone estraneo — ambiguo per
+    // "Elimina". Filtriamo per i soli div che hanno un discendente "Elimina"
+    // (esclude il div troppo interno che ha il testo ma non il bottone),
+    // poi ".last()" tra questi prende il più piccolo che li ha entrambi: la
+    // riga esatta del nuovo override, non l'intera card.
     await page.waitForLoadState("networkidle");
-    const row = page.locator("div").filter({ hasText: `user: ${FAKE_TEST_USER_ID}` }).last();
+    const row = card
+      .locator("div")
+      .filter({ hasText: `user: ${FAKE_TEST_USER_ID}` })
+      .filter({ has: page.getByRole("button", { name: "Elimina" }) })
+      .last();
     await expect(row).toBeVisible({ timeout: 10_000 });
     await expect(row.getByText("Senza scadenza")).toBeVisible();
 
