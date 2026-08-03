@@ -8,11 +8,25 @@ import { getGestoreAccountProfile } from "@/lib/data/profile";
 import { getUnreadCountForCenter } from "@/lib/data/inquiries";
 import { getUnconfirmedParentCheckinsCount } from "@/lib/data/attendance";
 import { getUnreadBookingsCountForCenter } from "@/lib/data/center-bookings";
+import { resolveFeatureFlag } from "@/lib/feature-flags/resolve";
+import { generateCorrelationId } from "@/lib/telemetry/correlation";
+import { getWalkthroughProgress, WalkthroughProgressSummary } from "@/lib/walkthrough/data";
+import PartnerSpotlight from "@/components/spotlight/PartnerSpotlight";
 
 export default async function CenterLayout({ children }: { children: React.ReactNode }) {
   // Con Supabase collegato, il ruolo reale (da profiles.role) sostituisce del
   // tutto il selettore "ruolo demo" per decidere l'accesso a questa sezione.
   let realRole: Role | null | undefined;
+  // CONTROLLED BETA EXPERIENCE GATE (§7-14, DEC-58) — il vero Spotlight vive
+  // ora qui (persiste su OGNI pagina Partner, non solo sulla shell orfana
+  // /center/one) ma NON deve mai apparire fuori dalla coorte Controlled
+  // Beta: a differenza del resto di questo layout (invariato, Legacy/NextGen
+  // per COSTRUZIONE non gated, DEC-02), il solo overlay Spotlight è
+  // condizionato a TRAMA_ONE_ENABLED risolto per l'utente corrente — stesso
+  // resolver già usato da app/center/one/layout.tsx, qui applicato in modo
+  // additivo (nessun redirect, nessun blocco: se il flag risolve a false,
+  // spotlightProgress resta null e PartnerSpotlight non renderizza nulla).
+  let spotlightProgress: WalkthroughProgressSummary | null = null;
 
   if (isSupabaseConfigured) {
     const supabase = await createClient();
@@ -28,6 +42,17 @@ export default async function CenterLayout({ children }: { children: React.React
       .single();
 
     realRole = (profile?.role as Role) ?? "parent";
+
+    const enabled = await resolveFeatureFlag({
+      flagName: "TRAMA_ONE_ENABLED",
+      userId: user.id,
+      role: realRole,
+      tenant: "center",
+      correlationId: generateCorrelationId(),
+    });
+    if (enabled) {
+      spotlightProgress = await getWalkthroughProgress(user.id, "activity_creation_partner");
+    }
   }
 
   // Badge rosso sulla voce "Richieste Gruppo" col conteggio in attesa —
@@ -74,7 +99,16 @@ export default async function CenterLayout({ children }: { children: React.React
   // "Presenze" (Registro + Report, la coppia che Fabrizio ha approvato come
   // esempio), "Richieste" (Gruppo + ticketing genitori, stesso concetto).
   const navItems = [
-    { href: "/center", label: "Dashboard", icon: "ti-layout-dashboard", sectionLabel: "Oggi" },
+    {
+      href: "/center",
+      label: "Dashboard",
+      icon: "ti-layout-dashboard",
+      sectionLabel: "Oggi",
+      // CONTROLLED BETA EXPERIENCE GATE (§7-14) — ultimo step del percorso
+      // "activity_creation_partner" (registry.ts): il target reale è questa
+      // voce di menu, sempre presente, non una pagina specifica.
+      spotlightTarget: "dashboard",
+    },
 
     { href: "/center/profile", label: "Il mio centro", icon: "ti-building", sectionLabel: "Attività" },
     { href: "/center/activities", label: "Attività", icon: "ti-list-details", sectionLabel: "Attività" },
@@ -149,6 +183,7 @@ export default async function CenterLayout({ children }: { children: React.React
       accountAvatarUrl={gestoreProfile.avatarUrl}
     >
       {children}
+      <PartnerSpotlight progress={spotlightProgress} />
     </DashboardLayout>
   );
 }
