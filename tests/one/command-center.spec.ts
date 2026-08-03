@@ -117,4 +117,31 @@ test.describe("TRAMA ONE — Command Center Admin (Sprint 6, E08)", () => {
       "/admin/feature-flags"
     );
   });
+
+  // CONTROLLED BETA EXPERIENCE GATE (§3/§16, DEC-58/DEC-61) — fase E
+  // (wiring): fino a questo momento /admin/one era raggiungibile solo per
+  // digitazione diretta dell'URL (verificato da TC-N304/TC-N611), MAI da
+  // una voce di menu — il gap era esplicitamente noto e documentato in
+  // DEC-58 ("da cablare... SOLO dopo il restyle"). Il restyle è chiuso
+  // (DEC-59), quindi la voce "Command Center" è stata aggiunta al menu
+  // Admin (app/admin/layout.tsx), condizionata a TRAMA_ONE_ENABLED come
+  // ogni altro accesso a questa route.
+  test("TC-N418 - Admin: la voce 'Command Center' compare nel menu quando il flag è attivo e porta a /admin/one", async ({
+    page,
+  }) => {
+    test.skip(
+      !isRealDeployment,
+      "Richiede un deploy con Supabase configurato e l'account platform_admin di test."
+    );
+
+    await loginAs(page, "platform_admin");
+    await page.goto("/admin");
+
+    const navLink = page.getByRole("link", { name: "Command Center" });
+    await expect(navLink).toBeVisible();
+    await expect(navLink).toHaveAttribute("href", "/admin/one");
+
+    await navLink.click();
+    await expect(page).toHaveURL(/\/admin\/one$/);
+  });
 });
