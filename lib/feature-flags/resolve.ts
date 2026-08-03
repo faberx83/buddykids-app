@@ -18,6 +18,7 @@ import { evaluateFlag, findRecentlyExpiredMatchingOverride, FeatureFlagContext, 
 import { isKnownFlag } from "./registry";
 import { getActiveCohortKeys } from "@/lib/beta-cohorts/membership";
 import { logTelemetryEvent } from "@/lib/telemetry/correlation";
+import { persistProductEvent } from "@/lib/telemetry/events";
 
 export interface ResolveFeatureFlagParams {
   flagName: string;
@@ -113,7 +114,13 @@ export async function resolveFeatureFlag(params: ResolveFeatureFlagParams): Prom
     if (!result) {
       const recentlyExpired = findRecentlyExpiredMatchingOverride(context, overrides, now);
       if (recentlyExpired) {
-        logTelemetryEvent({
+        // TRAMA ONE Build Sprint 6 (E11) — persistProductEvent() invece di
+        // logTelemetryEvent(): questo evento specifico (DEC-48, override
+        // scaduto che poteva sembrare una decisione deliberata) è
+        // esattamente il caso che il task E11 doveva rendere
+        // interrogabile/durevole, non solo visibile per un istante nei log
+        // del processo Vercel.
+        await persistProductEvent({
           event: "feature_flag_silent_fallback_expired_override",
           correlationId,
           tenant,
