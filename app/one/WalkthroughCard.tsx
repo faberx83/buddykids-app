@@ -34,29 +34,60 @@ export default function WalkthroughCard({ progress }: { progress: WalkthroughPro
     setCurrentKey(next?.key ?? null);
   }
 
+  // TRAMA ONE Build Sprint 6 (backlog vincolante P2, TC-N414/N415,
+  // SPRINT_GOVERNANCE.md riga 152, DEC-50) — bug reale trovato con evidenza
+  // diretta (lettura del codice, non ipotesi): i tre handler sotto
+  // aggiornavano lo stato locale (setStepStatus/nextStepAfter) PRIMA di
+  // attendere la Server Action corrispondente, un pattern "ottimistico"
+  // diverso dalla convenzione già stabilita altrove nel repository (vedi
+  // CenterLeadsAdminClient.tsx: "patcha lo stato locale SOLO dopo il
+  // successo della action"). Click .click() di Playwright si risolve subito
+  // dopo aver dispatchato l'evento, non attende che la Promise ritornata
+  // dall'handler onClick sia risolta: il bottone passava a "Continua"
+  // (localmente) ben prima che l'upsert su tutorial_progress arrivasse
+  // davvero a Supabase. Se il test ricaricava la pagina (page.reload(),
+  // fonte di verità = Server Component + DB) prima che l'upsert fosse
+  // confermato, il passo tornava "not_started" — esattamente il fallimento
+  // intermittente osservato per due run consecutive (Gate C, nona/decima
+  // ondata) nonostante la serializzazione del file di test (che risolve solo
+  // l'ordine TRA i due test, non la corsa DENTRO il singolo test). Bug reale
+  // anche per un utente vero, non solo per il test: in caso di rete lenta o
+  // errore, l'interfaccia mostrava un progresso mai davvero salvato.
   async function handleStart() {
     if (!current) return;
     setBusy(true);
-    setStepStatus(current.key, "in_progress");
-    await startWalkthroughStepAction(progress.tutorialKey, current.key);
+    const result = await startWalkthroughStepAction(progress.tutorialKey, current.key);
+    if (!result.error) {
+      setStepStatus(current.key, "in_progress");
+    } else {
+      console.error("[walkthrough] Impossibile avviare lo step:", result.error);
+    }
     setBusy(false);
   }
 
   async function handleComplete() {
     if (!current) return;
     setBusy(true);
-    setStepStatus(current.key, "completed");
-    await completeWalkthroughStepAction(progress.tutorialKey, current.key);
-    nextStepAfter(current.key);
+    const result = await completeWalkthroughStepAction(progress.tutorialKey, current.key);
+    if (!result.error) {
+      setStepStatus(current.key, "completed");
+      nextStepAfter(current.key);
+    } else {
+      console.error("[walkthrough] Impossibile completare lo step:", result.error);
+    }
     setBusy(false);
   }
 
   async function handleSkip() {
     if (!current) return;
     setBusy(true);
-    setStepStatus(current.key, "skipped");
-    await skipWalkthroughStepAction(progress.tutorialKey, current.key);
-    nextStepAfter(current.key);
+    const result = await skipWalkthroughStepAction(progress.tutorialKey, current.key);
+    if (!result.error) {
+      setStepStatus(current.key, "skipped");
+      nextStepAfter(current.key);
+    } else {
+      console.error("[walkthrough] Impossibile saltare lo step:", result.error);
+    }
     setBusy(false);
   }
 
