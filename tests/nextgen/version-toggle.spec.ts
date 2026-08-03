@@ -43,6 +43,18 @@ test.describe("Versione LEGACY/NEXTGEN - Toggle", () => {
     await expect(page.getByRole("button", { name: /Passa a NextGen|Torna a V1/ })).toHaveCount(0);
   });
 
+  // Visual Acceptance Gate (§15, TRAMA_ONE_VISUAL_ACCEPTANCE.md riga 1) —
+  // bug reale trovato da Fabrizio con screenshot: il toggle si sovrapponeva
+  // al titolo "TRAMA ONE — Parent" su "/one" (non era ancora in
+  // HIDDEN_PREFIXES). "/one" ha già la propria freccia indietro verso
+  // "/nextgen" nell'header: il toggle flottante è ridondante lì.
+  test("TC-N614 - Il toggle non appare sulla shell TRAMA ONE Parent ('/one')", async ({ page }) => {
+    test.skip(!isRealDeployment, "Richiede un deploy con Supabase configurato e l'account genitore di test.");
+    await loginAs(page, "parent");
+    await page.goto("/one");
+    await expect(page.getByRole("button", { name: /Passa a NextGen|Torna a V1/ })).toHaveCount(0);
+  });
+
   // ESCLUSO dall'automazione: simulare "display-mode: standalone" (icona
   // installata sulla home) non è supportato da Playwright emulateMedia.
   // Verifica manuale: aprire l'icona installata "BuddyKids" deve aprire
