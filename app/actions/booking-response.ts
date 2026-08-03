@@ -32,6 +32,30 @@ import { releaseDayCapacity, reserveDayCapacity, reserveWeekCapacity } from "@/l
 // "Giorno spot" (dayLabel = data formattata), riusando lo stesso testo/subject
 // invece di duplicare la funzione per il caso per-giorno introdotto da
 // respondToBookingDayAction.
+// TRAMA ONE Build Sprint 6 (backlog vincolante P2, "email fire-and-forget",
+// SPRINT_GOVERNANCE.md riga 151, DEC-49) — piccolo helper per scrivere
+// l'esito dell'ultimo tentativo di invio su bookings.email_delivery_status
+// (migration_19, non ancora applicata da Fabrizio). Scrittura anch'essa
+// best-effort: se fallisce (es. migrazione non ancora applicata in
+// produzione) non deve mai far fallire la risposta del centro, già salvata
+// prima di arrivare qui — per questo è avvolta nel try/catch del chiamante,
+// non ha uno suo try/catch dedicato.
+async function recordEmailDeliveryStatus(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  bookingId: string,
+  status: "sent" | "failed" | "not_configured" | "no_recipient",
+  error?: string
+) {
+  await supabase
+    .from("bookings")
+    .update({
+      email_delivery_status: status,
+      email_delivery_error: error ?? null,
+      email_delivery_attempted_at: new Date().toISOString(),
+    })
+    .eq("id", bookingId);
+}
+
 async function notifyParentOfBookingResponse(
   supabase: Awaited<ReturnType<typeof createClient>>,
   bookingId: string,
@@ -39,21 +63,37 @@ async function notifyParentOfBookingResponse(
   proposalNote?: string,
   dayLabel?: string
 ) {
-  if (!isEmailConfigured) return;
+  if (!isEmailConfigured) {
+    // Non è un fallimento: stesso comportamento "invio disattivato" già
+    // documentato in lib/email.ts (nessuna RESEND_API_KEY configurata).
+    // Registrato comunque per distinguere da un vero errore di invio.
+    try {
+      await recordEmailDeliveryStatus(supabase, bookingId, "not_configured");
+    } catch {
+      /* best effort, colonne potrebbero non esistere ancora (migration_19) */
+    }
+    return;
+  }
   try {
     const { data: row } = await supabase
       .from("bookings")
       .select("parent_id, activities ( name )")
       .eq("id", bookingId)
       .single();
-    if (!row?.parent_id) return;
+    if (!row?.parent_id) {
+      await recordEmailDeliveryStatus(supabase, bookingId, "no_recipient");
+      return;
+    }
     const activity = Array.isArray(row.activities) ? row.activities[0] : row.activities;
     const { data: parentRow } = await supabase
       .from("profiles")
       .select("email, full_name")
       .eq("id", row.parent_id)
       .single();
-    if (!parentRow?.email) return;
+    if (!parentRow?.email) {
+      await recordEmailDeliveryStatus(supabase, bookingId, "no_recipient");
+      return;
+    }
 
     const greeting = `Ciao${parentRow.full_name ? " " + parentRow.full_name.split(" ")[0] : ""},`;
     const activityName = activity?.name ?? "la tua prenotazione";
@@ -70,9 +110,25 @@ async function notifyParentOfBookingResponse(
       subject = `Il centro ha una proposta per te: ${activityName}`;
       body = `<p>${greeting}</p><p>Il centro ha inviato una proposta alternativa per ${forWhat}:</p><p>${proposalNote ?? ""}</p>`;
     }
-    await sendEmail({ to: parentRow.email, subject, html: body });
-  } catch {
-    // best effort — non blocca la risposta già salvata
+    const result = await sendEmail({ to: parentRow.email, subject, html: body });
+    if (result.error) {
+      console.error(
+        `[booking-response] Notifica email al genitore fallita definitivamente dopo ${result.attempts} tentativo/i (bookingId=${bookingId}, decision=${decision}): ${result.error}`
+      );
+    }
+    await recordEmailDeliveryStatus(
+      supabase,
+      bookingId,
+      result.error ? "failed" : "sent",
+      result.error
+    );
+  } catch (e) {
+    // best effort — non blocca la risposta già salvata. Logghiamo comunque
+    // esplicitamente (prima la catch era silenziosa, causa del debito P2).
+    console.error(
+      `[booking-response] Errore inatteso durante la notifica email al genitore (bookingId=${bookingId}, decision=${decision}):`,
+      e
+    );
   }
 }
 
