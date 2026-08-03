@@ -50,6 +50,10 @@ Sprint 2 (Offering/Giorni spot Partner) e Sprint 3 (Parent discovery/selezione g
 
 Nessun vero adapter di business verso `invites`/`profiles`: `center_leads` (migration_17) è una tabella NUOVA e indipendente, non un ponte verso uno stato AS-IS preesistente. `public.invites` (codice promo Partner→Genitore, esistente) e `public.family_invites` (inviti Famiglia, Sprint 5.5 NextGen) restano intatti e non referenziati in alcun modo — confermato in `SPRINT_5_FEATURE_PRESERVATION_MATRIX.md`. Gli unici collegamenti sono FK ordinarie verso `profiles(id)` (`suggested_by`, `reward_marked_by`) e verso `centers(id)` (`claimed_center_id`, valorizzato solo a posteriori quando un lead viene collegato a un centro che ha già completato l'onboarding esistente, DEC-46) — stesso pattern di riuso già visto per le altre tabelle additive del progetto (es. `activity_certifications`), non un adapter nel senso Master Prompt.
 
+## Aggiunti in Build Sprint 6 (in corso) — Capacity
+
+Nessun vero adapter di business: `lib/capacity/service.ts` centralizza logica già esistente (decremento/incremento `activity_weeks`/`activity_days.spots_left`), non introduce un ponte verso uno stato AS-IS preesistente — è un refactoring additivo di codice già scritto in Sprint 2-4, non un adapter nel senso Master Prompt. L'unica colonna nuova è `booking_weeks.capacity_decremented` (migration_18), simmetrica a `booking_days.capacity_decremented` già esistente. Vedi DEC-47 per il dettaglio del bug reale chiuso (rilascio capacità mancante su `cancelBookingAction`).
+
 ## Prossimo aggiornamento previsto
 
 Alla chiusura di TRAMA ONE Build Sprint 6 (command center Admin, analytics, hardening walkthrough) — se quello sprint introduce ponti verso `beta_feedback`/`lib/analytics.ts` esistenti diversi da un semplice ADAPT, va registrato qui.
