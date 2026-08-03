@@ -112,6 +112,10 @@ async function main() {
     // Gate C, settima ondata (29/07): richieste di Certificazione servizio
     // di test rimaste "pending" da run precedenti (vedi sotto).
     certificationsReset: 0,
+    // TRAMA ONE Build Sprint 6 (backlog vincolante P1, Capacity) — vedi nota
+    // sotto (prima della delete di bookings): activity_weeks/activity_days
+    // dell'attività seed vengono riportate a spots_left = capacity.
+    capacityReset: 0,
   };
 
   let testKid = null;
@@ -128,6 +132,46 @@ async function main() {
       .in("id", idsToReset)
       .select("id");
     removed.accountStatusReset = resetRows?.length || 0;
+  }
+
+  if (seedActivity) {
+    // TRAMA ONE Build Sprint 6 (backlog vincolante P1, Capacity) — la nuova
+    // idempotenza booking_weeks/booking_days.capacity_decremented
+    // (migration_18, lib/capacity/service.ts) fa sì che una prenotazione
+    // ACCETTATA durante un run decrementi realmente
+    // activity_weeks.spots_left/activity_days.spots_left — ma la delete
+    // "grezza" di bookings qui sotto NON passa da cancelBookingAction (che
+    // ora rilascerebbe correttamente quella capacità), quindi senza questo
+    // reset esplicito ogni run che accetta almeno una prenotazione di test
+    // farebbe scendere permanentemente lo spots_left dell'attività seed,
+    // fino a esaurirlo dopo alcuni run. "[TEST] Attività BuddyKids" è
+    // interamente sintetica (stesso principio già applicato sopra per le
+    // bookings): resettare spots_left = capacity per TUTTE le sue
+    // settimane/giorni prima di ogni run è sicuro e deterministico.
+    // Nota: supabase-js non supporta un update "colonna = altra colonna" in
+    // un singolo round-trip senza RPC/raw SQL; con il volume minimo di righe
+    // seed (13 settimane, 5 giorni) un doppio giro (select poi update per
+    // riga) è più chiaro che introdurre una funzione RPC dedicata solo per
+    // questo reset di test.
+    let weeksResetCount = 0;
+    const { data: weeksRows } = await supabase
+      .from("activity_weeks")
+      .select("id, capacity")
+      .eq("activity_id", seedActivity.id);
+    for (const w of weeksRows ?? []) {
+      await supabase.from("activity_weeks").update({ spots_left: w.capacity }).eq("id", w.id);
+      weeksResetCount += 1;
+    }
+    const { data: daysRows } = await supabase
+      .from("activity_days")
+      .select("id, capacity")
+      .eq("activity_id", seedActivity.id);
+    let daysResetCount = 0;
+    for (const d of daysRows ?? []) {
+      await supabase.from("activity_days").update({ spots_left: d.capacity }).eq("id", d.id);
+      daysResetCount += 1;
+    }
+    removed.capacityReset = weeksResetCount + daysResetCount;
   }
 
   if (parent || seedActivity) {
