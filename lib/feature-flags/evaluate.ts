@@ -45,6 +45,48 @@ function isExpired(expiresAt: string | null, now: Date): boolean {
   return parsed <= now.getTime();
 }
 
+// TRAMA ONE Build Sprint 6 (backlog vincolante P1, "Feature flag override
+// expiry") — la causa radice di TC-N409 (Gate C, ottava ondata) è stata
+// esattamente questa: un override enabled=true per TRAMA_ONE_ENABLED è
+// scaduto senza che nessuno se ne accorgesse, e resolveFeatureFlag() è
+// silenziosamente tornato al default (false) — comportamento CORRETTO
+// (fail-safe) ma completamente invisibile finché non si è manifestato come
+// una intera suite di test rossa. Questa finestra di "grazia" permette al
+// resolver di distinguere un fallback "normale" (nessun override è mai
+// esistito) da un fallback "sospetto" (un override che era enabled=true è
+// scaduto da poco) — per loggare un evento di telemetria dedicato invece di
+// un semplice "flag=false" indistinguibile da qualunque altro caso.
+const SILENT_FALLBACK_GRACE_MS = 72 * 60 * 60 * 1000; // 72h
+
+/**
+ * Tra TUTTI gli override (anche quelli scaduti), cerca — rispettando la
+ * stessa precedenza di scope di evaluateFlag — il primo che: (a) applicabile
+ * al contesto corrente, (b) enabled=true, (c) scaduto da meno di
+ * SILENT_FALLBACK_GRACE_MS. Se trovato, il fallback a `false` che il
+ * chiamante sta per restituire potrebbe essere un incidente (scadenza
+ * dimenticata) e non una decisione deliberata — usato SOLO per decidere se
+ * loggare un evento di telemetria aggiuntivo, mai per alterare il risultato
+ * booleano restituito (il fail-safe resta invariato).
+ */
+export function findRecentlyExpiredMatchingOverride(
+  context: FeatureFlagContext,
+  overrides: FeatureFlagOverrideInput[],
+  now: Date = new Date()
+): FeatureFlagOverrideInput | null {
+  const nowMs = now.getTime();
+  for (const scope of SCOPE_PRECEDENCE) {
+    const match = (overrides ?? []).find((o) => {
+      if (o.scopeType !== scope || !o.enabled || !o.expiresAt) return false;
+      const parsed = Date.parse(o.expiresAt);
+      if (Number.isNaN(parsed)) return false;
+      const expiredSinceMs = nowMs - parsed;
+      return expiredSinceMs >= 0 && expiredSinceMs <= SILENT_FALLBACK_GRACE_MS && scopeMatchesContext(o.scopeType, o.scopeValue, context);
+    });
+    if (match) return match;
+  }
+  return null;
+}
+
 // Normalizzazione deterministica per gli scope environment/role/tenant/cohort
 // — coerente con l'unique index parziale di
 // supabase/migration_07_feature_flags_foundation.sql

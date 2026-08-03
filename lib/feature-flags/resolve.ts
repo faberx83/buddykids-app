@@ -14,7 +14,7 @@ import "server-only";
 // chiamante (e quindi mai il client).
 
 import { createServiceClient } from "@/lib/supabase/service";
-import { evaluateFlag, FeatureFlagContext, FeatureFlagOverrideInput } from "./evaluate";
+import { evaluateFlag, findRecentlyExpiredMatchingOverride, FeatureFlagContext, FeatureFlagOverrideInput } from "./evaluate";
 import { isKnownFlag } from "./registry";
 import { getActiveCohortKeys } from "@/lib/beta-cohorts/membership";
 import { logTelemetryEvent } from "@/lib/telemetry/correlation";
@@ -91,7 +91,8 @@ export async function resolveFeatureFlag(params: ResolveFeatureFlagParams): Prom
       expiresAt: row.expires_at,
     }));
 
-    const result = evaluateFlag(flagName, context, overrides);
+    const now = new Date();
+    const result = evaluateFlag(flagName, context, overrides, now);
 
     logTelemetryEvent({
       event: "feature_flag_resolved",
@@ -100,6 +101,27 @@ export async function resolveFeatureFlag(params: ResolveFeatureFlagParams): Prom
       role,
       detail: `${flagName}=${result}`,
     });
+
+    // TRAMA ONE Build Sprint 6 (backlog vincolante P1, "Feature flag override
+    // expiry") — se il risultato è false ma esiste un override enabled=true
+    // per questo esatto contesto scaduto da poco (vedi
+    // findRecentlyExpiredMatchingOverride, grace window 72h), il fallback
+    // potrebbe essere un incidente (scadenza dimenticata, come TC-N409) e non
+    // una decisione deliberata: un evento di telemetria DISTINTO da
+    // "feature_flag_resolved" rende questo caso visibile senza dover
+    // scoprirlo da una suite di test rossa, come accaduto la prima volta.
+    if (!result) {
+      const recentlyExpired = findRecentlyExpiredMatchingOverride(context, overrides, now);
+      if (recentlyExpired) {
+        logTelemetryEvent({
+          event: "feature_flag_silent_fallback_expired_override",
+          correlationId,
+          tenant,
+          role,
+          detail: `${flagName}: override scope=${recentlyExpired.scopeType}:${recentlyExpired.scopeValue ?? "(global)"} scaduto il ${recentlyExpired.expiresAt} era enabled=true — verificare in /admin/feature-flags`,
+        });
+      }
+    }
 
     return result;
   } catch {
