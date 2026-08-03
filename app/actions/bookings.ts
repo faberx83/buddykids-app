@@ -18,6 +18,19 @@ import { createClient } from "@/lib/supabase/server";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
 import { revalidatePath } from "next/cache";
 import { buildFamilyTiers, familyDiscountAmount } from "@/lib/family-discount";
+// TRAMA ONE Build Sprint 6 (backlog vincolante P1, Capacity) — reserve/
+// release centralizzati in lib/capacity/service.ts. Qui chiudiamo due gap
+// concreti trovati leggendo questo file: (1) cancelBookingAction non
+// rilasciava MAI la capacità settimanale già decrementata all'accettazione
+// (perdita di posti permanente); (2) updateBookingWeeksAction cancellava/
+// reinseriva booking_weeks senza mai coordinarsi con activity_weeks.spots_left
+// (settimane rimosse mai rilasciate, settimane aggiunte mai riservate se la
+// prenotazione era già stata accettata dal centro). Vedi migration_18.
+import {
+  releaseAllWeekCapacityForBooking,
+  releaseWeekCapacity,
+  reserveWeekCapacity,
+} from "@/lib/capacity/service";
 
 function firstOf<T>(value: T | T[] | null | undefined): T | null {
   if (!value) return null;
@@ -40,6 +53,7 @@ interface BookingMutationRow {
   id: string;
   parent_id: string;
   status: string;
+  partner_decision: string | null;
   shuttle_included: boolean;
   activities: RawActivityRef | RawActivityRef[] | null;
   booking_weeks: { week_id: string; activity_weeks: { start_date: string } | { start_date: string }[] | null }[] | null;
@@ -54,7 +68,7 @@ async function loadBookingForMutation(
   const { data, error } = await supabase
     .from("bookings")
     .select(
-      "id, parent_id, status, shuttle_included, activities ( price_per_week, shuttle_price, centers ( cancellation_window_days, multiweek_discount_percent, family_discount_tiers ) ), booking_weeks ( week_id, activity_weeks ( start_date ) ), booking_kids ( kid_id )"
+      "id, parent_id, status, partner_decision, shuttle_included, activities ( price_per_week, shuttle_price, centers ( cancellation_window_days, multiweek_discount_percent, family_discount_tiers ) ), booking_weeks ( week_id, activity_weeks ( start_date ) ), booking_kids ( kid_id )"
     )
     .eq("id", bookingId)
     .eq("parent_id", userId)
@@ -114,6 +128,12 @@ export async function cancelBookingAction(bookingId: string): Promise<{ error?: 
   const windowCheck = checkCancellationWindow(row, todayIso);
   if (!windowCheck.allowed) return { error: windowCheck.reason };
 
+  // Rilascio capacità PRIMA dello status update: releaseAllWeekCapacityForBooking
+  // legge/scrive booking_weeks.capacity_decremented, che deve ancora esistere
+  // e riflettere lo stato pre-annullamento (nessuna riga viene eliminata qui,
+  // solo bookings.status cambia — booking_weeks resta intatta per lo storico).
+  await releaseAllWeekCapacityForBooking(supabase, bookingId);
+
   const { error } = await supabase.from("bookings").update({ status: "cancelled" }).eq("id", bookingId);
   if (error) return { error: error.message };
 
@@ -172,6 +192,20 @@ export async function updateBookingWeeksAction(
   const shuttleCost = row.shuttle_included ? (activity.shuttle_price ?? 0) * nWeeks * kidsCount : 0;
   const total = subtotal - groupDiscount + shuttleCost;
 
+  // Se il centro ha già accettato la prenotazione, le vecchie settimane
+  // possono avere activity_weeks.spots_left già decrementata
+  // (booking_weeks.capacity_decremented=true) — va rilasciata PRIMA di
+  // cancellare le righe booking_weeks, altrimenti quel posto va perso per
+  // sempre (stesso bug di cancelBookingAction, qui sulla modifica invece che
+  // sull'annullamento). Se non ancora accettata, non è mai stata decrementata
+  // e releaseWeekCapacity è un no-op idempotente.
+  const alreadyAccepted = row.partner_decision === "accepted";
+  if (alreadyAccepted) {
+    for (const bw of row.booking_weeks ?? []) {
+      await releaseWeekCapacity(supabase, input.bookingId, bw.week_id);
+    }
+  }
+
   const { error: delError } = await supabase
     .from("booking_weeks")
     .delete()
@@ -182,6 +216,17 @@ export async function updateBookingWeeksAction(
     .from("booking_weeks")
     .insert(input.weekIds.map((weekId) => ({ booking_id: input.bookingId, week_id: weekId })));
   if (insError) return { error: insError.message };
+
+  // Specularmente: se la prenotazione era già accettata, le NUOVE settimane
+  // vanno riservate subito (altrimenti resterebbero capacity_decremented=false
+  // per sempre, un posto mai conteggiato). Se non ancora accettata, la
+  // riserva reale avviene più avanti in respondToBookingAction — qui
+  // non forziamo nulla di prematuro.
+  if (alreadyAccepted) {
+    for (const weekId of input.weekIds) {
+      await reserveWeekCapacity(supabase, input.bookingId, weekId);
+    }
+  }
 
   const { error: updError } = await supabase
     .from("bookings")
