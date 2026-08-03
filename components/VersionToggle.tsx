@@ -53,7 +53,16 @@ function isStandaloneDisplay(): boolean {
 // events", confermato dal trace Playwright). Stesso principio delle altre
 // esclusioni sopra: pagine con i propri controlli dedicati in quell'angolo
 // non devono competere con lo switch versione globale.
-const HIDDEN_PREFIXES = ["/center", "/admin", "/nextgen/center", "/nextgen/admin", "/auth", "/share", "/activity"];
+//
+// Visual Acceptance Gate (§15, TRAMA_ONE_VISUAL_ACCEPTANCE.md riga 1) —
+// BUG REALE trovato da Fabrizio con screenshot a ~400px: la shell "/one"
+// (Parent, PageHeader con titolo "TRAMA ONE — Parent", DEC-59) non era in
+// questa lista, quindi il toggle ci si sovrapponeva coprendo parte del
+// titolo. Stesso principio di "/activity": "/one" ha già la propria
+// freccia indietro verso "/nextgen" nell'header (stessa destinazione di
+// uno dei due versi di questo toggle), quindi il pulsante flottante è sia
+// ridondante sia in conflitto visivo su viewport stretti — aggiunto qui.
+const HIDDEN_PREFIXES = ["/center", "/admin", "/nextgen/center", "/nextgen/admin", "/auth", "/share", "/activity", "/one"];
 
 export default function VersionToggle() {
   const pathname = usePathname() ?? "/";
