@@ -66,6 +66,10 @@ Nessun adapter di business: chiusura del debito P2 già registrato in `CORE_DOMA
 
 Nessun adapter di business: correzione di una race condition client-side in `app/one/WalkthroughCard.tsx` (i tre handler del motore Walkthrough generico aggiornavano lo stato locale prima di attendere la conferma della Server Action) più un'inconsistenza minore in `app/actions/walkthrough.ts` (revalidava solo `/one`, mai `/center/one`/`/admin/one`). Nessuna tabella o colonna nuova. Vedi DEC-50.
 
+## Aggiunti in Build Sprint 6 (in corso) — Command Center Admin (E08)
+
+Nessun adapter di business: `lib/data/command-center.ts` aggrega SOLO letture già esistenti dei sette domini Admin (onboarding, prenotazioni, richieste, centri-lead, certificazioni, feedback BETA, feature flag) in `/admin/one` — nessuna nuova tabella, nessuna colonna, nessuna query SQL nuova. Le pagine per dominio restano invariate e sono l'unico punto d'azione reale (rollback gate esplicito). Vedi DEC-51.
+
 ## Prossimo aggiornamento previsto
 
 Alla chiusura di TRAMA ONE Build Sprint 6 (command center Admin, analytics, hardening walkthrough) — se quello sprint introduce ponti verso `beta_feedback`/`lib/analytics.ts` esistenti diversi da un semplice ADAPT, va registrato qui.
