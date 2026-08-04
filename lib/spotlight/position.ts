@@ -85,6 +85,33 @@ export function computeCutoutRect(target: Rect, padding = 8): Rect {
 }
 
 /**
+ * Visual Acceptance Gate (§15, DEC-70) — bug reale trovato da Fabrizio
+ * ("non si vede il menu dashboard" solo su mobile 390px, non su 768/1440):
+ * il target "dashboard" (`data-spotlight="dashboard"` sulla voce di menu)
+ * esiste DUE VOLTE nel DOM — una copia nella sidebar desktop (sempre
+ * presente, resa invisibile via CSS `hidden md:flex` sotto il breakpoint
+ * md=768px) e una copia nel cassetto/drawer mobile (esiste nel DOM solo
+ * quando il menu è aperto). `document.querySelector` ritorna sempre il
+ * PRIMO elemento nell'ordine del DOM, indipendentemente dalla visibilità —
+ * su mobile questo è sempre la copia nascosta nella sidebar desktop, il cui
+ * `getBoundingClientRect()` è un rettangolo degenere (0,0,0,0) perché
+ * `display:none` non ha una scatola di layout. Un rettangolo 0×0 in cima
+ * allo schermo produceva un popover ancorato lì, che finiva per coprire
+ * quasi tutto lo schermo senza mai evidenziare l'elemento reale.
+ *
+ * Questa funzione è la logica di selezione, isolata dal DOM (chi chiama
+ * passa i rect già letti da `getBoundingClientRect()` su OGNI candidato che
+ * condivide lo stesso `data-spotlight`): ritorna l'indice del primo rect con
+ * area non nulla, o -1 se nessun candidato è davvero visibile (es. il
+ * cassetto mobile è chiuso E la sidebar desktop è nascosta — in quel caso il
+ * chiamante deve trattare lo step come "target non trovato", non inventare
+ * una posizione).
+ */
+export function pickVisibleTargetIndex(candidates: Rect[]): number {
+  return candidates.findIndex((r) => r.width > 0 && r.height > 0);
+}
+
+/**
  * Route matching per gli step Spotlight — un singolo carattere jolly `*`
  * opzionale, per coprire sia path esatti ("/center", la dashboard) sia
  * prefissi ("/center/activities/*", qualunque scheda attività) sia

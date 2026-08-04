@@ -27,7 +27,13 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { usePathname } from "next/navigation";
 import Link from "next/link";
 import type { WalkthroughProgressSummary } from "@/lib/walkthrough/data";
-import { computeCutoutRect, computePopoverPosition, matchesSpotlightRoute, Rect } from "@/lib/spotlight/position";
+import {
+  computeCutoutRect,
+  computePopoverPosition,
+  matchesSpotlightRoute,
+  pickVisibleTargetIndex,
+  Rect,
+} from "@/lib/spotlight/position";
 import { startWalkthroughStepAction, completeWalkthroughStepAction, skipWalkthroughStepAction } from "@/app/actions/walkthrough";
 import { logSpotlightEventAction } from "@/app/actions/spotlight";
 
@@ -37,6 +43,14 @@ export default function PartnerSpotlight({ progress }: { progress: WalkthroughPr
   const [currentKey, setCurrentKey] = useState(progress?.currentStepKey ?? null);
   const [targetRect, setTargetRect] = useState<Rect | null>(null);
   const [targetMissing, setTargetMissing] = useState(false);
+  // Visual Acceptance Gate (§15, DEC-70) — border-radius REALE dell'elemento
+  // evidenziato (letto via getComputedStyle), usato per disegnare il ring
+  // del cutout della stessa forma del target invece di un raggio fisso.
+  // Richiesta di Fabrizio: "non si può fare uno spotlight della stessa forma
+  // del pulsante? gli spigoli non sono belli". Default "8px" = lo stesso
+  // valore fisso (rounded-lg) usato finché questo campo non è ancora stato
+  // popolato dalla prima misurazione.
+  const [cutoutRadius, setCutoutRadius] = useState("8px");
   const popoverRef = useRef<HTMLDivElement>(null);
   const loggedShownRef = useRef<string | null>(null);
   const loggedMissingRef = useRef<string | null>(null);
@@ -66,17 +80,39 @@ export default function PartnerSpotlight({ progress }: { progress: WalkthroughPr
       setTargetMissing(false);
       return;
     }
-    const el = document.querySelector(`[data-spotlight="${current.spotlightTarget}"]`);
-    if (!el) {
+    // Visual Acceptance Gate (§15, DEC-70) — bug reale trovato da Fabrizio,
+    // visibile solo su mobile 390px (non su 768/1440): alcuni target (es.
+    // "dashboard") esistono DUE VOLTE nel DOM, una copia nella sidebar
+    // desktop (sempre presente ma `display:none` sotto md=768px) e una nel
+    // cassetto mobile (esiste solo a menu aperto). `querySelector` prende
+    // sempre il PRIMO elemento nel DOM a prescindere dalla visibilità — su
+    // mobile era sempre la copia nascosta, il cui rect è (0,0,0,0) e produce
+    // un popover ancorato in un punto senza senso. Ora leggiamo TUTTI i
+    // candidati e scegliamo il primo davvero visibile (pickVisibleTargetIndex,
+    // funzione pura testata in tests/one/spotlight-position.spec.ts); se
+    // nessuno lo è (es. cassetto mobile chiuso), trattiamo lo step come
+    // "target non trovato" invece di mostrare un popover rotto.
+    const candidates = Array.from(document.querySelectorAll<HTMLElement>(`[data-spotlight="${current.spotlightTarget}"]`));
+    const rects = candidates.map((c) => c.getBoundingClientRect());
+    const idx = pickVisibleTargetIndex(rects);
+    if (idx === -1) {
+      // Nessun candidato visibile: sia il caso "l'attributo non esiste
+      // affatto su questa pagina" (es. configure_weeks su /new) sia il caso
+      // "esiste ma è nascosto ovunque in questo momento" (es. dashboard con
+      // il cassetto mobile chiuso) ricadono nello stesso badge di fallback —
+      // stesso comportamento di prima per il primo caso (TC-N416), fix per
+      // il secondo (prima produceva un popover rotto invece del badge).
       setTargetRect(null);
       setTargetMissing(true);
       return;
     }
+    const el = candidates[idx];
+    const r = rects[idx];
     if (scrolledStepRef.current !== current.key) {
       scrolledStepRef.current = current.key;
       el.scrollIntoView({ behavior: "smooth", block: "center" });
     }
-    const r = el.getBoundingClientRect();
+    setCutoutRadius(window.getComputedStyle(el).borderRadius || "8px");
     setTargetRect({ top: r.top, left: r.left, width: r.width, height: r.height });
     setTargetMissing(false);
   }, [current, pathname]);
@@ -196,9 +232,18 @@ export default function PartnerSpotlight({ progress }: { progress: WalkthroughPr
     const hint = current.spotlightMissingHint;
     const canLinkFromHere = /^\/center\/activities\/[^/]+$/.test(pathname) && !pathname.endsWith("/new");
     return (
+      // Visual Acceptance Gate (§15, DEC-70) — bug reale trovato da
+      // Fabrizio: ancorato "bottom-5 right-5" (angolo in basso a destra),
+      // questo badge finiva sopra al pulsante di invio di form corte (es.
+      // "Crea attività" su /center/activities/new), coprendolo del tutto su
+      // mobile. Le azioni primarie delle pagine Partner sono quasi sempre in
+      // fondo alla pagina (submit di un form, "Salva modifiche"...), mai in
+      // alto: spostato sotto l'header (fisso su mobile, assente su
+      // desktop/tablet dove la sidebar vive a sinistra) in alto a destra,
+      // zona che nessuna pagina usa per azioni cliccabili.
       <div
         role="status"
-        className="fixed bottom-5 right-5 z-40 max-w-xs rounded-lg border border-[#E8EBF0] bg-white p-3 shadow-lg"
+        className="fixed top-20 right-4 z-40 max-w-xs rounded-lg border border-[#E8EBF0] bg-white p-3 shadow-lg sm:right-5"
       >
         <p className="text-xs font-semibold text-ink">{current.title}</p>
         <p className="mt-0.5 text-[11px] text-ink-2">{current.description}</p>
@@ -233,9 +278,22 @@ export default function PartnerSpotlight({ progress }: { progress: WalkthroughPr
           style={{ top: cutout.top, left: cutout.left + cutout.width, right: 0, height: cutout.height }}
         />
         <div className="absolute bg-black/50" style={{ top: cutout.top + cutout.height, left: 0, right: 0, bottom: 0 }} />
+        {/* Visual Acceptance Gate (§15, DEC-70) — richiesta di Fabrizio: il
+            ring aveva un raggio fisso (rounded-lg, 8px) indipendente dalla
+            forma reale del target, "spigoli non belli" su elementi con un
+            border-radius diverso (es. pulsanti pillola, rounded-full). Ora
+            usa il border-radius REALE letto da getComputedStyle nel measure()
+            qui sopra (cutoutRadius), applicato via style invece della classe
+            Tailwind fissa. */}
         <div
-          className="absolute rounded-lg ring-2 ring-trama-violet"
-          style={{ top: cutout.top, left: cutout.left, width: cutout.width, height: cutout.height }}
+          className="absolute ring-2 ring-trama-violet"
+          style={{
+            top: cutout.top,
+            left: cutout.left,
+            width: cutout.width,
+            height: cutout.height,
+            borderRadius: cutoutRadius,
+          }}
         />
       </div>
 
