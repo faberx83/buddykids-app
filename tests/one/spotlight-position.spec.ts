@@ -1,5 +1,10 @@
 import { test, expect } from "@playwright/test";
-import { computeCutoutRect, computePopoverPosition, matchesSpotlightRoute } from "../../lib/spotlight/position";
+import {
+  computeCutoutRect,
+  computePopoverPosition,
+  matchesSpotlightRoute,
+  pickVisibleTargetIndex,
+} from "../../lib/spotlight/position";
 
 // CONTROLLED BETA EXPERIENCE GATE (§7-14) — unit test puri per
 // lib/spotlight/position.ts, stesso principio "no browser" già usato in
@@ -94,6 +99,44 @@ test.describe("Spotlight — computeCutoutRect [no browser]", () => {
     const target = { top: 100, left: 200, width: 50, height: 30 };
     const result = computeCutoutRect(target, 4);
     expect(result).toEqual({ top: 96, left: 196, width: 58, height: 38 });
+  });
+});
+
+test.describe("Spotlight — pickVisibleTargetIndex [no browser]", () => {
+  // DEC-70 — regressione diretta del bug reale trovato da Fabrizio: la voce
+  // di menu "dashboard" esiste due volte nel DOM (sidebar desktop + cassetto
+  // mobile), e su mobile la prima (nascosta via display:none) veniva scelta
+  // per errore da un semplice querySelector, producendo un rect (0,0,0,0).
+  test("nessun candidato -> -1 (nessun elemento con questo data-spotlight sulla pagina)", () => {
+    expect(pickVisibleTargetIndex([])).toBe(-1);
+  });
+
+  test("un solo candidato nascosto (rect degenere 0x0, es. display:none) -> -1", () => {
+    expect(pickVisibleTargetIndex([{ top: 0, left: 0, width: 0, height: 0 }])).toBe(-1);
+  });
+
+  test("primo candidato nascosto, secondo visibile (caso reale: sidebar desktop nascosta + drawer mobile aperto) -> indice 1", () => {
+    const candidates = [
+      { top: 0, left: 0, width: 0, height: 0 }, // sidebar desktop, display:none su mobile
+      { top: 240, left: 16, width: 340, height: 44 }, // voce reale nel drawer mobile aperto
+    ];
+    expect(pickVisibleTargetIndex(candidates)).toBe(1);
+  });
+
+  test("primo candidato già visibile (caso desktop/tablet, >=768px) -> indice 0, non serve guardare oltre", () => {
+    const candidates = [
+      { top: 40, left: 16, width: 220, height: 44 },
+      { top: 0, left: 0, width: 0, height: 0 },
+    ];
+    expect(pickVisibleTargetIndex(candidates)).toBe(0);
+  });
+
+  test("tutti i candidati nascosti (es. drawer mobile chiuso E sidebar desktop nascosta) -> -1", () => {
+    const candidates = [
+      { top: 0, left: 0, width: 0, height: 0 },
+      { top: 0, left: 0, width: 0, height: 0 },
+    ];
+    expect(pickVisibleTargetIndex(candidates)).toBe(-1);
   });
 });
 
