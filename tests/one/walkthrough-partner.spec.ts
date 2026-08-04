@@ -1,5 +1,6 @@
 import { test, expect } from "../fixtures/roles";
 import { loginAs, isRealDeployment } from "../fixtures/roles";
+import { WALKTHROUGH_REGISTRY } from "../../lib/walkthrough/registry";
 
 // TRAMA ONE — CONTROLLED BETA EXPERIENCE GATE (§7-14, DEC-58/DEC-60).
 //
@@ -197,5 +198,23 @@ test.describe("TRAMA ONE — Spotlight reale Partner (Controlled Beta, §7-14)",
     await expect(link).toHaveAttribute("href", /\/center\/activities\/[^/]+\/calendar$/);
     await link.click();
     await expect(page).toHaveURL(/\/center\/activities\/[^/]+\/calendar$/);
+  });
+});
+
+// DEC-73 — bug reale trovato da Fabrizio: sul badge "target non trovato" per
+// lo step "dashboard" (visibile solo quando il cassetto mobile è chiuso, vedi
+// DEC-70) non c'era alcun indizio su come renderlo visibile — l'ha trovato
+// solo aprendo il menu per tentativi. Fix: spotlightMissingNote (vedi
+// registry.ts/PartnerSpotlight.tsx). Verifica "no browser" del dato nel
+// registry (il rendering reale del badge con questo testo, su viewport
+// mobile con drawer chiuso, richiederebbe di completare l'intero percorso
+// fino allo step "dashboard" con un browser reale — troppo fragile/lento per
+// automatizzare in modo affidabile qui; verificato manualmente da Fabrizio
+// nel prossimo giro di test live).
+test.describe("TRAMA ONE — registry Walkthrough Partner [no browser]", () => {
+  test("TC-N620 - lo step 'dashboard' ha una nota di aiuto per il badge 'target non trovato' (apri il menu su mobile)", () => {
+    const dashboardStep = WALKTHROUGH_REGISTRY.activity_creation_partner.steps.find((s) => s.key === "dashboard");
+    expect(dashboardStep?.spotlightMissingNote).toBeTruthy();
+    expect(dashboardStep?.spotlightMissingNote).toContain("menu");
   });
 });
