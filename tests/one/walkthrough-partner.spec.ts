@@ -128,7 +128,18 @@ test.describe("TRAMA ONE — Spotlight reale Partner (Controlled Beta, §7-14)",
   // tests/one/spotlight-position.spec.ts; qui verifichiamo il link REALE nel
   // badge, che richiede il motore Walkthrough completo (server action +
   // persistenza) — non estraibile in un test "no browser".
-  test("TC-N615 - il badge 'target non trovato' per Giorni spot mostra un link reale verso il Calendario disponibilità (non solo testo)", async ({
+  //
+  // DEC-71 (Visual Acceptance Gate §15) — secondo bug reale trovato da
+  // Fabrizio, integrato in questo stesso test perché richiede lo stesso
+  // avanzamento sequenziale: per gli step "manuali" (configure_weeks,
+  // configure_pricing — il target è un'intera card con più campi, non un
+  // singolo pulsante), un click su QUALUNQUE campo reale dentro la card
+  // (es. la checkbox "Ingresso anticipato (pre-servizio)") faceva scattare
+  // subito l'avanzamento allo step successivo, impedendo di finire di
+  // compilare gli altri campi. Ora questi step richiedono "Inizia" poi il
+  // pulsante esplicito "Ho finito, continua →"; un click su un campo reale
+  // dentro la card, da solo, non deve più avanzare nulla.
+  test("TC-N615 - step 'manuali' (Informazioni di base/Servizi extra) richiedono il pulsante esplicito 'Ho finito, continua' (un click su un campo reale non avanza da solo); il badge 'target non trovato' per Giorni spot mostra un link reale verso il Calendario disponibilità", async ({
     page,
   }) => {
     test.skip(
@@ -145,11 +156,24 @@ test.describe("TRAMA ONE — Spotlight reale Partner (Controlled Beta, §7-14)",
     await page.locator("a[href^='/center/activities/']").first().click();
     await expect(page).toHaveURL(/\/center\/activities\/[^/]+$/);
 
-    // Porta il percorso fino allo step "configure_spot_days" cliccando
-    // realmente sui 3 elementi precedenti (Informazioni generali -> Servizi
-    // extra e pasto -> Salva modifiche), lo stesso meccanismo di TC-N416.
-    await page.locator('[data-spotlight="configure_weeks"]').click();
-    await page.locator('[data-spotlight="configure_pricing"]').click();
+    // Step "configure_weeks" (DEC-71): manuale, Inizia poi "Ho finito,
+    // continua" — non basta più un click generico dentro la card.
+    const weeksDialog = page.getByRole("dialog", { name: "Informazioni di base" });
+    await weeksDialog.getByRole("button", { name: "Inizia" }).click();
+    await weeksDialog.getByRole("button", { name: "Ho finito, continua →" }).click();
+
+    // Step "configure_pricing": stesso pattern manuale — ma prima
+    // verifichiamo il bug reale di Fabrizio: cliccare un campo REALE dentro
+    // la card (checkbox "Ingresso anticipato") non deve avanzare da solo.
+    const pricingDialog = page.getByRole("dialog", { name: "Servizi extra e pasto" });
+    await pricingDialog.getByRole("button", { name: "Inizia" }).click();
+    await page.getByRole("checkbox", { name: "Ingresso anticipato (pre-servizio)" }).click();
+    await expect(pricingDialog).toBeVisible(); // ancora qui: il click sul campo non ha avanzato lo step
+    await expect(pricingDialog.getByText("Compila con calma i campi di questa sezione, poi continua.")).toBeVisible();
+    await pricingDialog.getByRole("button", { name: "Ho finito, continua →" }).click();
+
+    // Step "publish": resta click-based, l'azione stessa (salvare) È il
+    // completamento genuino dello step — comportamento invariato.
     await page.locator('[data-spotlight="publish"]').click();
 
     const missingBadge = page.getByRole("status").filter({ hasText: "Configura i Giorni spot" });
