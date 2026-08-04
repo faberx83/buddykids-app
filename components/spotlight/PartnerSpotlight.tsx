@@ -65,6 +65,10 @@ export default function PartnerSpotlight({ progress }: { progress: WalkthroughPr
   // Tracciato per step-key (non per ogni measure()) per non combattere uno
   // scroll manuale dell'utente durante lo stesso step.
   const scrolledStepRef = useRef<string | null>(null);
+  // Visual Acceptance Gate (§15, DEC-72) — vedi commento sotto: traccia per
+  // quale step il popover ha già ricevuto il focus iniziale, per non
+  // rifocalizzarlo a ogni remeasure (stesso pattern di scrolledStepRef).
+  const focusedStepRef = useRef<string | null>(null);
 
   const current = steps.find((s) => s.key === currentKey) ?? null;
 
@@ -76,8 +80,27 @@ export default function PartnerSpotlight({ progress }: { progress: WalkthroughPr
     }
     const routeOk = !current.spotlightRoute || matchesSpotlightRoute(current.spotlightRoute, pathname);
     if (!routeOk) {
+      // Visual Acceptance Gate (§15, DEC-72) — bug reale trovato da
+      // Fabrizio ("dopo aver fatto salva non mi fa capire che devo andare
+      // nel Calendario disponibilità"): quando la pagina corrente non
+      // corrisponde affatto allo spotlightRoute dello step (es. lo step
+      // "Giorni spot" richiede /center/activities/[id]/calendar, ma dopo il
+      // salvataggio si resta su /center/activities/[id], SENZA /calendar),
+      // questo ramo marcava `targetMissing` FALSE — e più sotto, "if
+      // (!targetRect && !targetMissing) return null" faceva sì che l'intero
+      // componente non renderizzasse NULLA: niente overlay, niente badge,
+      // nessun indizio per l'utente. Il badge "target non trovato" (con
+      // l'eventuale link di spotlightMissingHint) è pensato ESATTAMENTE per
+      // questo caso — "il target vive altrove" — quindi qui va TRUE, non
+      // FALSE: bug di un singolo booleano invertito, mai emerso prima perché
+      // gli unici step con questo comportamento validati manualmente da
+      // Fabrizio (create_activity/configure_weeks) usano un pattern di
+      // route "prefisso*" che nella pratica combacia quasi sempre (matcha
+      // anche /new), mascherando il bug. Corregge anche la riga 18 della
+      // matrice del Visual Acceptance Gate (già documentata così, mai
+      // realmente verificabile finché questo ramo restava sbagliato).
       setTargetRect(null);
-      setTargetMissing(false);
+      setTargetMissing(true);
       return;
     }
     // Visual Acceptance Gate (§15, DEC-70) — bug reale trovato da Fabrizio,
@@ -113,7 +136,28 @@ export default function PartnerSpotlight({ progress }: { progress: WalkthroughPr
       el.scrollIntoView({ behavior: "smooth", block: "center" });
     }
     setCutoutRadius(window.getComputedStyle(el).borderRadius || "8px");
-    setTargetRect({ top: r.top, left: r.left, width: r.width, height: r.height });
+    // Visual Acceptance Gate (§15, DEC-72) — bug reale trovato da Fabrizio
+    // ("se clicco nel campo il cursore poi sembra sparire", "la scelta del
+    // pasto appare ma non riesco a selezionare per tempo"): questo `measure`
+    // gira ogni 500ms via setInterval (riga sotto) PIÙ su ogni resize/scroll
+    // — prima di questo fix chiamava `setTargetRect({...})` con un oggetto
+    // NUOVO ogni volta, anche quando il rettangolo non era affatto cambiato.
+    // React confronta gli state object per IDENTITÀ di riferimento, quindi
+    // ogni tick considerava `targetRect` "cambiato" — e l'effetto di focus
+    // qui sotto (che dipende da `targetRect`) rifocalizzava il popover ogni
+    // 500ms, portando via il focus da qualunque campo reale l'utente stesse
+    // usando (input di testo: il cursore "spariva"; <select> nativo: il
+    // menu si chiudeva prima di poter scegliere un'opzione, perché perdeva
+    // focus). Fix: aggiornare lo state SOLO se il rettangolo è realmente
+    // cambiato (funzione di update che ritorna la stessa referenza se i 4
+    // valori sono identici) — React non ri-renderizza né ri-attiva effetti
+    // quando il setter ritorna lo stesso riferimento.
+    setTargetRect((prev) => {
+      if (prev && prev.top === r.top && prev.left === r.left && prev.width === r.width && prev.height === r.height) {
+        return prev;
+      }
+      return { top: r.top, left: r.left, width: r.width, height: r.height };
+    });
     setTargetMissing(false);
   }, [current, pathname]);
 
@@ -152,14 +196,35 @@ export default function PartnerSpotlight({ progress }: { progress: WalkthroughPr
     }
   }, [current, targetRect, targetMissing, pathname, progress]);
 
-  function nextStepAfter(key: string) {
-    setSteps((prev) => {
-      const idx = prev.findIndex((s) => s.key === key);
-      const next = prev.slice(idx + 1).find((s) => s.status === "not_started" || s.status === "in_progress");
-      setCurrentKey(next?.key ?? null);
-      return prev;
-    });
-  }
+  // Visual Acceptance Gate (§15, DEC-72) — richiesta esplicita di Fabrizio
+  // ("nello step 4 'inizia' non ha senso..ci vuole coerenza"): prima di
+  // questo fix, OGNI step (non solo il primo) partiva "not_started" e
+  // richiedeva un nuovo click su "Inizia" prima di poter agire — anche
+  // subito DOPO che l'utente aveva appena completato o saltato lo step
+  // precedente, cioè quando è già chiaramente dentro il percorso guidato in
+  // modo deliberato. Ora, quando si passa allo step successivo, se questo è
+  // ancora "not_started" lo avviamo automaticamente (stessa azione server
+  // di handleStart, `startWalkthroughStepAction`) — il popover mostra così
+  // subito "Ho finito, continua →" (step manuali) o "Fatto? Clicca..."
+  // (step click-based) senza un secondo "Inizia" di troppo. Il gate
+  // "Inizia" resta SOLO per il primissimo step mostrato al mount (un
+  // opt-in esplicito e unico all'intero tour, comportamento invariato e
+  // già coperto da TC-N414/TC-N415).
+  const nextStepAfter = useCallback(
+    (key: string) => {
+      setSteps((prev) => {
+        const idx = prev.findIndex((s) => s.key === key);
+        const next = prev.slice(idx + 1).find((s) => s.status === "not_started" || s.status === "in_progress");
+        setCurrentKey(next?.key ?? null);
+        if (next && next.status === "not_started" && progress) {
+          void startWalkthroughStepAction(progress.tutorialKey, next.key);
+          return prev.map((s) => (s.key === next.key ? { ...s, status: "in_progress" } : s));
+        }
+        return prev;
+      });
+    },
+    [progress]
+  );
 
   const handleComplete = useCallback(async () => {
     if (!current || !progress) return;
@@ -168,7 +233,7 @@ export default function PartnerSpotlight({ progress }: { progress: WalkthroughPr
       setSteps((prev) => prev.map((s) => (s.key === current.key ? { ...s, status: "completed" } : s)));
       nextStepAfter(current.key);
     }
-  }, [current, progress]);
+  }, [current, progress, nextStepAfter]);
 
   // Azione REALE: click genuino dell'utente sull'elemento evidenziato
   // (capture phase, non blocca mai il comportamento nativo dell'elemento —
@@ -216,8 +281,20 @@ export default function PartnerSpotlight({ progress }: { progress: WalkthroughPr
   // Accessibilità: focus sul popover quando compare; Escape lo scarta
   // (equivalente a "Salta per ora" per lo step corrente, non l'intero
   // percorso — coerente con la microcopy già stabilita in DEC-54).
+  //
+  // Visual Acceptance Gate (§15, DEC-72) — anche con la stabilizzazione di
+  // `targetRect` sopra, questo effetto dipendeva da `targetRect` e poteva
+  // rifocalizzare il popover ogni volta che il target si sposta per un
+  // motivo LEGITTIMO (scroll della pagina, resize/tastiera virtuale su
+  // mobile), portando via il focus da un campo reale che l'utente sta
+  // ancora usando. Il focus iniziale del popover ha senso solo la PRIMA
+  // volta che appare per uno step — non a ogni remeasure successiva: usa lo
+  // stesso pattern di scrolledStepRef per farlo una sola volta per step.
   useEffect(() => {
-    if (targetRect && popoverRef.current) popoverRef.current.focus();
+    if (targetRect && popoverRef.current && focusedStepRef.current !== current?.key) {
+      focusedStepRef.current = current?.key ?? null;
+      popoverRef.current.focus();
+    }
   }, [targetRect, current?.key]);
 
   useEffect(() => {
