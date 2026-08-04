@@ -28,13 +28,24 @@ export default function ProfileSettingsSection({ basePath }: { basePath: string 
       />
       {/* Notifiche unite qui dentro (richiesto da Fabrizio: "le notifiche le
           metterei dentro le preferenze") — non è più una voce separata,
-          /notifiche ora reindirizza qui per eventuali link vecchi. */}
+          /notifiche ora reindirizza qui per eventuali link vecchi.
+          Visual Acceptance Gate (§15, DEC-73) — richiesta di Fabrizio: "Nel
+          sottotitolo del menu 'Preferenze' va indicato anche tour guidato",
+          perché è lì (app/center/account/preferenze/page.tsx,
+          WalkthroughRestartButton) che si può riavviare il percorso guidato
+          Partner. Menzione SOLO lato Center (basePath="/center/account"):
+          quel bottone esiste solo lì (gated da TRAMA_ONE_ENABLED, vedi
+          preferenze/page.tsx) — lato genitore (basePath="/profile") non c'è
+          ancora alcun tour da riavviare (Spotlight Parent non costruito,
+          task #441 ancora pending), il sottotitolo lì resta invariato per
+          non promettere una funzione assente (tests/genitori/profilo.spec.ts
+          verifica ancora il testo originale). */}
       <MenuItem
         icon="ti-adjustments"
         iconBg="#FFF3E6"
         iconColor="#E08A2D"
         main="Preferenze"
-        sub="Lingua, tema, notifiche"
+        sub={basePath.startsWith("/center") ? "Lingua, tema, notifiche, tour guidato" : "Lingua, tema, notifiche"}
         href={`${basePath}/preferenze`}
       />
       {/* comingSoon: nessun metodo di pagamento reale è ancora integrato

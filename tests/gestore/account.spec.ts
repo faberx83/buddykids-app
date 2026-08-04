@@ -41,7 +41,12 @@ test.describe("Gestore - Il mio account", () => {
     // preferenze"). Verifichiamo "Preferenze" e il suo sottotitolo, che
     // menziona esplicitamente le notifiche, invece di un link inesistente.
     await expect(page.getByRole("link", { name: /Preferenze/ })).toBeVisible();
-    await expect(page.getByText("Lingua, tema, notifiche")).toBeVisible();
+    // DEC-73 — richiesta di Fabrizio: il sottotitolo di "Preferenze" lato
+    // Gestore deve menzionare anche il tour guidato (riavviabile da lì,
+    // WalkthroughRestartButton) — testo diverso dal profilo genitore, che
+    // non ha ancora un tour da riavviare (vedi tests/genitori/profilo.spec.ts,
+    // invariato).
+    await expect(page.getByText("Lingua, tema, notifiche, tour guidato")).toBeVisible();
     await expect(page.getByRole("link", { name: /Privacy e account/ })).toBeVisible();
 
     // Il selettore "Sei: Padre/Madre/Tutore" non ha senso per un gestore.
