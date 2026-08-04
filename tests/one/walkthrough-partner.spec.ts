@@ -136,10 +136,20 @@ test.describe("TRAMA ONE — Spotlight reale Partner (Controlled Beta, §7-14)",
   // singolo pulsante), un click su QUALUNQUE campo reale dentro la card
   // (es. la checkbox "Ingresso anticipato (pre-servizio)") faceva scattare
   // subito l'avanzamento allo step successivo, impedendo di finire di
-  // compilare gli altri campi. Ora questi step richiedono "Inizia" poi il
-  // pulsante esplicito "Ho finito, continua →"; un click su un campo reale
-  // dentro la card, da solo, non deve più avanzare nulla.
-  test("TC-N615 - step 'manuali' (Informazioni di base/Servizi extra) richiedono il pulsante esplicito 'Ho finito, continua' (un click su un campo reale non avanza da solo); il badge 'target non trovato' per Giorni spot mostra un link reale verso il Calendario disponibilità", async ({
+  // compilare gli altri campi. Ora questi step mostrano il pulsante
+  // esplicito "Ho finito, continua →"; un click su un campo reale dentro la
+  // card, da solo, non deve più avanzare nulla.
+  //
+  // DEC-72 (Visual Acceptance Gate §15) — terzo giro di riscontro Fabrizio,
+  // stesso test: dopo aver completato/saltato uno step, il successivo si
+  // avvia ORA automaticamente (nextStepAfter chiama startWalkthroughStepAction
+  // per lo step successivo se ancora "not_started") — niente più "Inizia" a
+  // ripetizione per ogni step dopo il primo (resta solo per create_activity,
+  // il primissimo step del percorso, coperto da TC-N414/TC-N415). Qui quindi
+  // NON si clicca più "Inizia" per configure_weeks/configure_pricing/
+  // configure_spot_days: il popover mostra già "Ho finito, continua →" (o,
+  // per publish, il testo click-based) non appena diventano correnti.
+  test("TC-N615 - dopo il primo step il tour si avvia da solo per i successivi (niente 'Inizia' ripetuto, DEC-72); gli step 'manuali' richiedono il pulsante esplicito 'Ho finito, continua' (un click su un campo reale non avanza da solo, DEC-71); il badge 'target non trovato' per Giorni spot mostra un link reale verso il Calendario disponibilità", async ({
     page,
   }) => {
     test.skip(
@@ -156,24 +166,28 @@ test.describe("TRAMA ONE — Spotlight reale Partner (Controlled Beta, §7-14)",
     await page.locator("a[href^='/center/activities/']").first().click();
     await expect(page).toHaveURL(/\/center\/activities\/[^/]+$/);
 
-    // Step "configure_weeks" (DEC-71): manuale, Inizia poi "Ho finito,
-    // continua" — non basta più un click generico dentro la card.
+    // Step "configure_weeks": già avviato automaticamente da TC-N416
+    // (completamento di create_activity, DEC-72) — niente "Inizia" da
+    // cliccare, il popover mostra già "Ho finito, continua →" (manuale,
+    // DEC-71).
     const weeksDialog = page.getByRole("dialog", { name: "Informazioni di base" });
-    await weeksDialog.getByRole("button", { name: "Inizia" }).click();
+    await expect(weeksDialog.getByRole("button", { name: "Inizia" })).toHaveCount(0);
     await weeksDialog.getByRole("button", { name: "Ho finito, continua →" }).click();
 
-    // Step "configure_pricing": stesso pattern manuale — ma prima
-    // verifichiamo il bug reale di Fabrizio: cliccare un campo REALE dentro
-    // la card (checkbox "Ingresso anticipato") non deve avanzare da solo.
+    // Step "configure_pricing": avviato automaticamente al completamento di
+    // configure_weeks (DEC-72) — verifichiamo comunque il bug reale di
+    // Fabrizio (DEC-71): cliccare un campo REALE dentro la card (checkbox
+    // "Ingresso anticipato") non deve avanzare da solo.
     const pricingDialog = page.getByRole("dialog", { name: "Servizi extra e pasto" });
-    await pricingDialog.getByRole("button", { name: "Inizia" }).click();
+    await expect(pricingDialog.getByRole("button", { name: "Inizia" })).toHaveCount(0);
     await page.getByRole("checkbox", { name: "Ingresso anticipato (pre-servizio)" }).click();
     await expect(pricingDialog).toBeVisible(); // ancora qui: il click sul campo non ha avanzato lo step
     await expect(pricingDialog.getByText("Compila con calma i campi di questa sezione, poi continua.")).toBeVisible();
     await pricingDialog.getByRole("button", { name: "Ho finito, continua →" }).click();
 
-    // Step "publish": resta click-based, l'azione stessa (salvare) È il
-    // completamento genuino dello step — comportamento invariato.
+    // Step "publish": resta click-based (comportamento invariato) — anche
+    // qui niente "Inizia" da cliccare (DEC-72), l'azione di salvataggio È
+    // il completamento genuino dello step.
     await page.locator('[data-spotlight="publish"]').click();
 
     const missingBadge = page.getByRole("status").filter({ hasText: "Configura i Giorni spot" });
