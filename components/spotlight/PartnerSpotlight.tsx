@@ -31,6 +31,7 @@ import {
   computeCutoutRect,
   computePopoverPosition,
   matchesSpotlightRoute,
+  padBorderRadius,
   pickVisibleTargetIndex,
   Rect,
 } from "@/lib/spotlight/position";
@@ -160,6 +161,33 @@ export default function PartnerSpotlight({ progress }: { progress: WalkthroughPr
     });
     setTargetMissing(false);
   }, [current, pathname]);
+
+  // Visual Acceptance Gate (§15, DEC-73) — bug reale trovato da Fabrizio
+  // ("nel passaggio da step 3 a 4 la schermata cambia... è sovrapposto",
+  // non riuscito a registrarlo perché durava un solo frame): quando
+  // `currentKey` cambia (nextStepAfter), `targetRect`/`cutoutRadius`
+  // restavano quelli dello step APPENA CONCLUSO fino al prossimo tick di
+  // `measure()` (schedulato via rAF, un frame dopo). In quella finestra
+  // React renderizzava già titolo/descrizione del NUOVO step ma ancorati
+  // alla POSIZIONE del vecchio target — un frame di popover/cutout
+  // disallineati o sovrapposti a un elemento che non c'entra, troppo breve
+  // per uno screenshot ma visibile a occhio. Fix: pattern React consigliato
+  // per "adjusting state when a prop changes" (aggiustare lo stato DURANTE
+  // il render confrontando con il valore renderizzato in precedenza, non in
+  // un effetto — evita sia il flash sia il warning react-hooks/
+  // set-state-in-effect di un setState sincrono dentro un effetto). Se
+  // `currentKey` è cambiato rispetto all'ultimo render, azzeriamo subito
+  // `targetRect`/`targetMissing` PRIMA che il browser dipinga: il componente
+  // ritorna `null` per quel render invece di mostrare la posizione sbagliata,
+  // poi la prossima `measure()` (già schedulata dall'effetto sotto, che
+  // dipende da `measure` e quindi da `current`) aggiorna con la posizione
+  // corretta del nuovo target.
+  const [lastMeasuredKey, setLastMeasuredKey] = useState(currentKey);
+  if (currentKey !== lastMeasuredKey) {
+    setLastMeasuredKey(currentKey);
+    setTargetRect(null);
+    setTargetMissing(false);
+  }
 
   // Ricalcola a ogni cambio pagina/step e su resize/scroll: il target reale
   // può muoversi (non un overlay statico indipendente dal layout). La prima
@@ -341,6 +369,9 @@ export default function PartnerSpotlight({ progress }: { progress: WalkthroughPr
             {hint.label}
           </Link>
         )}
+        {current.spotlightMissingNote && (
+          <p className="mt-2 text-[11px] font-medium text-ink-3">{current.spotlightMissingNote}</p>
+        )}
       </div>
     );
   }
@@ -381,7 +412,12 @@ export default function PartnerSpotlight({ progress }: { progress: WalkthroughPr
             left: cutout.left,
             width: cutout.width,
             height: cutout.height,
-            borderRadius: cutoutRadius,
+            // DEC-73 — vedi padBorderRadius in lib/spotlight/position.ts:
+            // il ring non usa più il raggio "grezzo" del target, ma quello
+            // corretto per il fatto che il cutout è il target ingrandito di
+            // 8px per lato (era questo lo scarto che rendeva il riquadro
+            // "ancora squadrato" nonostante DEC-70).
+            borderRadius: padBorderRadius(cutoutRadius),
           }}
         />
       </div>
