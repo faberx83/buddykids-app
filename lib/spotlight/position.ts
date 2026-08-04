@@ -29,6 +29,11 @@ export interface PopoverPosition {
 
 const GAP = 12;
 const POPOVER_WIDTH = 320;
+// Visual Acceptance Gate (§15, DEC-70/DEC-73) — margine di respiro del
+// cutout attorno al target reale, condiviso tra computeCutoutRect (di
+// seguito) e padBorderRadius (sotto): unica fonte di verità, per non
+// disallineare le due formule se questo valore cambia in futuro.
+export const CUTOUT_PADDING = 8;
 
 /**
  * Calcola dove posizionare il popover ancorato al target reale: sotto per
@@ -75,13 +80,50 @@ export function computePopoverPosition(
  * reale, con un margine di respiro — non un semplice bordo attaccato al
  * bordo dell'elemento.
  */
-export function computeCutoutRect(target: Rect, padding = 8): Rect {
+export function computeCutoutRect(target: Rect, padding: number = CUTOUT_PADDING): Rect {
   return {
     top: target.top - padding,
     left: target.left - padding,
     width: target.width + padding * 2,
     height: target.height + padding * 2,
   };
+}
+
+/**
+ * Visual Acceptance Gate (§15, DEC-73) — bug reale trovato da Fabrizio: "il
+ * riquadro intorno ai pulsanti è ancora squadrato, ci sono gli angoli",
+ * anche dopo il fix DEC-70 che legge il border-radius REALE del target via
+ * getComputedStyle. Causa: il cutout non è il rettangolo del target — è
+ * quel rettangolo INGRANDITO di `padding` px su ogni lato
+ * (computeCutoutRect sopra), ma il ring veniva disegnato con lo STESSO
+ * raggio numerico del target originale. Ingrandire un rettangolo
+ * arrotondato uniformemente in ogni direzione senza aumentare anche il
+ * raggio dei suoi angoli della stessa quantità appiattisce visivamente la
+ * curvatura (un angolo di raggio 6px, appena percettibile su un pulsante
+ * alto ~40px, lo è ancora meno su un cutout alto ~56px) — a valori di
+ * padding grandi rispetto al raggio originale il risultato appare
+ * praticamente squadrato, esattamente il difetto segnalato. Per mantenere
+ * la stessa curvatura visiva ("stessa forma del pulsante", richiesta
+ * originale di Fabrizio in DEC-70) quando un rettangolo arrotondato viene
+ * offsettato verso l'esterno di `padding` in ogni direzione, il raggio dei
+ * suoi angoli va aumentato della stessa quantità: raggio_nuovo =
+ * raggio_originale + padding. Gestisce anche il caso border-radius
+ * shorthand a più valori (es. "6px 6px 0px 0px", angoli non uniformi) —
+ * ogni token numerico in px viene incrementato singolarmente; token non in
+ * px (es. "%", raro sui bottoni reali dell'app) restano invariati perché
+ * sommare un padding assoluto in px a una percentuale non ha senso.
+ */
+export function padBorderRadius(radius: string, padding: number = CUTOUT_PADDING): string {
+  const tokens = radius.trim().split(/\s+/).filter(Boolean);
+  if (tokens.length === 0) return radius;
+  return tokens
+    .map((token) => {
+      const match = token.match(/^(-?\d*\.?\d+)(px)$/);
+      if (!match) return token;
+      const value = parseFloat(match[1]);
+      return `${value + padding}px`;
+    })
+    .join(" ");
 }
 
 /**

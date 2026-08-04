@@ -3,6 +3,7 @@ import {
   computeCutoutRect,
   computePopoverPosition,
   matchesSpotlightRoute,
+  padBorderRadius,
   pickVisibleTargetIndex,
 } from "../../lib/spotlight/position";
 
@@ -99,6 +100,42 @@ test.describe("Spotlight — computeCutoutRect [no browser]", () => {
     const target = { top: 100, left: 200, width: 50, height: 30 };
     const result = computeCutoutRect(target, 4);
     expect(result).toEqual({ top: 96, left: 196, width: 58, height: 38 });
+  });
+});
+
+// DEC-73 — regressione diretta del bug reale trovato da Fabrizio: "il
+// riquadro intorno ai pulsanti è ancora squadrato, ci sono gli angoli". Il
+// ring del cutout applicava il border-radius GREZZO del target (letto da
+// getComputedStyle) a un rettangolo che computeCutoutRect ha già ingrandito
+// di `padding` px per lato — senza aumentare anche il raggio della stessa
+// quantità, la curvatura appariva quasi piatta. padBorderRadius corregge:
+// raggio_nuovo = raggio_originale + padding.
+test.describe("Spotlight — padBorderRadius [no browser]", () => {
+  test("valore singolo in px -> incrementato del padding di default (8px)", () => {
+    // Il caso reale del bug: "Salva modifiche" usa rounded-md (6px) — prima
+    // del fix il ring restava a 6px sul cutout ingrandito, visivamente
+    // quasi squadrato; ora diventa 14px, proporzionato al box più grande.
+    expect(padBorderRadius("6px")).toBe("14px");
+  });
+
+  test("padding esplicito diverso dal default viene rispettato", () => {
+    expect(padBorderRadius("6px", 4)).toBe("10px");
+  });
+
+  test("border-radius molto grande (pulsante 'pillola', rounded-full -> 9999px) resta comunque un pillola", () => {
+    expect(padBorderRadius("9999px")).toBe("10007px"); // CSS clampa comunque a metà altezza: resta visivamente una pillola
+  });
+
+  test("shorthand a più valori (angoli non uniformi) -> ogni token incrementato singolarmente", () => {
+    expect(padBorderRadius("6px 6px 0px 0px")).toBe("14px 14px 8px 8px");
+  });
+
+  test("token non in px (es. '%') lasciato invariato: sommare px a una percentuale non ha senso", () => {
+    expect(padBorderRadius("50%")).toBe("50%");
+  });
+
+  test("stringa vuota -> ritornata invariata", () => {
+    expect(padBorderRadius("")).toBe("");
   });
 });
 
