@@ -186,6 +186,16 @@ test.describe("TRAMA ONE — Spotlight reale Partner (Controlled Beta, §7-14)",
     await expect(pricingDialog.getByText("Compila con calma i campi di questa sezione, poi continua.")).toBeVisible();
     await pricingDialog.getByRole("button", { name: "Ho finito, continua →" }).click();
 
+    // DEC-73 — regressione diretta del bug "il riquadro è ancora squadrato":
+    // verifica DAL BROWSER REALE (non solo la funzione pura padBorderRadius
+    // in tests/one/spotlight-position.spec.ts) che il ring applicato al
+    // pulsante "Salva modifiche" (rounded-md, 6px reali) abbia davvero un
+    // border-radius calcolato di 14px = 6px + CUTOUT_PADDING (8px) — se in
+    // futuro il pulsante cambia stile (es. diventa rounded-full) questo
+    // assert va aggiornato di conseguenza, è legato all'aspetto reale voluto.
+    const ring = page.getByTestId("spotlight-cutout-ring");
+    await expect(ring).toHaveCSS("border-radius", "14px");
+
     // Step "publish": resta click-based (comportamento invariato) — anche
     // qui niente "Inizia" da cliccare (DEC-72), l'azione di salvataggio È
     // il completamento genuino dello step.
@@ -199,6 +209,58 @@ test.describe("TRAMA ONE — Spotlight reale Partner (Controlled Beta, §7-14)",
     await link.click();
     await expect(page).toHaveURL(/\/center\/activities\/[^/]+\/calendar$/);
   });
+
+  // DEC-73 — Fabrizio ha chiesto se il caso "dashboard non evidenziato su
+  // mobile" (righe 17/18 della matrice) fosse davvero impossibile da
+  // automatizzare: non lo è, richiede solo di completare la sequenza fino in
+  // fondo — questo test riprende da dove TC-N615 si è fermato (stesso stato
+  // server, serial) e la porta a termine, con un ramo esplicito per
+  // mobile-chrome (dove il cassetto è chiuso di default, DEC-70) vs
+  // chromium/desktop (dove la voce "Dashboard" è già visibile in sidebar).
+  test("TC-N624 - completare 'Configura i Giorni spot' avvia lo step finale 'dashboard'; su mobile a cassetto chiuso il badge mostra la nota di aiuto (DEC-73), aprendo il cassetto la voce Dashboard viene evidenziata", async ({
+    page,
+  }) => {
+    test.skip(
+      !isRealDeployment,
+      "Richiede un deploy con Supabase configurato, l'account center_admin di test e un'attività esistente nel centro collegato (prosegue dallo stato lasciato da TC-N615)."
+    );
+
+    await loginAs(page, "center_admin");
+    await page.goto("/center/activities");
+    await page.locator("a[href^='/center/activities/']").first().click();
+    await expect(page).toHaveURL(/\/center\/activities\/[^/]+$/);
+
+    // Lo step è ancora "configure_spot_days" (TC-N615 ha solo navigato al
+    // link, non l'ha completato): sulla pagina di modifica il target vive
+    // altrove, riappare lo stesso badge con link verso il calendario.
+    const missingBadge = page.getByRole("status").filter({ hasText: "Configura i Giorni spot" });
+    await missingBadge.getByRole("link", { name: "Vai al Calendario disponibilità →" }).click();
+    await expect(page).toHaveURL(/\/center\/activities\/[^/]+\/calendar$/);
+
+    const spotDaysDialog = page.getByRole("dialog", { name: "Configura i Giorni spot" });
+    await expect(spotDaysDialog.getByRole("button", { name: "Inizia" })).toHaveCount(0);
+    await spotDaysDialog.getByRole("button", { name: "Ho finito, continua →" }).click();
+
+    // Step finale "dashboard": si avvia da solo (DEC-72). Comportamento
+    // diverso per breakpoint, per costruzione (DEC-70): su mobile la voce
+    // "Dashboard" vive nel cassetto laterale, chiuso di default.
+    const viewport = page.viewportSize();
+    const isMobile = viewport !== null && viewport.width < 768;
+
+    if (isMobile) {
+      const dashboardMissingBadge = page.getByRole("status").filter({ hasText: "Monitora dalla dashboard" });
+      await expect(dashboardMissingBadge).toBeVisible();
+      // DEC-73: prima di questo fix il badge compariva ma senza alcun
+      // indizio su come procedere — ora indica esplicitamente di aprire il
+      // menu.
+      await expect(dashboardMissingBadge.getByText(/apri il menu/i)).toBeVisible();
+
+      await page.getByRole("button", { name: "Apri il menu" }).click();
+      await expect(page.getByRole("dialog", { name: "Monitora dalla dashboard" })).toBeVisible();
+    } else {
+      await expect(page.getByRole("dialog", { name: "Monitora dalla dashboard" })).toBeVisible();
+    }
+  });
 });
 
 // DEC-73 — bug reale trovato da Fabrizio: sul badge "target non trovato" per
@@ -206,11 +268,12 @@ test.describe("TRAMA ONE — Spotlight reale Partner (Controlled Beta, §7-14)",
 // DEC-70) non c'era alcun indizio su come renderlo visibile — l'ha trovato
 // solo aprendo il menu per tentativi. Fix: spotlightMissingNote (vedi
 // registry.ts/PartnerSpotlight.tsx). Verifica "no browser" del dato nel
-// registry (il rendering reale del badge con questo testo, su viewport
-// mobile con drawer chiuso, richiederebbe di completare l'intero percorso
-// fino allo step "dashboard" con un browser reale — troppo fragile/lento per
-// automatizzare in modo affidabile qui; verificato manualmente da Fabrizio
-// nel prossimo giro di test live).
+// registry, indipendente da qualunque deploy/browser reale (gira sempre,
+// anche in questo sandbox). Il rendering REALE del badge con questo testo,
+// su viewport mobile con drawer chiuso, è coperto invece da TC-N624 sopra
+// (DEC-74) — inizialmente considerato "troppo fragile da automatizzare",
+// rivisto dopo la richiesta esplicita di Fabrizio di controllare se fosse
+// davvero impossibile: non lo era, serviva solo completare la sequenza.
 test.describe("TRAMA ONE — registry Walkthrough Partner [no browser]", () => {
   test("TC-N620 - lo step 'dashboard' ha una nota di aiuto per il badge 'target non trovato' (apri il menu su mobile)", () => {
     const dashboardStep = WALKTHROUGH_REGISTRY.activity_creation_partner.steps.find((s) => s.key === "dashboard");
