@@ -406,6 +406,7 @@ export default function PartnerSpotlight({ progress }: { progress: WalkthroughPr
             qui sopra (cutoutRadius), applicato via style invece della classe
             Tailwind fissa. */}
         <div
+          data-testid="spotlight-cutout-ring"
           className="absolute ring-2 ring-trama-violet"
           style={{
             top: cutout.top,
