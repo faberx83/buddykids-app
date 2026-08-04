@@ -42,6 +42,19 @@ export interface WalkthroughStepDefinition {
   // STESSO id attività), non serve un meccanismo più generico finché non ne
   // emerge un secondo.
   spotlightMissingHint?: { suffix: string; label: string };
+  // Visual Acceptance Gate (§15, DEC-71) — bug reale trovato da Fabrizio: per
+  // gli step il cui target è una CARD con più campi da compilare (non un
+  // singolo pulsante/link), il vecchio comportamento "il primo click dentro
+  // il target completa lo step" faceva scattare l'avanzamento al primo
+  // click su QUALUNQUE campo (es. la checkbox "Ingresso anticipato" dentro
+  // "Servizi extra e pasto"), impedendo di fatto di finire di compilare gli
+  // altri campi della stessa card. Campo opzionale: quando true, il click
+  // genuino NON completa più lo step — il popover mostra invece un pulsante
+  // esplicito "Ho finito, continua →" (vedi PartnerSpotlight.tsx). Assente/
+  // false per gli step il cui target È l'azione stessa (create_activity:
+  // click sul link "+ Nuova attività"; publish: click su "Salva modifiche"):
+  // lì il click resta la conferma genuina, comportamento invariato.
+  spotlightManualAdvance?: boolean;
 }
 
 export interface WalkthroughDefinition {
@@ -116,6 +129,7 @@ export const WALKTHROUGH_REGISTRY: Record<string, WalkthroughDefinition> = {
         description: "Compila nome, fascia d'età, prezzo a settimana e descrizione dell'attività.",
         spotlightTarget: "configure_weeks",
         spotlightRoute: "/center/activities/*",
+        spotlightManualAdvance: true,
       },
       // Il target reale (data-spotlight="configure_pricing") è la card
       // "Servizi extra e pasto" — non contiene "prezzo"/"navetta" (quelli
@@ -126,6 +140,7 @@ export const WALKTHROUGH_REGISTRY: Record<string, WalkthroughDefinition> = {
         description: "Configura ingresso anticipato, uscita posticipata e l'opzione pasto per questa attività.",
         spotlightTarget: "configure_pricing",
         spotlightRoute: "/center/activities/*",
+        spotlightManualAdvance: true,
       },
       {
         key: "publish",
@@ -146,6 +161,10 @@ export const WALKTHROUGH_REGISTRY: Record<string, WalkthroughDefinition> = {
         spotlightTarget: "configure_spot_days",
         spotlightRoute: "/center/activities/*/calendar",
         spotlightMissingHint: { suffix: "/calendar", label: "Vai al Calendario disponibilità →" },
+        // Stesso motivo di configure_weeks/configure_pricing (DEC-71): il
+        // target è il calendario con più giorni cliccabili singolarmente
+        // (AvailabilityCalendar), non un singolo pulsante.
+        spotlightManualAdvance: true,
       },
       {
         key: "dashboard",
