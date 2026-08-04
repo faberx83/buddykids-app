@@ -30,6 +30,11 @@ export interface WalkthroughStepProgress {
   // il motivo: quando true, il completamento richiede il pulsante esplicito
   // "Ho finito, continua →" invece del primo click dentro il target.
   spotlightManualAdvance?: boolean;
+  // Visual Acceptance Gate (§15, DEC-73) — vedi WalkthroughStepDefinition
+  // per il motivo: nota testuale (nessun link) mostrata nel badge "target
+  // non trovato" quando il target esiste sulla pagina ma non è visibile
+  // adesso, per spiegare come renderlo visibile (es. aprire il menu ☰).
+  spotlightMissingNote?: string;
 }
 
 export interface WalkthroughProgressSummary {
@@ -56,6 +61,7 @@ export async function getWalkthroughProgress(
     spotlightRoute: s.spotlightRoute,
     spotlightMissingHint: s.spotlightMissingHint,
     spotlightManualAdvance: s.spotlightManualAdvance,
+    spotlightMissingNote: s.spotlightMissingNote,
   }));
 
   if (!isSupabaseConfigured || !userId) {

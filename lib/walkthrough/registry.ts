@@ -55,6 +55,17 @@ export interface WalkthroughStepDefinition {
   // click sul link "+ Nuova attività"; publish: click su "Salva modifiche"):
   // lì il click resta la conferma genuina, comportamento invariato.
   spotlightManualAdvance?: boolean;
+  // Visual Acceptance Gate (§15, DEC-73) — bug reale trovato da Fabrizio: sul
+  // badge "target non trovato" mostrato quando il target esiste sulla
+  // pagina corrente ma non è visibile ADESSO (es. "dashboard" nel cassetto
+  // mobile chiuso, vedi pickVisibleTargetIndex/DEC-70), non c'era alcun
+  // indizio su COME renderlo visibile — a differenza di spotlightMissingHint
+  // (un link a un'ALTRA pagina), qui non serve navigare, basta un'azione
+  // nella pagina stessa (es. aprire il menu ☰). Campo opzionale di solo
+  // testo (nessun link, l'azione non è cliccabile da qui) mostrato SOLO nel
+  // badge di fallback, per non appesantire la description normale mostrata
+  // quando il target è già visibile.
+  spotlightMissingNote?: string;
 }
 
 export interface WalkthroughDefinition {
@@ -166,12 +177,21 @@ export const WALKTHROUGH_REGISTRY: Record<string, WalkthroughDefinition> = {
         // (AvailabilityCalendar), non un singolo pulsante.
         spotlightManualAdvance: true,
       },
+      // Visual Acceptance Gate (§15, DEC-73) — bug reale trovato da
+      // Fabrizio: su mobile (390px) la voce "Dashboard" vive nel cassetto
+      // laterale, invisibile finché non lo si apre (DEC-70): il badge
+      // "target non trovato" mostrava titolo/descrizione ma nessun indizio
+      // su COSA fare per vederla evidenziata — l'ha trovata solo aprendo il
+      // menu per tentativi. spotlightMissingNote aggiunge quel suggerimento
+      // testuale al badge (nessun link: l'azione è "apri il cassetto", non
+      // una navigazione ad altra pagina).
       {
         key: "dashboard",
         title: "Monitora dalla dashboard",
         description: "Segui prenotazioni, presenze e richieste ricevute dal pannello Gestore.",
         spotlightTarget: "dashboard",
         spotlightRoute: "*",
+        spotlightMissingNote: "Su schermi piccoli, apri il menu ☰ in alto per trovare la voce \"Dashboard\" nel cassetto laterale.",
       },
     ],
   },
