@@ -173,8 +173,20 @@ export default function PartnerSpotlight({ progress }: { progress: WalkthroughPr
   // Azione REALE: click genuino dell'utente sull'elemento evidenziato
   // (capture phase, non blocca mai il comportamento nativo dell'elemento —
   // link/pulsante continuano a funzionare esattamente come senza Spotlight).
+  //
+  // Visual Acceptance Gate (§15, DEC-71) — bug reale trovato da Fabrizio:
+  // per gli step "manuali" (spotlightManualAdvance, es. configure_pricing —
+  // il target è l'intera card "Servizi extra e pasto" con più campi), il
+  // primo click su QUALUNQUE campo dentro la card (es. la checkbox
+  // "Ingresso anticipato") faceva scattare subito handleComplete() e
+  // avanzava allo step successivo, impedendo di finire di compilare gli
+  // altri campi. Per questi step il listener non si attacca affatto: il
+  // completamento passa dal pulsante esplicito "Ho finito, continua →" nel
+  // popover (vedi sotto). Comportamento invariato per gli step il cui
+  // target È l'azione stessa (create_activity, publish).
   useEffect(() => {
     if (!current?.spotlightTarget || current.status === "completed") return;
+    if (current.spotlightManualAdvance) return;
     function onClickCapture(e: MouseEvent) {
       const el = (e.target as HTMLElement)?.closest?.(`[data-spotlight="${current!.spotlightTarget}"]`);
       if (el) void handleComplete();
@@ -325,6 +337,30 @@ export default function PartnerSpotlight({ progress }: { progress: WalkthroughPr
             >
               Salta per ora
             </button>
+          </div>
+        ) : current.spotlightManualAdvance ? (
+          // Visual Acceptance Gate (§15, DEC-71) — step "manuale": la card ha
+          // più campi da compilare, il completamento è un pulsante esplicito
+          // invece del primo click dentro il target (vedi motivazione sopra
+          // sull'effetto di click-capture).
+          <div className="mt-3">
+            <p className="text-[12px] font-medium text-ink-2">
+              Compila con calma i campi di questa sezione, poi continua.
+            </p>
+            <div className="mt-2 flex gap-2">
+              <button
+                onClick={handleComplete}
+                className="rounded-md bg-trama-violet px-3.5 py-2 text-[13px] font-bold text-white"
+              >
+                Ho finito, continua →
+              </button>
+              <button
+                onClick={handleDismiss}
+                className="rounded-md border border-[#E8EBF0] px-3.5 py-2 text-[13px] font-semibold text-ink"
+              >
+                Salta per ora
+              </button>
+            </div>
           </div>
         ) : (
           <div className="mt-3">
