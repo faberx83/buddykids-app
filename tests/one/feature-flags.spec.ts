@@ -332,7 +332,15 @@ test.describe("TRAMA ONE Sprint 6 — Admin /admin/feature-flags [UI]", () => {
     await loginAs(page, "platform_admin");
     await page.goto("/admin/feature-flags");
     await expect(page.getByText("Feature flag — Override")).toBeVisible();
-    await expect(page.getByText("TRAMA_ONE_ENABLED")).toBeVisible();
+    // BUGFIX (deploy 05/08, TEST_SCOPE=critical): da quando la Sezione 4
+    // TRAMA ONE ha aggiunto il "Catalogo funzionalità" a questa stessa
+    // pagina (FeatureFlagsAdminClient.tsx), il testo "TRAMA_ONE_ENABLED"
+    // compare più volte (una per ogni voce di catalogo con quel flag, oltre
+    // alla card di override) — getByText() senza scoping causa uno strict
+    // mode violation (6 match). ".first()" basta qui: è solo un controllo
+    // di visibilità generico, la card reale usata sotto è già isolata
+    // correttamente con .filter({hasText}).first() alla riga seguente.
+    await expect(page.getByText("TRAMA_ONE_ENABLED").first()).toBeVisible();
 
     // ".first()", non ".last()": "div" (locator generico) matcha OGNI div
     // annidato il cui testo complessivo contiene "TRAMA_ONE_ENABLED" — non
