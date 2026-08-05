@@ -27,3 +27,26 @@ export function areaLabelFromPath(pathname: string): string {
   if (pathname.startsWith("/richieste")) return "Le mie richieste";
   return "Altro";
 }
+
+// ESTENSIONE PARTNER — stessa idea di areaLabelFromPath sopra, ma per le
+// rotte /center/* (vedi app/center/layout.tsx per l'elenco reale delle voci
+// di menu). Funzione separata anziché un'unica mappa condivisa: le due app
+// (genitori/NEXTGEN e gestori/LEGACY) hanno alberi di rotte del tutto
+// distinti e non sovrapposti, unirle avrebbe solo reso più difficile capire
+// quale ramo appartiene a quale app.
+export function centerAreaLabelFromPath(pathname: string): string {
+  if (pathname === "/center") return "Dashboard";
+  if (pathname.startsWith("/center/profile")) return "Il mio centro";
+  if (pathname.startsWith("/center/activities")) return "Attività";
+  if (pathname.startsWith("/center/promotions")) return "Promozioni";
+  if (pathname.startsWith("/center/servizi-consigliati")) return "Servizi consigliati";
+  if (pathname.startsWith("/center/attendance")) return "Registro presenze";
+  if (pathname.startsWith("/center/report-presenze")) return "Report presenze";
+  if (pathname.startsWith("/center/prenotazioni")) return "Prenotazioni";
+  if (pathname.startsWith("/center/group-requests")) return "Richieste Gruppo";
+  if (pathname.startsWith("/center/richieste")) return "Le mie richieste";
+  if (pathname.startsWith("/center/invites")) return "Inviti";
+  if (pathname.startsWith("/center/account")) return "Il mio account";
+  if (pathname.startsWith("/center/one")) return "Tour guidato";
+  return "Altro";
+}

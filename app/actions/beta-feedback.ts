@@ -5,17 +5,28 @@ import { isSupabaseConfigured } from "@/lib/supabase/env";
 import { revalidatePath } from "next/cache";
 
 // SPRINT 5 (NEXTGEN) — "Segnala un problema": il genitore invia una
-// segnalazione dalla floating CTA (BetaFeedbackButton.tsx), sempre con
-// app_source="genitori" (colonna già pronta per "gestore", quando lo stesso
-// meccanismo verrà aggiunto a quell'app — Fabrizio: "su cui poi
-// implementeremo stesso meccanismo"), sempre in stato "nuovo" (RLS lo
-// impone comunque). "area"/"pagePath" arrivano già calcolati dal client
-// (vedi lib/nextgen/beta-feedback-areas.ts), nessuna logica di
+// segnalazione dalla floating CTA (BetaFeedbackButton.tsx), sempre in stato
+// "nuovo" (RLS lo impone comunque). "area"/"pagePath" arrivano già calcolati
+// dal client (vedi lib/nextgen/beta-feedback-areas.ts), nessuna logica di
 // interpretazione lato server.
+//
+// ESTENSIONE PARTNER (Fabrizio: "il pulsante per le segnalazioni... non
+// possiamo metterlo... nel portale partner?") — appSource ora è un
+// parametro invece di un valore fisso "genitori": la colonna app_source
+// (supabase/schema.sql) supportava già 'gestore' fin dalla creazione della
+// tabella (Sprint 5), così come la UI Admin (SOURCE_LABEL in
+// SegnalazioniBetaAdminClient.tsx) — nessuna migrazione né modifica Admin
+// necessaria per questa estensione. Il default resta "genitori" per non
+// dover toccare la chiamata esistente in BetaFeedbackButton.tsx lato
+// genitore. Il nome colonna "parent_id" è storico/fuorviante (risale a
+// quando la tabella serviva solo l'app genitori) ma tecnicamente corretto
+// per qualunque ruolo: referenzia profiles(id), e la RLS controlla solo
+// `auth.uid() = parent_id`, senza alcun vincolo di ruolo.
 export async function submitBetaFeedbackAction(
   area: string,
   pagePath: string,
-  message: string
+  message: string,
+  appSource: "genitori" | "gestore" = "genitori"
 ): Promise<{ error?: string }> {
   if (!isSupabaseConfigured) return { error: "Supabase non configurato" };
   if (!message.trim()) return { error: "Scrivi qualcosa prima di inviare" };
@@ -28,7 +39,7 @@ export async function submitBetaFeedbackAction(
 
   const { error } = await supabase.from("beta_feedback").insert({
     parent_id: user.id,
-    app_source: "genitori",
+    app_source: appSource,
     area,
     page_path: pagePath,
     message: message.trim(),
