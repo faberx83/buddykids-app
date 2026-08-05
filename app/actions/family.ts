@@ -12,6 +12,7 @@ import { isSupabaseConfigured } from "@/lib/supabase/env";
 import { revalidatePath } from "next/cache";
 import { headers } from "next/headers";
 import { sendEmail, isEmailConfigured } from "@/lib/email";
+import { familyHost } from "@/lib/tenant";
 
 // Stessi caratteri di app/actions/communities.ts (niente 0/O/1/I, ambigui da
 // leggere/dettare a voce quando il codice viene condiviso a mano, es. col
@@ -140,9 +141,14 @@ export async function leaveFamilyAction(): Promise<{ error?: string }> {
 // loggato o dopo la registrazione, dritto al prompt di accettazione.
 // ─────────────────────────────────────────────
 
+// BUGFIX (05/08, stesso bug trovato in app/actions/invites.ts): questa
+// funzione copiava alla lettera l'header "host" della richiesta corrente —
+// un invito Famiglia deve sempre atterrare sul tenant famiglia,
+// indipendentemente da dove è stato generato. Vedi familyHost() in
+// lib/tenant.ts.
 async function buildOrigin(): Promise<string> {
   const h = await headers();
-  const host = h.get("host") || "localhost:3000";
+  const host = familyHost(h.get("host") || "localhost:3000");
   const proto = h.get("x-forwarded-proto") || (host.startsWith("localhost") ? "http" : "https");
   return `${proto}://${host}`;
 }

@@ -1,7 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { updateSession, getRequestRole, getRequestUserId } from "@/lib/supabase/middleware";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
-import { tenantForHost, TENANT_CONFIG } from "@/lib/tenant";
+import { tenantForHost, TENANT_CONFIG, familyHost } from "@/lib/tenant";
 
 // ─────────────────────────────────────────────────────────────────
 // Multi-tenant a sottodomini:
@@ -21,9 +21,10 @@ function mainDomainUrl(request: NextRequest, rawHost: string): URL {
   const url = request.nextUrl.clone();
   // Con alias .vercel.app "sciolti" (non sottodomini dello stesso dominio,
   // vedi lib/tenant.ts) non c'è un prefisso partner./admin. da togliere per
-  // ricavare il dominio famiglie — va indicato esplicitamente.
-  const configuredMainHost = process.env.NEXT_PUBLIC_MAIN_HOST;
-  url.host = configuredMainHost || rawHost.replace(/^partner\.|^admin\./, "");
+  // ricavare il dominio famiglie — va indicato esplicitamente (vedi
+  // familyHost() in lib/tenant.ts, stessa logica riusata anche da
+  // app/actions/invites.ts e app/actions/family.ts per i link di invito).
+  url.host = familyHost(rawHost);
   url.pathname = "/";
   url.search = "";
   return url;

@@ -7,6 +7,7 @@ import { getCenterContext, getMyCenter } from "@/lib/data/center-admin";
 import { getInvitePreview, InvitePreview } from "@/lib/data/invites";
 import { sendEmail, isEmailConfigured } from "@/lib/email";
 import { logGestoreAction } from "@/lib/data/activity-log";
+import { familyHost } from "@/lib/tenant";
 
 // Wrapper "use server" per poter chiamare getInvitePreview() (lib/data,
 // server-only) direttamente da un Client Component (LoginForm) — mostra lo
@@ -44,9 +45,17 @@ function randomCode(len = 6): string {
   return out;
 }
 
+// BUGFIX (Fabrizio, 05/08: link di invito generato da /center/invites — lato
+// Partner — puntava a "https://buddykids-partner.vercel.app/auth/login?
+// invite=...": un genitore invitato con sconto NON deve mai atterrare sul
+// form di registrazione Partner). Root cause: veniva copiato alla lettera
+// l'header "host" della richiesta corrente, che qui è sempre quello del
+// tenant Partner (questa action è invocata da /center/invites). Il
+// destinatario deve sempre atterrare sul tenant famiglia — vedi familyHost()
+// in lib/tenant.ts, stessa logica già usata da proxy.ts per lo stesso scopo.
 async function buildOrigin(): Promise<string> {
   const h = await headers();
-  const host = h.get("host") || "localhost:3000";
+  const host = familyHost(h.get("host") || "localhost:3000");
   const proto = h.get("x-forwarded-proto") || (host.startsWith("localhost") ? "http" : "https");
   return `${proto}://${host}`;
 }

@@ -28,6 +28,26 @@ export function tenantForHost(hostname: string): Tenant {
   return "family";
 }
 
+// BUGFIX (Fabrizio, 05/08: invito a un genitore generato da /center/invites
+// — lato Partner — con un link tipo "https://buddykids-partner.vercel.app/
+// auth/login?invite=...": un genitore invitato NON deve mai finire sul form
+// di registrazione Partner). Root cause: sia app/actions/invites.ts
+// (Gestore invita genitore con sconto) sia app/actions/family.ts (genitore
+// invita genitore, Sprint 5.5) calcolavano l'origin del link copiando alla
+// lettera l'header "host" della richiesta CORRENTE — corretto quando il
+// link viene generato dal tenant famiglia, ma sbagliato quando generato dal
+// tenant Partner/Admin (il link erediterebbe quell'host). Il destinatario di
+// QUALUNQUE invito verso un genitore deve sempre atterrare sul tenant
+// famiglia, indipendentemente da dove il link è stato generato — stessa
+// logica già corretta in proxy.ts#mainDomainUrl (env NEXT_PUBLIC_MAIN_HOST
+// se configurata, altrimenti si toglie il prefisso partner./admin.),
+// estratta qui in modo che sia riusabile anche fuori da un NextRequest (le
+// server action non ne hanno uno, solo headers()).
+export function familyHost(rawHost: string): string {
+  const configuredMainHost = process.env.NEXT_PUBLIC_MAIN_HOST;
+  return configuredMainHost || rawHost.replace(/^partner\.|^admin\./, "");
+}
+
 export interface TenantConfig {
   title: string;
   description: string;
