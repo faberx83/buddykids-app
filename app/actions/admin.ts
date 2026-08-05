@@ -89,13 +89,32 @@ export async function createCenterAndAssignAction(
     };
   }
 
-  const { error: assignError } = await supabase
+  // BUGFIX (Fabrizio, 05/08: "faberx83+partnernew mi riporta nella home
+  // genitori" nonostante candidatura approvata): la policy RLS storica su
+  // "profiles" (supabase/schema.sql) ha un WITH CHECK (auth.uid() = id) SENZA
+  // l'eccezione is_platform_admin() che invece è presente nello USING — un
+  // admin può quindi "targettare" la riga di un altro utente ma Postgres
+  // scarta comunque la scrittura (0 righe, nessun errore restituito dal
+  // client Supabase). Il fix reale è la migrazione RLS
+  // (migration_22_profiles_admin_write_rls_fix.sql); questo .select() dopo
+  // l'update è la difesa applicativa per non riportare mai più "assigned:
+  // true" quando in realtà 0 righe sono state scritte.
+  const { data: updatedRows, error: assignError } = await supabase
     .from("profiles")
     .update({ role: "center_admin", center_id: center.id })
-    .eq("id", profile.id);
+    .eq("id", profile.id)
+    .select("id");
 
   if (assignError) {
     return { ...result, warning: `Centro creato, ma l'assegnazione del ruolo è fallita: ${assignError.message}` };
+  }
+
+  if (!updatedRows || updatedRows.length === 0) {
+    return {
+      ...result,
+      warning:
+        "Centro creato, ma l'assegnazione del ruolo NON è stata scritta (0 righe aggiornate, nessun errore Postgres — tipico di un blocco RLS silenzioso). Verifica la policy RLS su 'profiles' (WITH CHECK) prima di considerare l'utente assegnato.",
+    };
   }
 
   return { ...result, assigned: true };
@@ -120,11 +139,21 @@ export async function assignCenterAdminAction(
     return { error: "Nessun utente registrato trovato con questa email." };
   }
 
-  const { error } = await supabase
+  // Stesso bug RLS silenzioso di createCenterAndAssignAction sopra: senza
+  // .select() questo update può scrivere 0 righe e restituire comunque
+  // nessun errore.
+  const { data: updatedRows, error } = await supabase
     .from("profiles")
     .update({ role: "center_admin", center_id: centerId })
-    .eq("id", profile.id);
+    .eq("id", profile.id)
+    .select("id");
 
   if (error) return { error: error.message };
+  if (!updatedRows || updatedRows.length === 0) {
+    return {
+      error:
+        "Assegnazione non scritta (0 righe, nessun errore Postgres — probabile blocco RLS silenzioso su 'profiles'). Vedi migration_22_profiles_admin_write_rls_fix.sql.",
+    };
+  }
   return {};
 }
