@@ -12,6 +12,7 @@ import { resolveFeatureFlag } from "@/lib/feature-flags/resolve";
 import { generateCorrelationId } from "@/lib/telemetry/correlation";
 import { getWalkthroughProgress, WalkthroughProgressSummary } from "@/lib/walkthrough/data";
 import PartnerSpotlight from "@/components/spotlight/PartnerSpotlight";
+import BetaFeedbackButton from "@/components/nextgen/BetaFeedbackButton";
 
 export default async function CenterLayout({ children }: { children: React.ReactNode }) {
   // Con Supabase collegato, il ruolo reale (da profiles.role) sostituisce del
@@ -184,6 +185,16 @@ export default async function CenterLayout({ children }: { children: React.React
     >
       {children}
       <PartnerSpotlight progress={spotlightProgress} />
+      {/* SPRINT 5 (NEXTGEN) → ESTENSIONE PARTNER — stesso meccanismo "Segnala
+          un problema" già in uso lato genitore (app/nextgen/layout.tsx),
+          contestualizzato per il Partner: area calcolata sulle rotte
+          /center/*, invio con app_source="gestore" (già supportato da
+          schema/RLS/Admin, vedi commenti in BetaFeedbackButton.tsx e
+          app/actions/beta-feedback.ts). A differenza di PartnerSpotlight qui
+          sopra, NON è gated da TRAMA_ONE_ENABLED: è un canale di raccolta
+          feedback indipendente dal tour guidato, utile durante tutta la
+          BETA a prescindere da quale coorte vede lo Spotlight. */}
+      <BetaFeedbackButton appSource="gestore" />
     </DashboardLayout>
   );
 }
