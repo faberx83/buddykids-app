@@ -8,8 +8,9 @@
 // automazione economica reale. reward_status/reward_note sono annotazioni
 // manuali dell'Admin, mai calcolate o erogate da questo codice.
 
-import { CenterLeadDemandContext, CenterLeadItem, CenterLeadRewardStatus, CenterLeadStatus } from "@/lib/types";
+import { CenterLeadDemandContext, CenterLeadItem, CenterLeadRewardStatus, CenterLeadStatus, CenterLeadType } from "@/lib/types";
 import { createClient } from "@/lib/supabase/server";
+import { createServiceClient } from "@/lib/supabase/service";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
 
 function firstOf<T>(value: T | T[] | null | undefined): T | null {
@@ -53,6 +54,12 @@ interface RawRow {
   created_at: string;
   profiles: { full_name: string | null } | { full_name: string | null }[] | null;
   centers: { name: string } | { name: string }[] | null;
+  // Migrazione 21 — assenti su PARENT_SELECT_COLUMNS (non serve distinguerle
+  // lì: le righe di un genitore sono sempre 'parent_referral'), per questo
+  // mapRow sotto usa un fallback quando lead_type è undefined a runtime.
+  lead_type?: CenterLeadType;
+  candidate_email?: string | null;
+  candidate_phone?: string | null;
 }
 
 // Colonne complete (include admin_note) — SOLO per la vista Admin. La vista
@@ -71,7 +78,7 @@ interface RawRow {
 // DB): stesso pattern di disambiguazione già in uso in
 // lib/data/center-bookings.ts e lib/data/inquiries.ts ("profiles!parent_id").
 const ADMIN_SELECT_COLUMNS =
-  "id, suggested_name, suggested_locality, suggested_contact, demand_context, dedupe_key, status, duplicate_of, admin_note, claimed_center_id, claimed_at, reward_status, reward_note, created_at, profiles!suggested_by ( full_name ), centers ( name )";
+  "id, suggested_name, suggested_locality, suggested_contact, demand_context, dedupe_key, status, duplicate_of, admin_note, claimed_center_id, claimed_at, reward_status, reward_note, created_at, profiles!suggested_by ( full_name ), centers ( name ), lead_type, candidate_email, candidate_phone";
 
 const PARENT_SELECT_COLUMNS =
   "id, suggested_name, suggested_locality, demand_context, dedupe_key, status, claimed_center_id, claimed_at, reward_status, reward_note, created_at, centers ( name )";
@@ -94,6 +101,9 @@ function mapRow(row: RawRow, includeAdminNote: boolean): CenterLeadItem {
     rewardStatus: row.reward_status,
     rewardNote: row.reward_note ?? undefined,
     createdAt: row.created_at,
+    leadType: row.lead_type ?? "parent_referral",
+    candidateEmail: row.candidate_email ?? undefined,
+    candidatePhone: row.candidate_phone ?? undefined,
   };
 }
 
@@ -155,4 +165,41 @@ export async function findPossibleDuplicates(dedupeKey: string, excludeId?: stri
 
   if (error || !data) return [];
   return (data as unknown as RawRow[]).map((r) => mapRow(r, true));
+}
+
+// Migrazione 21 — "Candidati come centro". Stato pubblico (3 soli campi, mai
+// admin_note/candidate_phone/altre righe) di UNA autocandidatura, letto
+// SENZA login dalla pagina di conferma raggiunta dal candidato subito dopo
+// l'invio del form (link con l'id opaco della riga, mai un token dedicato:
+// un UUID v4 non è indovinabile). Usa il service client (bypassa le RLS)
+// perché il candidato non ha alcuna sessione autenticata: la RLS di
+// center_leads richiede suggested_by = auth.uid() o is_platform_admin(),
+// nessuno dei due è vero per un visitatore anonimo — coerente con lo stesso
+// service client già usato per submitCenterCandidacyAction
+// (app/actions/center-leads.ts).
+export interface PublicCandidacyStatus {
+  suggestedName: string;
+  status: CenterLeadStatus;
+  candidateEmail?: string;
+  createdAt: string;
+}
+
+export async function getCandidacyStatusPublic(id: string): Promise<PublicCandidacyStatus | null> {
+  const supabase = createServiceClient();
+  if (!supabase) return null;
+
+  const { data, error } = await supabase
+    .from("center_leads")
+    .select("suggested_name, status, candidate_email, created_at, lead_type")
+    .eq("id", id)
+    .eq("lead_type", "self_candidacy")
+    .maybeSingle();
+
+  if (error || !data) return null;
+  return {
+    suggestedName: data.suggested_name,
+    status: data.status,
+    candidateEmail: data.candidate_email ?? undefined,
+    createdAt: data.created_at,
+  };
 }

@@ -62,6 +62,10 @@ export interface CenterLeadDemandContext {
   correlationId?: string; // stesso context object leggero di Sprint 3 (search→detail→booking)
 }
 
+// Migrazione 21 — "Candidati come centro" (autocandidatura Partner, distinta
+// dal referral genitore). Vedi supabase/migration_21_center_candidacy.sql.
+export type CenterLeadType = "parent_referral" | "self_candidacy";
+
 export interface CenterLeadItem {
   id: string;
   suggestedName: string;
@@ -71,7 +75,7 @@ export interface CenterLeadItem {
   dedupeKey: string;
   status: CenterLeadStatus;
   duplicateOf?: string;
-  suggestedByName?: string; // solo per la vista Admin (join su profiles)
+  suggestedByName?: string; // solo per la vista Admin (join su profiles) — assente per le autocandidature (suggested_by null)
   adminNote?: string; // MAI esposto alla vista Genitore (vedi lib/data/center-leads.ts)
   claimedCenterId?: string;
   claimedCenterName?: string;
@@ -79,6 +83,11 @@ export interface CenterLeadItem {
   rewardStatus: CenterLeadRewardStatus;
   rewardNote?: string;
   createdAt: string;
+  // Migrazione 21: distingue chi ha creato la riga. 'self_candidacy' non ha
+  // suggestedByName (nessun profilo esiste ancora) ma ha candidateEmail/Phone.
+  leadType: CenterLeadType;
+  candidateEmail?: string;
+  candidatePhone?: string;
 }
 
 export interface Activity {
