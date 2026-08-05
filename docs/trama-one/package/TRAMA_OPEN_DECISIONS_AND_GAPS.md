@@ -1,8 +1,8 @@
 # TRAMA — Open Decisions and Gaps Register
 
 **Documentation Package**: `TRAMA_DOCUMENTATION_PACKAGE_20260805_v1`
-**As-of timestamp**: 2026-08-05T16:26:14Z (UTC)
-**As-of commit (AS_OF_COMMIT)**: `8335d3b920b3694ba0b15cc8be45c17db89dfd0b`
+**As-of timestamp**: 2026-08-05T18:40:00Z (UTC) — aggiornato con OD-11 dopo il completamento della Parte A del Master Requirement Catalog
+**As-of commit (AS_OF_COMMIT)**: `bd03067`
 
 Registro degli item aperti, separati per categoria come richiesto dal checkpoint SAL. Non è un elenco esaustivo di tutto il backlog storico (quello vive nei task/commit del repository) — qui vanno solo le decisioni/gap che richiedono un'azione o una scelta esplicita prima di settembre, o che sono emersi durante questo checkpoint documentale.
 
@@ -20,6 +20,7 @@ Registro degli item aperti, separati per categoria come richiesto dal checkpoint
 | OD-03 | Golden Journeys (Sezione 10 Addendum) non ancora eseguite | Blocca GO/NO-GO | Claude (procedure) + Fabrizio (esecuzione live) | 5 journey verificate end-to-end | Aperto |
 | OD-04 | Visual/Mobile Acceptance (Sezione 11 Addendum, 390×844/768/1440) non ancora eseguita | Blocca GO/NO-GO | Claude + Fabrizio | Screenshot/verifica sui 3 viewport | Aperto |
 | OD-05 | Feature Control Center — azioni batch verificate solo staticamente, nessun run live end-to-end | Medio (rischio: comportamento reale non confermato) | Fabrizio (test live post-deploy) | Run reale: attiva → verifica accesso coorte → disattiva → verifica rollback | Aperto |
+| OD-11 | `A-MVP-07` (Trust config minima, MVP §4.3) classificato `SPECIFIED_NOT_FOUND` nel Master Requirement Catalog — nessuna UI Admin trovata per configurare pesi/versione dei driver Trust | Basso-medio (Trust score non è comunque visibile all'utente finale, quindi non blocca il prodotto esposto; blocca la governance interna del Trust Layer) | Fabrizio (decisione: costruire prima di settembre o dichiarare esplicitamente fuori scope beta) | Nessuna — è una decisione di scope, non un'evidenza da raccogliere | Aperto |
 
 ## Pilot Decision
 
@@ -34,7 +35,7 @@ Registro degli item aperti, separati per categoria come richiesto dal checkpoint
 |---|---|---|---|---|
 | OD-08 | `MVP_PRODUCTION_TRUTH_V2.md` indicava `b0d0f21` come fotografia corrente mentre HEAD era già avanzato | Basso (solo lettura fuorviante) | Claude | **Chiuso in questo checkpoint** — vedi normalizzazione §0.1-0.7 dello stesso documento |
 | OD-09 | `MVP_PRODUCTION_TRUTH_V2.md` §8 affermava che le uniche azioni residue fossero deploy + email, omettendo Feature Control Center operativo/Golden Journey/Visual Acceptance/dati pilota/GO-NO-GO | Medio (sottostima del lavoro residuo) | Claude | **Chiuso in questo checkpoint** — vedi §0.5 dello stesso documento |
-| OD-10 | Il Documentation Package richiesto da Fabrizio (Source Register, Master Requirement Catalog, Release Model, Traceability Matrix, Heatmap a 4 viste, SAL, 10 Checkpoint CP-01..CP-10) non è stato completato in questo passaggio — richiede la lettura integrale di ~10 documenti canonici esistenti (Handbook Parent/Partner/Admin, Architecture Blueprint, MVP Settembre, Master Prompt, Implementation Pack) per evitare di inventare requisiti o mappature | Alto (il package resta parziale) | Claude | Aperto — vedi `TRAMA_DOCUMENTATION_PACKAGE_MANIFEST.md` per lo stato sezione per sezione |
+| OD-10 | **Aggiornato**: il Documentation Package è stato completato per il livello MVP (Source Register, Master Requirement Catalog Parte A, Release Model, Traceability Matrix, Heatmap 4 viste, SAL con 10 checkpoint CP-01..CP-10, README, Changelog — tutti prodotti in questo checkpoint). Resta aperta solo la Parte B del Master Requirement Catalog (104 ID TO-BE non mappati a un epic MVP, classificazione codice-per-codice non fatta) e il ri-tag dei documenti storici (Sezione 15 del checkpoint originale) | Medio (non blocca il gate MVP di settembre, riguarda solo il backlog Fase 2/3) | Claude | Lettura narrativa completa dei 3 Handbook (non solo le tabelle backlog, già lette) | **Parzialmente chiuso in questo checkpoint** — vedi `TRAMA_DOCUMENTATION_PACKAGE_MANIFEST.md` per lo stato sezione per sezione |
 
 ## Post-Beta
 
