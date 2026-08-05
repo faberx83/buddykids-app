@@ -333,8 +333,28 @@ export default function DashboardLayout({
                 onClick={() => setDrawerOpen(false)}
                 aria-hidden="true"
               />
+              {/* BUGFIX (Fabrizio: "nel menu laterale non riesco a scorrere
+                  fino in fondo") — `h-full` calcola l'altezza come
+                  PERCENTUALE del genitore invece di ancorarsi direttamente al
+                  bordo inferiore reale del viewport: su mobile, quando la
+                  barra indirizzi del browser è espansa/si nasconde durante lo
+                  scroll (comportamento dinamico noto di Safari/Chrome
+                  mobile), quella percentuale può restare calcolata sull'
+                  altezza "grande" (barra nascosta) mentre l'area davvero
+                  visibile è più bassa — la parte finale del menu (le ultime
+                  voci sotto "Account") finisce sotto il bordo visibile e
+                  irraggiungibile. `inset-y-0` ancora invece `top` E `bottom`
+                  direttamente a 0 rispetto al genitore (`fixed inset-0`, già
+                  vincolato al vero viewport), niente calcolo percentuale
+                  intermedio. Aggiunto anche `overscroll-contain`: senza,
+                  quando lo scroll interno del cassetto arriva al fondo il
+                  gesto "rimbalza" e si propaga alla pagina sotto (scroll
+                  chaining), che su alcuni browser mobile annulla lo scroll
+                  appena fatto prima di renderlo visibile — la stessa causa
+                  frequente di "non riesco a scorrere fino in fondo" in liste
+                  dentro overlay full-screen. */}
               <aside
-                className={`absolute left-0 top-0 flex h-full w-72 max-w-[80vw] flex-col overflow-y-auto px-4 py-5 ${
+                className={`absolute inset-y-0 left-0 flex w-72 max-w-[80vw] flex-col overflow-y-auto overscroll-contain px-4 py-5 ${
                   isAdmin ? "bg-navy-2" : "bg-white"
                 }`}
               >
