@@ -97,3 +97,20 @@ Aggiunta a valle della prima stesura di questo documento (stesso pomeriggio), pe
 
 - **Sezione 7 (Chiusura P0 Partner)** — **Chiusa**. Gap DEC-58/DEC-62 (`app/center/page.tsx` non reindirizzava mai un `center_admin` con centro non `APPROVED` verso l'onboarding) risolto in modo additivo: redirect condizionato a `TRAMA_ONE_ENABLED` (stesso resolver/tenant della route di destinazione, per non creare un loop per chi è fuori Controlled Beta Cohort). Commit `19b6449`.
 - **Sezione 8 (Chiusura P0 Parent, Context Object)** — **Parzialmente chiusa, onestamente non oltre**. Creata l'infrastruttura condivisa (`lib/journey-context.ts`, tipo `JourneyContext` + encode/decode) e corretto un bug reale isolato (Ricerca NEXTGEN riceveva già un deep-link col bambino selezionato ma non lo leggeva mai). **Non fatto**, deliberatamente: migrare i 4 punti esistenti (card attività → dettaglio → prenotazione) dai parametri piatti attuali (`week`/`kid`/`source`/`cid`) al nuovo oggetto unico — tocca il percorso di prenotazione reale in produzione, e questo programma richiede evidenza di un Golden Journey (Sezione 10, non ancora fatta) prima di modificare quel percorso specifico. Commit `030713e`.
+
+## 10. REALIGNMENT ADDENDUM — Sezione A (identificativo Release Candidate)
+
+Eseguito su richiesta esplicita di Fabrizio ("prima di continuare: rileva il vero HEAD, verifica origin/main, verifica working tree, elenca i commit dall'ultimo deploy testato, aggiorna questo file, assegna un identificativo").
+
+| Controllo | Esito (verificato dal vivo) |
+|---|---|
+| HEAD locale | `79fcb63ed66ece29fd5d345e3f980d78035a88d2` |
+| `origin/main` (fetch reale) | `79fcb63ed66ece29fd5d345e3f980d78035a88d2` — identico a HEAD |
+| Working tree | Pulito |
+| Ultimo commit **testato** dal vivo (`TEST_SCOPE=critical`, log `deploy-20260805-173332.log`) | `d9f8534` — 93 passed, 50 skipped, 1 failed (TC-N609) |
+| Commit dopo `d9f8534` | **1 solo**: `79fcb63` — fix del test TC-N609 stesso (nessun altro commit applicativo nel frattempo) |
+| Tag Git esistenti nel repo | **Nessuno** (`git tag -l` vuoto) — nessuna convenzione da rispettare, quindi identificativo registrato solo in documentazione, nessun tag creato |
+
+**Identificativo assegnato**: `TRAMA_ONE_MVP_RC1` = commit `79fcb63ed66ece29fd5d345e3f980d78035a88d2`.
+
+Composizione di RC1 rispetto all'ultimo deploy realmente testato (`d9f8534`): identico, più la sola correzione del falso positivo TC-N609 (nessuna modifica applicativa, solo test). **RC1 non è ancora stato deployato** — resta il gate manuale invariato dal punto 1 di questo documento (Fabrizio esegue il deploy e conferma il commit live da dashboard Vercel).
