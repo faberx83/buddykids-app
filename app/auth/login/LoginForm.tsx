@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
@@ -32,8 +33,18 @@ export default function LoginForm({
   // genitore) — se presente si parte già in modalità "Registrati" e si mostra
   // un'anteprima dello sconto offerto.
   const inviteParam = searchParams.get("invite");
-  const [mode, setMode] = useState<Mode>(inviteParam ? "signup" : "login");
-  const [email, setEmail] = useState("");
+  // Migrazione 21 — "Candidati come centro": il link mandato al candidato
+  // dopo l'approvazione Admin (pagina /auth/candidati/conferma/[id]) punta
+  // qui con ?mode=signup&email=... per portarlo DIRETTAMENTE al form di
+  // registrazione, con l'email già precompilata (deve coincidere con quella
+  // indicata in candidatura perché il trigger handle_new_user() esteso
+  // possa riconoscerla). Fuori da questo link specifico, il tenant Partner
+  // NON mostra più un "Registrati" generico in modalità login (vedi sotto,
+  // sostituito da un link a /auth/candidati) — quindi in pratica solo un
+  // candidato già approvato arriva in modalità signup sul portale Partner.
+  const modeParam = searchParams.get("mode");
+  const [mode, setMode] = useState<Mode>(inviteParam || modeParam === "signup" ? "signup" : "login");
+  const [email, setEmail] = useState(searchParams.get("email") || "");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [inviteCode, setInviteCode] = useState(inviteParam || "");
@@ -323,17 +334,35 @@ export default function LoginForm({
           </form>
 
           {mode !== "reset" ? (
-            <button
-              onClick={() => {
-                setMode(mode === "login" ? "signup" : "login");
-                setError(null);
-                setMessage(null);
-              }}
-              className={`mt-5 w-full text-center text-xs font-medium ${isFamily ? "text-trama-violet" : ""}`}
-              style={{ color: isFamily ? undefined : themeColor }}
-            >
-              {mode === "login" ? "Non hai un account? Registrati" : "Hai già un account? Accedi"}
-            </button>
+            tenant === "partner" && mode === "login" ? (
+              // Fabrizio: "il registrati deve essere un 'candidati' per cui
+              // deve far partire processo di onboarding" — sul portale
+              // Partner non si può più creare un account "vuoto" (senza
+              // centro) toggliando qui in modalità signup: si parte sempre
+              // dal form di candidatura, che NON crea alcun account (vedi
+              // app/auth/candidati/page.tsx). Un candidato già approvato
+              // arriva invece in modalità signup direttamente da un link
+              // dedicato (?mode=signup&email=..., vedi sopra).
+              <Link
+                href="/auth/candidati"
+                className="mt-5 block w-full text-center text-xs font-medium"
+                style={{ color: themeColor }}
+              >
+                Vuoi diventare un Centro Partner TRAMA? Candidati
+              </Link>
+            ) : (
+              <button
+                onClick={() => {
+                  setMode(mode === "login" ? "signup" : "login");
+                  setError(null);
+                  setMessage(null);
+                }}
+                className={`mt-5 w-full text-center text-xs font-medium ${isFamily ? "text-trama-violet" : ""}`}
+                style={{ color: isFamily ? undefined : themeColor }}
+              >
+                {mode === "login" ? "Non hai un account? Registrati" : "Hai già un account? Accedi"}
+              </button>
+            )
           ) : (
             <button
               onClick={() => {
