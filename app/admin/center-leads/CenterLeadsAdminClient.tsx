@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { CenterLeadItem, CenterLeadRewardStatus, CenterLeadStatus } from "@/lib/types";
 import {
+  approveCandidacyAction,
   claimCenterLeadAction,
   findPossibleDuplicateLeadsAction,
   markCenterLeadDuplicateAction,
@@ -44,6 +45,57 @@ export default function CenterLeadsAdminClient({
   const [duplicates, setDuplicates] = useState<Record<string, CenterLeadItem[]>>({});
   const [claimPicker, setClaimPicker] = useState<Record<string, string>>({});
   const [rewardDraft, setRewardDraft] = useState<Record<string, string>>({});
+
+  // Migrazione 21 — "Candidati come centro": stato locale SOLO per le
+  // autocandidature (lead_type='self_candidacy'). Il form di approvazione è
+  // prefillato con i dati della candidatura (nome/città/email/telefono già
+  // noti) e chiede solo indirizzo+descrizione, che il candidato ha inserito
+  // come testo libero in suggested_contact.
+  const [candidacyOpen, setCandidacyOpen] = useState<Record<string, boolean>>({});
+  const [candidacyDraft, setCandidacyDraft] = useState<Record<string, { city: string; address: string; description: string }>>({});
+  const [approveMsg, setApproveMsg] = useState<Record<string, string>>({});
+
+  function openCandidacyForm(lead: CenterLeadItem) {
+    setCandidacyOpen((prev) => ({ ...prev, [lead.id]: true }));
+    setCandidacyDraft((prev) => ({
+      ...prev,
+      [lead.id]: prev[lead.id] ?? {
+        city: lead.suggestedLocality || "",
+        address: "",
+        description: lead.suggestedContact || "",
+      },
+    }));
+  }
+
+  async function approveCandidacy(lead: CenterLeadItem) {
+    const draft = candidacyDraft[lead.id];
+    if (!draft) return;
+    setBusyId(lead.id);
+    const res = await approveCandidacyAction(lead.id, {
+      name: lead.suggestedName,
+      city: draft.city,
+      address: draft.address,
+      description: draft.description,
+      contactEmail: lead.candidateEmail || "",
+      contactPhone: lead.candidatePhone || "",
+      gestoreEmail: lead.candidateEmail,
+    });
+    setBusyId(null);
+
+    if (res.error) {
+      setApproveMsg((prev) => ({ ...prev, [lead.id]: `Errore: ${res.error}` }));
+      return;
+    }
+
+    patchLead(lead.id, { status: "claimed", claimedCenterId: res.centerId, claimedCenterName: res.centerName });
+    setCandidacyOpen((prev) => ({ ...prev, [lead.id]: false }));
+    setApproveMsg((prev) => ({
+      ...prev,
+      [lead.id]: res.warning
+        ? `Centro "${res.centerName}" creato. ${res.warning}`
+        : `Centro "${res.centerName}" creato e gestore assegnato.`,
+    }));
+  }
 
   function patchLead(id: string, patch: Partial<CenterLeadItem>) {
     setLeads((prev) => prev.map((l) => (l.id === id ? { ...l, ...patch } : l)));
@@ -120,13 +172,31 @@ export default function CenterLeadsAdminClient({
             <div key={lead.id} className="flex flex-col gap-2 px-4 py-3">
               <div className="flex flex-wrap items-start gap-3">
                 <div className="min-w-0 flex-1">
-                  <div className="text-sm font-semibold text-ink">{lead.suggestedName}</div>
-                  <div className="text-xs text-ink-2">
-                    {lead.suggestedLocality || "località non indicata"} · segnalato da{" "}
-                    {lead.suggestedByName || "genitore"} il {new Date(lead.createdAt).toLocaleDateString("it-IT")}
+                  <div className="flex flex-wrap items-center gap-1.5">
+                    <span className="text-sm font-semibold text-ink">{lead.suggestedName}</span>
+                    {lead.leadType === "self_candidacy" && (
+                      <span className="rounded-full bg-[#EAF6FF] px-2 py-0.5 text-[10px] font-semibold text-sky">
+                        Autocandidatura
+                      </span>
+                    )}
                   </div>
+                  {lead.leadType === "self_candidacy" ? (
+                    <div className="text-xs text-ink-2">
+                      {lead.suggestedLocality || "località non indicata"} · {lead.candidateEmail}
+                      {lead.candidatePhone ? ` · ${lead.candidatePhone}` : ""} · il{" "}
+                      {new Date(lead.createdAt).toLocaleDateString("it-IT")}
+                    </div>
+                  ) : (
+                    <div className="text-xs text-ink-2">
+                      {lead.suggestedLocality || "località non indicata"} · segnalato da{" "}
+                      {lead.suggestedByName || "genitore"} il {new Date(lead.createdAt).toLocaleDateString("it-IT")}
+                    </div>
+                  )}
                   {lead.suggestedContact && (
-                    <div className="text-xs text-ink-2">Contatto noto: {lead.suggestedContact}</div>
+                    <div className="text-xs text-ink-2">
+                      {lead.leadType === "self_candidacy" ? "Descrizione: " : "Contatto noto: "}
+                      {lead.suggestedContact}
+                    </div>
                   )}
                   {lead.duplicateOf && (
                     <div className="mt-1 text-xs font-semibold text-trama-orange">
@@ -206,32 +276,110 @@ export default function CenterLeadsAdminClient({
                 <div className="text-xs text-ink-2">Nessun altro lead con lo stesso nome+località.</div>
               )}
 
-              {/* Claim: collega al centro reale che ha completato l'onboarding */}
-              <div className="flex flex-wrap items-center gap-2 border-t border-[#F0F2F5] pt-2">
-                <select
-                  value={claimPicker[lead.id] ?? ""}
-                  onChange={(e) => setClaimPicker((prev) => ({ ...prev, [lead.id]: e.target.value }))}
-                  className="rounded-md border border-[#E8EBF0] bg-white px-2 py-1.5 text-xs"
-                >
-                  <option value="">Collega a un centro iscritto…</option>
-                  {centers.map((c) => (
-                    <option key={c.id} value={c.id}>
-                      {c.name}
-                    </option>
-                  ))}
-                </select>
-                <button
-                  onClick={() => claim(lead.id)}
-                  disabled={busyId === lead.id || !claimPicker[lead.id]}
-                  className="rounded-md bg-partner px-3 py-1.5 text-xs font-bold text-white disabled:opacity-60"
-                >
-                  Claim
-                </button>
-                <span className="text-[11px] text-ink-2">
-                  Solo dopo che il centro ha completato l&apos;onboarding normale (Admin Review) — non
-                  crea nulla di nuovo, collega solo due entità già esistenti.
-                </span>
-              </div>
+              {lead.leadType === "self_candidacy" ? (
+                // Migrazione 21 — approvazione autocandidatura: crea DAVVERO
+                // il centro (createCenterAndAssignAction, riusata da
+                // approveCandidacyAction), prefillato dai dati della
+                // candidatura. Diverso dal "Claim" sotto, che invece collega
+                // un lead a un centro GIÀ esistente (referral genitore).
+                <div className="border-t border-[#F0F2F5] pt-2">
+                  {!candidacyOpen[lead.id] ? (
+                    <button
+                      onClick={() => openCandidacyForm(lead)}
+                      className="rounded-md bg-partner px-3 py-1.5 text-xs font-bold text-white"
+                    >
+                      Approva e crea centro
+                    </button>
+                  ) : (
+                    <div className="flex flex-col gap-2 rounded-md border border-dashed border-[#D8DEE8] bg-bg p-2">
+                      <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                        <input
+                          value={candidacyDraft[lead.id]?.city ?? ""}
+                          onChange={(e) =>
+                            setCandidacyDraft((prev) => ({
+                              ...prev,
+                              [lead.id]: { ...prev[lead.id], city: e.target.value },
+                            }))
+                          }
+                          placeholder="Città"
+                          className="rounded-md border border-[#E8EBF0] bg-white px-2.5 py-1.5 text-xs outline-none focus:border-sky"
+                        />
+                        <input
+                          value={candidacyDraft[lead.id]?.address ?? ""}
+                          onChange={(e) =>
+                            setCandidacyDraft((prev) => ({
+                              ...prev,
+                              [lead.id]: { ...prev[lead.id], address: e.target.value },
+                            }))
+                          }
+                          placeholder="Indirizzo"
+                          className="rounded-md border border-[#E8EBF0] bg-white px-2.5 py-1.5 text-xs outline-none focus:border-sky"
+                        />
+                      </div>
+                      <textarea
+                        value={candidacyDraft[lead.id]?.description ?? ""}
+                        onChange={(e) =>
+                          setCandidacyDraft((prev) => ({
+                            ...prev,
+                            [lead.id]: { ...prev[lead.id], description: e.target.value },
+                          }))
+                        }
+                        rows={2}
+                        placeholder="Descrizione del centro"
+                        className="w-full resize-none rounded-md border border-[#E8EBF0] bg-white px-2.5 py-1.5 text-xs outline-none focus:border-sky"
+                      />
+                      <div className="flex flex-wrap items-center gap-2">
+                        <button
+                          onClick={() => approveCandidacy(lead)}
+                          disabled={busyId === lead.id}
+                          className="rounded-md bg-partner px-3 py-1.5 text-xs font-bold text-white disabled:opacity-60"
+                        >
+                          Conferma creazione centro
+                        </button>
+                        <button
+                          onClick={() => setCandidacyOpen((prev) => ({ ...prev, [lead.id]: false }))}
+                          className="rounded-md border border-[#E8EBF0] px-3 py-1.5 text-xs font-semibold text-ink"
+                        >
+                          Annulla
+                        </button>
+                        <span className="text-[11px] text-ink-2">
+                          Se {lead.candidateEmail} non si è ancora registrato, il centro viene comunque
+                          creato: il ruolo verrà assegnato in automatico alla sua prima registrazione con
+                          questa email.
+                        </span>
+                      </div>
+                    </div>
+                  )}
+                  {approveMsg[lead.id] && <p className="mt-1.5 text-xs font-medium text-ink-2">{approveMsg[lead.id]}</p>}
+                </div>
+              ) : (
+                /* Claim: collega al centro reale che ha completato l'onboarding */
+                <div className="flex flex-wrap items-center gap-2 border-t border-[#F0F2F5] pt-2">
+                  <select
+                    value={claimPicker[lead.id] ?? ""}
+                    onChange={(e) => setClaimPicker((prev) => ({ ...prev, [lead.id]: e.target.value }))}
+                    className="rounded-md border border-[#E8EBF0] bg-white px-2 py-1.5 text-xs"
+                  >
+                    <option value="">Collega a un centro iscritto…</option>
+                    {centers.map((c) => (
+                      <option key={c.id} value={c.id}>
+                        {c.name}
+                      </option>
+                    ))}
+                  </select>
+                  <button
+                    onClick={() => claim(lead.id)}
+                    disabled={busyId === lead.id || !claimPicker[lead.id]}
+                    className="rounded-md bg-partner px-3 py-1.5 text-xs font-bold text-white disabled:opacity-60"
+                  >
+                    Claim
+                  </button>
+                  <span className="text-[11px] text-ink-2">
+                    Solo dopo che il centro ha completato l&apos;onboarding normale (Admin Review) — non
+                    crea nulla di nuovo, collega solo due entità già esistenti.
+                  </span>
+                </div>
+              )}
             </div>
           ))}
           {active.length === 0 && (
@@ -249,21 +397,30 @@ export default function CenterLeadsAdminClient({
             <div key={lead.id} className="flex flex-col gap-2 px-4 py-3">
               <div className="flex flex-wrap items-start gap-3">
                 <div className="min-w-0 flex-1">
-                  <div className="text-sm font-semibold text-ink">{lead.suggestedName}</div>
+                  <div className="flex flex-wrap items-center gap-1.5">
+                    <span className="text-sm font-semibold text-ink">{lead.suggestedName}</span>
+                    {lead.leadType === "self_candidacy" && (
+                      <span className="rounded-full bg-[#EAF6FF] px-2 py-0.5 text-[10px] font-semibold text-sky">
+                        Autocandidatura
+                      </span>
+                    )}
+                  </div>
                   <div className="text-xs text-ink-2">
                     {lead.claimedCenterName ? `Collegato a: ${lead.claimedCenterName}` : lead.suggestedLocality || ""}
                   </div>
-                  <div className="mt-0.5 text-[11px] text-ink-2">
-                    Reward: {REWARD_LABEL[lead.rewardStatus]}
-                    {lead.rewardNote ? ` — ${lead.rewardNote}` : ""}
-                  </div>
+                  {lead.leadType !== "self_candidacy" && (
+                    <div className="mt-0.5 text-[11px] text-ink-2">
+                      Reward: {REWARD_LABEL[lead.rewardStatus]}
+                      {lead.rewardNote ? ` — ${lead.rewardNote}` : ""}
+                    </div>
+                  )}
                 </div>
                 <span className={`flex-shrink-0 rounded-full px-2.5 py-1 text-[11px] font-semibold ${STATUS_LABEL[lead.status].cls}`}>
                   {STATUS_LABEL[lead.status].label}
                 </span>
               </div>
 
-              {lead.status === "claimed" && (
+              {lead.status === "claimed" && lead.leadType !== "self_candidacy" && (
                 <div className="flex flex-wrap items-center gap-2 border-t border-[#F0F2F5] pt-2">
                   <input
                     value={rewardDraft[lead.id] ?? ""}
