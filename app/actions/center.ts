@@ -34,6 +34,64 @@ function slugify(text: string): string {
   );
 }
 
+// BUGFIX (Fabrizio, 05/08: candidato Partner nuovo, tour Spotlight step 5/6
+// "Configura i Giorni spot" — "non ho campi editabili.. mi manca qualche
+// step"): root cause NON è il tour (il suo spotlightTarget avvolge
+// correttamente l'intero componente AvailabilityCalendar, legenda inclusa) e
+// NON è un booking_mode mancante (AvailabilityCalendar è agnostico a
+// booking_mode). La causa reale: createActivityAction non ha MAI scritto
+// righe in activity_days per una nuova attività — getActivityDays() ritorna
+// [] per qualunque attività creata da zero (non tra quelle demo mappate in
+// lib/mock-data.ts), quindi AvailabilityCalendar.tsx renderizza SOLO la
+// legenda/intestazione statiche: zero righe, zero celle cliccabili, zero
+// possibilità di aprire il pannello con i campi editabili (che compare solo
+// al click su una cella esistente). Non è specifico del percorso
+// parent→center_admin: capiterebbe a QUALUNQUE nuova attività creata da un
+// Gestore reale, quindi va risolto qui alla creazione, non con un workaround
+// una tantum per questo test.
+//
+// Fix: seed di default alla creazione — 6 settimane (lun-ven, 30 giorni),
+// a partire dal prossimo lunedì, tutte aperte con una capienza di partenza
+// ragionevole (15 posti/giorno, valore arbitrario documentato: nessun campo
+// "capacità di default" esiste oggi su activities da cui derivarlo). Il
+// Gestore può poi aprire/chiudere/scontare ogni giorno dalla stessa UI
+// esistente — questo seed serve solo a far apparire righe modificabili al
+// primo accesso, non è un valore "finale".
+const DEFAULT_SEED_WEEKS = 6;
+const DEFAULT_SEED_CAPACITY = 15;
+
+function nextMonday(from: Date): Date {
+  const d = new Date(Date.UTC(from.getUTCFullYear(), from.getUTCMonth(), from.getUTCDate()));
+  const day = d.getUTCDay(); // 0=dom … 6=sab
+  const diff = day === 1 ? 7 : ((8 - day) % 7 || 7); // sempre il PROSSIMO lunedì, mai oggi stesso
+  d.setUTCDate(d.getUTCDate() + diff);
+  return d;
+}
+
+function defaultActivityDaysSeed(activityDbId: string): Record<string, unknown>[] {
+  const rows: Record<string, unknown>[] = [];
+  const start = nextMonday(new Date());
+  for (let week = 0; week < DEFAULT_SEED_WEEKS; week++) {
+    for (let weekday = 0; weekday < 5; weekday++) {
+      const d = new Date(start);
+      d.setUTCDate(d.getUTCDate() + week * 7 + weekday);
+      rows.push({
+        activity_id: activityDbId,
+        date: d.toISOString().slice(0, 10),
+        is_open: true,
+        capacity: DEFAULT_SEED_CAPACITY,
+        spots_left: DEFAULT_SEED_CAPACITY,
+        single_day_bookable: true,
+        discount_percent: null,
+        last_minute: false,
+        special_label: null,
+        special_emoji: null,
+      });
+    }
+  }
+  return rows;
+}
+
 // ─────────────────────────────────────────────
 // Nuova attività (activities) — creazione dal pannello Gestore centro
 // ─────────────────────────────────────────────
@@ -95,16 +153,26 @@ export async function createActivityAction(
 
   if (error || !data) return { error: error?.message || "Errore nella creazione dell'attività" };
 
+  // Seed di default di activity_days (vedi commento su defaultActivityDaysSeed
+  // sopra) — best-effort: un eventuale errore qui non deve far fallire la
+  // creazione dell'attività già scritta con successo, ma lo segnaliamo nel
+  // log gestore per non perderne traccia silenziosamente.
+  const { error: seedError } = await supabase
+    .from("activity_days")
+    .insert(defaultActivityDaysSeed(data.id));
+
   await logGestoreAction(supabase, {
     actorId: user.id,
     centerId: centerDbId,
     action: "activity_create",
     entityType: "activity",
     entityId: data.id,
+    ...(seedError ? { meta: { activityDaysSeedError: seedError.message } } : {}),
   });
 
   revalidatePath("/center/activities");
   revalidatePath("/center/activities/[id]", "page");
+  revalidatePath("/center/activities/[id]/calendar", "page");
 
   return { activitySlug: data.slug };
 }
