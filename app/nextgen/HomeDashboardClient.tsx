@@ -12,6 +12,7 @@ import ActivityCard from "@/components/ActivityCard";
 import NextgenBadge from "@/components/nextgen/NextgenBadge";
 import NextgenCheckinCard from "@/components/nextgen/NextgenCheckinCard";
 import BookingVisualCard from "@/components/nextgen/BookingVisualCard";
+import NextgenProfileCompletionPrompt from "@/components/nextgen/NextgenProfileCompletionPrompt";
 
 // SPRINT 1 (NEXTGEN) — Dashboard Genitore come "Family Operating System":
 // la schermata risponde a "la mia famiglia è organizzata per le prossime
@@ -72,6 +73,8 @@ export default function HomeDashboardClient({
   recommendations,
   todayCheckins,
   communitySignal,
+  profileIncomplete,
+  hasKids,
 }: {
   firstName: string | null;
   planner: PlannerData;
@@ -79,6 +82,8 @@ export default function HomeDashboardClient({
   recommendations: Recommendation[];
   todayCheckins: TodayCheckin[];
   communitySignal: CommunityHomeSignal | null;
+  profileIncomplete: boolean;
+  hasKids: boolean;
 }) {
   const router = useRouter();
   const todayIso = useMemo(() => new Date().toISOString().slice(0, 10), []);
@@ -136,6 +141,15 @@ export default function HomeDashboardClient({
         </h1>
         <NextgenBadge />
       </div>
+
+      {/* 0) Completa il tuo profilo — gap segnalato da Fabrizio (05/08):
+          equivalente NEXTGEN di components/HomeProfilePrompt.tsx (Legacy).
+          Precede la Hero Card di proposito: un neo-genitore senza bambini in
+          anagrafica vedrebbe comunque "Organizzata al 0%" e consigli vuoti,
+          senza capire perché — questo prompt spiega la causa e dà l'azione
+          concreta prima di mostrare lo stato. Si autonasconde da solo
+          appena completo (stessa logica del Legacy). */}
+      <NextgenProfileCompletionPrompt profileIncomplete={profileIncomplete} hasKids={hasKids} />
 
       {/* 1) HERO CARD — "quanto è organizzata la mia famiglia?" deve essere
           leggibile in meno di 3 secondi. Sfondo caldo distinto (non bianco

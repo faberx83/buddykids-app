@@ -6,6 +6,7 @@ import { getKidsForUser } from "@/lib/data/kids";
 import { getActivities } from "@/lib/data/activities";
 import { getTodayCheckinsForParent } from "@/lib/data/checkin";
 import { getCommunityHomeSignal } from "@/lib/data/communities";
+import { isParentProfileIncomplete } from "@/lib/data/profile";
 import { computeMatchesForKid } from "@/lib/matching";
 import HomeDashboardClient from "./HomeDashboardClient";
 
@@ -29,13 +30,17 @@ export default async function NextgenHomePage() {
     data: { user },
   } = await supabase.auth.getUser();
 
-  const [planner, bookings, kids, activities, todayCheckins, communitySignal] = await Promise.all([
+  const [planner, bookings, kids, activities, todayCheckins, communitySignal, profileIncomplete] = await Promise.all([
     getPlannerData(),
     getMyBookingsForParent(),
     getKidsForUser(),
     getActivities(),
     getTodayCheckinsForParent(),
     getCommunityHomeSignal(),
+    // Gap segnalato da Fabrizio (05/08): NEXTGEN non aveva mai un equivalente
+    // del prompt "Completa il tuo profilo" del Legacy — stessa fonte dati,
+    // vedi NextgenProfileCompletionPrompt più sotto.
+    isParentProfileIncomplete(),
   ]);
 
   let fullName: string | null = null;
@@ -115,6 +120,8 @@ export default async function NextgenHomePage() {
       recommendations={recommendations}
       todayCheckins={todayCheckins}
       communitySignal={communitySignal}
+      profileIncomplete={profileIncomplete}
+      hasKids={kids.length > 0}
     />
   );
 }
