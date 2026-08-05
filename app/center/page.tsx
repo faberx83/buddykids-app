@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import StatCard from "@/components/dashboard/StatCard";
 import StatusBadge from "@/components/dashboard/StatusBadge";
 import OccupancyChart from "@/components/charts/OccupancyChart";
@@ -12,8 +13,70 @@ import {
 import { aggregateWeeklyOccupancy } from "@/lib/analytics";
 import { getGroupRequestsForCenter } from "@/lib/data/group-requests";
 import { buildActivityFeed } from "@/lib/activity-feed";
+import { createClient } from "@/lib/supabase/server";
+import { isSupabaseConfigured } from "@/lib/supabase/env";
+import { getCenterOnboardingState } from "@/lib/onboarding/data";
+import { resolveFeatureFlag } from "@/lib/feature-flags/resolve";
+import { generateCorrelationId } from "@/lib/telemetry/correlation";
+import { Role } from "@/lib/types";
+
+// TRAMA ONE — Sezione 7 (Chiusura P0 Partner). Gap documentato in DEC-58/
+// DEC-62 (docs/trama-one/analysis/DECISION_LOG.md): questa dashboard non
+// controllava mai lo stato di onboarding del centro per reindirizzare un
+// center_admin non ancora APPROVED verso `/center/one/onboarding`.
+//
+// Il redirect è volutamente condizionato a TRAMA_ONE_ENABLED risolto per
+// l'utente corrente (stesso resolver di app/center/layout.tsx) — NON un
+// controllo sempre-attivo. Motivo tecnico, non solo di policy: la route di
+// destinazione `/center/one/onboarding` è essa stessa dietro lo stesso
+// flag (app/center/one/layout.tsx: se il flag risolve false, quella route
+// reindirizza SUBITO a `/center`). Un redirect incondizionato qui
+// creerebbe un loop di redirect per qualunque center_admin fuori dalla
+// Controlled Beta Cohort con onboarding incompleto — una regressione reale,
+// non ipotetica. Con il gate al flag, il comportamento per chi è fuori
+// coorte resta IDENTICO a prima (nessun redirect, coerente con DEC-57:
+// mai on-by-default); per chi è in coorte (oggi: gli account di test
+// Fabrizio) il gap descritto in DEC-58 è chiuso davvero.
+async function maybeRedirectToOnboarding() {
+  if (!isSupabaseConfigured) return;
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return;
+
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("role, center_id")
+    .eq("id", user.id)
+    .single();
+  if (!profile || profile.role !== "center_admin" || !profile.center_id) return;
+
+  // IMPORTANTE: tenant "partner", non "center" — deve corrispondere ESATTAMENTE
+  // al valore usato da app/center/one/layout.tsx (la route di destinazione),
+  // non a quello di app/center/layout.tsx (che usa "center" solo per il
+  // proprio overlay Spotlight). Se questo valore divergesse da quello del
+  // gate di destinazione, un domani un override scope=tenant differenziato
+  // potrebbe far decidere "redirect" qui e "rimanda indietro" là — lo
+  // stesso loop che l'intero controllo esiste per evitare.
+  const enabled = await resolveFeatureFlag({
+    flagName: "TRAMA_ONE_ENABLED",
+    userId: user.id,
+    role: profile.role as Role,
+    tenant: "partner",
+    correlationId: generateCorrelationId(),
+  });
+  if (!enabled) return;
+
+  const onboarding = await getCenterOnboardingState(profile.center_id);
+  if (onboarding.status !== "APPROVED") {
+    redirect("/center/one/onboarding");
+  }
+}
 
 export default async function CenterDashboardPage() {
+  await maybeRedirectToOnboarding();
+
   const center = centers.find((c) => c.id === demoCenterAdminCenterId)!;
   const myActivities = activities.filter((a) => a.centerId === center.id);
   const myBookings = bookingsMock.filter((b) =>
