@@ -13,6 +13,7 @@ export default function ResetPasswordPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [done, setDone] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -50,15 +51,25 @@ export default function ResetPasswordPage() {
         ) : (
           <form onSubmit={handleSubmit} className="w-full max-w-sm">
             <label className="mb-1.5 block text-xs font-semibold text-ink-2">Nuova password</label>
-            <input
-              type="password"
-              required
-              minLength={6}
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className="mb-4 w-full rounded-lg border-[1.5px] border-[#E8EBF0] bg-[#F4F6FA] px-4 py-3 text-sm outline-none focus:border-sky"
-              placeholder="••••••••"
-            />
+            <div className="relative mb-4">
+              <input
+                type={showPassword ? "text" : "password"}
+                required
+                minLength={6}
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className="w-full rounded-lg border-[1.5px] border-[#E8EBF0] bg-[#F4F6FA] px-4 py-3 pr-11 text-sm outline-none focus:border-sky"
+                placeholder="••••••••"
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword((v) => !v)}
+                aria-label={showPassword ? "Nascondi password" : "Mostra password"}
+                className="absolute right-3.5 top-1/2 -translate-y-1/2 text-ink-3"
+              >
+                <i className={`ti ${showPassword ? "ti-eye-off" : "ti-eye"} text-lg`} />
+              </button>
+            </div>
             {error && <p className="mb-3 text-xs font-medium text-orange">{error}</p>}
             <button
               type="submit"

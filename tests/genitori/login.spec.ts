@@ -92,6 +92,26 @@ test.describe("TRAMA - Login (header animato)", () => {
     expect(bgColor).toBe("rgb(255, 255, 255)");
   });
 
+  // Fabrizio: "aggiungiamo l'opzione di visualizzare la password in tutti i
+  // punti in cui è richiesta?" — icona occhio (LoginForm.tsx#showPassword),
+  // stesso pattern anche in ProfileSecuritySection.tsx e
+  // auth/reset-password/page.tsx (non testati qui, coperti dal codice).
+  test("TC-511 - L'icona occhio mostra/nasconde la password digitata al login", async ({ page }) => {
+    test.skip(!isRealDeployment, "Richiede un deploy con Supabase configurato (tenant famiglia).");
+    await page.goto("/auth/login");
+
+    const passwordField = page.locator("#login-password");
+    await passwordField.fill("segreta123");
+    await expect(passwordField).toHaveAttribute("type", "password");
+
+    await page.getByRole("button", { name: "Mostra password" }).click();
+    await expect(passwordField).toHaveAttribute("type", "text");
+    await expect(passwordField).toHaveValue("segreta123");
+
+    await page.getByRole("button", { name: "Nascondi password" }).click();
+    await expect(passwordField).toHaveAttribute("type", "password");
+  });
+
   // ESCLUSO dall'automazione: verificare lo sfondo bianco su Login Partner e
   // la presenza del claim su Login Admin richiede due hostname diversi
   // (partner.*/admin.*) — i fixture Playwright di questo progetto girano

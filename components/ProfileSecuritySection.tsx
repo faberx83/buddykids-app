@@ -17,6 +17,11 @@ export default function ProfileSecuritySection() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
+  // Fabrizio: "aggiungiamo l'opzione di visualizzare la password in tutti i
+  // punti in cui è richiesta?" — un solo toggle per entrambi i campi: chi
+  // sta cambiando password li compila quasi sempre in sequenza, non ha senso
+  // dover cliccare l'icona due volte per vedere entrambi.
+  const [showPassword, setShowPassword] = useState(false);
 
   async function handleSubmit() {
     setError(null);
@@ -52,24 +57,44 @@ export default function ProfileSecuritySection() {
       <label htmlFor="security-new-password" className="mb-1.5 block text-xs font-semibold text-ink-2">
         Nuova password
       </label>
-      <input
-        id="security-new-password"
-        type="password"
-        value={newPassword}
-        onChange={(e) => setNewPassword(e.target.value)}
-        placeholder="Almeno 8 caratteri"
-        className="mb-3 w-full rounded-md border border-[#E8EBF0] bg-bg px-3 py-2 text-sm outline-none focus:border-sky"
-      />
+      <div className="relative mb-3">
+        <input
+          id="security-new-password"
+          type={showPassword ? "text" : "password"}
+          value={newPassword}
+          onChange={(e) => setNewPassword(e.target.value)}
+          placeholder="Almeno 8 caratteri"
+          className="w-full rounded-md border border-[#E8EBF0] bg-bg px-3 py-2 pr-10 text-sm outline-none focus:border-sky"
+        />
+        <button
+          type="button"
+          onClick={() => setShowPassword((v) => !v)}
+          aria-label={showPassword ? "Nascondi password" : "Mostra password"}
+          className="absolute right-3 top-1/2 -translate-y-1/2 text-ink-3"
+        >
+          <i className={`ti ${showPassword ? "ti-eye-off" : "ti-eye"} text-base`} />
+        </button>
+      </div>
       <label htmlFor="security-confirm-password" className="mb-1.5 block text-xs font-semibold text-ink-2">
         Conferma nuova password
       </label>
-      <input
-        id="security-confirm-password"
-        type="password"
-        value={confirmPassword}
-        onChange={(e) => setConfirmPassword(e.target.value)}
-        className="mb-3 w-full rounded-md border border-[#E8EBF0] bg-bg px-3 py-2 text-sm outline-none focus:border-sky"
-      />
+      <div className="relative mb-3">
+        <input
+          id="security-confirm-password"
+          type={showPassword ? "text" : "password"}
+          value={confirmPassword}
+          onChange={(e) => setConfirmPassword(e.target.value)}
+          className="w-full rounded-md border border-[#E8EBF0] bg-bg px-3 py-2 pr-10 text-sm outline-none focus:border-sky"
+        />
+        <button
+          type="button"
+          onClick={() => setShowPassword((v) => !v)}
+          aria-label={showPassword ? "Nascondi password" : "Mostra password"}
+          className="absolute right-3 top-1/2 -translate-y-1/2 text-ink-3"
+        >
+          <i className={`ti ${showPassword ? "ti-eye-off" : "ti-eye"} text-base`} />
+        </button>
+      </div>
       {error && <p className="mb-2 text-xs font-medium text-orange">{error}</p>}
       {success && <p className="mb-2 text-xs font-medium text-teal">Password aggiornata.</p>}
       <button

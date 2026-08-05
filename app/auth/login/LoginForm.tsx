@@ -35,6 +35,7 @@ export default function LoginForm({
   const [mode, setMode] = useState<Mode>(inviteParam ? "signup" : "login");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [inviteCode, setInviteCode] = useState(inviteParam || "");
   const [invitePreview, setInvitePreview] = useState<InvitePreview | null>(null);
   const [loading, setLoading] = useState(false);
@@ -253,16 +254,36 @@ export default function LoginForm({
                 <label htmlFor="login-password" className={labelClass}>
                   Password
                 </label>
-                <input
-                  id="login-password"
-                  type="password"
-                  required
-                  minLength={6}
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className={inputClass}
-                  placeholder="Password"
-                />
+                {/* Fabrizio: "aggiungiamo l'opzione di visualizzare la
+                    password in tutti i punti in cui è richiesta?" — icona
+                    occhio che alterna type="password"/"text", stesso pattern
+                    ripetuto in ProfileSecuritySection.tsx e
+                    auth/reset-password/page.tsx. Il margin-bottom di
+                    `inputClass` si sposta sul wrapper (l'input dentro non lo
+                    porta più, `pr-11` fa spazio all'icona senza sovrapporsi
+                    al testo digitato). */}
+                <div className="relative mb-3">
+                  <input
+                    id="login-password"
+                    type={showPassword ? "text" : "password"}
+                    required
+                    minLength={6}
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    className={`${inputClass.replace("mb-3", "")} mb-0 pr-11`}
+                    placeholder="Password"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword((v) => !v)}
+                    aria-label={showPassword ? "Nascondi password" : "Mostra password"}
+                    className={`absolute right-3.5 top-1/2 -translate-y-1/2 ${
+                      isAdmin ? "text-navy-text2" : "text-ink-3"
+                    }`}
+                  >
+                    <i className={`ti ${showPassword ? "ti-eye-off" : "ti-eye"} text-lg`} />
+                  </button>
+                </div>
               </>
             )}
 
