@@ -52,6 +52,21 @@ RBAC: nessuna nuova policy — le stesse azioni scrivono su `feature_flag_overri
 
 **Deliberatamente non fatto in questo passaggio** (stesso principio conservativo già usato per `lib/journey-context.ts`, Sezione 8): propagare il controllo agli altri 7 punti di lettura di `getActivities()` (Ricerca Legacy/NEXTGEN, Planner, Community, Preferiti, Gruppi, pagina centro). Nessuno di questi è il primo punto di contatto di un utente nuovo, e toccarli tutti in un solo passaggio avrebbe un raggio d'azione che l'Addendum stesso chiede di evitare senza una ragione concreta per farlo ora.
 
+## 5-bis. Requisito → stato (aggiornamento SAL Checkpoint, 05/08 pomeriggio)
+
+As-of commit `8335d3b920b3694ba0b15cc8be45c17db89dfd0b`.
+
+| Requisito | Previsto | Implementato | Verificato | Gap |
+|---|---|---|---|---|
+| Tassonomia a 9 stati tipizzati | Sì | Sì | Statico (tsc/eslint) | Nessuno stato usa ancora `READY_OFF`/`EXPIRED`/`POST_BETA` |
+| Metadata per-feature (riskLevel/demoBannerRequired) | Sì | Sì | Statico | Solo le voci MOCK_DEMO dichiarano `riskLevel` esplicito |
+| Azioni platform_admin-scoped | Sì | Sì | Statico | Nessun run live |
+| Batch attiva/disattiva Beta con rollback | Sì | Sì | Statico + 3 test puri (eseguiti) + 1 E2E (scritto, non eseguito) | Nessun run live end-to-end |
+| Conferma rinforzata scope globale | Sì | Sì | Statico | Nessun run live |
+| Banner demo-mode MOCK_DEMO | Sì | Parziale (2/9 call site) | Statico | 7 call site restanti non coperti, deliberato (vedi §4) |
+| Audit trail azioni batch | Parziale | `created_by`/`updated_by` sulla riga override | Statico | Nessun evento esplicito "batch eseguito da X" |
+| RBAC | Sì | Sì (RLS invariata) | Statico | Nessun run live con utente non-Admin |
+
 ## 5. Cosa NON è stato fatto (onestamente, esplicito)
 
 - **Nessun secondo motore di flag**: le azioni batch sono wrapper sopra `feature_flag_overrides`, non una tabella/servizio nuovo.

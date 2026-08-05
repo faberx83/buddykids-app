@@ -1,4 +1,78 @@
-# TRAMA ONE — MVP Production Truth v2 (05/08/2026, seconda rilevazione)
+# TRAMA ONE — MVP Production Truth v2
+
+**Documentation Package**: `TRAMA_DOCUMENTATION_PACKAGE_20260805_v1`
+**As-of timestamp**: 2026-08-05T16:26:14Z (UTC) / 2026-08-05 18:26 (Europe/Rome)
+**As-of commit (AS_OF_COMMIT)**: `8335d3b920b3694ba0b15cc8be45c17db89dfd0b`
+
+Questo documento ha ora **UNA SOLA fotografia corrente** (Sezioni 0.1-0.5 sotto). Tutto ciò che segue (le vecchie Sezioni 1-9, numerate) è **storico/superseded**: riflette lo stato al momento in cui fu scritto (prima fotografia: `b0d0f21`, aggiornata poi a `79fcb63` nella Sezione 9) e resta come registro di ciò che è cambiato nel tempo, non come stato attuale. Vedi §0.6 per il mapping esplicito.
+
+---
+
+## 0.1 Current Authoritative Snapshot
+
+| Campo | Valore |
+|---|---|
+| Timestamp UTC | 2026-08-05T16:26:14Z |
+| Timestamp locale (Europe/Rome) | 2026-08-05 18:26 CEST |
+| Branch | `main` |
+| HEAD locale | `8335d3b920b3694ba0b15cc8be45c17db89dfd0b` |
+| `origin/main` (fetch reale) | `d9f85347806bd2021314fd36129e0a06d0797d4d` — **HEAD locale è avanti di 3 commit, non ancora pushati** (push avviene dentro `deploy.sh`, eseguito da Fabrizio — non un'azione autonoma di Claude) |
+| Working tree | Pulito |
+| Commit deployato (verificabile) | Non verificabile da questo sandbox (nessuna credenziale Vercel) — l'ultimo deploy confermato da log reale è `d9f8534` (vedi `deploy-20260805-173332.log`) |
+| Commit testato (`TEST_SCOPE=critical`, evidenza reale) | `d9f8534` — 93 passed, 50 skipped, 1 failed (TC-N609, poi corretto) |
+| Release Candidate corrente | `TRAMA_ONE_MVP_RC1` = `79fcb63ed66ece29fd5d345e3f980d78035a88d2` (assegnato in §9-bis, Sezione A dell'Addendum) — **non ancora deployato** |
+| Delta rispetto a `TRAMA_ONE_MVP_RC1` | **3 commit**: `817ad47` (docs, assegnazione RC1 stessa), `a5714af` (feat: onboarding NextGen), `8335d3b` (feat: Feature Control Center completo, Addendum Sezione B) — vedi §0.4 |
+| Progetto Supabase | `eagsgfxunwyyxwwilldy` (nome "buddykids") — read-only per questo sandbox |
+| Ultima migrazione applicata (confermata in DB) | `migration_22_profiles_admin_write_rls_fix.sql` (confermata via query reale su `pg_policy`, vedi vecchia Sezione 2) |
+| Feature flag / coorte | `TRAMA_ONE_ENABLED`: 3 righe in `feature_flag_overrides`, 3 in `beta_cohort_memberships`, invariate da v1/Sezione 2 — nessuna modifica in questo passaggio (la Sezione B dell'Addendum ha aggiunto SOLO le azioni batch nel codice, nessun override creato/eliminato) |
+| Configurazioni operative note | `RESEND_API_KEY` **non configurata** in produzione (evidenza reale: booking `0b5b1386-…`, `email_delivery_status=not_configured`) — invariato, azione residua per Fabrizio |
+| Test più recente con evidenza reale | Run `TEST_SCOPE=critical` del deploy `d9f8534` (log allegato da Fabrizio) — nessun run live più recente disponibile a questo sandbox |
+| Attività ancora in corso | Nessuna al momento di questo snapshot (Addendum Sezioni A e B appena chiuse e committate) |
+| Evidenze mancanti | Conferma deploy live di RC1; verifica Golden Journeys (Sezione 10 Addendum, non ancora fatta); Visual/Mobile Acceptance (Sezione 11, non ancora fatta); classificazione dati pilota (Sezione 9, non ancora fatta) |
+
+## 0.2 Production and Database Truth
+
+Invariato rispetto a quanto già verificato in v1/Sezione 2-6 (vecchia numerazione sotto): `migration_22` applicata e confermata, `activity_days` backfillato su tutte e 9 le attività esistenti, `RESEND_API_KEY` non configurata (evidenza reale), `center_leads` a 10 righe di cui 9 rumore di test (non pilota reale), feature flag/coorte invariati. Nessuna nuova query Supabase eseguita in questo passaggio (Sezione A/B dell'Addendum erano lavoro di codice/documentazione, non hanno toccato il DB).
+
+## 0.3 Release Candidate
+
+**`TRAMA_ONE_MVP_RC1` = `79fcb63ed66ece29fd5d345e3f980d78035a88d2`** (assegnato §9-bis). Composizione rispetto all'ultimo deploy realmente testato (`d9f8534`): identico, più il fix del falso positivo TC-N609. **Non ancora deployato.**
+
+Un secondo candidato non è stato assegnato: i 3 commit successivi (§0.4) sono lavoro applicativo/documentale nuovo, non ancora testato dal vivo — a questo stadio non esiste ancora un `RC2`, solo un delta non testato rispetto a RC1.
+
+## 0.4 Delta rispetto a TRAMA_ONE_MVP_RC1 (3 commit)
+
+1. `817ad47` — docs: assegnazione RC1 stessa (nessuna modifica applicativa)
+2. `a5714af` — feat(nextgen): onboarding neo-genitore, parità con LEGACY (gap segnalato da Fabrizio 05/08) — `components/nextgen/NextgenProfileCompletionPrompt.tsx`, wiring in `app/nextgen/page.tsx`/`HomeDashboardClient.tsx`
+3. `8335d3b` — feat(admin): Addendum Sezione B, Feature Control Center completo — tassonomia a 9 stati, azioni batch attiva/disattiva Beta con conferma rinforzata, banner demo-mode (2 punti su 9 call site di `getActivities()`)
+
+Nessuno di questi 3 commit è stato verificato con un run Playwright live (solo verifica statica: eslint/tsc puliti, + 3 test puri eseguiti con successo per il commit 3). **Nessuna evidenza LIVE per questo delta.**
+
+## 0.5 Outstanding Evidence — corretto (chiude un'affermazione imprecisa di v2/Sezione 8)
+
+La vecchia Sezione 8 (sotto) affermava: *"Uniche azioni residue reali per Fabrizio: (a) eseguire un nuovo deploy e confermare il commit live; (b) decidere se/quando impostare RESEND_API_KEY."* **Questa affermazione era incompleta** e viene corretta qui, non cancellata:
+
+Azioni/evidenze residue reali, alla data di questo snapshot:
+
+1. **Deploy** — eseguire un nuovo deploy e confermare il commit live (invariato).
+2. **`RESEND_API_KEY`** — decidere se/quando configurarla su Vercel prima di settembre (invariato).
+3. **Feature Control Center operativo** — le azioni batch/conferma rinforzata sono state costruite e verificate solo staticamente; nessuna verifica LIVE che il flusso end-to-end (attiva → verifica accesso reale per la coorte → disattiva → verifica rollback) funzioni in produzione.
+4. **Golden Journey** (Sezione 10 dell'Addendum) — non ancora eseguita in questo passaggio.
+5. **Visual/Mobile Acceptance** (Sezione 11 dell'Addendum, viewport 390×844/768/1440) — non ancora eseguita.
+6. **Dati e utenti pilota reali** — la classificazione PILOT_REAL/DEMO_CONTROLLED/TECHNICAL_TEST/UNKNOWN richiesta dalla Sezione 9 dell'Addendum non è ancora stata prodotta; ad oggi `center_leads` resta a 0 candidature reali (9/10 righe sono rumore di test).
+7. **GO/NO-GO** — non assegnabile finché i punti 3-6 restano aperti.
+
+## 0.6 Historical Changes / Superseded Snapshots — mapping
+
+Le Sezioni numerate 1-9 sotto (titolo originale "TRAMA ONE — MVP Production Truth v2, seconda rilevazione") restano **come scritte**, non modificate: rappresentano la fotografia presa quando HEAD era `b0d0f21` (Sezioni 1-8) poi aggiornata a `79fcb63` via l'aggiunta della vecchia Sezione 9. Sono **storiche**: non riflettono più lo stato corrente (superseded da §0.1-0.5 sopra). Il documento predecessore, `MVP_PRODUCTION_TRUTH.md` (v1, stessa giornata, mattina — HEAD `ed1ddc7`), resta anch'esso storico e non viene ripetuto qui.
+
+## 0.7 Delta After Snapshot
+
+Nessuno — il repository non è cambiato tra l'inizio e la chiusura di questa normalizzazione (working tree pulito, HEAD invariato durante la stesura di questa sezione).
+
+---
+
+# PARTE STORICA (fotografie precedenti — non rappresentano più lo stato corrente)
 
 Aggiornamento di `MVP_PRODUCTION_TRUTH.md` (v1, stessa giornata, mattina), richiesto esplicitamente da Fabrizio per un audit con lo stato più recente. Stessa metodologia di v1: nessuna assunzione, ogni riga verificata dal vivo — `git`/GitHub per il repository, query di sola lettura su Supabase (progetto `eagsgfxunwyyxwwilldy`) per DB/dati reali. Le sezioni sotto riportano solo ciò che è **cambiato** rispetto a v1 o che richiede una nuova evidenza; per il contesto completo (migrazioni 15-21, causa del bug schema cache, ecc.) v1 resta valido e non viene ripetuto.
 
