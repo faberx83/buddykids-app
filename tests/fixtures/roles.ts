@@ -68,7 +68,11 @@ export async function loginAs(page: Page, role: Role) {
   }
   await page.goto("/auth/login");
   await page.getByLabel(/email/i).fill(creds.email);
-  await page.getByLabel(/password/i).fill(creds.password);
+  // getByLabel(/password/i) è ambiguo: da quando LoginForm.tsx ha il
+  // pulsante "Mostra/Nascondi password" (aria-label che contiene
+  // "password"), la regex matcha sia l'input che il bottone (strict mode
+  // violation). Si usa l'id dell'input, stabile e univoco.
+  await page.locator("#login-password").fill(creds.password);
   await page.getByRole("button", { name: /accedi|login/i }).click();
   await page.waitForURL((url) => !url.pathname.startsWith("/auth/login"));
 }

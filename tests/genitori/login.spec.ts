@@ -32,7 +32,9 @@ test.describe("TRAMA - Login (header animato)", () => {
     await expect(header.getByRole("img", { name: "TRAMA" })).toBeVisible();
     await expect(header.getByText("Organizing childhood. Together.")).toBeVisible();
     await expect(page.getByLabel(/email/i)).toBeVisible();
-    await expect(page.getByLabel(/password/i)).toBeVisible();
+    // getByLabel(/password/i) è ambiguo dal pulsante "Mostra/Nascondi
+    // password" (aria-label che contiene "password", vedi tests/fixtures/roles.ts).
+    await expect(page.locator("#login-password")).toBeVisible();
     await expect(page.getByRole("button", { name: "Accedi" })).toBeVisible();
   });
 

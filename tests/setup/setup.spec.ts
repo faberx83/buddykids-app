@@ -36,7 +36,9 @@ test.describe("Setup", () => {
   test("TC-003 - Login con credenziali errate", async ({ page }) => {
     await page.goto("/auth/login");
     await page.getByLabel(/email/i).fill("indirizzo-che-non-esiste-di-sicuro@esempio.it");
-    await page.getByLabel(/password/i).fill("password-sbagliata-123");
+    // getByLabel(/password/i) è ambiguo dal pulsante "Mostra/Nascondi
+    // password" (aria-label che contiene "password", vedi tests/fixtures/roles.ts).
+    await page.locator("#login-password").fill("password-sbagliata-123");
     await page.getByRole("button", { name: /accedi|login/i }).click();
     // La suite fa molti login reali in parallelo (fullyParallel: true): questo
     // tentativo deliberatamente errato può occasionalmente incappare nel rate
