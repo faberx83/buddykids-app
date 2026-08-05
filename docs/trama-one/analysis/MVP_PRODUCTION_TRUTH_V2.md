@@ -90,3 +90,10 @@ v1/Sezione 2 riportavano 1 sola riga (`self_candidacy`, test di Fabrizio). Ora l
 | `center_leads` reali (pilota) | 0 | **Ancora 0** — la crescita a 10 righe è solo rumore di test, non pilota reale |
 
 **Uniche azioni residue reali per Fabrizio**: (a) eseguire un nuovo deploy e confermare il commit live; (b) decidere se/quando impostare `RESEND_API_KEY` su Vercel prima di settembre, visto che oggi le email di accettazione/rifiuto Partner non partono per design (chiave assente), non per errore.
+
+## 9. Sezioni 7 e 8 del programma — lavorate dopo questo audit, stato onesto
+
+Aggiunta a valle della prima stesura di questo documento (stesso pomeriggio), per tenere l'audit allineato al lavoro appena committato:
+
+- **Sezione 7 (Chiusura P0 Partner)** — **Chiusa**. Gap DEC-58/DEC-62 (`app/center/page.tsx` non reindirizzava mai un `center_admin` con centro non `APPROVED` verso l'onboarding) risolto in modo additivo: redirect condizionato a `TRAMA_ONE_ENABLED` (stesso resolver/tenant della route di destinazione, per non creare un loop per chi è fuori Controlled Beta Cohort). Commit `19b6449`.
+- **Sezione 8 (Chiusura P0 Parent, Context Object)** — **Parzialmente chiusa, onestamente non oltre**. Creata l'infrastruttura condivisa (`lib/journey-context.ts`, tipo `JourneyContext` + encode/decode) e corretto un bug reale isolato (Ricerca NEXTGEN riceveva già un deep-link col bambino selezionato ma non lo leggeva mai). **Non fatto**, deliberatamente: migrare i 4 punti esistenti (card attività → dettaglio → prenotazione) dai parametri piatti attuali (`week`/`kid`/`source`/`cid`) al nuovo oggetto unico — tocca il percorso di prenotazione reale in produzione, e questo programma richiede evidenza di un Golden Journey (Sezione 10, non ancora fatta) prima di modificare quel percorso specifico. Commit `030713e`.
