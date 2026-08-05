@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import dynamic from "next/dynamic";
 import { Activity, Kid } from "@/lib/types";
 import { computeSmartMatches, SmartMatch } from "@/lib/nextgen/smart-search";
@@ -195,8 +195,23 @@ export default function SearchDiscoveryClient({
   activitiesWithDaySpots?: string[];
 }) {
   const router = useRouter();
+  // TRAMA ONE — Sezione 8 (Chiusura P0 Parent, Context Object): questa
+  // pagina riceveva già un deep-link `?kid=<id>` da lib/nextgen/missions.ts
+  // (Home → "Riempi settimana scoperta" per un bambino specifico) e dal
+  // Planner LEGACY, ma non lo leggeva mai — app/nextgen/search/page.tsx
+  // (Server Component) non passa searchParams al client, quindi il filtro
+  // Bambini partiva sempre da "tutti" anche quando il link indicava un
+  // bambino preciso. Seed additivo dal query param esistente: se assente,
+  // comportamento identico a prima (null = tutti i bambini).
+  const searchParams = useSearchParams();
   const [query, setQuery] = useState("");
-  const [selectedKidId, setSelectedKidId] = useState<string | null>(null);
+  const [selectedKidId, setSelectedKidId] = useState<string | null>(() => {
+    const kidParam = searchParams.get("kid");
+    // Ignora un id che non corrisponde a nessun bambino reale dell'utente
+    // (link stantio/copiato da un altro account) invece di produrre un
+    // filtro "0 risultati" silenzioso.
+    return kidParam && kids.some((k) => k.id === kidParam) ? kidParam : null;
+  });
 
   const [openPanel, setOpenPanel] = useState<FilterPanel>(null);
   const [viewMode, setViewMode] = useState<ViewMode>("lista");
