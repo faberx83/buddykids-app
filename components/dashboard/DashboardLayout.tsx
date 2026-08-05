@@ -354,9 +354,19 @@ export default function DashboardLayout({
                   frequente di "non riesco a scorrere fino in fondo" in liste
                   dentro overlay full-screen. */}
               <aside
-                className={`absolute inset-y-0 left-0 flex w-72 max-w-[80vw] flex-col overflow-y-auto overscroll-contain px-4 py-5 ${
+                className={`absolute inset-y-0 left-0 flex w-72 max-w-[80vw] flex-col overflow-y-auto overscroll-contain px-4 pt-5 ${
                   isAdmin ? "bg-navy-2" : "bg-white"
                 }`}
+                // BUGFIX (Fabrizio, Chrome Android, lato Partner E Admin: "quasi
+                // in fondo, ultime voci tagliate"): `viewportFit: "cover"` in
+                // app/layout.tsx fa si' che env(safe-area-inset-bottom) valga
+                // l'altezza reale della gesture bar di Android invece di 0 —
+                // un `pb-5` fisso lascia le ultime 1-2 voci esattamente dentro
+                // quella zona, coperte dalla gesture bar di sistema (non un
+                // problema di scroll: lo scroll arriva in fondo, ma il fondo
+                // e' invisibile/non cliccabile). Stesso pattern gia' in uso in
+                // components/BottomNav.tsx per lo stesso motivo.
+                style={{ paddingBottom: "calc(1.25rem + env(safe-area-inset-bottom))" }}
               >
                 <div className="mb-6 flex items-center justify-between gap-2 px-2">
                   <div className="flex items-center gap-2">
