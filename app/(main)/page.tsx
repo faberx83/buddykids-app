@@ -2,8 +2,10 @@ import Link from "next/link";
 import HomeFeed from "@/components/HomeFeed";
 import HomeProfilePrompt from "@/components/HomeProfilePrompt";
 import CheckinPrompt from "@/components/CheckinPrompt";
+import MockDataBanner from "@/components/MockDataBanner";
 import { categories } from "@/lib/mock-data";
-import { getActivities, getActivityAvailabilityByWeek } from "@/lib/data/activities";
+import { getActivities, getActivityAvailabilityByWeek, isMockActivitiesArray } from "@/lib/data/activities";
+import { isSupabaseConfigured } from "@/lib/supabase/env";
 import { getKidsForUser } from "@/lib/data/kids";
 import { getPlannerData } from "@/lib/data/planner";
 import { getBookingsByKid } from "@/lib/data/kid-bookings";
@@ -11,7 +13,6 @@ import { isParentProfileIncomplete } from "@/lib/data/profile";
 import { getTodayCheckinsForParent } from "@/lib/data/checkin";
 import { getSeasonYear } from "@/lib/data/season-year";
 import { createClient } from "@/lib/supabase/server";
-import { isSupabaseConfigured } from "@/lib/supabase/env";
 
 async function getDisplayIdentity() {
   if (!isSupabaseConfigured) {
@@ -122,6 +123,20 @@ export default async function HomePage() {
       </div>
 
       <HomeProfilePrompt profileIncomplete={profileIncomplete} hasKids={kids.length > 0} />
+      {/* Addendum Sezione B (Feature Control Center) — requisito banner
+          demo-mode per lo stato MOCK_DEMO. Mostrato SOLO quando Supabase è
+          configurato ma getActivities() è comunque ricaduta sui dati finti
+          (0 righe/errore): è esattamente il caso "RISCHIO ALTO" già
+          documentato in lib/feature-registry/catalog.ts
+          (activities_mock_fallback) — un centro/attività reale ma vuota
+          mostrerebbe dati finti senza avviso. Non mostrato quando Supabase
+          non è configurato affatto (tutto il resto della pagina è già
+          coerentemente in modalità demo in quel caso). */}
+      {isSupabaseConfigured && (
+        <div className="px-5 pt-3">
+          <MockDataBanner visible={isMockActivitiesArray(activities)} />
+        </div>
+      )}
       <CheckinPrompt items={todayCheckins} />
 
       <HomeFeed

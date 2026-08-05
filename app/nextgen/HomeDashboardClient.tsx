@@ -13,6 +13,7 @@ import NextgenBadge from "@/components/nextgen/NextgenBadge";
 import NextgenCheckinCard from "@/components/nextgen/NextgenCheckinCard";
 import BookingVisualCard from "@/components/nextgen/BookingVisualCard";
 import NextgenProfileCompletionPrompt from "@/components/nextgen/NextgenProfileCompletionPrompt";
+import MockDataBanner from "@/components/MockDataBanner";
 
 // SPRINT 1 (NEXTGEN) — Dashboard Genitore come "Family Operating System":
 // la schermata risponde a "la mia famiglia è organizzata per le prossime
@@ -75,6 +76,7 @@ export default function HomeDashboardClient({
   communitySignal,
   profileIncomplete,
   hasKids,
+  activitiesAreMockFallback,
 }: {
   firstName: string | null;
   planner: PlannerData;
@@ -84,6 +86,7 @@ export default function HomeDashboardClient({
   communitySignal: CommunityHomeSignal | null;
   profileIncomplete: boolean;
   hasKids: boolean;
+  activitiesAreMockFallback: boolean;
 }) {
   const router = useRouter();
   const todayIso = useMemo(() => new Date().toISOString().slice(0, 10), []);
@@ -150,6 +153,10 @@ export default function HomeDashboardClient({
           concreta prima di mostrare lo stato. Si autonasconde da solo
           appena completo (stessa logica del Legacy). */}
       <NextgenProfileCompletionPrompt profileIncomplete={profileIncomplete} hasKids={hasKids} />
+
+      {/* Addendum Sezione B (Feature Control Center) — banner demo-mode per
+          lo stato MOCK_DEMO, stesso criterio di app/(main)/page.tsx. */}
+      <MockDataBanner visible={activitiesAreMockFallback} />
 
       {/* 1) HERO CARD — "quanto è organizzata la mia famiglia?" deve essere
           leggibile in meno di 3 secondi. Sfondo caldo distinto (non bianco

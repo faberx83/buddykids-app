@@ -9,7 +9,12 @@ import {
   updateFeatureFlagOverrideAction,
 } from "@/app/actions/feature-flag-overrides";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
-import { getFeatureCatalog, FeatureStatus, FeatureCatalogEntry } from "@/lib/feature-registry/catalog";
+import { getFeatureCatalog, FeatureStatus, FeatureCatalogEntry, getBetaEnabledFlagNames } from "@/lib/feature-registry/catalog";
+import { getFlagDefinition, FeatureFlagScope } from "@/lib/feature-flags/registry";
+import {
+  batchActivateBetaFeaturesAction,
+  batchDeactivateBetaFeaturesAction,
+} from "@/app/actions/feature-flag-overrides";
 
 // TRAMA ONE Build Sprint 6 (backlog vincolante P1, "Feature flag override
 // expiry") — visibilità e gestione Admin degli override. Prima di questa
@@ -39,11 +44,15 @@ function formatDateTime(iso: string | null): string {
 // risolvibile. Nessuna azione qui modifica il catalogo: è descrittivo,
 // popolato leggendo il codice reale (vedi FEATURE_INVENTORY_COMPLETE.md).
 const CATALOG_STATUS_LABEL: Record<FeatureStatus, { label: string; cls: string }> = {
-  live: { label: "Live", cls: "bg-green-light text-[#2d8f52]" },
-  beta_gated: { label: "Beta gated", cls: "bg-sky-light text-sky" },
-  coming_soon: { label: "In arrivo", cls: "bg-yellow-light text-[#9a6b00]" },
-  hidden_no_nav: { label: "Nascosta (no nav)", cls: "bg-[#F0F2F5] text-ink-2" },
-  mock_fallback: { label: "Mock/demo fallback", cls: "bg-orange-light text-trama-orange" },
+  LIVE: { label: "Live", cls: "bg-green-light text-[#2d8f52]" },
+  BETA_ENABLED: { label: "Beta (attiva per coorte)", cls: "bg-sky-light text-sky" },
+  READY_OFF: { label: "Pronta, spenta", cls: "bg-[#F0F2F5] text-ink-2" },
+  MOCK_DEMO: { label: "Mock/demo", cls: "bg-orange-light text-trama-orange" },
+  INCOMPLETE: { label: "In arrivo (incompleta)", cls: "bg-yellow-light text-[#9a6b00]" },
+  BLOCKED: { label: "Bloccata (permanente)", cls: "bg-[#F0F2F5] text-ink-2" },
+  EXPIRED: { label: "Scaduta", cls: "bg-[#FBEAEA] text-[#C0392B]" },
+  POST_BETA: { label: "Post-Beta (promossa)", cls: "bg-green-light text-[#2d8f52]" },
+  DEPRECATED: { label: "Deprecata", cls: "bg-[#F0F2F5] text-ink-2" },
 };
 
 const CATALOG_AREA_LABEL: Record<string, string> = {
@@ -53,12 +62,135 @@ const CATALOG_AREA_LABEL: Record<string, string> = {
   cross_tenant: "Cross-tenant",
 };
 
+// TRAMA ONE — Addendum Sezione B: "batch attiva tutte le funzionalità Beta
+// pronte" / "disattiva tutte le funzionalità Beta" con conferma rinforzata
+// per lo scope 'global' (l'unico che impatta TUTTI gli utenti, non solo un
+// utente/ruolo/tenant/coorte specifico) — l'utente deve digitare "GLOBAL"
+// per confermare, non basta un click. Gli altri scope usano un window.confirm
+// semplice: impattano un pubblico delimitato, coerente col rischio minore.
+function BatchBetaControls() {
+  const betaFlagNames = getBetaEnabledFlagNames();
+  // Intersezione degli scope ammessi su tutti i flag Beta coinvolti — oggi
+  // un solo flag (TRAMA_ONE_ENABLED), ma corretto anche se in futuro una
+  // seconda funzionalità Beta userà un flag con scope più ristretti.
+  const allowedScopes: FeatureFlagScope[] = betaFlagNames.reduce<FeatureFlagScope[]>((acc, name) => {
+    const def = getFlagDefinition(name);
+    if (!def) return acc;
+    return acc.length === 0 ? [...def.allowedScopes] : acc.filter((s) => def.allowedScopes.includes(s));
+  }, []);
+
+  const [scopeType, setScopeType] = useState<string>(allowedScopes[0] ?? "global");
+  const [scopeValue, setScopeValue] = useState("");
+  const [globalConfirmText, setGlobalConfirmText] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [lastResult, setLastResult] = useState<string | null>(null);
+
+  if (betaFlagNames.length === 0) return null;
+
+  async function run(action: (input: { scopeType: string; scopeValue: string | null }) => Promise<{ error?: string; affectedFlags?: string[] }>, verb: string) {
+    setError(null);
+    setLastResult(null);
+    if (scopeType === "global") {
+      if (globalConfirmText.trim().toUpperCase() !== "GLOBAL") {
+        setError('Scope globale: scrivi "GLOBAL" nel campo di conferma per procedere — impatta tutti gli utenti.');
+        return;
+      }
+    } else if (!window.confirm(`Confermi di voler ${verb} le funzionalità Beta pronte per ${scopeType}${scopeValue ? `: ${scopeValue}` : ""}?`)) {
+      return;
+    }
+    setBusy(true);
+    const res = await action({ scopeType, scopeValue: scopeType === "global" ? null : scopeValue });
+    setBusy(false);
+    if (res.error) {
+      setError(res.error);
+      return;
+    }
+    setGlobalConfirmText("");
+    setLastResult(`${verb === "attivare" ? "Attivate" : "Disattivate"}: ${res.affectedFlags?.join(", ") ?? "—"}`);
+    window.location.reload();
+  }
+
+  return (
+    <div className="mb-6 rounded-lg border border-[#E8EBF0] bg-white p-4">
+      <div className="text-sm font-bold text-ink">Azioni batch — funzionalità Beta</div>
+      <p className="mt-0.5 text-xs text-ink-2">
+        Attiva o disattiva in un solo passaggio TUTTE le funzionalità in stato Beta (oggi: {betaFlagNames.join(", ")})
+        per lo scope scelto sotto — stesso meccanismo degli override sopra, non un motore separato. La disattivazione
+        è l&apos;esatto rollback dell&apos;attivazione per lo stesso scope.
+      </p>
+
+      <div className="mt-3 flex flex-wrap items-center gap-2">
+        <select
+          value={scopeType}
+          onChange={(e) => {
+            setScopeType(e.target.value);
+            setError(null);
+          }}
+          className="rounded-md border border-[#E8EBF0] bg-white px-2 py-1.5 text-xs"
+        >
+          {allowedScopes.map((scope) => (
+            <option key={scope} value={scope}>
+              {scope}
+            </option>
+          ))}
+        </select>
+        {scopeType !== "global" && (
+          <input
+            value={scopeValue}
+            onChange={(e) => setScopeValue(e.target.value)}
+            placeholder="valore (userId/ruolo/tenant/coorte/ambiente)"
+            className="rounded-md border border-[#E8EBF0] bg-white px-2 py-1.5 text-xs"
+          />
+        )}
+        {scopeType === "global" && (
+          <input
+            value={globalConfirmText}
+            onChange={(e) => setGlobalConfirmText(e.target.value)}
+            placeholder='Scrivi "GLOBAL" per confermare'
+            className="rounded-md border border-[#E8EBF0] bg-white px-2 py-1.5 text-xs"
+          />
+        )}
+      </div>
+
+      <div className="mt-3 flex flex-wrap gap-2">
+        <button
+          onClick={() => run(batchActivateBetaFeaturesAction, "attivare")}
+          disabled={busy}
+          className="rounded-md bg-partner px-3 py-1.5 text-xs font-bold text-white disabled:opacity-60"
+        >
+          Attiva tutte le funzionalità Beta pronte
+        </button>
+        <button
+          onClick={() => run(batchDeactivateBetaFeaturesAction, "disattivare")}
+          disabled={busy}
+          className="rounded-md border border-[#E8EBF0] px-3 py-1.5 text-xs font-bold text-[#C0392B] disabled:opacity-60"
+        >
+          Disattiva tutte le funzionalità Beta (rollback)
+        </button>
+      </div>
+      {error && <div className="mt-2 text-xs text-[#C0392B]">{error}</div>}
+      {lastResult && <div className="mt-2 text-xs text-[#2d8f52]">{lastResult}</div>}
+    </div>
+  );
+}
+
 function FeatureCatalogSection() {
   const catalog = getFeatureCatalog();
   const [areaFilter, setAreaFilter] = useState<string>("all");
   const areas = ["all", "parent", "partner", "admin", "cross_tenant"];
   const visible = areaFilter === "all" ? catalog : catalog.filter((e) => e.area === areaFilter);
-  const statusOrder: FeatureStatus[] = ["live", "beta_gated", "mock_fallback", "coming_soon", "hidden_no_nav"];
+  const statusOrder: FeatureStatus[] = [
+    "LIVE",
+    "BETA_ENABLED",
+    "READY_OFF",
+    "MOCK_DEMO",
+    "INCOMPLETE",
+    "BLOCKED",
+    "EXPIRED",
+    "POST_BETA",
+    "DEPRECATED",
+  ];
 
   return (
     <div className="mb-6 rounded-lg border border-[#E8EBF0] bg-white">
@@ -107,6 +239,16 @@ function FeatureCatalogSection() {
                       {entry.flagName && (
                         <span className="rounded bg-white px-1.5 py-0.5 text-[10px] text-ink-2">
                           flag: {entry.flagName}
+                        </span>
+                      )}
+                      {entry.riskLevel === "high" && (
+                        <span className="rounded bg-[#FBEAEA] px-1.5 py-0.5 text-[10px] font-semibold text-[#C0392B]">
+                          rischio alto
+                        </span>
+                      )}
+                      {entry.demoBannerRequired && (
+                        <span className="rounded bg-[#FFF7E6] px-1.5 py-0.5 text-[10px] font-semibold text-[#9a6b00]">
+                          banner demo attivo in UI
                         </span>
                       )}
                     </div>
@@ -256,6 +398,7 @@ export default function FeatureFlagsAdminClient({ initialEntries }: { initialEnt
         </div>
       )}
 
+      <BatchBetaControls />
       <FeatureCatalogSection />
 
       {entries.map((entry) => {

@@ -171,6 +171,28 @@ export async function getActivities(): Promise<Activity[]> {
   return attachApprovedCertificationBadges(supabase, data.map(mapRow));
 }
 
+// TRAMA ONE — Addendum Sezione B (Feature Control Center), voce di catalogo
+// "activities_mock_fallback" (lib/feature-registry/catalog.ts, status
+// MOCK_DEMO, "RISCHIO ALTO — un centro/attività reale ma vuota mostrerebbe
+// dati finti senza avviso"): getActivities() ricade su mockActivities anche
+// con Supabase CONFIGURATO (0 righe o errore), quindi un utente reale in
+// produzione può vedere attività finte senza saperlo.
+//
+// Rilevamento per riferimento (mockActivities è un array importato stabile:
+// getActivities() lo restituisce SEMPRE come lo stesso oggetto quando ricade
+// sul fallback, mai una copia) — additivo e a rischio zero: nessuna modifica
+// alla firma o al comportamento di getActivities(), i suoi 9 punti di
+// chiamata esistenti restano invariati. Ogni chiamante può opzionalmente
+// controllare il risultato con questa funzione per mostrare un avviso
+// "dati demo" — cablato finora solo nelle due Home (Legacy/NEXTGEN, il
+// punto di primo contatto più visibile), il rollout ai restanti punti
+// (Ricerca, Planner, Community, Preferiti, Gruppi) resta deliberatamente
+// non fatto in questo passaggio, stesso principio già usato per
+// lib/journey-context.ts: infrastruttura pronta, propagazione gradata.
+export function isMockActivitiesArray(activities: Activity[]): boolean {
+  return activities === mockActivities;
+}
+
 // Badge "Certificazioni" sulle card di lista/ricerca (richiesta di Fabrizio:
 // "non vedo ancora i badge di certificazione sulle schede dei centri") — fino
 // ad ora le certificazioni approvate venivano lette SOLO nel dettaglio

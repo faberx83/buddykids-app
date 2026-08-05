@@ -3,7 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getPlannerData } from "@/lib/data/planner";
 import { getMyBookingsForParent } from "@/lib/data/my-bookings";
 import { getKidsForUser } from "@/lib/data/kids";
-import { getActivities } from "@/lib/data/activities";
+import { getActivities, isMockActivitiesArray } from "@/lib/data/activities";
 import { getTodayCheckinsForParent } from "@/lib/data/checkin";
 import { getCommunityHomeSignal } from "@/lib/data/communities";
 import { isParentProfileIncomplete } from "@/lib/data/profile";
@@ -122,6 +122,11 @@ export default async function NextgenHomePage() {
       communitySignal={communitySignal}
       profileIncomplete={profileIncomplete}
       hasKids={kids.length > 0}
+      // Addendum Sezione B — banner demo-mode per MOCK_DEMO, stesso criterio
+      // di app/(main)/page.tsx (vedi commento li' per il rischio coperto).
+      // isSupabaseConfigured qui e' gia' garantito true (il ramo false
+      // ritorna prima, riga ~20).
+      activitiesAreMockFallback={isMockActivitiesArray(activities)}
     />
   );
 }
