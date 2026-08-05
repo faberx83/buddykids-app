@@ -246,7 +246,17 @@ export default function DashboardLayout({
       <PageLoadIndicator color={isAdmin ? "#1A1D2E" : "#1FA88E"} />
       <div className="mx-auto flex max-w-6xl">
         <aside
-          className={`sticky top-0 hidden h-screen w-60 flex-shrink-0 flex-col px-4 py-5 md:flex ${
+          // BUGFIX (Fabrizio, desktop 100% zoom, "Admin"/"Gestore": le voci in
+          // fondo — Torna all'app, Esci dall'account — non sono raggiungibili
+          // né visibili, solo riducendo lo zoom al 80% si vedono): questa
+          // sidebar era `h-screen` ma SENZA overflow-y-auto, quindi con 16+
+          // voci di menu (Command Center, Feature flag, Segnalazioni centri,
+          // ecc. aggiunte negli sprint TRAMA ONE) il contenuto eccede
+          // l'altezza reale della finestra e trabocca sotto il bordo, senza
+          // possibilità di scroll — diverso dal cassetto mobile (già corretto
+          // con inset-y-0/safe-area, quello aveva overflow-y-auto ma restava
+          // tagliato dalla gesture bar Android; qui manca proprio lo scroll).
+          className={`sticky top-0 hidden h-screen w-60 flex-shrink-0 flex-col overflow-y-auto px-4 py-5 md:flex ${
             isAdmin
               ? "border-r border-navy-3 bg-navy-2"
               : "border-r border-[#E8EBF0] bg-white"
