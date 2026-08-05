@@ -1,10 +1,12 @@
 "use server";
 
 import { createClient } from "@/lib/supabase/server";
+import { createServiceClient } from "@/lib/supabase/service";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
 import { revalidatePath } from "next/cache";
-import { findPossibleDuplicates, normalizeDedupeKey } from "@/lib/data/center-leads";
+import { findPossibleDuplicates, getCandidacyStatusPublic, normalizeDedupeKey, PublicCandidacyStatus } from "@/lib/data/center-leads";
 import { CenterLeadDemandContext, CenterLeadItem, CenterLeadStatus } from "@/lib/types";
+import { createCenterAndAssignAction, CreateCenterInput, CreateCenterResult } from "@/app/actions/admin";
 
 // Un genitore segnala un centro non ancora iscritto (TRAMA ONE Build
 // Sprint 5, J11 nella fonte di design). Crea SEMPRE una riga in
@@ -163,4 +165,103 @@ export async function markCenterLeadRewardAction(
   revalidatePath("/admin/center-leads");
   revalidatePath("/center-leads");
   return {};
+}
+
+// ════════════════════════════════════════════════════════════════
+// Migrazione 21 — "Candidati come centro" (Fabrizio: "il registrati deve
+// essere un 'candidati' per cui deve far partire processo di onboarding").
+// Vedi supabase/migration_21_center_candidacy.sql per lo schema e il
+// ragionamento completo di design.
+// ════════════════════════════════════════════════════════════════
+
+export interface CenterCandidacyInput {
+  centerName: string;
+  locality?: string;
+  description?: string;
+  phone?: string;
+  email: string;
+}
+
+// Form pubblico "Candidati" (/auth/candidati) — NESSUN account viene creato
+// qui, solo una riga center_leads con lead_type='self_candidacy'. Usa il
+// service client (bypassa le RLS) perché chi compila il form non ha ancora
+// alcuna sessione: le RLS di insert esistenti richiedono suggested_by =
+// auth.uid(), impossibile per un candidato anonimo (per questo
+// suggested_by resta null qui, vedi migration_21_center_candidacy.sql).
+export async function submitCenterCandidacyAction(
+  input: CenterCandidacyInput
+): Promise<{ id?: string; error?: string }> {
+  if (!isSupabaseConfigured) return { error: "Supabase non configurato" };
+  if (!input.centerName.trim()) return { error: "Inserisci il nome del centro" };
+  if (!input.email.trim()) return { error: "Inserisci un'email di contatto" };
+
+  const supabase = createServiceClient();
+  if (!supabase) return { error: "Servizio momentaneamente non disponibile. Riprova più tardi o scrivici direttamente." };
+
+  const dedupeKey = normalizeDedupeKey(input.centerName, input.locality);
+
+  const { data, error } = await supabase
+    .from("center_leads")
+    .insert({
+      suggested_name: input.centerName.trim(),
+      suggested_locality: input.locality?.trim() || null,
+      suggested_contact: input.description?.trim() || null,
+      demand_context: {},
+      dedupe_key: dedupeKey,
+      status: "suggested",
+      lead_type: "self_candidacy",
+      candidate_email: input.email.trim(),
+      candidate_phone: input.phone?.trim() || null,
+      reward_status: "not_applicable",
+    })
+    .select("id")
+    .single();
+
+  if (error || !data) return { error: error?.message || "Errore nell'invio della candidatura" };
+  revalidatePath("/admin/center-leads");
+  return { id: data.id };
+}
+
+// Letta SENZA login dalla pagina di conferma (/auth/candidati/conferma/[id])
+// — sola lettura, 3 campi non sensibili (vedi lib/data/center-leads.ts).
+export async function getCandidacyStatusAction(id: string): Promise<PublicCandidacyStatus | null> {
+  return getCandidacyStatusPublic(id);
+}
+
+// Admin approva un'autocandidatura: crea il centro riusando la STESSA azione
+// già esistente della pagina /admin/centers (createCenterAndAssignAction,
+// solo prefillata dai dati della candidatura), poi collega il lead al
+// centro appena creato (status='claimed'). NESSUNA creazione di account
+// qui — se il candidato non si è ancora registrato, createCenterAndAssignAction
+// restituisce il suo "warning" normale (comportamento esistente, invariato):
+// il centro viene comunque creato e il lead comunque collegato, perché il
+// trigger handle_new_user() esteso (migration_21) assegnerà
+// automaticamente role='center_admin' quando il candidato si registrerà con
+// la stessa email indicata in candidatura.
+export async function approveCandidacyAction(leadId: string, centerInput: CreateCenterInput): Promise<CreateCenterResult> {
+  if (!isSupabaseConfigured) return { error: "Supabase non configurato" };
+
+  const result = await createCenterAndAssignAction(centerInput);
+  if (result.error || !result.centerId) return result;
+
+  const supabase = await createClient();
+  const { error: updateError } = await supabase
+    .from("center_leads")
+    .update({
+      status: "claimed",
+      claimed_center_id: result.centerId,
+      claimed_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", leadId);
+
+  if (updateError) {
+    return {
+      ...result,
+      warning: `Centro creato, ma non è stato possibile aggiornare lo stato della candidatura: ${updateError.message}`,
+    };
+  }
+
+  revalidatePath("/admin/center-leads");
+  return result;
 }
