@@ -9,6 +9,7 @@ import {
   updateFeatureFlagOverrideAction,
 } from "@/app/actions/feature-flag-overrides";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
+import { getFeatureCatalog, FeatureStatus, FeatureCatalogEntry } from "@/lib/feature-registry/catalog";
 
 // TRAMA ONE Build Sprint 6 (backlog vincolante P1, "Feature flag override
 // expiry") — visibilità e gestione Admin degli override. Prima di questa
@@ -28,6 +29,104 @@ const STATUS_LABEL: Record<FeatureFlagOverrideStatus, { label: string; cls: stri
 function formatDateTime(iso: string | null): string {
   if (!iso) return "—";
   return new Date(iso).toLocaleString("it-IT", { dateStyle: "medium", timeStyle: "short" });
+}
+
+// TRAMA ONE — Sezione 4 (Admin Feature Control Center). Estende questa
+// pagina, già dotata di CRUD/RBAC/audit per gli override, con una vista
+// SOLA LETTURA sul Feature Registry canonico (Sezione 5,
+// lib/feature-registry/catalog.ts): "cosa esiste, dove vive, in che stato
+// è" per OGNI funzionalità rilevante — non solo quelle dietro un flag
+// risolvibile. Nessuna azione qui modifica il catalogo: è descrittivo,
+// popolato leggendo il codice reale (vedi FEATURE_INVENTORY_COMPLETE.md).
+const CATALOG_STATUS_LABEL: Record<FeatureStatus, { label: string; cls: string }> = {
+  live: { label: "Live", cls: "bg-green-light text-[#2d8f52]" },
+  beta_gated: { label: "Beta gated", cls: "bg-sky-light text-sky" },
+  coming_soon: { label: "In arrivo", cls: "bg-yellow-light text-[#9a6b00]" },
+  hidden_no_nav: { label: "Nascosta (no nav)", cls: "bg-[#F0F2F5] text-ink-2" },
+  mock_fallback: { label: "Mock/demo fallback", cls: "bg-orange-light text-trama-orange" },
+};
+
+const CATALOG_AREA_LABEL: Record<string, string> = {
+  parent: "Genitore",
+  partner: "Gestore",
+  admin: "Admin",
+  cross_tenant: "Cross-tenant",
+};
+
+function FeatureCatalogSection() {
+  const catalog = getFeatureCatalog();
+  const [areaFilter, setAreaFilter] = useState<string>("all");
+  const areas = ["all", "parent", "partner", "admin", "cross_tenant"];
+  const visible = areaFilter === "all" ? catalog : catalog.filter((e) => e.area === areaFilter);
+  const statusOrder: FeatureStatus[] = ["live", "beta_gated", "mock_fallback", "coming_soon", "hidden_no_nav"];
+
+  return (
+    <div className="mb-6 rounded-lg border border-[#E8EBF0] bg-white">
+      <div className="border-b border-[#E8EBF0] px-4 py-3">
+        <div className="text-sm font-bold text-ink">Catalogo funzionalità (sola lettura)</div>
+        <p className="mt-0.5 text-xs text-ink-2">
+          Registro canonico di ogni funzionalità rilevante — gated da flag o no — con lo stato reale
+          verificato leggendo il codice. Descrittivo: nessuna azione qui attiva o disattiva nulla (per
+          quello, usa gli override sopra o sotto).
+        </p>
+        <div className="mt-2 flex flex-wrap gap-1.5">
+          {areas.map((a) => (
+            <button
+              key={a}
+              onClick={() => setAreaFilter(a)}
+              className={`rounded-md border px-2.5 py-1 text-[11px] font-semibold ${
+                areaFilter === a ? "border-sky bg-sky-light text-sky" : "border-[#E8EBF0] text-ink-2"
+              }`}
+            >
+              {a === "all" ? "Tutte le aree" : CATALOG_AREA_LABEL[a] ?? a}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div className="divide-y divide-[#F0F2F5]">
+        {statusOrder.map((status) => {
+          const rows = visible.filter((e) => e.status === status);
+          if (rows.length === 0) return null;
+          return (
+            <div key={status} className="px-4 py-3">
+              <div className="mb-2 flex items-center gap-2">
+                <span className={`rounded-full px-2.5 py-1 text-[11px] font-semibold ${CATALOG_STATUS_LABEL[status].cls}`}>
+                  {CATALOG_STATUS_LABEL[status].label}
+                </span>
+                <span className="text-[11px] text-ink-2">{rows.length} funzionalità</span>
+              </div>
+              <div className="space-y-2">
+                {rows.map((entry: FeatureCatalogEntry) => (
+                  <div key={entry.key} className="rounded-md bg-bg px-3 py-2">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="text-xs font-semibold text-ink">{entry.label}</span>
+                      <span className="rounded bg-white px-1.5 py-0.5 text-[10px] text-ink-2">
+                        {CATALOG_AREA_LABEL[entry.area] ?? entry.area}
+                      </span>
+                      {entry.flagName && (
+                        <span className="rounded bg-white px-1.5 py-0.5 text-[10px] text-ink-2">
+                          flag: {entry.flagName}
+                        </span>
+                      )}
+                    </div>
+                    <p className="mt-1 text-[11px] text-ink-2">{entry.description}</p>
+                    <p className="mt-0.5 text-[10px] text-ink-3">{entry.sourceFiles.join(" · ")}</p>
+                    {entry.note && (
+                      <p className="mt-1 text-[11px] font-medium text-trama-orange">{entry.note}</p>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          );
+        })}
+        {visible.length === 0 && (
+          <p className="px-4 py-4 text-center text-sm text-ink-2">Nessuna voce per quest&apos;area.</p>
+        )}
+      </div>
+    </div>
+  );
 }
 
 export default function FeatureFlagsAdminClient({ initialEntries }: { initialEntries: FeatureFlagAdminEntry[] }) {
@@ -156,6 +255,8 @@ export default function FeatureFlagsAdminClient({ initialEntries }: { initialEnt
           Supabase non è collegato in questo ambiente: qui vedrai gli override reali una volta collegato.
         </div>
       )}
+
+      <FeatureCatalogSection />
 
       {entries.map((entry) => {
         const draft = newOverrideDraft[entry.flagName] ?? { scopeType: "global", scopeValue: "", enabled: true, expiresAt: "" };
