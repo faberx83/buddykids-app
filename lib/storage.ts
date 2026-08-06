@@ -45,6 +45,52 @@ export async function uploadImage(folder: string, file: File): Promise<UploadRes
   return { url: data.publicUrl, error: null };
 }
 
+// Fix privacy 06/08/2026 (piano Privacy/Compliance, rischio urgente dati di
+// minori — decisione di Fabrizio: solo la cartella bambini diventa privata,
+// il resto del bucket pubblico sopra resta invariato). Stesso pattern di
+// uploadCertificationDocument/uploadIdentityVerificationDocument sotto:
+// bucket PRIVATO dedicato, path "<parent_id>/<file>" (vedi
+// supabase/migration_23_kids_avatars_storage.sql), MA a differenza di quei
+// due — che restituiscono solo il path, mai visualizzato direttamente — qui
+// serve un url subito mostrabile in <img>, quindi si genera un URL firmato
+// (1h) nello stesso momento dell'upload invece di ritornare il path grezzo:
+// AvatarUploadButton.tsx resta identico a com'era per gli altri folder
+// (continua a ricevere semplicemente {url, error}). Chi persiste il valore
+// (updateKidAvatarAction) estrae poi il path dall'URL firmato per salvare
+// solo quello — mai un URL che scade — vedi commento lì.
+export const KIDS_AVATARS_BUCKET = "buddykids-kids-avatars";
+
+export async function uploadKidAvatar(file: File): Promise<UploadResult> {
+  if (!ALLOWED_TYPES.includes(file.type)) {
+    return { url: null, error: "Formato non supportato — usa JPG, PNG, WEBP o GIF." };
+  }
+  if (file.size > MAX_SIZE_BYTES) {
+    return { url: null, error: "Immagine troppo grande — massimo 5MB." };
+  }
+
+  const supabase = createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { url: null, error: "Non autenticato" };
+
+  const ext = file.name.split(".").pop() || "jpg";
+  const path = `${user.id}/${crypto.randomUUID()}.${ext}`;
+
+  const { error } = await supabase.storage.from(KIDS_AVATARS_BUCKET).upload(path, file, {
+    cacheControl: "3600",
+    upsert: false,
+  });
+  if (error) return { url: null, error: toFriendlyError(error.message) };
+
+  const { data, error: signError } = await supabase.storage
+    .from(KIDS_AVATARS_BUCKET)
+    .createSignedUrl(path, 3600);
+  if (signError || !data) return { url: null, error: toFriendlyError(signError?.message || "Errore nel caricamento") };
+
+  return { url: data.signedUrl, error: null };
+}
+
 // Documento di supporto per una richiesta di Certificazione servizio (vedi
 // app/actions/certifications.ts) — a differenza delle foto sopra, va su un
 // bucket PRIVATO ("buddykids-certifications", vedi supabase/schema.sql) e
