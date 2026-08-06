@@ -263,6 +263,7 @@ export default function PlannerCalendarView({
       return;
     }
     setShareResultUrl(res.url);
+    const now = new Date();
     setShares((prev) => [
       {
         id: res.id!,
@@ -270,8 +271,11 @@ export default function PlannerCalendarView({
         label: shareLabel.trim() || null,
         scopeStart: sharingScope.start,
         scopeEnd: sharingScope.end,
-        createdAt: new Date().toISOString(),
+        createdAt: now.toISOString(),
         revokedAt: null,
+        // Fix privacy 06/08/2026: rispecchia il default DB (30gg) solo per
+        // l'ottimistic update — il valore reale arriva al prossimo reload.
+        expiresAt: new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000).toISOString(),
       },
       ...prev,
     ]);
@@ -893,6 +897,12 @@ export default function PlannerCalendarView({
                     <div className="truncate text-[12.5px] font-semibold text-ink">{s.label || "Piano condiviso"}</div>
                     <div className="text-[10.5px] text-ink-3">
                       {s.scopeStart} – {s.scopeEnd}
+                    </div>
+                    {/* Fix privacy 06/08/2026: ogni link scade 30gg dopo la
+                        creazione — il genitore deve saperlo, non e' più un
+                        link valido per sempre. */}
+                    <div className="text-[10.5px] text-ink-3">
+                      Scade il {new Date(s.expiresAt).toLocaleDateString("it-IT")}
                     </div>
                   </div>
                   <button

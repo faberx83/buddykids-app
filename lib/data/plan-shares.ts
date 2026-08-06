@@ -16,6 +16,10 @@ export interface PlanShare {
   scopeEnd: string;
   createdAt: string;
   revokedAt: string | null;
+  // Fix privacy 06/08/2026 (migration_24): ogni link scade 30gg dopo la
+  // creazione — mostrato al genitore nell'elenco "I tuoi link condivisi"
+  // cosi sa quando smettera' di funzionare.
+  expiresAt: string;
 }
 
 interface RawPlanShareRow {
@@ -26,6 +30,7 @@ interface RawPlanShareRow {
   scope_end: string;
   created_at: string;
   revoked_at: string | null;
+  expires_at: string;
 }
 
 // Elenco dei link creati dal genitore loggato (per gestirli/revocarli) — MAI
@@ -41,7 +46,7 @@ export async function getPlanSharesForParent(): Promise<PlanShare[]> {
 
   const { data, error } = await supabase
     .from("plan_shares")
-    .select("id, token, label, scope_start, scope_end, created_at, revoked_at")
+    .select("id, token, label, scope_start, scope_end, created_at, revoked_at, expires_at")
     .eq("parent_id", user.id)
     .order("created_at", { ascending: false });
 
@@ -55,6 +60,7 @@ export async function getPlanSharesForParent(): Promise<PlanShare[]> {
     scopeEnd: r.scope_end,
     createdAt: r.created_at,
     revokedAt: r.revoked_at,
+    expiresAt: r.expires_at,
   }));
 }
 
