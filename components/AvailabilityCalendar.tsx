@@ -1,9 +1,18 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, type ReactNode } from "react";
 import { DayAvailability } from "@/lib/types";
 import { saveActivityDaysAction } from "@/app/actions/center";
 import { DemoBadge } from "@/components/StatusBadge";
+import {
+  applyBulkPatch,
+  bulkDraftHasChanges,
+  defaultBulkDraft,
+  summarizeSpecialDay,
+  type BulkDraft,
+} from "@/lib/availability-bulk";
+
+const SPECIAL_DAY_EMOJIS = ["🏊", "💦", "🎉", "🎨", "🌳", "🏆"];
 
 const weekdayLabels = ["Lun", "Mar", "Mer", "Gio", "Ven"];
 
@@ -31,12 +40,19 @@ function cellTone(day: DayAvailability) {
 // da un insieme, e un pannello dedicato applica lo stesso patch a TUTTE le
 // date selezionate in un colpo solo — riusa handleSaveAll esistente (che
 // salva l'intero array localDays), nessuna nuova azione server necessaria.
-type BulkDraft = {
-  isOpen: boolean;
-  capacity: number;
-  discountPercent: number;
-  lastMinute: boolean;
-};
+//
+// OD-02 / PT-MVP-08 (fix "FIX BEFORE BETA", 06/08): il `BulkDraft` originale
+// applicava SEMPRE isOpen/capacity/discountPercent/lastMinute a tutti i
+// giorni selezionati, sovrascrivendoli incondizionatamente, e non includeva
+// affatto la "Giornata particolare" (specialEmoji/specialLabel — colonne
+// special_emoji/special_label già esistenti su activity_days, nessuna
+// migrazione necessaria). Tipo e logica di applicazione ora vivono in
+// lib/availability-bulk.ts (testabile senza browser) con una semantica a 3
+// stati per OGNI campo — campo non modificato / valore impostato / valore
+// esplicitamente rimosso — per evitare sia l'ambiguità del valore vuoto sia
+// la sovrascrittura accidentale di capacità/sconto/last-minute quando il
+// Partner vuole cambiare solo la Giornata particolare (richiesta esplicita
+// di Fabrizio).
 
 export default function AvailabilityCalendar({
   days,
@@ -59,12 +75,7 @@ export default function AvailabilityCalendar({
   const [savedOk, setSavedOk] = useState(false);
   const [bulkMode, setBulkMode] = useState(false);
   const [bulkSelected, setBulkSelected] = useState<Set<string>>(new Set());
-  const [bulkDraft, setBulkDraft] = useState<BulkDraft>({
-    isOpen: true,
-    capacity: 15,
-    discountPercent: 0,
-    lastMinute: false,
-  });
+  const [bulkDraft, setBulkDraft] = useState<BulkDraft>(defaultBulkDraft());
 
   async function handleSaveAll() {
     if (!activityDbId) return;
@@ -128,34 +139,29 @@ export default function AvailabilityCalendar({
 
   function applyBulkDraft() {
     if (bulkSelected.size === 0) return;
-    const updated = localDays.map((d) =>
-      bulkSelected.has(d.date)
-        ? {
-            ...d,
-            isOpen: bulkDraft.isOpen,
-            capacity: bulkDraft.capacity,
-            // Stesso comportamento del pannello singolo giorno: cambiare la
-            // capienza resetta i posti liberi al nuovo totale (qui sempre,
-            // non un min() con l'esistente, perché l'azione bulk più comune
-            // è "apri/riapri N giorni con X posti ciascuno da zero").
-            spotsLeft: bulkDraft.capacity,
-            discountPercent: bulkDraft.discountPercent || undefined,
-            lastMinute: bulkDraft.lastMinute,
-          }
-        : d
-    );
+    if (!bulkDraftHasChanges(bulkDraft)) return;
+    const updated = applyBulkPatch(localDays, bulkSelected, bulkDraft);
     setLocalDays(updated);
     setDirty(true);
     setSavedOk(false);
     onChange?.(updated);
     clearBulkSelection();
+    // Reset per evitare che i campi spuntati in questa applicazione
+    // vengano riapplicati per errore a una selezione successiva diversa.
+    setBulkDraft(defaultBulkDraft());
   }
 
   function toggleBulkMode() {
     setBulkMode((prev) => !prev);
     setBulkSelected(new Set());
+    setBulkDraft(defaultBulkDraft());
     setSelected(null);
   }
+
+  const specialDaySummary = useMemo(
+    () => summarizeSpecialDay(localDays, bulkSelected),
+    [localDays, bulkSelected]
+  );
 
   return (
     <div>
@@ -309,65 +315,205 @@ export default function AvailabilityCalendar({
                 Modifica {bulkSelected.size} giorni selezionati
               </div>
               <p className="mb-3 text-xs text-ink-2">
-                I valori sotto verranno applicati a TUTTI i giorni selezionati, sostituendo quelli attuali.
+                Spunta solo i campi che vuoi modificare: quelli non spuntati restano invariati sui
+                giorni selezionati (nessun campo viene applicato per default).
               </p>
 
               <div className="grid grid-cols-2 gap-3">
-                <label className="flex items-center justify-between rounded-md bg-white px-3 py-2.5 text-sm">
-                  Giorno aperto
-                  <input
-                    type="checkbox"
-                    checked={bulkDraft.isOpen}
-                    onChange={(e) => setBulkDraft((prev) => ({ ...prev, isOpen: e.target.checked }))}
-                    className="h-4 w-4 accent-sky"
-                  />
-                </label>
-                <label className="flex items-center justify-between rounded-md bg-white px-3 py-2.5 text-sm">
-                  Promo last-minute
-                  <input
-                    type="checkbox"
-                    checked={bulkDraft.lastMinute}
-                    onChange={(e) => setBulkDraft((prev) => ({ ...prev, lastMinute: e.target.checked }))}
-                    className="h-4 w-4 accent-purple"
-                  />
-                </label>
-                <label className="rounded-md bg-white px-3 py-2.5 text-sm">
-                  <div className="mb-1 text-xs text-ink-2">Posti totali (per ogni giorno selezionato)</div>
+                <BulkToggleField
+                  label="Giorno aperto"
+                  included={bulkDraft.isOpen.include}
+                  onIncludedChange={(v) =>
+                    setBulkDraft((prev) => ({ ...prev, isOpen: { ...prev.isOpen, include: v } }))
+                  }
+                >
+                  <label className="flex items-center justify-between text-sm">
+                    <span className="text-xs text-ink-2">Valore da applicare</span>
+                    <input
+                      type="checkbox"
+                      checked={bulkDraft.isOpen.value}
+                      disabled={!bulkDraft.isOpen.include}
+                      onChange={(e) =>
+                        setBulkDraft((prev) => ({
+                          ...prev,
+                          isOpen: { ...prev.isOpen, value: e.target.checked },
+                        }))
+                      }
+                      className="h-4 w-4 accent-sky disabled:opacity-40"
+                    />
+                  </label>
+                </BulkToggleField>
+
+                <BulkToggleField
+                  label="Promo last-minute"
+                  included={bulkDraft.lastMinute.include}
+                  onIncludedChange={(v) =>
+                    setBulkDraft((prev) => ({ ...prev, lastMinute: { ...prev.lastMinute, include: v } }))
+                  }
+                >
+                  <label className="flex items-center justify-between text-sm">
+                    <span className="text-xs text-ink-2">Valore da applicare</span>
+                    <input
+                      type="checkbox"
+                      checked={bulkDraft.lastMinute.value}
+                      disabled={!bulkDraft.lastMinute.include}
+                      onChange={(e) =>
+                        setBulkDraft((prev) => ({
+                          ...prev,
+                          lastMinute: { ...prev.lastMinute, value: e.target.checked },
+                        }))
+                      }
+                      className="h-4 w-4 accent-purple disabled:opacity-40"
+                    />
+                  </label>
+                </BulkToggleField>
+
+                <BulkToggleField
+                  label="Posti totali"
+                  included={bulkDraft.capacity.include}
+                  onIncludedChange={(v) =>
+                    setBulkDraft((prev) => ({ ...prev, capacity: { ...prev.capacity, include: v } }))
+                  }
+                >
                   <input
                     type="number"
                     min={0}
-                    value={bulkDraft.capacity}
+                    value={bulkDraft.capacity.value}
+                    disabled={!bulkDraft.capacity.include}
                     onChange={(e) =>
-                      setBulkDraft((prev) => ({ ...prev, capacity: Number(e.target.value) }))
+                      setBulkDraft((prev) => ({
+                        ...prev,
+                        capacity: { ...prev.capacity, value: Number(e.target.value) },
+                      }))
                     }
-                    className="w-full bg-transparent text-sm font-semibold text-ink outline-none"
+                    aria-label="Posti totali da applicare ai giorni selezionati"
+                    className="w-full bg-transparent text-sm font-semibold text-ink outline-none disabled:opacity-40"
                   />
-                </label>
-                <label className="rounded-md bg-white px-3 py-2.5 text-sm">
-                  <div className="mb-1 text-xs text-ink-2">Sconto sul giorno (%)</div>
+                </BulkToggleField>
+
+                <BulkToggleField
+                  label="Sconto sul giorno (%)"
+                  included={bulkDraft.discountPercent.include}
+                  onIncludedChange={(v) =>
+                    setBulkDraft((prev) => ({
+                      ...prev,
+                      discountPercent: { ...prev.discountPercent, include: v },
+                    }))
+                  }
+                >
                   <input
                     type="number"
                     min={0}
                     max={90}
-                    value={bulkDraft.discountPercent}
+                    value={bulkDraft.discountPercent.value}
+                    disabled={!bulkDraft.discountPercent.include}
                     onChange={(e) =>
-                      setBulkDraft((prev) => ({ ...prev, discountPercent: Number(e.target.value) }))
+                      setBulkDraft((prev) => ({
+                        ...prev,
+                        discountPercent: { ...prev.discountPercent, value: Number(e.target.value) },
+                      }))
                     }
-                    className="w-full bg-transparent text-sm font-semibold text-ink outline-none"
+                    aria-label="Sconto percentuale da applicare ai giorni selezionati"
+                    className="w-full bg-transparent text-sm font-semibold text-ink outline-none disabled:opacity-40"
                   />
-                </label>
+                </BulkToggleField>
+              </div>
+
+              {/* OD-02 / PT-MVP-08: pannello "Giornata particolare" bulk —
+                  stesso set di emoji/etichetta del pannello a giorno
+                  singolo sotto, 3 azioni esplicite (non modificare/imposta/
+                  rimuovi), nessun valore vuoto ambiguo. */}
+              <div className="mt-3 rounded-md border border-[#E8EBF0] bg-white px-3 py-2.5">
+                <div className="mb-1.5 text-xs font-semibold text-ink-2">
+                  Giornata particolare (giorni selezionati)
+                </div>
+                {specialDaySummary && (
+                  <p className="mb-2 text-[11px] text-ink-3">
+                    {specialDaySummary.mixed
+                      ? "Valori attuali: misti tra i giorni selezionati"
+                      : specialDaySummary.emoji
+                      ? `Valore attuale su tutti i giorni selezionati: ${specialDaySummary.emoji}${
+                          specialDaySummary.label ? ` ${specialDaySummary.label}` : ""
+                        }`
+                      : "Nessuna Giornata particolare impostata sui giorni selezionati"}
+                  </p>
+                )}
+                <div
+                  className="mb-2 flex flex-wrap gap-1.5"
+                  role="group"
+                  aria-label="Azione Giornata particolare per i giorni selezionati"
+                >
+                  {(
+                    [
+                      { value: "unchanged", label: "Non modificare" },
+                      { value: "set", label: "Imposta" },
+                      { value: "remove", label: "Rimuovi dai giorni selezionati" },
+                    ] as const
+                  ).map((opt) => (
+                    <button
+                      key={opt.value}
+                      type="button"
+                      aria-pressed={bulkDraft.specialDayAction === opt.value}
+                      onClick={() => setBulkDraft((prev) => ({ ...prev, specialDayAction: opt.value }))}
+                      className={`rounded-md border px-2.5 py-1.5 text-xs font-semibold transition-colors ${
+                        bulkDraft.specialDayAction === opt.value
+                          ? "border-sky bg-sky-light text-sky"
+                          : "border-[#E8EBF0] bg-white text-ink hover:bg-bg"
+                      }`}
+                    >
+                      {opt.label}
+                    </button>
+                  ))}
+                </div>
+                {bulkDraft.specialDayAction === "set" && (
+                  <>
+                    <input
+                      value={bulkDraft.specialLabel ?? ""}
+                      onChange={(e) =>
+                        setBulkDraft((prev) => ({ ...prev, specialLabel: e.target.value || undefined }))
+                      }
+                      placeholder="Es. Giornata in piscina"
+                      aria-label="Descrizione Giornata particolare da applicare ai giorni selezionati"
+                      className="mb-2 w-full rounded-md border border-[#E8EBF0] bg-bg px-3 py-2 text-sm outline-none focus:border-sky"
+                    />
+                    <div
+                      className="flex flex-wrap gap-1.5"
+                      role="group"
+                      aria-label="Emoji Giornata particolare da applicare"
+                    >
+                      {SPECIAL_DAY_EMOJIS.map((emoji) => (
+                        <button
+                          key={emoji}
+                          type="button"
+                          aria-pressed={bulkDraft.specialEmoji === emoji}
+                          onClick={() => setBulkDraft((prev) => ({ ...prev, specialEmoji: emoji }))}
+                          className={`flex h-8 w-8 items-center justify-center rounded-md border text-sm ${
+                            bulkDraft.specialEmoji === emoji
+                              ? "border-sky bg-sky-light"
+                              : "border-[#E8EBF0] bg-white"
+                          }`}
+                        >
+                          {emoji}
+                        </button>
+                      ))}
+                    </div>
+                  </>
+                )}
               </div>
 
               <div className="mt-3 flex items-center gap-3">
                 <button
                   type="button"
                   onClick={applyBulkDraft}
-                  className="rounded-md bg-sky px-4 py-2 text-xs font-bold text-white transition-colors hover:bg-[#3A9FDC]"
+                  disabled={!bulkDraftHasChanges(bulkDraft)}
+                  className="rounded-md bg-sky px-4 py-2 text-xs font-bold text-white transition-colors hover:bg-[#3A9FDC] disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   Applica a {bulkSelected.size} giorni
                 </button>
                 <span className="text-[11px] text-ink-3">
-                  Dopo aver applicato, ricorda di premere &quot;Salva calendario&quot; per scrivere le modifiche.
+                  {bulkDraftHasChanges(bulkDraft)
+                    ? 'Dopo aver applicato, ricorda di premere "Salva calendario" per scrivere le modifiche.'
+                    : "Spunta almeno un campo (o scegli Imposta/Rimuovi per la Giornata particolare) prima di applicare."}
                 </span>
               </div>
             </>
@@ -532,6 +678,47 @@ function Legend({ swatch, label }: { swatch: string; label: string }) {
     <div className="flex items-center gap-1.5">
       <span className={`h-3 w-3 rounded-sm border ${swatch}`} />
       {label}
+    </div>
+  );
+}
+
+// OD-02 / PT-MVP-08: wrapper riusato da ognuno dei 4 campi bulk esistenti
+// (Giorno aperto/Promo last-minute/Posti totali/Sconto) per dare a ciascuno
+// la stessa semantica esplicita "non modificato di default" della
+// Giornata particolare — una casella "Includi" separata dal controllo del
+// valore, mai un valore vuoto ambiguo. Il controllo del valore è
+// visivamente disattivato (non solo tramite colore: anche via
+// `disabled`/opacità e il testo di stato sopra) finché non è incluso.
+function BulkToggleField({
+  label,
+  included,
+  onIncludedChange,
+  children,
+}: {
+  label: string;
+  included: boolean;
+  onIncludedChange: (v: boolean) => void;
+  children: ReactNode;
+}) {
+  return (
+    <div
+      className={`rounded-md border px-3 py-2.5 text-sm transition-colors ${
+        included ? "border-sky bg-white" : "border-[#E8EBF0] bg-white/60"
+      }`}
+    >
+      <label className="mb-1.5 flex items-center gap-2 text-xs font-semibold text-ink-2">
+        <input
+          type="checkbox"
+          checked={included}
+          onChange={(e) => onIncludedChange(e.target.checked)}
+          className="h-3.5 w-3.5 accent-sky"
+        />
+        {label}
+        <span className="ml-auto text-[10px] font-normal text-ink-3">
+          {included ? "Verrà applicato" : "Non modificato"}
+        </span>
+      </label>
+      {children}
     </div>
   );
 }
