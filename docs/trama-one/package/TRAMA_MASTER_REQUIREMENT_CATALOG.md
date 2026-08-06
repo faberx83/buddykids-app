@@ -1,9 +1,9 @@
 # TRAMA — Master Requirement Catalog
 
 **Documentation Package**: `TRAMA_DOCUMENTATION_PACKAGE_20260805_v1`
-**Package version**: v3 (OD-02 fix update) — **supersedes** v2 (`AS_OF_COMMIT 0fc210a`)
-**As-of timestamp**: 2026-08-06T09:45:00Z (UTC)
-**As-of commit (AS_OF_COMMIT)**: `16b0527ba33222c63677735dca3bc57ed98221b3` (fix OD-02, applicativo — vedi `TRAMA_DOCUMENTATION_CHANGELOG.md` per il delta completo)
+**Package version**: v4 (OD-02 closed — live test PASS) — **supersedes** v3 (`AS_OF_COMMIT 16b0527`)
+**As-of timestamp**: 2026-08-06T11:20:00Z (UTC)
+**As-of commit (AS_OF_COMMIT)**: `24464bf1c48d4aa5a5f93f9e1b12dd7545103ef5` (deploy verificato — vedi `TRAMA_DOCUMENTATION_CHANGELOG.md` per il delta completo)
 **Status**: current
 
 Sezione 4 del checkpoint, versione corretta dopo il QA Remediation richiesto da Fabrizio. Regola non negoziabile: **nessun ID nuovo inventato**. Ogni riga riusa un identificativo esistente.
@@ -82,7 +82,7 @@ Sezione 4 del checkpoint, versione corretta dopo il QA Remediation richiesto da 
 | PT-MVP-05 | Walkthrough task-based | E03 | Sì | Sì (testato dal vivo da Fabrizio, DEC-69…DEC-74) | No | **LIVE** |
 | PT-MVP-06 | Centro e sede | E03/E04 | Sì | Sì (centro reale creato) | No | **LIVE** |
 | PT-MVP-07 | Wizard attività | E04 | Sì | **No** — nessuna evidenza citata di un run live distinto | No | **BUILT** |
-| PT-MVP-08 | Disponibilità strutturata | E04 | Sì | No | No | **BUILT** — vedi §4. OD-02 risolto: Fabrizio ha scelto **A. FIX BEFORE BETA** (revocando la precedente ipotesi B), il fix bulk "Giornata particolare" è implementato e verificato staticamente (commit `16b0527`), non ancora deployato né testato dal vivo |
+| PT-MVP-08 | Disponibilità strutturata | E04 | Sì | Sì (persistenza/regressione/mobile verificate da Fabrizio post-deploy `24464bf`) | No | **LIVE** — vedi §4. OD-02 chiuso: Fabrizio ha scelto **A. FIX BEFORE BETA**, il fix bulk "Giornata particolare" è implementato, verificato staticamente e verificato dal vivo (Test 1/2/3 tutti PASS) |
 | PT-MVP-09 | Inbox richieste | E06 | Sì | Sì (16 booking reali risposti) | No | **LIVE** |
 | PT-MVP-10 | Dashboard task-first | E08 | Sì | Sì (uso continuativo) | No | **LIVE** |
 | PT-MVP-11 | Trust telemetry minima | — | Parziale (per design, score non mostrato) | No | No | **PARTIAL** |
@@ -107,29 +107,33 @@ Sezione 4 del checkpoint, versione corretta dopo il QA Remediation richiesto da 
 
 | OVERALL_STATUS | Epic (12) | Parent (9) | Partner (12) | Admin (10) | Totale (43) |
 |---|---:|---:|---:|---:|---:|
-| LIVE | 8 | 7 | 5 | 5 | **25** |
+| LIVE | 8 | 7 | 6 | 5 | **26** |
 | LIVE_WITH_GAP | 1 | 0 | 2 | 0 | **3** |
-| BUILT | 1 | 1 | 4 | 3 | **9** |
+| BUILT | 1 | 1 | 3 | 3 | **8** |
 | PARTIAL | 2 | 1 | 1 | 0 | **4** |
 | CONFLICT | 0 | 0 | 0 | 0 | **0** |
 | SPECIFIED_NOT_FOUND | 0 | 0 | 0 | 2 | **2** |
 | **Somma** | **12** | **9** | **12** | **10** | **43** |
 
-Verifica: 25+3+9+4+0+2 = 43. ✓ Somma per prodotto: 12+9+12+10 = 43. ✓ Nessun ID contato due volte (verificato per costruzione: ogni riga di §2.1-2.4 è un solo ID).
+Verifica: 26+3+8+4+0+2 = 43. ✓ Somma per prodotto: 12+9+12+10 = 43. ✓ Nessun ID contato due volte (verificato per costruzione: ogni riga di §2.1-2.4 è un solo ID).
 
-**Aggiornamento post-fix OD-02 (06/08/2026)**: `PT-MVP-08` passa da `CONFLICT` a `BUILT` (commit `16b0527`) — la riga `CONFLICT` resta a 0 per tracciabilità, non rimossa. `BUILT` sale da 8 a 9 (Partner: 3→4). Nessun'altra riga cambia.
+**Aggiornamento post-fix OD-02 (06/08/2026, static)**: `PT-MVP-08` passa da `CONFLICT` a `BUILT` (commit `16b0527`) — la riga `CONFLICT` resta a 0 per tracciabilità, non rimossa. `BUILT` sale da 8 a 9 (Partner: 3→4).
+
+**Aggiornamento post-verifica live OD-02 (06/08/2026, deploy `24464bf`)**: Fabrizio ha eseguito i 3 test live richiesti (persistenza, regressione giorno singolo, mobile 390×844) — tutti PASS. `PT-MVP-08` passa da `BUILT` a `LIVE` (Partner: BUILT 4→3, LIVE 5→6). Totale finale: `LIVE` 25→26, `BUILT` 9→8. Nessun'altra riga cambia.
 
 **Scorecard Admin corretta**: **5 `LIVE`** su 10 (non 7 né 8). Il numero è sceso rispetto a entrambe le cifre precedenti perché la rivalutazione con la regola `LIVE` più severa ha declassato A-MVP-04 e A-MVP-09 da `LIVE` a `BUILT` (nessuna evidenza di uso reale/produzione verificata), non per un semplice errore di conta — la v1 aveva sia un errore di conta (7 vs 8 nella narrativa) sia una classificazione troppo permissiva (8 vs 5 dopo la rivalutazione).
 
-## 4. OD-02 / PT-MVP-08 — CONFLICT risolto, fix implementato, in attesa di verifica live
+## 4. OD-02 / PT-MVP-08 — CONFLICT risolto, fix implementato e verificato dal vivo
 
-**Decisione di Fabrizio (06/08/2026): OD-02 — FIX BEFORE BETA.** Revoca la precedente ipotesi "B. ACCEPTED DEFER". Il `CONFLICT` è chiuso: `PT-MVP-08` non è più in stato contraddittorio, perché il gap che lo causava (bulk "Giornata particolare" non applicata) è stato implementato.
+**Decisione di Fabrizio (06/08/2026): OD-02 — FIX BEFORE BETA.** Revoca la precedente ipotesi "B. ACCEPTED DEFER". Il `CONFLICT` è chiuso: `PT-MVP-08` non è più in stato contraddittorio, perché il gap che lo causava (bulk "Giornata particolare" non applicata) è stato implementato e verificato in produzione.
 
 Root cause confermata prima del fix: `BulkDraft` (`components/AvailabilityCalendar.tsx`) non includeva `specialEmoji`/`specialLabel`, e sovrascriveva incondizionatamente `isOpen`/`capacity`/`discountPercent`/`lastMinute` su tutti i giorni selezionati. Le colonne `special_emoji`/`special_label` esistevano già su `activity_days` (`supabase/schema.sql`) — nessuna migrazione necessaria, confermato prima di scrivere codice.
 
 Fix (commit `16b0527`): nuovo `lib/availability-bulk.ts` con semantica esplicita a 3 stati per ogni campo del bulk draft (campo non modificato / valore impostato / valore esplicitamente rimosso), applicata sia alla Giornata particolare sia ai 4 campi preesistenti (ora opt-in per giorno, risolvendo anche la sovrascrittura accidentale). UI in `components/AvailabilityCalendar.tsx` estesa di conseguenza. Nessuna modifica a Booking/JourneyContext/state machine/Feature Control Center/Trust Score.
 
-Stato attuale: `IMPLEMENTED=Sì`, `DEPLOYED=No`, `STATIC_TESTED=Sì` (tsc/eslint puliti, 8 test puri PASS in `tests/gestore/calendario-bulk.spec.ts` — Test A/C/D/E/F richiesti da Fabrizio), `LIVE_TESTED=No`, `PILOT_VALIDATED=No` → `OVERALL_STATUS = BUILT`, non `LIVE`, per istruzione esplicita di Fabrizio ("non dichiararlo LIVE prima del test in produzione"). 3 test E2E aggiuntivi (persistenza, regressione giorno singolo, mobile) sono scritti e in attesa del prossimo deploy per l'esecuzione. Percorso di stato OD-02: 1. OPEN — FIX BEFORE BETA (chiuso) → **2. IMPLEMENTED — AWAITING LIVE TEST (stato attuale)** → 3. CLOSED (solo dopo verifica live).
+Verifica live (06/08/2026, dopo deploy `24464bf`, eseguita da Fabrizio secondo `OD02_LIVE_TEST_PROCEDURE.md`): Test 1 persistenza (TC-N634) PASS, Test 2 regressione giorno singolo (TC-N635) PASS, Test 3 mobile 390×844 (TC-N636) PASS. Durante il Test 3 è emerso un bug distinto e non correlato nel menu "Scatta foto" della pagina Profilo — registrato separatamente come OD-15, non riguarda il Calendario disponibilità né questo fix.
+
+Stato finale: `IMPLEMENTED=Sì`, `DEPLOYED=Sì`, `STATIC_TESTED=Sì` (tsc/eslint puliti, 8 test puri PASS in `tests/gestore/calendario-bulk.spec.ts` — Test A/C/D/E/F richiesti da Fabrizio), `LIVE_TESTED=Sì`, `PILOT_VALIDATED=No` → `OVERALL_STATUS = LIVE`. Percorso di stato OD-02 completato: 1. OPEN — FIX BEFORE BETA → 2. IMPLEMENTED — AWAITING LIVE TEST → **3. CLOSED (stato attuale, 06/08/2026)**.
 
 ## 5. A-MVP-05 e A-MVP-07 — classificazione univoca
 

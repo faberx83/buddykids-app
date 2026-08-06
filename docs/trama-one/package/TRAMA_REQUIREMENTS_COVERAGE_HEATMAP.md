@@ -1,9 +1,9 @@
 # TRAMA — Requirements Coverage Heatmap
 
 **Documentation Package**: `TRAMA_DOCUMENTATION_PACKAGE_20260805_v1`
-**Package version**: v3 (OD-02 fix update) — **supersedes** v2 (`AS_OF_COMMIT 0fc210a`)
-**As-of timestamp**: 2026-08-06T09:45:00Z (UTC)
-**As-of commit (AS_OF_COMMIT)**: `16b0527ba33222c63677735dca3bc57ed98221b3`
+**Package version**: v4 (OD-02 closed — live test PASS) — **supersedes** v3 (`AS_OF_COMMIT 16b0527`)
+**As-of timestamp**: 2026-08-06T11:20:00Z (UTC)
+**As-of commit (AS_OF_COMMIT)**: `24464bf1c48d4aa5a5f93f9e1b12dd7545103ef5`
 **Status**: current
 
 Sezioni 7-9, versione corretta. La v1 usava un'unica percentuale "12 Epic + 31 capability = 43" come KPI primario — errore riconosciuto: Epic e capability si sovrappongono (un epic è realizzato *attraverso* le sue capability), quindi sommarli in un solo denominatore conta lo stesso lavoro due volte. Questa versione separa 4 metriche indipendenti, ciascuna con un proprio denominatore esplicito, e sostituisce la "Vista 3" generica con 3 viste per prodotto (Parent/Partner/Admin) che elencano ogni singolo CR/PCR/ACR.
@@ -44,7 +44,7 @@ Somma: 8+1+1+2=12. ✓
 | Parziale | 3 | 10% |
 | No | 2 | 6% |
 
-Somma: 26+3+2=31. ✓ I 2 "No" sono `A-MVP-05` e `A-MVP-07` (entrambi `SPECIFIED_NOT_FOUND`). **Aggiornamento post-fix OD-02 (06/08/2026, commit `16b0527`)**: `PT-MVP-08` passa da `IMPLEMENTED=Parziale` a `IMPLEMENTED=Sì` (Sì: 25→26, Parziale: 4→3) — il gap bulk "Giornata particolare" è chiuso. Non cambia invece la Production Readiness sotto: `PT-MVP-08` non era `LIVE` prima (era `CONFLICT`) e non lo è ora (è `BUILT`, non ancora live-tested).
+Somma: 26+3+2=31. ✓ I 2 "No" sono `A-MVP-05` e `A-MVP-07` (entrambi `SPECIFIED_NOT_FOUND`). **Aggiornamento post-fix OD-02 (06/08/2026, commit `16b0527`)**: `PT-MVP-08` passa da `IMPLEMENTED=Parziale` a `IMPLEMENTED=Sì` (Sì: 25→26, Parziale: 4→3) — il gap bulk "Giornata particolare" è chiuso.
 
 ## 3. MVP Production Readiness
 
@@ -53,9 +53,11 @@ Somma: 26+3+2=31. ✓ I 2 "No" sono `A-MVP-05` e `A-MVP-07` (entrambi `SPECIFIED
 | Prodotto | LIVE | Non-LIVE | Denominatore | % LIVE |
 |---|---:|---:|---:|---:|
 | Parent | 7 | 2 | 9 | 78% |
-| Partner | 5 | 7 | 12 | 42% |
+| Partner | 6 | 6 | 12 | 50% |
 | Admin | 5 | 5 | 10 | 50% |
-| **Totale** | **17** | **14** | **31** | **55%** |
+| **Totale** | **18** | **13** | **31** | **58%** |
+
+**Aggiornamento post-verifica live OD-02 (06/08/2026, deploy `24464bf`)**: `PT-MVP-08` passa da `BUILT` a `LIVE` (Partner LIVE: 5→6, Non-LIVE: 7→6; Totale LIVE: 17→18, 55%→58%) — è la prima e unica riga di questa tabella che cambia in questo passaggio.
 
 Questa è la metrica più severa e la più rilevante per un GO/NO-GO tecnico: misura "quante capability funzionano oggi, dal vivo, senza condizioni", non "quante hanno codice scritto".
 

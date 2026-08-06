@@ -1,15 +1,19 @@
 # TRAMA — Documentation Package `TRAMA_DOCUMENTATION_PACKAGE_20260805_v1`
 
-**Package version**: v3 (OD-02 fix update) — **supersedes** v2 (`AS_OF_COMMIT 0fc210a`)
-**As-of timestamp**: 2026-08-06T09:45:00Z (UTC)
-**As-of commit (AS_OF_COMMIT)**: `16b0527ba33222c63677735dca3bc57ed98221b3`
+**Package version**: v4 (OD-02 closed — live test PASS) — **supersedes** v3 (`AS_OF_COMMIT 16b0527`)
+**As-of timestamp**: 2026-08-06T11:20:00Z (UTC)
+**As-of commit (AS_OF_COMMIT)**: `24464bf1c48d4aa5a5f93f9e1b12dd7545103ef5`
 **Status**: current
 
-Punto di ingresso unico al package prodotto dal SAL/Requirements Coverage Heatmap/Documentation Package Consolidation Checkpoint del 05/08/2026, corretto da un passaggio di QA Remediation (conteggi, metriche, stati, checkpoint) nello stesso giorno, poi aggiornato il 06/08/2026 dopo l'implementazione del fix OD-02 (Calendario disponibilità Partner, bulk "Giornata particolare"). Questo file è puramente organizzativo/descrittivo: non implementa, non corregge gap applicativi, non anticipa nuovi sprint (regola esplicita del checkpoint) — l'unica eccezione è il fix OD-02, esplicitamente commissionato da Fabrizio con una decisione di scope separata (vedi `TRAMA_OPEN_DECISIONS_AND_GAPS.md`, OD-02).
+Punto di ingresso unico al package prodotto dal SAL/Requirements Coverage Heatmap/Documentation Package Consolidation Checkpoint del 05/08/2026, corretto da un passaggio di QA Remediation (conteggi, metriche, stati, checkpoint) nello stesso giorno, poi aggiornato il 06/08/2026 dopo l'implementazione del fix OD-02 (Calendario disponibilità Partner, bulk "Giornata particolare"), e nuovamente il 06/08/2026 dopo la verifica live post-deploy. Questo file è puramente organizzativo/descrittivo: non implementa, non corregge gap applicativi, non anticipa nuovi sprint (regola esplicita del checkpoint) — l'unica eccezione è il fix OD-02, esplicitamente commissionato da Fabrizio con una decisione di scope separata (vedi `TRAMA_OPEN_DECISIONS_AND_GAPS.md`, OD-02).
+
+## Cosa è cambiato nella v4 (chiusura live OD-02, 06/08/2026)
+
+Fabrizio ha eseguito il deploy (commit `24464bf`) e i 3 test live richiesti (persistenza, regressione giorno singolo, mobile 390×844) — tutti PASS. `PT-MVP-08` passa da `BUILT` a `LIVE`; **OD-02 è CLOSED**. MVP Production Readiness sale da 55% a 58%. Durante il test mobile è emerso un bug distinto (menu "Scatta foto" su Profilo, mobile), registrato come nuovo item **OD-15**, non correlato a OD-02. Aggiornati: Master Requirement Catalog, Traceability Matrix, Coverage Heatmap, SAL, Open Decisions, Manifest.
 
 ## Cosa è cambiato nella v3 (fix OD-02, 06/08/2026)
 
-`PT-MVP-08` (Disponibilità strutturata, Calendario Partner) passa da `CONFLICT` a `BUILT`: Fabrizio ha deciso **FIX BEFORE BETA**, il fix del bulk-select "Giornata particolare" è stato implementato (commit `16b0527`, nuovo `lib/availability-bulk.ts` + `AvailabilityCalendar.tsx` esteso), verificato staticamente (tsc/eslint puliti, 8 test puri PASS) e resta in attesa di verifica live post-deploy. Aggiornati: Master Requirement Catalog, Traceability Matrix, Coverage Heatmap, SAL, Open Decisions. Nessun'altra parte del package è cambiata.
+`PT-MVP-08` (Disponibilità strutturata, Calendario Partner) passa da `CONFLICT` a `BUILT`: Fabrizio ha deciso **FIX BEFORE BETA**, il fix del bulk-select "Giornata particolare" è stato implementato (commit `16b0527`, nuovo `lib/availability-bulk.ts` + `AvailabilityCalendar.tsx` esteso), verificato staticamente (tsc/eslint puliti, 8 test puri PASS) e restava in attesa di verifica live post-deploy (ora completata, vedi v4 sopra). Aggiornati: Master Requirement Catalog, Traceability Matrix, Coverage Heatmap, SAL, Open Decisions. Nessun'altra parte del package è cambiata.
 
 ## Cosa è cambiato nella v2 (QA Remediation) rispetto alla v1
 

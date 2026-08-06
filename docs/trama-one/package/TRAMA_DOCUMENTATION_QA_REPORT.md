@@ -1,9 +1,9 @@
 # TRAMA — Documentation QA Report (self-test automatico)
 
 **Documentation Package**: `TRAMA_DOCUMENTATION_PACKAGE_20260805_v1`
-**Package version**: v3 (OD-02 fix update) — corpo del report invariato dal QA Remediation (v2), vedi addendum in fondo per il delta OD-02
-**As-of timestamp**: 2026-08-06T09:45:00Z (UTC)
-**As-of commit (AS_OF_COMMIT)**: `16b0527ba33222c63677735dca3bc57ed98221b3`
+**Package version**: v4 (OD-02 closed — live test PASS) — corpo del report invariato dal QA Remediation (v2), vedi addendum in fondo per il delta OD-02 (fix statico e chiusura live)
+**As-of timestamp**: 2026-08-06T11:20:00Z (UTC)
+**As-of commit (AS_OF_COMMIT)**: `24464bf1c48d4aa5a5f93f9e1b12dd7545103ef5`
 **Status**: current
 
 Procedura di verifica ripetibile, richiesta esplicitamente da Fabrizio per sostituire il conteggio manuale (causa radice degli errori della v1, vedi OD-14). Ogni sezione sotto è **eseguita da script/comando**, non da lettura manuale, e il comando/metodo è riportato per essere ri-eseguibile ad ogni revisione futura del package.
@@ -47,15 +47,15 @@ Verifica manuale-assistita (conteggio righe per file, non narrativa): `TRAMA_MAS
 
 | Stato | Master Requirement Catalog §3 | Traceability Matrix (chiusura) | Coverage Heatmap (§1 Epic + §3 Production Readiness, ricomposto) |
 |---|---:|---:|---:|
-| LIVE | 25 | 25 | 8 (Epic) + 17 (capability) = 25 |
+| LIVE | 26 | 26 | 8 (Epic) + 18 (capability) = 26 |
 | LIVE_WITH_GAP | 3 | 3 | 1 (Epic) + 2 (Partner, da §3 non-LIVE ma non NSF/CONFLICT) — coerente per composizione |
-| BUILT | 9 | 9 | 1 (Epic) + 8 (capability, da §2 Implementation Coverage "Sì"/"Parziale" ma non-LIVE) — coerente per composizione |
+| BUILT | 8 | 8 | 1 (Epic) + 7 (capability, da §2 Implementation Coverage "Sì"/"Parziale" ma non-LIVE) — coerente per composizione |
 | PARTIAL | 4 | 4 | 2 (Epic) + 2 (capability) — coerente per composizione |
-| CONFLICT | 0 | 0 | 0 (`PT-MVP-08` risolto in `BUILT`, fix OD-02 06/08) |
+| CONFLICT | 0 | 0 | 0 (`PT-MVP-08` risolto in `BUILT` il 06/08, poi in `LIVE` dopo verifica live il 06/08) |
 | SPECIFIED_NOT_FOUND | 2 | 2 | 2 (Admin, incluso in "No" §2 Implementation Coverage) |
 | **Totale** | **43** | **43** | **43** (12 Epic + 31 capability) |
 
-Aggiornato il 06/08/2026 dopo il fix OD-02 (era: BUILT 8, CONFLICT 1 — vedi addendum in fondo per il dettaglio del delta).
+Aggiornato il 06/08/2026 dopo la chiusura live di OD-02 (era, dopo il solo fix statico: LIVE 25, BUILT 9; prima del fix: BUILT 8, CONFLICT 1 — vedi addendum in fondo per il dettaglio del delta).
 
 **Metodo**: confronto diretto riga-per-riga tra i tre documenti (non ricalcolo indipendente in questa sezione — il ricalcolo indipendente è alla Sezione 1 e 2 sopra). **Esito: PASS**, nessuna discrepanza trovata.
 
@@ -144,6 +144,23 @@ Il fix di OD-02 (commit `16b0527`) ha cambiato lo stato di 1 riga su 43 (`PT-MVP
 | AS_OF_COMMIT coerente (`16b0527`) sui 7 documenti impattati | **PASS** |
 
 **Esito addendum: PASS.**
+
+## Addendum 2 (06/08/2026, tardo mattino) — delta chiusura live OD-02, self-test ripetuto
+
+Fabrizio ha eseguito il deploy (commit `24464bf`) e i 3 test live di `OD02_LIVE_TEST_PROCEDURE.md`, tutti PASS. Questo ha cambiato lo stato della stessa riga (`PT-MVP-08`: `BUILT`→`LIVE`). Self-test ripetuto:
+
+| Verifica | Esito |
+|---|---|
+| Somma OVERALL_STATUS ancora 43 dopo il ricalcolo (Catalog §3) | **PASS** — 26+3+8+4+0+2=43 |
+| Conteggio LIVE coerente tra Catalog (26), Traceability Matrix (26) e Heatmap ricomposto (26) | **PASS** |
+| Conteggio BUILT coerente tra Catalog (8) e Traceability Matrix (8) | **PASS** |
+| MVP Production Readiness (Heatmap §3) aggiornata coerentemente (55%→58%, 17/31→18/31) sia in Heatmap §3 sia in SAL Parte 1/5/7/13 | **PASS** — confermato che tutti i documenti riportano lo stesso 58% |
+| Nessun documento del package cita ancora `PT-MVP-08` come `BUILT` o `CONFLICT` in senso corrente (solo riferimenti storici "era X, ora Y") | **PASS** — verificato con grep su tutta la cartella `docs/trama-one/package/`, tutte le occorrenze sono narrative/storiche |
+| OD-02 registrato come `CLOSED` in Open Decisions, con percorso di stato completo (1→2→3) | **PASS** |
+| Nuovo item OD-15 (bug "Scatta foto" mobile) registrato correttamente come non correlato a OD-02, non contato in nessuna metrica MVP (fuori dalle 43 unità e dai 148 CR/PCR/ACR) | **PASS** — è un bug operativo, non un requisito MVP, correttamente escluso dai conteggi |
+| AS_OF_COMMIT coerente (`24464bf`) sui documenti impattati | **PASS** |
+
+**Esito addendum 2: PASS.**
 
 ## Limite dichiarato di questo self-test
 

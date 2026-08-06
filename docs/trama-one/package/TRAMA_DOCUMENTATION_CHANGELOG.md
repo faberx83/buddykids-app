@@ -1,11 +1,31 @@
 # TRAMA — Documentation Changelog
 
 **Documentation Package**: `TRAMA_DOCUMENTATION_PACKAGE_20260805_v1`
-**Package version**: v3 (OD-02 fix update)
-**As-of commit (AS_OF_COMMIT)**: `16b0527ba33222c63677735dca3bc57ed98221b3`
+**Package version**: v4 (OD-02 closed — live test PASS)
+**As-of commit (AS_OF_COMMIT)**: `24464bf1c48d4aa5a5f93f9e1b12dd7545103ef5`
 **Status**: current
 
-## 2026-08-06 — v3 (OD-02 fix update)
+## 2026-08-06 (tardo mattino) — v4 (OD-02 closed — live test PASS)
+
+Fabrizio ha eseguito il deploy (commit `24464bf`) e i 3 test live richiesti da `OD02_LIVE_TEST_PROCEDURE.md`:
+
+- **Test 1 — Persistenza (TC-N634)**: PASS.
+- **Test 2 — Regressione giorno singolo (TC-N635)**: PASS.
+- **Test 3 — Mobile 390×844 (TC-N636)**: PASS (pannello bulk Calendario). Durante questo test Fabrizio ha segnalato, tramite screenshot, un bug distinto e non correlato: il menu "Scatta foto" della pagina Profilo (Genitore) appare sovrapposto/tagliato dietro l'header su mobile. Confermato con Fabrizio che non è una regressione del fix OD-02 — registrato come nuovo item **OD-15** in Open Decisions, da investigare separatamente.
+
+**Esito**: `PT-MVP-08 = LIVE` (era `BUILT`). **OD-02 = CLOSED** (percorso completo: OPEN — FIX BEFORE BETA → IMPLEMENTED — AWAITING LIVE TEST → CLOSED).
+
+**Conteggi ricalcolati**:
+- Master Requirement Catalog §3: `LIVE` 25→26, `BUILT` 9→8 (Partner: LIVE 5→6, BUILT 4→3).
+- Traceability Matrix: stessa tabella, stessi valori (verificato per confronto diretto).
+- Coverage Heatmap §3 MVP Production Readiness: Partner LIVE 5→6, Totale 17→18 (55%→58%).
+- SAL Parte 1 (executive summary), Parte 5 (scorecard Partner), Parte 7 (rimando metriche), Parte 13 (verdetto MVP Implementation Readiness): tutti allineati a 58%.
+
+**File del package documentale aggiornati**: `TRAMA_MASTER_REQUIREMENT_CATALOG.md` (v4), `TRAMA_REQUIREMENTS_TRACEABILITY_MATRIX.md` (v4), `TRAMA_REQUIREMENTS_COVERAGE_HEATMAP.md` (v4), `TRAMA_PROJECT_SAL_20260805.md` (v4), `TRAMA_OPEN_DECISIONS_AND_GAPS.md` (v4, OD-02 CLOSED + nuovo OD-15), `TRAMA_DOCUMENTATION_PACKAGE_MANIFEST.md`, `README.md`, questo file.
+
+**Residuo**: nessuno per OD-02. Nuovo residuo: OD-15 (bug "Scatta foto" mobile) da investigare/fixare — non bloccante, non correlato al Calendario disponibilità.
+
+## 2026-08-06 (mattina) — v3 (OD-02 fix update)
 
 Decisione di Fabrizio: "TRAMA — REVISIONE DECISIONE OD-02: FIX PRIMA DELLA BETA". Revoca la precedente ipotesi "B. ACCEPTED DEFER" (proposta nella v2 come una delle due opzioni A/B); decisione definitiva: **A. FIX BEFORE BETA**.
 
