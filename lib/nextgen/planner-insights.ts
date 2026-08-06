@@ -219,7 +219,17 @@ export function computePriorityWeekIndex(
 export type WeekStatus = "dismissed" | "covered" | "partial" | "conflict" | "priority" | "uncovered" | "awaiting";
 
 export function computeWeekStatus(
-  week: { covered: boolean; dismissed: boolean; coveredKids: { kidId: string }[]; awaitingPartnerConfirmation?: boolean },
+  week: {
+    covered: boolean;
+    dismissed: boolean;
+    coveredKids: { kidId: string }[];
+    awaitingPartnerConfirmation?: boolean;
+    // BUG CORRETTO 06/08/2026 (decisione di Fabrizio): una settimana coperta
+    // SOLO da prenotazioni a giorni singoli (booking_days, "Giorni spot") non
+    // è la settimana intera organizzata — va mostrata "parziale", stesso
+    // trattamento visivo già usato quando solo alcuni fratelli sono coperti.
+    dayBookingOnly?: boolean;
+  },
   totalKids: number,
   hasOverlap: boolean,
   isPriority: boolean
@@ -233,6 +243,7 @@ export function computeWeekStatus(
     // davvero (prima di questo sprint bookings.status non usciva mai da
     // pending, quindi questa distinzione non era rappresentabile).
     if (week.awaitingPartnerConfirmation) return "awaiting";
+    if (week.dayBookingOnly) return "partial";
     if (totalKids > 1 && week.coveredKids.length > 0 && week.coveredKids.length < totalKids) return "partial";
     return "covered";
   }

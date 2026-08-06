@@ -65,6 +65,15 @@ export interface SeasonWeek {
   // accettata dal centro (tutte pending/proposed) — il Planner può così
   // distinguere una settimana davvero confermata da una solo richiesta.
   awaitingPartnerConfirmation: boolean;
+  // BUG CORRETTO 06/08/2026 (segnalato da Fabrizio: prenotazione a giorni
+  // singoli invisibile nel Planner) — true se questa settimana risulta
+  // "covered" SOLO grazie a una o più prenotazioni a giorni (booking_days,
+  // "Giorni spot") e non da nessuna prenotazione a settimana intera
+  // (booking_weeks). Decisione di Fabrizio: una settimana coperta solo a
+  // giorni conta come "parziale" in planner-insights.ts#computeWeekStatus
+  // (stesso trattamento visivo di una copertura parziale tra fratelli), MAI
+  // come "covered" piena — 2 giorni su 5 non sono la settimana organizzata.
+  dayBookingOnly: boolean;
 }
 
 export interface PlannerData {
@@ -95,6 +104,10 @@ interface RawBookingRow {
   partner_decision: "pending" | "accepted" | "rejected" | "proposed" | null;
   activities: RawActivityRef | RawActivityRef[] | null;
   booking_weeks: { activity_weeks: { start_date: string; end_date: string } | { start_date: string; end_date: string }[] | null }[] | null;
+  // BUG CORRETTO 06/08/2026: prenotazioni "Giorni spot" (booking_days, Sprint
+  // 3) non venivano lette affatto da questa query — la settimana risultava
+  // sempre scoperta anche con giorni realmente prenotati.
+  booking_days: { activity_days: { date: string } | { date: string }[] | null }[] | null;
   booking_kids: { kid_id: string }[] | null;
 }
 
@@ -115,6 +128,7 @@ function buildBaseWeeks(year: number): SeasonWeek[] {
     coveredKids: [],
     dismissed: false,
     awaitingPartnerConfirmation: false,
+    dayBookingOnly: false,
   }));
 }
 
@@ -148,7 +162,7 @@ export async function getPlannerData(): Promise<PlannerData> {
   const { data, error } = await supabase
     .from("bookings")
     .select(
-      "id, status, partner_decision, activities ( slug, name, pills ), booking_weeks ( activity_weeks ( start_date, end_date ) ), booking_kids ( kid_id )"
+      "id, status, partner_decision, activities ( slug, name, pills ), booking_weeks ( activity_weeks ( start_date, end_date ) ), booking_days ( activity_days ( date ) ), booking_kids ( kid_id )"
     )
     .eq("parent_id", user.id)
     .neq("status", "cancelled");
@@ -197,6 +211,45 @@ export async function getPlannerData(): Promise<PlannerData> {
             if (!seasonWeek.coveredKids.some((c) => c.kidId === kidId)) {
               seasonWeek.coveredKids.push({ kidId, activityName, activityTagColor, activitySlug, partnerDecision, bookingId: row.id });
             }
+          }
+        }
+      }
+    }
+  }
+
+  // Secondo giro, SOLO per booking_days ("Giorni spot"): fatto dopo (non
+  // dentro) il giro sopra cosi possiamo controllare, per ogni settimana, se
+  // è già "covered" da una vera booking_weeks prima di decidere se marcarla
+  // dayBookingOnly — una prenotazione a settimana intera prevale sempre su
+  // una a giorni per la stessa settimana/bambino.
+  for (const row of rows) {
+    const activity = firstOf(row.activities);
+    const activityName = activity?.name;
+    const activityTagColor = activity?.pills?.[0]?.color;
+    const activitySlug = activity?.slug;
+    const partnerDecision = row.partner_decision ?? "pending";
+    const kidIds = (row.booking_kids ?? []).map((bk) => bk.kid_id);
+    if (kidIds.length === 0 || !activityName) continue;
+
+    for (const bd of row.booking_days ?? []) {
+      const day = firstOf(bd.activity_days);
+      if (!day) continue;
+      for (const seasonWeek of baseWeeks) {
+        if (day.date < seasonWeek.startDate || day.date > seasonWeek.endDate) continue;
+        const alreadyFullWeek = seasonWeek.covered && !seasonWeek.dayBookingOnly;
+        if (!alreadyFullWeek) {
+          seasonWeek.covered = true;
+          seasonWeek.dayBookingOnly = true;
+          if (!seasonWeek.activityName) {
+            seasonWeek.activityName = activityName;
+            seasonWeek.activityTagColor = activityTagColor;
+            seasonWeek.activitySlug = activitySlug;
+            seasonWeek.bookingId = row.id;
+          }
+        }
+        for (const kidId of kidIds) {
+          if (!seasonWeek.coveredKids.some((c) => c.kidId === kidId)) {
+            seasonWeek.coveredKids.push({ kidId, activityName, activityTagColor, activitySlug, partnerDecision, bookingId: row.id });
           }
         }
       }
