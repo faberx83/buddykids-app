@@ -38,13 +38,27 @@ test.describe("Genitori - Profilo", () => {
 
   // Priorita: Bassa | Precondizioni: Nessuna
   // Passi: Osserva i 3 riquadri statistici in alto (Prenotazioni/Gruppi/Risparmiati)
-  // Risultato atteso: Dovrebbero riflettere i dati reali dell'utente
-  // Noto: numeri fissi demo (12/3/85 euro) — badge "Numeri demo" sempre visibile,
-  // per design (vedi app/(main)/profile/page.tsx): non c'è ancora un calcolo reale
-  // da verificare, quindi resta escluso dall'automazione finché non lo sarà.
-  test.fixme("TC-068 - Statistiche profilo", async ({ page }) => {
-    // ESCLUSO dall'automazione: i 3 riquadri sono hardcoded (dati demo), non c'è
-    // un comportamento reale da asserire finché non viene collegato un calcolo vero.
+  // Risultato atteso: numeri reali dell'utente, nessun badge "Numeri demo"
+  //
+  // Fix 07/08/2026 (segnalato da Fabrizio: "i numeri dei badge in alto sono
+  // fake, vanno resi reali") — erano hardcoded 12/3/€85 con un badge "Numeri
+  // demo" permanente (vedi app/(main)/profile/page.tsx). Ora derivano da
+  // getMyBookingsForParent()/getGroupsForUser(): Prenotazioni = prenotazioni
+  // non annullate, Gruppi = gruppi di cui il genitore è membro, Risparmiati =
+  // somma degli sconti reali (discount_amount) sulle prenotazioni attive.
+  test("TC-068 - Statistiche profilo mostrano numeri reali, non demo", async ({ page }) => {
+    test.skip(!isRealDeployment, "Richiede un deploy con Supabase configurato e l'account genitore di test.");
+    await loginAs(page, "parent");
+    await page.goto("/profile");
+
+    await expect(page.getByText("Numeri demo")).not.toBeVisible();
+    await expect(page.getByText("Prenotazioni", { exact: true })).toBeVisible();
+    await expect(page.getByText("Gruppi", { exact: true })).toBeVisible();
+    await expect(page.getByText("Risparmiati", { exact: true })).toBeVisible();
+    // Il valore "Risparmiati" è sempre un importo in euro (anche €0 se
+    // l'account di test non ha ancora sconti attivi) — verifica che non sia
+    // rimasto il vecchio valore fisso demo "€85".
+    await expect(page.getByText(/^€\d+$/)).toBeVisible();
   });
 
   // TC-069 - Modifica profilo (ora include telefono, data di nascita, genere — vedi TC-132)

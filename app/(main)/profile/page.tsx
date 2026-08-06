@@ -6,22 +6,40 @@ import ProfileSettingsSection from "@/components/ProfileSettingsSection";
 import { getKidsForUser } from "@/lib/data/kids";
 import { getParentProfile } from "@/lib/data/profile";
 import { getUnreadRepliesCountForParent } from "@/lib/data/inquiries";
-import { DemoBadge } from "@/components/StatusBadge";
+import { getMyBookingsForParent } from "@/lib/data/my-bookings";
+import { getGroupsForUser } from "@/lib/data/groups";
 
 export default async function ProfilePage({
   searchParams,
 }: {
   searchParams: Promise<{ complete?: string; addKid?: string }>;
 }) {
-  const [profile, kids, params, unreadReplies] = await Promise.all([
+  const [profile, kids, params, unreadReplies, bookings, groups] = await Promise.all([
     getParentProfile(),
     getKidsForUser(),
     searchParams,
     getUnreadRepliesCountForParent(),
+    // Fix 07/08/2026 (segnalato da Fabrizio: "i numeri dei badge in alto sono
+    // fake, vanno resi reali") — i 3 riquadri statistici (Prenotazioni/
+    // Gruppi/Risparmiati) erano hardcoded (12/3/€85, badge "Numeri demo"
+    // permanente — vedi TC-068 in tests/genitori/profilo.spec.ts, finora
+    // volutamente escluso dall'automazione per questo). Riuso di dati già
+    // modellati altrove, nessuna nuova query SQL: getMyBookingsForParent()
+    // (Le mie prenotazioni) e getGroupsForUser() (Gruppi).
+    getMyBookingsForParent(),
+    getGroupsForUser(),
   ]);
   const { fullName, email, parentRole, avatarUrl } = profile;
   const autoOpenEdit = params.complete === "1";
   const autoOpenAddKid = params.addKid === "1";
+
+  // Una prenotazione annullata non è più "una prenotazione attiva" né uno
+  // sconto realmente ottenuto — esclusa da entrambi i conteggi (stesso
+  // principio già usato altrove, es. planner-insights.ts#computeBudgetSummary).
+  const activeBookings = bookings.filter((b) => b.status !== "cancelled");
+  const bookingsCount = activeBookings.length;
+  const groupsCount = groups.length;
+  const savedAmount = activeBookings.reduce((sum, b) => sum + b.discountAmount, 0);
 
   return (
     <div className="animate-fade-in">
@@ -41,13 +59,10 @@ export default async function ProfilePage({
           initialDateOfBirth={profile.dateOfBirth}
           initialGender={profile.gender}
         />
-        <div className="mb-1.5 flex justify-end">
-          <DemoBadge label="Numeri demo" />
-        </div>
         <div className="grid grid-cols-3 gap-2">
-          <Stat num="12" label="Prenotazioni" />
-          <Stat num="3" label="Gruppi" />
-          <Stat num="€85" label="Risparmiati" />
+          <Stat num={String(bookingsCount)} label="Prenotazioni" />
+          <Stat num={String(groupsCount)} label="Gruppi" />
+          <Stat num={`€${savedAmount}`} label="Risparmiati" />
         </div>
       </div>
 
