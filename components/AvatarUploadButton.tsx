@@ -87,15 +87,24 @@ export default function AvatarUploadButton({
 
       {menuOpen && (
         <>
-          {/* Overlay per chiudere il menu cliccando fuori. */}
-          <div className="fixed inset-0 z-40" onClick={() => setMenuOpen(false)} />
+          {/* Overlay per chiudere il menu cliccando fuori. z-50 come il bottone
+              globale VersionToggle ("Torna a V1", app/layout.tsx, position:fixed):
+              deve stare sopra anche quello, altrimenti resta cliccabile sotto
+              il menu aperto. */}
+          <div className="fixed inset-0 z-50" onClick={() => setMenuOpen(false)} />
           {/* left-0 esplicito (BUG CORRETTO: senza left/right, la "static
               position" orizzontale di un elemento absolute dentro un
               flex-col items-center può centrarlo/farlo sporgere in modo
               imprevedibile e venire tagliato dal contenitore della card —
               ancorarlo al bordo sinistro dell'avatar lo tiene sempre dentro
-              i confini della card). */}
-          <div className="absolute left-0 top-full z-50 mt-1 w-44 rounded-lg bg-white py-1 shadow-[0_4px_16px_rgba(0,0,0,0.15)]">
+              i confini della card).
+              z-[60] (BUG CORRETTO 06/08/2026): VersionToggle ("Torna a V1",
+              components/VersionToggle.tsx) è fixed con z-50 ed è montato DOPO
+              questo componente nel DOM radice (app/layout.tsx) — a parità di
+              z-index vince l'ultimo nell'ordine del DOM, quindi il bottone
+              copriva/tagliava questo menu quando le due zone si sovrapponevano
+              in alto sullo schermo. z-[60] lo tiene sempre sopra. */}
+          <div className="absolute left-0 top-full z-[60] mt-1 w-44 rounded-lg bg-white py-1 shadow-[0_4px_16px_rgba(0,0,0,0.15)]">
             <button
               type="button"
               onClick={() => cameraInputRef.current?.click()}
