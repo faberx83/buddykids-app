@@ -210,28 +210,79 @@ export default function AdminOnboardingReviewClient({
           Altri stati ({other.length})
         </div>
         <div className="divide-y divide-[#F0F2F5]">
-          {other.map((c) => (
-            <div key={c.centerId} className="px-4 py-3">
-              <div className="flex flex-wrap items-center justify-between gap-3">
-                <div className="text-sm font-semibold text-ink">{c.centerName}</div>
-                <div className="flex items-center gap-2">
-                  <span className={`rounded-full px-2.5 py-1 text-[11px] font-semibold ${getOnboardingStatusBadgeClassName(c.status)}`}>
-                    {ONBOARDING_STATUS_REGISTRY[c.status].admin.label}
-                  </span>
-                  {c.status === "APPROVED" && (
+          {other.map((c) => {
+            // Bug reale (segnalato da Fabrizio, 06/08/2026): la verifica identità è
+            // un'azione indipendente dallo stato onboarding generale (submitIdentityVerificationAction
+            // non tocca center_onboarding_state). Un Partner può sottomettere identità/documento
+            // mentre il centro è ancora CLAIMED/CHANGES_REQUESTED/ecc., e prima di questo fix
+            // quella sottomissione era invisibile all'Admin (il blocco identità esisteva solo
+            // nel loop "In revisione", filtrato su status===SUBMITTED). Qui mostriamo lo stesso
+            // blocco identità/documento/bottoni anche qui quando c'è una richiesta pending,
+            // senza toccare la state machine onboarding generale.
+            const detail = details.get(c.centerId);
+            const identityPending = detail?.identity.status === "pending";
+            return (
+              <div key={c.centerId} className="px-4 py-3">
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div>
+                    <div className="text-sm font-semibold text-ink">{c.centerName}</div>
+                    <span className={`mt-1 inline-block rounded-full px-2.5 py-0.5 text-[11px] font-semibold ${getOnboardingStatusBadgeClassName(c.status)}`}>
+                      {ONBOARDING_STATUS_REGISTRY[c.status].admin.label}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {detail && (identityPending || detail.identity.status !== "not_started") && (
+                      <div className="text-xs text-ink-2">
+                        Identità: <span className="font-semibold">{detail.identity.status}</span>
+                        {detail.identity.note && <span className="italic"> — &ldquo;{detail.identity.note}&rdquo;</span>}
+                        {detail.identity.documentUrl && (
+                          <>
+                            {" "}
+                            <button
+                              onClick={() => viewIdentityDocument(c.centerId)}
+                              className="font-semibold text-sky underline"
+                            >
+                              Vedi documento
+                            </button>
+                          </>
+                        )}
+                      </div>
+                    )}
+                    {c.status === "APPROVED" && (
+                      <button
+                        onClick={() => review(c.centerId, "suspend")}
+                        disabled={busyId === c.centerId}
+                        className="rounded-md border border-[#E8EBF0] px-2.5 py-1 text-[11px] font-semibold text-ink disabled:opacity-60"
+                      >
+                        {ONBOARDING_STATUS_REGISTRY.APPROVED.admin.primaryAction}
+                      </button>
+                    )}
+                  </div>
+                </div>
+
+                <TrustSignalsRow signals={trustSignals.get(c.centerId)} />
+
+                {identityPending && (
+                  <div className="mt-2 flex gap-2">
                     <button
-                      onClick={() => review(c.centerId, "suspend")}
+                      onClick={() => reviewIdentity(c.centerId, "verified")}
                       disabled={busyId === c.centerId}
                       className="rounded-md border border-[#E8EBF0] px-2.5 py-1 text-[11px] font-semibold text-ink disabled:opacity-60"
                     >
-                      {ONBOARDING_STATUS_REGISTRY.APPROVED.admin.primaryAction}
+                      Verifica identità
                     </button>
-                  )}
-                </div>
+                    <button
+                      onClick={() => reviewIdentity(c.centerId, "rejected")}
+                      disabled={busyId === c.centerId}
+                      className="rounded-md border border-[#E8EBF0] px-2.5 py-1 text-[11px] font-semibold text-ink disabled:opacity-60"
+                    >
+                      Rifiuta identità
+                    </button>
+                  </div>
+                )}
               </div>
-              <TrustSignalsRow signals={trustSignals.get(c.centerId)} />
-            </div>
-          ))}
+            );
+          })}
           {other.length === 0 && (
             <p className="px-4 py-6 text-center text-sm text-ink-2">Nessun altro centro in coda.</p>
           )}
