@@ -1,6 +1,7 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { uploadImage } from "@/lib/storage";
 import ImageCropModal from "@/components/ImageCropModal";
 
@@ -28,15 +29,45 @@ export default function AvatarUploadButton({
   size?: number;
   disabled?: boolean;
 }) {
+  const wrapperRef = useRef<HTMLDivElement>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
   const galleryInputRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
+  // Coordinate viewport del menu (BUG CORRETTO 06/08/2026, seconda ondata —
+  // vedi commento esteso più sotto sul perché è un portale).
+  const [menuPos, setMenuPos] = useState<{ top: number; left: number } | null>(null);
   // File appena scelto (nuovo upload) O la foto già caricata (stringa URL,
   // richiesta da Fabrizio: poter ri-centrare/zoomare una foto esistente senza
   // doverla ricaricare da capo) — entrambi aprono lo stesso ImageCropModal.
   const [pendingSource, setPendingSource] = useState<File | string | null>(null);
+
+  function toggleMenu() {
+    if (menuOpen) {
+      setMenuOpen(false);
+      return;
+    }
+    const rect = wrapperRef.current?.getBoundingClientRect();
+    if (rect) setMenuPos({ top: rect.bottom + 4, left: rect.left });
+    setMenuOpen(true);
+  }
+
+  // Il menu è renderizzato in un portale (vedi return sotto): se resta
+  // aperto durante uno scroll/resize le coordinate calcolate all'apertura
+  // diventano stale (il menu "galleggia" lontano dall'avatar). Più semplice
+  // e robusto chiuderlo, coerente con il comportamento standard di un
+  // dropdown quando si scrolla la pagina sotto di esso.
+  useEffect(() => {
+    if (!menuOpen) return;
+    const close = () => setMenuOpen(false);
+    window.addEventListener("scroll", close, true);
+    window.addEventListener("resize", close);
+    return () => {
+      window.removeEventListener("scroll", close, true);
+      window.removeEventListener("resize", close);
+    };
+  }, [menuOpen]);
 
   async function handleFile(file: File) {
     setError(null);
@@ -57,7 +88,7 @@ export default function AvatarUploadButton({
   }
 
   return (
-    <div className="relative inline-flex flex-col items-center">
+    <div ref={wrapperRef} className="relative inline-flex flex-col items-center">
       {/* Cerchio foto: SOLO la foto/fallback qui dentro, con overflow-hidden
           per il ritaglio circolare. Il badge fotocamera vive FUORI da questo
           div (BUG CORRETTO: prima era figlio del div overflow-hidden e,
@@ -78,66 +109,70 @@ export default function AvatarUploadButton({
       <button
         type="button"
         disabled={disabled || uploading}
-        onClick={() => setMenuOpen((v) => !v)}
+        onClick={toggleMenu}
         aria-label="Cambia foto"
         className="absolute bottom-0 right-0 flex h-5 w-5 items-center justify-center rounded-full border-2 border-white bg-sky text-white disabled:opacity-60"
       >
         <i className={`ti ${uploading ? "ti-loader-2 animate-spin" : "ti-camera"} text-[11px]`} />
       </button>
 
-      {menuOpen && (
-        <>
-          {/* Overlay per chiudere il menu cliccando fuori. z-50 come il bottone
-              globale VersionToggle ("Torna a V1", app/layout.tsx, position:fixed):
-              deve stare sopra anche quello, altrimenti resta cliccabile sotto
-              il menu aperto. */}
-          <div className="fixed inset-0 z-50" onClick={() => setMenuOpen(false)} />
-          {/* left-0 esplicito (BUG CORRETTO: senza left/right, la "static
-              position" orizzontale di un elemento absolute dentro un
-              flex-col items-center può centrarlo/farlo sporgere in modo
-              imprevedibile e venire tagliato dal contenitore della card —
-              ancorarlo al bordo sinistro dell'avatar lo tiene sempre dentro
-              i confini della card).
-              z-[60] (BUG CORRETTO 06/08/2026): VersionToggle ("Torna a V1",
-              components/VersionToggle.tsx) è fixed con z-50 ed è montato DOPO
-              questo componente nel DOM radice (app/layout.tsx) — a parità di
-              z-index vince l'ultimo nell'ordine del DOM, quindi il bottone
-              copriva/tagliava questo menu quando le due zone si sovrapponevano
-              in alto sullo schermo. z-[60] lo tiene sempre sopra. */}
-          <div className="absolute left-0 top-full z-[60] mt-1 w-44 rounded-lg bg-white py-1 shadow-[0_4px_16px_rgba(0,0,0,0.15)]">
-            <button
-              type="button"
-              onClick={() => cameraInputRef.current?.click()}
-              className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs font-medium text-ink hover:bg-bg"
+      {/* BUG CORRETTO 06/08/2026 (seconda ondata): questo menu è stato
+          tagliato due volte da un overflow-hidden diverso su antenati
+          diversi — prima ipoteticamente il cerchio-avatar stesso, poi
+          DecorativeIntroCard (Sprint 7 NEXTGEN) attorno a ProfileHeaderClient
+          nella pagina Profilo NEXTGEN (screenshot Fabrizio, 06/08/2026: solo
+          "Scatta foto" visibile, "Galleria"/"Modifica ritaglio" tagliati e
+          sovrapposti a "I miei bambini" sotto). Anziché rincorrere ogni
+          futuro contenitore con overflow-hidden, il menu è ora un portale su
+          document.body: position:fixed con coordinate calcolate da
+          getBoundingClientRect() in toggleMenu() sopra — per costruzione
+          non può più essere tagliato o coperto da NESSUN antenato,
+          indipendentemente da overflow/z-index/stacking context. */}
+      {menuOpen &&
+        menuPos &&
+        typeof document !== "undefined" &&
+        createPortal(
+          <>
+            {/* Overlay per chiudere il menu cliccando fuori. */}
+            <div className="fixed inset-0 z-50" onClick={() => setMenuOpen(false)} />
+            <div
+              className="fixed z-[60] w-44 rounded-lg bg-white py-1 shadow-[0_4px_16px_rgba(0,0,0,0.15)]"
+              style={{ top: menuPos.top, left: menuPos.left }}
             >
-              <i className="ti ti-camera text-sm" /> Scatta foto
-            </button>
-            <button
-              type="button"
-              onClick={() => galleryInputRef.current?.click()}
-              className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs font-medium text-ink hover:bg-bg"
-            >
-              <i className="ti ti-photo text-sm" /> Scegli dalla galleria
-            </button>
-            {/* Richiesto da Fabrizio: poter modificare zoom/centratura della
-                foto già caricata, non solo al momento dell'upload — riapre
-                lo stesso ImageCropModal partendo dall'URL esistente invece
-                che da un File nuovo. */}
-            {currentUrl && (
               <button
                 type="button"
-                onClick={() => {
-                  setMenuOpen(false);
-                  setPendingSource(currentUrl);
-                }}
+                onClick={() => cameraInputRef.current?.click()}
                 className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs font-medium text-ink hover:bg-bg"
               >
-                <i className="ti ti-crop text-sm" /> Modifica ritaglio
+                <i className="ti ti-camera text-sm" /> Scatta foto
               </button>
-            )}
-          </div>
-        </>
-      )}
+              <button
+                type="button"
+                onClick={() => galleryInputRef.current?.click()}
+                className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs font-medium text-ink hover:bg-bg"
+              >
+                <i className="ti ti-photo text-sm" /> Scegli dalla galleria
+              </button>
+              {/* Richiesto da Fabrizio: poter modificare zoom/centratura della
+                  foto già caricata, non solo al momento dell'upload — riapre
+                  lo stesso ImageCropModal partendo dall'URL esistente invece
+                  che da un File nuovo. */}
+              {currentUrl && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMenuOpen(false);
+                    setPendingSource(currentUrl);
+                  }}
+                  className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs font-medium text-ink hover:bg-bg"
+                >
+                  <i className="ti ti-crop text-sm" /> Modifica ritaglio
+                </button>
+              )}
+            </div>
+          </>,
+          document.body
+        )}
 
       <input
         ref={cameraInputRef}
