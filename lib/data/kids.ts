@@ -60,14 +60,27 @@ interface RawKidRow {
 // app/actions/kids.ts#updateKidAvatarAction) e va risolto in un URL firmato
 // fresco ad ogni lettura. Le foto caricate PRIMA della migrazione hanno
 // ancora un URL pubblico completo salvato (inizia per "http") sul vecchio
-// bucket "buddykids-images": riconosciute e mostrate cosi come sono, senza
+// bucket "buddykids-images", O — come il bambino di test fixture (vedi
+// supabase/seed-test-data.sql) — una data URI SVG inline (inizia per
+// "data:"): entrambe vengono riconosciute e mostrate cosi come sono, senza
 // tentare di firmarle (fallirebbe: non sono un path di quel bucket).
+//
+// BUG CORRETTO 07/08/2026 (regressione emersa dal deploy TEST_SCOPE=all,
+// TC-143 rotto — la fixture usa proprio una data URI, non un URL "http"):
+// il controllo originale riconosceva solo "http", quindi una data URI
+// veniva scambiata per un path del bucket privato e createSignedUrl falliva
+// silenziosamente (nessun errore visibile, solo avatarUrl undefined ->
+// l'avatar tornava all'emoji invece della foto).
+function isPassThroughAvatarValue(pathOrUrl: string): boolean {
+  return pathOrUrl.startsWith("http") || pathOrUrl.startsWith("data:");
+}
+
 async function resolveKidAvatarUrl(
   supabase: Awaited<ReturnType<typeof createClient>>,
   pathOrUrl: string | null
 ): Promise<string | undefined> {
   if (!pathOrUrl) return undefined;
-  if (pathOrUrl.startsWith("http")) return pathOrUrl;
+  if (isPassThroughAvatarValue(pathOrUrl)) return pathOrUrl;
   const { data, error } = await supabase.storage.from(KIDS_AVATARS_BUCKET).createSignedUrl(pathOrUrl, 3600);
   if (error || !data) return undefined;
   return data.signedUrl;
