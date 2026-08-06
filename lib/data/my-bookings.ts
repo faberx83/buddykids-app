@@ -117,6 +117,16 @@ interface RawWeekRef {
   end_date: string;
 }
 
+// BUG CORRETTO 06/08/2026 (segnalato da Fabrizio: "ho simulato una
+// prenotazione e non la trovo da nessuna parte") — una prenotazione a
+// giorni singoli (funzionalità "Giorni spot", Sprint 3, booking_days invece
+// di booking_weeks) non era affatto persa: compariva in fondo alla lista in
+// un gruppo "Senza settimana" con "—" al posto delle date, perché questa
+// query leggeva solo booking_weeks. Aggiunto booking_days/activity_days.
+interface RawDayRef {
+  date: string;
+}
+
 interface RawRow {
   id: string;
   status: BookingStatus;
@@ -128,6 +138,7 @@ interface RawRow {
   read_by_parent: boolean | null;
   activities: RawActivityRef | RawActivityRef[] | null;
   booking_weeks: { activity_weeks: RawWeekRef | RawWeekRef[] | null }[] | null;
+  booking_days: { activity_days: RawDayRef | RawDayRef[] | null }[] | null;
   booking_kids: { kids: { id: string; name: string } | { id: string; name: string }[] | null }[] | null;
 }
 
@@ -143,7 +154,7 @@ export async function getMyBookingsForParent(): Promise<MyBooking[]> {
   const { data, error } = await supabase
     .from("bookings")
     .select(
-      "id, status, total_amount, discount_amount, created_at, partner_decision, partner_proposal_note, read_by_parent, activities ( id, slug, name, cover_image_url, emoji, img_gradient, centers ( name, city, cancellation_window_days ) ), booking_weeks ( activity_weeks ( id, label, start_date, end_date ) ), booking_kids ( kids ( id, name ) )"
+      "id, status, total_amount, discount_amount, created_at, partner_decision, partner_proposal_note, read_by_parent, activities ( id, slug, name, cover_image_url, emoji, img_gradient, centers ( name, city, cancellation_window_days ) ), booking_weeks ( activity_weeks ( id, label, start_date, end_date ) ), booking_days ( activity_days ( date ) ), booking_kids ( kids ( id, name ) )"
     )
     .eq("parent_id", user.id)
     .order("created_at", { ascending: false });
@@ -167,16 +178,30 @@ export async function getMyBookingsForParent(): Promise<MyBooking[]> {
       .map((bw) => firstOf(bw.activity_weeks))
       .filter((w): w is RawWeekRef => Boolean(w))
       .sort((a, b) => a.start_date.localeCompare(b.start_date));
+
+    // Prenotazione a giorni singoli (booking_days, "Giorni spot" — Sprint 3):
+    // niente booking_weeks, quindi senza questo ramo weeksLabel/firstWeekLabel
+    // restavano "—"/null e la prenotazione finiva in un gruppo "Senza
+    // settimana" con nessuna data visibile, pur essendo salvata
+    // correttamente (vedi commento sopra RawDayRef).
+    const dayRows = (row.booking_days ?? [])
+      .map((bd) => firstOf(bd.activity_days))
+      .filter((d): d is RawDayRef => Boolean(d))
+      .map((d) => d.date)
+      .sort();
+    const isDayBased = weekRows.length === 0 && dayRows.length > 0;
+    const daysLabel = isDayBased ? dayRows.map((d) => formatDateShort(d)).join(", ") : null;
+
     const weeksLabel =
       weekRows
         .map((w) => `${canonicalLabel(w)} (${formatDateShort(w.start_date)}–${formatDateShort(w.end_date)})`)
-        .join(", ") || "—";
-    const firstWeekLabel = weekRows[0] ? canonicalLabel(weekRows[0]) : null;
+        .join(", ") || daysLabel || "—";
+    const firstWeekLabel = weekRows[0] ? canonicalLabel(weekRows[0]) : daysLabel;
     const kidRows = (row.booking_kids ?? []).map((bk) => firstOf(bk.kids)).filter((k): k is { id: string; name: string } => Boolean(k));
     const kidNames = kidRows.map((k) => k.name);
     const kidIds = kidRows.map((k) => k.id);
 
-    const firstWeekStart = weekRows[0]?.start_date ?? null;
+    const firstWeekStart = weekRows[0]?.start_date ?? dayRows[0] ?? null;
     const cancellationWindowDays = center?.cancellation_window_days ?? 3;
     let daysUntilStart: number | null = null;
     if (firstWeekStart) {
