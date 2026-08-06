@@ -226,7 +226,25 @@ export default function SearchDiscoveryClient({
   // un'attività passa il filtro se disponibile in ALMENO UNA delle settimane
   // scelte (unione, non intersezione: si sta chiedendo "quali settimane mi
   // interessano", non "disponibile in tutte").
-  const [selectedWeekStarts, setSelectedWeekStarts] = useState<string[]>([]);
+  // BUG CORRETTO 06/08/2026 (segnalato da Fabrizio: "se clicco una settimana
+  // 'riempi' poi nella sezione 'scopri' deve essere già applicato il filtro
+  // sulla settimana che ho selezionato") — il bottone "Riempi" del Planner
+  // (PlannerClient.tsx) linkava sempre a "/nextgen/search" senza parametri:
+  // page.tsx ignorava del tutto QUALE settimana fosse stata cliccata e
+  // precompilava sempre la PRIMA settimana scoperta della stagione
+  // (planner.firstUncoveredIndex), indipendentemente da quella su cui
+  // l'utente aveva davvero cliccato "Riempi". Stesso pattern già usato per
+  // "?kid=" sopra: seed dal query param "?week=<data ISO>" se presente e
+  // valido (una delle 13 settimane stagionali reali — stessa "fonte di
+  // verità" lib/season-weeks.ts usata dal Planner, quindi le date coincidono
+  // sempre), altrimenti nessuna settimana preselezionata (comportamento
+  // identico a prima).
+  const [selectedWeekStarts, setSelectedWeekStarts] = useState<string[]>(() => {
+    const weekParam = searchParams.get("week");
+    if (!weekParam) return [];
+    const validStarts = new Set(getSeasonWeekRanges(seasonYear).map((r) => isoDate(r.start)));
+    return validStarts.has(weekParam) ? [weekParam] : [];
+  });
   const [radiusKm, setRadiusKm] = useState(DEFAULT_RADIUS_KM);
   // TRAMA ONE Build Sprint 3 — "Giorni spot": stesso filtro/stesso principio
   // di LEGACY (SearchClient.tsx) — "solo attività con Giorni spot

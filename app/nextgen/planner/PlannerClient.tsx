@@ -755,9 +755,20 @@ export default function PlannerClient({
                             }`}
                           >
                             {rowContent}
+                            {/* BUG CORRETTO 06/08/2026 (segnalato da
+                                Fabrizio: "se clicco una settimana 'riempi'
+                                poi nella sezione 'scopri' deve essere già
+                                applicato il filtro sulla settimana che ho
+                                selezionato") — "Riempi" portava sempre a
+                                "/nextgen/search" senza dire QUALE settimana,
+                                cosi' Scopri precompilava sempre la prima
+                                settimana scoperta della stagione invece di
+                                quella su cui si era davvero cliccato. Ora
+                                passa "?week=<data ISO>" (letto da
+                                SearchDiscoveryClient.tsx). */}
                             {!w.dismissed && !w.covered && !isPastUncovered && (
                               <Link
-                                href="/nextgen/search"
+                                href={`/nextgen/search?week=${w.startDate}`}
                                 className="flex-shrink-0 rounded-full bg-trama-violet px-3 py-1.5 text-[11px] font-bold text-white active:scale-[0.97]"
                               >
                                 Riempi
