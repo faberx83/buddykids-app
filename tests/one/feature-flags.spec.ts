@@ -339,21 +339,23 @@ test.describe("TRAMA ONE Sprint 6 — Admin /admin/feature-flags [UI]", () => {
     // alla card di override) — getByText() senza scoping causa uno strict
     // mode violation (6 match). ".first()" basta qui: è solo un controllo
     // di visibilità generico, la card reale usata sotto è già isolata
-    // correttamente con .filter({hasText}).first() alla riga seguente.
+    // correttamente con getByTestId() alla riga seguente.
     await expect(page.getByText("TRAMA_ONE_ENABLED").first()).toBeVisible();
 
-    // ".first()", non ".last()": "div" (locator generico) matcha OGNI div
-    // annidato il cui testo complessivo contiene "TRAMA_ONE_ENABLED" — non
-    // solo la card intera (il div più esterno, che contiene anche il
-    // <select>), ma anche i div via via più interni fino al singolo div che
-    // avvolge solo il nome del flag. L'ordine dei match segue l'ordine del
-    // documento (antenati prima dei discendenti), quindi ".first()" è il div
-    // più esterno (la card completa) mentre ".last()" è il div più interno
-    // e più piccolo — che qui non contiene affatto il <select>, causando un
-    // timeout. Root cause di TC-N609 (bug del test, non del prodotto: la
-    // pagina Admin renderizza il <select> correttamente, verificato dallo
-    // snapshot di accessibilità catturato al fallimento).
-    const card = page.locator("div").filter({ hasText: "TRAMA_ONE_ENABLED" }).first();
+    // BUGFIX (deploy 06/08, TEST_SCOPE=critical): il precedente locator
+    // `page.locator("div").filter({hasText}).first()` assumeva che il primo
+    // div-antenato contenente "TRAMA_ONE_ENABLED" fosse la card della singola
+    // flag (con un solo <select> al suo interno). Da quando BatchBetaControls
+    // (Addendum Sezione B, "Attiva/disattiva tutte le funzionalità Beta") è
+    // stato aggiunto SOPRA questa card nello stesso componente, quel div
+    // esterno racchiude ANCHE il <select> dello scope batch — 2 <select>
+    // sotto lo stesso div, strict mode violation. Root cause di TC-N609
+    // seconda ondata (bug del test: assunzione di struttura DOM non più
+    // valida, non un difetto della pagina Admin). Fix strutturale: la card
+    // per-flag ha ora un data-testid dedicato (FeatureFlagsAdminClient.tsx),
+    // che la isola indipendentemente da cos'altro viene aggiunto sopra o
+    // sotto in futuro.
+    const card = page.getByTestId("flag-card-TRAMA_ONE_ENABLED");
     await card.locator("select").selectOption("user");
     await card.getByPlaceholder(/valore \(userId/).fill(FAKE_TEST_USER_ID);
     await card.getByRole("button", { name: "Aggiungi override" }).click();
