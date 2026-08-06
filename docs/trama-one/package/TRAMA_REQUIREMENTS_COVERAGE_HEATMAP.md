@@ -1,9 +1,9 @@
 # TRAMA — Requirements Coverage Heatmap
 
 **Documentation Package**: `TRAMA_DOCUMENTATION_PACKAGE_20260805_v1`
-**Package version**: v2 (QA Remediation) — **supersedes** v1 (`AS_OF_COMMIT bd03067`)
-**As-of timestamp**: 2026-08-05T20:10:00Z (UTC)
-**As-of commit (AS_OF_COMMIT)**: `0fc210a7da8abd98bbbfd64a0bb97eef2c26c2b3`
+**Package version**: v3 (OD-02 fix update) — **supersedes** v2 (`AS_OF_COMMIT 0fc210a`)
+**As-of timestamp**: 2026-08-06T09:45:00Z (UTC)
+**As-of commit (AS_OF_COMMIT)**: `16b0527ba33222c63677735dca3bc57ed98221b3`
 **Status**: current
 
 Sezioni 7-9, versione corretta. La v1 usava un'unica percentuale "12 Epic + 31 capability = 43" come KPI primario — errore riconosciuto: Epic e capability si sovrappongono (un epic è realizzato *attraverso* le sue capability), quindi sommarli in un solo denominatore conta lo stesso lavoro due volte. Questa versione separa 4 metriche indipendenti, ciascuna con un proprio denominatore esplicito, e sostituisce la "Vista 3" generica con 3 viste per prodotto (Parent/Partner/Admin) che elencano ogni singolo CR/PCR/ACR.
@@ -40,11 +40,11 @@ Somma: 8+1+1+2=12. ✓
 
 | Stato IMPLEMENTED | Conteggio | % (÷31) |
 |---|---:|---:|
-| Sì | 25 | 81% |
-| Parziale | 4 | 13% |
+| Sì | 26 | 84% |
+| Parziale | 3 | 10% |
 | No | 2 | 6% |
 
-Somma: 25+4+2=31. ✓ I 2 "No" sono `A-MVP-05` e `A-MVP-07` (entrambi `SPECIFIED_NOT_FOUND`).
+Somma: 26+3+2=31. ✓ I 2 "No" sono `A-MVP-05` e `A-MVP-07` (entrambi `SPECIFIED_NOT_FOUND`). **Aggiornamento post-fix OD-02 (06/08/2026, commit `16b0527`)**: `PT-MVP-08` passa da `IMPLEMENTED=Parziale` a `IMPLEMENTED=Sì` (Sì: 25→26, Parziale: 4→3) — il gap bulk "Giornata particolare" è chiuso. Non cambia invece la Production Readiness sotto: `PT-MVP-08` non era `LIVE` prima (era `CONFLICT`) e non lo è ora (è `BUILT`, non ancora live-tested).
 
 ## 3. MVP Production Readiness
 

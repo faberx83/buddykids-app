@@ -1,12 +1,12 @@
 # TRAMA — Project SAL (Stato Avanzamento Lavori) — 05/08/2026
 
 **Documentation Package**: `TRAMA_DOCUMENTATION_PACKAGE_20260805_v1`
-**Package version**: v2 (QA Remediation) — **supersedes** v1 (`AS_OF_COMMIT bd03067`)
-**As-of timestamp**: 2026-08-05T20:10:00Z (UTC)
-**As-of commit (AS_OF_COMMIT)**: `0fc210a7da8abd98bbbfd64a0bb97eef2c26c2b3`
+**Package version**: v3 (OD-02 fix update) — **supersedes** v2 (`AS_OF_COMMIT 0fc210a`)
+**As-of timestamp**: 2026-08-06T09:45:00Z (UTC)
+**As-of commit (AS_OF_COMMIT)**: `16b0527ba33222c63677735dca3bc57ed98221b3`
 **Status**: current
 
-Versione corretta dopo il QA Remediation. Cambia rispetto alla v1: le 3 scorecard prodotto sono ricalcolate dal Master Requirement Catalog v2; i vecchi 10 checkpoint di sprint sono rinominati `DG-01…DG-10` (Delivery and Execution Gates) senza essere eliminati; sono aggiunti 10 nuovi checkpoint documentali `CP-01…CP-10`; il verdetto unico "MVP September Status" è sostituito da 3 verdetti separati.
+Versione corretta dopo il QA Remediation, poi aggiornata dopo il fix di OD-02 (06/08/2026). Cambia rispetto alla v2: `PT-MVP-08` passa da `CONFLICT` a `BUILT` (scorecard Partner, Parte 5), la Parte 8 (OD-02) è aggiornata con l'esito del fix, la Parte 12 (ownership) riflette il lavoro completato. Cambia rispetto alla v1: le 3 scorecard prodotto sono ricalcolate dal Master Requirement Catalog v2; i vecchi 10 checkpoint di sprint sono rinominati `DG-01…DG-10` (Delivery and Execution Gates) senza essere eliminati; sono aggiunti 10 nuovi checkpoint documentali `CP-01…CP-10`; il verdetto unico "MVP September Status" è sostituito da 3 verdetti separati.
 
 ## Parte 1 — Executive summary
 
@@ -33,9 +33,9 @@ Invariati dalla v1: perimetro TRAMA ONE, fonte `TRAMA_MASTER_REQUIREMENT_CATALOG
 | Capability MVP (`PT-MVP-*`) | 12 |
 | LIVE | 5 (42%) |
 | LIVE_WITH_GAP | 2 (17%) — PT-MVP-01 (KPI ≤2min non misurato), PT-MVP-12 (e-mail transazionali non confermate) |
-| BUILT | 3 (25%) — PT-MVP-02, 04, 07 (nessun run live confermato) |
+| BUILT | 4 (33%) — PT-MVP-02, 04, 07 (nessun run live confermato), PT-MVP-08 (fix OD-02 implementato 06/08, in attesa di verifica live — vedi Parte 8) |
 | PARTIAL | 1 (8%) — Trust telemetry minima |
-| CONFLICT | 1 (8%) — PT-MVP-08, vedi Parte 8 |
+| CONFLICT | 0 (0%) — risolto, vedi Parte 8 |
 
 ## Parte 6 — Scorecard Admin
 
@@ -53,14 +53,16 @@ Invariati dalla v1: perimetro TRAMA ONE, fonte `TRAMA_MASTER_REQUIREMENT_CATALOG
 
 Vedi `TRAMA_REQUIREMENTS_COVERAGE_HEATMAP.md` per Epic Health (67% LIVE su 12), MVP Capability Implementation Coverage (81% su 31), MVP Production Readiness (55% su 31), Pilot Validation Coverage (0% su 31) — 4 metriche indipendenti, non sommate in una sola.
 
-## Parte 8 — OD-02 / PT-MVP-08: CONFLICT non risolto, decisione richiesta
+## Parte 8 — OD-02 / PT-MVP-08: CONFLICT risolto, fix implementato (06/08/2026)
 
-`PT-MVP-08` (Disponibilità strutturata) non può restare classificato `LIVE` mentre `OD-02` lo descrive come "feature esplicitamente incompleta" e "P0". Registrato come `CONFLICT` nel Master Requirement Catalog. **Decisione richiesta a Fabrizio** (non presa autonomamente):
+**Decisione di Fabrizio: OD-02 — FIX BEFORE BETA** (revocata la precedente ipotesi "B. ACCEPTED DEFER" formulata in questo stesso documento). Il fix del bulk-select "Giornata particolare" è stato implementato lo stesso giorno (commit `16b0527`):
 
-- **A. FIX BEFORE BETA**: `PT-MVP-08` resta `PARTIAL` finché il fix del bulk-select "Giornata particolare" non è completato e verificato; il fix diventa lavoro pianificato prima della Beta.
-- **B. ACCEPTED DEFER**: "Giornata particolare" in modalità multiselezione viene rimossa esplicitamente dagli acceptance criteria della Beta di settembre, pianificata post-Beta; `PT-MVP-08` torna `LIVE` con una nota di scope ridotto.
+- Root cause confermata: `BulkDraft` (`components/AvailabilityCalendar.tsx`) non includeva `specialEmoji`/`specialLabel`, e sovrascriveva incondizionatamente isOpen/capacità/sconto/last-minute su tutti i giorni selezionati. Colonne DB già esistenti (`special_emoji`/`special_label` su `activity_days`), nessuna migrazione necessaria.
+- Fix: nuovo `lib/availability-bulk.ts` (logica pura, testabile senza browser) con semantica esplicita a 3 stati per ogni campo del bulk draft — campo non modificato / valore impostato / valore esplicitamente rimosso — estesa anche ai 4 campi preesistenti (ora opt-in per giorno, per evitare la stessa classe di sovrascrittura accidentale).
+- Verifiche statiche: tsc/eslint puliti, 8 test puri PASS (`tests/gestore/calendario-bulk.spec.ts`, TC-N626..N633 — Test A/C/D/E/F richiesti esplicitamente da Fabrizio), 107 test "no browser" dell'intero progetto verdi (nessuna regressione). 3 test E2E scritti (TC-N634..N636 — Test B/G/H: persistenza, regressione giorno singolo, mobile 390×844), skippati in questo sandbox per assenza di deploy/credenziali.
+- Stato: `PT-MVP-08 = BUILT` (`IMPLEMENTED=Sì`, `DEPLOYED=No`, `STATIC_TESTED=Sì`, `LIVE_TESTED=No`, `PILOT_VALIDATED=No`) — non dichiarato `LIVE`, per istruzione esplicita di Fabrizio, finché il test in produzione non è eseguito.
 
-Fino alla decisione, `PT-MVP-08` resta `CONFLICT` in ogni documento di questo package.
+`PT-MVP-08` non è più `CONFLICT` in nessun documento di questo package. **Residuo per Fabrizio**: eseguire il prossimo deploy e i 3 test E2E (TC-N634..N636) per portare OD-02 da "IMPLEMENTED — AWAITING LIVE TEST" a "CLOSED".
 
 ## Parte 9 — A-MVP-07 e A-MVP-05: classificazione e decisione
 
@@ -90,7 +92,7 @@ Fino alla decisione, `PT-MVP-08` resta `CONFLICT` in ogni documento di questo pa
 |---|---|---|---|---|---|---|---|
 | CP-01 | Source Baseline Gate | Fonti canoniche identificate, hash verificati, `AS_OF_COMMIT` assegnato univocamente | **PASS** | `TRAMA_CANONICAL_SOURCE_REGISTER.md`, `AS_OF_COMMIT` v2 = `0fc210a` | — | Claude | — |
 | CP-02 | Requirements Completeness Gate | Tutti i 43 ID MVP + tutti i 148 CR/PCR/ACR inventariati, zero mancanti/duplicati | **PASS** | Script di verifica, `TRAMA_REQUIREMENT_ID_RECONCILIATION.md` | — | Claude | — |
-| CP-03 | Traceability Gate | Ogni unità MVP ha file/test/stato tracciato con le 7 dimensioni | **PASS WITH CONDITIONS** | `TRAMA_REQUIREMENTS_TRACEABILITY_MATRIX.md` v2 | 3 stati restano aperti per decisione di scope (`PT-MVP-08` CONFLICT, `A-MVP-05`/`A-MVP-07` NSF) | Fabrizio (decisione) | Prima della Beta |
+| CP-03 | Traceability Gate | Ogni unità MVP ha file/test/stato tracciato con le 7 dimensioni | **PASS WITH CONDITIONS** | `TRAMA_REQUIREMENTS_TRACEABILITY_MATRIX.md` v3 | 2 stati restano aperti per decisione di scope (`A-MVP-05`/`A-MVP-07` NSF); `PT-MVP-08` non è più tra le condizioni aperte (OD-02 risolto, fix implementato 06/08, in attesa solo di verifica live non bloccante per questo gate) | Fabrizio (decisione su A-MVP-05/07) | Prima della Beta |
 | CP-04 | Release Alignment Gate | Le 4 numerazioni di sprint riconciliate | **PASS** | `TRAMA_CANONICAL_RELEASE_MODEL.md` | — | Claude | — |
 | CP-05 | Documentation Consistency Gate | Nessun `AS_OF_COMMIT` contraddittorio, nessun conteggio manuale non validato da script | **PASS WITH CONDITIONS** | Corretto in questo passaggio (v2); il rischio strutturale (conteggi manuali senza validazione automatica) è mitigato ma non eliminato per i documenti futuri | Applicare il self-test (`TRAMA_DOCUMENTATION_QA_REPORT.md`) ad ogni revisione futura del package | Claude | Ad ogni revisione |
 | CP-06 | Production Truth Gate | Stato del commit live in produzione confermato | **NOT YET DUE** | `MVP_SEPTEMBER_READINESS_MATRIX.md` §6: nessuna credenziale Vercel in questo ambiente, mai risolto | Fabrizio deve confermare il commit live dopo il prossimo deploy | Fabrizio | Prossimo deploy |
@@ -108,7 +110,7 @@ Fino alla decisione, `PT-MVP-08` resta `CONFLICT` in ogni documento di questo pa
 - Checklist Visual/Mobile Acceptance (preparazione, non l'esecuzione con browser reale).
 - Classificazione dati pilota (query di sola lettura, catalogazione).
 - Correzioni documentali (come questo stesso passaggio).
-- Eventuale fix di OD-02, solo dopo la decisione A/B di Fabrizio.
+- Fix di OD-02 (**fatto**, 06/08/2026, commit `16b0527` — dopo la decisione A di Fabrizio).
 - Aggiornamento della heatmap e delle metriche ad ogni nuovo commit rilevante.
 - Runbook operativi.
 - Triage dei risultati di test/verifica (non l'esecuzione dal vivo stessa).
@@ -120,7 +122,7 @@ Fino alla decisione, `PT-MVP-08` resta `CONFLICT` in ogni documento di questo pa
 - Selezione degli utenti pilota reali.
 - Approvazione di qualunque cleanup dati.
 - Decisione A-MVP-07 (DEFER / ACCEPTED_OUT_OF_BETA / mantenere NSF).
-- Decisione OD-02 (FIX BEFORE BETA / ACCEPTED DEFER).
+- Decisione OD-02 (**presa**: FIX BEFORE BETA, 06/08/2026) — residuo: eseguire il deploy e i 3 test E2E (TC-N634..N636) per chiudere OD-02.
 - Decisione finale di business (GO/NO-GO settembre).
 
 ## Parte 13 — Verdetti separati (sostituiscono l'unico "MVP September Status" della v1)
@@ -129,7 +131,7 @@ Fino alla decisione, `PT-MVP-08` resta `CONFLICT` in ogni documento di questo pa
 Il livello MVP (43 unità) è completo, verificato da script dove possibile, e internamente coerente tra Master Requirement Catalog / Traceability Matrix / Heatmap / SAL (stessi conteggi in tutti e 4). Condizione residua: Parte B (88 ID TO-BE non-MVP) resta inventariata ma non classificata codice-per-codice (OD-10), e il gap di crosswalk MVP-capability↔Handbook-ID resta aperto (OD-12).
 
 ### MVP IMPLEMENTATION READINESS: **READY WITH CONDITIONS**
-55% delle capability MVP sono `LIVE` in senso stretto (deployate-presunte, live-testate, senza gap). Le condizioni: `DG-09`/`CP-09` `FAIL` (e-mail), `PT-MVP-08` `CONFLICT` (decisione richiesta), 2 `NSF` Admin (decisione richiesta), 0% Pilot Validation (nessun pilota reale ancora arruolato — atteso a questo stadio, non un difetto).
+55% delle capability MVP sono `LIVE` in senso stretto (deployate-presunte, live-testate, senza gap) — invariato dal fix OD-02 (`PT-MVP-08` non era `LIVE` prima, non lo è ancora ora: era `CONFLICT`, è `BUILT`). Le condizioni residue: `DG-09`/`CP-09` `FAIL` (e-mail), `PT-MVP-08` in attesa di verifica live post-deploy (non più una decisione aperta — la decisione A/B è stata presa, resta solo l'esecuzione), 2 `NSF` Admin (decisione richiesta), 0% Pilot Validation (nessun pilota reale ancora arruolato — atteso a questo stadio, non un difetto).
 
 ### SEPTEMBER LAUNCH DECISION: **NOT YET ASSESSABLE — ON TRACK**
 Finché Golden Journey (OD-03) e Visual/Mobile Acceptance (OD-04) non sono eseguite dal vivo, questo verdetto non può essere né GO né NO-GO — sarebbe una dichiarazione anticipata non supportata da evidenza. "ON TRACK" riflette che nessuna delle condizioni aperte oggi (email, OD-02, A-MVP-05/07) richiede nuovo sviluppo sostanziale prima di poter eseguire quelle verifiche: sono azioni, non blocchi architetturali.

@@ -1,9 +1,9 @@
 # TRAMA — Requirements Traceability Matrix
 
 **Documentation Package**: `TRAMA_DOCUMENTATION_PACKAGE_20260805_v1`
-**Package version**: v2 (QA Remediation) — **supersedes** v1 (`AS_OF_COMMIT bd03067`)
-**As-of timestamp**: 2026-08-05T20:10:00Z (UTC)
-**As-of commit (AS_OF_COMMIT)**: `0fc210a7da8abd98bbbfd64a0bb97eef2c26c2b3`
+**Package version**: v3 (OD-02 fix update) — **supersedes** v2 (`AS_OF_COMMIT 0fc210a`)
+**As-of timestamp**: 2026-08-06T09:45:00Z (UTC)
+**As-of commit (AS_OF_COMMIT)**: `16b0527ba33222c63677735dca3bc57ed98221b3`
 **Status**: current
 
 Sezione 6, allineata al Master Requirement Catalog v2. Stessa base (43 unità), stessi conteggi (verificati per coerenza incrociata tra i due documenti, vedi `TRAMA_DOCUMENTATION_QA_REPORT.md`).
@@ -38,7 +38,7 @@ Sezione 6, allineata al Master Requirement Catalog v2. Stessa base (43 unità), 
 | PT-MVP-05 | Walkthrough task-based | `app/one/WalkthroughCard.tsx`, Spotlight | — | walkthrough/spotlight spec | Sì (test dal vivo Fabrizio) | **LIVE** |
 | PT-MVP-06 | Centro e sede | Onboarding centro | migration_09 | onboarding spec | Sì | **LIVE** |
 | PT-MVP-07 | Wizard attività | `ActivityEditForm.tsx` | migration_11 | activity wizard spec | No | **BUILT** |
-| PT-MVP-08 | Disponibilità strutturata | `AvailabilityCalendar.tsx` | migration_18 | availability spec | Sì | **CONFLICT** — vedi OD-02, decisione A/B richiesta |
+| PT-MVP-08 | Disponibilità strutturata | `AvailabilityCalendar.tsx`, `lib/availability-bulk.ts` | migration_18 (nessuna nuova migrazione: colonne già esistenti) | availability spec + `tests/gestore/calendario-bulk.spec.ts` (8 test puri PASS) | No | **BUILT** — OD-02 risolto (decisione A, commit `16b0527`), in attesa di verifica live |
 | PT-MVP-09 | Inbox richieste | Inbox prenotazioni | — | inbox spec | Sì (16 booking) | **LIVE** |
 | PT-MVP-10 | Dashboard task-first | `/center/one` | — | command center Partner spec | Sì | **LIVE** |
 | PT-MVP-11 | Trust telemetry minima | Raccolta completezza/verifica/SLA | — | — | No | **PARTIAL** |
@@ -60,13 +60,13 @@ Sezione 6, allineata al Master Requirement Catalog v2. Stessa base (43 unità), 
 |---|---:|
 | LIVE | 25 |
 | LIVE_WITH_GAP | 3 |
-| BUILT | 8 |
+| BUILT | 9 |
 | PARTIAL | 4 |
-| CONFLICT | 1 |
+| CONFLICT | 0 |
 | SPECIFIED_NOT_FOUND | 2 |
 | **Totale** | **43** |
 
-Verifica di coerenza incrociata: questi conteggi sono identici a quelli in `TRAMA_MASTER_REQUIREMENT_CATALOG.md` §3 e alla riga "Totale" di `TRAMA_REQUIREMENTS_COVERAGE_HEATMAP.md` §1-3 (dopo la corretta scomposizione Epic/capability) — verificato per confronto diretto, non per costruzione indipendente (evita la stessa classe di errore che ha prodotto l'incongruenza della v1).
+**Aggiornamento post-fix OD-02 (06/08/2026, commit `16b0527`)**: `PT-MVP-08` passa da `CONFLICT` a `BUILT` (CONFLICT: 1→0, BUILT: 8→9). Verifica di coerenza incrociata: questi conteggi sono identici a quelli in `TRAMA_MASTER_REQUIREMENT_CATALOG.md` §3 (aggiornato in parallelo) e alla riga "Totale" di `TRAMA_REQUIREMENTS_COVERAGE_HEATMAP.md` §1-3 — verificato per confronto diretto, non per costruzione indipendente (evita la stessa classe di errore che ha prodotto l'incongruenza della v1).
 
 ## Limite dichiarato
 

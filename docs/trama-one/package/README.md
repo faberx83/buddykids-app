@@ -1,11 +1,15 @@
 # TRAMA — Documentation Package `TRAMA_DOCUMENTATION_PACKAGE_20260805_v1`
 
-**Package version**: v2 (QA Remediation) — **supersedes** v1 (`AS_OF_COMMIT bd03067`, commit `0fc210a`)
-**As-of timestamp**: 2026-08-05T20:10:00Z (UTC)
-**As-of commit (AS_OF_COMMIT)**: `0fc210a7da8abd98bbbfd64a0bb97eef2c26c2b3`
+**Package version**: v3 (OD-02 fix update) — **supersedes** v2 (`AS_OF_COMMIT 0fc210a`)
+**As-of timestamp**: 2026-08-06T09:45:00Z (UTC)
+**As-of commit (AS_OF_COMMIT)**: `16b0527ba33222c63677735dca3bc57ed98221b3`
 **Status**: current
 
-Punto di ingresso unico al package prodotto dal SAL/Requirements Coverage Heatmap/Documentation Package Consolidation Checkpoint del 05/08/2026, poi corretto da un passaggio di QA Remediation (conteggi, metriche, stati, checkpoint) nello stesso giorno. Questo file è puramente organizzativo/descrittivo: non implementa, non corregge gap applicativi, non anticipa nuovi sprint (regola esplicita del checkpoint).
+Punto di ingresso unico al package prodotto dal SAL/Requirements Coverage Heatmap/Documentation Package Consolidation Checkpoint del 05/08/2026, corretto da un passaggio di QA Remediation (conteggi, metriche, stati, checkpoint) nello stesso giorno, poi aggiornato il 06/08/2026 dopo l'implementazione del fix OD-02 (Calendario disponibilità Partner, bulk "Giornata particolare"). Questo file è puramente organizzativo/descrittivo: non implementa, non corregge gap applicativi, non anticipa nuovi sprint (regola esplicita del checkpoint) — l'unica eccezione è il fix OD-02, esplicitamente commissionato da Fabrizio con una decisione di scope separata (vedi `TRAMA_OPEN_DECISIONS_AND_GAPS.md`, OD-02).
+
+## Cosa è cambiato nella v3 (fix OD-02, 06/08/2026)
+
+`PT-MVP-08` (Disponibilità strutturata, Calendario Partner) passa da `CONFLICT` a `BUILT`: Fabrizio ha deciso **FIX BEFORE BETA**, il fix del bulk-select "Giornata particolare" è stato implementato (commit `16b0527`, nuovo `lib/availability-bulk.ts` + `AvailabilityCalendar.tsx` esteso), verificato staticamente (tsc/eslint puliti, 8 test puri PASS) e resta in attesa di verifica live post-deploy. Aggiornati: Master Requirement Catalog, Traceability Matrix, Coverage Heatmap, SAL, Open Decisions. Nessun'altra parte del package è cambiata.
 
 ## Cosa è cambiato nella v2 (QA Remediation) rispetto alla v1
 
@@ -37,7 +41,7 @@ Documenti fuori da questa cartella ma richiamati: `docs/trama-one/analysis/MVP_S
 ## Cosa NON è questo package
 
 - Non è un nuovo sprint di sviluppo: nessun file applicativo è stato modificato per produrlo (né nel passaggio iniziale né in questo QA Remediation).
-- Non risolve in autonomia le incongruenze tra fonti né i conflitti tra requisiti e bug noti: li registra come `CONFLICT`/Open Decision con una decisione esplicita richiesta a Fabrizio (es. OD-02/PT-MVP-08), non li corregge.
+- Non risolve in autonomia le incongruenze tra fonti né i conflitti tra requisiti e bug noti: li registra come `CONFLICT`/Open Decision con una decisione esplicita richiesta a Fabrizio, e implementa il fix solo dopo quella decisione (es. OD-02/PT-MVP-08, risolto il 06/08/2026 dopo la decisione FIX BEFORE BETA di Fabrizio).
 - Non copre in modo verificato codice-per-codice gli 88 ID `DEFER`+`ROADMAP_TO_BE` del backlog Handbook completo (dichiarato esplicitamente nel Master Requirement Catalog, Parte B, e in `TRAMA_REQUIREMENT_ID_RECONCILIATION.md`).
 - Non dichiara alcun commit come "confermato in produzione": nessuna credenziale Vercel è disponibile in questo ambiente, quindi `DEPLOYED` è sempre "presunto", mai "confermato" (caveat strutturale, vedi Master Requirement Catalog).
 

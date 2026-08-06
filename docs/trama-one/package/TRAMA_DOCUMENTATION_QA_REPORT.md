@@ -1,9 +1,9 @@
 # TRAMA — Documentation QA Report (self-test automatico)
 
 **Documentation Package**: `TRAMA_DOCUMENTATION_PACKAGE_20260805_v1`
-**Package version**: v2 (QA Remediation)
-**As-of timestamp**: 2026-08-05T20:10:00Z (UTC)
-**As-of commit (AS_OF_COMMIT)**: `0fc210a7da8abd98bbbfd64a0bb97eef2c26c2b3`
+**Package version**: v3 (OD-02 fix update) — corpo del report invariato dal QA Remediation (v2), vedi addendum in fondo per il delta OD-02
+**As-of timestamp**: 2026-08-06T09:45:00Z (UTC)
+**As-of commit (AS_OF_COMMIT)**: `16b0527ba33222c63677735dca3bc57ed98221b3`
 **Status**: current
 
 Procedura di verifica ripetibile, richiesta esplicitamente da Fabrizio per sostituire il conteggio manuale (causa radice degli errori della v1, vedi OD-14). Ogni sezione sotto è **eseguita da script/comando**, non da lettura manuale, e il comando/metodo è riportato per essere ri-eseguibile ad ogni revisione futura del package.
@@ -49,11 +49,13 @@ Verifica manuale-assistita (conteggio righe per file, non narrativa): `TRAMA_MAS
 |---|---:|---:|---:|
 | LIVE | 25 | 25 | 8 (Epic) + 17 (capability) = 25 |
 | LIVE_WITH_GAP | 3 | 3 | 1 (Epic) + 2 (Partner, da §3 non-LIVE ma non NSF/CONFLICT) — coerente per composizione |
-| BUILT | 8 | 8 | 1 (Epic) + 7 (capability, da §2 Implementation Coverage "Parziale"/non-LIVE) — coerente per composizione |
+| BUILT | 9 | 9 | 1 (Epic) + 8 (capability, da §2 Implementation Coverage "Sì"/"Parziale" ma non-LIVE) — coerente per composizione |
 | PARTIAL | 4 | 4 | 2 (Epic) + 2 (capability) — coerente per composizione |
-| CONFLICT | 1 | 1 | 1 (PT-MVP-08, incluso in "Non-LIVE" Partner §3) |
+| CONFLICT | 0 | 0 | 0 (`PT-MVP-08` risolto in `BUILT`, fix OD-02 06/08) |
 | SPECIFIED_NOT_FOUND | 2 | 2 | 2 (Admin, incluso in "No" §2 Implementation Coverage) |
 | **Totale** | **43** | **43** | **43** (12 Epic + 31 capability) |
+
+Aggiornato il 06/08/2026 dopo il fix OD-02 (era: BUILT 8, CONFLICT 1 — vedi addendum in fondo per il dettaglio del delta).
 
 **Metodo**: confronto diretto riga-per-riga tra i tre documenti (non ricalcolo indipendente in questa sezione — il ricalcolo indipendente è alla Sezione 1 e 2 sopra). **Esito: PASS**, nessuna discrepanza trovata.
 
@@ -126,6 +128,22 @@ Verificato per lettura diretta di `TRAMA_OPEN_DECISIONS_AND_GAPS.md`: ID present
 **DOCUMENTATION QA: PASS.**
 
 Tutte le 8 verifiche sopra hanno esito PASS. Nessuna verifica ha richiesto una correzione durante l'esecuzione di questo report (le correzioni sono già state applicate nei documenti stessi prima di produrre questo report, non durante). Questo report è pensato per essere ri-eseguito (script `reconcile.py` + i comandi grep/ls sopra) ad ogni futura revisione del package, così da non ripetere l'errore della v1 (conteggi dichiarati senza verifica automatica).
+
+## Addendum (06/08/2026) — delta OD-02, self-test ripetuto sui documenti impattati
+
+Il fix di OD-02 (commit `16b0527`) ha cambiato lo stato di 1 riga su 43 (`PT-MVP-08`: `CONFLICT`→`BUILT`). Self-test ripetuto solo sulle sezioni impattate, per verificare che il ricalcolo non abbia introdotto nuove incongruenze:
+
+| Verifica | Esito |
+|---|---|
+| Somma OVERALL_STATUS ancora 43 dopo il ricalcolo (Catalog §3) | **PASS** — 25+3+9+4+0+2=43 |
+| Conteggio BUILT coerente tra Catalog (9) e Traceability Matrix (9) | **PASS** |
+| Conteggio CONFLICT coerente tra Catalog (0) e Traceability Matrix (0) | **PASS** |
+| MVP Capability Implementation Coverage (Heatmap §2) somma ancora 31 | **PASS** — 26+3+2=31 |
+| MVP Production Readiness (Heatmap §3) invariata (55%, 17/31) | **PASS** — confermato che `PT-MVP-08` non era `LIVE` prima e non lo è ora, quindi questa metrica non doveva cambiare — verificato che non sia cambiata per errore |
+| Nessun documento del package cita ancora `PT-MVP-08` come `CONFLICT` | **PASS** — verificato con grep su tutta la cartella `docs/trama-one/package/` |
+| AS_OF_COMMIT coerente (`16b0527`) sui 7 documenti impattati | **PASS** |
+
+**Esito addendum: PASS.**
 
 ## Limite dichiarato di questo self-test
 

@@ -1,9 +1,34 @@
 # TRAMA — Documentation Changelog
 
 **Documentation Package**: `TRAMA_DOCUMENTATION_PACKAGE_20260805_v1`
-**Package version**: v2 (QA Remediation)
-**As-of commit (AS_OF_COMMIT)**: `0fc210a7da8abd98bbbfd64a0bb97eef2c26c2b3`
+**Package version**: v3 (OD-02 fix update)
+**As-of commit (AS_OF_COMMIT)**: `16b0527ba33222c63677735dca3bc57ed98221b3`
 **Status**: current
+
+## 2026-08-06 — v3 (OD-02 fix update)
+
+Decisione di Fabrizio: "TRAMA — REVISIONE DECISIONE OD-02: FIX PRIMA DELLA BETA". Revoca la precedente ipotesi "B. ACCEPTED DEFER" (proposta nella v2 come una delle due opzioni A/B); decisione definitiva: **A. FIX BEFORE BETA**.
+
+**Root cause confermata prima del fix**: `BulkDraft` (`components/AvailabilityCalendar.tsx`) non includeva `specialEmoji`/`specialLabel` e sovrascriveva incondizionatamente `isOpen`/`capacity`/`discountPercent`/`lastMinute` su tutti i giorni selezionati. Le colonne `special_emoji`/`special_label` esistevano già su `activity_days` (`supabase/schema.sql`): nessuna migrazione necessaria, confermato prima di scrivere codice.
+
+**Fix implementato (commit `16b0527`)**:
+- `lib/availability-bulk.ts` (nuovo) — logica pura del bulk draft, testabile senza browser. Semantica esplicita a 3 stati per ogni campo (campo non modificato / valore impostato / valore esplicitamente rimosso), estesa anche ai 4 campi preesistenti (ora opt-in per giorno via checkbox "Includi"), per evitare la sovrascrittura accidentale di capacità/sconto/last-minute quando il Partner vuole cambiare solo la Giornata particolare.
+- `components/AvailabilityCalendar.tsx` — pannello bulk esteso con i toggle "Includi" e il nuovo blocco Giornata particolare (azioni Non modificare/Imposta/Rimuovi, stesso set di emoji del pannello a giorno singolo, riepilogo "valore attuale"/"misto"). Nessuna modifica al pannello a giorno singolo, a `handleSaveAll`, a Booking/JourneyContext/state machine/Feature Control Center/Trust Score.
+- `tests/gestore/calendario-bulk.spec.ts` (nuovo) — 8 test puri (TC-N626..N633, Test A/C/D/E/F richiesti da Fabrizio), eseguiti con successo in questo sandbox; 3 test E2E (TC-N634..N636, Test B/G/H — persistenza/regressione giorno singolo/mobile), skippati per assenza di deploy/credenziali, verificabili da Fabrizio col prossimo deploy.
+
+**Verifiche statiche**: tsc --noEmit pulito, eslint pulito sui file toccati, 107 test "no browser" dell'intero progetto verdi (nessuna regressione).
+
+**File del package documentale aggiornati**:
+- `TRAMA_MASTER_REQUIREMENT_CATALOG.md` (v3) — `PT-MVP-08` CONFLICT→BUILT, §3 conteggi ricalcolati (BUILT 8→9, CONFLICT 1→0), §4 riscritta.
+- `TRAMA_REQUIREMENTS_TRACEABILITY_MATRIX.md` (v3) — riga PT-MVP-08 e tabella di chiusura aggiornate.
+- `TRAMA_REQUIREMENTS_COVERAGE_HEATMAP.md` (v3) — §2 MVP Capability Implementation Coverage ricalcolata (Sì 25→26, Parziale 4→3); §3 Production Readiness invariata (PT-MVP-08 non era LIVE prima, non lo è ora).
+- `TRAMA_PROJECT_SAL_20260805.md` (v3) — Parte 5 (scorecard Partner), Parte 8 (OD-02), Parte 11 (CP-03), Parte 12 (ownership), Parte 13 (verdetto MVP Implementation Readiness) aggiornate.
+- `TRAMA_OPEN_DECISIONS_AND_GAPS.md` (v3) — OD-02 avanzato a stato "IMPLEMENTED — AWAITING LIVE TEST".
+- `TRAMA_DOCUMENTATION_PACKAGE_MANIFEST.md`, `README.md`, questo file — coerenza header (`AS_OF_COMMIT 16b0527`, package version v3).
+
+**File non modificati in questo passaggio** (nessun impatto): `TRAMA_CANONICAL_SOURCE_REGISTER.md`, `TRAMA_REQUIREMENT_ID_RECONCILIATION.md`, `TRAMA_CANONICAL_RELEASE_MODEL.md`.
+
+**Residuo per Fabrizio**: eseguire il prossimo deploy e i 3 test E2E (TC-N634..N636) per chiudere OD-02 (stato 3, CLOSED) e valutare se `PT-MVP-08` può diventare `LIVE`.
 
 ## 2026-08-05 (sera) — v2 (QA Remediation)
 

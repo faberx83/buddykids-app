@@ -1,9 +1,9 @@
 # TRAMA — Master Requirement Catalog
 
 **Documentation Package**: `TRAMA_DOCUMENTATION_PACKAGE_20260805_v1`
-**Package version**: v2 (QA Remediation) — **supersedes** v1 (`AS_OF_COMMIT bd03067`)
-**As-of timestamp**: 2026-08-05T20:10:00Z (UTC)
-**As-of commit (AS_OF_COMMIT)**: `0fc210a7da8abd98bbbfd64a0bb97eef2c26c2b3` (HEAD alla precondizione di questo passaggio; nessun commit applicativo intercorso — vedi `TRAMA_DOCUMENTATION_QA_REPORT.md` per il delta completo vs `bd03067`/`0fc210a`)
+**Package version**: v3 (OD-02 fix update) — **supersedes** v2 (`AS_OF_COMMIT 0fc210a`)
+**As-of timestamp**: 2026-08-06T09:45:00Z (UTC)
+**As-of commit (AS_OF_COMMIT)**: `16b0527ba33222c63677735dca3bc57ed98221b3` (fix OD-02, applicativo — vedi `TRAMA_DOCUMENTATION_CHANGELOG.md` per il delta completo)
 **Status**: current
 
 Sezione 4 del checkpoint, versione corretta dopo il QA Remediation richiesto da Fabrizio. Regola non negoziabile: **nessun ID nuovo inventato**. Ogni riga riusa un identificativo esistente.
@@ -82,7 +82,7 @@ Sezione 4 del checkpoint, versione corretta dopo il QA Remediation richiesto da 
 | PT-MVP-05 | Walkthrough task-based | E03 | Sì | Sì (testato dal vivo da Fabrizio, DEC-69…DEC-74) | No | **LIVE** |
 | PT-MVP-06 | Centro e sede | E03/E04 | Sì | Sì (centro reale creato) | No | **LIVE** |
 | PT-MVP-07 | Wizard attività | E04 | Sì | **No** — nessuna evidenza citata di un run live distinto | No | **BUILT** |
-| PT-MVP-08 | Disponibilità strutturata | E04 | Parziale/Disputato | Sì (uso generale) | No | **CONFLICT** — vedi §4, OD-02: bug confermato sulla selezione multipla "Giornata particolare", classificazione LIVE della v1 era incompatibile con lo stesso bug dichiarato P0/non bloccante nello stesso documento. Non risolto qui: richiede decisione A/B di Fabrizio |
+| PT-MVP-08 | Disponibilità strutturata | E04 | Sì | No | No | **BUILT** — vedi §4. OD-02 risolto: Fabrizio ha scelto **A. FIX BEFORE BETA** (revocando la precedente ipotesi B), il fix bulk "Giornata particolare" è implementato e verificato staticamente (commit `16b0527`), non ancora deployato né testato dal vivo |
 | PT-MVP-09 | Inbox richieste | E06 | Sì | Sì (16 booking reali risposti) | No | **LIVE** |
 | PT-MVP-10 | Dashboard task-first | E08 | Sì | Sì (uso continuativo) | No | **LIVE** |
 | PT-MVP-11 | Trust telemetry minima | — | Parziale (per design, score non mostrato) | No | No | **PARTIAL** |
@@ -109,19 +109,27 @@ Sezione 4 del checkpoint, versione corretta dopo il QA Remediation richiesto da 
 |---|---:|---:|---:|---:|---:|
 | LIVE | 8 | 7 | 5 | 5 | **25** |
 | LIVE_WITH_GAP | 1 | 0 | 2 | 0 | **3** |
-| BUILT | 1 | 1 | 3 | 3 | **8** |
+| BUILT | 1 | 1 | 4 | 3 | **9** |
 | PARTIAL | 2 | 1 | 1 | 0 | **4** |
-| CONFLICT | 0 | 0 | 1 | 0 | **1** |
+| CONFLICT | 0 | 0 | 0 | 0 | **0** |
 | SPECIFIED_NOT_FOUND | 0 | 0 | 0 | 2 | **2** |
 | **Somma** | **12** | **9** | **12** | **10** | **43** |
 
-Verifica: 25+3+8+4+1+2 = 43. ✓ Somma per prodotto: 12+9+12+10 = 43. ✓ Nessun ID contato due volte (verificato per costruzione: ogni riga di §2.1-2.4 è un solo ID).
+Verifica: 25+3+9+4+0+2 = 43. ✓ Somma per prodotto: 12+9+12+10 = 43. ✓ Nessun ID contato due volte (verificato per costruzione: ogni riga di §2.1-2.4 è un solo ID).
+
+**Aggiornamento post-fix OD-02 (06/08/2026)**: `PT-MVP-08` passa da `CONFLICT` a `BUILT` (commit `16b0527`) — la riga `CONFLICT` resta a 0 per tracciabilità, non rimossa. `BUILT` sale da 8 a 9 (Partner: 3→4). Nessun'altra riga cambia.
 
 **Scorecard Admin corretta**: **5 `LIVE`** su 10 (non 7 né 8). Il numero è sceso rispetto a entrambe le cifre precedenti perché la rivalutazione con la regola `LIVE` più severa ha declassato A-MVP-04 e A-MVP-09 da `LIVE` a `BUILT` (nessuna evidenza di uso reale/produzione verificata), non per un semplice errore di conta — la v1 aveva sia un errore di conta (7 vs 8 nella narrativa) sia una classificazione troppo permissiva (8 vs 5 dopo la rivalutazione).
 
-## 4. OD-02 / PT-MVP-08 — CONFLICT non risolto
+## 4. OD-02 / PT-MVP-08 — CONFLICT risolto, fix implementato, in attesa di verifica live
 
-Vedi `TRAMA_OPEN_DECISIONS_AND_GAPS.md`, OD-02 aggiornato con la richiesta di decisione A/B a Fabrizio. Fino a quella decisione, `PT-MVP-08` resta `CONFLICT` in questo catalogo — non `LIVE`, non `PARTIAL` per iniziativa autonoma.
+**Decisione di Fabrizio (06/08/2026): OD-02 — FIX BEFORE BETA.** Revoca la precedente ipotesi "B. ACCEPTED DEFER". Il `CONFLICT` è chiuso: `PT-MVP-08` non è più in stato contraddittorio, perché il gap che lo causava (bulk "Giornata particolare" non applicata) è stato implementato.
+
+Root cause confermata prima del fix: `BulkDraft` (`components/AvailabilityCalendar.tsx`) non includeva `specialEmoji`/`specialLabel`, e sovrascriveva incondizionatamente `isOpen`/`capacity`/`discountPercent`/`lastMinute` su tutti i giorni selezionati. Le colonne `special_emoji`/`special_label` esistevano già su `activity_days` (`supabase/schema.sql`) — nessuna migrazione necessaria, confermato prima di scrivere codice.
+
+Fix (commit `16b0527`): nuovo `lib/availability-bulk.ts` con semantica esplicita a 3 stati per ogni campo del bulk draft (campo non modificato / valore impostato / valore esplicitamente rimosso), applicata sia alla Giornata particolare sia ai 4 campi preesistenti (ora opt-in per giorno, risolvendo anche la sovrascrittura accidentale). UI in `components/AvailabilityCalendar.tsx` estesa di conseguenza. Nessuna modifica a Booking/JourneyContext/state machine/Feature Control Center/Trust Score.
+
+Stato attuale: `IMPLEMENTED=Sì`, `DEPLOYED=No`, `STATIC_TESTED=Sì` (tsc/eslint puliti, 8 test puri PASS in `tests/gestore/calendario-bulk.spec.ts` — Test A/C/D/E/F richiesti da Fabrizio), `LIVE_TESTED=No`, `PILOT_VALIDATED=No` → `OVERALL_STATUS = BUILT`, non `LIVE`, per istruzione esplicita di Fabrizio ("non dichiararlo LIVE prima del test in produzione"). 3 test E2E aggiuntivi (persistenza, regressione giorno singolo, mobile) sono scritti e in attesa del prossimo deploy per l'esecuzione. Percorso di stato OD-02: 1. OPEN — FIX BEFORE BETA (chiuso) → **2. IMPLEMENTED — AWAITING LIVE TEST (stato attuale)** → 3. CLOSED (solo dopo verifica live).
 
 ## 5. A-MVP-05 e A-MVP-07 — classificazione univoca
 

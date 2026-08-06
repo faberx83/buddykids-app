@@ -1,28 +1,28 @@
 # TRAMA — Documentation Package Manifest
 
 **Package**: `TRAMA_DOCUMENTATION_PACKAGE_20260805_v1`
-**Package version**: v2 (QA Remediation) — **supersedes** v1 (`AS_OF_COMMIT bd03067`, commit `0fc210a`)
-**As-of timestamp**: 2026-08-05T20:10:00Z (UTC)
-**As-of commit (AS_OF_COMMIT)**: `0fc210a7da8abd98bbbfd64a0bb97eef2c26c2b3`
+**Package version**: v3 (OD-02 fix update) — **supersedes** v2 (`AS_OF_COMMIT 0fc210a`)
+**As-of timestamp**: 2026-08-06T09:45:00Z (UTC)
+**As-of commit (AS_OF_COMMIT)**: `16b0527ba33222c63677735dca3bc57ed98221b3`
 **Status**: current
 
-Punto di ingresso file-per-file al package. Questo file elenca lo stato di ogni documento con un `AS_OF_COMMIT` unico e coerente in tutto il package — la v1 di questo Manifest citava contemporaneamente `bd03067` e `8335d3b` e dichiarava "non creato" alcuni documenti poi effettivamente prodotti; entrambe le incongruenze sono corrette qui (vedi `TRAMA_DOCUMENTATION_CHANGELOG.md` per il dettaglio).
+Punto di ingresso file-per-file al package. Questo file elenca lo stato di ogni documento con un `AS_OF_COMMIT` unico e coerente in tutto il package — la v1 di questo Manifest citava contemporaneamente `bd03067` e `8335d3b` e dichiarava "non creato" alcuni documenti poi effettivamente prodotti; entrambe le incongruenze sono corrette dal QA Remediation (v2, vedi `TRAMA_DOCUMENTATION_CHANGELOG.md` per il dettaglio). Questa v3 aggiorna solo i documenti impattati dal fix di OD-02 (06/08/2026, commit applicativo `16b0527`) — non un nuovo checkpoint completo.
 
 ## File di questo package
 
 | File | Ruolo | Package version | As-of timestamp | AS_OF_COMMIT | Status | Supersedes | Superseded by |
 |---|---|---|---|---|---|---|---|
-| `TRAMA_CANONICAL_SOURCE_REGISTER.md` | Inventario fonti canoniche e ordine di prevalenza | v1 (invariato) | 2026-08-05T18:40:00Z | `0fc210a` | current | — | — |
-| `TRAMA_MASTER_REQUIREMENT_CATALOG.md` | Catalogo unico requisiti — 43 unità MVP (7 dimensioni di stato) + 148 ID CR/PCR/ACR | v2 (QA Remediation) | 2026-08-05T20:10:00Z | `0fc210a` | current | v1 (`bd03067`) | — |
-| `TRAMA_REQUIREMENT_ID_RECONCILIATION.md` | Riconciliazione a insiemi dei 148 ID CR/PCR/ACR (MVP/DEFER/ROADMAP_TO_BE), verificata da script | v1 (nuovo in questo QA Remediation) | 2026-08-05T20:10:00Z | `0fc210a` | current | — | — |
-| `TRAMA_CANONICAL_RELEASE_MODEL.md` | Mapping delle 4 numerazioni di sprint (A/B/C/D) | v2 (solo header aggiornato, contenuto invariato) | 2026-08-05T20:10:00Z | `0fc210a` | current | v1 (`bd03067`) | — |
-| `TRAMA_REQUIREMENTS_TRACEABILITY_MATRIX.md` | Requisito→file/componente→test→stato, 43 righe | v2 (QA Remediation) | 2026-08-05T20:10:00Z | `0fc210a` | current | v1 (`bd03067`) | — |
-| `TRAMA_REQUIREMENTS_COVERAGE_HEATMAP.md` | 4 metriche indipendenti + 3 viste roadmap per prodotto (148 righe) + journey view | v2 (QA Remediation) | 2026-08-05T20:10:00Z | `0fc210a` | current | v1 (`bd03067`) | — |
-| `TRAMA_PROJECT_SAL_20260805.md` | SAL — 3 scorecard prodotto, `DG-01…DG-10`, `CP-01…CP-10`, 3 verdetti separati | v2 (QA Remediation) | 2026-08-05T20:10:00Z | `0fc210a` | current | v1 (`bd03067`) | — |
-| `TRAMA_OPEN_DECISIONS_AND_GAPS.md` | Registro decisioni/gap aperti (OD-01…OD-14) | v2 (QA Remediation) | 2026-08-05T20:10:00Z | `0fc210a` | current | v1 (`bd03067`) | — |
-| `TRAMA_DOCUMENTATION_QA_REPORT.md` | Self-test automatico del package (conteggi, duplicati, mancanti, coerenza header) | v1 (nuovo in questo QA Remediation) | 2026-08-05T20:10:00Z | `0fc210a` | current | — | — |
-| `README.md` (questa cartella) | Ingresso unico al package | v2 (QA Remediation) | 2026-08-05T20:10:00Z | `0fc210a` | current | v1 (`bd03067`) | — |
-| `TRAMA_DOCUMENTATION_CHANGELOG.md` | Changelog del package | v2 (QA Remediation) | 2026-08-05T20:10:00Z | `0fc210a` | current | v1 (`bd03067`) | — |
+| `TRAMA_CANONICAL_SOURCE_REGISTER.md` | Inventario fonti canoniche e ordine di prevalenza | v1 (invariato) | 2026-08-05T18:40:00Z | `0fc210a` (fonti esterne immutate, vedi nota nel documento) | current | — | — |
+| `TRAMA_MASTER_REQUIREMENT_CATALOG.md` | Catalogo unico requisiti — 43 unità MVP (7 dimensioni di stato) + 148 ID CR/PCR/ACR | **v3** (OD-02 fix: `PT-MVP-08` CONFLICT→BUILT) | 2026-08-06T09:45:00Z | `16b0527` | current | v2 (`0fc210a`) | — |
+| `TRAMA_REQUIREMENT_ID_RECONCILIATION.md` | Riconciliazione a insiemi dei 148 ID CR/PCR/ACR (MVP/DEFER/ROADMAP_TO_BE), verificata da script | v1 (invariato) | 2026-08-05T20:10:00Z | `0fc210a` | current | — | — |
+| `TRAMA_CANONICAL_RELEASE_MODEL.md` | Mapping delle 4 numerazioni di sprint (A/B/C/D) | v2 (invariato) | 2026-08-05T20:10:00Z | `0fc210a` | current | v1 (`bd03067`) | — |
+| `TRAMA_REQUIREMENTS_TRACEABILITY_MATRIX.md` | Requisito→file/componente→test→stato, 43 righe | **v3** (OD-02 fix) | 2026-08-06T09:45:00Z | `16b0527` | current | v2 (`0fc210a`) | — |
+| `TRAMA_REQUIREMENTS_COVERAGE_HEATMAP.md` | 4 metriche indipendenti + 3 viste roadmap per prodotto (148 righe) + journey view | **v3** (OD-02 fix: §2 Implementation Coverage ricalcolata) | 2026-08-06T09:45:00Z | `16b0527` | current | v2 (`0fc210a`) | — |
+| `TRAMA_PROJECT_SAL_20260805.md` | SAL — 3 scorecard prodotto, `DG-01…DG-10`, `CP-01…CP-10`, 3 verdetti separati | **v3** (OD-02 fix: Parte 5/8/11/12/13 aggiornate) | 2026-08-06T09:45:00Z | `16b0527` | current | v2 (`0fc210a`) | — |
+| `TRAMA_OPEN_DECISIONS_AND_GAPS.md` | Registro decisioni/gap aperti (OD-01…OD-14) | **v3** (OD-02: IMPLEMENTED — AWAITING LIVE TEST) | 2026-08-06T09:45:00Z | `16b0527` | current | v2 (`0fc210a`) | — |
+| `TRAMA_DOCUMENTATION_QA_REPORT.md` | Self-test automatico del package (conteggi, duplicati, mancanti, coerenza header) | v1 + addendum OD-02 | 2026-08-06T09:45:00Z | `16b0527` | current | — | — |
+| `README.md` (questa cartella) | Ingresso unico al package | **v3** | 2026-08-06T09:45:00Z | `16b0527` | current | v2 (`0fc210a`) | — |
+| `TRAMA_DOCUMENTATION_CHANGELOG.md` | Changelog del package | **v3** | 2026-08-06T09:45:00Z | `16b0527` | current | v2 (`0fc210a`) | — |
 
 Documenti fuori da questa cartella ma richiamati (non fanno parte di questo package, letti come evidenza — freschezza dichiarata separatamente):
 
