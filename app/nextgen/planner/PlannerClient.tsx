@@ -71,6 +71,7 @@ export default function PlannerClient({
   overlaps,
   budget,
   priorityIndex,
+  todayIso,
   recommendations,
   missions,
   reminders,
@@ -87,6 +88,10 @@ export default function PlannerClient({
   overlaps: KidOverlap[];
   budget: BudgetSummary;
   priorityIndex: number | null;
+  // BUG CORRETTO 06/08/2026 (segnalato da Fabrizio) — data odierna (server,
+  // stessa già usata per i Promemoria) per marcare le settimane già
+  // trascorse come "past" (chiuse) invece di "scoperta"/"priorità".
+  todayIso: string;
   recommendations: SmartMatch[];
   missions: Mission[];
   reminders: Reminder[];
@@ -432,7 +437,12 @@ export default function PlannerClient({
           <div className="flex items-end gap-1">
             {planner.weeks.map((w) => {
               const hasOverlap = overlapsByWeekIndex.has(w.index);
-              const status = computeWeekStatus(w, kids.length, hasOverlap, w.index === priorityIndex);
+              const status = computeWeekStatus(
+                { ...w, isPast: w.endDate < todayIso },
+                kids.length,
+                hasOverlap,
+                w.index === priorityIndex
+              );
               return (
                 <button
                   key={w.index}
@@ -575,9 +585,19 @@ export default function PlannerClient({
                         // disaccordarsi sulla stessa settimana. Ora entrambe
                         // usano la STESSA computeWeekStatus, garantendo che
                         // striscia e Timeline siano sempre coerenti.
-                        const status = computeWeekStatus(w, kids.length, hasOverlap, w.index === priorityIndex);
+                        const status = computeWeekStatus(
+                          { ...w, isPast: w.endDate < todayIso },
+                          kids.length,
+                          hasOverlap,
+                          w.index === priorityIndex
+                        );
                         const isPartial = status === "partial";
                         const isAwaiting = status === "awaiting";
+                        // BUG CORRETTO 06/08/2026 (segnalato da Fabrizio): una
+                        // settimana scoperta ma già passata non è più
+                        // "azionabile" — niente più CTA "Riempi", niente più
+                        // sfondo "priorità".
+                        const isPastUncovered = status === "past";
                         const color = w.activityTagColor ?? "sky";
                         const rowBg = w.dismissed
                           ? "bg-white"
@@ -587,9 +607,11 @@ export default function PlannerClient({
                               : isPartial || hasOverlap
                                 ? "bg-[#FFF7E8]"
                                 : lightBgClasses[color]
-                            : w.index === priorityIndex
-                              ? "bg-trama-lilac/20"
-                              : "bg-white";
+                            : isPastUncovered
+                              ? "bg-bg"
+                              : w.index === priorityIndex
+                                ? "bg-trama-lilac/20"
+                                : "bg-white";
 
                         // SPRINT CORRETTIVO — id + anello viola temporaneo:
                         // bersaglio dello scroll-to + evidenziazione quando
@@ -641,6 +663,8 @@ export default function PlannerClient({
                                     ? " · in attesa di conferma del centro"
                                     : isPartial && ` · manca ${kids.length - w.coveredKids.length} bambino/i`}
                                 </span>
+                              ) : isPastUncovered ? (
+                                <span className="text-[12px] font-medium text-ink-3">Settimana passata</span>
                               ) : (
                                 <span className="text-[12px] font-medium text-ink-3">
                                   Scoperta{w.index === priorityIndex ? " · priorità" : ""}
@@ -731,7 +755,7 @@ export default function PlannerClient({
                             }`}
                           >
                             {rowContent}
-                            {!w.dismissed && !w.covered && (
+                            {!w.dismissed && !w.covered && !isPastUncovered && (
                               <Link
                                 href="/nextgen/search"
                                 className="flex-shrink-0 rounded-full bg-trama-violet px-3 py-1.5 text-[11px] font-bold text-white active:scale-[0.97]"

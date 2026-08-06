@@ -72,10 +72,15 @@ export default async function NextgenPlannerPage() {
 
   const overlaps = computeKidOverlaps(bookings);
   const budget = computeBudgetSummary(bookings, activities);
-  const priorityIndex = computePriorityWeekIndex(planner.weeks);
+  const todayIso = new Date().toISOString().slice(0, 10);
+  // BUG CORRETTO 06/08/2026 (segnalato da Fabrizio: "il motore deve sempre
+  // funzionare in relazione al timestamp reale... le settimane prima devono
+  // già essere non modificabili") — todayIso passato a computePriorityWeekIndex
+  // cosi' una settimana già trascorsa e mai coperta non venga più segnalata
+  // "priorità" (vedi lib/nextgen/planner-insights.ts).
+  const priorityIndex = computePriorityWeekIndex(planner.weeks, todayIso);
   const priorityWeek = planner.weeks.find((w) => w.index === priorityIndex) ?? null;
   const missions = computeMissions(planner, bookings, activities, kids);
-  const todayIso = new Date().toISOString().slice(0, 10);
   const reminders = computeReminders(planner, bookings, priorityIndex, overlaps, budget, profile.seasonBudgetTarget, todayIso, kids);
 
   const recommendations = priorityWeek
@@ -92,6 +97,7 @@ export default async function NextgenPlannerPage() {
       overlaps={overlaps}
       budget={budget}
       priorityIndex={priorityIndex}
+      todayIso={todayIso}
       recommendations={recommendations}
       missions={missions}
       reminders={reminders}

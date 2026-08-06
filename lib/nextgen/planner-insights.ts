@@ -197,10 +197,25 @@ export function computePerKidCoverage(planner: PlannerData, kids: Kid[]): KidCov
 // invece di essere estratto da PlannerView (componente client "use client" di
 // LEGACY, non un modulo lib): stessa regola, zero rischio di toccare
 // PlannerView.
+//
+// BUG CORRETTO 06/08/2026 (segnalato da Fabrizio: "il motore deve sempre
+// funzionare in relazione al timestamp reale... le settimane prima devono
+// già essere non modificabili") — questa funzione non aveva NESSUNA
+// consapevolezza della data odierna: una settimana già passata e mai
+// coperta poteva essere segnalata "priorità" (viola) anche se non c'è più
+// nulla da poter prenotare per quella settimana. todayIso (opzionale, per
+// non rompere eventuali altri chiamanti/test che non lo passano — in quel
+// caso il comportamento resta quello di prima, nessuna esclusione)
+// esclude le settimane il cui endDate è già trascorso dai candidati a
+// "priorità": possono ancora contare come "coperta"/riferimento per il
+// calcolo del gap (coveredBefore/coveredAfter restano invariati), ma non
+// possono più essere IL risultato restituito.
 export function computePriorityWeekIndex(
-  weeks: { index: number; covered: boolean; dismissed: boolean }[]
+  weeks: { index: number; covered: boolean; dismissed: boolean; endDate?: string }[],
+  todayIso?: string
 ): number | null {
-  const neededUncovered = weeks.filter((w) => !w.covered && !w.dismissed);
+  const isPast = (w: { endDate?: string }) => Boolean(todayIso && w.endDate && w.endDate < todayIso);
+  const neededUncovered = weeks.filter((w) => !w.covered && !w.dismissed && !isPast(w));
   if (neededUncovered.length === 0) return null;
 
   const coveredBefore = (idx: number) => weeks.some((w) => w.index < idx && w.covered);
@@ -216,7 +231,12 @@ export function computePriorityWeekIndex(
 // sparso, solo per il colore di sfondo) nella riga della Timeline di
 // PlannerClient.tsx — estratta qui come funzione pura riusabile, cosi la
 // striscia compatta e la Timeline restano sempre coerenti fra loro.
-export type WeekStatus = "dismissed" | "covered" | "partial" | "conflict" | "priority" | "uncovered" | "awaiting";
+// BUG CORRETTO 06/08/2026 (segnalato da Fabrizio) — "past" è un nuovo stato:
+// una settimana già trascorsa e mai coperta non è più "scoperta" (si può
+// ancora prenotare) né tantomeno "priorità" (viola, "occupatene subito") —
+// è semplicemente chiusa, non c'è più nulla da poter fare per quella
+// settimana specifica.
+export type WeekStatus = "dismissed" | "covered" | "partial" | "conflict" | "priority" | "uncovered" | "awaiting" | "past";
 
 export function computeWeekStatus(
   week: {
@@ -229,6 +249,12 @@ export function computeWeekStatus(
     // è la settimana intera organizzata — va mostrata "parziale", stesso
     // trattamento visivo già usato quando solo alcuni fratelli sono coperti.
     dayBookingOnly?: boolean;
+    // BUG CORRETTO 06/08/2026 (segnalato da Fabrizio: "il motore deve sempre
+    // funzionare in relazione al timestamp reale") — true se week.endDate è
+    // già trascorso rispetto a oggi. Opzionale: chi non lo passa (nessun
+    // chiamante pre-esistente lo faceva) ottiene lo stesso comportamento di
+    // prima, nessuna settimana viene mai marcata "past".
+    isPast?: boolean;
   },
   totalKids: number,
   hasOverlap: boolean,
@@ -247,6 +273,11 @@ export function computeWeekStatus(
     if (totalKids > 1 && week.coveredKids.length > 0 && week.coveredKids.length < totalKids) return "partial";
     return "covered";
   }
+  // Una settimana coperta resta "covered"/"partial"/"conflict"/"awaiting"
+  // anche se ormai passata (è storia, non va nascosta) — solo lo stato di
+  // una settimana MAI coperta cambia in base al tempo: passata -> "past"
+  // (chiusa), futura -> "priority"/"uncovered" come prima.
+  if (week.isPast) return "past";
   return isPriority ? "priority" : "uncovered";
 }
 
@@ -258,6 +289,7 @@ export const WEEK_STATUS_BAR_CLASS: Record<WeekStatus, string> = {
   priority: "bg-trama-violet",
   uncovered: "bg-[#EEF0F4]",
   awaiting: "bg-sky",
+  past: "bg-ink-3/40",
 };
 
 // SPRINT 2 (Organizzazione, feedback Fabrizio: "la Timeline potrebbe
