@@ -1,8 +1,10 @@
 # TRAMA — Canonical Release Model
 
 **Documentation Package**: `TRAMA_DOCUMENTATION_PACKAGE_20260805_v1`
-**As-of timestamp**: 2026-08-05T18:40:00Z (UTC)
-**As-of commit (AS_OF_COMMIT)**: `bd03067`
+**Package version**: v2 (QA Remediation) — contenuto invariato rispetto a v1, solo header aggiornato per coerenza `AS_OF_COMMIT` con il resto del package
+**As-of timestamp**: 2026-08-05T20:10:00Z (UTC)
+**As-of commit (AS_OF_COMMIT)**: `0fc210a7da8abd98bbbfd64a0bb97eef2c26c2b3`
+**Status**: current
 
 Sezione 5. Mappa le **tre numerazioni di sprint non compatibili** (`INDEX.md` §7) tra loro e con la roadmap MVP a 5 fasi, così che ogni riferimento futuro a "Sprint N" specifichi sempre a quale delle tre si riferisce.
 

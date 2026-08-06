@@ -1,8 +1,10 @@
 # TRAMA — Canonical Source Register
 
 **Documentation Package**: `TRAMA_DOCUMENTATION_PACKAGE_20260805_v1`
-**As-of timestamp**: 2026-08-05T18:40:00Z (UTC) / 2026-08-05 20:40 (Europe/Rome)
-**As-of commit (AS_OF_COMMIT)**: `bd03067` (HEAD al momento della lettura integrale delle fonti per questo documento; nessuna modifica al repository è avvenuta durante la lettura)
+**Package version**: v1 (invariato — contenuto non toccato dal QA Remediation, nessuna fonte canonica è cambiata)
+**As-of timestamp**: 2026-08-05T18:40:00Z (UTC) / 2026-08-05 20:40 (Europe/Rome) — timestamp di lettura delle fonti, non aggiornato nel QA Remediation
+**As-of commit (AS_OF_COMMIT)**: `bd03067` (HEAD al momento della lettura integrale delle fonti per questo documento; nessuna modifica al repository è avvenuta durante la lettura, e questo documento non dipende da stato applicativo — solo da documenti sorgente esterni immutati. Non allineato a `0fc210a` come il resto del package perché non ce n'è motivo: nessuna fonte canonica è cambiata tra `bd03067` e `0fc210a`, verificato)
+**Status**: current
 
 Sezione 3 del checkpoint SAL/Documentation Package. Inventario di tutte le fonti che governano TRAMA ONE, il loro ruolo, la loro prevalenza reciproca e le incongruenze note tra di esse. Non ridefinisce nulla di nuovo: consolida in formato package `docs/trama-one/README.md`, `docs/trama-one/derived/SOURCE_REGISTER.md` e `docs/trama-one/derived/INDEX.md`, già esistenti e verificati in un passaggio precedente (20/07/2026) — questo documento aggiunge il tag `AS_OF_COMMIT` richiesto dal checkpoint e la vista consolidata a un unico posto.
 

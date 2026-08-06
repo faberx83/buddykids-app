@@ -1,98 +1,259 @@
 # TRAMA — Requirements Coverage Heatmap
 
 **Documentation Package**: `TRAMA_DOCUMENTATION_PACKAGE_20260805_v1`
-**As-of timestamp**: 2026-08-05T18:40:00Z (UTC)
-**As-of commit (AS_OF_COMMIT)**: `bd03067`
+**Package version**: v2 (QA Remediation) — **supersedes** v1 (`AS_OF_COMMIT bd03067`)
+**As-of timestamp**: 2026-08-05T20:10:00Z (UTC)
+**As-of commit (AS_OF_COMMIT)**: `0fc210a7da8abd98bbbfd64a0bb97eef2c26c2b3`
+**Status**: current
 
-Sezioni 7-9. Quattro viste della stessa base di verità (`TRAMA_REQUIREMENTS_TRACEABILITY_MATRIX.md`), ciascuna con un denominatore diverso e dichiarato esplicitamente. Legenda non basata solo sul colore (ogni cella porta un codice testuale).
+Sezioni 7-9, versione corretta. La v1 usava un'unica percentuale "12 Epic + 31 capability = 43" come KPI primario — errore riconosciuto: Epic e capability si sovrappongono (un epic è realizzato *attraverso* le sue capability), quindi sommarli in un solo denominatore conta lo stesso lavoro due volte. Questa versione separa 4 metriche indipendenti, ciascuna con un proprio denominatore esplicito, e sostituisce la "Vista 3" generica con 3 viste per prodotto (Parent/Partner/Admin) che elencano ogni singolo CR/PCR/ACR.
 
-## Legenda (codici, non colori)
+## Legenda (invariata dalla v1, codici non colori)
 
 | Codice | Significato |
 |---|---|
-| `LIVE` | In produzione, verificato staticamente, funzionante per il perimetro dichiarato |
-| `BUILT` | Codice scritto e funzionante, ma un criterio di accettazione specifico (es. un KPI) non è ancora misurato |
-| `PART` | Parziale — infrastruttura esiste, copertura deliberatamente incompleta o sotto-dimensione rispetto al requisito pieno |
-| `MOCK` | Funziona solo su dati demo/fallback, non su dati reali |
-| `READY_OFF` | Pronto ma spento per tutti (nessuna voce del catalogo usa questo stato oggi) |
-| `BLOCK` | Bloccato strutturalmente e volutamente (non temporaneo) |
-| `PLAN` | Pianificato, non ancora iniziato |
-| `DEFER` | Esplicitamente rinviato a Fase 2/3, fuori scope MVP per regola di prevalenza |
-| `NSF` | `SPECIFIED_NOT_FOUND` — richiesto da una fonte canonica, nessuna evidenza di implementazione trovata |
-| `INS` | `IMPLEMENTED_NOT_SPECIFIED` — esiste nel codice, nessuna fonte canonica lo richiede esplicitamente (valore aggiunto o debito da giustificare) |
-| `N/A` | Fuori perimetro della vista (non applicabile a quel prodotto/quella riga) |
-| `CONFLICT` | Fonti in conflitto sullo stato atteso, non risolto silenziosamente (vedi Open Decisions) |
+| `LIVE` | Deployato (presunto), verificato staticamente, testato dal vivo, funzionante senza gap noti sull'acceptance criterion |
+| `LIVE_WITH_GAP` | Come sopra, ma un componente nominato non soddisfa il proprio acceptance criterion |
+| `BUILT` | Implementato e testato staticamente, mai eseguito su un ambiente reale |
+| `PARTIAL` | Copertura deliberatamente incompleta |
+| `CONFLICT` | Stati contraddittori nelle fonti, non risolto silenziosamente |
+| `NSF` | `SPECIFIED_NOT_FOUND` |
+| `DEFER` | Fuori scope MVP per corrispondenza esplicita con una categoria OUT-of-scope della fonte |
+| `UNASSIGNED` | Release non determinabile dalla fonte, non inventata |
 
-## Vista 1 — Executive (12 epic, sintesi per il management)
+## 1. Epic Health
 
-| Epic | Stato | Nota in una riga |
-|---|---|---|
-| E01 Identity/RBAC | `LIVE` | Fondamenta pre-esistenti, estese |
-| E02 Journey context | `PART` | Copertura 2/9 punti, deliberata |
-| E03 Supply onboarding | `LIVE` | Completo Sprint 1 |
-| E04 Canonical catalog | `LIVE` | Completo Sprint 2-3 |
-| E05 Discovery/detail | `LIVE` | Completo |
-| E06 Request/booking | `LIVE` | State machine unificata Sprint 4 |
-| E07 Planner sync | `LIVE` | Completo Sprint 4 |
-| E08 Admin queues | `LIVE` | Command Center Sprint 6 |
-| E09 Supply acquisition | `LIVE` | CenterLead + candidatura |
-| E10 Feedback loop | `LIVE` | Completo |
-| E11 Analytics | `PART` | Eventi sì, framework esperimenti no (non richiesto) |
-| E12 Quality/flags/E2E | `LIVE` | Feature Control Center completo |
+**Denominatore: 12 Epic.** Nessuna capability inclusa in questo conteggio.
 
-**Calcolo percentuale copertura Executive**: (epic `LIVE`) / (12 epic totali) = 10/12 = **83%**. Regola: `PART` non conta come mezza unità arbitraria — resta segnalato separatamente, non mediato nella percentuale.
+| Stato | Conteggio | % (÷12) |
+|---|---:|---:|
+| LIVE | 8 | 67% |
+| LIVE_WITH_GAP | 1 | 8% |
+| BUILT | 1 | 8% |
+| PARTIAL | 2 | 17% |
 
-## Vista 2 — MVP Settembre (43 unità: 12 epic + 31 capability)
+Somma: 8+1+1+2=12. ✓
 
-| Fascia | Conteggio | % su 43 |
-|---|---|---|
-| `LIVE` | 35 | 81% |
-| `BUILT` | 1 | 2% |
-| `PART` | 6 | 14% |
-| `NSF` | 1 | 2% |
+## 2. MVP Capability Implementation Coverage
 
-Denominatore: 43, fisso,= le unità della Parte A del Master Requirement Catalog. Nessuna unità è stata esclusa dal conteggio per far apparire la percentuale più alta (in particolare `A-MVP-07` resta `NSF`, non riclassificato come `PART` per arrotondare verso l'alto).
+**Denominatore: 31 capability** (`P-MVP`+`PT-MVP`+`A-MVP`). Misura `IMPLEMENTED` (codice scritto e funzionante), non `DEPLOYED`/`LIVE_TESTED`.
 
-Dettaglio per portale:
+| Stato IMPLEMENTED | Conteggio | % (÷31) |
+|---|---:|---:|
+| Sì | 25 | 81% |
+| Parziale | 4 | 13% |
+| No | 2 | 6% |
 
-| Portale | LIVE | BUILT | PART | NSF | Totale |
+Somma: 25+4+2=31. ✓ I 2 "No" sono `A-MVP-05` e `A-MVP-07` (entrambi `SPECIFIED_NOT_FOUND`).
+
+## 3. MVP Production Readiness
+
+**Denominatore: 31 capability**, valutate su `OVERALL_STATUS = LIVE` in senso stretto (deployato-presunto + live-tested + nessun gap) — esclude `LIVE_WITH_GAP`, `BUILT`, `PARTIAL`, `CONFLICT`, `NSF`.
+
+| Prodotto | LIVE | Non-LIVE | Denominatore | % LIVE |
+|---|---:|---:|---:|---:|
+| Parent | 7 | 2 | 9 | 78% |
+| Partner | 5 | 7 | 12 | 42% |
+| Admin | 5 | 5 | 10 | 50% |
+| **Totale** | **17** | **14** | **31** | **55%** |
+
+Questa è la metrica più severa e la più rilevante per un GO/NO-GO tecnico: misura "quante capability funzionano oggi, dal vivo, senza condizioni", non "quante hanno codice scritto".
+
+## 4. Pilot Validation Coverage
+
+**Denominatore: 31 capability** (tutte richiedono comportamento reale di Parent/Partner/Admin per essere validate secondo l'acceptance criterion della fonte — nessuna esclusione, per scelta metodologica dichiarata).
+
+| Stato PILOT_VALIDATED | Conteggio | % (÷31) |
+|---|---:|---:|
+| Sì (famiglia/centro pilota reale) | 0 | 0% |
+| No | 31 | 100% |
+
+**0%.** Nessuna capability è stata validata da una famiglia o un centro pilota reale — coerente con OD-06/OD-07 (nessun pilota reale ancora arruolato). Questo numero non è un giudizio negativo sul codice: è la fotografia onesta di uno stadio del programma (pre-pilota), non un difetto di implementazione.
+
+## 5. Le 3 viste Roadmap per prodotto (sostituiscono la "Vista 3" generica della v1)
+
+Ogni CR/PCR/ACR ha una riga propria. Colonne: Release (MVP Beta Settembre / UNASSIGNED con motivo — nessuna release Post-Beta/Fase2/Fase3/Post-roadmap è mai stata determinabile dalle fonti lette finora, quindi nessuna riga usa quei valori: dichiarato esplicitamente, non forzato), Implementazione attuale, Evidenza, Decisione/gap.
+
+**Nota di metodo**: per i 60 ID `MVP mapped`, "Implementazione attuale" rimanda all'epic corrispondente (già verificato in `TRAMA_MASTER_REQUIREMENT_CATALOG.md`). Per i 18 `DEFER` e i 70 `ROADMAP_TO_BE`, "Implementazione attuale" è dichiarata `Non verificato in questo passaggio` — per costruzione, non per omissione: verificarli individualmente richiederebbe la stessa profondità di lettura già dichiarata mancante nel Master Requirement Catalog Parte B.
+
+### Parent — tutti i CR-001…052
+
+| ID | Titolo | Release | Implementazione attuale | Evidenza | Decisione/gap |
 |---|---|---|---|---|---|
-| Parent (9 capability + quota epic) | 8 | 0 | 1 | 0 | 9 |
-| Partner (12 capability) | 10 | 1 | 1 | 0 | 12 |
-| Admin (10 capability) | 7 | 0 | 1 | 1 | 10 |
-| Epic condivisi (12, già contati sopra dove specifici di portale, qui i trasversali) | 10 | 0 | 2 | 0 | 12 |
+| CR-001 | Definire IA e navigazione primaria TO-BE | MVP Beta Settembre | Vedi epic E02 nel Master Requirement Catalog | Mappato esplicitamente in MVP §6.2 a E02 | — |
+| CR-002 | Creare macro-area "Le mie attività" | UNASSIGNED — non ancora classificato | Non verificato in questo passaggio | Nessuna — non ancora incrociato con lettura narrativa handbook/codice | Gap di classificazione, OD-10 |
+| CR-003 | Rendere Famiglia una capability autonoma | UNASSIGNED — non ancora classificato | Non verificato in questo passaggio | Nessuna — non ancora incrociato con lettura narrativa handbook/codice | Gap di classificazione, OD-10 |
+| CR-004 | Rifocalizzare Profilo su identità e configurazione | UNASSIGNED — non ancora classificato | Non verificato in questo passaggio | Nessuna — non ancora incrociato con lettura narrativa handbook/codice | Gap di classificazione, OD-10 |
+| CR-005 | Integrare Calendario come modalità del Planner | UNASSIGNED — non ancora classificato | Non verificato in questo passaggio | Nessuna — non ancora incrociato con lettura narrativa handbook/codice | Gap di classificazione, OD-10 |
+| CR-006 | Introdurre context object di journey | MVP Beta Settembre | Vedi epic E02 nel Master Requirement Catalog | Mappato esplicitamente in MVP §6.2 a E02 | — |
+| CR-007 | Applicare una shell Next Gen unica a tutte le route target | MVP Beta Settembre | Vedi epic E02 nel Master Requirement Catalog | Mappato esplicitamente in MVP §6.2 a E02 | — |
+| CR-008 | Gestire redirect e deep link delle route Legacy | UNASSIGNED — non ancora classificato | Non verificato in questo passaggio | Nessuna — non ancora incrociato con lettura narrativa handbook/codice | Gap di classificazione, OD-10 |
+| CR-009 | Realizzare dettaglio attività Next Gen | MVP Beta Settembre | Vedi epic E05 nel Master Requirement Catalog | Mappato esplicitamente in MVP §6.2 a E05 | — |
+| CR-010 | Definire content contract del dettaglio attività | MVP Beta Settembre | Vedi epic E04 nel Master Requirement Catalog | Mappato esplicitamente in MVP §6.2 a E04 | — |
+| CR-011 | Integrare disponibilità e capacità nel dettaglio | MVP Beta Settembre | Vedi epic E04 nel Master Requirement Catalog | Mappato esplicitamente in MVP §6.2 a E04 | — |
+| CR-012 | Integrare selezione bambino e verifica idoneità | MVP Beta Settembre | Vedi epic E05 nel Master Requirement Catalog | Mappato esplicitamente in MVP §6.2 a E05 | — |
+| CR-013 | Realizzare booking flow Next Gen | MVP Beta Settembre | Vedi epic E06 nel Master Requirement Catalog | Mappato esplicitamente in MVP §6.2 a E06 | — |
+| CR-014 | Realizzare conferma, riepilogo ed esito prenotazione | MVP Beta Settembre | Vedi epic E06 nel Master Requirement Catalog | Mappato esplicitamente in MVP §6.2 a E06 | — |
+| CR-015 | Aggiornare automaticamente il Planner dopo conferma/cambio booking | MVP Beta Settembre | Vedi epic E07 nel Master Requirement Catalog | Mappato esplicitamente in MVP §6.2 a E07 | — |
+| CR-016 | Contestualizzare Scopri quando aperto dal Planner | MVP Beta Settembre | Vedi epic E02 nel Master Requirement Catalog | Mappato esplicitamente in MVP §6.2 a E02 | — |
+| CR-017 | Standardizzare filtri, ordinamento e stato lista/mappa | MVP Beta Settembre | Vedi epic E05 nel Master Requirement Catalog | Mappato esplicitamente in MVP §6.2 a E05 | — |
+| CR-018 | Ridisegnare gerarchia informativa delle card risultato | MVP Beta Settembre | Vedi epic E05 nel Master Requirement Catalog | Mappato esplicitamente in MVP §6.2 a E05 | — |
+| CR-019 | Uniformare preferiti/salvati tra card, dettaglio e lista | MVP Beta Settembre | Vedi epic E05 nel Master Requirement Catalog | Mappato esplicitamente in MVP §6.2 a E05 | — |
+| CR-020 | Integrare contatto gestore/richiesta contestuale | UNASSIGNED — non ancora classificato | Non verificato in questo passaggio | Nessuna — non ancora incrociato con lettura narrativa handbook/codice | Gap di classificazione, OD-10 |
+| CR-021 | Formalizzare modello di copertura del Planner | MVP Beta Settembre | Vedi epic E07 nel Master Requirement Catalog | Mappato esplicitamente in MVP §6.2 a E07 | — |
+| CR-022 | Unificare stato Organizzazione/Calendario | UNASSIGNED — non ancora classificato | Non verificato in questo passaggio | Nessuna — non ancora incrociato con lettura narrativa handbook/codice | Gap di classificazione, OD-10 |
+| CR-023 | Implementare viste settimana, mese e bambino | UNASSIGNED — non ancora classificato | Non verificato in questo passaggio | Nessuna — non ancora incrociato con lettura narrativa handbook/codice | Gap di classificazione, OD-10 |
+| CR-024 | Chiarire responsabilità e regole della vista Budget | UNASSIGNED — non ancora classificato | Non verificato in questo passaggio | Nessuna — non ancora incrociato con lettura narrativa handbook/codice | Gap di classificazione, OD-10 |
+| CR-025 | Definire collocazione e ownership dei Gruppi | UNASSIGNED — non ancora classificato | Non verificato in questo passaggio | Nessuna — non ancora incrociato con lettura narrativa handbook/codice | Gap di classificazione, OD-10 |
+| CR-026 | Progettare empty state e next best action del Planner | MVP Beta Settembre | Vedi epic E07 nel Master Requirement Catalog | Mappato esplicitamente in MVP §6.2 a E07 | — |
+| CR-027 | Formalizzare domain model Famiglia/Bambino/Membership | UNASSIGNED — non ancora classificato | Non verificato in questo passaggio | Nessuna — non ancora incrociato con lettura narrativa handbook/codice | Gap di classificazione, OD-10 |
+| CR-028 | Implementare inviti, ruoli, scadenza e revoca membership | UNASSIGNED — non ancora classificato | Non verificato in questo passaggio | Nessuna — non ancora incrociato con lettura narrativa handbook/codice | Gap di classificazione, OD-10 |
+| CR-029 | Migrare gestione indirizzi in Famiglia > Logistica | UNASSIGNED — non ancora classificato | Non verificato in questo passaggio | Nessuna — non ancora incrociato con lettura narrativa handbook/codice | Gap di classificazione, OD-10 |
+| CR-030 | Definire contratto travel time e fallback | UNASSIGNED — fonte dichiara solo "fuori scope MVP", nessuna fase Post-Beta/Fase2/Fase3 specificata | Non verificato in questo passaggio | Logistica avanzata (travel time real-time) | Nessuna decisione richiesta — corrisponde a categoria esplicitamente fuori scope MVP |
+| CR-031 | Implementare regole promemoria e quiet hours | UNASSIGNED — fonte dichiara solo "fuori scope MVP", nessuna fase Post-Beta/Fase2/Fase3 specificata | Non verificato in questo passaggio | Logistica avanzata (reminder/quiet hours) | Nessuna decisione richiesta — corrisponde a categoria esplicitamente fuori scope MVP |
+| CR-032 | Implementare link piano read-only per periodo | UNASSIGNED — non ancora classificato | Non verificato in questo passaggio | Nessuna — non ancora incrociato con lettura narrativa handbook/codice | Gap di classificazione, OD-10 |
+| CR-033 | Implementare scadenza, revoca e rigenerazione share link | UNASSIGNED — non ancora classificato | Non verificato in questo passaggio | Nessuna — non ancora incrociato con lettura narrativa handbook/codice | Gap di classificazione, OD-10 |
+| CR-034 | Migrare elenco prenotazioni Next Gen | MVP Beta Settembre | Vedi epic E07 nel Master Requirement Catalog | Mappato esplicitamente in MVP §6.2 a E07 | — |
+| CR-035 | Realizzare dettaglio prenotazione Next Gen | MVP Beta Settembre | Vedi epic E07 nel Master Requirement Catalog | Mappato esplicitamente in MVP §6.2 a E07 | — |
+| CR-036 | Migrare presenze e collegarle a booking/bambino | UNASSIGNED — fonte dichiara solo "fuori scope MVP", nessuna fase Post-Beta/Fase2/Fase3 specificata | Non verificato in questo passaggio | Operations avanzate (presenze giornaliere) | Nessuna decisione richiesta — corrisponde a categoria esplicitamente fuori scope MVP |
+| CR-037 | Migrare richieste in inbox/thread contestuale | UNASSIGNED — non ancora classificato | Non verificato in questo passaggio | Nessuna — non ancora incrociato con lettura narrativa handbook/codice | Gap di classificazione, OD-10 |
+| CR-038 | Migrare Preferiti in Scopri > Salvati | UNASSIGNED — non ancora classificato | Non verificato in questo passaggio | Nessuna — non ancora incrociato con lettura narrativa handbook/codice | Gap di classificazione, OD-10 |
+| CR-039 | Migrare Preferenze Next Gen | UNASSIGNED — non ancora classificato | Non verificato in questo passaggio | Nessuna — non ancora incrociato con lettura narrativa handbook/codice | Gap di classificazione, OD-10 |
+| CR-040 | Migrare Sicurezza Next Gen con re-auth e feedback | UNASSIGNED — non ancora classificato | Non verificato in questo passaggio | Nessuna — non ancora incrociato con lettura narrativa handbook/codice | Gap di classificazione, OD-10 |
+| CR-041 | Migrare Privacy/account lifecycle Next Gen | UNASSIGNED — non ancora classificato | Non verificato in questo passaggio | Nessuna — non ancora incrociato con lettura narrativa handbook/codice | Gap di classificazione, OD-10 |
+| CR-042 | Evolvere segnalazioni in workflow Feedback | UNASSIGNED — non ancora classificato | Non verificato in questo passaggio | Nessuna — non ancora incrociato con lettura narrativa handbook/codice | Gap di classificazione, OD-10 |
+| CR-043 | Standardizzare label, CTA e content design | MVP Beta Settembre | Vedi epic E12 nel Master Requirement Catalog | Mappato esplicitamente in MVP §6.2 a E12 | — |
+| CR-044 | Implementare tassonomia eventi analytics end-to-end | MVP Beta Settembre | Vedi epic E11 nel Master Requirement Catalog | Mappato esplicitamente in MVP §6.2 a E11 | — |
+| CR-045 | Costruire suite Playwright per journey critiche | MVP Beta Settembre | Vedi epic E12 nel Master Requirement Catalog | Mappato esplicitamente in MVP §6.2 a E12 | — |
+| CR-046 | Definire e verificare baseline accessibilità WCAG | UNASSIGNED — non ancora classificato | Non verificato in questo passaggio | Nessuna — non ancora incrociato con lettura narrativa handbook/codice | Gap di classificazione, OD-10 |
+| CR-047 | Standardizzare performance, error handling e dati test | MVP Beta Settembre | Vedi epic E12 nel Master Requirement Catalog | Mappato esplicitamente in MVP §6.2 a E12 | — |
+| CR-048 | Introdurre feature flag e telemetria migrazione Legacy | MVP Beta Settembre | Vedi epic E12/E02 nel Master Requirement Catalog | Mappato esplicitamente in MVP §6.2 a E12/E02 | — |
+| CR-049 | Definire/realizzare processo di suggerimento/invito centri non iscritti | MVP Beta Settembre | Vedi epic E09 nel Master Requirement Catalog | Mappato esplicitamente in MVP §6.2 a E09 | — |
+| CR-050 | Industrializzare la floating CTA beta e il workflow di feedback | MVP Beta Settembre | Vedi epic E10 nel Master Requirement Catalog | Mappato esplicitamente in MVP §6.2 a E10 | — |
+| CR-051 | Introdurre attribution, eligibility e reward per il referral di centri | UNASSIGNED — fonte dichiara solo "fuori scope MVP", nessuna fase Post-Beta/Fase2/Fase3 specificata | Non verificato in questo passaggio | Referral automatico economico (shadow mode a settembre) | Nessuna decisione richiesta — corrisponde a categoria esplicitamente fuori scope MVP |
+| CR-052 | Mostrare stato referral e reward al Genitore | UNASSIGNED — fonte dichiara solo "fuori scope MVP", nessuna fase Post-Beta/Fase2/Fase3 specificata | Non verificato in questo passaggio | Referral automatico economico (dipende da CR-051) | Nessuna decisione richiesta — corrisponde a categoria esplicitamente fuori scope MVP |
 
-Nota: la riga "Epic condivisi" e le righe per-portale si sovrappongono parzialmente per costruzione (un epic come E06 è anche alla base di P-MVP-05/PT-MVP-09); il totale 43 della vista principale (non questa scomposizione) resta l'unico numero autorevole per il gate GO/NO-GO — questa tabella per-portale è illustrativa, non un secondo denominatore.
+### Partner — tutti i PCR-001…050
 
-## Vista 3 — Roadmap per prodotto (148 CR/PCR/ACR, TO-BE completo)
+| ID | Titolo | Release | Implementazione attuale | Evidenza | Decisione/gap |
+|---|---|---|---|---|---|
+| PCR-001 | Dashboard task-oriented con priorità operative | MVP Beta Settembre | Vedi epic E08 nel Master Requirement Catalog | Mappato esplicitamente in MVP §6.2 a E08 | — |
+| PCR-002 | Wizard onboarding centro | MVP Beta Settembre | Vedi epic E03 nel Master Requirement Catalog | Mappato esplicitamente in MVP §6.2 a E03 | — |
+| PCR-003 | Salvataggio bozza onboarding | MVP Beta Settembre | Vedi epic E03 nel Master Requirement Catalog | Mappato esplicitamente in MVP §6.2 a E03 | — |
+| PCR-004 | Separazione dati pubblici/amministrativi | UNASSIGNED — non ancora classificato | Non verificato in questo passaggio | Nessuna — non ancora incrociato con lettura narrativa handbook/codice | Gap di classificazione, OD-10 |
+| PCR-005 | Modello sede come entità autonoma | UNASSIGNED — non ancora classificato | Non verificato in questo passaggio | Nessuna — non ancora incrociato con lettura narrativa handbook/codice | Gap di classificazione, OD-10 |
+| PCR-006 | Activity status board | MVP Beta Settembre | Vedi epic E04 nel Master Requirement Catalog | Mappato esplicitamente in MVP §6.2 a E04 | — |
+| PCR-007 | Wizard creazione attività | MVP Beta Settembre | Vedi epic E04 nel Master Requirement Catalog | Mappato esplicitamente in MVP §6.2 a E04 | — |
+| PCR-008 | Versioning attività e audit modifiche | UNASSIGNED — non ancora classificato | Non verificato in questo passaggio | Nessuna — non ancora incrociato con lettura narrativa handbook/codice | Gap di classificazione, OD-10 |
+| PCR-009 | Calendario come vista operativa | UNASSIGNED — non ancora classificato | Non verificato in questo passaggio | Nessuna — non ancora incrociato con lettura narrativa handbook/codice | Gap di classificazione, OD-10 |
+| PCR-010 | Standard week model | MVP Beta Settembre | Vedi epic E04 nel Master Requirement Catalog | Mappato esplicitamente in MVP §6.2 a E04 | — |
+| PCR-011 | Disponibilità source of truth | MVP Beta Settembre | Vedi epic E04 nel Master Requirement Catalog | Mappato esplicitamente in MVP §6.2 a E04 | — |
+| PCR-012 | Pricing components | UNASSIGNED — non ancora classificato | Non verificato in questo passaggio | Nessuna — non ancora incrociato con lettura narrativa handbook/codice | Gap di classificazione, OD-10 |
+| PCR-013 | Unified booking state | MVP Beta Settembre | Vedi epic E06 nel Master Requirement Catalog | Mappato esplicitamente in MVP §6.2 a E06 | — |
+| PCR-014 | Permessi dettaglio prenotazione | UNASSIGNED — non ancora classificato | Non verificato in questo passaggio | Nessuna — non ancora incrociato con lettura narrativa handbook/codice | Gap di classificazione, OD-10 |
+| PCR-015 | Coda richieste con SLA | MVP Beta Settembre | Vedi epic E06 nel Master Requirement Catalog | Mappato esplicitamente in MVP §6.2 a E06 | — |
+| PCR-016 | Roster gruppi derivato da booking | UNASSIGNED — fonte dichiara solo "fuori scope MVP", nessuna fase Post-Beta/Fase2/Fase3 specificata | Non verificato in questo passaggio | Operations avanzate (gruppi) | Nessuna decisione richiesta — corrisponde a categoria esplicitamente fuori scope MVP |
+| PCR-017 | Integrazione presenze-booking | UNASSIGNED — fonte dichiara solo "fuori scope MVP", nessuna fase Post-Beta/Fase2/Fase3 specificata | Non verificato in questo passaggio | Operations avanzate (presenze giornaliere) | Nessuna decisione richiesta — corrisponde a categoria esplicitamente fuori scope MVP |
+| PCR-018 | Messaggistica strutturata | UNASSIGNED — non ancora classificato | Non verificato in questo passaggio | Nessuna — non ancora incrociato con lettura narrativa handbook/codice | Gap di classificazione, OD-10 |
+| PCR-019 | Marketplace servizi extra | UNASSIGNED — fonte dichiara solo "fuori scope MVP", nessuna fase Post-Beta/Fase2/Fase3 specificata | Non verificato in questo passaggio | Servizi extra (marketplace, solo modello futuro) | Nessuna decisione richiesta — corrisponde a categoria esplicitamente fuori scope MVP |
+| PCR-020 | Regole promozioni | UNASSIGNED — fonte dichiara solo "fuori scope MVP", nessuna fase Post-Beta/Fase2/Fase3 specificata | Non verificato in questo passaggio | Promozioni avanzate (dynamic pricing/coupon) | Nessuna decisione richiesta — corrisponde a categoria esplicitamente fuori scope MVP |
+| PCR-021 | Analytics Partner actionable | MVP Beta Settembre | Vedi epic E11 nel Master Requirement Catalog | Mappato esplicitamente in MVP §6.2 a E11 | — |
+| PCR-022 | Ruoli Partner granulari | UNASSIGNED — non ancora classificato | Non verificato in questo passaggio | Nessuna — non ancora incrociato con lettura narrativa handbook/codice | Gap di classificazione, OD-10 |
+| PCR-023 | Supporto Partner contestuale | MVP Beta Settembre | Vedi epic E10 nel Master Requirement Catalog | Mappato esplicitamente in MVP §6.2 a E10 | — |
+| PCR-024 | Preview Parent scheda attività | MVP Beta Settembre | Vedi epic E04 nel Master Requirement Catalog | Mappato esplicitamente in MVP §6.2 a E04 | — |
+| PCR-025 | Completezza attività obbligatoria | MVP Beta Settembre | Vedi epic E04 nel Master Requirement Catalog | Mappato esplicitamente in MVP §6.2 a E04 | — |
+| PCR-026 | Alert disponibilità stale | UNASSIGNED — non ancora classificato | Non verificato in questo passaggio | Nessuna — non ancora incrociato con lettura narrativa handbook/codice | Gap di classificazione, OD-10 |
+| PCR-027 | Waitlist per attività piene | UNASSIGNED — non ancora classificato | Non verificato in questo passaggio | Nessuna — non ancora incrociato con lettura narrativa handbook/codice | Gap di classificazione, OD-10 |
+| PCR-028 | Export operativo prenotazioni | UNASSIGNED — non ancora classificato | Non verificato in questo passaggio | Nessuna — non ancora incrociato con lettura narrativa handbook/codice | Gap di classificazione, OD-10 |
+| PCR-029 | Notifiche Partner su nuove richieste | MVP Beta Settembre | Vedi epic E06 nel Master Requirement Catalog | Mappato esplicitamente in MVP §6.2 a E06 | — |
+| PCR-030 | Template comunicazioni famiglia | UNASSIGNED — non ancora classificato | Non verificato in questo passaggio | Nessuna — non ancora incrociato con lettura narrativa handbook/codice | Gap di classificazione, OD-10 |
+| PCR-031 | Saturazione settimanale e suggerimenti | UNASSIGNED — non ancora classificato | Non verificato in questo passaggio | Nessuna — non ancora incrociato con lettura narrativa handbook/codice | Gap di classificazione, OD-10 |
+| PCR-032 | Gestione servizi propri vs servizi TRAMA | UNASSIGNED — non ancora classificato | Non verificato in questo passaggio | Nessuna — non ancora incrociato con lettura narrativa handbook/codice | Gap di classificazione, OD-10 |
+| PCR-033 | Audit trail azioni staff | UNASSIGNED — non ancora classificato | Non verificato in questo passaggio | Nessuna — non ancora incrociato con lettura narrativa handbook/codice | Gap di classificazione, OD-10 |
+| PCR-034 | Feature flag beta Partner | MVP Beta Settembre | Vedi epic E12 nel Master Requirement Catalog | Mappato esplicitamente in MVP §6.2 a E12 | — |
+| PCR-035 | Pulizia dati test e demo | MVP Beta Settembre | Vedi epic E12 nel Master Requirement Catalog | Mappato esplicitamente in MVP §6.2 a E12 | — |
+| PCR-036 | Playwright journey Partner | MVP Beta Settembre | Vedi epic E12 nel Master Requirement Catalog | Mappato esplicitamente in MVP §6.2 a E12 | — |
+| PCR-037 | Nuovo ingresso "Diventa Partner TRAMA" ≤2 minuti | UNASSIGNED — non ancora classificato | Non verificato in questo passaggio | Nessuna — non ancora incrociato con lettura narrativa handbook/codice | Gap di classificazione, OD-10/OD-12 |
+| PCR-038 | Verifica identità minima, fonte pubblica | UNASSIGNED — non ancora classificato | Non verificato in questo passaggio | Nessuna — non ancora incrociato con lettura narrativa handbook/codice | Gap di classificazione, OD-10/OD-12 |
+| PCR-039 | State machine Partner con permessi/notifiche/storico | UNASSIGNED — non ancora classificato | Non verificato in questo passaggio | Nessuna — non ancora incrociato con lettura narrativa handbook/codice | Gap di classificazione, OD-10/OD-12 |
+| PCR-040 | Product Walkthrough contestuale e task-based | UNASSIGNED — non ancora classificato | Non verificato in questo passaggio | Nessuna — non ancora incrociato con lettura narrativa handbook/codice | Gap di classificazione, OD-10/OD-12 |
+| PCR-041 | Persistenza, resume, skip e relaunch tutorial | UNASSIGNED — non ancora classificato | Non verificato in questo passaggio | Nessuna — non ancora incrociato con lettura narrativa handbook/codice | Gap di classificazione, OD-10/OD-12 |
+| PCR-042 | Checklist profilo e motore di completezza | UNASSIGNED — non ancora classificato | Non verificato in questo passaggio | Nessuna — non ancora incrociato con lettura narrativa handbook/codice | Gap di classificazione, OD-10/OD-12 |
+| PCR-043 | Trust Score interno 0-100 e storico | UNASSIGNED — non ancora classificato | Non verificato in questo passaggio | Nessuna — non ancora incrociato con lettura narrativa handbook/codice | Gap di classificazione, OD-10 |
+| PCR-044 | Pesi Trust configurabili e versionati | UNASSIGNED — non ancora classificato | Non verificato in questo passaggio | Nessuna — non ancora incrociato con lettura narrativa handbook/codice | Gap di classificazione, OD-10 |
+| PCR-045 | Layer di suggerimenti positivi e azionabili | UNASSIGNED — non ancora classificato | Non verificato in questo passaggio | Nessuna — non ancora incrociato con lettura narrativa handbook/codice | Gap di classificazione, OD-10 |
+| PCR-046 | Partnership Level comportamentali | UNASSIGNED — fonte dichiara solo "fuori scope MVP", nessuna fase Post-Beta/Fase2/Fase3 specificata | Non verificato in questo passaggio | Gamification e livelli visibili (Partnership Level) | Nessuna decisione richiesta — corrisponde a categoria esplicitamente fuori scope MVP |
+| PCR-047 | Notification Center cross-state | UNASSIGNED — non ancora classificato | Non verificato in questo passaggio | Nessuna — non ancora incrociato con lettura narrativa handbook/codice | Gap di classificazione, OD-10/OD-12 |
+| PCR-048 | Audit Log Partner/Admin | UNASSIGNED — non ancora classificato | Non verificato in questo passaggio | Nessuna — non ancora incrociato con lettura narrativa handbook/codice | Gap di classificazione, OD-10/OD-12 |
+| PCR-049 | Attribuzione referral da CenterLead a Partner | UNASSIGNED — non ancora classificato | Non verificato in questo passaggio | Nessuna — non ancora incrociato con lettura narrativa handbook/codice | Gap di classificazione, OD-10 |
+| PCR-050 | Commissione ridotta condizionata a target qualità/volume | UNASSIGNED — fonte dichiara solo "fuori scope MVP", nessuna fase Post-Beta/Fase2/Fase3 specificata | Non verificato in questo passaggio | Referral automatico economico (commission ledger) | Nessuna decisione richiesta — corrisponde a categoria esplicitamente fuori scope MVP |
 
-| Prodotto | In scope MVP (mappati, §B.1) | Fuori scope MVP dichiarato (`DEFER`) | Non ancora classificato (`ROADMAP_TO_BE`, non `DEFER` né verificato) |
-|---|---|---|---|
-| Parent (CR-001…052) | 13 | Le capability esplicitamente elencate come OUT OF SCOPE nell'MVP §2.4 (pagamenti, operations avanzate, servizi extra, promozioni avanzate, logistica avanzata, marketplace nazionale, integrazioni complete, trust avanzato/AI, gamification, referral economico automatico) | 26 |
-| Partner (PCR-001…050) | 16 | Idem (sottoinsieme corrispondente lato Partner: Trust Score visibile, Partnership Level, marketplace servizi) | 30 |
-| Admin (ACR-001…046) | 15 | Idem lato Admin (commercial ledger reale, servizi extra piattaforma, livelli/ranking) | 29 |
+### Admin — tutti gli ACR-001…046
 
-**Questa vista non assegna una percentuale di copertura.** Farlo richiederebbe classificare i 104+X ID "non ancora classificato" come coperti o non coperti — esattamente il lavoro dichiarato non fatto (Master Requirement Catalog §B.2). Una percentuale calcolata solo sul sottoinsieme mappato (44/148 = 30%) sarebbe fuorviante: non significa che il 70% del backlog TO-BE sia scoperto, significa che il 70% non è stato verificato in questo passaggio. La cella corretta per l'intera vista 3 resta `CONFLICT`-free ma esplicitamente **non quantificata**, per non produrre un numero che sembri preciso senza esserlo.
+| ID | Titolo | Release | Implementazione attuale | Evidenza | Decisione/gap |
+|---|---|---|---|---|---|
+| ACR-001 | Admin command center operativo | MVP Beta Settembre | Vedi epic E08 nel Master Requirement Catalog | Mappato esplicitamente in MVP §6.2 a E08 | — |
+| ACR-002 | Workflow approvazione Partner | MVP Beta Settembre | Vedi epic E03 nel Master Requirement Catalog | Mappato esplicitamente in MVP §6.2 a E03 | — |
+| ACR-003 | Partner 360 | UNASSIGNED — non ancora classificato | Non verificato in questo passaggio | Nessuna — non ancora incrociato con lettura narrativa handbook/codice | Gap di classificazione, OD-10 |
+| ACR-004 | Registry centri e lead dedupe | MVP Beta Settembre | Vedi epic E09 nel Master Requirement Catalog | Mappato esplicitamente in MVP §6.2 a E09 | — |
+| ACR-005 | Activity quality workflow | MVP Beta Settembre | Vedi epic E04 nel Master Requirement Catalog | Mappato esplicitamente in MVP §6.2 a E04 | — |
+| ACR-006 | Modifiche governate attività | UNASSIGNED — non ancora classificato | Non verificato in questo passaggio | Nessuna — non ancora incrociato con lettura narrativa handbook/codice | Gap di classificazione, OD-10 |
+| ACR-007 | Booking operations queue | MVP Beta Settembre | Vedi epic E06 nel Master Requirement Catalog | Mappato esplicitamente in MVP §6.2 a E06 | — |
+| ACR-008 | Code domanda e supply | MVP Beta Settembre | Vedi epic E08 nel Master Requirement Catalog | Mappato esplicitamente in MVP §6.2 a E08 | — |
+| ACR-009 | Permessi supporto famiglie | UNASSIGNED — non ancora classificato | Non verificato in questo passaggio | Nessuna — non ancora incrociato con lettura narrativa handbook/codice | Gap di classificazione, OD-10 |
+| ACR-010 | Commercial ledger | UNASSIGNED — fonte dichiara solo "fuori scope MVP", nessuna fase Post-Beta/Fase2/Fase3 specificata | Non verificato in questo passaggio | Pagamenti e finanza (commission ledger reale) | Nessuna decisione richiesta — corrisponde a categoria esplicitamente fuori scope MVP |
+| ACR-011 | Piattaforma servizi extra | UNASSIGNED — fonte dichiara solo "fuori scope MVP", nessuna fase Post-Beta/Fase2/Fase3 specificata | Non verificato in questo passaggio | Servizi extra (solo modello futuro) | Nessuna decisione richiesta — corrisponde a categoria esplicitamente fuori scope MVP |
+| ACR-012 | Supplier model | UNASSIGNED — fonte dichiara solo "fuori scope MVP", nessuna fase Post-Beta/Fase2/Fase3 specificata | Non verificato in questo passaggio | Servizi extra (dipendenza diretta da ACR-011) | Nessuna decisione richiesta — corrisponde a categoria esplicitamente fuori scope MVP |
+| ACR-013 | Taxonomy governance | MVP Beta Settembre | Vedi epic E04 nel Master Requirement Catalog | Mappato esplicitamente in MVP §6.2 a E04 | — |
+| ACR-014 | Ecosystem analytics | MVP Beta Settembre | Vedi epic E11 nel Master Requirement Catalog | Mappato esplicitamente in MVP §6.2 a E11 | — |
+| ACR-015 | Unified support queue | MVP Beta Settembre | Vedi epic E08 nel Master Requirement Catalog | Mappato esplicitamente in MVP §6.2 a E08 | — |
+| ACR-016 | Beta feedback triage | MVP Beta Settembre | Vedi epic E10 nel Master Requirement Catalog | Mappato esplicitamente in MVP §6.2 a E10 | — |
+| ACR-017 | Configurazione controllata e rollback | MVP Beta Settembre | Vedi epic E12 nel Master Requirement Catalog | Mappato esplicitamente in MVP §6.2 a E12 | — |
+| ACR-018 | Audit log e ruoli Admin | MVP Beta Settembre | Vedi epic E12 nel Master Requirement Catalog | Mappato esplicitamente in MVP §6.2 a E12 | — |
+| ACR-019 | Checklist qualità centro | MVP Beta Settembre | Vedi epic E03 nel Master Requirement Catalog | Mappato esplicitamente in MVP §6.2 a E03 | — |
+| ACR-020 | Reason code richieste integrazione | UNASSIGNED — non ancora classificato | Non verificato in questo passaggio | Nessuna — non ancora incrociato con lettura narrativa handbook/codice | Gap di classificazione, OD-10 |
+| ACR-021 | Scoring marketplace health | UNASSIGNED — non ancora classificato | Non verificato in questo passaggio | Nessuna — non ancora incrociato con lettura narrativa handbook/codice | Gap di classificazione, OD-10 |
+| ACR-022 | SLA engine richieste/prenotazioni | MVP Beta Settembre | Vedi epic E06 nel Master Requirement Catalog | Mappato esplicitamente in MVP §6.2 a E06 | — |
+| ACR-023 | Lead supply outreach tracking | MVP Beta Settembre | Vedi epic E09 nel Master Requirement Catalog | Mappato esplicitamente in MVP §6.2 a E09 | — |
+| ACR-024 | Center claim process | MVP Beta Settembre | Vedi epic E09 nel Master Requirement Catalog | Mappato esplicitamente in MVP §6.2 a E09 | — |
+| ACR-025 | Cohort beta management | UNASSIGNED — non ancora classificato | Non verificato in questo passaggio | Nessuna — non ancora incrociato con lettura narrativa handbook/codice | Gap di classificazione, OD-10 |
+| ACR-026 | Incident management operativo | UNASSIGNED — non ancora classificato | Non verificato in questo passaggio | Nessuna — non ancora incrociato con lettura narrativa handbook/codice | Gap di classificazione, OD-10 |
+| ACR-027 | Commission versioning | UNASSIGNED — fonte dichiara solo "fuori scope MVP", nessuna fase Post-Beta/Fase2/Fase3 specificata | Non verificato in questo passaggio | Pagamenti e finanza (commission ledger reale) | Nessuna decisione richiesta — corrisponde a categoria esplicitamente fuori scope MVP |
+| ACR-028 | Supplier SLA monitoring | UNASSIGNED — fonte dichiara solo "fuori scope MVP", nessuna fase Post-Beta/Fase2/Fase3 specificata | Non verificato in questo passaggio | Servizi extra (dipendenza da ACR-011/012) | Nessuna decisione richiesta — corrisponde a categoria esplicitamente fuori scope MVP |
+| ACR-029 | Data access minimization | UNASSIGNED — non ancora classificato | Non verificato in questo passaggio | Nessuna — non ancora incrociato con lettura narrativa handbook/codice | Gap di classificazione, OD-10 |
+| ACR-030 | Admin feature flags | MVP Beta Settembre | Vedi epic E12 nel Master Requirement Catalog | Mappato esplicitamente in MVP §6.2 a E12 | — |
+| ACR-031 | Report settimanale pilot | UNASSIGNED — non ancora classificato | Non verificato in questo passaggio | Nessuna — non ancora incrociato con lettura narrativa handbook/codice | Gap di classificazione, OD-10 |
+| ACR-032 | Playwright Admin journeys | MVP Beta Settembre | Vedi epic E12 nel Master Requirement Catalog | Mappato esplicitamente in MVP §6.2 a E12 | — |
+| ACR-033 | Data retention policies | UNASSIGNED — non ancora classificato | Non verificato in questo passaggio | Nessuna — non ancora incrociato con lettura narrativa handbook/codice | Gap di classificazione, OD-10 |
+| ACR-034 | Cross-portal event catalog | UNASSIGNED — non ancora classificato | Non verificato in questo passaggio | Nessuna — non ancora incrociato con lettura narrativa handbook/codice | Gap di classificazione, OD-10 |
+| ACR-035 | Dashboard candidature con card/quick actions/SLA | UNASSIGNED — non ancora classificato | Non verificato in questo passaggio | Nessuna — non ancora incrociato con lettura narrativa handbook/codice | Gap di classificazione, OD-10/OD-12 |
+| ACR-036 | State machine Partner, permessi, reason code | UNASSIGNED — non ancora classificato | Non verificato in questo passaggio | Nessuna — non ancora incrociato con lettura narrativa handbook/codice | Gap di classificazione, OD-10/OD-12 |
+| ACR-037 | Modello fonti/documenti verifica futura | UNASSIGNED — non ancora classificato | Non verificato in questo passaggio | Nessuna — non ancora incrociato con lettura narrativa handbook/codice | Gap di classificazione, OD-10/OD-12 |
+| ACR-038 | Oversight checklist/completezza/first publish | UNASSIGNED — non ancora classificato | Non verificato in questo passaggio | Nessuna — non ancora incrociato con lettura narrativa handbook/codice | Gap di classificazione, OD-10/OD-12 |
+| ACR-039 | Oversight tutorial progress e re-engagement | UNASSIGNED — non ancora classificato | Non verificato in questo passaggio | Nessuna — non ancora incrociato con lettura narrativa handbook/codice | Gap di classificazione, OD-10/OD-12 |
+| ACR-040 | Trust Score engine interno e history | UNASSIGNED — non ancora classificato | Non verificato in questo passaggio | Nessuna — non ancora incrociato con lettura narrativa handbook/codice | Gap di classificazione, OD-10 |
+| ACR-041 | Configurazione pesi/soglie Trust versionata | UNASSIGNED — non ancora classificato | Non verificato in questo passaggio | Nessuna — non ancora incrociato con lettura narrativa handbook/codice | Gap di classificazione, OD-10/OD-11 |
+| ACR-042 | Partnership Level e ranking governance | UNASSIGNED — fonte dichiara solo "fuori scope MVP", nessuna fase Post-Beta/Fase2/Fase3 specificata | Non verificato in questo passaggio | Gamification e livelli visibili (Partnership Level) | Nessuna decisione richiesta — corrisponde a categoria esplicitamente fuori scope MVP |
+| ACR-043 | Notification Center e template stati Partner | UNASSIGNED — non ancora classificato | Non verificato in questo passaggio | Nessuna — non ancora incrociato con lettura narrativa handbook/codice | Gap di classificazione, OD-10 |
+| ACR-044 | Referral attribution, dedupe, anti-abuso | UNASSIGNED — non ancora classificato | Non verificato in questo passaggio | Nessuna — non ancora incrociato con lettura narrativa handbook/codice | Gap di classificazione, OD-10 |
+| ACR-045 | Reward Genitore e commission incentive | UNASSIGNED — fonte dichiara solo "fuori scope MVP", nessuna fase Post-Beta/Fase2/Fase3 specificata | Non verificato in questo passaggio | Referral automatico economico (shadow mode a settembre) | Nessuna decisione richiesta — corrisponde a categoria esplicitamente fuori scope MVP |
+| ACR-046 | Audit esteso per trust/review/livelli/incentivi | UNASSIGNED — non ancora classificato | Non verificato in questo passaggio | Nessuna — non ancora incrociato con lettura narrativa handbook/codice | Gap di classificazione, OD-10 |
 
-## Vista 4 — Journey end-to-end
+## 6. Vista Journey end-to-end (invariata nel metodo, aggiornata con gli stati corretti)
 
-Journey primaria MVP (§2.3 del documento MVP): *Partner richiede accesso → verifica identità → Admin approva → walkthrough/checklist → Partner pubblica → Parent scopre un bisogno → invia richiesta → Partner risponde → Planner si aggiorna → Admin monitora*.
+Journey primaria MVP (§2.3): *Partner richiede accesso → verifica identità → Admin approva → walkthrough/checklist → Partner pubblica → Parent scopre un bisogno → invia richiesta → Partner risponde → Planner si aggiorna → Admin monitora*.
 
-| Tappa journey | Stato codice | Stato verificato dal vivo |
+| Tappa journey | OVERALL_STATUS (da Master Requirement Catalog) | Note |
 |---|---|---|
-| Partner richiede accesso | `LIVE` | `BUILT` — mai eseguito da un centro pilota reale (solo test tecnico, OD-07) |
-| Verifica identità | `LIVE` | `BUILT` — stesso motivo |
-| Admin approva | `LIVE` | `BUILT` — stesso motivo |
-| Walkthrough/checklist | `LIVE` | `LIVE` — verificato staticamente + E2E parziale |
-| Partner pubblica offerta | `LIVE` | `BUILT` — nessuna pubblicazione reale da un centro pilota |
-| Parent scopre un bisogno | `LIVE` | `LIVE` |
-| Invia richiesta | `LIVE` | `LIVE` |
-| Partner risponde | `LIVE` | `LIVE` (16 booking reali con risposta, ma `email_delivery_status` sempre `NULL` — OD-01) |
-| Planner si aggiorna | `LIVE` | `LIVE` |
-| Admin monitora | `LIVE` | `PART` — Command Center esiste, nessun run di monitoraggio su dati pilota reali (nessun pilota reale ancora arruolato) |
+| Partner richiede accesso | `LIVE_WITH_GAP` (PT-MVP-01) | Funziona, KPI ≤2min mai misurato |
+| Verifica identità | `BUILT` (PT-MVP-02) | Meccanismo esiste, nessun run live confermato |
+| Admin approva | `LIVE` (A-MVP-02/03) | Candidatura reale revisionata e approvata |
+| Walkthrough/checklist | `LIVE` (PT-MVP-05) / `BUILT` (PT-MVP-04) | Walkthrough testato dal vivo da Fabrizio; checklist non confermata live |
+| Partner pubblica offerta | `BUILT` (PT-MVP-07) | Nessun run live distinto confermato |
+| Parent scopre un bisogno | `LIVE` (P-MVP-01/03/04) | |
+| Invia richiesta | `LIVE` (P-MVP-05) | 16 booking reali |
+| Partner risponde | `LIVE` (PT-MVP-09) / `LIVE_WITH_GAP` (PT-MVP-12, e-mail) | Risposta sì, notifica e-mail no (`RESEND_API_KEY`) |
+| Planner si aggiorna | `LIVE` (P-MVP-06/07) | |
+| Admin monitora | `BUILT` (A-MVP-04) | Declassato da `LIVE`: nessuna evidenza di un Admin che consulta davvero l'oversight su un Partner reale |
 
-**Sintesi Vista 4**: la journey è **`LIVE` a livello di codice su tutte le 10 tappe**, ma **`BUILT`/non ancora verificata dal vivo end-to-end con un centro e una famiglia reali** su almeno 4 delle 10 tappe. Questo è esattamente l'oggetto delle Golden Journeys (OD-03, ancora aperte) — la heatmap qui non le sostituisce, le rende visibili come gap distinto da un problema di codice.
-
-## Nota di metodo comune alle 4 viste
-
-Nessuna percentuale in questo documento è stata calcolata includendo o escludendo righe per far apparire un numero "più pulito". Ogni percentuale dichiara il proprio denominatore nella riga immediatamente sopra o accanto. Dove un calcolo onesto non è possibile senza lavoro non ancora fatto (Vista 3), non è stato prodotto un numero.
+**Sintesi**: la journey non è uniformemente `LIVE` — 4 delle 10 tappe sono `BUILT` o `LIVE_WITH_GAP`. Questo è più severo e più corretto della sintesi v1 ("LIVE a livello di codice su tutte le 10 tappe"), che confondeva "il codice esiste" con "la tappa è pronta".
