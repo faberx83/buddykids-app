@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { uploadImage } from "@/lib/storage";
+import { uploadImage, uploadKidAvatar } from "@/lib/storage";
 import ImageCropModal from "@/components/ImageCropModal";
 
 // Cerchietto con overlay "cambia foto" (icona macchina fotografica),
@@ -72,7 +72,10 @@ export default function AvatarUploadButton({
   async function handleFile(file: File) {
     setError(null);
     setUploading(true);
-    const result = await uploadImage(folder, file);
+    // Fix privacy 06/08/2026: le foto bambini vanno in un bucket privato
+    // dedicato (URL firmato, non pubblico) — vedi lib/storage.ts. Per ogni
+    // altro folder (avatars/centers/partner-offers) niente cambia.
+    const result = folder === "kids" ? await uploadKidAvatar(file) : await uploadImage(folder, file);
     setUploading(false);
     if (result.error || !result.url) {
       setError(result.error || "Errore nel caricamento");

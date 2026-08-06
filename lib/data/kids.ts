@@ -8,6 +8,11 @@ import { kids as mockKids } from "@/lib/mock-data";
 import { createClient } from "@/lib/supabase/server";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
 
+// Stesso bucket di lib/storage.ts#uploadKidAvatar (stringa duplicata invece
+// di importarla — lib/storage.ts è "use client", vedi lo stesso commento in
+// app/actions/kids.ts).
+const KIDS_AVATARS_BUCKET = "buddykids-kids-avatars";
+
 const PALETTE = ["#E3F9F5", "#FFF0EA", "#F0EEFF", "#E8F6FD", "#E8F9EE", "#FFF8E7"];
 
 export function colorForName(name: string): string {
@@ -49,7 +54,26 @@ interface RawKidRow {
   interests: string[] | null;
 }
 
-function mapRow(row: RawKidRow): Kid {
+// Fix privacy 06/08/2026: kids.avatar_url ora contiene, per le foto
+// caricate DOPO la migration_23, un path del bucket privato
+// "buddykids-kids-avatars" (non più un URL pubblico diretto — vedi
+// app/actions/kids.ts#updateKidAvatarAction) e va risolto in un URL firmato
+// fresco ad ogni lettura. Le foto caricate PRIMA della migrazione hanno
+// ancora un URL pubblico completo salvato (inizia per "http") sul vecchio
+// bucket "buddykids-images": riconosciute e mostrate cosi come sono, senza
+// tentare di firmarle (fallirebbe: non sono un path di quel bucket).
+async function resolveKidAvatarUrl(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  pathOrUrl: string | null
+): Promise<string | undefined> {
+  if (!pathOrUrl) return undefined;
+  if (pathOrUrl.startsWith("http")) return pathOrUrl;
+  const { data, error } = await supabase.storage.from(KIDS_AVATARS_BUCKET).createSignedUrl(pathOrUrl, 3600);
+  if (error || !data) return undefined;
+  return data.signedUrl;
+}
+
+async function mapRow(row: RawKidRow, supabase: Awaited<ReturnType<typeof createClient>>): Promise<Kid> {
   return {
     id: row.id,
     name: row.name,
@@ -60,7 +84,7 @@ function mapRow(row: RawKidRow): Kid {
     color: colorForName(row.name),
     note: "",
     interests: row.interests ?? undefined,
-    avatarUrl: row.avatar_url ?? undefined,
+    avatarUrl: await resolveKidAvatarUrl(supabase, row.avatar_url),
   };
 }
 
@@ -80,5 +104,5 @@ export async function getKidsForUser(): Promise<Kid[]> {
     .order("created_at", { ascending: true });
 
   if (error || !data) return [];
-  return (data as RawKidRow[]).map(mapRow);
+  return Promise.all((data as RawKidRow[]).map((row) => mapRow(row, supabase)));
 }
