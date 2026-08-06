@@ -41,6 +41,14 @@ where expires_at is null;
 alter table public.plan_shares alter column expires_at set default (now() + interval '30 days');
 alter table public.plan_shares alter column expires_at set not null;
 
+-- get_shared_plan_meta() aggiunge una colonna alla riga restituita
+-- (expires_at): Postgres non permette CREATE OR REPLACE quando cambia la
+-- "shape" del risultato (ERRORE 42P13 "cannot change return type of
+-- existing function" — provato in produzione, non solo teorico), va
+-- eliminata prima esplicitamente. Sicuro: viene ricreata subito dopo nella
+-- stessa transazione, mai un istante senza la funzione.
+drop function if exists public.get_shared_plan_meta(text);
+
 create or replace function public.get_shared_plan_meta(p_token text)
 returns table (label text, scope_start date, scope_end date, expires_at timestamptz, valid boolean)
 language plpgsql security definer
@@ -156,6 +164,7 @@ commit;
 -- un campo aggiuntivo, plan_shares.token/scope_* restano invariati).
 -- ════════════════════════════════════════════════════════════════
 -- begin;
+-- drop function if exists public.get_shared_plan_meta(text);
 -- create or replace function public.get_shared_plan_meta(p_token text)
 -- returns table (label text, scope_start date, scope_end date, valid boolean)
 -- language plpgsql security definer
