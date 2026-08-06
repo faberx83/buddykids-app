@@ -55,19 +55,30 @@ test.describe("NEXTGEN - Ricerca Sprint 5.7 (filtri + Vista Mappa)", () => {
   // multi-selezione, raggruppata per mese") — l'etichetta del chip ora
   // mostra un conteggio ("Settimane (N)"), non più il numero della singola
   // settimana selezionata; il pannello raggruppa le 13 settimane per mese.
+  //
+  // BUG CORRETTO 07/08/2026 — il pannello ora nasconde le settimane già
+  // passate (stessa logica del Planner, segnalato da Fabrizio), quindi
+  // "Settimana 1"/"Settimana 2" specifiche NON sono più garantite presenti
+  // (dipende da quando questo test viene eseguito rispetto alla stagione).
+  // Il test non assume più quali settimane numerate siano visibili: prende
+  // le prime due disponibili, qualunque esse siano.
   test("TC-N85 - Selezionare settimane nel pannello 'Data' aggiorna il conteggio nel chip, raggruppate per mese", async ({
     page,
   }) => {
     await page.getByText("Date", { exact: true }).click();
-    await expect(page.getByText("Giugno", { exact: true })).toBeVisible();
-    await page.getByText(/^Settimana 1 ·/).click();
+    const weekButtons = page.getByRole("button", { name: /^Settimana \d+ ·/ });
+    const availableCount = await weekButtons.count();
+    test.skip(availableCount === 0, "Nessuna settimana futura in stagione da qui a fine anno — pannello vuoto per design.");
 
+    await weekButtons.first().click();
     await expect(page.getByText(/Settimane \(1\)/)).toBeVisible();
     await expect(page.getByRole("button", { name: /^Azzera/ })).toBeVisible();
 
-    // Multi-selezione: una seconda settimana si aggiunge, non sostituisce.
-    await page.getByText(/^Settimana 2 ·/).click();
-    await expect(page.getByText(/Settimane \(2\)/)).toBeVisible();
+    if (availableCount > 1) {
+      // Multi-selezione: una seconda settimana si aggiunge, non sostituisce.
+      await weekButtons.nth(1).click();
+      await expect(page.getByText(/Settimane \(2\)/)).toBeVisible();
+    }
   });
 
   test("TC-N86 - 'Azzera' ripristina il conteggio non filtrato", async ({ page }) => {
@@ -89,6 +100,32 @@ test.describe("NEXTGEN - Ricerca Sprint 5.7 (filtri + Vista Mappa)", () => {
 
     await page.getByRole("button", { name: "Lista" }).click();
     await expect(resultsCount(page)).toBeVisible();
+  });
+
+  // BUG CORRETTO 07/08/2026 (segnalato da Fabrizio: "se clicco 'riempi' su
+  // una settimana, nella sezione 'scopri' viene applicato il filtro ma se
+  // seleziono un centro estivo mi vengono proposti i giorni spot a caso e
+  // non contestualizzati al filtro") — root cause: ActivityCard.tsx non
+  // propagava mai la/le settimane selezionate qui nel link verso il
+  // dettaglio del centro. Verifica end-to-end: selezionare una settimana
+  // nel pannello "Data" e poi cliccare una card deve portare la settimana
+  // nell'URL del dettaglio.
+  test("TC-N90 - La settimana selezionata in Scopri arriva nell'URL del dettaglio del centro", async ({ page }) => {
+    await page.getByText("Date", { exact: true }).click();
+    const weekButtons = page.getByRole("button", { name: /^Settimana \d+ ·/ });
+    test.skip((await weekButtons.count()) === 0, "Nessuna settimana futura in stagione da verificare qui.");
+    await weekButtons.first().click();
+    await expect(page.getByText(/Settimane \(1\)/)).toBeVisible();
+
+    // Chiude il pannello per raggiungere i risultati sotto.
+    await page.getByText("Date", { exact: true }).click();
+    const firstCard = page.locator("a[href^='/activity/']").first();
+    test.skip(!(await firstCard.isVisible().catch(() => false)), "Nessun risultato disponibile per questa settimana.");
+    const href = await firstCard.getAttribute("href");
+    expect(href).toMatch(/[?&]weeks=/);
+
+    await firstCard.click();
+    await expect(page).toHaveURL(/\/activity\/.+weeks=/);
   });
 
   // SPRINT 5 (feedback Fabrizio): "aggiungi flag per disabili e diete speciali

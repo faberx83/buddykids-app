@@ -10,6 +10,7 @@ export default function ActivityCard({
   matchPercent,
   source,
   correlationId,
+  weekStarts,
 }: {
   activity: Activity;
   matchPercent?: number;
@@ -22,11 +23,21 @@ export default function ActivityCard({
   // sui punti che non li passano ancora).
   source?: string;
   correlationId?: string;
+  // BUG CORRETTO 07/08/2026 (segnalato da Fabrizio: da "Riempi" su una
+  // settimana del Planner, il filtro settimane veniva applicato nella lista
+  // di Scopri ma andava perso entrando nel dettaglio del singolo centro —
+  // i "giorni spot" mostrati non erano contestualizzati al filtro). Le
+  // settimane selezionate in SearchDiscoveryClient vanno propagate qui nel
+  // link verso /activity/[id], che ora le legge (vedi DetailClient.tsx) per
+  // filtrare i giorni proposti. Array (non singolo valore) perché Scopri
+  // permette la selezione di più settimane.
+  weekStarts?: string[];
 }) {
   const [fav, setFav] = useState(false);
   const params = new URLSearchParams();
   if (source) params.set("source", source);
   if (correlationId) params.set("cid", correlationId);
+  if (weekStarts && weekStarts.length > 0) params.set("weeks", weekStarts.join(","));
   const query = params.toString();
 
   return (

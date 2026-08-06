@@ -59,6 +59,18 @@ export default function BookingClient({
   // Impostato quando si arriva dal pulsante "Riempi" del Planner in Home,
   // per una settimana specifica (startDate ISO della settimana stagionale).
   const requestedWeekStart = searchParams.get("week");
+  // BUG CORRETTO 07/08/2026 (segnalato da Fabrizio: "se selezionano più
+  // settimane come si comporta?") — Scopri (SearchDiscoveryClient) permette
+  // di selezionare PIÙ settimane nel filtro "Riempi", ma questa pagina
+  // capiva solo una singola "?week=". "?weeks=<start1>,<start2>" (plurale,
+  // vedi app/activity/[id]/DetailClient.tsx#bookingHref) le porta avanti
+  // tutte; "?week=" singolare resta supportato per compatibilità con i link
+  // già esistenti (es. missions.ts, Home).
+  const requestedWeekStartsParam = searchParams.get("weeks");
+  const requestedWeekStarts = useMemo(() => {
+    if (requestedWeekStartsParam) return requestedWeekStartsParam.split(",").filter(Boolean);
+    return requestedWeekStart ? [requestedWeekStart] : [];
+  }, [requestedWeekStartsParam, requestedWeekStart]);
   // Se in Home era selezionato un bambino specifico (famiglie con più
   // figli con esigenze diverse), lo ritroviamo qui e lo preselezioniamo al
   // posto del primo bambino della lista.
@@ -99,28 +111,37 @@ export default function BookingClient({
   // altrimenti chi arriva da "Riempi" con una settimana precisa in mente si
   // ritroverebbe a dover ricercare da capo tra tutte le settimane.
   const focusWeek = useMemo(() => {
-    if (requestedWeekStart) {
-      const match = weeks.find((w) => w.startDate === requestedWeekStart);
+    if (requestedWeekStarts.length > 0) {
+      const match = weeks.find((w) => w.startDate === requestedWeekStarts[0]);
       if (match) return match;
     }
     return weeks.find((w) => bookable(w, bookedWeekIds)) ?? weeks[0];
-  }, [weeks, requestedWeekStart, bookedWeekIds]);
+  }, [weeks, requestedWeekStarts, bookedWeekIds]);
 
-  // Vero solo se la settimana richiesta da "Riempi" esiste davvero qui ed è
-  // prenotabile — usato per mostrare la conferma "Hai scelto già questa
-  // settimana" invece di lasciare che l'utente debba accorgersene da solo
-  // dal solo bordo colorato della card.
-  const requestedWeekConfirmed = Boolean(
-    requestedWeekStart &&
-      focusWeek?.startDate === requestedWeekStart &&
-      bookable(focusWeek, bookedWeekIds)
+  // Quante delle settimane richieste da "Riempi"/Scopri esistono davvero
+  // qui e sono prenotabili — usato per mostrare la conferma "Hai già scelto
+  // queste settimane" invece di lasciare che l'utente debba accorgersene da
+  // solo dal solo bordo colorato delle card.
+  const requestedWeeksConfirmed = useMemo(
+    () =>
+      weeks.filter(
+        (w) => Boolean(w.startDate) && requestedWeekStarts.includes(w.startDate!) && bookable(w, bookedWeekIds)
+      ),
+    [weeks, requestedWeekStarts, bookedWeekIds]
   );
+  const requestedWeekConfirmed = requestedWeeksConfirmed.length > 0;
 
   const [step, setStep] = useState<1 | 2 | 3>(1);
   const [kids, setKids] = useState<Kid[]>(initialKids);
-  const [selectedWeeks, setSelectedWeeks] = useState<string[]>(() =>
-    !dayBookingMode && focusWeek && bookable(focusWeek, bookedWeekIds) ? [focusWeek.id] : []
-  );
+  // BUG CORRETTO 07/08/2026 — se da Scopri arrivano più settimane
+  // selezionate, le preseleziona TUTTE (quelle davvero prenotabili qui),
+  // non solo la prima: prima l'utente doveva riselezionarle a mano una per
+  // una, perdendo il senso stesso di aver scelto più settimane nel filtro.
+  const [selectedWeeks, setSelectedWeeks] = useState<string[]>(() => {
+    if (dayBookingMode) return [];
+    if (requestedWeeksConfirmed.length > 0) return requestedWeeksConfirmed.map((w) => w.id);
+    return focusWeek && bookable(focusWeek, bookedWeekIds) ? [focusWeek.id] : [];
+  });
   // Di default si vede solo la settimana scelta + quella prima/dopo (utile
   // per lo sconto multi-settimana) — "Vedi tutte" espande alla griglia
   // completa di 13 settimane, colorata come nel Planner.
@@ -358,10 +379,17 @@ export default function BookingClient({
             <div className="mb-3 text-[13px] text-ink-2">
               Puoi selezionare più settimane — stessa numerazione del Planner in Home
             </div>
-            {requestedWeekConfirmed && focusWeek && (
+            {requestedWeekConfirmed && requestedWeeksConfirmed.length === 1 && (
               <div className="mb-3 flex items-center gap-2 rounded-lg border border-sky-mid bg-sky-light px-3 py-2.5 text-[12px] font-medium text-ink">
                 <i className="ti ti-circle-check-filled text-base text-sky" />
-                Hai già scelto la <b>{focusWeek.label}</b> ({focusWeek.dates}) dal Planner — è selezionata qui sotto.
+                Hai già scelto la <b>{requestedWeeksConfirmed[0].label}</b> ({requestedWeeksConfirmed[0].dates}) dal
+                Planner — è selezionata qui sotto.
+              </div>
+            )}
+            {requestedWeekConfirmed && requestedWeeksConfirmed.length > 1 && (
+              <div className="mb-3 flex items-center gap-2 rounded-lg border border-sky-mid bg-sky-light px-3 py-2.5 text-[12px] font-medium text-ink">
+                <i className="ti ti-circle-check-filled text-base text-sky" />
+                Hai già scelto {requestedWeeksConfirmed.length} settimane da Scopri — sono selezionate qui sotto.
               </div>
             )}
             <div className="mb-2.5 flex flex-wrap items-center gap-2.5 text-[10px] text-ink-2">

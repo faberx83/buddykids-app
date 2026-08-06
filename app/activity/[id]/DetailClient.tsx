@@ -43,6 +43,31 @@ export default function DetailClient({
   // Planner) — la portiamo avanti nel link di prenotazione cosi arriva
   // preselezionata invece di doverla ricercare da capo.
   const weekParam = searchParams.get("week");
+  // BUG CORRETTO 07/08/2026 (segnalato da Fabrizio: da "Riempi" su una
+  // settimana del Planner, il filtro veniva applicato correttamente nella
+  // lista di Scopri ma qui, nel dettaglio del singolo centro, i "giorni
+  // spot" mostrati erano "a caso e non contestualizzati al filtro" — questa
+  // pagina leggeva ?week= ma non lo usava mai per filtrare `days`, mostrava
+  // sempre tutti i giorni aperti dell'intera stagione). "?weeks=" (plurale,
+  // da ActivityCard.tsx quando Scopri ha più settimane selezionate) o
+  // "?week=" singolare (link più vecchi) — entrambi supportati.
+  const weeksParam = searchParams.get("weeks");
+  const filterWeekStarts = useMemo(() => {
+    if (weeksParam) return weeksParam.split(",").filter(Boolean);
+    return weekParam ? [weekParam] : [];
+  }, [weeksParam, weekParam]);
+  // Ogni settimana stagionale è lun-ven (5 giorni, vedi lib/season-weeks.ts):
+  // un giorno è "nella settimana" se la sua data cade tra lo start e start+4.
+  const filterWeekRanges = useMemo(
+    () =>
+      filterWeekStarts.map((start) => {
+        const startDate = new Date(start + "T00:00:00Z");
+        const end = new Date(startDate);
+        end.setUTCDate(startDate.getUTCDate() + 4);
+        return { start, end: end.toISOString().slice(0, 10) };
+      }),
+    [filterWeekStarts]
+  );
   // Bambino selezionato in Home/Cerca (famiglie con più figli) — passato
   // avanti anche da qui, cosi in Prenotazione risulta già spuntato quello
   // giusto invece del primo della lista.
@@ -58,11 +83,20 @@ export default function DetailClient({
   // TRAMA ONE Build Sprint 3 — "Giorni spot": selezione giorni singoli,
   // attiva solo quando ci sono giorni configurati dal Gestore e l'attività
   // non è a sola settimana intera. Ordinati per data, solo quelli aperti.
-  const bookableDays = useMemo(
+  const allBookableDays = useMemo(
     () => days.filter((d) => d.isOpen).sort((a, b) => a.date.localeCompare(b.date)),
     [days]
   );
-  const showDaySelection = activity.bookingMode !== "week_only" && bookableDays.length > 0;
+  // Se si arriva da "Riempi"/Scopri con una o più settimane selezionate,
+  // mostra solo i "giorni spot" che cadono in quelle settimane invece di
+  // tutta la stagione — questo è il fix del bug segnalato.
+  const bookableDays = useMemo(() => {
+    if (filterWeekRanges.length === 0) return allBookableDays;
+    return allBookableDays.filter((d) =>
+      filterWeekRanges.some((r) => d.date >= r.start && d.date <= r.end)
+    );
+  }, [allBookableDays, filterWeekRanges]);
+  const showDaySelection = activity.bookingMode !== "week_only" && allBookableDays.length > 0;
   const [selectedDayDates, setSelectedDayDates] = useState<string[]>([]);
   const toggleDay = (day: DayAvailability) => {
     if (!day.singleDayBookable || day.spotsLeft <= 0) return;
@@ -80,7 +114,12 @@ export default function DetailClient({
   // altrimenti comportamento invariato (solo ?week=/?kid=).
   const bookingHref = (() => {
     const params = new URLSearchParams();
-    if (weekParam) params.set("week", weekParam);
+    // "weeks" (plurale) se Scopri ne ha selezionate più di una, altrimenti
+    // "week" singolare (invariato per i link più vecchi/altri punti di
+    // ingresso che passano solo quello) — vedi BookingClient.tsx che ora
+    // legge entrambi.
+    if (filterWeekStarts.length > 1) params.set("weeks", filterWeekStarts.join(","));
+    else if (weekParam) params.set("week", weekParam);
     if (kidParam) params.set("kid", kidParam);
     if (selectedDayDates.length > 0) params.set("days", [...selectedDayDates].sort().join(","));
     if (sourceParam) params.set("source", sourceParam);
@@ -292,6 +331,27 @@ export default function DetailClient({
             <div className="mb-2.5 text-[13px] text-ink-2">
               Scegli solo i giorni che ti servono, invece dell&apos;intera settimana
             </div>
+            {filterWeekRanges.length > 0 && (
+              <div className="mb-2.5 flex items-center justify-between gap-2 rounded-md bg-sky-light px-3 py-2 text-[11px] font-medium text-ink">
+                <span>
+                  <i className="ti ti-filter mr-1 text-sm text-sky" />
+                  Mostro solo i giorni di {filterWeekRanges.length === 1 ? "questa settimana" : `queste ${filterWeekRanges.length} settimane`}{" "}
+                  (dal Planner/Scopri)
+                </span>
+                <button
+                  type="button"
+                  onClick={() => router.replace(`/activity/${activity.id}`)}
+                  className="flex-shrink-0 whitespace-nowrap font-semibold text-sky active:bg-black/[0.04]"
+                >
+                  Vedi tutti
+                </button>
+              </div>
+            )}
+            {filterWeekRanges.length > 0 && bookableDays.length === 0 && (
+              <p className="mb-2.5 rounded-md border border-dashed border-[#D8DEE8] bg-white p-3 text-center text-[12.5px] text-ink-2">
+                Nessun giorno spot aperto in {filterWeekRanges.length === 1 ? "questa settimana" : "queste settimane"}.
+              </p>
+            )}
             <div className="mb-2 flex flex-wrap gap-2">
               {bookableDays.map((day) => {
                 const soldOut = day.spotsLeft <= 0 || !day.singleDayBookable;

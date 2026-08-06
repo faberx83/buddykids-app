@@ -35,6 +35,11 @@ export default async function NextgenSearchPage() {
   ]);
 
   const uncoveredWeek = planner.weeks.find((w) => w.index === planner.firstUncoveredIndex) ?? null;
+  // BUG CORRETTO 07/08/2026 — stesso pattern di app/nextgen/planner/page.tsx:
+  // "oggi" calcolato una volta lato server, passato al client per nascondere
+  // le settimane passate dal filtro "Settimane di camp" (vedi
+  // SearchDiscoveryClient.tsx).
+  const todayIso = new Date().toISOString().slice(0, 10);
 
   return (
     <SearchDiscoveryClient
@@ -45,6 +50,7 @@ export default async function NextgenSearchPage() {
       uncoveredWeekLabel={uncoveredWeek ? `${uncoveredWeek.label} (${uncoveredWeek.dateRange})` : null}
       availabilityByWeek={availabilityByWeek}
       activitiesWithDaySpots={Array.from(activitiesWithDaySpots)}
+      todayIso={todayIso}
     />
   );
 }

@@ -146,12 +146,18 @@ function ServiceCheckbox({
 function ResultCard({
   match,
   correlationId,
+  weekStarts,
 }: {
   match: SmartMatch;
   // TRAMA ONE Build Sprint 3 — "context object" leggero: propagato ad
   // ActivityCard.tsx insieme a source="nextgen_search" (vedi chiamate a
   // ResultCard sotto).
   correlationId?: string;
+  // BUG CORRETTO 07/08/2026 — le settimane selezionate nel filtro "Data" di
+  // questa pagina (vedi selectedWeekStarts), propagate fino al dettaglio
+  // del centro cosi i "giorni spot" mostrati li' restano contestualizzati
+  // al filtro invece di andare persi al click sulla card.
+  weekStarts?: string[];
 }) {
   return (
     <div>
@@ -169,6 +175,7 @@ function ResultCard({
         matchPercent={Math.min(99, Math.round(match.score))}
         source="nextgen_search"
         correlationId={correlationId}
+        weekStarts={weekStarts}
       />
     </div>
   );
@@ -182,6 +189,7 @@ export default function SearchDiscoveryClient({
   uncoveredWeekLabel,
   availabilityByWeek,
   activitiesWithDaySpots = [],
+  todayIso,
 }: {
   activities: Activity[];
   kids: Kid[];
@@ -193,6 +201,17 @@ export default function SearchDiscoveryClient({
   // LEGACY (app/(main)/search/SearchClient.tsx), lib/data/activities.ts
   // #getActivitiesWithOpenDaySpots.
   activitiesWithDaySpots?: string[];
+  // BUG CORRETTO 07/08/2026 (segnalato da Fabrizio: "il filtro sulle
+  // settimane deve seguire la stessa logica del Planner: se alcune
+  // settimane sono passate non devo poterle vedere") — prima il filtro
+  // "Settimane di camp" qui mostrava tutte le 13 settimane stagionali senza
+  // eccezione, comprese quelle già trascorse. Stesso principio già in uso
+  // nel Planner (lib/nextgen/planner-insights.ts: isPast = endDate <
+  // todayIso, confronto sull'intera data ISO — non solo mese/giorno come in
+  // lib/data/weeks.ts#dropPastWeeks, pensato invece per il caso diverso
+  // delle settimane per-attività coi dati seed di demo). Calcolato
+  // server-side in page.tsx, stesso pattern di app/nextgen/planner/page.tsx.
+  todayIso: string;
 }) {
   const router = useRouter();
   // TRAMA ONE — Sezione 8 (Chiusura P0 Parent, Context Object): questa
@@ -242,7 +261,16 @@ export default function SearchDiscoveryClient({
   const [selectedWeekStarts, setSelectedWeekStarts] = useState<string[]>(() => {
     const weekParam = searchParams.get("week");
     if (!weekParam) return [];
-    const validStarts = new Set(getSeasonWeekRanges(seasonYear).map((r) => isoDate(r.start)));
+    // Valida anche contro le settimane passate: un link "Riempi" non
+    // dovrebbe mai puntare a una settimana già chiusa nel Planner (vedi
+    // lib/nextgen/planner-insights.ts — il bottone "Riempi" li' non compare
+    // affatto per le settimane passate), ma per sicurezza non la
+    // preselezioniamo comunque se capitasse (link stantio).
+    const validStarts = new Set(
+      getSeasonWeekRanges(seasonYear)
+        .filter((r) => isoDate(r.end) >= todayIso)
+        .map((r) => isoDate(r.start))
+    );
     return validStarts.has(weekParam) ? [weekParam] : [];
   });
   const [radiusKm, setRadiusKm] = useState(DEFAULT_RADIUS_KM);
@@ -332,7 +360,14 @@ export default function SearchDiscoveryClient({
     setSelectedCoverageModes([]);
   }
 
-  const seasonWeekRanges = useMemo(() => getSeasonWeekRanges(seasonYear), [seasonYear]);
+  // BUG CORRETTO 07/08/2026 — filtro "Settimane di camp" allineato alla
+  // stessa regola del Planner: le settimane già trascorse non sono più
+  // mostrate/selezionabili qui (prima lo erano tutte, comprese quelle
+  // passate).
+  const seasonWeekRanges = useMemo(
+    () => getSeasonWeekRanges(seasonYear).filter((r) => isoDate(r.end) >= todayIso),
+    [seasonYear, todayIso]
+  );
   const weekRangeGroups = useMemo(() => groupWeekRangesByMonth(seasonWeekRanges), [seasonWeekRanges]);
 
   const zoneOptions = useMemo(() => {
@@ -1005,7 +1040,7 @@ export default function SearchDiscoveryClient({
               Nella tua zona (entro {radiusKm} km) — {nearby.length}
             </div>
             {nearby.map((m) => (
-              <ResultCard key={m.activity.id} match={m} correlationId={searchCorrelationId} />
+              <ResultCard key={m.activity.id} match={m} correlationId={searchCorrelationId} weekStarts={selectedWeekStarts} />
             ))}
             {nearby.length === 0 && <p className="pb-3 text-sm text-ink-2">Nessuna attività entro {radiusKm} km.</p>}
 
@@ -1013,7 +1048,7 @@ export default function SearchDiscoveryClient({
               <>
                 <div className="pb-1.5 pt-4 text-xs font-bold text-ink-2">Fuori dalla tua zona — {far.length}</div>
                 {far.map((m) => (
-                  <ResultCard key={m.activity.id} match={m} correlationId={searchCorrelationId} />
+                  <ResultCard key={m.activity.id} match={m} correlationId={searchCorrelationId} weekStarts={selectedWeekStarts} />
                 ))}
               </>
             )}
@@ -1021,7 +1056,7 @@ export default function SearchDiscoveryClient({
         ) : (
           <div className="flex flex-col gap-1">
             {matches.map((m) => (
-              <ResultCard key={m.activity.id} match={m} correlationId={searchCorrelationId} />
+              <ResultCard key={m.activity.id} match={m} correlationId={searchCorrelationId} weekStarts={selectedWeekStarts} />
             ))}
           </div>
         )}
