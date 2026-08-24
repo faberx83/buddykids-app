@@ -292,6 +292,44 @@ export const WEEK_STATUS_BAR_CLASS: Record<WeekStatus, string> = {
   past: "bg-ink-3/40",
 };
 
+// PRE-LAUNCH REMEDIATION WAVE 1 — R-19 (decisione Fabrizio, 24/08/2026,
+// promosso a MUST FIX BEFORE MICRO PILOT): la striscia compatta "Stato per
+// settimana" in PlannerClient.tsx comunicava gli 8 stati SOLO tramite il
+// colore di sfondo (WEEK_STATUS_BAR_CLASS) — un utente ipovedente/daltonico
+// o uno screen reader non avevano alcun modo di distinguere "priorità" da
+// "sovrapposizione" da "in attesa", ecc. (la riga della Timeline sotto era
+// già testuale per ogni ramo — "Non ti serve"/nome attività+dettaglio/
+// "Settimana passata"/"Scoperta" — quindi non richiedeva questo fix).
+// Label e icona qui sotto sono lette dalla striscia compatta per costruire
+// un aria-label completo (screen reader) e un'icona non basata sul colore
+// (utente ipovedente/daltonico) — nessun cambio al significato o
+// all'ordine di priorità degli stati, solo un canale di comunicazione in
+// più oltre al colore (WCAG 1.4.1 "Use of Color").
+export const WEEK_STATUS_LABEL: Record<WeekStatus, string> = {
+  dismissed: "Non ti serve",
+  covered: "Coperta",
+  partial: "Copertura parziale",
+  conflict: "Sovrapposizione da controllare",
+  priority: "Priorità: da organizzare",
+  uncovered: "Da organizzare",
+  awaiting: "In attesa di conferma del centro",
+  past: "Settimana passata",
+};
+
+// Icona Tabler + colore testo scelto per contrasto leggibile sul relativo
+// WEEK_STATUS_BAR_CLASS (le barre chiare — "uncovered" — usano un'icona
+// scura, le barre scure/sature usano un'icona bianca).
+export const WEEK_STATUS_ICON: Record<WeekStatus, { icon: string; colorClass: string }> = {
+  dismissed: { icon: "ti-minus", colorClass: "text-ink-3" },
+  covered: { icon: "ti-check", colorClass: "text-white" },
+  partial: { icon: "ti-circle-half-2", colorClass: "text-white" },
+  conflict: { icon: "ti-alert-triangle", colorClass: "text-white" },
+  priority: { icon: "ti-star", colorClass: "text-white" },
+  uncovered: { icon: "ti-circle-dashed", colorClass: "text-ink-3" },
+  awaiting: { icon: "ti-clock-hour-4", colorClass: "text-white" },
+  past: { icon: "ti-square-rounded-minus", colorClass: "text-ink-2" },
+};
+
 // SPRINT 2 (Organizzazione, feedback Fabrizio: "la Timeline potrebbe
 // raggruppare le 13 settimane per mese") — stessa convenzione già usata in
 // lib/nextgen/missions.ts (w.startDate.slice(0, 7) come chiave mese, array

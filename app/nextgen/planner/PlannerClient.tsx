@@ -9,6 +9,8 @@ import {
   computePerKidCoverage,
   computeWeekStatus,
   WEEK_STATUS_BAR_CLASS,
+  WEEK_STATUS_LABEL,
+  WEEK_STATUS_ICON,
   weekIndexFromLabel,
   overlapVerb,
   formatBookingNames,
@@ -461,11 +463,21 @@ export default function PlannerClient({
                   key={w.index}
                   type="button"
                   onClick={() => jumpToWeek(w.index)}
-                  title={`Settimana ${w.index} · ${w.dateRange}`}
-                  aria-label={`Vai al dettaglio della Settimana ${w.index}, ${w.dateRange}`}
+                  title={`Settimana ${w.index} · ${w.dateRange} · ${WEEK_STATUS_LABEL[status]}`}
+                  aria-label={`Vai al dettaglio della Settimana ${w.index}, ${w.dateRange} — ${WEEK_STATUS_LABEL[status]}`}
                   className="flex flex-1 flex-col items-center gap-1 active:scale-95"
                 >
-                  <div className={`h-6 w-full rounded-full ${WEEK_STATUS_BAR_CLASS[status]}`} />
+                  {/* R-19 (Wave 1, 24/08/2026): il colore da solo non basta
+                      (WCAG 1.4.1) — icona non basata sul colore + aria-label/
+                      title testuali comunicano lo stesso stato anche a chi
+                      non riesce a distinguere il colore o usa uno screen
+                      reader. */}
+                  <div
+                    className={`flex h-6 w-full items-center justify-center rounded-full ${WEEK_STATUS_BAR_CLASS[status]}`}
+                    aria-hidden="true"
+                  >
+                    <i className={`ti ${WEEK_STATUS_ICON[status].icon} ${WEEK_STATUS_ICON[status].colorClass} text-[11px]`} />
+                  </div>
                   <span className="text-[9px] font-semibold text-ink-3">{w.index}</span>
                 </button>
               );
