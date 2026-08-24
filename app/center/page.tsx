@@ -2,23 +2,19 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import StatCard from "@/components/dashboard/StatCard";
 import StatusBadge from "@/components/dashboard/StatusBadge";
-import OccupancyChart from "@/components/charts/OccupancyChart";
-import {
-  activities,
-  bookingsMock,
-  centers,
-  demoCenterAdminCenterId,
-  promotions,
-} from "@/lib/mock-data";
-import { aggregateWeeklyOccupancy } from "@/lib/analytics";
+import AdminMockDataBanner from "@/components/admin/AdminMockDataBanner";
+import { getActivitiesForCenter, getPromotionsForActivities } from "@/lib/data/activities";
+import { getBookingsForCenter } from "@/lib/data/center-bookings";
+import { getOpenInquiriesCountForCenter } from "@/lib/data/inquiries";
 import { getGroupRequestsForCenter } from "@/lib/data/group-requests";
-import { buildActivityFeed } from "@/lib/activity-feed";
+import { getMyCenter } from "@/lib/data/center-admin";
+import { getCenterOnboardingState } from "@/lib/onboarding/data";
 import { createClient } from "@/lib/supabase/server";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
-import { getCenterOnboardingState } from "@/lib/onboarding/data";
 import { resolveFeatureFlag } from "@/lib/feature-flags/resolve";
 import { generateCorrelationId } from "@/lib/telemetry/correlation";
 import { Role } from "@/lib/types";
+import { CenterOnboardingStatus } from "@/lib/onboarding/types";
 
 // TRAMA ONE — Sezione 7 (Chiusura P0 Partner). Gap documentato in DEC-58/
 // DEC-62 (docs/trama-one/analysis/DECISION_LOG.md): questa dashboard non
@@ -74,36 +70,49 @@ async function maybeRedirectToOnboarding() {
   }
 }
 
+const ONBOARDING_STATUS_LABEL: Record<CenterOnboardingStatus, string> = {
+  LEAD: "Candidatura non ancora avviata",
+  CLAIMED: "Profilo in compilazione",
+  SUBMITTED: "In revisione da parte di TRAMA",
+  CHANGES_REQUESTED: "TRAMA ha richiesto delle modifiche",
+  APPROVED: "Approvato",
+  SUSPENDED: "Sospeso",
+};
+
+// PRE-LAUNCH REMEDIATION WAVE 1 — R-02 (decisione Fabrizio, 24/08/2026):
+// questa dashboard leggeva SEMPRE bookingsMock/activities/centers (mock),
+// anche a Supabase configurato — a differenza del resto del portale Partner
+// (Richieste, Richieste Gruppo, Inbox prenotazioni, Attività) già reale.
+// Riscritta come dashboard "task-first" minimale ma REALE: riusa
+// esclusivamente funzioni di lettura già esistenti (reuse-first, CLAUDE.md
+// §2) — nessuna nuova tabella/migrazione. Grafico occupazione e
+// suggerimenti cross-selling (entrambi costruiti solo su dati mock, nessun
+// equivalente reale esistente oggi) sono stati rimossi invece di essere
+// "reincartati": un gap dichiarato è preferibile a un numero finto.
 export default async function CenterDashboardPage() {
   await maybeRedirectToOnboarding();
 
-  const center = centers.find((c) => c.id === demoCenterAdminCenterId)!;
-  const myActivities = activities.filter((a) => a.centerId === center.id);
-  const myBookings = bookingsMock.filter((b) =>
-    myActivities.some((a) => a.id === b.activityId)
-  );
-  const myPromotions = promotions.filter((p) =>
-    myActivities.some((a) => a.id === p.activityId) && p.active
-  );
-  const revenue = myBookings
+  const { center, dbId } = await getMyCenter();
+  const isMockCenter = dbId === null;
+
+  const [myActivities, bookings, openInquiriesCount, groupRequests, onboarding] = await Promise.all([
+    getActivitiesForCenter(dbId, center.id),
+    getBookingsForCenter(),
+    getOpenInquiriesCountForCenter(),
+    getGroupRequestsForCenter(),
+    getCenterOnboardingState(dbId),
+  ]);
+  const activePromotions = (await getPromotionsForActivities(myActivities)).filter((p) => p.active);
+
+  const activeBookings = bookings.filter((b) => b.status !== "cancelled");
+  const pendingBookings = activeBookings.filter((b) => b.partnerDecision === "pending");
+  const confirmedRevenue = activeBookings
     .filter((b) => b.status === "confirmed")
     .reduce((sum, b) => sum + b.totalAmount, 0);
-  const occupancy = aggregateWeeklyOccupancy(myActivities.map((a) => a.id));
-  const weakWeeks = occupancy.filter((w) => w.occupancyPercent < 40);
-
-  // Richieste gruppo: dato reale (da Supabase quando collegato), a
-  // differenza del resto di questa pagina che è ancora mock (task noto,
-  // separato da questo redesign — vedi backlog "Dashboard Gestore ancora
-  // 100% mock").
-  const groupRequests = await getGroupRequestsForCenter();
   const pendingGroupRequests = groupRequests.filter((r) => r.status === "pending");
-
-  const feed = buildActivityFeed({
-    weakWeeks,
-    groupRequests,
-    bookings: myBookings,
-    promotions: myPromotions,
-  });
+  // Già ordinate per created_at desc dalla query in getBookingsForCenter().
+  const recentBookings = activeBookings.slice(0, 5);
+  const onboardingIncomplete = onboarding.status !== "APPROVED";
 
   return (
     <div className="animate-fade-in">
@@ -111,7 +120,9 @@ export default async function CenterDashboardPage() {
         <div>
           <h1 className="text-lg font-bold text-ink">{center.name}</h1>
           <p className="mt-0.5 text-[12.5px] text-ink-2">
-            Bentornato, {center.ownerName.split(" ")[0]}
+            {onboardingIncomplete
+              ? ONBOARDING_STATUS_LABEL[onboarding.status]
+              : "Ecco la situazione di oggi"}
           </p>
         </div>
         <div
@@ -122,30 +133,68 @@ export default async function CenterDashboardPage() {
         </div>
       </div>
 
-      {/* Banner "cose da guardare oggi" — solo le condizioni davvero attive,
-          niente placeholder vuoti. Le decisioni da prendere vengono prima dei
-          KPI, non dopo. */}
-      {(weakWeeks.length > 0 || pendingGroupRequests.length > 0) && (
+      {isMockCenter && (
+        <AdminMockDataBanner description="Nessun centro reale collegato a questo account — i numeri qui sotto sono di esempio, non prenotazioni/attività/richieste reali." />
+      )}
+
+      {onboardingIncomplete && !isMockCenter && (
+        <div className="mb-4 flex items-center gap-3 rounded-xl bg-yellow-light p-3.5">
+          <div className="flex h-[34px] w-[34px] flex-shrink-0 items-center justify-center rounded-[9px] bg-[#FCEFC0]">
+            <i className="ti ti-clock-hour-4 text-base text-[#9a6b00]" />
+          </div>
+          <div className="min-w-0 flex-1">
+            <div className="text-[13px] font-bold text-ink">
+              Profilo centro: {ONBOARDING_STATUS_LABEL[onboarding.status]}
+            </div>
+            <div className="mt-0.5 text-[11.5px] text-[#9a6b00]">
+              Finché il profilo non è Approvato, la tua attività non è visibile alle famiglie.
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Banner "cose da guardare oggi" — solo le condizioni davvero attive
+          e reali, niente placeholder vuoti. */}
+      {(pendingBookings.length > 0 || openInquiriesCount > 0 || pendingGroupRequests.length > 0) && (
         <div className="mb-4 flex flex-col gap-2">
-          {weakWeeks.length > 0 && (
+          {pendingBookings.length > 0 && (
             <div className="flex items-center gap-3 rounded-xl bg-orange-light p-3.5">
               <div className="flex h-[34px] w-[34px] flex-shrink-0 items-center justify-center rounded-[9px] bg-orange-mid">
-                <i className="ti ti-bolt text-base text-trama-orange" />
+                <i className="ti ti-ticket text-base text-trama-orange" />
               </div>
               <div className="min-w-0 flex-1">
                 <div className="text-[13px] font-bold text-ink">
-                  {weakWeeks.length} settiman{weakWeeks.length === 1 ? "a" : "e"} sotto il 40% di
-                  occupazione
+                  {pendingBookings.length} prenotazion{pendingBookings.length === 1 ? "e" : "i"} in attesa
+                  di risposta
                 </div>
                 <div className="mt-0.5 text-[11.5px] text-[#8a5a33]">
-                  Valuta uno sconto last-minute
+                  Le famiglie sono in attesa di conferma
                 </div>
               </div>
               <Link
-                href="/center/promotions"
+                href="/center/bookings"
                 className="flex-shrink-0 whitespace-nowrap rounded-lg bg-trama-orange px-3.5 py-2 text-[11.5px] font-bold text-white"
               >
-                Crea promo
+                Rispondi
+              </Link>
+            </div>
+          )}
+          {openInquiriesCount > 0 && (
+            <div className="flex items-center gap-3 rounded-xl bg-sky-light p-3.5">
+              <div className="flex h-[34px] w-[34px] flex-shrink-0 items-center justify-center rounded-[9px] bg-[#D6EEFB]">
+                <i className="ti ti-message-circle-2 text-base text-sky" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <div className="text-[13px] font-bold text-ink">
+                  {openInquiriesCount} richiest{openInquiriesCount === 1 ? "a" : "e"} genitore aperta
+                  {openInquiriesCount === 1 ? "" : "e"}
+                </div>
+              </div>
+              <Link
+                href="/center/richieste"
+                className="flex-shrink-0 whitespace-nowrap rounded-lg bg-sky px-3.5 py-2 text-[11.5px] font-bold text-white"
+              >
+                Rispondi
               </Link>
             </div>
           )}
@@ -176,7 +225,7 @@ export default async function CenterDashboardPage() {
 
       <div className="mb-4 grid grid-cols-2 gap-3 md:grid-cols-4">
         <StatCard
-          label="Attività"
+          label="Attività pubblicate"
           value={String(myActivities.length)}
           icon="ti-list-details"
           iconBg="#E8F6FD"
@@ -184,116 +233,86 @@ export default async function CenterDashboardPage() {
           elevated
         />
         <StatCard
-          label="Prenotazioni"
-          value={String(myBookings.length)}
+          label="Prenotazioni in attesa"
+          value={String(pendingBookings.length)}
           icon="ti-ticket"
-          iconBg="#E3F9F5"
-          iconColor="#3ECFB2"
-          elevated
-        />
-        <StatCard
-          label="Promo attive"
-          value={String(myPromotions.length)}
-          icon="ti-discount-2"
-          iconBg="#F0EEFF"
-          iconColor="#8B7CF8"
-          elevated
-        />
-        <StatCard
-          label="Fatturato confermato"
-          value={`€${revenue}`}
-          icon="ti-coin-euro"
           iconBg="#FFF0EA"
           iconColor="#FF8C5A"
           elevated
         />
+        <StatCard
+          label="Richieste aperte"
+          value={String(openInquiriesCount)}
+          icon="ti-message-circle-2"
+          iconBg="#E8F6FD"
+          iconColor="#4DAFEF"
+          elevated
+        />
+        <StatCard
+          label="Fatturato confermato"
+          value={`€${confirmedRevenue}`}
+          icon="ti-coin-euro"
+          iconBg="#F0EEFF"
+          iconColor="#8B7CF8"
+          elevated
+        />
       </div>
 
-      <div className="mb-4 rounded-[14px] bg-white p-4 shadow-[0_1px_3px_rgba(0,0,0,0.04)]">
-        <span className="text-sm font-bold text-ink">Occupazione settimanale</span>
-        <p className="mb-2 mt-1 text-xs text-ink-2">
-          Usa questo grafico per capire dove i posti restano vuoti e decidere su quali settimane
-          spingere una promo last-minute.
-        </p>
-        <OccupancyChart data={occupancy} />
-      </div>
-
-      <div className="grid gap-4 lg:grid-cols-[2fr_1fr]">
-        <div className="rounded-[14px] bg-white shadow-[0_1px_3px_rgba(0,0,0,0.04)]">
-          <div className="border-b border-[#F0F2F5] px-4 py-3.5">
-            <span className="text-[13.5px] font-bold text-ink">Prenotazioni recenti</span>
-          </div>
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="text-left text-xs text-ink-3">
-                <th className="px-4 py-2 font-medium">Bambino</th>
-                <th className="px-4 py-2 font-medium">Attività</th>
-                <th className="px-4 py-2 font-medium">Totale</th>
-                <th className="px-4 py-2 font-medium">Stato</th>
+      <div className="rounded-[14px] bg-white shadow-[0_1px_3px_rgba(0,0,0,0.04)]">
+        <div className="flex items-center justify-between border-b border-[#F0F2F5] px-4 py-3.5">
+          <span className="text-[13.5px] font-bold text-ink">Prenotazioni recenti</span>
+          <Link href="/center/bookings" className="text-xs font-medium text-sky">
+            Vedi tutte
+          </Link>
+        </div>
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="text-left text-xs text-ink-3">
+              <th className="px-4 py-2 font-medium">Bambin{recentBookings.length === 1 ? "o" : "i"}</th>
+              <th className="px-4 py-2 font-medium">Attività</th>
+              <th className="px-4 py-2 font-medium">Totale</th>
+              <th className="px-4 py-2 font-medium">Stato</th>
+            </tr>
+          </thead>
+          <tbody>
+            {recentBookings.map((b) => (
+              <tr key={b.id} className="border-t border-[#F5F6FA]">
+                <td className="px-4 py-2.5 font-medium text-ink">{b.kidNames.join(", ")}</td>
+                <td className="px-4 py-2.5 text-ink-2">{b.activityName}</td>
+                <td className="px-4 py-2.5 font-semibold text-ink">€{b.totalAmount}</td>
+                <td className="px-4 py-2.5">
+                  <StatusBadge status={b.status} />
+                </td>
               </tr>
-            </thead>
-            <tbody>
-              {myBookings.map((b) => {
-                const activity = activities.find((a) => a.id === b.activityId);
-                return (
-                  <tr key={b.id} className="border-t border-[#F5F6FA]">
-                    <td className="px-4 py-2.5 font-medium text-ink">{b.kidName}</td>
-                    <td className="px-4 py-2.5 text-ink-2">{activity?.name}</td>
-                    <td className="px-4 py-2.5 font-semibold text-ink">€{b.totalAmount}</td>
-                    <td className="px-4 py-2.5">
-                      <StatusBadge status={b.status} />
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
-
-        <div className="rounded-[14px] bg-white shadow-[0_1px_3px_rgba(0,0,0,0.04)]">
-          <div className="border-b border-[#F0F2F5] px-4 py-3.5">
-            <span className="text-[13.5px] font-bold text-ink">Attività recente</span>
-          </div>
-          <div className="px-4 py-1">
-            {feed.length === 0 && (
-              <p className="py-3 text-xs text-ink-2">Nessun evento recente.</p>
-            )}
-            {feed.map((item, i) => (
-              <div
-                key={item.id}
-                className={`flex items-center gap-2.5 py-2.5 ${
-                  i < feed.length - 1 ? "border-b border-[#F5F6FA]" : ""
-                }`}
-              >
-                <div
-                  className="flex h-[26px] w-[26px] flex-shrink-0 items-center justify-center rounded-full"
-                  style={{ background: item.iconBg }}
-                >
-                  <i className={`ti ${item.icon}`} style={{ color: item.iconColor, fontSize: 12 }} />
-                </div>
-                <div className="min-w-0 flex-1">
-                  <div className="truncate text-[11.5px] leading-tight text-ink">{item.text}</div>
-                  <div className="text-[10.5px] text-ink-3">{item.relativeLabel}</div>
-                </div>
-              </div>
             ))}
-          </div>
-        </div>
+            {recentBookings.length === 0 && (
+              <tr>
+                <td colSpan={4} className="px-4 py-6 text-center text-sm text-ink-2">
+                  Nessuna prenotazione ancora.
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
       </div>
 
-      <Link
-        href="/center/servizi-consigliati"
-        className="mt-4 flex items-center gap-3 rounded-[14px] bg-white px-4 py-3.5 shadow-[0_1px_3px_rgba(0,0,0,0.04)] transition-colors hover:bg-bg"
-      >
-        <span className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full bg-[#FFF3D6] text-lg">
-          <i className="ti ti-map-2 text-[#9A6B00]" />
-        </span>
-        <div className="min-w-0 flex-1">
-          <div className="text-sm font-bold text-ink">Servizi consigliati per il tuo centro</div>
-          <div className="text-xs text-ink-2">Contatti selezionati da TRAMA (catering e altro)</div>
-        </div>
-        <i className="ti ti-chevron-right text-ink-3" />
-      </Link>
+      {activePromotions.length > 0 && (
+        <Link
+          href="/center/promotions"
+          className="mt-4 flex items-center gap-3 rounded-[14px] bg-white px-4 py-3.5 shadow-[0_1px_3px_rgba(0,0,0,0.04)] transition-colors hover:bg-bg"
+        >
+          <span className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full bg-[#FFF3D6] text-lg">
+            <i className="ti ti-discount-2 text-[#9A6B00]" />
+          </span>
+          <div className="min-w-0 flex-1">
+            <div className="text-sm font-bold text-ink">
+              {activePromotions.length} promo attiv{activePromotions.length === 1 ? "a" : "e"}
+            </div>
+            <div className="text-xs text-ink-2">Gestisci le tue promozioni</div>
+          </div>
+          <i className="ti ti-chevron-right text-ink-3" />
+        </Link>
+      )}
     </div>
   );
 }
