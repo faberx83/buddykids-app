@@ -26,9 +26,15 @@ import { usePathname } from "next/navigation";
 // ora punta a /nextgen/profile (nuova pagina ridisegnata, vedi
 // app/nextgen/profile/ProfileNextgenClient.tsx): il tradeoff sopra resta
 // valido SOLO per "Prenotazioni" (/prenotazioni, ancora LEGACY).
-const items = [
+// TRAMA ONE Parent Spotlight sprint (24/08/2026) — "planner_nav" è il target
+// reale dell'ultimo step del percorso Genitore (discover_book_parent, vedi
+// lib/walkthrough/registry.ts), stesso pattern di "dashboard" sulla voce
+// omonima della sidebar Partner (components/dashboard/DashboardLayout.tsx).
+// Campo opzionale: solo la voce "Planner" lo imposta, le altre 4 restano
+// invariate (nessun data-spotlight = nessun attributo renderizzato).
+const items: { href: string; icon: string; label: string; spotlightTarget?: string }[] = [
   { href: "/nextgen", icon: "ti-home", label: "Home" },
-  { href: "/nextgen/planner", icon: "ti-calendar-event", label: "Planner" },
+  { href: "/nextgen/planner", icon: "ti-calendar-event", label: "Planner", spotlightTarget: "planner_nav" },
   { href: "/nextgen/search", icon: "ti-search", label: "Scopri" },
   { href: "/prenotazioni", icon: "ti-ticket", label: "Prenotazioni" },
   { href: "/nextgen/profile", icon: "ti-user-circle", label: "Profilo" },
@@ -50,7 +56,12 @@ export default function NextgenBottomNav() {
       {items.map((item) => {
         const active = isActive(pathname, item.href);
         return (
-          <Link key={item.href} href={item.href} className="flex flex-1 flex-col items-center gap-[3px] active:scale-90">
+          <Link
+            key={item.href}
+            href={item.href}
+            data-spotlight={item.spotlightTarget}
+            className="flex flex-1 flex-col items-center gap-[3px] active:scale-90"
+          >
             <i
               className={`ti ${item.icon} text-[22px] transition-colors ${
                 active ? "text-trama-violet" : "text-ink-3"

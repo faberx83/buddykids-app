@@ -43,6 +43,13 @@ export default function ActivityCard({
   return (
     <Link
       href={query ? `/activity/${activity.id}?${query}` : `/activity/${activity.id}`}
+      // TRAMA ONE Parent Spotlight sprint (24/08/2026) — target reale dello
+      // step "open_activity" (lib/walkthrough/registry.ts,
+      // discover_book_parent), gated a /nextgen/search da spotlightRoute:
+      // innocuo altrove (ActivityCard è riusata anche in Home/Community),
+      // il motore Spotlight ignora il target quando la route corrente non
+      // combacia (vedi SpotlightEngine.tsx).
+      data-spotlight="activity_card"
       className="mb-3 block cursor-pointer overflow-hidden rounded-lg border border-[#F0F2F5] bg-white transition-transform hover:scale-[0.985] hover:shadow-md"
     >
       <div

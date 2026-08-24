@@ -545,6 +545,10 @@ export default function SearchDiscoveryClient({
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           placeholder="Cerca per nome…"
+          // TRAMA ONE Parent Spotlight sprint (24/08/2026) — target reale
+          // dello step "search_activity" (discover_book_parent, vedi
+          // lib/walkthrough/registry.ts).
+          data-spotlight="search_bar"
           className="mb-3 w-full rounded-xl border border-[#E8EBF0] bg-white px-3.5 py-2.5 text-sm outline-none focus:border-trama-violet"
         />
 
@@ -564,6 +568,11 @@ export default function SearchDiscoveryClient({
               <div
                 key={f.key}
                 onClick={() => setOpenPanel((prev) => (prev === f.key ? null : f.key))}
+                // TRAMA ONE Parent Spotlight sprint (24/08/2026) — target
+                // reale dello step "filter_week" (discover_book_parent, vedi
+                // lib/walkthrough/registry.ts): solo il chip "data" (filtro
+                // settimane), non gli altri pannelli di questa riga.
+                data-spotlight={f.key === "data" ? "week_filter" : undefined}
                 className={`flex flex-shrink-0 cursor-pointer items-center gap-1.5 rounded-full border-[1.5px] px-3 py-1.5 text-xs font-medium transition-colors active:scale-95 ${
                   openPanel === f.key
                     ? "border-trama-violet bg-trama-violet text-white"

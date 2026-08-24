@@ -195,6 +195,56 @@ export const WALKTHROUGH_REGISTRY: Record<string, WalkthroughDefinition> = {
       },
     ],
   },
+  // TRAMA ONE Parent Spotlight sprint (24/08/2026) — equivalente lato
+  // Genitore di activity_creation_partner: stesso motore generico
+  // (components/spotlight/SpotlightEngine.tsx, estratto da PartnerSpotlight
+  // in questo stesso sprint), nessuna modifica al motore. Percorso "golden
+  // path" del genitore: cerca -> filtra per settimana -> apri una scheda ->
+  // prenota -> ritrova tutto nel Planner — ricalca la Golden Journey A
+  // (docs/TRAMA_Golden_Journeys_A-F). Nessuno step usa spotlightMissingHint:
+  // ogni target vive sulla stessa pagina raggiunta dallo step precedente,
+  // quindi nessun link di deep-link è necessario (vedi ParentSpotlight.tsx).
+  discover_book_parent: {
+    key: "discover_book_parent",
+    title: "Trova e prenota la tua prima settimana",
+    steps: [
+      {
+        key: "search_activity",
+        title: "Cerca un centro estivo",
+        description: "Scrivi un nome o una zona per iniziare a cercare tra le attività disponibili.",
+        spotlightTarget: "search_bar",
+        spotlightRoute: "/nextgen/search",
+      },
+      {
+        key: "filter_week",
+        title: "Filtra per settimana",
+        description: "Scegli le settimane che ti servono: vedrai solo le disponibilità reali per quei giorni.",
+        spotlightTarget: "week_filter",
+        spotlightRoute: "/nextgen/search",
+      },
+      {
+        key: "open_activity",
+        title: "Apri una scheda attività",
+        description: "Tocca una card per vedere foto, prezzo e giorni prenotabili.",
+        spotlightTarget: "activity_card",
+        spotlightRoute: "/nextgen/search",
+      },
+      {
+        key: "book_activity",
+        title: "Prenota",
+        description: "Scegli la settimana o i singoli giorni e invia la richiesta al centro.",
+        spotlightTarget: "book_activity",
+        spotlightRoute: "/activity/*",
+      },
+      {
+        key: "planner_nav",
+        title: "Segui tutto dal Planner",
+        description: "Le tue richieste e prenotazioni restano sempre visibili qui, settimana per settimana.",
+        spotlightTarget: "planner_nav",
+        spotlightRoute: "*",
+      },
+    ],
+  },
 };
 
 export function isKnownTutorial(tutorialKey: string): boolean {

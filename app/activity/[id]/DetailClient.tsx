@@ -557,6 +557,15 @@ export default function DetailClient({
           <button
             type="button"
             disabled
+            // TRAMA ONE Parent Spotlight sprint (24/08/2026) — stesso
+            // data-spotlight della variante attiva sotto, così il target
+            // dello step "book_activity" (discover_book_parent) resta
+            // trovabile anche in questo stato transitorio (giorni scelti
+            // sotto il minimo). Un <button disabled> non emette eventi
+            // click nativi, quindi il listener di completamento del
+            // motore Spotlight non scatta comunque finché l'utente non
+            // sceglie giorni sufficienti e vede la variante cliccabile.
+            data-spotlight="book_activity"
             className="cursor-not-allowed rounded-lg bg-[#C5CDD8] px-7 py-3.5 text-[15px] font-bold text-white"
           >
             Prenota ora
@@ -564,6 +573,10 @@ export default function DetailClient({
         ) : (
           <Link
             href={bookingHref}
+            // TRAMA ONE Parent Spotlight sprint (24/08/2026) — target reale
+            // dello step "book_activity" (lib/walkthrough/registry.ts,
+            // discover_book_parent).
+            data-spotlight="book_activity"
             className="rounded-lg bg-sky px-7 py-3.5 text-[15px] font-bold text-white transition-all hover:scale-[0.97] hover:bg-[#3A9FDC]"
           >
             Prenota ora

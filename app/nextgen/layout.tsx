@@ -8,6 +8,11 @@ import { NextgenToastProvider } from "@/components/nextgen/NextgenToastProvider"
 import { createClient } from "@/lib/supabase/server";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
 import { splashLinks } from "@/lib/tenant";
+import { Role } from "@/lib/types";
+import { resolveFeatureFlag } from "@/lib/feature-flags/resolve";
+import { generateCorrelationId } from "@/lib/telemetry/correlation";
+import { getWalkthroughProgress, WalkthroughProgressSummary } from "@/lib/walkthrough/data";
+import ParentSpotlight from "@/components/spotlight/ParentSpotlight";
 
 // SPRINT 0 (NEXTGEN — V2 in parallelo a LEGACY): guscio minimo dell'area
 // genitore NEXTGEN. Stesso guard di autenticazione di app/(main)/layout.tsx
@@ -50,12 +55,40 @@ export const viewport: Viewport = {
 };
 
 export default async function NextgenLayout({ children }: { children: React.ReactNode }) {
+  // TRAMA ONE Parent Spotlight sprint (24/08/2026, DEC-58 lato Genitore) —
+  // stesso gate additivo già usato in app/center/layout.tsx per il Partner:
+  // il vero Spotlight (percorso "discover_book_parent") persiste su OGNI
+  // pagina Genitore NEXTGEN, ma resta condizionato a TRAMA_ONE_ENABLED
+  // risolto per l'utente corrente (Controlled Beta Cohort) — additivo, non
+  // bloccante: se il flag risolve a false, spotlightProgress resta null e
+  // ParentSpotlight non renderizza nulla. Nessun impatto sul resto di questo
+  // layout (auth guard invariato, DEC-02).
+  let spotlightProgress: WalkthroughProgressSummary | null = null;
+
   if (isSupabaseConfigured) {
     const supabase = await createClient();
     const {
       data: { user },
     } = await supabase.auth.getUser();
     if (!user) redirect("/auth/login?next=/nextgen");
+
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("role")
+      .eq("id", user.id)
+      .single();
+    const realRole = (profile?.role as Role) ?? "parent";
+
+    const enabled = await resolveFeatureFlag({
+      flagName: "TRAMA_ONE_ENABLED",
+      userId: user.id,
+      role: realRole,
+      tenant: "family",
+      correlationId: generateCorrelationId(),
+    });
+    if (enabled) {
+      spotlightProgress = await getWalkthroughProgress(user.id, "discover_book_parent");
+    }
   }
 
   return (
@@ -70,6 +103,7 @@ export default async function NextgenLayout({ children }: { children: React.Reac
             stesso si nasconde su /nextgen/admin e /nextgen/center, vedi
             BetaFeedbackButton.tsx). */}
         <BetaFeedbackButton />
+        <ParentSpotlight progress={spotlightProgress} />
       </NextgenToastProvider>
       {/* Istanza DEDICATA a NEXTGEN: appName diverso ("TRAMA" vs quello di
           LEGACY, vedi lib/tenant.ts) -> chiave di dismiss separata in
