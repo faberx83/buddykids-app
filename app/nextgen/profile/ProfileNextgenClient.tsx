@@ -106,7 +106,7 @@ export default function ProfileNextgenClient({
           subtitle="Elenco delle tue prenotazioni"
         />
         <HubCard
-          href="/preferiti"
+          href="/nextgen/preferiti"
           icon="ti-heart"
           iconBg="#FFF8E7"
           iconColor="#c49a00"
@@ -114,7 +114,7 @@ export default function ProfileNextgenClient({
           subtitle="Attività salvate"
         />
         <HubCard
-          href="/presenze"
+          href="/nextgen/presenze"
           icon="ti-clipboard-check"
           iconBg="#E3F9F5"
           iconColor="#2DBA8C"
@@ -125,7 +125,7 @@ export default function ProfileNextgenClient({
             stessa collocazione delle altre pagine sola-lettura sull'attività
             del genitore (prenotazioni/preferiti/presenze). */}
         <HubCard
-          href="/center-leads"
+          href="/nextgen/center-leads"
           icon="ti-map-pin-plus"
           iconBg="#F3EEFF"
           iconColor="#6C4FE0"
@@ -157,7 +157,7 @@ export default function ProfileNextgenClient({
 
         <div className="mt-2 text-[11px] font-bold uppercase tracking-wide text-ink-3">Supporto</div>
         <HubCard
-          href="/richieste"
+          href="/nextgen/richieste"
           icon="ti-message-circle"
           iconBg="#F4F6FA"
           iconColor="#6B7280"

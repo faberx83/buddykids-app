@@ -2,10 +2,13 @@ import Link from "next/link";
 import { GroupItem } from "@/lib/types";
 import { pillClasses } from "@/lib/colors";
 
-export default function GroupCard({ group }: { group: GroupItem }) {
+// TRAMA ONE (24/08/2026) — basePath opzionale (default "/groups") per essere
+// riusato anche dal guscio NEXTGEN-native app/nextgen/groups, che deve
+// restare dentro le proprie route invece di rimandare al layout LEGACY.
+export default function GroupCard({ group, basePath = "/groups" }: { group: GroupItem; basePath?: string }) {
   return (
     <Link
-      href={`/groups/${group.id}`}
+      href={`${basePath}/${group.id}`}
       className="mx-5 mb-3 block cursor-pointer overflow-hidden rounded-lg border border-[#F0F2F5] bg-white transition-transform hover:scale-[0.98]"
     >
       <div

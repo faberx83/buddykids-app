@@ -19,6 +19,14 @@ export function areaLabelFromPath(pathname: string): string {
   if (pathname.startsWith("/nextgen/prenotazioni")) return "Le mie prenotazioni";
   if (pathname.startsWith("/nextgen/search")) return "Scopri";
   if (pathname.startsWith("/nextgen/community")) return "Community";
+  // TRAMA ONE (24/08/2026, task #528 "rimandi legacy dentro NEXTGEN"): gusci
+  // NEXTGEN-native per pagine prima raggiunte solo via rotta LEGACY, stessa
+  // etichetta della vecchia rotta sottostante (righe più sotto).
+  if (pathname.startsWith("/nextgen/groups")) return "Gruppi";
+  if (pathname.startsWith("/nextgen/preferiti")) return "Preferiti";
+  if (pathname.startsWith("/nextgen/presenze")) return "Presenze";
+  if (pathname.startsWith("/nextgen/richieste")) return "Le mie richieste";
+  if (pathname.startsWith("/nextgen/center-leads")) return "I tuoi suggerimenti";
   if (pathname.startsWith("/nextgen/profile/famiglia")) return "Profilo · Famiglia e logistica";
   if (pathname.startsWith("/nextgen/profile/impostazioni")) return "Profilo · Impostazioni";
   if (pathname.startsWith("/nextgen/profile")) return "Profilo";

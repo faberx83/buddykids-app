@@ -210,14 +210,21 @@ function VisibilityAndInviteBlock({
   );
 }
 
+// TRAMA ONE (24/08/2026) — backHref opzionale (default "/groups") per essere
+// riusato anche dal guscio NEXTGEN-native app/nextgen/groups/[id] (task
+// #528, "rimandi legacy dentro NEXTGEN"): senza questa prop il link
+// tornava sempre dentro il layout LEGACY, anche per chi era arrivato da
+// NEXTGEN.
 export default function GroupDetailClient({
   detail,
   activityOptions,
   inviterName,
+  backHref = "/groups",
 }: {
   detail: GroupDetail;
   activityOptions: { dbId: string; name: string; center: string }[];
   inviterName: string;
+  backHref?: string;
 }) {
   const [tab, setTab] = useState<"gruppo" | "accompagnamento">("gruppo");
 
@@ -227,7 +234,7 @@ export default function GroupDetailClient({
         className="px-5 pb-4 pt-3.5"
         style={{ background: detail.gradient }}
       >
-        <Link href="/groups" className="mb-2 inline-flex items-center gap-1 text-xs font-semibold text-ink-2">
+        <Link href={backHref} className="mb-2 inline-flex items-center gap-1 text-xs font-semibold text-ink-2">
           <i className="ti ti-arrow-left" /> Gruppi
         </Link>
         <div className="flex items-center gap-2.5">

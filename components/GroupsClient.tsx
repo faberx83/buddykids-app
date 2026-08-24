@@ -23,14 +23,26 @@ const tabs = ["I miei gruppi", "Scopri", "Inviti"];
 // del link /groups/join/[id]). "Inviti" mostra gli inviti reali indirizzati
 // all'email del genitore loggato (group_invites, stesso pattern collaudato
 // di family_invites) con Accetta/Rifiuta.
+// TRAMA ONE (24/08/2026) — basePath/backHref/showBrandIcon opzionali per
+// essere riusato anche dal guscio NEXTGEN-native app/nextgen/groups (task
+// #528, "rimandi legacy dentro NEXTGEN"): LEGACY continua a raggiungere
+// questa schermata dalla bottom nav (nessun back, nessun basePath diverso
+// da "/groups"), NEXTGEN la raggiunge come sotto-pagina del Planner e ha
+// bisogno di un back-arrow e di restare dentro /nextgen/groups/*.
 export default function GroupsClient({
   initialGroups,
   initialPublicGroups,
   initialInvites,
+  basePath = "/groups",
+  backHref,
+  showBrandIcon,
 }: {
   initialGroups: GroupItem[];
   initialPublicGroups: PublicGroupItem[];
   initialInvites: GroupInviteItem[];
+  basePath?: string;
+  backHref?: string;
+  showBrandIcon?: boolean;
 }) {
   const router = useRouter();
   const [active, setActive] = useState(0);
@@ -51,13 +63,32 @@ export default function GroupsClient({
     }
     // Appena creato, si entra subito nella configurazione del gruppo
     // (bambini, attività, richiesta) invece di restare sulla lista.
-    router.push(`/groups/${result.group.id}`);
+    router.push(`${basePath}/${result.group.id}`);
   }
 
   return (
     <div className="animate-fade-in">
       <div className="flex-shrink-0 border-b border-[#F0F2F5] bg-white px-5 py-3.5">
-        <h2 className="mb-3 text-lg font-bold text-ink">Gruppi & Community</h2>
+        <div className="mb-3 flex items-center gap-3">
+          {backHref && (
+            <button
+              onClick={() => router.push(backHref)}
+              aria-label="Indietro"
+              className="flex items-center text-[22px] text-ink"
+            >
+              <i className="ti ti-arrow-left" />
+            </button>
+          )}
+          {showBrandIcon && (
+            <img
+              src="/brand/trama-logo-mark.png"
+              alt=""
+              aria-hidden="true"
+              className="h-5 w-auto flex-shrink-0"
+            />
+          )}
+          <h2 className="text-lg font-bold text-ink">Gruppi & Community</h2>
+        </div>
         <div className="flex rounded-lg bg-[#F4F6FA] p-[3px]">
           {tabs.map((t, i) => (
             <div
@@ -143,14 +174,14 @@ export default function GroupsClient({
           )}
 
           {groups.map((g) => (
-            <GroupCard key={g.id} group={g} />
+            <GroupCard key={g.id} group={g} basePath={basePath} />
           ))}
           <div className="h-5" />
         </>
       )}
 
-      {active === 1 && <ScopriTab initialPublicGroups={initialPublicGroups} />}
-      {active === 2 && <InvitiTab initialInvites={initialInvites} />}
+      {active === 1 && <ScopriTab initialPublicGroups={initialPublicGroups} basePath={basePath} />}
+      {active === 2 && <InvitiTab initialInvites={initialInvites} basePath={basePath} />}
     </div>
   );
 }
@@ -158,7 +189,13 @@ export default function GroupsClient({
 // ─────────────────────────────────────────────
 // Tab "Scopri" — gruppi pubblici di cui non fai ancora parte
 // ─────────────────────────────────────────────
-function ScopriTab({ initialPublicGroups }: { initialPublicGroups: PublicGroupItem[] }) {
+function ScopriTab({
+  initialPublicGroups,
+  basePath = "/groups",
+}: {
+  initialPublicGroups: PublicGroupItem[];
+  basePath?: string;
+}) {
   const router = useRouter();
   const [groups, setGroups] = useState(initialPublicGroups);
   const [joiningId, setJoiningId] = useState<string | null>(null);
@@ -175,7 +212,7 @@ function ScopriTab({ initialPublicGroups }: { initialPublicGroups: PublicGroupIt
     }
     // Rimuovi dalla lista "Scopri" (ora sei membro) e vai al gruppo.
     setGroups((prev) => prev.filter((g) => g.id !== groupId));
-    router.push(`/groups/${groupId}`);
+    router.push(`${basePath}/${groupId}`);
   }
 
   if (groups.length === 0) {
@@ -225,7 +262,13 @@ function ScopriTab({ initialPublicGroups }: { initialPublicGroups: PublicGroupIt
 // ─────────────────────────────────────────────
 // Tab "Inviti" — inviti reali indirizzati alla tua email
 // ─────────────────────────────────────────────
-function InvitiTab({ initialInvites }: { initialInvites: GroupInviteItem[] }) {
+function InvitiTab({
+  initialInvites,
+  basePath = "/groups",
+}: {
+  initialInvites: GroupInviteItem[];
+  basePath?: string;
+}) {
   const router = useRouter();
   const [invites, setInvites] = useState(initialInvites);
   const [busyId, setBusyId] = useState<string | null>(null);
@@ -241,7 +284,7 @@ function InvitiTab({ initialInvites }: { initialInvites: GroupInviteItem[] }) {
       return;
     }
     setInvites((prev) => prev.filter((i) => i.id !== inviteId));
-    if (result.groupId) router.push(`/groups/${result.groupId}`);
+    if (result.groupId) router.push(`${basePath}/${result.groupId}`);
   }
 
   async function handleDecline(inviteId: string) {

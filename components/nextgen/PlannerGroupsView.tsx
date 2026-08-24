@@ -8,7 +8,8 @@ import { CommunityItem, CommunityRole, GroupItem } from "@/lib/types";
 // precedenti). NESSUNA nuova tabella/RLS: riusa 1:1 getCommunitiesForUser()
 // (Sprint 4) e getGroupsForUser() (già esistente, "Gruppi"/Andiamo Insieme)
 // — questa vista è solo un nuovo "collage" di dati già letti altrove, con
-// link al dettaglio reale (/nextgen/community/[id], /groups/[id]). Le due
+// link al dettaglio reale (/nextgen/community/[id], /nextgen/groups/[id] —
+// aggiornato task #528, prima portava dentro il layout LEGACY). Le due
 // funzionalità restano concettualmente distinte (vedi commenti in
 // lib/data/communities.ts): Community = persistente/multi-attività,
 // Gruppi = legati a una singola attività per lo sconto/car pooling. Una
@@ -52,7 +53,7 @@ function CommunityCard({ community }: { community: CommunityItem }) {
 
 function GroupCard({ group }: { group: GroupItem }) {
   return (
-    <Link href={`/groups/${group.id}`} className="flex items-center gap-3 rounded-2xl bg-white p-3.5 active:bg-black/[0.06]">
+    <Link href={`/nextgen/groups/${group.id}`} className="flex items-center gap-3 rounded-2xl bg-white p-3.5 active:bg-black/[0.06]">
       <span
         className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full text-lg"
         style={{ background: group.gradient }}
@@ -102,7 +103,7 @@ export default function PlannerGroupsView({
       <div>
         <div className="mb-2.5 flex items-center justify-between">
           <span className="font-poppins text-[13px] font-bold text-ink">I tuoi Gruppi sconto</span>
-          <Link href="/groups" className="text-[12px] font-semibold text-trama-violet active:bg-black/[0.04]">
+          <Link href="/nextgen/groups" className="text-[12px] font-semibold text-trama-violet active:bg-black/[0.04]">
             {groups.length > 0 ? "Vedi tutti" : "Scopri come"}
           </Link>
         </div>

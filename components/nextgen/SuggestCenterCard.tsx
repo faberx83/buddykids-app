@@ -25,7 +25,7 @@ export default function SuggestCenterCard({ demandContext }: { demandContext: Ce
       <div className="rounded-lg border border-[#D8DEE8] bg-white p-4 text-center text-sm text-ink-2">
         <i className="ti ti-circle-check-filled mr-1 text-green" />
         Grazie! Abbiamo ricevuto la tua segnalazione — la trovi in{" "}
-        <a href="/center-leads" className="font-semibold text-trama-violet underline">
+        <a href="/nextgen/center-leads" className="font-semibold text-trama-violet underline">
           I tuoi suggerimenti
         </a>
         .

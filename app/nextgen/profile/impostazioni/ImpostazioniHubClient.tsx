@@ -16,7 +16,7 @@ export default function ImpostazioniHubClient() {
 
       <div className="flex flex-col gap-2.5 px-5 pt-4">
         <HubCard
-          href="/profile/sicurezza"
+          href="/nextgen/profile/impostazioni/sicurezza"
           icon="ti-shield-lock"
           iconBg="#E8F6FD"
           iconColor="#4DAFEF"
@@ -24,7 +24,7 @@ export default function ImpostazioniHubClient() {
           subtitle="Password, accesso rapido"
         />
         <HubCard
-          href="/profile/preferenze"
+          href="/nextgen/profile/impostazioni/preferenze"
           icon="ti-adjustments"
           iconBg="#FFF3E6"
           iconColor="#E08A2D"
@@ -39,7 +39,7 @@ export default function ImpostazioniHubClient() {
           comingSoon
         />
         <HubCard
-          href="/profile/privacy"
+          href="/nextgen/profile/impostazioni/privacy"
           icon="ti-lock"
           iconBg="#FCE8EC"
           iconColor="#D6497A"
