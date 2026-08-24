@@ -33,3 +33,4 @@ next-env.d.ts
 # ONLY_SITEMAP=1) — report locale rigenerato ad ogni esecuzione, stesso
 # principio di playwright-report sopra: mai da versionare/deployare.
 sitemap-output
+.env*
