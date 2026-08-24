@@ -32,8 +32,8 @@ Registro degli item aperti, separati per categoria come richiesto dal checkpoint
 
 | ID | Descrizione | Impatto | Owner | Evidenza necessaria | Stato |
 |---|---|---|---|---|---|
-| OD-06 | Classificazione dati pilota (PILOT_REAL/DEMO_CONTROLLED/TECHNICAL_TEST/UNKNOWN, Sezione 9 Addendum) non ancora prodotta | Blocca GO/NO-GO e qualunque report a terzi che usi numeri di `center_leads`/prenotazioni | Claude (classificazione) | Catalogo completo con query di sola lettura | Aperto |
-| OD-07 | `center_leads`: 9 righe su 10 sono rumore di test (`parent_referral` con naming `[TEST] Centro Segnalato <timestamp>`), 0 candidature reali | Basso rischio tecnico, alto rischio se riportato a terzi come "trazione pilota" | Fabrizio (decisione su come/se ripulire prima di settembre) | — | Aperto, solo da tenere presente |
+| OD-06 | Classificazione dati pilota (PILOT_REAL/DEMO_CONTROLLED/TECHNICAL_TEST/UNKNOWN, Sezione 9 Addendum) non ancora prodotta | Blocca GO/NO-GO e qualunque report a terzi che usi numeri di `center_leads`/prenotazioni | Claude (classificazione) | Catalogo completo con query di sola lettura | **CHIUSO (DEC-78, 24/08/2026)** — `TRAMA_ONE_CATALOGO_PILOTA.md`: 0 PILOT_REAL, 5 DEMO_CONTROLLED, 1 UNKNOWN, tutto il resto TECHNICAL_TEST |
+| OD-07 | `center_leads`: 9 righe su 10 sono rumore di test (`parent_referral` con naming `[TEST] Centro Segnalato <timestamp>`), 0 candidature reali | Basso rischio tecnico, alto rischio se riportato a terzi come "trazione pilota" | Fabrizio (decisione su come/se ripulire prima di settembre) | — | **Aggiornato (DEC-78)**: ora 20 righe totali, **20/20 TECHNICAL_TEST**, 0 candidature reali — resta aperta solo la decisione di Fabrizio su come/se ripulire prima di settembre |
 
 ## Documentation Inconsistency
 
