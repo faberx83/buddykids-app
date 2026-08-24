@@ -61,4 +61,40 @@ test.describe("Admin - Gestione", () => {
     // ESCLUSO dall'automazione: richiede lo snippet SQL Storage applicato su Supabase prima del test
   });
 
+  // PRE-LAUNCH REMEDIATION WAVE 1 — R-14 (decisione Fabrizio, 24/08/2026):
+  // app/actions/admin.ts (createCenterAndAssignAction/assignCenterAdminAction)
+  // ora rifiuta esplicitamente un chiamante non platform_admin PRIMA di
+  // toccare il database (requireCallerIsPlatformAdmin), in aggiunta alla RLS
+  // esistente (difesa in profondità, non una sostituzione).
+  //
+  // Percorso negativo verificato qui: un utente autenticato ma non-Admin
+  // (center_admin) non vede/raggiunge affatto /admin/centers — la UI blocca
+  // già a monte (AccessGate di DashboardLayout, requiredRole="platform_admin").
+  // Questo è il percorso reale che qualunque utente del prodotto incontra.
+  //
+  // NON automatizzato in questo file (gap dichiarato, non nascosto): un
+  // secondo percorso — un center_admin che invoca DIRETTAMENTE la Server
+  // Action bypassando del tutto la UI Admin (es. richiesta HTTP fabbricata a
+  // mano verso l'endpoint interno di Next.js Server Actions) — richiederebbe
+  // di replicare il protocollo wire di Next.js per le Server Action (header
+  // "Next-Action" con un id calcolato per build, encoding multipart) in modo
+  // fragile e non documentato pubblicamente da Next.js: nessun test in
+  // questo repository lo fa oggi per nessuna Server Action. La protezione
+  // per QUEL percorso specifico è verificata CODE_VERIFIED (lettura diretta
+  // di app/actions/admin.ts: requireCallerIsPlatformAdmin viene chiamato
+  // come prima istruzione di entrambe le funzioni, prima di ogni lettura/
+  // scrittura), non AUTOMATED_LIVE_TESTED — coerente con la disciplina sui
+  // livelli di evidenza dell'Audit 360°.
+  test("TC-N672 - Un center_admin non raggiunge /admin/centers (percorso negativo R-14, livello UI)", async ({
+    page,
+  }) => {
+    test.skip(!isRealDeployment, "Richiede un deploy con Supabase configurato e un account center_admin di test.");
+    await loginAs(page, "center_admin");
+    await page.goto("/admin/centers");
+
+    // AccessGate (DashboardLayout, requiredRole="platform_admin") mostra un
+    // messaggio di permesso mancante invece del form "Nuovo centro"/elenco.
+    await expect(page.getByText(/non ha i permessi di|pensata per il ruolo/)).toBeVisible();
+    await expect(page.getByText("Nuovo centro")).not.toBeVisible();
+  });
 });

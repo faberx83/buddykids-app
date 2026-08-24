@@ -2,6 +2,39 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
+import type { SupabaseClient } from "@supabase/supabase-js";
+
+// PRE-LAUNCH REMEDIATION WAVE 1 — R-14 (decisione Fabrizio, 24/08/2026):
+// entrambe le azioni sotto si affidavano ESCLUSIVAMENTE alla RLS di
+// "centers"/"profiles" (is_platform_admin() nella policy, vedi
+// supabase/schema.sql) per impedire a un utente non-Admin di creare centri
+// o assegnare ruoli — nessun controllo applicativo esplicito PRIMA della
+// scrittura. Difesa in profondità: se la policy RLS avesse mai un bug o
+// venisse disabilitata per errore in una migrazione futura, questo file da
+// solo non fermerebbe più nulla. Aggiunto qui un controllo esplicito del
+// ruolo del chiamante, che fallisce velocemente con un messaggio chiaro
+// PRIMA di toccare il database — la RLS resta comunque la barriera reale e
+// non viene rimossa/indebolita in alcun modo.
+async function requireCallerIsPlatformAdmin(
+  supabase: SupabaseClient
+): Promise<{ userId: string } | { error: string }> {
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { error: "Non autenticato" };
+
+  const { data: profile, error } = await supabase
+    .from("profiles")
+    .select("role")
+    .eq("id", user.id)
+    .single();
+
+  if (error || !profile || profile.role !== "platform_admin") {
+    return { error: "Non hai i permessi di Admin piattaforma per questa azione." };
+  }
+
+  return { userId: user.id };
+}
 
 function slugify(label: string): string {
   return label
@@ -40,10 +73,8 @@ export async function createCenterAndAssignAction(
   if (!input.name.trim()) return { error: "Inserisci il nome del centro" };
 
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) return { error: "Non autenticato" };
+  const callerCheck = await requireCallerIsPlatformAdmin(supabase);
+  if ("error" in callerCheck) return { error: callerCheck.error };
 
   const slug = slugify(input.name);
 
@@ -128,6 +159,8 @@ export async function assignCenterAdminAction(
 ): Promise<{ error?: string }> {
   if (!isSupabaseConfigured) return { error: "Supabase non configurato" };
   const supabase = await createClient();
+  const callerCheck = await requireCallerIsPlatformAdmin(supabase);
+  if ("error" in callerCheck) return { error: callerCheck.error };
 
   const { data: profile, error: findError } = await supabase
     .from("profiles")
