@@ -1,8 +1,28 @@
 # TRAMA — PRE-LAUNCH 360° AUDIT
 
-**Snapshot**: `TRAMA_PRELAUNCH_AUDIT_20260824` · **AS_OF_COMMIT**: `6d7b1021bdb38d6db2fc77ae4132a32616bedce3` (HEAD = origin/main, working tree pulito)
+**Snapshot originale**: `TRAMA_PRELAUNCH_AUDIT_20260824` · **AS_OF_COMMIT originale**: `6d7b1021bdb38d6db2fc77ae4132a32616bedce3`
 **Target di programma**: Beta privata entro il 28 settembre 2026
 **Documenti collegati**: `TRAMA_PRELAUNCH_360_HEATMAP.md`, `TRAMA_PRELAUNCH_RISK_REGISTER.md`, `TRAMA_PRELAUNCH_REMEDIATION_BACKLOG.md`, `TRAMA_PRELAUNCH_COMPLIANCE_GAPS.md`
+
+---
+
+## ADDENDUM WAVE 1 (24/08/2026, task #547) — LEGGERE PRIMA DEL RESTO
+
+Il corpo di questo documento sotto è lo **snapshot originale** dell'audit (commit `6d7b102`) e resta invariato come registro storico. Da allora, la Wave 1 di remediation ha chiuso/mitigato/corretto le seguenti voci — **il Risk Register (`TRAMA_PRELAUNCH_RISK_REGISTER.md`) e l'Heatmap sono già aggiornati con lo stato corrente**; questo addendum riassume solo i numeri di sintesi che cambiano.
+
+**P0 chiusi/mitigati (di codice, non di business)**:
+- R-01 (Admin mock) → MITIGATO (banner + Command Center in prima posizione), commit `c27b5c3`
+- R-02 (Partner mock) → CHIUSO (dashboard reale), commit `e9bf05a`
+- R-04 (observability) → **CORRETTO, non solo aggiornato**: l'affermazione originale ("migration_20 non applicata") era sbagliata — `product_events` è applicata e attiva (992 righe, verificato via query dirette Supabase). Il gap reale è più stretto: nessun evento booking nella whitelist, non serve più alcuna migrazione, solo estendere il codice esistente.
+- R-06 (`next` vulnerabile) → ANCORA OPEN, piano pronto (task #550), esecuzione intenzionalmente rimandata a dopo la Security Release ufficiale del 26/08/2026 (per non applicare una patch non ancora rilasciata).
+
+**Ancora P0 aperti, invariati**: R-03 (informativa privacy/T&C — avanzato con infrastruttura tecnica in R-546, ma il testo legale resta un gate genuino), R-05 (zero dati di pilot reali — è una precondizione di business, non di codice).
+
+**P1 chiusi**: R-07 (race condition capacità, commit `a12d40b`, test di concorrenza eseguito dal vivo), R-09 (Planner senza test, commit `e567f09`, 13/13 test eseguiti), R-10 (migrazioni 23/24 confermate applicate live), R-12 (Feature Registry, commit `c27b5c3`), R-14 (admin.ts, commit `02daf67`, migration_22 confermata applicata).
+
+**P1 ancora aperti, invariati**: R-08 (RESEND_API_KEY, task #548 in corso), R-11 (Master Requirement Catalog stale, non incluso in questa wave), R-13 (runbook backup/restore).
+
+**Conteggio aggiornato**: P0 di codice passati da 6 a 2 aperti (R-03 parzialmente, R-06 pianificato); P1 passati da 8 a 3 aperti (R-08, R-11, R-13). **Il verdetto finale (pagina 4 sotto) resta INVARIATO**: nessun GO, perché i blocker restanti (testo legale R-03, dati di pilot reali R-05, patch di sicurezza R-06) sono precondizioni di business/tempistica esterna, non risolvibili da altro lavoro di codice in questa sessione.
 
 ---
 
