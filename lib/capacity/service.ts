@@ -34,32 +34,79 @@ export function clampSpotsLeft(value: number, capacity: number): number {
   return Math.min(Math.max(value, 0), capacity);
 }
 
+// PRE-LAUNCH REMEDIATION WAVE 1 — R-07 (decisione Fabrizio, 24/08/2026):
+// reserveSpot/releaseSpot leggevano spots_left e poi lo scrivevano in due
+// passi separati (SELECT poi UPDATE), senza alcuna verifica che la riga
+// fosse ancora nello stato letto — una vera race condition: due reserve
+// quasi simultanee sull'ultimo posto potevano entrambe leggere
+// spots_left=1, entrambe calcolare next=0, entrambe scrivere "riuscito",
+// causando un overbooking di un posto. Fix scelto (il meno invasivo
+// possibile, nessuna nuova tabella/migrazione, nessun workaround
+// lato client): Compare-And-Swap applicativo — l'UPDATE include
+// `.eq("spots_left", row.spots_left)` (scrivi SOLO se nessun altro ha già
+// cambiato il valore che ho appena letto) e legge le righe restituite da
+// `.select()` per sapere con certezza se la scrittura ha avuto effetto
+// (Postgres/PostgREST non restituisce altrimenti un "affected rows"
+// affidabile lato client). Se il CAS fallisce (0 righe — un'altra richiesta
+// concorrente ha vinto), si rilegge lo stato fresco e si riprova, fino a
+// MAX_CAS_ATTEMPTS tentativi: NON un errore permanente, è la stessa identica
+// situazione di due persone che premono "conferma" nello stesso istante,
+// una delle due deve rileggere lo stato aggiornato e ridecidere.
+// Prova di correttezza: tests/one/capacity-concurrency.spec.ts (client
+// Supabase fittizio che riproduce deterministicamente due lettori che
+// vedono lo stesso spots_left prima che nessuno dei due scriva — gira in
+// qualunque ambiente, non richiede un deploy reale).
+const MAX_CAS_ATTEMPTS = 5;
+
 async function reserveSpot(
   supabase: SupabaseClientLike,
   table: "activity_weeks" | "activity_days",
   id: string,
   logContext: { event: string; correlationId?: string | null }
 ): Promise<CapacityMutationResult> {
-  const { data: row } = await supabase.from(table).select("spots_left, capacity").eq("id", id).single();
-  if (!row) return { applied: false, spotsLeft: 0 };
+  for (let attempt = 0; attempt < MAX_CAS_ATTEMPTS; attempt++) {
+    const { data: row } = await supabase.from(table).select("spots_left, capacity").eq("id", id).single();
+    if (!row) return { applied: false, spotsLeft: 0 };
 
-  if (row.spots_left <= 0) {
-    // Non è un errore applicativo silenzioso: un tentativo di reserve su
-    // capacità già esaurita è un segnale utile (race condition tra due
-    // risposte quasi simultanee, o UI che non ha ricaricato lo stato) — lo
-    // registriamo qui invece di lasciarlo un no-op invisibile come nel
-    // codice pre-Sprint 6.
-    logTelemetryEvent({
-      event: logContext.event,
-      correlationId: logContext.correlationId,
-      detail: `reserve rifiutata: spots_left già a 0 (${table}#${id.slice(0, 8)})`,
-    });
-    return { applied: false, spotsLeft: row.spots_left };
+    if (row.spots_left <= 0) {
+      // Non è un errore applicativo silenzioso: un tentativo di reserve su
+      // capacità già esaurita è un segnale utile (race condition tra due
+      // risposte quasi simultanee, o UI che non ha ricaricato lo stato) — lo
+      // registriamo qui invece di lasciarlo un no-op invisibile come nel
+      // codice pre-Sprint 6.
+      logTelemetryEvent({
+        event: logContext.event,
+        correlationId: logContext.correlationId,
+        detail: `reserve rifiutata: spots_left già a 0 (${table}#${id.slice(0, 8)})`,
+      });
+      return { applied: false, spotsLeft: row.spots_left };
+    }
+
+    const next = clampSpotsLeft(row.spots_left - 1, row.capacity ?? row.spots_left);
+    const { data: updated } = await supabase
+      .from(table)
+      .update({ spots_left: next })
+      .eq("id", id)
+      .eq("spots_left", row.spots_left)
+      .select("spots_left");
+
+    if (updated && updated.length > 0) {
+      return { applied: true, spotsLeft: next };
+    }
+    // CAS fallito: un'altra richiesta ha scritto tra la nostra lettura e la
+    // nostra scrittura — rileggere lo stato fresco e riprovare (prossimo giro).
   }
 
-  const next = clampSpotsLeft(row.spots_left - 1, row.capacity ?? row.spots_left);
-  await supabase.from(table).update({ spots_left: next }).eq("id", id);
-  return { applied: true, spotsLeft: next };
+  // Contesa persistente oltre i tentativi previsti — trattarla come rifiuto
+  // sicuro (mai un doppio decremento) invece di un crash o un ultimo
+  // tentativo alla cieca.
+  logTelemetryEvent({
+    event: logContext.event,
+    correlationId: logContext.correlationId,
+    detail: `reserve rifiutata dopo ${MAX_CAS_ATTEMPTS} tentativi CAS falliti (${table}#${id.slice(0, 8)})`,
+  });
+  const { data: fallback } = await supabase.from(table).select("spots_left").eq("id", id).single();
+  return { applied: false, spotsLeft: fallback?.spots_left ?? 0 };
 }
 
 async function releaseSpot(
@@ -67,12 +114,25 @@ async function releaseSpot(
   table: "activity_weeks" | "activity_days",
   id: string
 ): Promise<CapacityMutationResult> {
-  const { data: row } = await supabase.from(table).select("spots_left, capacity").eq("id", id).single();
-  if (!row) return { applied: false, spotsLeft: 0 };
+  for (let attempt = 0; attempt < MAX_CAS_ATTEMPTS; attempt++) {
+    const { data: row } = await supabase.from(table).select("spots_left, capacity").eq("id", id).single();
+    if (!row) return { applied: false, spotsLeft: 0 };
 
-  const next = clampSpotsLeft(row.spots_left + 1, row.capacity ?? row.spots_left + 1);
-  await supabase.from(table).update({ spots_left: next }).eq("id", id);
-  return { applied: true, spotsLeft: next };
+    const next = clampSpotsLeft(row.spots_left + 1, row.capacity ?? row.spots_left + 1);
+    const { data: updated } = await supabase
+      .from(table)
+      .update({ spots_left: next })
+      .eq("id", id)
+      .eq("spots_left", row.spots_left)
+      .select("spots_left");
+
+    if (updated && updated.length > 0) {
+      return { applied: true, spotsLeft: next };
+    }
+  }
+
+  const { data: fallback } = await supabase.from(table).select("spots_left").eq("id", id).single();
+  return { applied: false, spotsLeft: fallback?.spots_left ?? 0 };
 }
 
 // ─────────────────────────────────────────────
