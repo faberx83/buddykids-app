@@ -2,9 +2,12 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
-import { GroupItem, CarpoolLeg } from "@/lib/types";
+import { GroupItem, PublicGroupItem, GroupInviteItem, CarpoolLeg } from "@/lib/types";
 import { discountForGroupSize } from "@/lib/groups";
+import { getPublicGroups, getMyGroupInvites } from "@/lib/data/groups";
 import { revalidatePath } from "next/cache";
+import { headers } from "next/headers";
+import { sendEmail, isEmailConfigured } from "@/lib/email";
 
 // Traduce i messaggi di errore Postgres più comuni in qualcosa di leggibile
 // per un genitore, invece di mostrare il testo tecnico del database.
@@ -108,6 +111,169 @@ export async function joinGroupAction(groupId: string): Promise<{ error?: string
 
   if (error) return { error: friendlyDbError(error.message, "Errore nell'adesione al gruppo") };
   revalidatePath(`/groups/${groupId}`);
+  revalidatePath("/groups");
+  return {};
+}
+
+// ─────────────────────────────────────────────
+// TRAMA ONE — Gruppi "Scopri"/"Inviti" (24/08/2026, migration_25): gap
+// segnalato da Fabrizio, analisi approfondita conferma che nessuna delle due
+// tab aveva mai avuto logica reale dietro ("funzionalità in arrivo" statico).
+// ─────────────────────────────────────────────
+
+// Wrapper lato server action (già esposta anche come funzione dati pura in
+// lib/data/groups.ts): utile per un refresh client-side della tab "Scopri"
+// senza dover ricaricare l'intera pagina /groups.
+export async function getPublicGroupsAction(): Promise<PublicGroupItem[]> {
+  return getPublicGroups();
+}
+
+export async function getMyGroupInvitesAction(): Promise<GroupInviteItem[]> {
+  return getMyGroupInvites();
+}
+
+// Visibilità "Scopri": solo il creatore del gruppo può renderlo pubblico o
+// riportarlo privato (stesso perimetro della policy RLS "Groups: il
+// creatore collega l'attività target", che copre già l'update di QUALUNQUE
+// colonna per created_by = auth.uid(), is_public incluso — nessuna nuova
+// policy di UPDATE necessaria, vedi migration_25).
+export async function toggleGroupVisibilityAction(
+  groupId: string,
+  isPublic: boolean
+): Promise<{ error?: string }> {
+  if (!isSupabaseConfigured) return { error: "Supabase non configurato" };
+  const { supabase, user } = await requireUser();
+  if (!user) return { error: "Non autenticato" };
+
+  const { data: group } = await supabase.from("groups").select("created_by").eq("id", groupId).maybeSingle();
+  if (!group) return { error: "Gruppo non trovato" };
+  if (group.created_by !== user.id) return { error: "Solo chi ha creato il gruppo può cambiarne la visibilità" };
+
+  const { error } = await supabase.from("groups").update({ is_public: isPublic }).eq("id", groupId);
+  if (error) return { error: error.message };
+
+  revalidatePath(`/groups/${groupId}`);
+  revalidatePath("/groups");
+  return {};
+}
+
+// Invito reale per email (in aggiunta al link "Invita famiglie" già
+// esistente, aperto a chiunque abbia il link) — stesso pattern collaudato di
+// inviteToFamilyAction (app/actions/family.ts): token univoco, invio email
+// via lib/email.ts se configurata (altrimenti l'invito resta comunque
+// creato e visibile nella tab "Inviti" del destinatario appena effettua
+// l'accesso, nessuna funzionalità bloccata). Aperto a QUALUNQUE membro del
+// gruppo (non solo al creatore), stesso perimetro di "Invita famiglie".
+export interface InviteToGroupResult {
+  error?: string;
+  emailSent?: boolean;
+  link?: string;
+}
+
+export async function inviteToGroupAction(groupId: string, email: string): Promise<InviteToGroupResult> {
+  if (!isSupabaseConfigured) return { error: "Supabase non configurato" };
+  const invitedEmail = email.trim().toLowerCase();
+  if (!invitedEmail || !invitedEmail.includes("@")) return { error: "Inserisci un'email valida" };
+
+  const { supabase, user } = await requireUser();
+  if (!user) return { error: "Non autenticato" };
+
+  if (user.email && user.email.toLowerCase() === invitedEmail) {
+    return { error: "Non puoi invitare te stesso" };
+  }
+
+  const { data: membership } = await supabase
+    .from("group_members")
+    .select("parent_id")
+    .eq("group_id", groupId)
+    .eq("parent_id", user.id)
+    .maybeSingle();
+  if (!membership) return { error: "Non fai parte di questo gruppo" };
+
+  const { data: existingInvite } = await supabase
+    .from("group_invites")
+    .select("id")
+    .eq("group_id", groupId)
+    .ilike("invited_email", invitedEmail)
+    .in("status", ["pending", "sent"])
+    .maybeSingle();
+  if (existingInvite) return { error: "Questa email è già stata invitata a questo gruppo" };
+
+  const { data: group } = await supabase.from("groups").select("name").eq("id", groupId).single();
+  const { data: profile } = await supabase.from("profiles").select("full_name").eq("id", user.id).maybeSingle();
+
+  const token = crypto.randomUUID();
+  const { data: invite, error } = await supabase
+    .from("group_invites")
+    .insert({ group_id: groupId, invited_email: invitedEmail, token, invited_by: user.id })
+    .select("id")
+    .single();
+  if (error || !invite) return { error: error?.message || "Errore nella creazione dell'invito" };
+
+  const h = await headers();
+  const host = h.get("host") || "localhost:3000";
+  const proto = h.get("x-forwarded-proto") || (host.startsWith("localhost") ? "http" : "https");
+  const link = `${proto}://${host}/auth/login?next=${encodeURIComponent("/groups")}`;
+
+  let emailSent = false;
+  if (isEmailConfigured) {
+    const inviterName = profile?.full_name || "Un genitore";
+    const groupName = group?.name || "un gruppo";
+    const html = `
+      <div style="font-family: -apple-system, Helvetica, Arial, sans-serif; max-width: 480px; margin: 0 auto; padding: 24px; color:#1a2b3c;">
+        <h2 style="margin: 0 0 12px;">Ciao,</h2>
+        <p><b>${inviterName}</b> ti ha invitato a unirti al gruppo <b>"${groupName}"</b> su TRAMA, per organizzarvi insieme e ottenere lo sconto gruppo.</p>
+        <p style="text-align:center; margin: 24px 0;">
+          <a href="${link}" style="background:#6F63C5; color:#fff; padding:12px 24px; border-radius:8px; text-decoration:none; font-weight:bold; display:inline-block;">Vedi l'invito</a>
+        </p>
+        <p style="font-size:12px; color:#888;">Accedi con l'email a cui è arrivato questo invito (${invitedEmail}) e lo troverai nella tab "Inviti" di Gruppi.</p>
+      </div>
+    `;
+    const sendResult = await sendEmail({
+      to: invitedEmail,
+      subject: `${inviterName} ti invita su TRAMA 🤝`,
+      html,
+    });
+    if (!sendResult.error) {
+      emailSent = true;
+      await supabase.from("group_invites").update({ status: "sent", email_sent_at: new Date().toISOString() }).eq("id", invite.id);
+    }
+  }
+
+  revalidatePath(`/groups/${groupId}`);
+  return { emailSent, link };
+}
+
+export interface RespondGroupInviteResult {
+  error?: string;
+  groupId?: string;
+}
+
+export async function acceptGroupInviteAction(inviteId: string): Promise<RespondGroupInviteResult> {
+  if (!isSupabaseConfigured) return { error: "Supabase non configurato" };
+  const { supabase, user } = await requireUser();
+  if (!user) return { error: "Non autenticato" };
+
+  const { data, error } = await supabase.rpc("accept_group_invite", { p_invite_id: inviteId }).maybeSingle();
+  if (error) return { error: error.message };
+  const row = data as { group_id: string | null; error: string | null } | null;
+  if (!row || row.error) return { error: row?.error || "Errore nell'accettazione dell'invito" };
+
+  revalidatePath("/groups");
+  return { groupId: row.group_id || undefined };
+}
+
+export async function declineGroupInviteAction(inviteId: string): Promise<{ error?: string }> {
+  if (!isSupabaseConfigured) return { error: "Supabase non configurato" };
+  const { supabase, user } = await requireUser();
+  if (!user) return { error: "Non autenticato" };
+
+  const { data, error } = await supabase.rpc("decline_group_invite", { p_invite_id: inviteId }).maybeSingle();
+  if (error) return { error: error.message };
+  const row = data as { error: string | null } | null;
+  if (row?.error) return { error: row.error };
+
+  revalidatePath("/groups");
   return {};
 }
 

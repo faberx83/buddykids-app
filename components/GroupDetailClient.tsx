@@ -17,6 +17,8 @@ import {
   removeCarpoolOfferAction,
   upsertCarpoolRequestAction,
   removeCarpoolRequestAction,
+  toggleGroupVisibilityAction,
+  inviteToGroupAction,
 } from "@/app/actions/groups";
 
 const LEG_LABELS: Record<CarpoolLeg, string> = {
@@ -104,6 +106,107 @@ function InviteButton({
       <i className={`ti ${copied ? "ti-check" : "ti-user-plus"} text-sm`} />
       {copied ? "Messaggio copiato!" : "Invita famiglie"}
     </button>
+  );
+}
+
+// TRAMA ONE — Gruppi "Scopri"/"Inviti" (24/08/2026, migration_25): due
+// controlli aggiunti alla scheda gruppo, in coerenza con lo stesso gap
+// segnalato da Fabrizio. Il toggle di visibilità è SOLO del creatore (stessa
+// policy RLS "il creatore collega l'attività target", copre già l'update di
+// is_public); l'invito per email è aperto a QUALUNQUE membro del gruppo,
+// stesso perimetro dell'InviteButton "Invita famiglie" già esistente qui
+// sopra (che resta invariato — questo è un canale AGGIUNTIVO, mirato a
+// un'email specifica invece che "chiunque abbia il link").
+function VisibilityAndInviteBlock({
+  groupId,
+  isPublic,
+  createdByMe,
+}: {
+  groupId: string;
+  isPublic: boolean;
+  createdByMe: boolean;
+}) {
+  const router = useRouter();
+  const [togglingPublic, setTogglingPublic] = useState(false);
+  const [inviteEmail, setInviteEmail] = useState("");
+  const [invitingEmail, setInvitingEmail] = useState(false);
+  const [inviteResult, setInviteResult] = useState<{ ok?: string; error?: string } | null>(null);
+
+  async function handleToggle() {
+    setTogglingPublic(true);
+    const result = await toggleGroupVisibilityAction(groupId, !isPublic);
+    setTogglingPublic(false);
+    if (!result.error) router.refresh();
+  }
+
+  async function handleInvite() {
+    setInviteResult(null);
+    setInvitingEmail(true);
+    const result = await inviteToGroupAction(groupId, inviteEmail);
+    setInvitingEmail(false);
+    if (result.error) {
+      setInviteResult({ error: result.error });
+      return;
+    }
+    setInviteEmail("");
+    setInviteResult({
+      ok: result.emailSent
+        ? "Invito inviato via email!"
+        : "Invito creato — comparirà nella tab \"Inviti\" quando la persona accede con quella email.",
+    });
+  }
+
+  return (
+    <div className="mb-4 rounded-lg border border-[#E8EBF0] bg-white p-3.5">
+      {createdByMe && (
+        <div className="mb-3 flex items-center justify-between">
+          <div>
+            <div className="text-sm font-bold text-ink">Visibile in &quot;Scopri&quot;</div>
+            <p className="mt-0.5 text-xs text-ink-2">
+              Se attivo, altri genitori possono trovare e unirsi a questo gruppo dalla tab
+              &quot;Scopri&quot; di Gruppi.
+            </p>
+          </div>
+          <button
+            onClick={handleToggle}
+            disabled={togglingPublic}
+            role="switch"
+            aria-checked={isPublic}
+            className={`relative h-6 w-11 flex-shrink-0 rounded-full transition-colors disabled:opacity-60 ${
+              isPublic ? "bg-sky" : "bg-[#D9DEE6]"
+            }`}
+          >
+            <span
+              className={`absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform ${
+                isPublic ? "translate-x-[22px]" : "translate-x-0.5"
+              }`}
+            />
+          </button>
+        </div>
+      )}
+
+      <div className={createdByMe ? "border-t border-[#F0F2F5] pt-3" : ""}>
+        <div className="mb-2 text-sm font-bold text-ink">Invita per email</div>
+        <div className="flex gap-2">
+          <input
+            value={inviteEmail}
+            onChange={(e) => setInviteEmail(e.target.value)}
+            placeholder="email@esempio.it"
+            type="email"
+            className="min-w-0 flex-1 rounded-md border border-[#E8EBF0] bg-bg px-3 py-2 text-sm outline-none focus:border-sky"
+          />
+          <button
+            onClick={handleInvite}
+            disabled={invitingEmail || !inviteEmail.trim()}
+            className="flex-shrink-0 rounded-md bg-sky px-3.5 py-2 text-xs font-bold text-white disabled:opacity-60"
+          >
+            {invitingEmail ? "Invio…" : "Invita"}
+          </button>
+        </div>
+        {inviteResult?.error && <p className="mt-1.5 text-xs font-medium text-orange">{inviteResult.error}</p>}
+        {inviteResult?.ok && <p className="mt-1.5 text-xs font-medium text-green">{inviteResult.ok}</p>}
+      </div>
+    </div>
   );
 }
 
@@ -262,6 +365,8 @@ function GruppoTab({
           )}
         </div>
       )}
+
+      <VisibilityAndInviteBlock groupId={detail.id} isPublic={detail.isPublic} createdByMe={detail.createdByMe} />
 
       {/* Bambini iscritti */}
       <div className="mb-4 rounded-lg border border-[#E8EBF0] bg-white">

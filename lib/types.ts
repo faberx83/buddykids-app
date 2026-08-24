@@ -222,6 +222,36 @@ export interface GroupItem {
   discountBadgeColor: PillColor;
 }
 
+// TRAMA ONE — Gruppi "Scopri" (24/08/2026, gap Scopri/Inviti): un gruppo
+// pubblico (is_public=true, migration_25) che il genitore non ha ancora
+// iscritto — shape volutamente più leggera di GroupItem (niente members/
+// avatar, che la RLS non espone a chi non è ancora membro), vedi
+// lib/data/groups.ts#getPublicGroups().
+export interface PublicGroupItem {
+  id: string;
+  name: string;
+  emoji: string;
+  gradient: string;
+  location: string;
+  familyCount: number;
+  discountLabel: string;
+  discountBadgeColor: PillColor;
+}
+
+// TRAMA ONE — Gruppi "Inviti" (24/08/2026): un invito reale (email +
+// accetta/rifiuta) indirizzato all'email del genitore loggato, stesso
+// pattern di family_invites — vedi lib/data/groups.ts#getMyGroupInvites().
+export interface GroupInviteItem {
+  id: string;
+  groupId: string;
+  groupName: string;
+  activityName: string | null;
+  centerName: string | null;
+  discountPercent: number;
+  inviterName: string | null;
+  createdAt: string;
+}
+
 // ─────────────────────────────────────────────
 // Gruppi — dettaglio (bambini + preferenze, aggregazioni, Richiesta Gruppo,
 // accompagnamento) — vedi lib/data/group-detail.ts
@@ -298,6 +328,10 @@ export interface GroupDetail {
   emoji: string;
   gradient: string;
   createdByMe: boolean;
+  // TRAMA ONE — Gruppi "Scopri" (24/08/2026, migration_25): visibilità del
+  // gruppo nella tab "Scopri" di altri genitori. Modificabile solo dal
+  // creatore (toggleGroupVisibilityAction).
+  isPublic: boolean;
   activityId: string | null; // dbId dell'attività target, se collegata
   activityName: string | null;
   centerName: string | null;

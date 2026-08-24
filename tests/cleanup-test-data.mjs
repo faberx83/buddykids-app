@@ -207,7 +207,8 @@ async function main() {
   }
 
   if (parent) {
-    // Gruppi creati dal genitore di test (cascade -> group_members, group_kids, group_requests)
+    // Gruppi creati dal genitore di test (cascade -> group_members, group_kids,
+    // group_requests, group_invites — quest'ultima da migration_25, "Scopri"/"Inviti")
     const { data: groups } = await supabase
       .from("groups")
       .delete()

@@ -33,6 +33,7 @@ export async function getGroupDetail(groupId: string): Promise<GroupDetail | nul
       emoji: mockGroup.emoji,
       gradient: mockGroup.gradient,
       createdByMe: true,
+      isPublic: false,
       activityId: null,
       activityName: mockGroup.location !== "Da definire" ? mockGroup.location : null,
       centerName: mockGroup.location,
@@ -56,7 +57,7 @@ export async function getGroupDetail(groupId: string): Promise<GroupDetail | nul
   const { data: groupRow, error: groupError } = await supabase
     .from("groups")
     .select(
-      "id, name, created_by, activity_id, activities ( name, center_id, centers ( name, group_discount_tiers ) )"
+      "id, name, created_by, is_public, activity_id, activities ( name, center_id, centers ( name, group_discount_tiers ) )"
     )
     .eq("id", groupId)
     .maybeSingle();
@@ -257,6 +258,7 @@ export async function getGroupDetail(groupId: string): Promise<GroupDetail | nul
     emoji: "🤝",
     gradient: "linear-gradient(135deg,#E8F6FD,#E3F9F5)",
     createdByMe: groupRow.created_by === user.id,
+    isPublic: groupRow.is_public ?? false,
     activityId: groupRow.activity_id,
     activityName: activity?.name ?? null,
     centerName: center?.name ?? null,
