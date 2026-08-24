@@ -14,6 +14,9 @@ export function areaLabelFromPath(pathname: string): string {
   if (pathname.startsWith("/nextgen/planner/famiglia")) return "Planner · Famiglia";
   if (pathname.startsWith("/nextgen/planner/promemoria")) return "Planner · Promemoria";
   if (pathname.startsWith("/nextgen/planner")) return "Planner";
+  // TRAMA ONE Prenotazioni NEXTGEN-native (24/08/2026): nuovo guscio proprio,
+  // stessa etichetta della vecchia rotta LEGACY sottostante (riga più sotto).
+  if (pathname.startsWith("/nextgen/prenotazioni")) return "Le mie prenotazioni";
   if (pathname.startsWith("/nextgen/search")) return "Scopri";
   if (pathname.startsWith("/nextgen/community")) return "Community";
   if (pathname.startsWith("/nextgen/profile/famiglia")) return "Profilo · Famiglia e logistica";

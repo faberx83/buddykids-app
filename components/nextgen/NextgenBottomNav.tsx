@@ -26,6 +26,9 @@ import { usePathname } from "next/navigation";
 // ora punta a /nextgen/profile (nuova pagina ridisegnata, vedi
 // app/nextgen/profile/ProfileNextgenClient.tsx): il tradeoff sopra resta
 // valido SOLO per "Prenotazioni" (/prenotazioni, ancora LEGACY).
+// TRAMA ONE Prenotazioni NEXTGEN-native (24/08/2026) — chiuso anche l'ultimo
+// tradeoff: "Prenotazioni" ora punta a /nextgen/prenotazioni (guscio NEXTGEN,
+// vedi app/nextgen/prenotazioni/page.tsx), stesso contenuto TRAMA-current.
 // TRAMA ONE Parent Spotlight sprint (24/08/2026) — "planner_nav" è il target
 // reale dell'ultimo step del percorso Genitore (discover_book_parent, vedi
 // lib/walkthrough/registry.ts), stesso pattern di "dashboard" sulla voce
@@ -36,7 +39,7 @@ const items: { href: string; icon: string; label: string; spotlightTarget?: stri
   { href: "/nextgen", icon: "ti-home", label: "Home" },
   { href: "/nextgen/planner", icon: "ti-calendar-event", label: "Planner", spotlightTarget: "planner_nav" },
   { href: "/nextgen/search", icon: "ti-search", label: "Scopri" },
-  { href: "/prenotazioni", icon: "ti-ticket", label: "Prenotazioni" },
+  { href: "/nextgen/prenotazioni", icon: "ti-ticket", label: "Prenotazioni" },
   { href: "/nextgen/profile", icon: "ti-user-circle", label: "Profilo" },
 ];
 

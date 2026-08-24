@@ -98,7 +98,7 @@ export default function ProfileNextgenClient({
       <div className="flex flex-col gap-2.5 px-5 pt-2">
         <div className="text-[11px] font-bold uppercase tracking-wide text-ink-3">Attività</div>
         <HubCard
-          href="/prenotazioni"
+          href="/nextgen/prenotazioni"
           icon="ti-ticket"
           iconBg="#E8F6FD"
           iconColor="#4DAFEF"

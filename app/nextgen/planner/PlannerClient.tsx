@@ -516,9 +516,10 @@ export default function PlannerClient({
                 lo sembrino") — questo box era puramente informativo, senza
                 nessun modo di risolvere il conflitto da qui. L'unico posto
                 dove si può davvero annullare/modificare una delle due
-                prenotazioni è "Le mie prenotazioni" (LEGACY). */}
+                prenotazioni è "Le mie prenotazioni". TRAMA ONE Prenotazioni
+                NEXTGEN-native (24/08/2026): ora punta al guscio NEXTGEN. */}
             <Link
-              href="/prenotazioni"
+              href="/nextgen/prenotazioni"
               className="mt-2.5 inline-flex items-center gap-1 text-[12px] font-bold text-[#7a5400] active:scale-[0.98]"
             >
               Gestisci in Le mie prenotazioni
@@ -737,7 +738,7 @@ export default function PlannerClient({
                             <Link
                               key={w.index}
                               id={`week-row-${w.index}`}
-                              href={`/prenotazioni?bookingId=${w.bookingId}`}
+                              href={`/nextgen/prenotazioni?bookingId=${w.bookingId}`}
                               className={`flex items-center gap-3 rounded-xl p-3 transition-colors hover:bg-black/[0.03] active:bg-black/[0.06] ${rowBg} ${
                                 isHighlighted ? "ring-2 ring-trama-violet" : ""
                               }`}

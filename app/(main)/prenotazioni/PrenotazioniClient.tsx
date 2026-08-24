@@ -126,12 +126,19 @@ export default function PrenotazioniClient({
   kids,
   initialKidFilter,
   initialHighlightBookingId,
+  showBrandIcon,
 }: {
   bookings: MyBooking[];
   planner: PlannerData;
   kids: Kid[];
   initialKidFilter: string | null;
   initialHighlightBookingId: string | null;
+  // TRAMA ONE Prenotazioni NEXTGEN-native (24/08/2026): pagina condivisa
+  // LEGACY/NEXTGEN (vedi commento più sotto), ma solo il call site NEXTGEN
+  // (app/nextgen/prenotazioni/page.tsx) passa true — stesso pattern già usato
+  // in ogni altra pagina NEXTGEN Genitore per il logo TRAMA nell'header.
+  // Default false: nessun impatto sul call site LEGACY esistente.
+  showBrandIcon?: boolean;
 }) {
   const router = useRouter();
   const [view, setView] = useState<ViewKey>("elenco");
@@ -230,7 +237,7 @@ export default function PrenotazioniClient({
       {/* BUGFIX (segnalato da Fabrizio) — pagina condivisa tra profilo LEGACY
           e NEXTGEN: niente backHref fisso, PageHeader ricade su
           router.back() e torna sempre a dove l'utente era arrivato davvero. */}
-      <PageHeader title="Le mie prenotazioni" />
+      <PageHeader title="Le mie prenotazioni" showBrandIcon={showBrandIcon} />
 
       <div className="px-5 py-4">
         {/* 1) Copertura del periodo — "in pochi secondi" capire cosa è

@@ -293,7 +293,7 @@ export default function HomeDashboardClient({
               <BookingVisualCard key={b.id} booking={b} compact />
             ))}
           </div>
-          <Link href="/prenotazioni" className="mt-3 inline-block text-sm font-semibold text-trama-violet active:bg-black/[0.04]">
+          <Link href="/nextgen/prenotazioni" className="mt-3 inline-block text-sm font-semibold text-trama-violet active:bg-black/[0.04]">
             Gestisci tutte le prenotazioni →
           </Link>
         </div>

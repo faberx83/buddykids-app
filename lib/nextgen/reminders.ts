@@ -64,7 +64,7 @@ function computeUpcomingStartReminders(bookings: MyBooking[]): Reminder[] {
             ? `${b.activityName}${kidPart} inizia oggi.`
             : `Tra ${b.daysUntilStart} giorni inizia ${b.activityName}${kidPart}.`,
         tone: b.daysUntilStart <= 2 ? "warning" : "info",
-        action: { type: "link", href: "/prenotazioni" },
+        action: { type: "link", href: "/nextgen/prenotazioni" },
       });
     }
   }
@@ -117,7 +117,7 @@ function computeOverlapReminders(overlaps: KidOverlap[], kids: Kid[]): Reminder[
       emoji: "🔁",
       text: `${o.kidName} risulta ${overlapVerb(gender)} due volte in ${o.weekLabel}: controlla quale attività tenere.`,
       tone: "warning" as const,
-      action: { type: "link" as const, href: "/prenotazioni" },
+      action: { type: "link" as const, href: "/nextgen/prenotazioni" },
     };
   });
 }
