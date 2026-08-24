@@ -146,4 +146,82 @@ test.describe("NEXTGEN - Planner (Sprint 3)", () => {
     await expect(overBudgetText).toHaveClass(/text-red-500/);
     await expect(overBudgetText).not.toHaveClass(/text-trama-orange/);
   });
+
+  // PRE-LAUNCH REMEDIATION WAVE 1 — R-09 (decisione Fabrizio, 24/08/2026):
+  // area di regressione esplicitamente richiesta, oltre ai test puri su
+  // computeWeekStatus (tests/nextgen/planner-week-status.spec.ts). Il fix
+  // del 06/08/2026 (Task #518/#519) ha aggiunto "?week=<data ISO>" al link
+  // "Riempi" (vedi PlannerClient.tsx riga ~797) letto da
+  // SearchDiscoveryClient.tsx (riga ~262) per pre-applicare il filtro
+  // settimana in Scopri — nessun test end-to-end lo copriva ancora.
+  test("TC-N670 - 'Riempi' su una settimana scoperta porta a Scopri con quella settimana già preselezionata", async ({
+    page,
+  }) => {
+    test.skip(!isRealDeployment, "Richiede un deploy con Supabase configurato e un account genitore di test con almeno una settimana scoperta futura.");
+    await loginAs(page, "parent");
+    await page.goto("/nextgen/planner");
+
+    const riempiButton = page.getByRole("link", { name: "Riempi" }).first();
+    if (!(await riempiButton.isVisible().catch(() => false))) {
+      test.skip(true, "Nessuna settimana scoperta futura per l'account di test (nessun bottone 'Riempi' visibile).");
+    }
+    const href = await riempiButton.getAttribute("href");
+    expect(href).toMatch(/\/nextgen\/search\?week=\d{4}-\d{2}-\d{2}/);
+
+    await riempiButton.click();
+    await expect(page).toHaveURL(/\/nextgen\/search\?week=\d{4}-\d{2}-\d{2}/);
+
+    // Il filtro data letto da "?week=" deve risultare già applicato/attivo
+    // nel pannello filtri di Scopri, non solo presente nell'URL — altrimenti
+    // il fix di sincronizzazione risulterebbe rotto senza che l'URL lo tradisca.
+    // Il chip filtro (un <div onClick>, non un <button> — nessun ruolo ARIA
+    // implicito) cambia etichetta da "Date" a "Settimane (N)" solo quando
+    // selectedWeekStarts.length > 0 (SearchDiscoveryClient.tsx riga ~508) —
+    // con un solo "?week=" atteso "Settimane (1)".
+    await expect(page.getByText("Settimane (1)", { exact: true })).toBeVisible();
+  });
+
+  // R-09: le due viste ("Stato per settimana" compatta e riga Timeline)
+  // devono SEMPRE concordare sullo stesso stato per la stessa settimana in
+  // una famiglia con più di un figlio — regressione storica già corretta
+  // una volta (segnalata da Fabrizio: "c'è qualcosa che non quadra, né nei
+  // dati né nei colori", vedi commento in PlannerClient.tsx riga ~590) per
+  // una isPartial locale che ignorava awaitingPartnerConfirmation. Da
+  // allora entrambe le viste usano la STESSA computeWeekStatus — questo
+  // test verifica che il testo "manca N bambino/i" mostrato nella Timeline
+  // corrisponda davvero al numero di figli non coperti in quella settimana.
+  test("TC-N671 - famiglia con più figli: 'manca N bambino/i' nella Timeline riflette il conteggio reale dei figli scoperti", async ({
+    page,
+  }) => {
+    test.skip(!isRealDeployment, "Richiede un deploy con Supabase configurato e un account genitore di test con 2+ figli e almeno una settimana con copertura parziale.");
+    await loginAs(page, "parent");
+    await page.goto("/nextgen/planner");
+
+    const partialLabel = page.getByText(/manca \d+ bambino\/i/).first();
+    if (!(await partialLabel.isVisible().catch(() => false))) {
+      test.skip(true, "Nessuna settimana con copertura parziale per l'account di test.");
+    }
+    const text = await partialLabel.textContent();
+    const match = text?.match(/manca (\d+) bambino\/i/);
+    expect(match).not.toBeNull();
+    const missingCount = Number(match?.[1]);
+    expect(missingCount).toBeGreaterThan(0);
+
+    // La striscia compatta "Stato per settimana" (sopra la Timeline) per la
+    // STESSA settimana deve mostrare lo stesso stato "Copertura parziale"
+    // (WEEK_STATUS_LABEL.partial, vedi R-19/Wave 1) — coerenza garantita solo
+    // perché entrambe le viste chiamano la stessa computeWeekStatus. Recupera
+    // l'indice settimana dall'id della riga Timeline (week-row-N) per
+    // trovare il bottone corrispondente nella striscia (title include
+    // "Settimana N").
+    const rowId = await page
+      .locator("[id^='week-row-']")
+      .filter({ has: partialLabel })
+      .first()
+      .getAttribute("id");
+    expect(rowId).toMatch(/^week-row-\d+$/);
+    const weekIndex = rowId?.replace("week-row-", "");
+    const compactBar = page.locator(`button[title*="Settimana ${weekIndex} "]`);
+    await expect(compactBar).toHaveAttribute("title", /Copertura parziale/);
+  });
 });
