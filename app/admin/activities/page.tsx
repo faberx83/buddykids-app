@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { activities, centers } from "@/lib/mock-data";
+import AdminMockDataBanner from "@/components/admin/AdminMockDataBanner";
 
 export default function AdminActivitiesPage() {
   return (
@@ -9,6 +10,9 @@ export default function AdminActivitiesPage() {
         <h1 className="text-xl font-bold text-white">Attività</h1>
         <p className="text-sm text-navy-text2">Tutte le attività pubblicate su tutti i centri</p>
       </div>
+
+      {/* R-01 (Wave 1): elenco letto SOLO da lib/mock-data.ts, mai Supabase. */}
+      <AdminMockDataBanner />
 
       <div className="overflow-hidden rounded-lg border border-[#E8EBF0] bg-white">
         <table className="w-full text-sm">

@@ -1,23 +1,34 @@
 import Link from "next/link";
 import { activities, bookingsMock, centers } from "@/lib/mock-data";
 import NewCenterForm from "@/components/admin/NewCenterForm";
-import { DemoBadge } from "@/components/StatusBadge";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
+import AdminMockDataBanner from "@/components/admin/AdminMockDataBanner";
 
 export default function AdminCentersPage() {
   return (
     <div>
       <div className="mb-6 flex items-start justify-between gap-4">
         <div>
-          <div className="flex items-center gap-2">
-            {/* FIX CONTRASTO ADMIN: text-ink==bg-navy, vedi analytics/page.tsx */}
-            <h1 className="text-xl font-bold text-white">Centri</h1>
-            <DemoBadge label="Elenco demo" />
-          </div>
+          {/* FIX CONTRASTO ADMIN: text-ink==bg-navy, vedi analytics/page.tsx */}
+          <h1 className="text-xl font-bold text-white">Centri</h1>
           <p className="text-sm text-navy-text2">Tutti i centri estivi registrati sulla piattaforma</p>
         </div>
         {isSupabaseConfigured && <NewCenterForm />}
       </div>
+
+      {/* R-01 (Wave 1): l'elenco sotto è SEMPRE lib/mock-data.ts, anche se
+          "Nuovo centro" sopra scrive un centro reale su Supabase — un centro
+          appena creato qui NON compare in questa lista (non risolto in
+          questa fase, per decisione esplicita di non rifare le dashboard
+          mock prima della Beta).
+          NOTA CORRETTIVA: il Command Center (/admin/one) NON mostra un
+          elenco dei centri reali — aggrega solo code operative (onboarding,
+          prenotazioni, richieste...); listCentersForAdminReview() vi è letto
+          solo per contare i centri "SUBMITTED", mai renderizzato come lista.
+          Oggi non esiste nell'app nessuna vista che elenchi i centri reali:
+          nessuna CTA verso una vista inesistente, per non introdurre
+          un'altra affermazione non verificata. */}
+      <AdminMockDataBanner description="Questo elenco è sempre di esempio, anche dopo aver creato un centro reale con 'Nuovo centro' qui sopra: il centro appena creato non comparirà in questa lista. Al momento l'app non ha una vista che elenchi i centri reali." />
 
       <div className="overflow-hidden rounded-lg border border-[#E8EBF0] bg-white">
         <table className="w-full text-sm">

@@ -8,6 +8,7 @@ import {
 import TrendLineChart from "@/components/charts/TrendLineChart";
 import SimpleBarChart from "@/components/charts/SimpleBarChart";
 import { getGestoriActivitySummary } from "@/lib/data/gestori-activity";
+import AdminMockDataBanner from "@/components/admin/AdminMockDataBanner";
 
 export default async function AdminAnalyticsPage() {
   const occupancy = aggregateWeeklyOccupancy(activities.map((a) => a.id));
@@ -30,9 +31,15 @@ export default async function AdminAnalyticsPage() {
         </p>
       </div>
 
+      {/* R-01 (Wave 1): pagina a contenuto MISTO — la tabella "Attività dei
+          Gestori centro" subito sotto legge da activity_log (reale, vedi
+          getGestoriActivitySummary); grafici occupazione/tag/età e
+          suggerimenti cross-selling più sotto leggono da lib/mock-data.ts. */}
+      <AdminMockDataBanner description="Il grafico di occupazione, la ripartizione per tag/età e i suggerimenti cross-selling qui sotto usano dati di esempio statici. Solo la tabella 'Attività dei Gestori centro' è reale." />
+
       <div className="mb-5 rounded-lg border border-[#E8EBF0] bg-white">
         <div className="border-b border-[#E8EBF0] px-4 py-3">
-          <div className="text-sm font-bold text-ink">Attività dei Gestori centro</div>
+          <div className="text-sm font-bold text-ink">Attività dei Gestori centro <span className="ml-1 rounded-full bg-green-light px-2 py-0.5 text-[10px] font-bold uppercase text-[#2d8f52]">Dato reale</span></div>
           <p className="text-xs text-ink-2">
             Quante modifiche fa ogni centro e quante toccano il pricing (prezzo attività o
             promozioni) — utile per capire chi interviene di più sul mercato.

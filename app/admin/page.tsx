@@ -4,6 +4,7 @@ import StatusBadge from "@/components/dashboard/StatusBadge";
 import OccupancyChart from "@/components/charts/OccupancyChart";
 import { activities, bookingsMock, centers } from "@/lib/mock-data";
 import { aggregateWeeklyOccupancy } from "@/lib/analytics";
+import AdminMockDataBanner from "@/components/admin/AdminMockDataBanner";
 
 export default function AdminDashboardPage() {
   const confirmedBookings = bookingsMock.filter((b) => b.status === "confirmed");
@@ -18,6 +19,11 @@ export default function AdminDashboardPage() {
         <h1 className="text-xl font-bold text-white">Dashboard piattaforma</h1>
         <p className="text-sm text-navy-text2">Panoramica su tutti i centri e le attività di TRAMA</p>
       </div>
+
+      {/* R-01 (Wave 1): questa pagina legge SOLO lib/mock-data.ts, mai
+          Supabase — vedi AdminMockDataBanner per il perché. Per operare
+          davvero durante la Beta, usare il Command Center. */}
+      <AdminMockDataBanner cta={{ href: "/admin/one", label: "Vai al Command Center (dati reali)" }} />
 
       <div className="mb-6 grid grid-cols-2 gap-3 md:grid-cols-4">
         <StatCard label="Centri attivi" value={String(centers.length)} icon="ti-building-community" iconBg="#E8F6FD" iconColor="#4DAFEF" />

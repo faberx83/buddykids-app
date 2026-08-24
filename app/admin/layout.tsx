@@ -71,9 +71,13 @@ export default async function AdminLayout({ children }: { children: React.ReactN
       correlationId: generateCorrelationId(),
     });
     if (oneEnabled) {
+      // R-01 (Wave 1, 24/08/2026): Command Center promosso a PRIMA voce (era
+      // in coda) per convergere la superficie Admin canonica su /admin/one
+      // senza rimuovere o redirectare le pagine storiche (nessun codice
+      // eliminato, nessuna route toccata — solo ordine del menu).
       navItems = [
-        ...baseNavItems,
         { href: "/admin/one", label: "Command Center", icon: "ti-target-arrow" },
+        ...baseNavItems,
       ];
     }
   }

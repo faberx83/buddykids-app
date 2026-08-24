@@ -297,6 +297,61 @@ export const FEATURE_CATALOG: FeatureCatalogEntry[] = [
     note: "Rischio basso, stesso motivo.",
     riskLevel: "low",
   },
+
+  // ── PRE-LAUNCH REMEDIATION WAVE 1, R-01 (24/08/2026) — pagine Admin
+  // "classiche" che leggono lib/mock-data.ts in modo INCONDIZIONATO (non un
+  // fallback: nessuna di queste query legge mai Supabase). Diverse dalle 4
+  // voci sopra proprio per questo: qui il rischio è "alto" perché un Admin
+  // reale potrebbe scambiare questi numeri per dati di produzione anche a
+  // Supabase pienamente configurato — per questo richiedono
+  // AdminMockDataBanner (componente dedicato, non i badge di StatusBadge.tsx,
+  // giudicati insufficientemente visibili) invece di restare senza avviso
+  // come le voci MOCK_DEMO storiche qui sopra. Nessun codice rimosso in
+  // questa fase (decisione esplicita di Fabrizio) — solo banner + questa
+  // classificazione. ────────────────────────────────────────────────
+  {
+    key: "admin_dashboard_root_mock",
+    label: "Admin — Dashboard root (/admin)",
+    area: "admin",
+    status: "MOCK_DEMO",
+    description: "StatCard (centri/attività/prenotazioni/fatturato), grafico occupazione e liste 'Prenotazioni recenti'/'Centri' leggono SEMPRE bookingsMock/activities/centers, mai Supabase.",
+    sourceFiles: ["app/admin/page.tsx"],
+    note: "Superficie operativa canonica della Beta è /admin/one (Command Center, dati reali) — questa pagina resta raggiungibile per compatibilità storica con AdminMockDataBanner permanente.",
+    riskLevel: "high",
+    demoBannerRequired: true,
+  },
+  {
+    key: "admin_activities_list_mock",
+    label: "Admin — Attività (/admin/activities)",
+    area: "admin",
+    status: "MOCK_DEMO",
+    description: "Elenco attività letto SOLO da lib/mock-data.ts, mai Supabase.",
+    sourceFiles: ["app/admin/activities/page.tsx"],
+    riskLevel: "high",
+    demoBannerRequired: true,
+  },
+  {
+    key: "admin_analytics_mixed_mock",
+    label: "Admin — Analisi (/admin/analytics)",
+    area: "admin",
+    status: "MOCK_DEMO",
+    description: "Pagina a contenuto MISTO: la tabella 'Attività dei Gestori centro' è reale (getGestoriActivitySummary, legge activity_log); grafico occupazione, ripartizione tag/età e suggerimenti cross-selling leggono lib/mock-data.ts.",
+    sourceFiles: ["app/admin/analytics/page.tsx", "lib/data/gestori-activity.ts"],
+    note: "Classificata MOCK_DEMO per la porzione prevalente della pagina — la tabella reale è marcata con pill 'Dato reale' distinta, non con lo status di questa voce.",
+    riskLevel: "high",
+    demoBannerRequired: true,
+  },
+  {
+    key: "admin_centers_list_mock",
+    label: "Admin — Centri (/admin/centers)",
+    area: "admin",
+    status: "MOCK_DEMO",
+    description: "Elenco centri sotto il form 'Nuovo centro' è SEMPRE lib/mock-data.ts: un centro reale appena creato dal form (che scrive su Supabase) non compare in questa lista.",
+    sourceFiles: ["app/admin/centers/page.tsx"],
+    note: "Nessuna vista che elenchi i centri reali esiste oggi nell'app (verificato: /admin/one aggrega solo code operative, non un elenco centri) — gap dichiarato nel banner, nessuna CTA verso una vista inesistente.",
+    riskLevel: "high",
+    demoBannerRequired: true,
+  },
 ];
 
 export function getFeatureCatalog(): FeatureCatalogEntry[] {
