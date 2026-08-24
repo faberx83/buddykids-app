@@ -217,14 +217,27 @@ export default function PlannerClient({
       <PageHeader title="Planner" onBack={() => router.push("/nextgen")} showBrandIcon />
       <div className="px-5 py-4">
         {/* SPRINT 7 — stessa texture decorativa (due cerchi) della hero
-            card di Home, vedi DecorativeIntroCard. */}
+            card di Home, vedi DecorativeIntroCard.
+            FIX (segnalato da Fabrizio con screenshot, 24/08/2026) — il
+            ribbon "Beta" (NextgenBadge) è tagliato dal bordo arrotondato:
+            NextgenBadge è position:absolute e si aggancia al primo
+            antenato position:relative, che dovrebbe essere sempre
+            .app-shell (vedi il commento in NextgenBadge.tsx) — ma
+            DecorativeIntroCard è ANCH'ESSA relative+overflow-hidden
+            (per i due cerchi decorativi), quindi quando NextgenBadge
+            veniva montato AL SUO INTERNO si agganciava lì invece che
+            allo shell, e overflow-hidden lo tagliava. Stesso bug di
+            fondo di TC-N638 (menu Scatta foto), causa diversa.
+            Fix: NextgenBadge ora è un FRATELLO di DecorativeIntroCard,
+            non un figlio — risale di nuovo fino a .app-shell com'era
+            inteso, senza toccare NextgenBadge.tsx o DecorativeIntroCard.tsx
+            (che restano invariati e continuano a funzionare per tutti gli
+            altri usi, es. Home/Admin/Center, mai stati rotti). */}
+        <NextgenBadge />
         <DecorativeIntroCard className="mb-4">
-          <div className="flex items-center justify-between">
-            <p className="text-xs text-ink-2">
-              {mode === "budget" ? "Quanto stai spendendo per questa estate." : "La timeline completa della tua famiglia per l'estate."}
-            </p>
-            <NextgenBadge />
-          </div>
+          <p className="text-xs text-ink-2">
+            {mode === "budget" ? "Quanto stai spendendo per questa estate." : "La timeline completa della tua famiglia per l'estate."}
+          </p>
         </DecorativeIntroCard>
 
         <PlannerModeTabs mode={mode} onChange={setMode} />

@@ -531,14 +531,17 @@ export default function SearchDiscoveryClient({
       <PageHeader title="Scopri attività" onBack={() => router.push("/nextgen")} showBrandIcon />
       <div className="px-5 py-4">
         {/* SPRINT 7 — stessa texture decorativa (due cerchi) della hero
-            card di Home, vedi DecorativeIntroCard. */}
+            card di Home, vedi DecorativeIntroCard.
+            FIX (segnalato da Fabrizio con screenshot, 24/08/2026) — stesso
+            bug del ribbon "Beta" tagliato risolto in PlannerClient.tsx:
+            NextgenBadge deve restare FRATELLO di DecorativeIntroCard (mai
+            figlio), altrimenti si aggancia al relative+overflow-hidden
+            della card invece che a .app-shell e viene tagliato. */}
+        <NextgenBadge />
         <DecorativeIntroCard className="mb-3">
-          <div className="flex items-center justify-between">
-            <p className="text-xs text-ink-2">
-              Ordinati per voi{uncoveredWeekLabel ? ` — priorità a chi è libero in ${uncoveredWeekLabel}` : ""}.
-            </p>
-            <NextgenBadge />
-          </div>
+          <p className="text-xs text-ink-2">
+            Ordinati per voi{uncoveredWeekLabel ? ` — priorità a chi è libero in ${uncoveredWeekLabel}` : ""}.
+          </p>
         </DecorativeIntroCard>
 
         <input
