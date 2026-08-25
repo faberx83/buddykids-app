@@ -436,15 +436,29 @@ function CoverageStrip({ planner }: { planner: PlannerData }) {
         </span>
       </div>
       <div className="flex gap-1">
-        {planner.weeks.map((w) => (
-          <div
-            key={w.index}
-            title={`${w.label} · ${w.dateRange}${w.covered ? " — organizzata" : w.dismissed ? " — non serve" : " — da organizzare"}`}
-            className={`h-2.5 flex-1 rounded-full ${
-              w.covered ? "bg-green" : w.dismissed ? "bg-[#E8EBF0]" : "bg-orange-mid/50"
-            }`}
-          />
-        ))}
+        {planner.weeks.map((w) => {
+          // Segnalazione 25/08/2026 (Fabrizio, dopo il deploy del fix sopra):
+          // il TESTO ora esclude le settimane passate da "ancora da
+          // organizzare", ma questa barretta le coloriva comunque come
+          // "orange-mid" (stesso colore di un buco reale ancora aperto) —
+          // "le settimane passate vanno visualizzate in grigio come non
+          // disponibili". w.dismissed è un flag applicativo diverso
+          // (settimana esplicitamente esclusa dal genitore), non basta per
+          // le settimane semplicemente concluse: serve un secondo check sulla
+          // data, stesso confronto isoDate già usato per "gaps" sopra.
+          const isPast = !w.covered && w.endDate < todayIso;
+          return (
+            <div
+              key={w.index}
+              title={`${w.label} · ${w.dateRange}${
+                w.covered ? " — organizzata" : isPast ? " — conclusa" : w.dismissed ? " — non serve" : " — da organizzare"
+              }`}
+              className={`h-2.5 flex-1 rounded-full ${
+                w.covered ? "bg-green" : isPast || w.dismissed ? "bg-[#E8EBF0]" : "bg-orange-mid/50"
+              }`}
+            />
+          );
+        })}
       </div>
       {gaps > 0 ? (
         <p className="mt-2 text-[12px] text-ink-2">
