@@ -50,6 +50,52 @@ export const CURRENT_PRIVACY_NOTICE_VERSION = "v0-draft-2026-08-24";
 // LEGAL_TERMS_GATE risolve true per l'utente (mai per un utente reale oggi).
 export const CURRENT_PARENTAL_DECLARATION_VERSION = "v0-draft-2026-08-24";
 
+// PRE-MICRO-PILOT CLOSURE GATE (task #573, 25/08/2026) — spostati qui da
+// lib/legal/gate.ts: sono logica PURA (nessun I/O), ma gate.ts importa
+// "server-only" (obbligatorio per le sue funzioni che leggono/scrivono
+// Supabase) — un pacchetto che lancia un'eccezione se richiesto fuori da un
+// bundle Next.js server, quindi bloccava anche i test Playwright puri che
+// avrebbero dovuto importare SOLO deriveDocumentStatus. Spostandoli qui
+// (file senza "server-only", già usato da tests/one/consent.spec.ts) i test
+// possono importarli direttamente; gate.ts li ri-esporta per compatibilità
+// con chi li importa ancora da lì.
+export type LegalDocumentType = "terms" | "privacy_notice";
+export type DerivedLegalDocumentStatus = "draft" | "published" | "superseded";
+
+export interface LegalDocumentRecord {
+  id: string;
+  documentType: LegalDocumentType;
+  version: string;
+  sha256: string | null;
+  publishedAt: string | null;
+  createdAt: string;
+}
+
+/**
+ * Deriva DRAFT/PUBLISHED/SUPERSEDED contro l'intero elenco di righe dello
+ * stesso document_type. Lo schema live NON ha una colonna status esplicita
+ * (verificato nel POST-CHECK migration_27): PUBLISHED = la riga con
+ * published_at valorizzato più recente per quel tipo; SUPERSEDED = una riga
+ * con published_at valorizzato ma non la più recente; DRAFT = published_at
+ * NULL. "superseded" non è un valore letterale nel DB — è una
+ * classificazione puramente applicativa, ricalcolata ogni volta.
+ */
+export function deriveDocumentStatus(
+  doc: LegalDocumentRecord,
+  allOfSameType: LegalDocumentRecord[]
+): DerivedLegalDocumentStatus {
+  if (!doc.publishedAt) return "draft";
+
+  let mostRecent: LegalDocumentRecord | null = null;
+  for (const candidate of allOfSameType) {
+    if (!candidate.publishedAt) continue;
+    if (!mostRecent || Date.parse(candidate.publishedAt) > Date.parse(mostRecent.publishedAt!)) {
+      mostRecent = candidate;
+    }
+  }
+  return mostRecent?.id === doc.id ? "published" : "superseded";
+}
+
 export interface CurrentConsentState {
   termsVersion: string | null;
   termsAcceptedAt: string | null;

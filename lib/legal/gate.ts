@@ -3,6 +3,19 @@ import "server-only";
 import type { createClient } from "@/lib/supabase/server";
 import { createServiceClient } from "@/lib/supabase/service";
 import type { CurrentConsentState } from "./consent";
+import {
+  deriveDocumentStatus,
+  type LegalDocumentType,
+  type DerivedLegalDocumentStatus,
+  type LegalDocumentRecord,
+} from "./consent";
+
+// Ri-esportate per compatibilità con chi le importava da qui prima del
+// task #573 (spostate in ./consent.ts perché sono logica pura, vedi
+// commento lì — "server-only" sopra impedirebbe di importarle in test
+// puri altrimenti).
+export { deriveDocumentStatus };
+export type { LegalDocumentType, DerivedLegalDocumentStatus, LegalDocumentRecord };
 
 // PRE-MICRO-PILOT CLOSURE GATE — task #567 (25/08/2026).
 //
@@ -21,18 +34,6 @@ import type { CurrentConsentState } from "./consent";
 //
 // server-only per costruzione: nessun Client Component deve importare
 // questo file.
-
-export type LegalDocumentType = "terms" | "privacy_notice";
-export type DerivedLegalDocumentStatus = "draft" | "published" | "superseded";
-
-export interface LegalDocumentRecord {
-  id: string;
-  documentType: LegalDocumentType;
-  version: string;
-  sha256: string | null;
-  publishedAt: string | null;
-  createdAt: string;
-}
 
 // Stesso pattern di lib/capacity/service.ts (SupabaseClientLike) — un client
 // autenticato (RLS attiva) è sufficiente per tutte le funzioni tranne quelle
@@ -57,31 +58,6 @@ function mapDocumentRow(row: LegalDocumentRow): LegalDocumentRecord {
     publishedAt: row.published_at,
     createdAt: row.created_at,
   };
-}
-
-/**
- * Deriva DRAFT/PUBLISHED/SUPERSEDED contro l'intero elenco di righe dello
- * stesso document_type. Lo schema live NON ha una colonna status esplicita
- * (verificato nel POST-CHECK migration_27): PUBLISHED = la riga con
- * published_at valorizzato più recente per quel tipo; SUPERSEDED = una riga
- * con published_at valorizzato ma non la più recente; DRAFT = published_at
- * NULL. "superseded" non è un valore letterale nel DB — è una
- * classificazione puramente applicativa, ricalcolata ogni volta.
- */
-export function deriveDocumentStatus(
-  doc: LegalDocumentRecord,
-  allOfSameType: LegalDocumentRecord[]
-): DerivedLegalDocumentStatus {
-  if (!doc.publishedAt) return "draft";
-
-  let mostRecent: LegalDocumentRecord | null = null;
-  for (const candidate of allOfSameType) {
-    if (!candidate.publishedAt) continue;
-    if (!mostRecent || Date.parse(candidate.publishedAt) > Date.parse(mostRecent.publishedAt!)) {
-      mostRecent = candidate;
-    }
-  }
-  return mostRecent?.id === doc.id ? "published" : "superseded";
 }
 
 /**
