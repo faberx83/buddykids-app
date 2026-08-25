@@ -334,6 +334,26 @@ export async function recordMarketingConsentEvent(
   return {};
 }
 
+/**
+ * Variante bootstrap (stesso motivo di acceptCurrentLegalDocumentAtSignupBootstrap:
+ * nessuna sessione autenticata esiste subito dopo supabase.auth.signUp() se la
+ * conferma email è richiesta) — usata SOLO dal wiring di signup per il
+ * checkbox marketing opzionale. Scritta SOLO quando l'utente ha
+ * esplicitamente spuntato il checkbox (action="accepted"): un checkbox
+ * lasciato deselezionato (default) non genera alcun evento "withdrawn" —
+ * non c'è nulla da "ritirare" se non è mai stato concesso, e la colonna
+ * profiles.marketing_consent ha già default false di suo.
+ */
+export async function recordMarketingConsentEventAtSignupBootstrap(
+  userId: string,
+  action: MarketingConsentAction,
+  source: string
+): Promise<{ error?: string }> {
+  const client = createServiceClient();
+  if (!client) return { error: "Supabase non configurato" };
+  return recordMarketingConsentEvent(client as unknown as SupabaseClientLike, userId, action, source);
+}
+
 // ─────────────────────────────────────────────────────────────────────────
 // Dichiarazione di responsabilità genitoriale (parental_declarations) —
 // task #570. La RLS INSERT (kids.parent_id = parent_user_id, verificata nel

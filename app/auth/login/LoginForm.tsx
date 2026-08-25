@@ -9,6 +9,7 @@ import PhoneShell from "@/components/PhoneShell";
 import TramaLoginHeader from "@/components/TramaLoginHeader";
 import { friendlyAuthError } from "@/lib/auth-errors";
 import { getInvitePreviewAction } from "@/app/actions/invites";
+import { recordSignupLegalAcceptanceAction } from "@/app/actions/legal";
 import type { InvitePreview } from "@/lib/data/invites";
 import type { Tenant } from "@/lib/tenant";
 
@@ -18,10 +19,21 @@ export default function LoginForm({
   tenant,
   appName,
   themeColor,
+  legalGateEnabled = false,
+  currentTermsDoc = null,
 }: {
   tenant: Tenant;
   appName: string;
   themeColor: string;
+  // PRE-MICRO-PILOT CLOSURE GATE (task #568, 25/08/2026) — risolti
+  // server-side in page.tsx (mai qui: nessun Client Component deve leggere
+  // feature_flag_overrides/legal_documents direttamente). Default a
+  // false/null per restare compatibile con qualunque altro chiamante di
+  // LoginForm che non passi ancora queste prop (nessuno oggi, ma
+  // esplicito invece di un prop obbligatorio che romperebbe la build se
+  // dimenticato altrove).
+  legalGateEnabled?: boolean;
+  currentTermsDoc?: { id: string; version: string } | null;
 }) {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -52,6 +64,15 @@ export default function LoginForm({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
+
+  // PRE-MICRO-PILOT CLOSURE GATE (task #568) — attivi SOLO quando
+  // legalGateEnabled=true (oggi mai, in produzione, finché Fabrizio non
+  // attiva un override). acceptTerms è OBBLIGATORIO per inviare il form in
+  // modalità signup quando il gate è attivo; marketingConsent è SEMPRE
+  // opzionale e non blocca mai l'invio, coerente col fatto che il
+  // marketing è un consenso separato e mai precompilato.
+  const [acceptTerms, setAcceptTerms] = useState(false);
+  const [marketingConsent, setMarketingConsent] = useState(false);
 
   useEffect(() => {
     if (!inviteParam || !isSupabaseConfigured) return;
@@ -90,10 +111,24 @@ export default function LoginForm({
       router.push(next || "/");
       router.refresh();
     } else {
+      // PRE-MICRO-PILOT CLOSURE GATE (task #568) — fail-closed: con il gate
+      // attivo, un signup senza Termini pubblicati o senza checkbox spuntato
+      // non deve MAI procedere (mai un'accettazione finta). Con
+      // legalGateEnabled=false (stato di produzione oggi) questi controlli
+      // sono sempre no-op: il ramo esistente resta identico a prima.
+      if (legalGateEnabled && !currentTermsDoc) {
+        setLoading(false);
+        return setError("Registrazione momentaneamente non disponibile. Riprova più tardi.");
+      }
+      if (legalGateEnabled && !acceptTerms) {
+        setLoading(false);
+        return setError("Devi accettare i Termini di Servizio per registrarti.");
+      }
+
       const callbackUrl = next
         ? `${window.location.origin}/auth/callback?next=${encodeURIComponent(next)}`
         : `${window.location.origin}/auth/callback`;
-      const { error } = await supabase.auth.signUp({
+      const { data, error } = await supabase.auth.signUp({
         email,
         password,
         options: {
@@ -104,8 +139,27 @@ export default function LoginForm({
           data: inviteCode.trim() ? { invite_code: inviteCode.trim() } : undefined,
         },
       });
+      if (error) {
+        setLoading(false);
+        return setError(friendlyAuthError(error.message));
+      }
+
+      // Scrittura server-side dell'accettazione Termini (+ marketing se
+      // spuntato), keyed sullo userId restituito DIRETTAMENTE da Supabase
+      // Auth (mai un valore fornito da input utente) — vedi
+      // app/actions/legal.ts e il commento su
+      // acceptCurrentLegalDocumentAtSignupBootstrap in lib/legal/gate.ts sul
+      // perché serve un bootstrap con service client qui (nessuna sessione
+      // ancora attiva quando la conferma email è richiesta). Fail-soft di
+      // proposito: un eventuale errore qui non deve bloccare/disfare
+      // l'account già creato — solo silenziosamente non registrato,
+      // recuperabile in un secondo momento (fuori scope oggi, gate OFF in
+      // produzione).
+      if (legalGateEnabled && data.user?.id) {
+        await recordSignupLegalAcceptanceAction(data.user.id, marketingConsent);
+      }
+
       setLoading(false);
-      if (error) return setError(friendlyAuthError(error.message));
       setMessage("Registrazione completata! Controlla la tua email per confermare l'account prima di accedere.");
       setPassword("");
     }
@@ -310,6 +364,55 @@ export default function LoginForm({
               >
                 Password dimenticata?
               </button>
+            )}
+
+            {/* PRE-MICRO-PILOT CLOSURE GATE (task #568, 25/08/2026) — visibile
+                SOLO se legalGateEnabled=true (mai in produzione oggi, finché
+                Fabrizio non attiva un override — vedi lib/feature-flags/registry.ts).
+                Un solo checkbox obbligatorio (Termini): la Privacy Notice è
+                un link informativo, non un secondo checkbox — non è un
+                consenso da spuntare (Art. 13 GDPR, è un'informativa). Il
+                Marketing è sempre opzionale e non blocca mai l'invio. */}
+            {mode === "signup" && legalGateEnabled && (
+              <div className="mb-4">
+                {!currentTermsDoc ? (
+                  <p className="text-xs font-medium text-orange">
+                    Registrazione momentaneamente non disponibile.
+                  </p>
+                ) : (
+                  <>
+                    <label className="mb-2 flex items-start gap-2 text-xs leading-snug text-ink-2">
+                      <input
+                        type="checkbox"
+                        checked={acceptTerms}
+                        onChange={(e) => setAcceptTerms(e.target.checked)}
+                        className="mt-0.5"
+                        required
+                      />
+                      <span>
+                        Accetto i{" "}
+                        <Link href="/terms" target="_blank" className="underline" style={{ color: themeColor }}>
+                          Termini di Servizio
+                        </Link>
+                        . Leggi anche la{" "}
+                        <Link href="/privacy" target="_blank" className="underline" style={{ color: themeColor }}>
+                          Informativa Privacy
+                        </Link>
+                        .
+                      </span>
+                    </label>
+                    <label className="flex items-start gap-2 text-xs leading-snug text-ink-2">
+                      <input
+                        type="checkbox"
+                        checked={marketingConsent}
+                        onChange={(e) => setMarketingConsent(e.target.checked)}
+                        className="mt-0.5"
+                      />
+                      <span>Voglio ricevere comunicazioni commerciali (facoltativo).</span>
+                    </label>
+                  </>
+                )}
+              </div>
             )}
 
             {error && <p className="mb-3 text-xs font-medium text-orange">{error}</p>}

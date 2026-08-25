@@ -88,6 +88,12 @@ export async function proxy(request: NextRequest) {
     // i token scaduti/invalidi) venivano rimandate al login invece di
     // essere servite. Stessa esclusione già presente correttamente nel
     // blocco 3) più in basso — qui mancava.
+    // PRE-MICRO-PILOT CLOSURE GATE (task #569, 25/08/2026) — /privacy e
+    // /terms devono restare raggiungibili SENZA login (§11 del messaggio
+    // operativo di Fabrizio): stesso principio già applicato a /share (link
+    // di condivisione pubblici) sopra. Nessuna di queste route legge/scrive
+    // dati utente — mostrano solo il documento legale PUBLISHED corrente
+    // (o "Documento in preparazione" se nessuno esiste ancora).
     if (
       isSupabaseConfigured &&
       !pathname.startsWith("/auth") &&
@@ -95,6 +101,8 @@ export async function proxy(request: NextRequest) {
       !pathname.startsWith("/internal") &&
       !pathname.startsWith("/manifest") &&
       !pathname.startsWith("/share") &&
+      !pathname.startsWith("/privacy") &&
+      !pathname.startsWith("/terms") &&
       pathname !== "/sw.js"
     ) {
       const userId = await getRequestUserId(request);
@@ -128,6 +136,8 @@ export async function proxy(request: NextRequest) {
     pathname.startsWith("/internal") ||
     pathname.startsWith("/_next") ||
     pathname.startsWith("/manifest") ||
+    pathname.startsWith("/privacy") ||
+    pathname.startsWith("/terms") ||
     pathname === "/sw.js"
   ) {
     return sessionResponse;
