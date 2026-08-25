@@ -4,15 +4,25 @@ import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import PageHeader from "@/components/PageHeader";
 import WeekCard from "@/components/WeekCard";
-import { Activity, Week } from "@/lib/types";
+import { Activity, Week, DayAvailability } from "@/lib/types";
 import { MyBooking } from "@/lib/data/my-bookings";
 import { buildFamilyTiers, familyDiscountAmount } from "@/lib/family-discount";
-import { updateBookingWeeksAction, cancelBookingAction } from "@/app/actions/bookings";
+import { dayPrice } from "@/lib/day-pricing";
+import {
+  updateBookingWeeksAction,
+  updateBookingDaysAction,
+  cancelBookingAction,
+} from "@/app/actions/bookings";
 import { shortWeekLabel, formatShortRange } from "@/lib/season-weeks";
 
-function formatDayDateShort(iso: string): string {
-  const d = new Date(iso + "T00:00:00Z");
-  return d.toLocaleDateString("it-IT", { day: "numeric", month: "short", timeZone: "UTC" });
+const weekdayShort = ["Lun", "Mar", "Mer", "Gio", "Ven"];
+
+function mondayOf(dateStr: string): string {
+  const d = new Date(dateStr + "T00:00:00Z");
+  const jsDay = d.getUTCDay();
+  const diff = jsDay === 0 ? -6 : 1 - jsDay;
+  d.setUTCDate(d.getUTCDate() + diff);
+  return d.toISOString().slice(0, 10);
 }
 
 // NOTA (limite noto, accettabile per questa funzionalità "di test"): WeekCard
@@ -28,13 +38,31 @@ export default function ModificaPrenotazioneClient({
   booking,
   activity,
   weeks,
+  days = [],
+  bookedDayDates = [],
 }: {
   booking: MyBooking;
   activity: Activity;
   weeks: Week[];
+  // Segnalazione Fabrizio 25/08/2026 — editor add/remove per Giorni spot
+  // (decisione esplicita: "Aggiungi e rimuovi giorni", non solo annulla).
+  // `days`: TUTTI gli activity_days dell'attività (passati/futuri — il
+  // filtro "solo futuro" per la griglia interattiva è fatto qui sotto, ma
+  // servono anche i giorni passati per calcolare correttamente il prezzo
+  // già congelato di eventuali giorni prenotati che ricadono nel passato,
+  // mai rimossi silenziosamente da questa pagina). `bookedDayDates`: giorni
+  // di QUESTA attività già prenotati dal genitore su QUALUNQUE prenotazione
+  // (incluse altre, non solo questa) — usato per impedire di "aggiungere"
+  // qui un giorno già coperto da un'altra prenotazione separata.
+  days?: DayAvailability[];
+  bookedDayDates?: string[];
 }) {
   const router = useRouter();
   const [selectedWeeks, setSelectedWeeks] = useState<string[]>(booking.weekIds);
+  // Editor giorni: inizializzato con i giorni REALMENTE prenotati su QUESTA
+  // prenotazione (booking.dayDates) — toggle locale, nessuna chiamata al
+  // server finché non si preme "Salva modifiche".
+  const [selectedDayDates, setSelectedDayDates] = useState<string[]>(booking.dayDates);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   // SPRINT (feedback Fabrizio: "nella 'modifica prenotazione' deve esserci
@@ -57,6 +85,97 @@ export default function ModificaPrenotazioneClient({
     setSelectedWeeks((prev) =>
       prev.includes(w.id) ? prev.filter((id) => id !== w.id) : [...prev, w.id]
     );
+  }
+
+  // ───────────────────────────────────────────────────────────────────────
+  // Editor giorni (Giorni spot) — decisione Fabrizio 25/08/2026: "Aggiungi e
+  // rimuovi giorni". Griglia Lun-Ven identica a quella di DetailClient.tsx
+  // (task #586), qui riusata per coerenza visiva invece di inventare un
+  // secondo stile per lo stesso concetto.
+  // ───────────────────────────────────────────────────────────────────────
+  const [savingDays, setSavingDays] = useState(false);
+  const [daysError, setDaysError] = useState<string | null>(null);
+  const todayIso = useMemo(() => new Date().toISOString().slice(0, 10), []);
+  const originalDaySet = useMemo(() => new Set(booking.dayDates), [booking.dayDates]);
+  const selectedDaySet = useMemo(() => new Set(selectedDayDates), [selectedDayDates]);
+  // Giorni prenotati altrove (altra prenotazione della stessa attività) —
+  // mai proponibili come "aggiungibili" qui, per non creare una seconda
+  // prenotazione sullo stesso posto.
+  const bookedElsewhereSet = useMemo(() => {
+    const elsewhere = new Set(bookedDayDates);
+    for (const d of booking.dayDates) elsewhere.delete(d);
+    return elsewhere;
+  }, [bookedDayDates, booking.dayDates]);
+  const dayById = useMemo(() => new Map(days.map((d) => [d.date, d])), [days]);
+  // Griglia interattiva: solo giorni futuri/odierni e aperti — stesso filtro
+  // di DetailClient.tsx (task #584). I giorni già prenotati ma ormai passati
+  // (se presenti) restano fuori da questa griglia e NON vengono mai toccati
+  // dal diff calcolato in handleSaveDays: non c'è modo di "deselezionarli"
+  // da qui, quindi restano intatti anche se si preme "Salva modifiche".
+  const editableDays = useMemo(
+    () => days.filter((d) => d.isOpen && d.date >= todayIso).sort((a, b) => a.date.localeCompare(b.date)),
+    [days, todayIso]
+  );
+  const pastBookedCount = booking.dayDates.filter((d) => d < todayIso).length;
+  const dayWeekGroups = useMemo(() => {
+    const byMonday = new Map<string, (DayAvailability | null)[]>();
+    for (const day of editableDays) {
+      if (day.weekday > 4) continue;
+      const monday = mondayOf(day.date);
+      if (!byMonday.has(monday)) byMonday.set(monday, [null, null, null, null, null]);
+      byMonday.get(monday)![day.weekday] = day;
+    }
+    return [...byMonday.entries()].sort(([a], [b]) => a.localeCompare(b));
+  }, [editableDays]);
+
+  function toggleDay(day: DayAvailability) {
+    const isSelected = selectedDaySet.has(day.date);
+    if (isSelected) {
+      setSelectedDayDates((prev) => prev.filter((d) => d !== day.date));
+      return;
+    }
+    if (bookedElsewhereSet.has(day.date)) return; // già coperto da un'altra prenotazione
+    if (!day.singleDayBookable || day.spotsLeft <= 0) return; // pieno/non prenotabile a giorno singolo
+    setSelectedDayDates((prev) => [...prev, day.date]);
+  }
+
+  // Prezzo: giorni GIA' prenotati che restano selezionati usano il prezzo
+  // già congelato (booking_days.price, non esposto qui — approssimato con
+  // dayPrice() usando lo sconto ATTUALE del giorno, sufficiente per
+  // un'anteprima: il valore davvero salvato resta quello congelato server-
+  // side, vedi updateBookingDaysAction). I giorni NUOVI usano lo stesso
+  // dayPrice() — identica formula sia qui che lato server.
+  const dayPricesPreview = selectedDayDates
+    .map((d) => dayById.get(d))
+    .filter((d): d is DayAvailability => Boolean(d))
+    .map((d) => dayPrice(d, activity.pricePerWeek));
+  const daysPerChildSubtotal = Math.round(dayPricesPreview.reduce((s, p) => s + p, 0) * 100) / 100;
+  const daysKidsCount = Math.max(1, booking.kidNames.length);
+  const daysSubtotal = daysPerChildSubtotal * daysKidsCount;
+  const daysFamilyTiers = buildFamilyTiers(activity.centerFamilyDiscountTiers);
+  const daysFamilyDiscount = familyDiscountAmount(daysPerChildSubtotal, daysKidsCount, daysFamilyTiers);
+  const daysTotal = daysSubtotal - daysFamilyDiscount;
+
+  const daysUnchanged =
+    selectedDayDates.length === booking.dayDates.length &&
+    selectedDayDates.every((d) => originalDaySet.has(d));
+
+  async function handleSaveDays() {
+    setSavingDays(true);
+    setDaysError(null);
+    // activityDayIds attesi dal server: uuid di activity_days, non le date —
+    // ricaviamo l'id dalla riga corrispondente in `days` (stesso array usato
+    // per costruire la griglia).
+    const activityDayIds = selectedDayDates
+      .map((d) => dayById.get(d)?.id)
+      .filter((id): id is string => Boolean(id));
+    const result = await updateBookingDaysAction({ bookingId: booking.id, activityDayIds });
+    setSavingDays(false);
+    if (result.error) {
+      setDaysError(result.error);
+      return;
+    }
+    router.push("/prenotazioni");
   }
 
   // Stessa formula di app/booking/[id]/BookingClient.tsx (creazione), per
@@ -176,39 +295,118 @@ export default function ModificaPrenotazioneClient({
 
         {booking.isDayBased ? (
           <>
-            {/* Segnalazione 25/08/2026 (Fabrizio): questa pagina ragiona solo
-                per settimane intere (booking_weeks/activity_weeks) — una
-                prenotazione fatta a "Giorni spot" (booking_days) non ha
-                alcuna settimana da mostrare qui: il selettore sottostante
-                risultava sempre "Non attiva qui" per ogni card e il totale
-                restava a €0, senza dare alcuna indicazione di cosa fosse
-                davvero prenotato. Stato onesto invece del selettore rotto:
-                mostriamo le date reali già prenotate, senza fingere che
-                l'editing per giorni sia già supportato da questa pagina "di
-                test" (vedi commento originale sul motivo di questa
-                funzionalità). L'unica azione ancora disponibile da qui è
-                l'annullamento, invariato sotto. */}
+            {/* Segnalazione 25/08/2026 (Fabrizio): "vorrei capire... qual è
+                il processo ipotizzato?" per la modifica di una prenotazione
+                a Giorni spot — decisione esplicita (AskUserQuestion):
+                editor completo, aggiungi E rimuovi giorni singoli, non solo
+                annulla. Griglia Lun-Ven identica a quella della scheda
+                attività (DetailClient.tsx, task #586): verde/selezionato =
+                giorno che resterà (o entrerà) in questa prenotazione dopo
+                "Salva modifiche", bordo tratteggiato = giorno non
+                configurato dal Gestore in quella settimana, grigio pieno =
+                pieno o già coperto da un'altra prenotazione. */}
             <p className="mb-3 text-[13px] text-ink-2">
-              Questa prenotazione è a giorni singoli (Giorni spot). La modifica delle date non è
-              ancora supportata da questa pagina di test — puoi annullarla e crearne una nuova con le
-              date corrette.
+              Aggiungi o rimuovi giorni singoli — funzionalità di test per verificare l&apos;effetto lato
+              gestore. Puoi modificare fino a {booking.cancellationWindowDays} giorni prima del primo
+              giorno prenotato.
             </p>
-            <div className="mb-3.5 rounded-md bg-bg p-3.5">
-              <div className="mb-2 text-[13px] font-semibold text-ink">
-                {booking.dayDates.length} giorn{booking.dayDates.length === 1 ? "o" : "i"} prenotat
-                {booking.dayDates.length === 1 ? "o" : "i"}
-              </div>
-              <div className="flex flex-wrap gap-1.5">
-                {booking.dayDates.map((d) => (
-                  <span
-                    key={d}
-                    className="rounded-md border border-green bg-green-light px-2 py-1 text-[12px] font-semibold text-ink"
-                  >
-                    {formatDayDateShort(d)}
-                  </span>
+            {pastBookedCount > 0 && (
+              <p className="mb-2 text-[12px] text-ink-2">
+                {pastBookedCount} giorn{pastBookedCount === 1 ? "o" : "i"} già passat
+                {pastBookedCount === 1 ? "o" : "i"} non modificabil
+                {pastBookedCount === 1 ? "e" : "i"} da qui (resta{pastBookedCount === 1 ? "" : "no"} nella
+                prenotazione).
+              </p>
+            )}
+            {dayWeekGroups.length === 0 ? (
+              <p className="mb-3 text-[13px] text-ink-2">
+                Nessun giorno spot ancora aperto dal gestore per questa attività.
+              </p>
+            ) : (
+              <div className="mb-3.5 flex flex-col gap-2">
+                {dayWeekGroups.map(([monday, slots]) => (
+                  <div key={monday} className="grid grid-cols-5 gap-1.5">
+                    {slots.map((day, weekday) => {
+                      if (!day) {
+                        return (
+                          <div
+                            key={weekday}
+                            className="flex min-h-[68px] flex-col items-center justify-center rounded-md border border-dashed border-[#E8EBF0] px-1 py-2 text-center text-[10px] text-ink-3"
+                          >
+                            {weekdayShort[weekday]}
+                            <span className="mt-1">—</span>
+                          </div>
+                        );
+                      }
+                      const selected = selectedDaySet.has(day.date);
+                      const bookedElsewhere = bookedElsewhereSet.has(day.date);
+                      const full = !day.singleDayBookable || day.spotsLeft <= 0;
+                      const disabled = !selected && (bookedElsewhere || full);
+                      const dateObj = new Date(day.date + "T00:00:00Z");
+                      const dayNum = dateObj.getUTCDate();
+                      const monthShort = dateObj.toLocaleDateString("it-IT", { month: "short", timeZone: "UTC" });
+                      return (
+                        <button
+                          key={day.date}
+                          type="button"
+                          disabled={disabled}
+                          onClick={() => toggleDay(day)}
+                          className={`flex min-h-[68px] flex-col items-center justify-center rounded-md border-[1.5px] px-1 py-2 text-center transition-colors ${
+                            selected
+                              ? "border-green bg-green-light text-ink"
+                              : disabled
+                              ? "cursor-not-allowed border-[#E8EBF0] bg-[#FAFBFD] text-ink-3"
+                              : "border-[#E8EBF0] bg-white text-ink hover:border-sky"
+                          }`}
+                        >
+                          <span className="text-[10px] font-semibold uppercase text-ink-2">
+                            {weekdayShort[weekday]}
+                          </span>
+                          <span className="text-sm font-bold">
+                            {dayNum} {monthShort}
+                          </span>
+                          <span className={`text-[11px] font-semibold ${selected ? "text-green" : "text-sky"}`}>
+                            {selected ? "Incluso" : bookedElsewhere ? "Altra prenot." : full ? "Pieno" : `€${dayPrice(day, activity.pricePerWeek)}`}
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
                 ))}
               </div>
+            )}
+
+            <div className="mt-4 rounded-md bg-bg p-3.5">
+              <div className="mb-2 text-[13px] font-semibold text-ink">Nuovo totale stimato</div>
+              <div className="flex items-center justify-between text-[13px] text-ink-2">
+                <span>
+                  {selectedDayDates.length} giorn{selectedDayDates.length === 1 ? "o" : "i"} × {daysKidsCount} bambin
+                  {daysKidsCount === 1 ? "o" : "i"}
+                </span>
+                <span>€{Math.round(daysSubtotal * 100) / 100}</span>
+              </div>
+              {daysFamilyDiscount > 0 && (
+                <div className="flex items-center justify-between text-[13px] text-green">
+                  <span>Sconti</span>
+                  <span>-€{Math.round(daysFamilyDiscount * 100) / 100}</span>
+                </div>
+              )}
+              <div className="mt-1 flex items-center justify-between border-t border-[#E8EBF0] pt-2 text-sm font-bold text-ink">
+                <span>Totale</span>
+                <span>€{Math.round(daysTotal * 100) / 100}</span>
+              </div>
             </div>
+
+            {daysError && <p className="mt-3 text-xs font-medium text-orange">{daysError}</p>}
+
+            <button
+              type="button"
+              onClick={handleSaveDays}
+              disabled={savingDays || daysUnchanged || selectedDayDates.length === 0}
+              className="mt-4 w-full rounded-md bg-sky px-4 py-3 text-sm font-bold text-white disabled:opacity-50"
+            >
+              {savingDays ? "Salvataggio…" : "Salva modifiche"}
+            </button>
           </>
         ) : (
           <>
