@@ -41,6 +41,15 @@ export type ConsentAction = "accepted" | "declined" | "withdrawn";
 export const CURRENT_TERMS_VERSION = "v0-draft-2026-08-24";
 export const CURRENT_PRIVACY_NOTICE_VERSION = "v0-draft-2026-08-24";
 
+// SEGNAPOSTO (task #570, 25/08/2026) — parental_declarations.declaration_version
+// non è collegata a legal_documents da una foreign key (è testo libero,
+// verificato nello schema live): non esiste un "PUBLISHED" da risolvere
+// dinamicamente come per Termini/Privacy Notice. Finché il testo reale della
+// dichiarazione di responsabilità genitoriale non è scritto/validato, questo
+// resta l'unico valore usato da app/actions/kids.ts — attivo SOLO quando
+// LEGAL_TERMS_GATE risolve true per l'utente (mai per un utente reale oggi).
+export const CURRENT_PARENTAL_DECLARATION_VERSION = "v0-draft-2026-08-24";
+
 export interface CurrentConsentState {
   termsVersion: string | null;
   termsAcceptedAt: string | null;

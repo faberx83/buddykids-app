@@ -4,6 +4,9 @@ import { createClient } from "@/lib/supabase/server";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
 import { colorForName, ageFromBirthDate } from "@/lib/data/kids";
 import { Kid, KidGender } from "@/lib/types";
+import { resolveFeatureFlag } from "@/lib/feature-flags/resolve";
+import { recordParentalDeclaration } from "@/lib/legal/gate";
+import { CURRENT_PARENTAL_DECLARATION_VERSION } from "@/lib/legal/consent";
 
 // Stesso bucket di lib/storage.ts#uploadKidAvatar — stringa duplicata
 // apposta invece di importarla (stesso pattern già usato da
@@ -11,11 +14,19 @@ import { Kid, KidGender } from "@/lib/types";
 // è "use client", meglio non farlo attraversare il confine server/client).
 const KIDS_AVATARS_BUCKET = "buddykids-kids-avatars";
 
+// PRE-MICRO-PILOT CLOSURE GATE (task #570, 25/08/2026) — parentalDeclarationAccepted
+// è letto SOLO se LEGAL_TERMS_GATE risolve true per QUESTO utente (mai fidato
+// da solo: il client non decide se il gate è attivo, vedi
+// isParentalDeclarationGateEnabledAction in app/actions/legal.ts, che
+// AddKidForm.tsx chiama per decidere se mostrare il checkbox). Con
+// legalGateEnabled=false (ogni utente reale oggi) questo parametro è
+// ininfluente e il comportamento resta IDENTICO a prima di questo task.
 export async function addKidAction(
   name: string,
   birthDate: string,
   gender?: KidGender,
-  interests?: string[]
+  interests?: string[],
+  parentalDeclarationAccepted?: boolean
 ): Promise<{ kid?: Kid; error?: string }> {
   if (!isSupabaseConfigured) return { error: "Supabase non configurato" };
   if (!name.trim()) return { error: "Inserisci un nome" };
@@ -26,6 +37,14 @@ export async function addKidAction(
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) return { error: "Non autenticato" };
+
+  // Risolto qui, server-side, autoritativo — mai un booleano "il gate è
+  // attivo" fornito dal client. Fail-closed: se il gate è attivo e la
+  // dichiarazione non è stata spuntata, il bambino non viene creato.
+  const legalGateEnabled = await resolveFeatureFlag({ flagName: "LEGAL_TERMS_GATE", userId: user.id });
+  if (legalGateEnabled && !parentalDeclarationAccepted) {
+    return { error: "Devi confermare la dichiarazione di responsabilità genitoriale" };
+  }
 
   const { data, error } = await supabase
     .from("kids")
@@ -40,6 +59,16 @@ export async function addKidAction(
     .single();
 
   if (error || !data) return { error: error?.message || "Errore nel salvataggio" };
+
+  if (legalGateEnabled) {
+    // Idempotente (UNIQUE(parent_user_id, kid_id, declaration_version) —
+    // vedi recordParentalDeclaration): un doppio submit non duplica righe.
+    // Un fallimento qui non viene disfatto sul bambino già creato — stesso
+    // fail-soft già accettato per il bootstrap di signup, accettabile
+    // perché oggi riguarda solo account di test/coorte interna (il gate è
+    // OFF per ogni utente reale).
+    await recordParentalDeclaration(supabase, user.id, data.id, CURRENT_PARENTAL_DECLARATION_VERSION);
+  }
 
   return {
     kid: {

@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { addKidAction } from "@/app/actions/kids";
+import { isParentalDeclarationGateEnabledAction } from "@/app/actions/legal";
 import { Kid, KidGender } from "@/lib/types";
 import { categories as interestOptions } from "@/lib/mock-data";
 
@@ -19,6 +20,18 @@ export default function AddKidForm({
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
+  // PRE-MICRO-PILOT CLOSURE GATE (task #570, 25/08/2026) — visibile SOLO se
+  // LEGAL_TERMS_GATE risolve true per l'utente corrente (mai in produzione
+  // oggi: default false, nessun override "global" mai scritto). Risolto
+  // server-side (questo componente non legge mai feature_flag_overrides
+  // direttamente) — vedi app/actions/legal.ts#isParentalDeclarationGateEnabledAction.
+  const [declarationRequired, setDeclarationRequired] = useState(false);
+  const [declarationAccepted, setDeclarationAccepted] = useState(false);
+
+  useEffect(() => {
+    isParentalDeclarationGateEnabledAction().then(setDeclarationRequired);
+  }, []);
+
   function toggleInterest(value: string) {
     setInterests((prev) =>
       prev.includes(value) ? prev.filter((i) => i !== value) : [...prev, value]
@@ -27,8 +40,12 @@ export default function AddKidForm({
 
   async function handleSave() {
     setError(null);
+    if (declarationRequired && !declarationAccepted) {
+      setError("Devi confermare la dichiarazione di responsabilità genitoriale");
+      return;
+    }
     setSaving(true);
-    const result = await addKidAction(name, birthDate, gender || undefined, interests);
+    const result = await addKidAction(name, birthDate, gender || undefined, interests, declarationAccepted);
     setSaving(false);
     if (result.error || !result.kid) {
       setError(result.error || "Errore nel salvataggio");
@@ -93,6 +110,28 @@ export default function AddKidForm({
           })}
         </div>
       </div>
+
+      {/* PRE-MICRO-PILOT CLOSURE GATE (task #570) — mai visibile in
+          produzione oggi (declarationRequired sempre false finché
+          Fabrizio non attiva LEGAL_TERMS_GATE per un account di
+          test/coorte). Testo segnaposto (CURRENT_PARENTAL_DECLARATION_VERSION
+          in lib/legal/consent.ts): non ancora validato legalmente, non da
+          mostrare a utenti reali. */}
+      {declarationRequired && (
+        <label className="mb-2.5 flex items-start gap-2 text-[11px] leading-snug text-ink-2">
+          <input
+            type="checkbox"
+            checked={declarationAccepted}
+            onChange={(e) => setDeclarationAccepted(e.target.checked)}
+            className="mt-0.5"
+            required
+          />
+          <span>
+            Dichiaro di essere titolare della responsabilità genitoriale su {name.trim() || "questo bambino"} e
+            autorizzo il trattamento dei suoi dati per l&apos;uso del servizio.
+          </span>
+        </label>
+      )}
 
       {error && <p className="mb-2 text-xs font-medium text-orange">{error}</p>}
       <div className="flex gap-2">

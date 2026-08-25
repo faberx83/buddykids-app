@@ -10,6 +10,9 @@ import {
   acceptCurrentLegalDocumentAtSignupBootstrap,
   recordMarketingConsentEventAtSignupBootstrap,
 } from "@/lib/legal/gate";
+import { createClient } from "@/lib/supabase/server";
+import { isSupabaseConfigured } from "@/lib/supabase/env";
+import { resolveFeatureFlag } from "@/lib/feature-flags/resolve";
 
 /**
  * Chiamata dal client SUBITO dopo un supabase.auth.signUp() riuscito, con lo
@@ -48,4 +51,25 @@ export async function recordSignupLegalAcceptanceAction(
   }
 
   return {};
+}
+
+/**
+ * Chiamata da AddKidForm.tsx (client component, non ha modo di risolvere il
+ * flag direttamente: nessun Client Component deve leggere feature_flag_overrides)
+ * per sapere se mostrare il checkbox di dichiarazione genitoriale — task
+ * #570. Risolve LEGAL_TERMS_GATE per l'utente CORRENTE (qui esiste già una
+ * sessione autenticata, a differenza del bootstrap di signup: nessun
+ * service client necessario). Restituisce sempre false se non autenticato
+ * o se Supabase non è configurato — stesso fail-safe di resolveFeatureFlag().
+ */
+export async function isParentalDeclarationGateEnabledAction(): Promise<boolean> {
+  if (!isSupabaseConfigured) return false;
+
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return false;
+
+  return resolveFeatureFlag({ flagName: "LEGAL_TERMS_GATE", userId: user.id });
 }
