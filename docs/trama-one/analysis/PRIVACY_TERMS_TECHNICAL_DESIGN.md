@@ -34,6 +34,16 @@ colmato. Dettaglio completo del changelog nell'header di
 Stato invariato: ancora bozza tecnica, **non applicata**. Stato contenuto
 legale invariato: **PENDING EXTERNAL REVIEW**, mai "conforme al GDPR".
 
+**REVISIONE v3 — AS-BUILT (PRE-MICRO-PILOT CLOSURE GATE, 25/08/2026 sera,
+task #566-575).** Fabrizio ha applicato manualmente `migration_27` v2 in
+produzione (LIVE, POST-CHECK confermato). Su questa base è stato costruito
+l'intero wiring §5, prima solo pianificato — ora **implementato e verificato
+staticamente**. §5 sotto è aggiornato con lo stato AS-BUILT di ciascun
+passo. Stato finale invariato nella sostanza: **TECHNICAL IMPLEMENTATION:
+BUILT/STATIC_TESTED; DATABASE: LIVE; LEGAL CONTENT: PENDING EXTERNAL
+REVIEW; LEGAL GATE: OFF; PILOT READINESS: BLOCKED BY LEGAL CONTENT.** Non
+CLOSED — vedi §8.
+
 ## Stato: controlli tecnici predisposti / testo legale in attesa di validazione
 
 Questo documento descrive SOLO l'infrastruttura tecnica (modello dati,
@@ -123,56 +133,64 @@ cambiati dall'ultima volta".
 esposta oggi — pura, testata (`tests/one/consent.spec.ts`, 5/5 passed in
 sandbox), non collegata a nessuna route.
 
-## 5. Wiring previsto (NON ancora fatto — piano, non implementazione)
+## 5. Wiring — AS-BUILT (v3, 25/08/2026 sera, task #566-574)
 
-Passi, in ordine, ciascuno con il proprio gate:
+Passi, in ordine, con lo stato reale di implementazione:
 
-1. **Route legali pubbliche** `/legal/terms` e `/legal/privacy` —
-   struttura di pagina pronta a ricevere il testo (titolo, sezioni
-   standard: Titolare, Dati raccolti, Finalità, Base giuridica,
-   Conservazione, Diritti dell'interessato, Contatti). **Testo reale non
-   scritto da Claude** — un placeholder esplicito ("BOZZA — in attesa di
-   validazione legale") in ogni sezione finché Fabrizio non fornisce/
-   approva il contenuto. Gate: testo legale.
-2. **Checkbox al signup** in `LoginForm.tsx` — "Ho letto e accetto
-   [Termini] e l'[Informativa Privacy]" (obbligatorio, blocca l'invio se
-   non spuntato) + "Voglio ricevere comunicazioni di marketing"
-   (facoltativo, MAI preselezionato, e comunque già gestibile oggi da
-   `updateMarketingConsentAction()` esistente — non richiede
-   necessariamente il checkbox al signup). Al submit, passati nello stesso
-   `options.data` già usato per `invite_code` (stesso meccanismo, stesso
-   trigger `handle_new_user()` esteso per scrivere le 5 colonne cache
-   nuove su `profiles`). Gate: migration_27 v2 applicata (altrimenti il
-   trigger fallirebbe scrivendo su colonne inesistenti).
-3. **`app/actions/consent.ts`** (nuovo) — due funzioni distinte, non una:
-   (a) accettazione Termini/Privacy Notice al signup → riga in
-   `legal_acceptances` (mai withdraw/decline); (b) ritiro/attivazione
-   marketing → estende l'`updateMarketingConsentAction()` già esistente
-   (`app/actions/profile.ts`) per scrivere ANCHE una riga in
-   `consent_events` (oggi aggiorna solo `profiles.marketing_consent`,
-   senza storico). Aggiorna lo stato di cache su `profiles` in modo
-   atomico in entrambi i casi. Gate: migration_27 v2 applicata.
-4. **Impostazioni → sezione "Privacy"** — mostra lo stato corrente
-   (versione accettata, data) e permette di ritirare SOLO il consenso
-   marketing (già possibile oggi via la UI esistente collegata a
-   `updateMarketingConsentAction()` — da estendere per scrivere anche lo
-   storico in `consent_events`; Termini/Privacy Notice non sono ritirabili
-   senza smettere di usare il servizio, essendo la base contrattuale).
-   Gate: passi 2-3.
-5. **Dichiarazione genitoriale** — al momento di aggiungere un bambino
-   (`kids`), un passaggio che chieda al genitore di dichiarare la propria
-   responsabilità genitoriale (checkbox + testo, versionato come Termini/
-   Privacy Notice) → riga in `parental_declarations`. Gate: migration_27
-   v2 applicata + testo della dichiarazione validato legalmente.
+1. **Route legali pubbliche** — implementate come `app/privacy/page.tsx` e
+   `app/terms/page.tsx` (non sotto `/legal/*` come originariamente
+   pianificato — nomi più diretti, stessa funzione), server component
+   `dynamic = "force-dynamic"`, risolvono il documento PUBLISHED più
+   recente via `resolvePublishedDocumentForPublicRoute()`
+   (`lib/legal/gate.ts`). **Testo reale non scritto da Claude**: se nessun
+   documento PUBLISHED esiste (caso attuale, 0 righe), mostrano "Documento
+   in preparazione" — mai un placeholder spacciato per testo vero. Route
+   raggiungibili senza login (`proxy.ts` esteso per bypassare il gate
+   auth su questi due path). **FATTO.**
+2. **Checkbox al signup** in `LoginForm.tsx` — implementato: sezione
+   Termini (obbligatorio, blocca il submit se non spuntato o se gate ON
+   senza documento PUBLISHED — fail-closed) + link Privacy (informativa,
+   non un checkbox) + Marketing (facoltativo, mai preselezionato),
+   montata SOLO se `legalGateEnabled && mode === "signup"`. Con
+   `LEGAL_TERMS_GATE` OFF (stato di oggi), questa sezione non si monta
+   affatto — zero cambio di comportamento visibile per l'utente reale.
+   **FATTO.**
+3. **`app/actions/legal.ts`** (nuovo, non `consent.ts` come nominato nel
+   piano originale) — `recordSignupLegalAcceptanceAction()`: scrittura
+   server-side via service-client, keyed sull'userId restituito da
+   Supabase Auth (mai un valore client), con validazione che esista una
+   riga `profiles` corrispondente (creata sincronamente dal trigger
+   `handle_new_user()`) — risolve il problema di timing "sessione non
+   ancora confermata via email" individuato durante l'implementazione.
+   `updateMarketingConsentAction()` (`app/actions/profile.ts`) estesa per
+   scrivere anche in `consent_events` oltre a `profiles.marketing_consent`.
+   **FATTO.**
+4. **Impostazioni → sezione "Privacy"** — comportamento invariato lato
+   utente (nessuna regressione, LEGAL-14): la funzione sottostante ora
+   scrive anche lo storico in `consent_events`, la UI esistente non è
+   stata toccata. **FATTO** (nella parte tecnica minima richiesta oggi;
+   una UI dedicata di stato/versione resta possibile estensione futura,
+   non richiesta esplicitamente da Fabrizio in questo giro).
+5. **Dichiarazione genitoriale** — implementata in `app/actions/kids.ts`
+   (`addKidAction`, 5° parametro `parentalDeclarationAccepted`) +
+   checkbox in `components/AddKidForm.tsx`, mostrato SOLO se il flag
+   risolve `true` per l'utente (oggi mai, gate OFF). Scrive
+   `parental_declarations` via `recordParentalDeclaration()`. Versione
+   segnaposto `CURRENT_PARENTAL_DECLARATION_VERSION` in
+   `lib/legal/consent.ts`, in attesa del testo reale. **FATTO** (attivo
+   solo dietro il gate, non obbligatorio finché il testo non è validato —
+   come richiesto esplicitamente da Fabrizio, §9 dell'ordine operativo).
 
-**Perché questi passi non sono stati implementati in questo turno**: farlo
-oggi significherebbe (a) scrivere query verso colonne/tabelle che non
-esistono ancora in produzione (rottura del signup reale), oppure (b)
-mostrare un placeholder di testo legale a famiglie/centri veri durante il
-Micro Pilot spacciandolo per l'informativa vera — entrambi gli esiti
-peggiori di aspettare. Questo è esattamente il gate genuino di cui parla
-l'istruzione di Fabrizio ("stop alla soglia solo quando serve davvero testo
-legale o SQL").
+**Differenze dal piano originale**: nomi file (`legal.ts` non `consent.ts`
+per le azioni; `/privacy` e `/terms` non `/legal/*`), aggiunta di
+`lib/legal/gate.ts` come data layer con funzioni bootstrap dedicate al
+signup (non previsto nel piano v2, necessario per il problema di timing
+email-confirmation/RLS scoperto in fase di implementazione), e feature flag
+`LEGAL_TERMS_GATE` come meccanismo di attivazione (il piano v2 non
+specificava come sarebbe stato acceso/spento — ora lo è, riusando
+l'infrastruttura esistente in `lib/feature-flags/`). Nessuna di queste
+differenze cambia il perimetro concordato: nessun contenuto legale reale
+creato, nessuna abilitazione globale, nessun deploy.
 
 ## 6. Dati dei bambini — dichiarazione di responsabilità genitoriale (RISOLTO in v2, era aperto in v1)
 
@@ -197,11 +215,13 @@ dichiarare. Non sostituisce né anticipa una eventuale informativa dedicata
 "dati dei minori" all'interno della Privacy Notice, che resta materia di
 revisione legale esterna.
 
-## 7. Cosa NON fare (esplicito)
+## 7. Cosa NON fare (esplicito, invariato)
 
-- Non pubblicare mai `/legal/terms`/`/legal/privacy` con testo placeholder
-  a utenti reali (solo Fabrizio/staff interno in fase di revisione).
-- Non applicare `migration_27` (v2) prima che Fabrizio confermi il modello.
+- Non pubblicare mai testo placeholder su `/privacy`/`/terms` spacciandolo
+  per testo reale (oggi mostrano "Documento in preparazione" — mai testo
+  finto).
+- Non riapplicare `migration_27` (già LIVE) — nessuna migration
+  sostitutiva salvo evidenza di errore reale.
 - Non droppare/alterare `profiles.marketing_consent` (pre-esistente da
   migration_06) — solo estenderla con un companion timestamp.
 - Non scrivere mai, in nessun testo del prodotto o di questo programma,
@@ -209,25 +229,36 @@ revisione legale esterna.
   in attesa di validazione".
 - Non introdurre un consenso marketing preselezionato o bundlato con
   Termini/Privacy Notice.
+- Non abilitare `LEGAL_TERMS_GATE` globalmente — solo su coorte di test,
+  e solo dopo pubblicazione di testo legale reale validato.
 
 ## Verifica statica
 
-`tsc --noEmit`: 0 errori. `eslint` sui file toccati: 0 warning/errori.
-`tests/one/consent.spec.ts`: 5/5 passed (test puro, nessun I/O, gira in
-questo sandbox).
+`tsc --noEmit`: 0 errori (intero progetto, dopo il wiring completo).
+`eslint` sui file toccati: 0 warning/errori. `tests/one/legal-gate.spec.ts`
+(16 test nominati LEGAL-01..16): 8/16 eseguiti e verdi (logica pura, nessun
+I/O), 8/16 documentati come richiedenti un deploy reale o fixture
+TEST-marked non ancora esistenti (§8 di `PRE_MICRO_PILOT_GATE_STATUS.md`
+per il dettaglio completo).
 
-**SHA-256 di `migration_27_privacy_terms_consent.sql` v2** (calcolato dopo
-il salvataggio finale, 25/08/2026):
-`e89efd877506dc0ae7a64f6e694d6aa783d881ade7293524a516f4c52604401b` — da
-usare per confermare, al momento dell'applicazione, che il file eseguito su
-Supabase è esattamente questo e non una copia modificata nel frattempo.
+**SHA-256 di `migration_27_privacy_terms_consent.sql` v2**:
+`e89efd877506dc0ae7a64f6e694d6aa783d881ade7293524a516f4c52604401b` — **la
+migrazione è ora LIVE in produzione**, applicata manualmente da Fabrizio,
+POST-CHECK di sola lettura confermato (4 tabelle, RLS attiva su tutte, 8
+policy corrispondenti esattamente al file).
 
-## Decisione richiesta a Fabrizio
+## 8. Decisione richiesta a Fabrizio — aggiornata
 
-1. Confermare il modello a 4 tabelle v2 (§3) o proporre un'alternativa.
-2. Fornire/validare il testo legale reale per Termini, Privacy Notice e
-   dichiarazione genitoriale (fuori dal perimetro tecnico di questo
-   documento).
-3. Applicare `migration_27_privacy_terms_consent.sql` (v2) quando pronto —
-   PRE-CHECK/POST-CHECK/ROLLBACK inclusi nel file, da eseguire manualmente.
-4. Solo dopo (1)-(3): autorizzare l'implementazione del wiring §5.
+1. ~~Confermare il modello a 4 tabelle v2~~ — **fatto implicitamente**
+   applicando la migrazione così com'era (nessuna modifica richiesta).
+2. **Ancora aperto**: fornire/validare/pubblicare il testo legale reale
+   per Termini, Privacy Notice e dichiarazione genitoriale (righe in
+   `legal_documents` con `published_at` valorizzato) — fuori dal
+   perimetro tecnico di questo documento, unico gate genuino rimasto.
+3. ~~Applicare `migration_27_privacy_terms_consent.sql` (v2)~~ — **fatto**
+   (LIVE).
+4. ~~Solo dopo (1)-(3): autorizzare l'implementazione del wiring §5~~ —
+   **fatto**: il wiring è stato costruito e verificato staticamente. Resta
+   solo, dopo il punto 2: abilitare `LEGAL_TERMS_GATE` — inizialmente su
+   una coorte di test, mai globalmente senza una nuova conferma esplicita
+   di Fabrizio.
