@@ -9,10 +9,13 @@
 import {
   acceptCurrentLegalDocumentAtSignupBootstrap,
   recordMarketingConsentEventAtSignupBootstrap,
+  acceptCurrentLegalDocument,
+  hasAcceptedCurrentDocument,
 } from "@/lib/legal/gate";
 import { createClient } from "@/lib/supabase/server";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
 import { resolveFeatureFlag } from "@/lib/feature-flags/resolve";
+import { shouldRecordMarketingConsentAtSignup } from "@/lib/legal/consent";
 
 /**
  * Chiamata dal client SUBITO dopo un supabase.auth.signUp() riuscito, con lo
@@ -45,7 +48,7 @@ export async function recordSignupLegalAcceptanceAction(
   // accanto al checkbox Termini, non come un secondo checkbox da spuntare —
   // decisione esplicita, non un'omissione.
 
-  if (marketingConsent) {
+  if (shouldRecordMarketingConsentAtSignup(marketingConsent)) {
     const marketingResult = await recordMarketingConsentEventAtSignupBootstrap(userId, "accepted", "signup");
     if (marketingResult.error) return { error: marketingResult.error };
   }
@@ -72,4 +75,54 @@ export async function isParentalDeclarationGateEnabledAction(): Promise<boolean>
   if (!user) return false;
 
   return resolveFeatureFlag({ flagName: "LEGAL_TERMS_GATE", userId: user.id });
+}
+
+/**
+ * TRAMA — LEGAL FLOW TECHNICAL CLOSURE BEFORE CONTENT (task #579,
+ * 25/08/2026 sera). Chiamata SOLO da app/auth/callback/route.ts (server,
+ * subito dopo exchangeCodeForSession) quando LEGAL_TERMS_GATE risolve true
+ * per l'utente E hasAcceptedCurrentDocument("terms") risulta false — cioè
+ * il bootstrap fail-soft di recordSignupLegalAcceptanceAction (chiamato da
+ * LoginForm.tsx subito dopo signUp(), quando NON esisteva ancora una
+ * sessione autenticata) è fallito o non è mai stato eseguito.
+ *
+ * A differenza del bootstrap, qui esiste GIÀ una sessione autenticata reale
+ * (auth.uid() = user.id soddisfa la RLS di legal_acceptances) — nessun
+ * service client necessario, nessuna validazione "riga profiles esiste"
+ * aggiuntiva richiesta (la RLS stessa la sostituisce).
+ *
+ * Se questo retry fallisce ANCORA (es. nessun documento PUBLISHED — sempre
+ * il caso oggi, gate OFF), il chiamante deve fail-closed: NON lasciar
+ * proseguire l'utente verso l'app (vedi requiresLegalAcceptanceBeforeAccess
+ * in lib/legal/consent.ts e il redirect verso /auth/legal-pending).
+ */
+export async function retryPendingTermsAcceptanceAction(): Promise<{ ok: boolean; error?: string }> {
+  if (!isSupabaseConfigured) return { ok: false, error: "Supabase non configurato" };
+
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { ok: false, error: "Non autenticato" };
+
+  const result = await acceptCurrentLegalDocument(supabase, user.id, "terms", "signup_callback_retry");
+  return { ok: result.ok, error: result.error };
+}
+
+/**
+ * true se l'utente CORRENTE (sessione autenticata) ha già un'acceptance
+ * valida per la versione PUBLISHED corrente dei Termini — usata dalla
+ * pagina /auth/legal-pending per decidere se può già proseguire (es. dopo
+ * un retry riuscito in un altro tab) senza dover ripetere l'azione.
+ */
+export async function hasCurrentUserAcceptedTermsAction(): Promise<boolean> {
+  if (!isSupabaseConfigured) return false;
+
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return false;
+
+  return hasAcceptedCurrentDocument(supabase, user.id, "terms");
 }

@@ -120,3 +120,45 @@ export function hasAcceptedCurrentTermsAndPrivacyNotice(state: CurrentConsentSta
     state.privacyNoticeAcceptedAt !== null
   );
 }
+
+// TRAMA — LEGAL FLOW TECHNICAL CLOSURE BEFORE CONTENT (task #579,
+// 25/08/2026 sera). Prima di questo task, app/actions/legal.ts#
+// recordSignupLegalAcceptanceAction era fail-SOFT di proposito (un fallimento
+// dell'INSERT su legal_acceptances subito dopo supabase.auth.signUp() non
+// bloccava/disfaceva l'account già creato — solo un log). Fabrizio ha chiesto
+// di rendere questo fail-CLOSED: un utente non deve ottenere accesso normale
+// al prodotto senza un'acceptance persistita per la versione corrente dei
+// Termini, anche se auth.users esiste già.
+//
+// Questa funzione è la decisione PURA, isolata per essere testabile senza
+// I/O (LEGAL-17 in tests/one/legal-gate.spec.ts): dato che il gate è attivo
+// per l'utente E che non esiste ancora un'acceptance per la versione
+// corrente, l'accesso deve restare bloccato (il chiamante — vedi
+// app/auth/callback/route.ts — deve ritentare la scrittura con un client
+// autenticato reale, disponibile solo a questo punto del flusso, e se il
+// retry fallisce ancora, NON deve lasciar proseguire l'utente verso "/" o
+// qualunque altra pagina applicativa).
+//
+// Con legalGateEnabled=false (ogni utente reale oggi, gate globale OFF)
+// questa funzione ritorna sempre false: nessun comportamento cambia per
+// nessun utente reale finché Fabrizio non attiva il gate.
+export function requiresLegalAcceptanceBeforeAccess(
+  legalGateEnabled: boolean,
+  alreadyAcceptedCurrentTerms: boolean
+): boolean {
+  return legalGateEnabled && !alreadyAcceptedCurrentTerms;
+}
+
+// TRAMA — LEGAL FLOW TECHNICAL CLOSURE BEFORE CONTENT (task #581, 25/08/2026
+// sera). Decisione PURA estratta da app/actions/legal.ts#
+// recordSignupLegalAcceptanceAction: un consenso marketing "accepted" viene
+// scritto in consent_events SOLO se il checkbox era esplicitamente spuntato
+// al momento del signup — mai un default positivo, mai un'invenzione. Non
+// esiste un percorso che generi una scrittura "withdrawn" al signup: non
+// c'è nulla da ritirare per un consenso mai concesso, il chiamante
+// semplicemente non invoca alcuna funzione di scrittura quando questa
+// risolve false (vedi recordMarketingConsentEventAtSignupBootstrap in
+// lib/legal/gate.ts, mai chiamata in quel caso).
+export function shouldRecordMarketingConsentAtSignup(marketingConsentChecked: boolean): boolean {
+  return marketingConsentChecked === true;
+}
