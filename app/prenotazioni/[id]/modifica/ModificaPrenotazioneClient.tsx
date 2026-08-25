@@ -10,6 +10,11 @@ import { buildFamilyTiers, familyDiscountAmount } from "@/lib/family-discount";
 import { updateBookingWeeksAction, cancelBookingAction } from "@/app/actions/bookings";
 import { shortWeekLabel, formatShortRange } from "@/lib/season-weeks";
 
+function formatDayDateShort(iso: string): string {
+  const d = new Date(iso + "T00:00:00Z");
+  return d.toLocaleDateString("it-IT", { day: "numeric", month: "short", timeZone: "UTC" });
+}
+
 // NOTA (limite noto, accettabile per questa funzionalità "di test"): WeekCard
 // non permette di deselezionare una settimana risultata "piena" nel
 // frattempo — nel raro caso in cui una settimana già prenotata da questo
@@ -168,62 +173,104 @@ export default function ModificaPrenotazioneClient({
       <PageHeader title="Modifica prenotazione" onBack={() => router.back()} />
       <div className="flex-1 overflow-y-auto px-5 py-[18px]">
         <div className="mb-1 text-base font-bold text-ink">{booking.activityName}</div>
-        <p className="mb-3 text-[13px] text-ink-2">
-          Cambia le settimane selezionate — funzionalità di test per verificare l&apos;effetto lato
-          gestore. Puoi modificare fino a {booking.cancellationWindowDays} giorni prima dell&apos;inizio.
-        </p>
-        <div className="mb-2.5 grid grid-cols-2 gap-2.5">
-          {weeks.map((w) => (
-            <WeekCard
-              key={w.id}
-              week={w}
-              selected={selectedSet.has(w.id)}
-              onToggle={() => toggleWeek(w)}
-            />
-          ))}
-        </div>
 
-        <div className="mt-4 rounded-md bg-bg p-3.5">
-          <div className="mb-2 text-[13px] font-semibold text-ink">Nuovo totale stimato</div>
-          <div className="flex items-center justify-between text-[13px] text-ink-2">
-            <span>
-              {nWeeks} settiman{nWeeks === 1 ? "a" : "e"} × €{activity.pricePerWeek} × {kidsCount} bambin
-              {kidsCount === 1 ? "o" : "i"}
-            </span>
-            <span>€{subtotal}</span>
-          </div>
-          {groupDiscount > 0 && (
-            <div className="flex items-center justify-between text-[13px] text-green">
-              <span>Sconti</span>
-              <span>-€{groupDiscount}</span>
+        {booking.isDayBased ? (
+          <>
+            {/* Segnalazione 25/08/2026 (Fabrizio): questa pagina ragiona solo
+                per settimane intere (booking_weeks/activity_weeks) — una
+                prenotazione fatta a "Giorni spot" (booking_days) non ha
+                alcuna settimana da mostrare qui: il selettore sottostante
+                risultava sempre "Non attiva qui" per ogni card e il totale
+                restava a €0, senza dare alcuna indicazione di cosa fosse
+                davvero prenotato. Stato onesto invece del selettore rotto:
+                mostriamo le date reali già prenotate, senza fingere che
+                l'editing per giorni sia già supportato da questa pagina "di
+                test" (vedi commento originale sul motivo di questa
+                funzionalità). L'unica azione ancora disponibile da qui è
+                l'annullamento, invariato sotto. */}
+            <p className="mb-3 text-[13px] text-ink-2">
+              Questa prenotazione è a giorni singoli (Giorni spot). La modifica delle date non è
+              ancora supportata da questa pagina di test — puoi annullarla e crearne una nuova con le
+              date corrette.
+            </p>
+            <div className="mb-3.5 rounded-md bg-bg p-3.5">
+              <div className="mb-2 text-[13px] font-semibold text-ink">
+                {booking.dayDates.length} giorn{booking.dayDates.length === 1 ? "o" : "i"} prenotat
+                {booking.dayDates.length === 1 ? "o" : "i"}
+              </div>
+              <div className="flex flex-wrap gap-1.5">
+                {booking.dayDates.map((d) => (
+                  <span
+                    key={d}
+                    className="rounded-md border border-green bg-green-light px-2 py-1 text-[12px] font-semibold text-ink"
+                  >
+                    {formatDayDateShort(d)}
+                  </span>
+                ))}
+              </div>
             </div>
-          )}
-          <div className="mt-1 flex items-center justify-between border-t border-[#E8EBF0] pt-2 text-sm font-bold text-ink">
-            <span>Totale</span>
-            <span>€{total}</span>
-          </div>
-        </div>
+          </>
+        ) : (
+          <>
+            <p className="mb-3 text-[13px] text-ink-2">
+              Cambia le settimane selezionate — funzionalità di test per verificare l&apos;effetto lato
+              gestore. Puoi modificare fino a {booking.cancellationWindowDays} giorni prima dell&apos;inizio.
+            </p>
+            <div className="mb-2.5 grid grid-cols-2 gap-2.5">
+              {weeks.map((w) => (
+                <WeekCard
+                  key={w.id}
+                  week={w}
+                  selected={selectedSet.has(w.id)}
+                  onToggle={() => toggleWeek(w)}
+                />
+              ))}
+            </div>
 
-        {error && <p className="mt-3 text-xs font-medium text-orange">{error}</p>}
+            <div className="mt-4 rounded-md bg-bg p-3.5">
+              <div className="mb-2 text-[13px] font-semibold text-ink">Nuovo totale stimato</div>
+              <div className="flex items-center justify-between text-[13px] text-ink-2">
+                <span>
+                  {nWeeks} settiman{nWeeks === 1 ? "a" : "e"} × €{activity.pricePerWeek} × {kidsCount} bambin
+                  {kidsCount === 1 ? "o" : "i"}
+                </span>
+                <span>€{subtotal}</span>
+              </div>
+              {groupDiscount > 0 && (
+                <div className="flex items-center justify-between text-[13px] text-green">
+                  <span>Sconti</span>
+                  <span>-€{groupDiscount}</span>
+                </div>
+              )}
+              <div className="mt-1 flex items-center justify-between border-t border-[#E8EBF0] pt-2 text-sm font-bold text-ink">
+                <span>Totale</span>
+                <span>€{total}</span>
+              </div>
+            </div>
 
-        {/* "Salva modifiche" fa solo il suo mestiere: salva il cambio di
-            settimane. Niente più doppio significato con l'annullamento
-            (feedback Fabrizio: "è ridondante 'salva modifiche (annulla
-            prenotazione)' e 'annulla prenotazione'") — deselezionare tutte le
-            settimane disabilita semplicemente questo pulsante, l'unico modo
-            per annullare resta il pulsante esplicito sotto. */}
-        <button
-          type="button"
-          onClick={handleSave}
-          disabled={submitting || unchanged || selectedWeeks.length === 0}
-          className="mt-4 w-full rounded-md bg-sky px-4 py-3 text-sm font-bold text-white disabled:opacity-50"
-        >
-          {submitting ? "Salvataggio…" : "Salva modifiche"}
-        </button>
+            {error && <p className="mt-3 text-xs font-medium text-orange">{error}</p>}
+
+            {/* "Salva modifiche" fa solo il suo mestiere: salva il cambio di
+                settimane. Niente più doppio significato con l'annullamento
+                (feedback Fabrizio: "è ridondante 'salva modifiche (annulla
+                prenotazione)' e 'annulla prenotazione'") — deselezionare tutte le
+                settimane disabilita semplicemente questo pulsante, l'unico modo
+                per annullare resta il pulsante esplicito sotto. */}
+            <button
+              type="button"
+              onClick={handleSave}
+              disabled={submitting || unchanged || selectedWeeks.length === 0}
+              className="mt-4 w-full rounded-md bg-sky px-4 py-3 text-sm font-bold text-white disabled:opacity-50"
+            >
+              {submitting ? "Salvataggio…" : "Salva modifiche"}
+            </button>
+          </>
+        )}
 
         {/* Unico modo per annullare da questa pagina. openCancelPopup fa una
             verifica difensiva su booking.canCancelOrModify (vedi sopra) prima
-            di aprire il pop-up di conferma vero e proprio. */}
+            di aprire il pop-up di conferma vero e proprio. Sempre disponibile,
+            sia per prenotazioni a settimana sia a giorni singoli. */}
         <button type="button" onClick={openCancelPopup} className="mt-2.5 w-full rounded-md border border-[#E8EBF0] px-4 py-2.5 text-[13px] font-semibold text-orange">
           Annulla prenotazione
         </button>

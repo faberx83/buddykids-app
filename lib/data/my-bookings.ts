@@ -37,6 +37,18 @@ export interface MyBooking {
   // uuid delle settimane attualmente prenotate — usato per precompilare il
   // selettore nella pagina "Modifica prenotazione".
   weekIds: string[];
+  // Segnalazione 25/08/2026 (Fabrizio): "Modifica prenotazione" apriva un
+  // selettore di SETTIMANE anche per prenotazioni fatte a giorni singoli
+  // ("Giorni spot", booking_days) — quel selettore ragiona solo per
+  // booking_weeks/activity_weeks, quindi per queste prenotazioni ogni
+  // settimana risultava "Non attiva qui" (nessuna activity_weeks configurata)
+  // e il totale restava sempre a €0, senza mostrare da nessuna parte i
+  // giorni realmente prenotati. isDayBased/dayDates (già calcolati
+  // internamente per weeksLabel/daysLabel, mai esposti finora) permettono
+  // alla pagina di modifica di mostrare uno stato onesto invece del
+  // selettore rotto — vedi ModificaPrenotazioneClient.tsx.
+  isDayBased: boolean;
+  dayDates: string[];
   // SPRINT 3 (NEXTGEN) — dettaglio COMPLETO delle settimane prenotate (non
   // solo la prima, vedi firstWeekLabel sotto): serve al Planner NEXTGEN per
   // etichettare le sovrapposizioni ("settimana N") a partire da un weekId
@@ -226,6 +238,8 @@ export async function getMyBookingsForParent(): Promise<MyBooking[]> {
       weeksLabel,
       firstWeekStart,
       weekIds: weekRows.map((w) => w.id),
+      isDayBased,
+      dayDates: dayRows,
       weeks: weekRows.map((w) => ({
         id: w.id,
         label: canonicalLabel(w),
