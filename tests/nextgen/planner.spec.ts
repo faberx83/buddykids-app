@@ -42,6 +42,38 @@ test.describe("NEXTGEN - Planner (Sprint 3)", () => {
     await expect(page.getByText("Budget estate")).toBeVisible();
   });
 
+  // Segnalazione 24/08/2026 (Fabrizio): "la descrizione della sezione è
+  // sbagliata" — la card introduttiva del Planner (PlannerClient.tsx) aveva
+  // solo due varianti di testo (budget vs. tutto il resto): su "Mappa" e
+  // "Gruppi" restava visibile "La timeline completa della tua famiglia per
+  // l'estate", pensato per Organizzazione e non pertinente per quelle due
+  // sezioni. Fix: una descrizione per ciascuna delle 4 modalità
+  // (PLANNER_MODE_DESCRIPTIONS). Verifica che ogni tab mostri la propria
+  // descrizione E non quella (sbagliata) di un'altra sezione.
+  test("TC-N684 - ogni modalità del Planner mostra la propria descrizione, non quella di un'altra", async ({
+    page,
+  }) => {
+    test.skip(!isRealDeployment, "Richiede un deploy con Supabase configurato e l'account genitore di test.");
+    await loginAs(page, "parent");
+    await page.goto("/nextgen/planner");
+
+    const wrongForMappaEGruppi = page.getByText("La timeline completa della tua famiglia per l'estate.");
+
+    await expect(wrongForMappaEGruppi).toBeVisible(); // corretta per Organizzazione (tab di default)
+
+    await page.getByRole("button", { name: "Mappa" }).click();
+    await expect(page.getByText("Dove sono i centri e le attività della tua famiglia.")).toBeVisible();
+    await expect(wrongForMappaEGruppi).not.toBeVisible();
+
+    await page.getByRole("button", { name: "Gruppi" }).click();
+    await expect(page.getByText("Le community e i gruppi a cui la tua famiglia partecipa.")).toBeVisible();
+    await expect(wrongForMappaEGruppi).not.toBeVisible();
+
+    await page.getByRole("button", { name: "Budget" }).click();
+    await expect(page.getByText("Quanto stai spendendo per questa estate.")).toBeVisible();
+    await expect(wrongForMappaEGruppi).not.toBeVisible();
+  });
+
   // SPRINT 5.1: TC-N15 aggiornato al testo reale della CTA in Home ("Apri
   // Planner", non più "Apri il planner completo" — testo mai allineato al
   // codice dopo il redesign Hero Card).

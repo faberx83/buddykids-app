@@ -45,6 +45,21 @@ import PlannerGroupsView from "@/components/nextgen/PlannerGroupsView";
 import DecorativeIntroCard from "@/components/nextgen/DecorativeIntroCard";
 import Link from "next/link";
 
+// Segnalazione 24/08/2026 (Fabrizio): "la descrizione della sezione è
+// sbagliata" — la card introduttiva sotto l'header aveva solo DUE varianti
+// di testo (budget vs. tutto il resto), ma PLANNER_MODES ne ha 4
+// (organizzazione/mappa/budget/gruppi, PlannerModeTabs.tsx). Su "Mappa" e
+// "Gruppi" restava quindi visibile "La timeline completa della tua famiglia
+// per l'estate" — testo pensato per Organizzazione, non pertinente per una
+// mappa di centri/attività o per un riepilogo di community/gruppi. Una
+// descrizione per modalità, così ogni sezione mostra il testo giusto.
+const PLANNER_MODE_DESCRIPTIONS: Record<PlannerMode, string> = {
+  organizzazione: "La timeline completa della tua famiglia per l'estate.",
+  mappa: "Dove sono i centri e le attività della tua famiglia.",
+  budget: "Quanto stai spendendo per questa estate.",
+  gruppi: "Le community e i gruppi a cui la tua famiglia partecipa.",
+};
+
 const REMINDER_TONE_CLASSES: Record<Reminder["tone"], string> = {
   urgent: "bg-[#FDECEC] text-[#B02A2A]",
   warning: "bg-[#FFF7E8] text-[#9a6b00]",
@@ -237,9 +252,7 @@ export default function PlannerClient({
             altri usi, es. Home/Admin/Center, mai stati rotti). */}
         <NextgenBadge />
         <DecorativeIntroCard className="mb-4">
-          <p className="text-xs text-ink-2">
-            {mode === "budget" ? "Quanto stai spendendo per questa estate." : "La timeline completa della tua famiglia per l'estate."}
-          </p>
+          <p className="text-xs text-ink-2">{PLANNER_MODE_DESCRIPTIONS[mode]}</p>
         </DecorativeIntroCard>
 
         <PlannerModeTabs mode={mode} onChange={setMode} />
