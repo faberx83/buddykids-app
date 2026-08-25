@@ -89,7 +89,9 @@ export interface PlannerData {
   // non coveredCount.
   coveredNeededCount: number;
   totalCount: number;
-  firstUncoveredIndex: number | null; // index (1-based) della prima settimana scoperta
+  // index (1-based) della prima settimana scoperta E NON ANCORA TRASCORSA
+  // (24/08/2026: prima non escludeva le settimane passate, vedi finalize()).
+  firstUncoveredIndex: number | null;
 }
 
 interface RawActivityRef {
@@ -148,16 +150,19 @@ export async function getPlannerData(): Promise<PlannerData> {
   // corrispondenza, e finiva per prenotare tutt'altra settimana.
   const seasonYear = await getSeasonYear();
   const baseWeeks = buildBaseWeeks(seasonYear);
+  // Segnalazione 24/08/2026 (Fabrizio) — vedi finalize() sotto: serve per
+  // escludere le settimane già trascorse da firstUncoveredIndex.
+  const todayIso = new Date().toISOString().slice(0, 10);
 
   if (!isSupabaseConfigured) {
-    return finalize(baseWeeks);
+    return finalize(baseWeeks, todayIso);
   }
 
   const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  if (!user) return finalize(baseWeeks);
+  if (!user) return finalize(baseWeeks, todayIso);
 
   const { data, error } = await supabase
     .from("bookings")
@@ -256,10 +261,32 @@ export async function getPlannerData(): Promise<PlannerData> {
     }
   }
 
-  return finalize(baseWeeks);
+  return finalize(baseWeeks, todayIso);
 }
 
-function finalize(weeks: SeasonWeek[]): PlannerData {
+// Segnalazione 24/08/2026 (Fabrizio): Scopri (/nextgen/search) mostrava
+// "priorità a chi è libero in GIU 1-5" con oggi già al 24/08 — settimane di
+// giugno/luglio, ormai passate. Causa: il calcolo di firstUncoveredIndex NON
+// escludeva le settimane già trascorse (a differenza di
+// computePriorityWeekIndex in lib/nextgen/planner-insights.ts, già
+// todayIso-aware e usato dal Planner stesso per il proprio badge "priorità"
+// — ma app/nextgen/search/page.tsx legge invece questo campo
+// firstUncoveredIndex, rimasto ingenuo). Estratta in funzione pura esportata
+// (stessa logica isPast di planner-insights.ts, replicata qui invece che
+// importata per evitare un import circolare: quel file importa già i tipi
+// PlannerData/SeasonWeek da qui) cosi' è testabile senza mock di Supabase
+// (vedi tests/one/planner-first-uncovered.spec.ts).
+export function firstUncoveredWeekIndex(
+  weeks: { index: number; covered: boolean; dismissed: boolean; endDate: string }[],
+  todayIso: string
+): number | null {
+  // Le settimane "non mi serve" non contano come da riempire: non suggeriamo
+  // attività per una settimana che il genitore ha volutamente escluso.
+  const firstUncovered = weeks.find((w) => !w.covered && !w.dismissed && w.endDate >= todayIso);
+  return firstUncovered?.index ?? null;
+}
+
+function finalize(weeks: SeasonWeek[], todayIso: string): PlannerData {
   // TRAMA ONE Build Sprint 4 (DEC-42, Task #345): una settimana "covered" ma
   // dove NESSUNA copertura è stata ancora "accepted" dal centro resta in
   // attesa di conferma — il Planner può segnalarlo senza doverla trattare
@@ -271,14 +298,11 @@ function finalize(weeks: SeasonWeek[]): PlannerData {
 
   const coveredCount = weeks.filter((w) => w.covered).length;
   const coveredNeededCount = weeks.filter((w) => w.covered && !w.dismissed).length;
-  // Le settimane "non mi serve" non contano come da riempire: non suggeriamo
-  // attività per una settimana che il genitore ha volutamente escluso.
-  const firstUncovered = weeks.find((w) => !w.covered && !w.dismissed);
   return {
     weeks,
     coveredCount,
     coveredNeededCount,
     totalCount: weeks.length,
-    firstUncoveredIndex: firstUncovered?.index ?? null,
+    firstUncoveredIndex: firstUncoveredWeekIndex(weeks, todayIso),
   };
 }
