@@ -109,7 +109,7 @@ test.describe("Genitori - Giorni spot", () => {
   // finestra di preavviso) poi verifica che "Modifica prenotazione" mostri
   // l'editor interattivo (non più il messaggio "non ancora supportata") e
   // che aggiungere un secondo giorno aggiorni il totale.
-  test("TC-N502 - Modifica prenotazione a Giorni spot: editor add/remove aggiorna il totale", async ({ page }) => {
+  test("TC-N658 - Modifica prenotazione a Giorni spot: editor add/remove aggiorna il totale", async ({ page }) => {
     test.skip(!isRealDeployment, "Richiede backend reale (Supabase configurato) — vedi tests/README.md.");
     await loginAs(page, "parent");
     await gotoTestActivityDetail(page);
