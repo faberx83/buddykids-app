@@ -30,12 +30,14 @@
 export type ConsentType = "terms" | "privacy_notice" | "marketing";
 export type ConsentAction = "accepted" | "declined" | "withdrawn";
 
-// SEGNAPOSTO — da sostituire con la versione reale quando il testo legale
-// definitivo sarà pronto e validato. Il formato "vN-YYYY-MM-DD" permette di
-// distinguere "utente ha accettato una versione precedente, va richiesto un
-// nuovo consenso" da "utente in regola con la versione corrente" con un
-// semplice confronto stringa — nessuna logica di parsing/semver necessaria
-// per il volume atteso (poche versioni per anno).
+// SEGNAPOSTO SOLO PER I TEST PURI DI QUESTO FILE (tests/one/consent.spec.ts)
+// — NON usate dal wiring reale. Da task #567 (25/08/2026, PRE-MICRO-PILOT
+// CLOSURE GATE) la versione "corrente" reale non è più una costante nel
+// codice: è sempre la riga PUBLISHED più recente in legal_documents,
+// risolta dinamicamente da lib/legal/gate.ts#resolvePublishedDocument (mai
+// una stringa fornita dal client, mai un valore fisso qui). Queste due
+// costanti restano solo per continuare a testare hasAcceptedCurrentTermsAndPrivacyNotice
+// in isolamento, senza I/O.
 export const CURRENT_TERMS_VERSION = "v0-draft-2026-08-24";
 export const CURRENT_PRIVACY_NOTICE_VERSION = "v0-draft-2026-08-24";
 

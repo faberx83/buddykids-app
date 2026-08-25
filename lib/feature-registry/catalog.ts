@@ -342,15 +342,71 @@ export const FEATURE_CATALOG: FeatureCatalogEntry[] = [
     demoBannerRequired: true,
   },
   {
+    // PRE-LAUNCH REMEDIATION WAVE 1, R-01 (24/08/2026) — voce AGGIORNATA:
+    // non più MOCK_DEMO. /admin/centers e /admin/centers/[id] leggono ora
+    // dati Supabase reali (verificato: 11 centri live), non più
+    // lib/mock-data.ts incondizionatamente. Classificazione test/demo resta
+    // euristica (visibile in UI come chip informativo, non un banner di
+    // rischio "dati finti" come le altre voci MOCK_DEMO di questa sezione).
     key: "admin_centers_list_mock",
     label: "Admin — Centri (/admin/centers)",
     area: "admin",
-    status: "MOCK_DEMO",
-    description: "Elenco centri sotto il form 'Nuovo centro' è SEMPRE lib/mock-data.ts: un centro reale appena creato dal form (che scrive su Supabase) non compare in questa lista.",
-    sourceFiles: ["app/admin/centers/page.tsx"],
-    note: "Nessuna vista che elenchi i centri reali esiste oggi nell'app (verificato: /admin/one aggrega solo code operative, non un elenco centri) — gap dichiarato nel banner, nessuna CTA verso una vista inesistente.",
+    status: "LIVE",
+    description: "Elenco centri e dettaglio centro leggono dati Supabase reali. Un centro reale appena creato dal form compare nella lista. Classificazione test/demo euristica (non uno schema esplicito) mostrata come chip informativo per singolo centro.",
+    sourceFiles: ["app/admin/centers/page.tsx", "app/admin/centers/[id]/page.tsx", "tests/admin/gestione.spec.ts"],
+    note: "Chiave 'admin_centers_list_mock' mantenuta invariata per non rompere riferimenti/audit log storici, nonostante non descriva più uno stato mock — vedi CHANGELOG in docs/trama-one/analysis/PRE_MICRO_PILOT_GATE_STATUS.md §6.",
+  },
+
+  // ── PRE-MICRO-PILOT CLOSURE GATE — Legal Gate (Termini/Privacy Notice/
+  // Marketing/Dichiarazione genitoriale), task #566 (25/08/2026).
+  // migration_27_privacy_terms_consent.sql v2 è LIVE in produzione (applicata
+  // da Fabrizio, verificata via POST-CHECK read-only). Costruito e
+  // funzionante lato tecnico, MA il flag che lo governa (LEGAL_TERMS_GATE) è
+  // OFF per chiunque: nessun override "global" enabled=true è mai stato
+  // scritto da questo programma — READY_OFF è lo stato esatto (schema
+  // definito appositamente per questo caso, vedi commento in
+  // FeatureStatus sopra). Non abilitare globalmente finché il testo legale
+  // reale non è PUBLISHED (vedi nota su ogni voce). ────────────────────
+  {
+    key: "legal_terms_gate_signup",
+    label: "Legal Gate — accettazione Termini/Privacy/Marketing in registrazione",
+    area: "cross_tenant",
+    status: "READY_OFF",
+    flagName: "LEGAL_TERMS_GATE",
+    description: "Checkbox Termini (obbligatorio, link a documento PUBLISHED) + Privacy Notice (link informativo, non un consenso) + Marketing (opzionale, non bloccante) in LoginForm.tsx al momento della registrazione. Scrittura server-side su legal_acceptances/consent_events.",
+    sourceFiles: ["app/auth/login/LoginForm.tsx", "lib/legal/gate.ts", "supabase/migration_27_privacy_terms_consent.sql"],
+    note: "LEGAL CONTENT: PENDING EXTERNAL REVIEW. Nessun legal_documents PUBLISHED esiste oggi (0 righe in produzione) — il gate, anche se attivato per un account di test, mostrerebbe uno stato controllato di 'documento non disponibile', mai un'accettazione finta.",
     riskLevel: "high",
-    demoBannerRequired: true,
+  },
+  {
+    key: "legal_terms_gate_parental_declaration",
+    label: "Legal Gate — dichiarazione genitoriale alla creazione bambino",
+    area: "parent",
+    status: "READY_OFF",
+    flagName: "LEGAL_TERMS_GATE",
+    description: "Richiesta di dichiarazione di responsabilità genitoriale sui dati del bambino, integrata nel flusso di creazione bambino (non nel signup generico). Scrittura su parental_declarations, verificata contro kids.parent_id via RLS.",
+    sourceFiles: ["app/actions/kids.ts", "lib/legal/gate.ts", "supabase/migration_27_privacy_terms_consent.sql"],
+    note: "Non resa obbligatoria per utenti reali finché il testo della dichiarazione non è approvato — implementata (componente/logica/persistenza/test) ma dietro flag OFF.",
+    riskLevel: "high",
+  },
+  {
+    key: "legal_public_routes",
+    label: "Route pubbliche /privacy e /terms",
+    area: "cross_tenant",
+    status: "READY_OFF",
+    description: "Pagine pubbliche (nessun login richiesto) che mostrano il documento legale PUBLISHED corrente (versione + data efficacia). Raggiungibili indipendentemente dallo stato di LEGAL_TERMS_GATE (informative, non un gate). Mostrano 'Documento in preparazione' se nessun PUBLISHED esiste.",
+    sourceFiles: ["app/privacy/page.tsx", "app/terms/page.tsx", "lib/legal/gate.ts"],
+    note: "Gap noto non risolto da una nuova migrazione: la policy SELECT su legal_documents è oggi 'to authenticated' (nessuna riga anonima leggibile) — innocuo finché 0 righe esistono (stesso risultato vuoto per RLS-block o assenza dati), diventa bloccante SOLO quando un documento reale verrà pubblicato. Fix pronto (policy aggiuntiva 'to anon' per SELECT su righe published_at IS NOT NULL), da applicare insieme alla pubblicazione del primo testo reale, non prima.",
+    riskLevel: "medium",
+  },
+  {
+    key: "legal_admin_document_view",
+    label: "Admin — Gestione documenti legali (view-only)",
+    area: "admin",
+    status: "READY_OFF",
+    description: "Vista Admin minimale su legal_documents (tipo, versione, stato derivato DRAFT/PUBLISHED, data pubblicazione, sha256) — non un CMS. Nessuna modifica silenziosa del contenuto di una versione già accettata da utenti.",
+    sourceFiles: ["app/admin/legal/page.tsx", "lib/legal/gate.ts"],
+    riskLevel: "low",
   },
 ];
 

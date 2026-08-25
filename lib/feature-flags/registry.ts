@@ -41,6 +41,34 @@ export const FEATURE_FLAG_REGISTRY = {
     defaultValue: false,
     allowedScopes: ["global", "environment", "user", "role", "tenant", "cohort"],
   },
+  // PRE-MICRO-PILOT CLOSURE GATE (task #566, 25/08/2026) — Legal Gate per
+  // Termini/Privacy Notice/dichiarazione genitoriale su migration_27 v2
+  // (LIVE in produzione, applicata da Fabrizio il 25/08/2026). Questo flag
+  // NON deve MAI essere abilitato globalmente prima che il testo legale
+  // reale (Termini, Privacy Notice) sia stato scritto/validato e i relativi
+  // legal_documents siano PUBLISHED (published_at valorizzato) — vedi
+  // docs/trama-one/analysis/PRIVACY_TERMS_TECHNICAL_DESIGN.md. Con
+  // defaultValue=false e nessun override "global" mai scritto da questo
+  // programma, resolveFeatureFlag() restituisce sempre false in produzione
+  // finché Fabrizio non crea esplicitamente un override "user"/"cohort" per
+  // un account di test/coorte interna in feature_flag_overrides. Scope
+  // "environment" incluso solo per poter testare in preview; "global" incluso
+  // nel registry (necessario per poterlo attivare in futuro) ma NON deve
+  // essere scritto come override abilitato finché il contenuto legale non è
+  // pronto — è una decisione operativa di Fabrizio, non tecnica.
+  LEGAL_TERMS_GATE: {
+    name: "LEGAL_TERMS_GATE",
+    description:
+      "Abilita il flusso di accettazione Termini/Privacy Notice/Marketing in fase di " +
+      "registrazione (checkbox in LoginForm.tsx) e la richiesta di dichiarazione " +
+      "genitoriale alla creazione di un bambino. Default sicuro: disattivato. " +
+      "PENDING EXTERNAL REVIEW sul testo legale: non abilitare globalmente finché " +
+      "legal_documents non contiene almeno una riga PUBLISHED reale per 'terms' e " +
+      "'privacy_notice'. Attivabile oggi solo per singoli account di test tramite " +
+      "override scope=\"user\" o scope=\"cohort\" in feature_flag_overrides.",
+    defaultValue: false,
+    allowedScopes: ["global", "environment", "user", "role", "cohort"],
+  },
 } as const satisfies Record<string, FeatureFlagDefinition>;
 
 export type KnownFeatureFlagName = keyof typeof FEATURE_FLAG_REGISTRY;

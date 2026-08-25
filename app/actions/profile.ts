@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
 import { ParentRole, Gender, BusinessRole, Language, Theme } from "@/lib/data/profile";
 import { revalidatePath } from "next/cache";
+import { recordMarketingConsentEvent } from "@/lib/legal/gate";
 
 // Percorsi da rigenerare dopo una modifica al profilo — entrambe le sezioni
 // (genitore e gestore) leggono dalla stessa tabella "profiles".
@@ -104,6 +105,15 @@ export async function updatePreferencesAction(input: {
 
 // Consenso marketing/cookie (privacy) — separato dalle preferenze notifiche
 // funzionali, perché ha un significato legale diverso (opt-in commerciale).
+//
+// PRE-MICRO-PILOT CLOSURE GATE (task #567, 25/08/2026): estesa per scrivere
+// anche uno storico in consent_events (migration_27 v2, LIVE) tramite
+// lib/legal/gate.ts#recordMarketingConsentEvent — prima si limitava a
+// scrivere solo profiles.marketing_consent (colonna pre-esistente da
+// migration_06). Comportamento visibile per l'utente INVARIATO: stesso
+// input booleano, stesso campo aggiornato; in più ora c'è una riga
+// consent_events (accepted/withdrawn) e marketing_consent_updated_at viene
+// popolata (prima restava sempre NULL).
 export async function updateMarketingConsentAction(consent: boolean): Promise<{ error?: string }> {
   if (!isSupabaseConfigured) return { error: "Supabase non configurato" };
 
@@ -113,12 +123,13 @@ export async function updateMarketingConsentAction(consent: boolean): Promise<{ 
   } = await supabase.auth.getUser();
   if (!user) return { error: "Non autenticato" };
 
-  const { error } = await supabase
-    .from("profiles")
-    .update({ marketing_consent: consent })
-    .eq("id", user.id);
-
-  if (error) return { error: error.message };
+  const { error } = await recordMarketingConsentEvent(
+    supabase,
+    user.id,
+    consent ? "accepted" : "withdrawn",
+    "settings_update"
+  );
+  if (error) return { error };
 
   revalidateProfilePaths();
   return {};
