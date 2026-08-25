@@ -31,6 +31,9 @@ const baseNavItems = [
   // iscritto): stessa lista flat, nessuna sotto-voce.
   { href: "/admin/center-leads", label: "Segnalazioni centri", icon: "ti-map-pin-plus" },
   { href: "/admin/feature-flags", label: "Feature flag", icon: "ti-flag-3" },
+  // PRE-MICRO-PILOT CLOSURE GATE (task #574, 25/08/2026) — vista view-only
+  // su legal_documents (Termini/Privacy Notice), non un CMS.
+  { href: "/admin/legal", label: "Documenti legali", icon: "ti-file-shield" },
 ];
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
