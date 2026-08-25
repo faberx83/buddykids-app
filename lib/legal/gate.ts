@@ -2,6 +2,7 @@ import "server-only";
 
 import type { createClient } from "@/lib/supabase/server";
 import { createServiceClient } from "@/lib/supabase/service";
+import type { CurrentConsentState } from "./consent";
 
 // PRE-MICRO-PILOT CLOSURE GATE — task #567 (25/08/2026).
 //
@@ -401,6 +402,79 @@ export async function hasParentalDeclarationForKid(
     .select("id")
     .eq("parent_user_id", parentUserId)
     .eq("kid_id", kidId)
+    .limit(1);
+
+  return !error && !!data && data.length > 0;
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// Utenti esistenti — task #571 (25/08/2026). DESIGN, non attivazione: questa
+// funzione non è chiamata da nessun punto di blocco oggi (nessun middleware,
+// nessun layout la invoca) — esiste per rendere possibile, in futuro, una
+// verifica "questo utente già esistente deve (ri)accettare i Termini?"
+// SENZA richiedere una nuova migrazione: legge solo le colonne cache già
+// presenti su profiles (tos_version/tos_accepted_at/privacy_notice_version/
+// privacy_notice_accepted_at/marketing_consent/marketing_consent_updated_at,
+// tutte NULLABLE da migration_27 v2).
+//
+// Comportamento per un utente REGISTRATO PRIMA di questo lavoro (il caso di
+// ogni utente reale oggi): tutte le colonne cache sono NULL (mai scritte,
+// nessun backfill eseguito e nessuno pianificato oggi) — questa funzione
+// restituisce quindi correttamente "non ha accettato la versione corrente"
+// (vedi hasAcceptedCurrentTermsAndPrivacyNotice in ./consent, che tratta
+// null come "non accettato", mai come eccezione). Questo NON blocca nulla
+// di per sé: è solo un dato che un futuro gate potrebbe interrogare, il
+// giorno in cui Fabrizio deciderà di attivare LEGAL_TERMS_GATE anche per
+// utenti già esistenti (non oggi — vedi §10 del messaggio operativo:
+// "design per attivazione futura, nessun blocco oggi").
+export async function getCurrentConsentStateForUser(
+  client: SupabaseClientLike,
+  userId: string
+): Promise<CurrentConsentState | null> {
+  const { data, error } = await client
+    .from("profiles")
+    .select(
+      "tos_version, tos_accepted_at, privacy_notice_version, privacy_notice_accepted_at, marketing_consent, marketing_consent_updated_at"
+    )
+    .eq("id", userId)
+    .maybeSingle();
+
+  if (error || !data) return null;
+
+  return {
+    termsVersion: data.tos_version,
+    termsAcceptedAt: data.tos_accepted_at,
+    privacyNoticeVersion: data.privacy_notice_version,
+    privacyNoticeAcceptedAt: data.privacy_notice_accepted_at,
+    marketingConsent: Boolean(data.marketing_consent),
+    marketingConsentUpdatedAt: data.marketing_consent_updated_at,
+  };
+}
+
+/**
+ * Verifica AUTORITATIVA (non la cache di comodo sopra) se un utente ha
+ * accettato la versione PUBLISHED corrente di un documento — risolve
+ * sempre dinamicamente contro legal_documents/legal_acceptances, MAI contro
+ * le costanti segnaposto CURRENT_*_VERSION di ./consent.ts (che restano
+ * SOLO per i test puri — vedi commento lì). Questa è la funzione che un
+ * futuro gate per utenti esistenti dovrebbe chiamare per decidere se
+ * richiedere una nuova accettazione, il giorno in cui verrà pubblicata una
+ * versione più recente di quella già accettata da un utente. Non chiamata
+ * da nessun punto di blocco oggi (design, non attivazione — task #571).
+ */
+export async function hasAcceptedCurrentDocument(
+  client: SupabaseClientLike,
+  userId: string,
+  documentType: LegalDocumentType
+): Promise<boolean> {
+  const current = await resolvePublishedDocument(client, documentType);
+  if (!current) return false;
+
+  const { data, error } = await client
+    .from("legal_acceptances")
+    .select("id")
+    .eq("user_id", userId)
+    .eq("legal_document_id", current.id)
     .limit(1);
 
   return !error && !!data && data.length > 0;
