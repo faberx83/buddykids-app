@@ -262,3 +262,38 @@ policy corrispondenti esattamente al file).
    solo, dopo il punto 2: abilitare `LEGAL_TERMS_GATE` — inizialmente su
    una coorte di test, mai globalmente senza una nuova conferma esplicita
    di Fabrizio.
+
+## 9. Addendum 25/08/2026 sera — migration_29 LIVE + rimozione service-role (task #605-607)
+
+Il gap noto documentato al punto 1 di §5 ("policy SELECT `to authenticated`
+soltanto") è chiuso. Sequenza reale:
+
+- **migration_28** (`migration_28_legal_documents_anon_read.sql`) applicata
+  da Fabrizio: introduceva una policy anon SELECT ma con un bug di
+  ricorsione infinita (`ERROR 42P17`) — riprodotto 2 volte via query
+  read-only. Nessuna esposizione dati (0 righe, e le route pubbliche
+  usavano ancora il workaround service-role in quel momento). Rilevato
+  anche che la policy authenticated preesistente (`qual=true`) esponeva
+  ogni riga (incluse bozze) a qualunque utente non-admin.
+- **migration_29 v2** (`migration_29_legal_documents_rls_remediation.sql`,
+  SHA-256 `3cd5a2e67735ebc45d96e8abf9ac239c0fd06168a25925ce0d40004ff02021c6`)
+  applicata da Fabrizio: risolve la ricorsione con una funzione
+  `SECURITY DEFINER` hardened (search_path fisso, schema-qualified, EXECUTE
+  minimo) e sostituisce la policy authenticated con una scoped a
+  PUBLISHED-non-DRAFT. **LIVE, verificata PASS** (MIGRATION_29 LIVE
+  POST-CHECK, 25/08/2026): matrice ALLOW/DENY dimostrata con query reali in
+  transazione con ROLLBACK — anon vede solo il documento CURRENT
+  PUBLISHED, authenticated normale vede CURRENT+SUPERSEDED (mai DRAFT),
+  platform_admin vede tutto incluso DRAFT.
+- **`resolvePublishedDocumentForPublicRoute()` in `lib/legal/gate.ts`
+  riscritta**: non usa più `createServiceClient()` (bypass RLS) — usa ora
+  `createClient()` (chiave anon, RLS attiva), lo stesso client di ogni
+  altra pagina dell'app. Un visitatore senza sessione su `/privacy` o
+  `/terms` viaggia quindi come ruolo `anon`, esattamente il ruolo per cui
+  migration_29 ha creato la policy dedicata — nessun bypass RLS residuo sul
+  percorso di lettura pubblica. `createServiceClient()` resta in uso SOLO
+  per il bootstrap di signup (due funzioni distinte, invariate, fuori
+  scope), mai per la lettura pubblica.
+
+**PUBLIC LEGAL ACCESS: READY** (tecnicamente — il gate sul testo legale
+reale, punto 2 sopra, resta aperto e separato).

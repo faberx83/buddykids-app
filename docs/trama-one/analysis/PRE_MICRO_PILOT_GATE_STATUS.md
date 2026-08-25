@@ -4,6 +4,8 @@
 
 **AGGIORNAMENTO 25/08/2026 (sera) — `migration_27` v2 applicata da Fabrizio in produzione (LIVE) e wiring tecnico completo costruito sopra (task #566-575, commit `a3b0c70`, `27de6ad`, `d9f6e38`, `b9f7f2f`, `34f23de`, `cb5276f`).** §1/§2/§3/§4/§5/§6 sotto aggiornati di conseguenza. Vedi §7 per lo stato R-03 finale.
 
+**AGGIORNAMENTO 25/08/2026 (notte) — `migration_28` (difettosa, ricorsione RLS) sostituita da `migration_29` v2, LIVE e verificata PASS (task #605-607); service-role rimosso dal percorso di lettura di `/privacy` e `/terms`.** PUBLIC LEGAL ACCESS ora **READY** (tecnicamente — vedi `PRIVACY_TERMS_TECHNICAL_DESIGN.md` §9 e `MVP_PRODUCTION_TRUTH.md` §8 per il dettaglio completo). Il campo "Privacy technical readiness" in §1 resta invariato nel verdetto complessivo (BLOCKED BY LEGAL CONTENT, non dalla tecnica) — l'unico gate genuino rimasto è il testo legale reale, non più alcun gap RLS/service-role.
+
 ## 1. PASS/FAIL sintetico (campi richiesti da Fabrizio)
 
 | Campo | Stato | Nota |
