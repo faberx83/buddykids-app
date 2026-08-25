@@ -20,6 +20,7 @@ export default function DetailClient({
   initialFavorite,
   certifications = [],
   days = [],
+  bookedDayDates = [],
 }: {
   activity: Activity;
   promotions: Promotion[];
@@ -36,6 +37,12 @@ export default function DetailClient({
   // solo quando activity.bookingMode !== "week_only"). Vuoto per ogni
   // attività a sola settimana intera — nessun cambio di comportamento lì.
   days?: DayAvailability[];
+  // Segnalazione 25/08/2026 (Fabrizio): i giorni già prenotati da questo
+  // genitore per questa attività (qualunque bambino) devono distinguersi
+  // visivamente dai giorni ancora liberi — vedi
+  // lib/data/activity-days.ts#getBookedDayDatesForActivity. Date ISO
+  // (yyyy-mm-dd). Vuoto per ogni attività a sola settimana intera.
+  bookedDayDates?: string[];
 }) {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -83,10 +90,26 @@ export default function DetailClient({
   // TRAMA ONE Build Sprint 3 — "Giorni spot": selezione giorni singoli,
   // attiva solo quando ci sono giorni configurati dal Gestore e l'attività
   // non è a sola settimana intera. Ordinati per data, solo quelli aperti.
+  //
+  // Segnalazione 25/08/2026 (Fabrizio): il calendario mostrava ancora giorni
+  // già passati rispetto a OGGI (data di sistema) come normalmente
+  // selezionabili — un giorno concluso non ha più senso ne' da prenotare ne'
+  // da mostrare qui, stesso principio già applicato alle settimane in
+  // lib/data/weeks.ts#dropPastWeeks (task #243) ma mai a questo elenco.
+  // Confronto sulla data ISO COMPLETA (non solo mese-giorno come
+  // dropPastWeeks): a differenza della griglia stagionale convenzionale,
+  // activity_days ha righe con un anno reale scritto dal Gestore, quindi
+  // qui il confronto sull'anno intero è corretto e non rischia la stessa
+  // regressione anti-seed di dropPastWeeks.
+  const todayIso = useMemo(() => new Date().toISOString().slice(0, 10), []);
   const allBookableDays = useMemo(
-    () => days.filter((d) => d.isOpen).sort((a, b) => a.date.localeCompare(b.date)),
-    [days]
+    () =>
+      days
+        .filter((d) => d.isOpen && d.date >= todayIso)
+        .sort((a, b) => a.date.localeCompare(b.date)),
+    [days, todayIso]
   );
+  const bookedDaySet = useMemo(() => new Set(bookedDayDates), [bookedDayDates]);
   // Se si arriva da "Riempi"/Scopri con una o più settimane selezionate,
   // mostra solo i "giorni spot" che cadono in quelle settimane invece di
   // tutta la stagione — questo è il fix del bug segnalato.
@@ -97,6 +120,31 @@ export default function DetailClient({
     );
   }, [allBookableDays, filterWeekRanges]);
   const showDaySelection = activity.bookingMode !== "week_only" && allBookableDays.length > 0;
+  // Segnalazione 25/08/2026 (Fabrizio): "voglio vedere i giorni corretti
+  // sulla stessa linea da lun a ven" — prima i giorni erano un flex-wrap
+  // senza alcun allineamento a colonna, per cui il "lunedì" di una settimana
+  // poteva non trovarsi mai sotto il "lunedì" di un'altra. Raggruppati qui
+  // per settimana (lunedì della settimana di ciascun giorno) e resi in una
+  // griglia fissa a 5 colonne (Lun..Ven): una cella vuota, non un giorno
+  // "chiuso" travestito, per un giorno feriale senza alcuna riga
+  // activity_days configurata dal Gestore in quella settimana.
+  function mondayOf(dateStr: string): string {
+    const d = new Date(dateStr + "T00:00:00Z");
+    const jsDay = d.getUTCDay(); // 0=dom..6=sab
+    const diff = jsDay === 0 ? -6 : 1 - jsDay;
+    d.setUTCDate(d.getUTCDate() + diff);
+    return d.toISOString().slice(0, 10);
+  }
+  const dayWeekGroups = useMemo(() => {
+    const byMonday = new Map<string, (DayAvailability | null)[]>();
+    for (const day of bookableDays) {
+      if (day.weekday > 4) continue; // solo lun-ven in questa griglia (sab/dom non fanno parte della settimana Giorni spot)
+      const monday = mondayOf(day.date);
+      if (!byMonday.has(monday)) byMonday.set(monday, [null, null, null, null, null]);
+      byMonday.get(monday)![day.weekday] = day;
+    }
+    return [...byMonday.entries()].sort(([a], [b]) => a.localeCompare(b));
+  }, [bookableDays]);
   const [selectedDayDates, setSelectedDayDates] = useState<string[]>([]);
   const toggleDay = (day: DayAvailability) => {
     if (!day.singleDayBookable || day.spotsLeft <= 0) return;
@@ -352,44 +400,78 @@ export default function DetailClient({
                 Nessun giorno spot aperto in {filterWeekRanges.length === 1 ? "questa settimana" : "queste settimane"}.
               </p>
             )}
-            <div className="mb-2 flex flex-wrap gap-2">
-              {bookableDays.map((day) => {
-                const soldOut = day.spotsLeft <= 0 || !day.singleDayBookable;
-                const selected = selectedDayDates.includes(day.date);
-                const price = dayPrice(day, activity.pricePerWeek);
-                const dateObj = new Date(day.date + "T00:00:00Z");
-                const dayNum = dateObj.getUTCDate();
-                const monthShort = dateObj.toLocaleDateString("it-IT", { month: "short", timeZone: "UTC" });
-                return (
-                  <button
-                    key={day.date}
-                    type="button"
-                    disabled={soldOut}
-                    onClick={() => toggleDay(day)}
-                    className={`flex min-w-[64px] flex-col items-center rounded-md border-[1.5px] px-2.5 py-2 text-center transition-colors ${
-                      soldOut
-                        ? "cursor-not-allowed border-[#E8EBF0] bg-[#FAFBFD] text-ink-3"
-                        : selected
-                        ? "border-sky bg-sky-light text-ink"
-                        : "border-[#E8EBF0] bg-white text-ink hover:border-sky"
-                    }`}
-                  >
-                    <span className="text-[10px] font-semibold uppercase text-ink-2">
-                      {weekdayShort[day.weekday]}
-                    </span>
-                    <span className="text-sm font-bold">
-                      {dayNum} {monthShort}
-                    </span>
-                    {day.specialEmoji && <span className="text-xs">{day.specialEmoji}</span>}
-                    <span className="text-[11px] font-semibold text-sky">
-                      {soldOut ? "Pieno" : `€${price}`}
-                    </span>
-                    {day.discountPercent ? (
-                      <span className="text-[10px] font-medium text-green">-{day.discountPercent}%</span>
-                    ) : null}
-                  </button>
-                );
-              })}
+            <div className="mb-2 flex flex-col gap-2">
+              {dayWeekGroups.map(([monday, slots]) => (
+                <div key={monday} className="grid grid-cols-5 gap-1.5">
+                  {slots.map((day, weekday) => {
+                    if (!day) {
+                      // Nessuna riga activity_days per questo giorno feriale di
+                      // questa settimana — cella vuota "non configurata", non un
+                      // giorno chiuso: la settimana resta comunque allineata a
+                      // 5 colonne (Lun..Ven) invece di scorrere le card in fila.
+                      return (
+                        <div
+                          key={weekday}
+                          className="flex min-h-[76px] flex-col items-center justify-center rounded-md border border-dashed border-[#E8EBF0] px-1 py-2 text-center text-[10px] text-ink-3"
+                        >
+                          {weekdayShort[weekday]}
+                          <span className="mt-1">—</span>
+                        </div>
+                      );
+                    }
+                    const soldOut = day.spotsLeft <= 0 || !day.singleDayBookable;
+                    const alreadyBooked = bookedDaySet.has(day.date);
+                    const selected = selectedDayDates.includes(day.date);
+                    const price = dayPrice(day, activity.pricePerWeek);
+                    const dateObj = new Date(day.date + "T00:00:00Z");
+                    const dayNum = dateObj.getUTCDate();
+                    const monthShort = dateObj.toLocaleDateString("it-IT", { month: "short", timeZone: "UTC" });
+                    return (
+                      <button
+                        key={day.date}
+                        type="button"
+                        disabled={soldOut}
+                        onClick={() => toggleDay(day)}
+                        className={`relative flex min-h-[76px] flex-col items-center justify-center rounded-md border-[1.5px] px-1 py-2 text-center transition-colors ${
+                          alreadyBooked
+                            ? "border-green bg-green-light text-ink"
+                            : soldOut
+                            ? "cursor-not-allowed border-[#E8EBF0] bg-[#FAFBFD] text-ink-3"
+                            : selected
+                            ? "border-sky bg-sky-light text-ink"
+                            : "border-[#E8EBF0] bg-white text-ink hover:border-sky"
+                        }`}
+                      >
+                        <span className="text-[10px] font-semibold uppercase text-ink-2">
+                          {weekdayShort[day.weekday]}
+                        </span>
+                        <span className="text-sm font-bold">
+                          {dayNum} {monthShort}
+                        </span>
+                        {day.specialEmoji && <span className="text-xs">{day.specialEmoji}</span>}
+                        {/* Segnalazione 25/08/2026 (Fabrizio): "voglio vedere i
+                            giorni che ho già prenotato, altrimenti sembra che
+                            non abbia prenotato" — badge distinto invece del
+                            solo prezzo, così un giorno già coperto non si
+                            confonde con uno ancora libero. */}
+                        {alreadyBooked ? (
+                          <span className="text-[11px] font-semibold text-green">
+                            <i className="ti ti-circle-check mr-0.5 text-[10px]" />
+                            Prenotato
+                          </span>
+                        ) : (
+                          <span className="text-[11px] font-semibold text-sky">
+                            {soldOut ? "Pieno" : `€${price}`}
+                          </span>
+                        )}
+                        {!alreadyBooked && day.discountPercent ? (
+                          <span className="text-[10px] font-medium text-green">-{day.discountPercent}%</span>
+                        ) : null}
+                      </button>
+                    );
+                  })}
+                </div>
+              ))}
             </div>
             {selectedDayDates.length > 0 && (
               <div className="mb-3.5 rounded-md bg-bg p-3">

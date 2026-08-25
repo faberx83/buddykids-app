@@ -57,3 +57,40 @@ export async function getActivityDays(activity: Activity): Promise<DayAvailabili
   if (error || !data || data.length === 0) return activityDaysByActivity[activity.id] ?? [];
   return (data as RawDayRow[]).map(mapRow);
 }
+
+// Segnalazione 25/08/2026 (Fabrizio): nella scheda "Giorni spot" i giorni
+// già prenotati dal genitore per questa attività non si distinguono in
+// alcun modo dai giorni ancora liberi — "sembra che non abbia prenotato".
+// Stesso bisogno già coperto per le settimane intere da
+// getBookedWeekIdsForActivity() (lib/data/weeks.ts) — analogo qui per i
+// singoli giorni (booking_days). "Confermata" = semplicemente non
+// cancellata (stessa convenzione di getBookedWeekIdsForActivity: non esiste
+// ancora un vero step di pagamento/conferma separato).
+export async function getBookedDayDatesForActivity(activityDbId: string): Promise<Set<string>> {
+  const empty = new Set<string>();
+  if (!isSupabaseConfigured) return empty;
+
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return empty;
+
+  const { data, error } = await supabase
+    .from("bookings")
+    .select("booking_days ( activity_days ( date ) )")
+    .eq("activity_id", activityDbId)
+    .eq("parent_id", user.id)
+    .neq("status", "cancelled");
+
+  if (error || !data) return empty;
+
+  const dates = new Set<string>();
+  for (const row of data as { booking_days: { activity_days: { date: string } | { date: string }[] | null }[] | null }[]) {
+    for (const bd of row.booking_days ?? []) {
+      const ref = Array.isArray(bd.activity_days) ? bd.activity_days[0] : bd.activity_days;
+      if (ref?.date) dates.add(ref.date);
+    }
+  }
+  return dates;
+}
