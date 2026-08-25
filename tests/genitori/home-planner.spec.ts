@@ -23,18 +23,21 @@ test.describe("Genitori - Home (Planner/Per Bambino)", () => {
   test("TC-101 - Vista Planner riflette le prenotazioni reali con l'anno di stagione corretto", async ({ page }) => {
     await page.getByRole("button", { name: "Planner", exact: true }).click();
     await expect(page.getByText(/settimane coperte/)).toBeVisible();
-    // Le 13 righe settimana sono sempre presenti (coperta, scoperta o "non ti serve").
+    // Le righe settimana sono sempre presenti (coperta, scoperta o "non ti serve").
     // Gate C, settima ondata (29/07) — root cause del "14 invece di 13" MAI
     // spiegato nelle sei ondate precedenti: il locator era page-wide
     // (text=/Settimana \d+/) e intercettava ANCHE la card di check-in in
     // cima alla Home ("Questa settimana · Settimana N", CheckinPrompt.tsx,
     // sempre visibile sopra i tab Planner/Per bambino quando c'è
     // un'attività in corso oggi) — nessun bug reale nella griglia
-    // stagionale (SEASON_TOTAL_WEEKS=13, mai duplicata). Scopiamo ora al
-    // container dedicato (data-testid="planner-week-list",
-    // components/PlannerView.tsx) per isolare SOLO le righe della lista.
+    // stagionale. Scopiamo ora al container dedicato
+    // (data-testid="planner-week-list", components/PlannerView.tsx) per
+    // isolare SOLO le righe della lista.
+    // 24/08/2026: SEASON_TOTAL_WEEKS portato da 13 a 16 (lib/season-weeks.ts,
+    // bug reale settimana 31/08 mancante in copertura) — aggiornata di
+    // conseguenza l'attesa qui.
     const rows = page.getByTestId("planner-week-list").locator("text=/Settimana \\d+/");
-    await expect(rows).toHaveCount(13);
+    await expect(rows).toHaveCount(16);
   });
 
   // Priorita: Alta | Precondizioni: Almeno 2 bambini nel profilo, con prenotazioni/esigenze diverse

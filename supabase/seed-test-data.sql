@@ -67,10 +67,11 @@ on conflict (slug) do nothing;
 
 
 -- ─────────────────────────────────────────────
--- STEP 3 — Settimane prenotabili per l'attività di test (13 settimane, come
--- la griglia stagionale dell'app, a partire dal primo lunedì di giugno
--- dell'anno corrente) — solo se non esistono già per non duplicarle ad ogni
--- rilancio dello script.
+-- STEP 3 — Settimane prenotabili per l'attività di test (16 settimane, come
+-- la griglia stagionale dell'app — SEASON_TOTAL_WEEKS, lib/season-weeks.ts,
+-- aggiornata 24/08/2026 da 13 a 16 per coprire davvero fino a metà settembre
+-- — a partire dal primo lunedì di giugno dell'anno corrente) — solo se non
+-- esistono già per non duplicarle ad ogni rilancio dello script.
 -- ─────────────────────────────────────────────
 do $$
 declare
@@ -91,7 +92,7 @@ begin
   elsif exists (select 1 from public.activity_weeks where activity_id = v_activity_id) then
     raise notice 'Settimane già presenti per l''attività di test — nessuna azione.';
   else
-    for i in 0..12 loop
+    for i in 0..15 loop
       insert into public.activity_weeks (activity_id, label, start_date, end_date, capacity, spots_left)
       values (
         v_activity_id,

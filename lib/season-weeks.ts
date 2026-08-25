@@ -1,14 +1,28 @@
-// Griglia delle 13 settimane della stagione estiva (metà giugno - metà
+// Griglia delle settimane della stagione estiva (metà giugno - metà
 // settembre), lun-ven, uguale per tutta la piattaforma — è la "fonte di
 // verità" della numerazione settimane usata sia dal Planner in Home sia dal
 // selettore settimane in Prenotazione, così "Settimana 6" indica sempre lo
 // stesso intervallo di date ovunque nell'app (prima non era garantito: il
-// Planner aveva le sue 13 settimane, la Prenotazione mostrava solo le
+// Planner aveva le sue settimane, la Prenotazione mostrava solo le
 // settimane configurate per quella specifica attività, con numerazione
 // indipendente — confuso per chi arriva dal Planner con una settimana precisa
 // in mente).
-
-export const SEASON_TOTAL_WEEKS = 13;
+//
+// Segnalazione 24/08/2026 (Fabrizio): una prenotazione reale a giorni per la
+// settimana del 31/08 non appariva nella barra di copertura. Causa: con
+// SEASON_TOTAL_WEEKS=13 e partenza dal primo lunedì di giugno, per l'anno
+// 2026 la griglia finiva il 28/08 (settimana 13) — un mese prima di quanto
+// dichiarato da questo stesso commento ("metà settembre"). Non un problema di
+// prenotazione o di anno-stagione: il conteggio delle settimane non
+// raggiungeva mai la metà di settembre che il codice affermava di coprire.
+// Verificato via query Supabase read-only che i dati reali (non demo/test)
+// di attivita_days si esauriscono entro metà settembre. Portato a 16
+// settimane: la settimana 16 (14-18 settembre) è la prima a includere il 15
+// settembre, centro della "metà settembre" dichiarata — include quindi anche
+// la settimana del 31/08 (settimana 14) con margine, senza dover inseguire
+// dati oltre inizio ottobre che in produzione risultano solo attività
+// [TEST]/demo, non stagione reale.
+export const SEASON_TOTAL_WEEKS = 16;
 
 export interface SeasonWeekRange {
   index: number; // 1-based
@@ -16,7 +30,7 @@ export interface SeasonWeekRange {
   end: Date;
 }
 
-// Genera le 13 settimane (lun-ven) della stagione estiva dell'anno indicato,
+// Genera le settimane (lun-ven) della stagione estiva dell'anno indicato,
 // a partire dal primo lunedì di giugno.
 export function getSeasonWeekRanges(year: number): SeasonWeekRange[] {
   const june1 = new Date(Date.UTC(year, 5, 1));
