@@ -1,9 +1,11 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { createCenterAndAssignAction } from "@/app/actions/admin";
 
 export default function NewCenterForm() {
+  const router = useRouter();
   const [open, setOpen] = useState(false);
   const [name, setName] = useState("");
   const [city, setCity] = useState("Milano");
@@ -51,6 +53,11 @@ export default function NewCenterForm() {
     setContactEmail("");
     setContactPhone("");
     setGestoreEmail("");
+    // PRE-MICRO-PILOT GATE (R-01, task #557): l'elenco sotto ora è reale
+    // (Server Component, letto una volta al caricamento pagina) — senza
+    // questo refresh il centro appena creato non comparirebbe finché
+    // l'Admin non ricarica la pagina a mano.
+    router.refresh();
   }
 
   if (!open) {

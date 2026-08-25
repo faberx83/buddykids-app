@@ -20,6 +20,7 @@ import type {
   IdentityVerificationState,
   OnboardingAuditEntry,
   CenterForReview,
+  CenterOperabilityRow,
 } from "./types";
 
 export async function getCenterOnboardingState(centerId: string | null): Promise<CenterOnboardingState> {
@@ -148,4 +149,59 @@ export async function listCentersForAdminReview(): Promise<CenterForReview[]> {
       updatedAt: row.updated_at,
     };
   });
+}
+
+// PRE-MICRO-PILOT GATE (R-01, task #557, 25/08/2026) — segnalazione di
+// Fabrizio: /admin/centers (unica superficie Admin pensata per "trovare un
+// centro") è SEMPRE lib/mock-data.ts, anche dopo aver creato un centro reale
+// — un Admin non ha modo di trovare un centro pilota reale senza query SQL
+// dirette o conoscere l'ID. Obiettivo esplicito: NON costruire una nuova
+// dashboard, rendere reale questa. A differenza di
+// listCentersForAdminReview() sopra (pensata per la coda di revisione
+// onboarding: un centro SENZA riga in center_onboarding_state non compare
+// perché "non richiede alcuna azione"), questa funzione deve elencare
+// LETTERALMENTE OGNI centro nella tabella centers — un Admin deve poter
+// trovare qualunque centro, non solo quelli con un'azione pendente.
+//
+// Nessuna nuova RPC/aggregazione lato DB: 3 letture semplici via
+// createClient() (RLS applicata, mai service-role) fuse in JS — a questa
+// scala (decine di centri per un Micro Pilot, non migliaia) è la scelta più
+// semplice e più facile da verificare a colpo d'occhio.
+function isLikelyTestCenter(name: string, slug: string): boolean {
+  const pattern = /\btest\b|^\[test\]|\bprova\b/i;
+  return pattern.test(name) || pattern.test(slug);
+}
+
+export async function listAllCentersForAdmin(): Promise<CenterOperabilityRow[]> {
+  if (!isSupabaseConfigured) return [];
+
+  const supabase = await createClient();
+
+  const [{ data: centers }, { data: onboardingRows }, { data: activityRows }] = await Promise.all([
+    supabase.from("centers").select("id, slug, name, city, created_at").order("created_at", { ascending: false }),
+    supabase.from("center_onboarding_state").select("center_id, status"),
+    supabase.from("activities").select("center_id"),
+  ]);
+
+  if (!centers) return [];
+
+  const statusByCenter = new Map((onboardingRows ?? []).map((r) => [r.center_id, r.status as CenterOnboardingStatus]));
+  const activityCountByCenter = new Map<string, number>();
+  for (const row of activityRows ?? []) {
+    activityCountByCenter.set(row.center_id, (activityCountByCenter.get(row.center_id) ?? 0) + 1);
+  }
+
+  return centers.map((c) => ({
+    centerId: c.id,
+    slug: c.slug,
+    name: c.name,
+    city: c.city,
+    createdAt: c.created_at,
+    activityCount: activityCountByCenter.get(c.id) ?? 0,
+    // Nessuna riga in center_onboarding_state = centro creato prima di
+    // Sprint 1 (o mai reclamato per TRAMA ONE) — stesso fallback APPROVED di
+    // getCenterOnboardingState() sopra, per coerenza in tutta l'app.
+    onboardingStatus: statusByCenter.get(c.id) ?? "APPROVED",
+    looksLikeTest: isLikelyTestCenter(c.name, c.slug),
+  }));
 }

@@ -46,3 +46,22 @@ export interface CenterForReview {
   status: CenterOnboardingStatus;
   updatedAt: string | null;
 }
+
+// PRE-MICRO-PILOT GATE (R-01, 25/08/2026) — riga per l'elenco Admin di TUTTI
+// i centri reali (non solo quelli con una riga in center_onboarding_state,
+// a differenza di CenterForReview/listCentersForAdminReview sopra, pensata
+// per la coda di revisione onboarding). Vedi listAllCentersForAdmin().
+export interface CenterOperabilityRow {
+  centerId: string;
+  slug: string;
+  name: string;
+  city: string | null;
+  createdAt: string | null;
+  activityCount: number;
+  onboardingStatus: CenterOnboardingStatus;
+  // true se il centro è quasi certamente dato di test/demo (nome/slug con
+  // pattern "[TEST]"/"test-"/"prova" — vedi isLikelyTestCenter()), non un
+  // giudizio definitivo: un Admin può sempre aprire il dettaglio e
+  // verificare.
+  looksLikeTest: boolean;
+}

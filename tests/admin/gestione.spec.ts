@@ -33,11 +33,40 @@ test.describe("Admin - Gestione", () => {
     // TODO: implementare - vedi i test gia completati in questo file per esempio.
   });
 
-  // Priorita: Media | Precondizioni: Nessuna
-  // Passi: Apri /admin/centers
-  // Risultato atteso: Dovrebbe riflettere i centri reali (salvo il form 'Nuovo centro' che e reale)
-  test.fixme("TC-085 - Elenco centri", async ({ page }) => {
-    // TODO: implementare - vedi i test gia completati in questo file per esempio.
+  // PRE-MICRO-PILOT GATE — R-01 (task #557, 25/08/2026): /admin/centers era
+  // sempre lib/mock-data.ts (vedi commento rimosso in questo stesso file
+  // sopra TC-N672), reso reale su listAllCentersForAdmin(). Requisito
+  // esplicito di Fabrizio: "centro reale presente". "Centro Sportivo Lido"
+  // è un centro seed stabile (supabase/seed.sql, non lo script di pulizia
+  // effimero usato per i dati di test) — non dovrebbe mai scomparire tra un
+  // run e l'altro.
+  test("TC-085 - /admin/centers elenca i centri reali (dati Supabase, non mock)", async ({ page }) => {
+    test.skip(!isRealDeployment, "Richiede un deploy con Supabase configurato e l'account Admin di test.");
+    await loginAs(page, "platform_admin");
+    await page.goto("/admin/centers");
+
+    await expect(page.getByRole("heading", { name: "Centri" })).toBeVisible();
+    await expect(page.getByText("Centro Sportivo Lido")).toBeVisible();
+    // Colonne richieste da Fabrizio: Comune + Attività (nessuna query SQL o
+    // conoscenza dell'ID necessaria per capire di che centro si tratta).
+    await expect(page.getByRole("columnheader", { name: "Comune" })).toBeVisible();
+    await expect(page.getByRole("columnheader", { name: "Attività" })).toBeVisible();
+    await expect(page.getByRole("columnheader", { name: "Stato attivazione" })).toBeVisible();
+  });
+
+  // Requisito esplicito di Fabrizio: "centro mock/test chiaramente
+  // classificato" — senza che l'Admin debba interrogare Supabase a mano.
+  // "[TEST] Centro BuddyKids" è un centro di test persistente (non uno dei
+  // due generati con timestamp dagli script di prova estemporanei), quindi
+  // stabile come fixture per questo assert.
+  test("TC-085b - Un centro di test/demo è marcato chiaramente in elenco", async ({ page }) => {
+    test.skip(!isRealDeployment, "Richiede un deploy con Supabase configurato e l'account Admin di test.");
+    await loginAs(page, "platform_admin");
+    await page.goto("/admin/centers");
+
+    const testRow = page.getByRole("row", { name: /\[TEST\] Centro BuddyKids/ });
+    await expect(testRow).toBeVisible();
+    await expect(testRow.getByText("Test/demo")).toBeVisible();
   });
 
   // Priorita: Alta | Precondizioni: Nessuna
@@ -47,11 +76,21 @@ test.describe("Admin - Gestione", () => {
     // TODO: implementare - vedi i test gia completati in questo file per esempio.
   });
 
-  // Priorita: Bassa | Precondizioni: Centro esistente
-  // Passi: Apri /admin/centers/[id]
-  // Risultato atteso: Dovrebbe mostrare i dati reali del centro
-  test.fixme("TC-087 - Dettaglio centro", async ({ page }) => {
-    // TODO: implementare - vedi i test gia completati in questo file per esempio.
+  // Requisito esplicito di Fabrizio: "click dettaglio" deve funzionare senza
+  // conoscere l'ID a memoria — click diretto dall'elenco, non un goto()
+  // manuale a /admin/centers/[id].
+  test("TC-087 - Dettaglio centro: click da elenco mostra i dati reali", async ({ page }) => {
+    test.skip(!isRealDeployment, "Richiede un deploy con Supabase configurato e l'account Admin di test.");
+    await loginAs(page, "platform_admin");
+    await page.goto("/admin/centers");
+
+    const row = page.getByRole("row", { name: /Centro Sportivo Lido/ });
+    await row.getByRole("link", { name: "Dettaglio →" }).click();
+
+    await expect(page).toHaveURL(/\/admin\/centers\/.+/);
+    await expect(page.getByRole("heading", { name: "Centro Sportivo Lido" })).toBeVisible();
+    await expect(page.getByText("Attività (")).toBeVisible();
+    await expect(page.getByText("Storico attivazione")).toBeVisible();
   });
 
   // Priorita: Bassa | Precondizioni: Login Admin piattaforma
