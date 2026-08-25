@@ -2,29 +2,51 @@ import { test, expect } from "@playwright/test";
 import { isRealDeployment } from "@/tests/fixtures/roles";
 import {
   deriveDocumentStatus,
+  requiresLegalAcceptanceBeforeAccess,
+  shouldRecordMarketingConsentAtSignup,
   type LegalDocumentRecord,
 } from "@/lib/legal/consent";
 import { FEATURE_FLAG_REGISTRY, isKnownFlag, getFlagDefinition } from "@/lib/feature-flags/registry";
 import { evaluateFlag, type FeatureFlagOverrideInput } from "@/lib/feature-flags/evaluate";
 
-// PRE-MICRO-PILOT CLOSURE GATE — task #573 (25/08/2026). 16 test nominati
-// (LEGAL-01..16) richiesti da Fabrizio per il Legal Gate (migration_27 v2,
-// LIVE; LEGAL_TERMS_GATE, sempre OFF in produzione oggi).
+// PRE-MICRO-PILOT CLOSURE GATE — task #573 (25/08/2026), esteso da TRAMA —
+// LEGAL FLOW TECHNICAL CLOSURE BEFORE CONTENT — task #580 (25/08/2026 sera).
+// 19 test nominati (LEGAL-01..19) per il Legal Gate (migration_27 v2, LIVE;
+// migration_28 preparata ma NON applicata; LEGAL_TERMS_GATE, sempre OFF in
+// produzione oggi).
 //
-// LEGAL-01..08: logica PURA (nessun I/O), gira in qualunque ambiente — stesso
-// pattern di tests/one/consent.spec.ts e tests/one/feature-flags.spec.ts.
-// LEGAL-09..14: richiedono un browser + un deploy reale con Supabase
-// configurato (test.skip(!isRealDeployment, ...), stesso pattern di
-// tests/fixtures/roles.ts) — verificano la REGRESSIONE (il gate è OFF per
-// costruzione, quindi il comportamento visibile deve essere IDENTICO a
-// prima di questo lavoro).
-// LEGAL-15..16: verifiche RLS che richiederebbero una sessione autenticata
-// reale contro contenuto legale TEST-marked non ancora esistente (nessun
-// documento PUBLISHED, nessuna coorte di test attivata) — documentate qui
-// come test.skip esplicito con motivazione, NON eseguibili da questa
-// sandbox (Claude non applica scritture di produzione né crea fixture
-// legali finte). Restano un mandato di verifica manuale per Fabrizio (o per
-// una futura estensione E2E quando esisterà un documento TEST-marked reale).
+// CLASSIFICAZIONE RICHIESTA DA FABRIZIO (§4 dell'ordine operativo) — una
+// delle 4 categorie per ciascun test, "non classificare come 'richiede live'
+// se una fixture può coprirlo":
+//
+//   LEGAL-01..08   PASS AUTOMATED  — logica pura, gira in ogni ambiente
+//   LEGAL-09..12   REQUIRES LIVE DEPLOY — richiedono un browser Playwright
+//                  reale + una sessione HTTP contro un deploy con Supabase
+//                  configurato (navigazione pagina, non riproducibile con
+//                  un mock in-process)
+//   LEGAL-13..14   PASS STATIC     — copertura equivalente già garantita da
+//                  altri test puri (LEGAL-06) + revisione statica del
+//                  codice del gating (commento esplicito nel test)
+//   LEGAL-15       REQUIRES LIVE DEPLOY — prova comportamentale RLS reale
+//                  richiederebbe una richiesta anonima contro un documento
+//                  PUBLISHED reale (0 righe pubblicate oggi); verificata
+//                  PASS STATIC leggendo la policy live nel POST-CHECK
+//                  migration_27 + la nuova policy in migration_28 (bozza)
+//   LEGAL-16       PASS STATIC     — policy INSERT verificata leggendo il
+//                  POST-CHECK migration_27 (WITH CHECK contro kids.parent_id)
+//   LEGAL-17       PASS AUTOMATED  — nuovo (task #579): decisione pura
+//                  fail-closed, nessun I/O, mockabile al 100%
+//   LEGAL-18..19   PASS AUTOMATED  — nuovi (task #581): decisione pura
+//                  marketing-al-signup, nessun I/O, mockabile al 100%
+//
+// Nessuno dei 16 originali era over-classificato come "richiede live" quando
+// una fixture pura poteva bastare: LEGAL-13/14 erano già PASS STATIC (non
+// "richiede live") con motivazione esplicita; LEGAL-15/16 richiedono
+// davvero un ambiente live per una prova COMPORTAMENTALE (non structural)
+// perché servono un documento PUBLISHED reale o due account Parent con
+// bambini reciprocamente noti, entrambi assenti per costruzione da questa
+// sandbox — la parte STRUTTURALE (la policy stessa, letta dal POST-CHECK)
+// resta invece verificata qui, oggi, senza deploy.
 
 function doc(partial: Partial<LegalDocumentRecord> & Pick<LegalDocumentRecord, "id" | "publishedAt">): LegalDocumentRecord {
   return {
@@ -87,6 +109,41 @@ test.describe("Legal Gate — logica pura (LEGAL-01..08)", () => {
     const result = evaluateFlag("LEGAL_TERMS_GATE", {}, overrides);
     expect(result).toBe(false);
   });
+
+  // TRAMA — LEGAL FLOW TECHNICAL CLOSURE BEFORE CONTENT (task #579,
+  // 25/08/2026 sera) — LEGAL-17: tabella di verità completa (4 casi) della
+  // decisione fail-closed usata da app/auth/callback/route.ts per bloccare
+  // l'accesso quando il bootstrap di signup non è riuscito a persistere
+  // l'acceptance dei Termini. Nessun I/O: la funzione è pura per costruzione
+  // (vedi lib/legal/consent.ts), quindi ogni combinazione è verificabile qui
+  // senza un deploy reale.
+  test("LEGAL-17 - requiresLegalAcceptanceBeforeAccess: tabella di verità completa", () => {
+    // Gate OFF (stato di produzione oggi, ogni utente reale): mai bloccato,
+    // indipendentemente dallo stato di acceptance.
+    expect(requiresLegalAcceptanceBeforeAccess(false, false)).toBe(false);
+    expect(requiresLegalAcceptanceBeforeAccess(false, true)).toBe(false);
+    // Gate ON + già accettato (bootstrap di signup riuscito, o retry
+    // riuscito): non bloccato.
+    expect(requiresLegalAcceptanceBeforeAccess(true, true)).toBe(false);
+    // Gate ON + MAI accettato (bootstrap fallito e nessun retry riuscito):
+    // l'unico caso che deve bloccare — quello che il task #579 introduce.
+    expect(requiresLegalAcceptanceBeforeAccess(true, false)).toBe(true);
+  });
+
+  // TRAMA — LEGAL FLOW TECHNICAL CLOSURE BEFORE CONTENT (task #581,
+  // 25/08/2026 sera) — LEGAL-18/19: decisione pura marketing-al-signup
+  // estratta da app/actions/legal.ts#recordSignupLegalAcceptanceAction.
+  // Verifica end-to-end del CONTRATTO (non solo che la funzione esista):
+  // marketing OFF non deve mai generare una scrittura di consenso positivo
+  // inventato; marketing ON deve generare esattamente una scrittura
+  // "accepted" (mai "withdrawn" al signup, vedi commento sulla funzione).
+  test("LEGAL-18 - shouldRecordMarketingConsentAtSignup: checkbox NON spuntato -> nessuna scrittura di consenso", () => {
+    expect(shouldRecordMarketingConsentAtSignup(false)).toBe(false);
+  });
+
+  test("LEGAL-19 - shouldRecordMarketingConsentAtSignup: checkbox spuntato -> genera esattamente un consenso 'accepted'", () => {
+    expect(shouldRecordMarketingConsentAtSignup(true)).toBe(true);
+  });
 });
 
 test.describe("Legal Gate — regressione live, gate OFF (LEGAL-09..14)", () => {
@@ -146,7 +203,7 @@ test.describe("Legal Gate — RLS negative tests (LEGAL-15..16, verifica manuale
   test("LEGAL-15 - legal_documents: SELECT anonimo bloccato (verificato staticamente, non da Playwright)", () => {
     test.skip(
       true,
-      "Verificato leggendo la policy live ('Legal documents: lettura autenticata', to authenticated, qual: true) nel POST-CHECK migration_27 — nessuna policy 'to anon' esiste. Una prova comportamentale reale richiederebbe una richiesta anonima autenticata con la anon key contro un documento PUBLISHED reale, che non esiste ancora (0 righe) — da eseguire da Fabrizio quando pubblicherà il primo testo reale, insieme al fix di policy già documentato in lib/feature-registry/catalog.ts#legal_public_routes."
+      "Verificato leggendo la policy live ('Legal documents: lettura autenticata', to authenticated, qual: true) nel POST-CHECK migration_27 — nessuna policy 'to anon' esiste ancora in produzione. Task #577 (25/08/2026 sera) ha preparato supabase/migration_28_legal_documents_anon_read.sql (bozza, NON applicata) con la policy 'to anon' scoped al solo documento PUBLISHED corrente per document_type — il gap è quindi già colmato a livello di file SQL, in attesa del gate manuale di Fabrizio. Una prova comportamentale reale richiederebbe una richiesta anonima con la anon key contro un documento PUBLISHED reale, che non esiste ancora (0 righe) — da eseguire da Fabrizio dopo aver applicato migration_28 e pubblicato il primo testo reale."
     );
   });
 
