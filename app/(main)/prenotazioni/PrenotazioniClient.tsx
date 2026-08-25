@@ -416,7 +416,16 @@ function StatCard({ label, value, icon }: { label: string; value: string; icon: 
 // riusando lib/data/planner.ts (la stessa logica già corretta e testata del
 // Planner in Home) invece di ricalcolare la copertura da zero qui.
 function CoverageStrip({ planner }: { planner: PlannerData }) {
-  const upcoming = planner.weeks.filter((w) => !w.dismissed);
+  // Segnalazione 25/08/2026 (Fabrizio): a fine agosto la card diceva ancora
+  // "15 settimane ancora da organizzare" su 16 totali — contava anche le
+  // settimane di giugno/luglio ormai CONCLUSE, mai selezionate per
+  // costruzione perché passate, non perché "dimenticate". Stesso principio
+  // già applicato a firstUncoveredWeekIndex (lib/data/planner.ts, 24/08/2026)
+  // ma mai a questo conteggio: una settimana passata non è più un "buco" da
+  // colmare, quindi va esclusa sia dal conteggio "da organizzare" sotto sia
+  // dalle barrette non ancora organizzate mostrate come "urgenti".
+  const todayIso = new Date().toISOString().slice(0, 10);
+  const upcoming = planner.weeks.filter((w) => !w.dismissed && w.endDate >= todayIso);
   const gaps = upcoming.filter((w) => !w.covered).length;
   return (
     <div className="rounded-2xl border border-[#E8EBF0] bg-white p-4">
