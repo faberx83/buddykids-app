@@ -1,7 +1,8 @@
 import "server-only";
 
-import type { createClient } from "@/lib/supabase/server";
+import { createClient } from "@/lib/supabase/server";
 import { createServiceClient } from "@/lib/supabase/service";
+import { isSupabaseConfigured } from "@/lib/supabase/env";
 import type { CurrentConsentState } from "./consent";
 import {
   deriveDocumentStatus,
@@ -104,36 +105,55 @@ export async function resolvePublishedDocument(
 }
 
 // ─────────────────────────────────────────────────────────────────────────
-// Route pubbliche (task #569) — gap noto: la policy SELECT su
-// legal_documents è "to authenticated" (verificato nel POST-CHECK
-// migration_27), quindi un utente anonimo non può leggerla oggi. Nessuna
-// nuova migrazione per questo (vincolo esplicito di Fabrizio: "non
-// proporre di riapplicare/sostituire migration_27" e "nessuna migrazione
-// nuova salvo errore reale" — questo non è un errore, è un limite noto,
-// oggi innocuo perché 0 documenti PUBLISHED esistono). Workaround
-// applicativo, minimo e circoscritto: usa createServiceClient() SOLO per
-// leggere il documento PUBBLICO/non sensibile (tipo, versione, data
-// pubblicazione, hash — MAI dati utente) per le pagine /privacy e /terms.
-// Stesso pattern già in uso in lib/feature-flags/resolve.ts per
-// feature_flag_overrides. Se Supabase non è configurato o la chiave di
-// servizio manca, ritorna null (fail-closed, mai un errore mostrato).
+// Route pubbliche (task #569, remediato task #607 il 25/08/2026) — questa
+// funzione usava createServiceClient() (bypass RLS) perché, al momento
+// della sua scrittura, la policy SELECT su legal_documents era "to
+// authenticated" soltanto (migration_27), quindi un utente anonimo non
+// poteva leggerla. Con migration_29 LIVE (verificata via POST-CHECK
+// read-only — vedi MIGRATION_29 LIVE POST-CHECK, task #605) esiste ora una
+// policy SELECT dedicata "to anon" (is_current_published_legal_document())
+// che consente esattamente questa lettura senza bypassare la RLS. Il
+// workaround service-role non serve più per QUESTO scopo specifico ed è
+// stato rimosso qui: usiamo lo stesso createClient() (chiave anon, RLS
+// attiva) già usato da ogni altra pagina dell'app. Per un visitatore senza
+// sessione (caso normale di /privacy e /terms) la richiesta viaggia come
+// ruolo "anon" — esattamente il ruolo per cui migration_29 ha creato la
+// policy dedicata. Se questa funzione venisse mai chiamata con una sessione
+// autenticata (es. da /auth/login se LEGAL_TERMS_GATE fosse ON), la policy
+// "authenticated" di migration_29 permette comunque solo PUBLISHED
+// (CURRENT o SUPERSEDED, mai DRAFT) — il .limit(1) sotto seleziona sempre e
+// solo la versione più recente pubblicata, identico risultato in entrambi
+// i casi: nessuna doppia logica "chi vede cosa" lato app che possa
+// divergere da quella DB (§3 del messaggio operativo di Fabrizio).
+// isSupabaseConfigured preserva lo stesso comportamento fail-closed di
+// prima (createServiceClient() restituiva null se non configurato): se le
+// chiavi non sono impostate, ritorna null invece di interrogare un client
+// con URL/chiave placeholder.
 // ─────────────────────────────────────────────────────────────────────────
 export async function resolvePublishedDocumentForPublicRoute(
   documentType: LegalDocumentType
 ): Promise<LegalDocumentRecord | null> {
-  const client = createServiceClient();
-  if (!client) return null;
+  if (!isSupabaseConfigured) return null;
 
-  const { data, error } = await client
-    .from("legal_documents")
-    .select("id, document_type, version, sha256, published_at, created_at")
-    .eq("document_type", documentType)
-    .not("published_at", "is", null)
-    .order("published_at", { ascending: false })
-    .limit(1);
+  try {
+    const client = await createClient();
 
-  if (error || !data || data.length === 0) return null;
-  return mapDocumentRow(data[0] as LegalDocumentRow);
+    const { data, error } = await client
+      .from("legal_documents")
+      .select("id, document_type, version, sha256, published_at, created_at")
+      .eq("document_type", documentType)
+      .not("published_at", "is", null)
+      .order("published_at", { ascending: false })
+      .limit(1);
+
+    if (error || !data || data.length === 0) return null;
+    return mapDocumentRow(data[0] as LegalDocumentRow);
+  } catch {
+    // Fail-closed: qualunque errore di rete/configurazione mostra
+    // "Documento in preparazione" (gestito dal chiamante), mai un errore
+    // tecnico all'utente anonimo.
+    return null;
+  }
 }
 
 // ─────────────────────────────────────────────────────────────────────────
