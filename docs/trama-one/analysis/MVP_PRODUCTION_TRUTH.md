@@ -74,3 +74,15 @@ Non posso leggere variabili d'ambiente Vercel da questo sandbox (nessun accesso)
 - **Stato invio email booking-response non ancora osservabile** dai dati esistenti — da chiudere con un test reale in sezione 7.2.
 
 Prossimo passo: Sezione 2 (MVP September Readiness Matrix).
+
+## 8. Addendum 25/08/2026 — migration_27 (PRE-MICRO-PILOT CLOSURE GATE, Privacy & Terms)
+
+Sezione aggiunta senza alterare le sezioni 1-7 (fotografia del 05/08/2026), per tracciare la migrazione applicata da Fabrizio dopo tale data.
+
+| Migrazione | Oggetti attesi | Presente DB | Verifica | Da applicare |
+|---|---|---|---|---|
+| migration_27 v2 (`migration_27_privacy_terms_consent.sql`) | 4 tabelle: `legal_documents`, `legal_acceptances`, `consent_events`, `parental_declarations` + colonne cache su `profiles` (`tos_version`, `tos_accepted_at`, `privacy_notice_version`, `privacy_notice_accepted_at`, `marketing_consent_updated_at`) + RLS su tutte e 4 le tabelle | **Sì** — applicata manualmente da Fabrizio in SQL Editor | POST-CHECK di sola lettura: `information_schema.tables`/`columns` = presenti; `pg_policies` = 8 policy live corrispondenti esattamente alla migrazione; `relrowsecurity=true` su tutte e 4 le tabelle; 0 righe in `legal_documents` (nessun testo legale pubblicato) | **No — non riapplicare** (vincolo esplicito di Fabrizio: nessuna riapplicazione, nessuna migration sostitutiva salvo evidenza di errore reale) |
+
+**Gap noto, non un blocco oggi**: la policy SELECT di `legal_documents` è `to authenticated` (nessuna policy `to anon`) — innocuo con 0 righe pubblicate, diventerà un blocco reale per le route pubbliche `/privacy` e `/terms` solo quando esisterà un documento PUBLISHED. Workaround applicativo già in uso (`resolvePublishedDocumentForPublicRoute()` in `lib/legal/gate.ts`, service-client); fix di policy documentato in `lib/feature-registry/catalog.ts#legal_public_routes`, non implementato come nuova migration per rispetto del vincolo "nessuna migration salvo errore reale".
+
+**Stato flusso tecnico costruito sopra questa migrazione (task #566-574, 25/08/2026)**: TECHNICAL IMPLEMENTATION: BUILT/STATIC_TESTED; DATABASE: LIVE; LEGAL CONTENT: PENDING EXTERNAL REVIEW; LEGAL GATE (`LEGAL_TERMS_GATE`): OFF (nessun override globale scritto); PILOT READINESS: BLOCKED BY LEGAL CONTENT. Non è uno stato "CLOSED" — resta un gate manuale reale aperto (validazione/redazione del testo legale, poi pubblicazione da parte di Fabrizio) prima di qualunque abilitazione, anche solo su coorte di test. Dettaglio completo in `PRIVACY_TERMS_TECHNICAL_DESIGN.md` e in `PRE_MICRO_PILOT_GATE_STATUS.md`.
