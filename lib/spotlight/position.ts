@@ -167,3 +167,31 @@ export function matchesSpotlightRoute(pattern: string, pathname: string): boolea
   const [prefix, suffix] = pattern.split("*");
   return pathname.startsWith(prefix) && pathname.endsWith(suffix);
 }
+
+/**
+ * Segnalazione 24/08/2026 (Fabrizio, screenshot): il badge "target non
+ * trovato" di uno step Spotlight (es. "Configura i Giorni spot", il cui
+ * target reale vive SOLO su /center/activities/*\/calendar) restava visibile
+ * anche su pagine del tutto estranee al percorso guidato (es. /center/account
+ * — Impostazioni) perché `matchesSpotlightRoute` fallisce ovunque tranne che
+ * sulla route esatta, ma il chiamante (SpotlightEngine) mostrava comunque il
+ * badge di fallback su QUALUNQUE pagina del portale una volta che lo step era
+ * "in corso" — anche a chilometri di distanza dal contesto (creazione
+ * attività) a cui lo step appartiene.
+ *
+ * Questa funzione risponde a una domanda più larga di matchesSpotlightRoute:
+ * non "sono ESATTAMENTE sulla pagina del target?" ma "sono almeno nell'AREA
+ * a cui questo step appartiene?" — deriva quell'area dal prefisso statico
+ * del pattern esistente (tutto ciò che precede il primo `*`, o l'intero
+ * pattern se non ne ha), senza introdurre un nuovo campo nel registry: un
+ * pattern come "/center/activities/*\/calendar" appartiene all'area
+ * "/center/activities/", un pattern esatto come "/nextgen/search" appartiene
+ * a se stesso, un pattern "*" (già usato deliberatamente per il badge
+ * "dashboard", DEC-73, pensato per seguire l'utente ovunque nel portale)
+ * appartiene a "" — cioè ovunque, comportamento invariato per quel caso.
+ */
+export function isPathRelevantToRoute(pattern: string, pathname: string): boolean {
+  const [prefix] = pattern.split("*");
+  if (!prefix) return true;
+  return pathname.startsWith(prefix);
+}

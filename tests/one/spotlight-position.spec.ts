@@ -2,6 +2,7 @@ import { test, expect } from "@playwright/test";
 import {
   computeCutoutRect,
   computePopoverPosition,
+  isPathRelevantToRoute,
   matchesSpotlightRoute,
   padBorderRadius,
   pickVisibleTargetIndex,
@@ -199,5 +200,39 @@ test.describe("Spotlight — matchesSpotlightRoute [no browser]", () => {
     expect(matchesSpotlightRoute("*", "/center")).toBe(true);
     expect(matchesSpotlightRoute("*", "/center/activities/abc/calendar")).toBe(true);
     expect(matchesSpotlightRoute("*", "/")).toBe(true);
+  });
+});
+
+// Segnalazione 24/08/2026 (Fabrizio, screenshot) — regressione diretta:
+// il badge "target non trovato" per lo step "Configura i Giorni spot"
+// (spotlightRoute "/center/activities/*/calendar") restava visibile anche
+// su /center/account (Impostazioni), pagina del tutto estranea al contesto
+// di creazione/modifica attività. isPathRelevantToRoute è la funzione che
+// SpotlightEngine ora consulta per decidere se la pagina corrente
+// appartiene almeno all'AREA dello step, prima di mostrare il badge.
+test.describe("Spotlight — isPathRelevantToRoute [no browser]", () => {
+  test("TC-N679 - pattern prefisso+suffisso: pagina nell'area del prefisso -> rilevante", () => {
+    expect(isPathRelevantToRoute("/center/activities/*/calendar", "/center/activities/abc")).toBe(true);
+    expect(isPathRelevantToRoute("/center/activities/*/calendar", "/center/activities/abc/calendar")).toBe(true);
+  });
+
+  test("TC-N680 - pattern prefisso+suffisso: pagina del tutto estranea (bug reale segnalato) -> NON rilevante", () => {
+    expect(isPathRelevantToRoute("/center/activities/*/calendar", "/center/account")).toBe(false);
+    expect(isPathRelevantToRoute("/center/activities/*/calendar", "/center/richieste")).toBe(false);
+  });
+
+  test("TC-N681 - pattern esatto senza wildcard: solo quella pagina è rilevante", () => {
+    expect(isPathRelevantToRoute("/nextgen/search", "/nextgen/search")).toBe(true);
+    expect(isPathRelevantToRoute("/nextgen/search", "/nextgen")).toBe(false);
+    expect(isPathRelevantToRoute("/nextgen/search", "/center/account")).toBe(false);
+  });
+
+  test("TC-N682 - pattern '*' (es. step 'dashboard', DEC-73): sempre rilevante ovunque, comportamento invariato", () => {
+    expect(isPathRelevantToRoute("*", "/center/account")).toBe(true);
+    expect(isPathRelevantToRoute("*", "/center/richieste")).toBe(true);
+  });
+
+  test("TC-N683 - pattern vuoto/assente: sempre rilevante (fallback sicuro)", () => {
+    expect(isPathRelevantToRoute("", "/center/account")).toBe(true);
   });
 });

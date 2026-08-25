@@ -35,6 +35,7 @@ import type { WalkthroughProgressSummary } from "@/lib/walkthrough/data";
 import {
   computeCutoutRect,
   computePopoverPosition,
+  isPathRelevantToRoute,
   matchesSpotlightRoute,
   padBorderRadius,
   pickVisibleTargetIndex,
@@ -116,6 +117,23 @@ export default function SpotlightEngine({
       // anche /new), mascherando il bug. Corregge anche la riga 18 della
       // matrice del Visual Acceptance Gate (già documentata così, mai
       // realmente verificabile finché questo ramo restava sbagliato).
+      //
+      // Segnalazione 24/08/2026 (Fabrizio, screenshot) — secondo bug reale
+      // trovato QUI: il ramo sopra rende il badge "target non trovato"
+      // visibile su QUALUNQUE pagina del portale, non solo su quelle vicine
+      // al contesto dello step — es. "Configura i Giorni spot" (contesto:
+      // creazione/modifica attività) restava visibile anche navigando su
+      // /center/account (Impostazioni), del tutto estraneo. isPathRelevantToRoute
+      // risponde alla domanda più larga "sono almeno nell'AREA di questo
+      // step?" (deriva l'area dal prefisso statico di spotlightRoute, nessun
+      // nuovo campo nel registry): se la pagina corrente non vi appartiene
+      // affatto, non c'è nulla da mostrare qui — comportamento invariato per
+      // "dashboard" (route "*", area = ovunque, DEC-73).
+      if (!isPathRelevantToRoute(current.spotlightRoute ?? "", pathname)) {
+        setTargetRect(null);
+        setTargetMissing(false);
+        return;
+      }
       setTargetRect(null);
       setTargetMissing(true);
       return;
