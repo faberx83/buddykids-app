@@ -18,6 +18,15 @@
 // "conforme al GDPR" — solo "controlli tecnici predisposti, testo legale
 // in attesa di validazione".
 
+// REVISIONE v2 (PRE-MICRO-PILOT CLOSURE GATE, 25/08/2026, task #559): il
+// modello DB non usa più un'unica tabella "consent_events" per tutte e 3 le
+// aree — vedi supabase/migration_27_privacy_terms_consent.sql v2. Termini e
+// Privacy Notice vivono in `legal_acceptances` (SOLO azione "accettato",
+// niente withdraw/decline: non sono un consenso revocabile). SOLO il
+// marketing resta un vero `consent_events` (accepted/withdrawn). I due tipi
+// sotto restano un'unione per comodità di questo file (nessuna scrittura
+// reale oggi, vedi header sopra), ma un futuro wiring non deve MAI scrivere
+// 'declined'/'withdrawn' per 'terms'/'privacy_notice' — solo 'accepted'.
 export type ConsentType = "terms" | "privacy_notice" | "marketing";
 export type ConsentAction = "accepted" | "declined" | "withdrawn";
 
