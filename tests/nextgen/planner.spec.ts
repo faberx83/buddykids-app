@@ -256,4 +256,47 @@ test.describe("NEXTGEN - Planner (Sprint 3)", () => {
     const compactBar = page.locator(`button[title*="Settimana ${weekIndex} "]`);
     await expect(compactBar).toHaveAttribute("title", /Copertura parziale/);
   });
+
+  // Segnalazione 26/08/2026 (Fabrizio): "l'opzione di segnare una settimana
+  // come 'non mi serve' è rimasta solo su Legacy?" — verificato: sì,
+  // toggleWeekDismissedAction (app/actions/profile.ts) era chiamata solo da
+  // components/PlannerView.tsx (LEGACY); qui in NEXTGEN lo stato "dismissed"
+  // era solo letto/mostrato, mai impostabile. Wiring aggiunto: stesso bottone
+  // "Non mi serve"/"Ripristina" di PlannerView, stessa azione server, nessuna
+  // nuova colonna/tabella. Verifica end-to-end: click su "Non mi serve" ->
+  // etichetta "Non ti serve" + bottone "Ripristina" al suo posto, contatore
+  // "X di Y settimane coperte" aggiornato (denominatore -1); click su
+  // "Ripristina" -> torna "Scoperta"/"Riempi", contatore ripristinato.
+  test("TC-N685 - 'Non mi serve' in NEXTGEN Planner esclude/ripristina una settimana (parità con LEGACY)", async ({
+    page,
+  }) => {
+    test.skip(!isRealDeployment, "Richiede un deploy con Supabase configurato e un account genitore di test con almeno una settimana scoperta futura.");
+    await loginAs(page, "parent");
+    await page.goto("/nextgen/planner");
+
+    const nonMiServeButton = page.getByRole("button", { name: "Non mi serve" }).first();
+    if (!(await nonMiServeButton.isVisible().catch(() => false))) {
+      test.skip(true, "Nessuna settimana scoperta futura per l'account di test (nessun bottone 'Non mi serve' visibile).");
+    }
+
+    const countBefore = await page.getByText(/settimane coperte/).textContent();
+    const neededBefore = Number(countBefore?.match(/di (\d+) settimane coperte/)?.[1]);
+    expect(Number.isNaN(neededBefore)).toBe(false);
+
+    const row = page.locator("[id^='week-row-']").filter({ has: nonMiServeButton }).first();
+    await nonMiServeButton.click();
+
+    // Optimistic update: la riga mostra subito "Non ti serve" + "Ripristina",
+    // senza attendere il round-trip server (router.refresh() arriva dopo).
+    await expect(row.getByText("Non ti serve")).toBeVisible();
+    const ripristinaButton = row.getByRole("button", { name: "Ripristina" });
+    await expect(ripristinaButton).toBeVisible();
+    await expect(row.getByRole("button", { name: "Non mi serve" })).toHaveCount(0);
+
+    await expect(page.getByText(/settimane coperte/)).toContainText(`di ${neededBefore - 1} settimane coperte`);
+
+    await ripristinaButton.click();
+    await expect(row.getByRole("button", { name: "Non mi serve" })).toBeVisible();
+    await expect(page.getByText(/settimane coperte/)).toContainText(`di ${neededBefore} settimane coperte`);
+  });
 });

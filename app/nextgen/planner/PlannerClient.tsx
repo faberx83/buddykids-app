@@ -34,6 +34,13 @@ import type { Reminder } from "@/lib/nextgen/reminders";
 import type { ParentAddress } from "@/lib/nextgen/address-kinds";
 import { Kid, CommunityItem, GroupItem } from "@/lib/types";
 import { lightBgClasses } from "@/lib/colors";
+// Wiring mancante segnalato da Fabrizio (26/08/2026): "Non mi serve" esiste
+// da tempo lato LEGACY (components/PlannerView.tsx) — stessa azione server,
+// stesso campo dati condiviso (profiles.dismissed_weeks, lib/data/planner.ts),
+// ma qui in NEXTGEN lo stato "dismissed" era finora SOLO letto/mostrato
+// (etichetta "Non ti serve"), mai impostabile: nessun bottone chiamava
+// toggleWeekDismissedAction. Nessuna nuova azione: solo il bottone mancante.
+import { toggleWeekDismissedAction } from "@/app/actions/profile";
 import ActivityCard from "@/components/ActivityCard";
 import PageHeader from "@/components/PageHeader";
 import NextgenBadge from "@/components/nextgen/NextgenBadge";
@@ -131,7 +138,44 @@ export default function PlannerClient({
     ? (initialModeParam as PlannerMode)
     : "organizzazione";
   const [mode, setMode] = useState<PlannerMode>(initialMode);
-  const perKidCoverage = useMemo(() => computePerKidCoverage(planner, kids), [planner, kids]);
+
+  // Wiring "Non ti serve" (26/08/2026, richiesto da Fabrizio dopo aver
+  // verificato che l'azione esisteva solo lato LEGACY, components/PlannerView.tsx):
+  // override locale, per data di inizio settimana, sovrapposto a
+  // planner.weeks[].dismissed — stesso pattern di "optimistic update" già
+  // usato da PlannerView (LEGACY): la UI cambia subito al click, la verità
+  // resta comunque il campo persistito (profiles.dismissed_weeks), letto da
+  // capo ad ogni caricamento server (router.refresh() dopo il salvataggio,
+  // cosi' anche priorityIndex — calcolato server-side in page.tsx — si
+  // riallinea se la settimana appena esclusa/ripristinata era quella
+  // "prioritaria"). Non serve toccare planner.coveredNeededCount/totalCount:
+  // "Non ti serve" si usa solo su settimane NON coperte (vedi rendering
+  // sotto, stessa regola di PlannerView), quindi il numeratore "coperte" non
+  // cambia mai per questa azione, solo il denominatore "necessarie", già
+  // ricalcolato qui sotto da neededCount.
+  const [dismissedOverrides, setDismissedOverrides] = useState<Record<string, boolean>>({});
+  const [savingWeek, setSavingWeek] = useState<string | null>(null);
+  const weeks = useMemo(
+    () =>
+      planner.weeks.map((w) =>
+        w.startDate in dismissedOverrides ? { ...w, dismissed: dismissedOverrides[w.startDate] } : w
+      ),
+    [planner.weeks, dismissedOverrides]
+  );
+  async function toggleDismissed(week: (typeof weeks)[number]) {
+    const nextDismissed = !week.dismissed;
+    setDismissedOverrides((cur) => ({ ...cur, [week.startDate]: nextDismissed }));
+    setSavingWeek(week.startDate);
+    await toggleWeekDismissedAction(week.startDate, nextDismissed);
+    setSavingWeek(null);
+    // Riallinea priorityIndex/eventuali altri valori calcolati server-side
+    // (page.tsx) con la nuova esclusione/ripristino — stesso identificatore
+    // di settimana (startDate), nessun redirect, nessuna perdita di scroll
+    // (Next.js preserva lo stato di scroll su router.refresh()).
+    router.refresh();
+  }
+
+  const perKidCoverage = useMemo(() => computePerKidCoverage({ ...planner, weeks }, kids), [planner, weeks, kids]);
 
   // SPRINT CORRETTIVO — Calendario non e' piu' un tab a se stante: vive qui,
   // dentro Organizzazione, dietro un riquadro pieghevole. Se si arriva da
@@ -155,14 +199,14 @@ export default function PlannerClient({
   // deve prima aprire il mese che la contiene, altrimenti la riga bersaglio
   // non esiste ancora nel DOM (mese collassato) e lo scroll fallirebbe in
   // silenzio.
-  const monthGroups = useMemo(() => groupWeeksByMonth(planner.weeks), [planner.weeks]);
+  const monthGroups = useMemo(() => groupWeeksByMonth(weeks), [weeks]);
   const [expandedMonths, setExpandedMonths] = useState<Set<string>>(() => {
-    const target = planner.weeks.find((w) => w.index === priorityIndex) ?? planner.weeks.find((w) => !w.covered && !w.dismissed);
+    const target = weeks.find((w) => w.index === priorityIndex) ?? weeks.find((w) => !w.covered && !w.dismissed);
     const key = target?.startDate.slice(0, 7);
     return new Set(key ? [key] : []);
   });
   function monthKeyForWeek(index: number): string | undefined {
-    return planner.weeks.find((w) => w.index === index)?.startDate.slice(0, 7);
+    return weeks.find((w) => w.index === index)?.startDate.slice(0, 7);
   }
   function jumpToWeek(index: number) {
     const monthKey = monthKeyForWeek(index);
@@ -221,13 +265,13 @@ export default function PlannerClient({
     return map;
   }, [overlaps]);
 
-  const neededCount = planner.weeks.filter((w) => !w.dismissed).length;
+  const neededCount = weeks.filter((w) => !w.dismissed).length;
   // BUGFIX (segnalato da Fabrizio: "5 di 4 settimane coperte") —
   // planner.coveredCount conta anche settimane coperte ma "non ti servono"
   // (dismissed), quindi il rapporto poteva superare il 100%.
   // coveredNeededCount esclude le dismissed anche al numeratore.
   const progressPercent = neededCount > 0 ? Math.round((planner.coveredNeededCount / neededCount) * 100) : 0;
-  const priorityWeek = planner.weeks.find((w) => w.index === priorityIndex) ?? null;
+  const priorityWeek = weeks.find((w) => w.index === priorityIndex) ?? null;
 
   return (
     <div className="flex min-h-screen flex-col">
@@ -417,7 +461,7 @@ export default function PlannerClient({
                     </button>
                     {isExpanded && (
                       <div className="mt-2 flex flex-wrap gap-1.5 rounded-xl bg-bg p-2.5">
-                        {planner.weeks
+                        {weeks
                           .filter((w) => !w.dismissed)
                           .map((w) => {
                             const covered = w.coveredKids.some((c) => c.kidId === k.kidId);
@@ -458,12 +502,12 @@ export default function PlannerClient({
                 già calcolato da jumpToWeek). */}
             {highlightedWeekIndex !== null && (
               <span className="text-[11px] font-semibold text-trama-violet">
-                Settimana {highlightedWeekIndex} · {planner.weeks.find((w) => w.index === highlightedWeekIndex)?.dateRange}
+                Settimana {highlightedWeekIndex} · {weeks.find((w) => w.index === highlightedWeekIndex)?.dateRange}
               </span>
             )}
           </div>
           <div className="flex items-end gap-1">
-            {planner.weeks.map((w) => {
+            {weeks.map((w) => {
               const hasOverlap = overlapsByWeekIndex.has(w.index);
               const status = computeWeekStatus(
                 { ...w, isPast: w.endDate < todayIso },
@@ -521,7 +565,7 @@ export default function PlannerClient({
           {calendarExpanded && (
             <div className="mt-3">
               <PlannerCalendarView
-                weeks={planner.weeks}
+                weeks={weeks}
                 kids={kids}
                 overlaps={overlaps}
                 responsibilities={responsibilities}
@@ -576,7 +620,7 @@ export default function PlannerClient({
             settimana (nessuna nuova query). */}
         <div className="mb-4">
           <div className="mb-2.5 font-poppins text-sm font-bold text-ink">
-            Timeline della stagione{planner.weeks[0] && ` — Estiva ${planner.weeks[0].startDate.slice(0, 4)}`}
+            Timeline della stagione{weeks[0] && ` — Estiva ${weeks[0].startDate.slice(0, 4)}`}
           </div>
           <div className="flex flex-col gap-2">
             {monthGroups.map((group) => {
@@ -794,6 +838,42 @@ export default function PlannerClient({
                             }`}
                           >
                             {rowContent}
+                            {/* Wiring "Non ti serve"/"Ripristina" (26/08/2026,
+                                Fabrizio: l'azione esisteva solo lato LEGACY,
+                                components/PlannerView.tsx — stessa azione
+                                server toggleWeekDismissedAction, stesso campo
+                                dati profiles.dismissed_weeks, mai raggiungibile
+                                da qui prima d'ora). Stessa regola di
+                                PlannerView: il toggle si mostra solo per
+                                settimane NON coperte (una settimana coperta
+                                mostra sempre lo stato reale della
+                                prenotazione, mai un dismiss — qui non
+                                arriverebbe comunque, quella coperta+bookingId
+                                usa il ramo Link sopra) e mai per una settimana
+                                già passata (isPastUncovered), che non è più
+                                azionabile in nessun verso. */}
+                            {w.dismissed ? (
+                              <button
+                                type="button"
+                                onClick={() => toggleDismissed(w)}
+                                disabled={savingWeek === w.startDate}
+                                className="flex-shrink-0 text-[11px] font-semibold text-sky disabled:opacity-60"
+                              >
+                                Ripristina
+                              </button>
+                            ) : (
+                              !w.covered &&
+                              !isPastUncovered && (
+                                <button
+                                  type="button"
+                                  onClick={() => toggleDismissed(w)}
+                                  disabled={savingWeek === w.startDate}
+                                  className="flex-shrink-0 text-[11px] font-medium text-ink-3 underline disabled:opacity-60"
+                                >
+                                  Non mi serve
+                                </button>
+                              )
+                            )}
                             {/* BUG CORRETTO 06/08/2026 (segnalato da
                                 Fabrizio: "se clicco una settimana 'riempi'
                                 poi nella sezione 'scopri' deve essere già
