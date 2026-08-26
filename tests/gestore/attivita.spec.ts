@@ -31,7 +31,13 @@ test.describe("Gestore - Attivita", () => {
     await page.getByRole("button", { name: "Crea attività" }).click();
 
     await expect(page).toHaveURL(/\/center\/activities\/.+/, { timeout: 15_000 });
-    await expect(page.getByText(name)).toBeVisible();
+    // Locator semantico sull'heading reale della pagina (ActivityEditForm.tsx:260,
+    // <h1>{activity.name}</h1>) invece di getByText(name): quest'ultimo dal 26/08
+    // (Next.js 16.3.3) matcha in strict mode anche il route-announcer di
+    // accessibilità di Next (#__next-route-announcer__), che ora riporta lo
+    // stesso testo. Nessun cambio di comportamento applicativo: il redirect e
+    // la creazione avvenivano già correttamente (vedi assert sopra).
+    await expect(page.getByRole("heading", { name, exact: true })).toBeVisible();
   });
   // TC-075 - Modifica attivita
   // Include anche la verifica di due fix di coerenza UI recenti:
