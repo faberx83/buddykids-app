@@ -112,13 +112,25 @@ export default function HomeDashboardClient({
     [bookings]
   );
 
-  const neededCount = planner.weeks.filter((w) => !w.dismissed).length;
+  // FIX 26/08/2026 (segnalato da Fabrizio: "la logica di visibilità che
+  // abbiamo messo per le settimane, anche il messaggio deve essere
+  // coerente") — stesso principio già applicato a firstUncoveredWeekIndex
+  // (lib/data/planner.ts, 24/08/2026) e a CoverageStrip in
+  // app/(main)/prenotazioni/PrenotazioniClient.tsx (25/08/2026, commit
+  // e564285/6b24e49), ma MAI a questa Hero Card: una settimana scoperta ma
+  // ormai passata (endDate < oggi) non è più un "buco" da colmare, quindi va
+  // trattata come una dismissed ai fini di "quanto mi manca" — altrimenti
+  // "Organizzata al 7%" e "Mancano ancora: Settimana 1, Settimana 2..."
+  // restavano bloccati per sempre su settimane di giugno/luglio ormai
+  // concluse, invece di riflettere solo ciò che il genitore può ancora fare.
+  const isPastUncovered = (w: { covered: boolean; endDate: string }) => !w.covered && w.endDate < todayIso;
+  const neededCount = planner.weeks.filter((w) => !w.dismissed && !isPastUncovered(w)).length;
   // BUGFIX (stesso bug di PlannerClient.tsx: "5 di 4 settimane coperte") —
   // planner.coveredCount conta anche settimane coperte ma "non ti servono",
   // facendo superare il 100%: coveredNeededCount esclude le dismissed anche
   // al numeratore, mai > neededCount.
   const percent = neededCount > 0 ? Math.round((planner.coveredNeededCount / neededCount) * 100) : 0;
-  const gaps = planner.weeks.filter((w) => !w.covered && !w.dismissed);
+  const gaps = planner.weeks.filter((w) => !w.covered && !w.dismissed && !isPastUncovered(w));
   const statusEmoji = percent >= 80 ? "🟢" : percent >= 40 ? "🟡" : "🟠";
 
   const missingWeeksText = useMemo(() => {
