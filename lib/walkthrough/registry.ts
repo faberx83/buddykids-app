@@ -245,6 +245,33 @@ export const WALKTHROUGH_REGISTRY: Record<string, WalkthroughDefinition> = {
       },
     ],
   },
+  // TRAMA — Parent Private Beta Onboarding Carousel (implementazione finale,
+  // fonte visiva: trama-onboarding-private-beta-final.pptx). Percorso a UNO
+  // step sentinella (non 5): il carousel è un'esperienza autonoma auto-
+  // contenuta (illustrazioni/dati fittizi Sofia/Luca), non una sequenza di
+  // target reali da evidenziare pagina per pagina come discover_book_parent
+  // — quindi non usa nessuno dei campi spotlight* del motore Spotlight, e
+  // avanzamento/persistenza delle 5 slide vivono SOLO nello stato client di
+  // components/nextgen/OnboardingCarousel.tsx (mai in tutorial_progress,
+  // che tiene traccia solo del risultato finale: completato o saltato).
+  // Riusa 100% l'infrastruttura esistente (stessa tabella public.
+  // tutorial_progress, stesse Server Action completeWalkthroughStepAction/
+  // skipWalkthroughStepAction di app/actions/walkthrough.ts) — ZERO nuova
+  // migration: un solo step "completato"/"saltato" basta a rappresentare
+  // "il genitore ha già visto (o rifiutato) il benvenuto", che è tutto ciò
+  // che serve per decidere se mostrare il carousel alla prossima visita
+  // (WalkthroughProgressSummary.currentStepKey === null → non mostrarlo più).
+  parent_beta_onboarding: {
+    key: "parent_beta_onboarding",
+    title: "Benvenuto in TRAMA (Private Beta)",
+    steps: [
+      {
+        key: "carousel",
+        title: "Onboarding Private Beta genitori",
+        description: "Le 5 schermate di benvenuto mostrate alla prima esperienza Parent.",
+      },
+    ],
+  },
 };
 
 export function isKnownTutorial(tutorialKey: string): boolean {

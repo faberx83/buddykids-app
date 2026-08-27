@@ -13,6 +13,7 @@ import { resolveFeatureFlag } from "@/lib/feature-flags/resolve";
 import { generateCorrelationId } from "@/lib/telemetry/correlation";
 import { getWalkthroughProgress, WalkthroughProgressSummary } from "@/lib/walkthrough/data";
 import ParentSpotlight from "@/components/spotlight/ParentSpotlight";
+import OnboardingCarousel from "@/components/nextgen/OnboardingCarousel";
 
 // SPRINT 0 (NEXTGEN — V2 in parallelo a LEGACY): guscio minimo dell'area
 // genitore NEXTGEN. Stesso guard di autenticazione di app/(main)/layout.tsx
@@ -64,6 +65,14 @@ export default async function NextgenLayout({ children }: { children: React.Reac
   // ParentSpotlight non renderizza nulla. Nessun impatto sul resto di questo
   // layout (auth guard invariato, DEC-02).
   let spotlightProgress: WalkthroughProgressSummary | null = null;
+  // TRAMA — Parent Private Beta Onboarding Carousel: stesso gate additivo
+  // TRAMA_ONE_ENABLED/Controlled Beta Cohort già usato per lo Spotlight (§17
+  // del task: "se l'onboarding può essere scoped naturalmente al cohort
+  // Private Beta esistente, riusa l'infrastruttura" — nessun nuovo flag).
+  // Gate ESPLICITO anche su realRole === "parent" (oltre al fatto che questo
+  // intero layout serve solo /nextgen, l'area Parent): doppia sicurezza a
+  // costo zero contro un ipotetico account Partner/Admin che navighi qui.
+  let onboardingProgress: WalkthroughProgressSummary | null = null;
 
   if (isSupabaseConfigured) {
     const supabase = await createClient();
@@ -86,7 +95,16 @@ export default async function NextgenLayout({ children }: { children: React.Reac
       tenant: "family",
       correlationId: generateCorrelationId(),
     });
-    if (enabled) {
+    if (enabled && realRole === "parent") {
+      onboardingProgress = await getWalkthroughProgress(user.id, "parent_beta_onboarding");
+      // Sequenza richiesta: il carousel di benvenuto precede il tour
+      // Spotlight in-context — non recuperare/montare quest'ultimo finché il
+      // carousel non risulta completato o saltato (currentStepKey null),
+      // per non sovrapporre due overlay nella stessissima prima sessione.
+      if (!onboardingProgress || onboardingProgress.currentStepKey === null) {
+        spotlightProgress = await getWalkthroughProgress(user.id, "discover_book_parent");
+      }
+    } else if (enabled) {
       spotlightProgress = await getWalkthroughProgress(user.id, "discover_book_parent");
     }
   }
@@ -104,6 +122,7 @@ export default async function NextgenLayout({ children }: { children: React.Reac
             BetaFeedbackButton.tsx). */}
         <BetaFeedbackButton />
         <ParentSpotlight progress={spotlightProgress} />
+        <OnboardingCarousel progress={onboardingProgress} />
       </NextgenToastProvider>
       {/* Istanza DEDICATA a NEXTGEN: appName diverso ("TRAMA" vs quello di
           LEGACY, vedi lib/tenant.ts) -> chiave di dismiss separata in
