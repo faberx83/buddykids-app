@@ -50,6 +50,24 @@ export interface BetaInvitePreview {
   publicLabel: string | null;
 }
 
+// BUGFIX (Fabrizio, 27/08: il bottone "Copia link invito" su un codice già
+// esistente apriva /admin invece del tenant famiglia) — root cause: il link
+// veniva ricostruito lato CLIENT in BetaInvitesAdminClient.tsx con una
+// regex "sostituisci il prefisso admin." che assume un sottodominio
+// (admin.dominio.it), mentre questo deploy usa alias .vercel.app dedicati
+// (buddykids-admin.vercel.app — "admin" è un prefisso del nome host, non un
+// sottodominio), quindi la regex non toglieva nulla. Il link mostrato SUBITO
+// DOPO LA CREAZIONE era invece corretto, perché già calcolato qui lato
+// server con buildFamilyOrigin()/familyHost() (stessa funzione, stesso
+// principio già corretto per gli inviti-sconto centro, vedi commento su
+// familyHost() in lib/tenant.ts). Questa action espone la STESSA identica
+// risoluzione anche per "Copia link" su una riga già esistente, così non
+// esiste più una seconda logica (duplicata e sbagliata) lato client.
+export async function getBetaInviteLinkAction(code: string): Promise<string> {
+  const origin = await buildFamilyOrigin();
+  return `${origin}/auth/login?beta=${code}`;
+}
+
 // Chiamabile da un Client Component non autenticato (LoginForm) — mostra
 // una piccola conferma "codice riconosciuto" quando si arriva da un link
 // ?beta=CODICE, prima ancora di registrarsi.

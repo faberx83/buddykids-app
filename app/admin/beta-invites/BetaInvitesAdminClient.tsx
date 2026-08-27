@@ -7,6 +7,7 @@ import {
   createBetaInviteCodeAction,
   updateBetaInviteCodeAction,
   deleteBetaInviteCodeAction,
+  getBetaInviteLinkAction,
 } from "@/app/actions/beta-invites";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
 
@@ -124,8 +125,13 @@ export default function BetaInvitesAdminClient({ initialCodes }: { initialCodes:
     setCodes((prev) => prev.filter((c) => c.id !== id));
   }
 
-  function copyLink(row: BetaInviteCodeRow) {
-    const link = `${window.location.protocol}//${window.location.host.replace(/^admin\./, "")}/auth/login?beta=${row.code}`;
+  // BUGFIX (Fabrizio, 27/08): non più ricostruito lato client (regex errata
+  // per gli alias .vercel.app di questo deploy, apriva /admin invece del
+  // tenant famiglia) — la risoluzione dell'host giusto passa SEMPRE da
+  // getBetaInviteLinkAction() (server), stessa funzione usata alla
+  // creazione del codice.
+  async function copyLink(row: BetaInviteCodeRow) {
+    const link = await getBetaInviteLinkAction(row.code);
     navigator.clipboard?.writeText(link);
     setCopiedId(row.id);
     setTimeout(() => setCopiedId((id) => (id === row.id ? null : id)), 2000);
