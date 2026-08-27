@@ -1,8 +1,10 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { readVersionPreference, writeVersionPreference, AppVersion } from "@/lib/version-preference";
+import { createClient } from "@/lib/supabase/client";
+import { isVersionToggleTestAccount } from "@/lib/dev/test-accounts";
 
 // Richiesta di Fabrizio: un toggle per passare da LEGACY a NEXTGEN "coerente
 // su tutta l'app", più semplice da gestire rispetto ad avere solo pagine/app
@@ -64,14 +66,36 @@ function isStandaloneDisplay(): boolean {
 // ridondante sia in conflitto visivo su viewport stretti — aggiunto qui.
 const HIDDEN_PREFIXES = ["/center", "/admin", "/nextgen/center", "/nextgen/admin", "/auth", "/share", "/activity", "/one"];
 
+// Richiesta di Fabrizio (27/08): il toggle non deve più essere visibile per
+// utenti esterni/beta tester — resta attivo SOLO per le sue utenze di test
+// personali (vedi lib/dev/test-accounts.ts). `allowed` parte `false` e viene
+// confermato in modo asincrono (nessun flash del pulsante per utenti non
+// autorizzati durante il breve istante prima che arrivi la risposta di
+// auth.getUser()). Anche il redirect automatico su preferenza salvata
+// (cookie bk_version) è condizionato allo stesso controllo, per non lasciare
+// un comportamento residuo su account che avevano già impostato una
+// preferenza prima di questa restrizione.
 export default function VersionToggle() {
   const pathname = usePathname() ?? "/";
   const router = useRouter();
   const hidden = HIDDEN_PREFIXES.some((p) => pathname.startsWith(p));
   const currentVersion: AppVersion = pathname.startsWith("/nextgen") ? "nextgen" : "legacy";
+  const [allowed, setAllowed] = useState(false);
 
   useEffect(() => {
     if (hidden) return;
+    let cancelled = false;
+    const supabase = createClient();
+    supabase.auth.getUser().then(({ data }) => {
+      if (!cancelled) setAllowed(isVersionToggleTestAccount(data.user?.email));
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [hidden]);
+
+  useEffect(() => {
+    if (hidden || !allowed) return;
     if (pathname !== "/" && pathname !== "/nextgen") return; // solo le due home, mai su pagine interne
     if (isStandaloneDisplay()) return; // icona installata: identità fissa, mai reindirizzata
 
@@ -79,9 +103,9 @@ export default function VersionToggle() {
     if (preferred && preferred !== currentVersion) {
       router.replace(preferred === "nextgen" ? "/nextgen" : "/");
     }
-  }, [pathname, hidden, currentVersion, router]);
+  }, [pathname, hidden, allowed, currentVersion, router]);
 
-  if (hidden) return null;
+  if (hidden || !allowed) return null;
 
   const target: AppVersion = currentVersion === "nextgen" ? "legacy" : "nextgen";
 
