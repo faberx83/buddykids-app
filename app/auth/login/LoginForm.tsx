@@ -323,17 +323,22 @@ export default function LoginForm({
               </div>
             )}
 
+            {/* BUGFIX (Fabrizio, 27/08): etichetta resa esplicita ("...centro")
+                da quando esiste anche l'invito Beta (?beta=CODICE, badge sopra,
+                MAI in questo campo) — "Codice invito" da solo era ambiguo tra i
+                due sistemi, non collegati tra loro. Questo campo resta invariato
+                nella logica (invite_code / sconto centro), cambia solo il testo. */}
             {mode === "signup" && (
               <>
                 <label htmlFor="login-invite-code" className={labelClass}>
-                  Codice invito (opzionale)
+                  Codice invito centro — sconto (opzionale)
                 </label>
                 <input
                   id="login-invite-code"
                   value={inviteCode}
                   onChange={(e) => setInviteCode(e.target.value.toUpperCase())}
                   className={inputClass}
-                  placeholder="Codice invito (opzionale)"
+                  placeholder="Codice invito centro — sconto (opzionale)"
                 />
               </>
             )}

@@ -56,7 +56,10 @@ test.describe("TRAMA - Login (header animato)", () => {
 
     await page.getByRole("button", { name: "Non hai un account? Registrati" }).click();
     await expect(page.getByRole("img", { name: "TRAMA" })).toBeVisible();
-    await expect(page.getByText("Codice invito (opzionale)")).toBeVisible();
+    // BUGFIX (27/08): etichetta resa esplicita ("...centro — sconto") da
+    // quando esiste anche l'invito Beta (?beta=CODICE, campo separato/badge,
+    // non questo) — vedi commento in LoginForm.tsx sullo stesso campo.
+    await expect(page.getByText("Codice invito centro — sconto (opzionale)")).toBeVisible();
     await expect(page.getByRole("button", { name: "Registrati" })).toBeVisible();
   });
 
