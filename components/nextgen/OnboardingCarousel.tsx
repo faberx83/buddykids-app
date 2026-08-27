@@ -380,10 +380,19 @@ function RequestVisual() {
   return (
     <div className="rounded-2xl bg-white p-4">
       {/* Flow: colonna su mobile (richiesto: "impila le risposte e
-          semplifica il flow"), riga su sm+. */}
+          semplifica il flow"), riga su sm+. BUGFIX (Fabrizio, segnalato da
+          screenshot reale su Android: "sembra tagliato") — su mobile la
+          freccia di collegamento tra i passaggi era `hidden` e basta,
+          rimossa senza alcun sostituto: i 6 passaggi apparivano come un
+          elenco slegato invece che come un flusso leggibile dall'alto in
+          basso. Ogni passaggio ora è a sua volta flex-col su mobile (pila
+          verticale: pillola poi freccia-giù, prima del passaggio
+          successivo) e flex-row su sm+ (pillola poi freccia-destra inline),
+          cosi il collegamento visivo resta sempre presente, solo con
+          orientamento diverso in base al layout. */}
       <div className="flex flex-col gap-1.5 sm:flex-row sm:flex-wrap sm:items-center sm:gap-1.5">
         {ONBOARDING_REQUEST_FLOW.map((step, i) => (
-          <div key={step} className="flex items-center gap-1.5">
+          <div key={step} className="flex flex-col items-start gap-1.5 sm:flex-row sm:items-center">
             <span
               className={`whitespace-nowrap rounded-full px-2.5 py-1 text-[11px] font-semibold ${
                 step === "In attesa" ? "bg-trama-orange/15 text-trama-orange" : "bg-trama-card text-ink-2"
@@ -392,7 +401,10 @@ function RequestVisual() {
               {step}
             </span>
             {i < ONBOARDING_REQUEST_FLOW.length - 1 && (
-              <i className="ti ti-arrow-narrow-right hidden text-[14px] text-ink-3 sm:inline" aria-hidden="true" />
+              <>
+                <i className="ti ti-arrow-narrow-down block pl-3 text-[14px] text-ink-3 sm:hidden" aria-hidden="true" />
+                <i className="ti ti-arrow-narrow-right hidden text-[14px] text-ink-3 sm:inline" aria-hidden="true" />
+              </>
             )}
           </div>
         ))}
