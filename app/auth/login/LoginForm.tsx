@@ -9,6 +9,7 @@ import PhoneShell from "@/components/PhoneShell";
 import TramaLoginHeader from "@/components/TramaLoginHeader";
 import { friendlyAuthError } from "@/lib/auth-errors";
 import { getInvitePreviewAction } from "@/app/actions/invites";
+import { getBetaInvitePreviewAction, BetaInvitePreview } from "@/app/actions/beta-invites";
 import { recordSignupLegalAcceptanceAction } from "@/app/actions/legal";
 import type { InvitePreview } from "@/lib/data/invites";
 import type { Tenant } from "@/lib/tenant";
@@ -55,12 +56,20 @@ export default function LoginForm({
   // sostituito da un link a /auth/candidati) — quindi in pratica solo un
   // candidato già approvato arriva in modalità signup sul portale Partner.
   const modeParam = searchParams.get("mode");
-  const [mode, setMode] = useState<Mode>(inviteParam || modeParam === "signup" ? "signup" : "login");
+  // Codice invito Beta di Fabrizio (link ?beta=CODICE condiviso manualmente,
+  // es. WhatsApp — vedi app/actions/beta-invites.ts). Stesso principio del
+  // codice invito-sconto sopra: catturato SOLO dall'URL, mai un campo che
+  // l'utente compila a mano (a differenza del codice invito centro, che ha
+  // anche un input testuale) — il genitore non deve mai vedere/gestire
+  // manualmente questo codice, arriva già "dentro" il link personale.
+  const betaParam = searchParams.get("beta");
+  const [mode, setMode] = useState<Mode>(inviteParam || betaParam || modeParam === "signup" ? "signup" : "login");
   const [email, setEmail] = useState(searchParams.get("email") || "");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [inviteCode, setInviteCode] = useState(inviteParam || "");
   const [invitePreview, setInvitePreview] = useState<InvitePreview | null>(null);
+  const [betaInvitePreview, setBetaInvitePreview] = useState<BetaInvitePreview | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
@@ -78,6 +87,11 @@ export default function LoginForm({
     if (!inviteParam || !isSupabaseConfigured) return;
     getInvitePreviewAction(inviteParam).then(setInvitePreview);
   }, [inviteParam]);
+
+  useEffect(() => {
+    if (!betaParam || !isSupabaseConfigured) return;
+    getBetaInvitePreviewAction(betaParam).then(setBetaInvitePreview);
+  }, [betaParam]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -128,15 +142,23 @@ export default function LoginForm({
       const callbackUrl = next
         ? `${window.location.origin}/auth/callback?next=${encodeURIComponent(next)}`
         : `${window.location.origin}/auth/callback`;
+      const metadata: Record<string, string> = {};
+      // Letto dal trigger handle_new_user() lato DB: se il codice esiste,
+      // attivo e non scaduto, collega automaticamente lo sconto invito al
+      // nuovo profilo (vedi supabase/schema.sql).
+      if (inviteCode.trim()) metadata.invite_code = inviteCode.trim();
+      // Letto dallo STESSO trigger (ramo aggiunto da migration_30_beta_
+      // invite_codes.sql): se il codice esiste, è attivo, non scaduto e non
+      // esaurito, iscrive automaticamente il nuovo profilo alla Controlled
+      // Beta Cohort — mai un valore digitato dall'utente, solo dall'URL.
+      if (betaParam?.trim()) metadata.beta_invite_code = betaParam.trim();
+
       const { data, error } = await supabase.auth.signUp({
         email,
         password,
         options: {
           emailRedirectTo: callbackUrl,
-          // Letto dal trigger handle_new_user() lato DB: se il codice esiste,
-          // attivo e non scaduto, collega automaticamente lo sconto invito
-          // al nuovo profilo (vedi supabase/schema.sql).
-          data: inviteCode.trim() ? { invite_code: inviteCode.trim() } : undefined,
+          data: Object.keys(metadata).length > 0 ? metadata : undefined,
         },
       });
       if (error) {
@@ -283,6 +305,21 @@ export default function LoginForm({
                 {invitePreview.valid
                   ? `🎁 ${invitePreview.centerName} ti offre uno sconto del ${invitePreview.discountPercent}% sulla tua prima prenotazione — verrà applicato automaticamente registrandoti con questo codice.`
                   : "Questo codice invito non è (più) valido — puoi comunque registrarti normalmente."}
+              </div>
+            )}
+
+            {/* Invito Beta di Fabrizio (?beta=CODICE) — nessun input testuale:
+                il genitore non deve mai vedere/digitare il codice, solo sapere
+                che il link che ha ricevuto è stato riconosciuto. */}
+            {mode === "signup" && betaParam && betaInvitePreview && (
+              <div
+                className={`mb-4 rounded-lg px-3.5 py-3 text-xs font-medium ${
+                  betaInvitePreview.valid ? "bg-trama-lilac/25 text-trama-violet" : "bg-orange-light text-trama-orange"
+                }`}
+              >
+                {betaInvitePreview.valid
+                  ? "✨ Invito riconosciuto — registrandoti avrai subito accesso alla Beta privata di TRAMA."
+                  : "Questo link di invito non è (più) valido — puoi comunque registrarti normalmente."}
               </div>
             )}
 

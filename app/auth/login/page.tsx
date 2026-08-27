@@ -1,8 +1,46 @@
+import type { Metadata } from "next";
 import { headers } from "next/headers";
 import LoginForm from "./LoginForm";
 import { tenantForHost, TENANT_CONFIG } from "@/lib/tenant";
 import { resolveFeatureFlag } from "@/lib/feature-flags/resolve";
 import { resolvePublishedDocumentForPublicRoute } from "@/lib/legal/gate";
+
+// Anteprima social (WhatsApp/etc.) per i link di invito Beta (?beta=CODICE,
+// condivisi manualmente da Fabrizio — vedi app/actions/beta-invites.ts).
+// Richiesta esplicita: la preview deve comunicare "TRAMA — Private Beta",
+// MAI il valore del codice/token (né in title/description né nell'immagine
+// — trama-private-beta.png è un asset STATICO, identico per ogni codice,
+// generato una sola volta con next/og a partire dal logo ufficiale, non
+// contiene alcun dato variabile). Condizionato SOLO alla presenza del
+// parametro `beta`: un link di login normale, o un invito-sconto centro
+// (?invite=CODICE), restano SENZA metadata Open Graph dedicati come oggi —
+// nessun impatto su quei flussi.
+export async function generateMetadata({
+  searchParams,
+}: {
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
+}): Promise<Metadata> {
+  const params = await searchParams;
+  if (!params.beta) return {};
+
+  const title = "TRAMA — Private Beta";
+  const description = "Organizza attività, settimane e impegni dei tuoi figli in un unico posto.";
+  return {
+    title,
+    description,
+    openGraph: {
+      title,
+      description,
+      images: [{ url: "/og/trama-private-beta.png", width: 1200, height: 630 }],
+    },
+    twitter: {
+      card: "summary_large_image",
+      title,
+      description,
+      images: ["/og/trama-private-beta.png"],
+    },
+  };
+}
 
 export default async function LoginPage() {
   const headerList = await headers();

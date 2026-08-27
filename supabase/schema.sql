@@ -1150,6 +1150,16 @@ grant execute on function public.get_invite_preview(text) to anon, authenticated
 -- salva sul profilo E collega automaticamente l'invito (se esiste, è attivo
 -- e non scaduto) segnandolo "registered" — lo sconto sarà applicabile alla
 -- prima prenotazione senza nessuna azione manuale del genitore o del gestore.
+--
+-- ATTENZIONE — SUPERSEDED: se supabase/migration_30_beta_invite_codes.sql è
+-- stata applicata all'ambiente target, la definizione VIVENTE di
+-- handle_new_user() è quella dentro quel file (aggiunge un terzo ramo per
+-- l'auto-iscrizione alla Beta Cohort via ?beta=CODICE), NON questa qui
+-- sotto. Stessa scelta già fatta per beta_cohort_memberships (migration_08,
+-- mai ripiegata in questo file): questo schema.sql resta la fotografia
+-- "bootstrap da zero" e non viene riscritto ad ogni migrazione successiva
+-- che tocca una funzione già qui presente — vedi la migrazione citata per la
+-- versione corretta e il perché.
 create or replace function public.handle_new_user()
 returns trigger as $$
 declare

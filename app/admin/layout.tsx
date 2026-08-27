@@ -31,6 +31,9 @@ const baseNavItems = [
   // iscritto): stessa lista flat, nessuna sotto-voce.
   { href: "/admin/center-leads", label: "Segnalazioni centri", icon: "ti-map-pin-plus" },
   { href: "/admin/feature-flags", label: "Feature flag", icon: "ti-flag-3" },
+  // Codici invito Beta (migration_30_beta_invite_codes.sql, 27/08/2026) —
+  // auto-iscrizione alla Controlled Beta Cohort via link ?beta=CODICE.
+  { href: "/admin/beta-invites", label: "Inviti Beta", icon: "ti-user-plus" },
   // PRE-MICRO-PILOT CLOSURE GATE (task #574, 25/08/2026) — vista view-only
   // su legal_documents (Termini/Privacy Notice), non un CMS.
   { href: "/admin/legal", label: "Documenti legali", icon: "ti-file-shield" },
