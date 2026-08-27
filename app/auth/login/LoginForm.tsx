@@ -166,6 +166,21 @@ export default function LoginForm({
         return setError(friendlyAuthError(error.message));
       }
 
+      // BUGFIX (Fabrizio, 27/08: "ho fatto un nuovo account ma non mi arriva
+      // la mail" — email già registrata in precedenza, Supabase Auth non
+      // manda una nuova mail di conferma ma NON restituisce nemmeno un
+      // errore, per policy anti-enumerazione (non deve rivelare a chi prova
+      // ad iscriversi se una email è già in uso). L'unico segnale
+      // disponibile lato client è che data.user.identities torna un array
+      // VUOTO per un'email già esistente e già confermata (per una email
+      // davvero nuova contiene sempre almeno un elemento) — pattern noto e
+      // documentato per Supabase Auth, nessuna query aggiuntiva necessaria.
+      if (data.user && data.user.identities && data.user.identities.length === 0) {
+        setLoading(false);
+        setError("Esiste già un account con questa email. Prova ad accedere, oppure usa \"Password dimenticata?\" se non la ricordi.");
+        return;
+      }
+
       // Scrittura server-side dell'accettazione Termini (+ marketing se
       // spuntato), keyed sullo userId restituito DIRETTAMENTE da Supabase
       // Auth (mai un valore fornito da input utente) — vedi
