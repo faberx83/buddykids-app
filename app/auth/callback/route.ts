@@ -3,12 +3,13 @@ import { createClient } from "@/lib/supabase/server";
 import { resolveFeatureFlag } from "@/lib/feature-flags/resolve";
 import { hasAcceptedCurrentDocument, acceptCurrentLegalDocument } from "@/lib/legal/gate";
 import { requiresLegalAcceptanceBeforeAccess } from "@/lib/legal/consent";
+import { resolveDefaultLandingPath } from "@/lib/auth/default-landing";
 
 // Handles the redirect from Supabase email confirmation / magic links / OAuth.
 export async function GET(request: Request) {
   const { searchParams, origin } = new URL(request.url);
   const code = searchParams.get("code");
-  const next = searchParams.get("next") ?? "/";
+  const explicitNext = searchParams.get("next");
 
   if (code) {
     const supabase = await createClient();
@@ -50,6 +51,22 @@ export async function GET(request: Request) {
           }
         }
       }
+
+      // BUGFIX (Fabrizio, 30/08, con screenshot: "come mai ho degli screen
+      // da parte di Maria che mi sembra sia entrata nella versione legacy?")
+      // — vedi commento completo su resolveDefaultLandingPath(). Se non è
+      // stata richiesta esplicitamente un'altra destinazione (next), un
+      // membro della Controlled Beta Cohort (es. iscritto tramite
+      // ?beta=CODICE) atterra su /nextgen invece che sulla Legacy Home di
+      // default: prima di questo fix ci atterrava comunque, senza alcun
+      // modo per raggiungere NextGen (VersionToggle.tsx è visibile solo
+      // per le utenze di test di Fabrizio dal 27/08).
+      const next =
+        explicitNext && explicitNext.startsWith("/")
+          ? explicitNext
+          : userId
+            ? await resolveDefaultLandingPath(supabase, userId)
+            : "/";
 
       return NextResponse.redirect(`${origin}${next}`);
     }

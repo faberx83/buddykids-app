@@ -10,6 +10,7 @@ import TramaLoginHeader from "@/components/TramaLoginHeader";
 import { friendlyAuthError } from "@/lib/auth-errors";
 import { getInvitePreviewAction } from "@/app/actions/invites";
 import { getBetaInvitePreviewAction, BetaInvitePreview } from "@/app/actions/beta-invites";
+import { getPostLoginDestinationAction } from "@/app/actions/navigation";
 import { recordSignupLegalAcceptanceAction } from "@/app/actions/legal";
 import type { InvitePreview } from "@/lib/data/invites";
 import type { Tenant } from "@/lib/tenant";
@@ -119,10 +120,19 @@ export default function LoginForm({
     }
 
     if (mode === "login") {
-      const { error } = await supabase.auth.signInWithPassword({ email, password });
+      const { data, error } = await supabase.auth.signInWithPassword({ email, password });
       setLoading(false);
       if (error) return setError(friendlyAuthError(error.message));
-      router.push(next || "/");
+      // BUGFIX (Fabrizio, 30/08: "Maria sembra sia entrata nella versione
+      // legacy") — senza una destinazione esplicita (?next=...), un GENITORE
+      // membro della Controlled Beta Cohort deve atterrare su NextGen, non
+      // sulla Legacy Home: vedi lib/auth/default-landing.ts per il perché
+      // (VersionToggle.tsx non è più un modo disponibile per un beta tester
+      // esterno di raggiungerci da solo). Solo tenant "family": Partner/Admin
+      // non hanno un equivalente NextGen, nessuna chiamata in più per loro.
+      const destination =
+        next || (tenant === "family" && data.user?.id ? await getPostLoginDestinationAction(data.user.id) : null) || "/";
+      router.push(destination);
       router.refresh();
     } else {
       // PRE-MICRO-PILOT CLOSURE GATE (task #568) — fail-closed: con il gate
