@@ -73,10 +73,38 @@ export const PILOT_ACTION_LABEL: Record<"kid" | "booking" | "group", string> = {
   group: "Gruppo creato/aderito",
 };
 
+// PRE-DEPLOY SECURITY CHECK (31/08/2026) — la protezione ereditata da
+// AdminLayout/DashboardLayout è SOLO client-side (DashboardLayout è "use
+// client": decide se mostrare AccessGate o {children} nel browser). Ma
+// questa pagina è un Server Component passato come {children} a un
+// componente client — in Next.js App Router quell'albero server viene
+// comunque RESO ed EMESSO NEL PAYLOAD RSC prima che il client decida se
+// mostrarlo, quindi un Parent/Partner autenticato che apre /admin/one/pilot
+// riceverebbe comunque nel payload di rete i dati del pilota (email,
+// ultimo accesso...), anche se la UI visibile mostra "Accesso non
+// autorizzato" — il gate visivo da solo non basta. Per questo
+// l'autorizzazione vive QUI, nel data access layer, non solo nel layout:
+// nessuna query (nemmeno quella col client di sessione ordinario) parte
+// prima di aver verificato server-side che l'utente corrente sia
+// autenticato E realmente platform_admin. Fail-closed silenzioso (nessun
+// utente/riga restituita), stesso principio "mai un errore bloccante" già
+// in uso altrove in questo file — chi chiama vede solo l'empty state, mai
+// uno stack trace.
+async function isCurrentUserPlatformAdmin(supabase: Awaited<ReturnType<typeof createClient>>): Promise<boolean> {
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return false; // 1) nessuna sessione autenticata
+
+  const { data: profile } = await supabase.from("profiles").select("role").eq("id", user.id).single();
+  return profile?.role === "platform_admin"; // 2) ruolo reale, verificato ora, non ereditato dalla UI
+}
+
 export async function getPilotUsers(): Promise<PilotUserRow[]> {
   if (!isSupabaseConfigured) return [];
 
   const supabase = await createClient();
+  if (!(await isCurrentUserPlatformAdmin(supabase))) return [];
 
   const { data: memberships } = await supabase
     .from("beta_cohort_memberships")

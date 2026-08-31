@@ -85,6 +85,28 @@ test.describe("Wave 1 - /admin/one/pilot", () => {
     await expect(page.getByText("Accesso non autorizzato")).toBeVisible();
   });
 
+  // PRE-DEPLOY SECURITY CHECK (31/08/2026) — PILOT-A02 sopra verifica solo il
+  // DOM dopo l'idratazione React (AccessGate sostituisce {children} nel
+  // client), ma DashboardLayout è "use client": {children} (questa pagina,
+  // un Server Component) viene comunque RESO ed emesso nel payload RSC prima
+  // che il client decida se mostrarlo — un genitore potrebbe ricevere email/
+  // dati del pilota nella risposta di rete anche se la UI visibile mostra
+  // "Accesso non autorizzato". Questo test legge la risposta HTTP grezza
+  // (page.request, stesso browsing context/cookie di sessione del login, MA
+  // senza eseguire JS) per verificare che l'email di un membro noto della
+  // cohort non compaia MAI in quel payload — la vera garanzia deve stare nel
+  // data layer (lib/data/pilot-users.ts#isCurrentUserPlatformAdmin), non nel
+  // solo gate visivo.
+  test("PILOT-A09 - un genitore non riceve MAI i dati pilota nella risposta di rete, anche se la UI mostra 'Accesso non autorizzato'", async ({
+    page,
+  }) => {
+    test.skip(!isRealDeployment, "Richiede un deploy con Supabase configurato e un account parent.");
+    await loginAs(page, "parent");
+    const response = await page.request.get("/admin/one/pilot");
+    const body = await response.text();
+    expect(body).not.toContain(KNOWN_PILOT_EMAIL);
+  });
+
   test("PILOT-A03/A04 - Un membro noto della Controlled Beta Cohort compare in elenco con la cohort corretta", async ({
     page,
   }) => {
