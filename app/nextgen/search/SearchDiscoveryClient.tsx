@@ -539,7 +539,10 @@ export default function SearchDiscoveryClient({
             della card invece che a .app-shell e viene tagliato. */}
         <NextgenBadge />
         <DecorativeIntroCard className="mb-3">
-          <p className="text-xs text-ink-2">
+          {/* Audit font (31/08/2026): stesso pattern di descrizione di
+              PlannerClient.tsx (screenshot di Fabrizio), portato da text-xs
+              a text-sm per coerenza — stessa card, stesso ruolo testuale. */}
+          <p className="text-sm text-ink-2">
             Ordinati per voi{uncoveredWeekLabel ? ` — priorità a chi è libero in ${uncoveredWeekLabel}` : ""}.
           </p>
         </DecorativeIntroCard>

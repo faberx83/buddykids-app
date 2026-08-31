@@ -40,7 +40,37 @@ export default function PageHeader({
       {showBrandIcon && (
         <img src="/brand/trama-logo-mark.png" alt="" aria-hidden="true" className="h-5 w-auto flex-shrink-0" />
       )}
-      <h3 className="text-base font-bold text-ink">{title}</h3>
+      {/* Audit font (31/08/2026, richiesta di Fabrizio: "titoli delle sezioni
+          più grandi", "sono certo che [i font] non siano gli stessi
+          ovunque"): confermato — i titoli "root" NEXTGEN (Home, Community,
+          vedi HomeDashboardClient.tsx/CommunityListClient.tsx) usano
+          <h1 className="font-poppins text-xl font-bold text-ink">, ma questo
+          componente (che renderizza il titolo di OGNI sotto-pagina NEXTGEN
+          con freccia indietro — "Planner", "Scopri attività", "Le mie
+          richieste", ecc.) era rimasto a Inter text-base (16px), MAI
+          Poppins: né lo stesso font né la stessa dimensione dei titoli
+          "fratelli". Fix SOLO quando showBrandIcon=true (il segnale già
+          stabilito in questo componente per "chi mi chiama è NEXTGEN
+          genitore", vedi commento sopra) — LEGACY (Preferiti, Prenotazioni
+          legacy, Modifica prenotazione, ecc.) e le pagine Account del
+          Gestore (che condividono questo stesso componente ma non passano
+          showBrandIcon) restano pixel-identiche a prima: nessuna regressione
+          fuori dallo scope NEXTGEN genitore. text-lg (18px) = estremo
+          inferiore del range Poppins 18-34px indicato nel brand kit
+          (docs/trama-one/design-input/onboarding/01-brand/
+          TRAMA_BRAND_SUMMARY_FOR_DESIGN.md) — scelto invece di text-xl (20px,
+          uguale ai titoli root) per restare sicuro anche con i titoli più
+          lunghi di questo componente ("Famiglia e logistica", "Le mie
+          segnalazioni") in una barra compatta con freccia indietro. */}
+      <h3
+        className={
+          showBrandIcon
+            ? "font-poppins text-lg font-bold text-ink"
+            : "text-base font-bold text-ink"
+        }
+      >
+        {title}
+      </h3>
     </div>
   );
 }

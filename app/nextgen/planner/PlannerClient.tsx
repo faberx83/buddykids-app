@@ -296,7 +296,12 @@ export default function PlannerClient({
             altri usi, es. Home/Admin/Center, mai stati rotti). */}
         <NextgenBadge />
         <DecorativeIntroCard className="mb-4">
-          <p className="text-xs text-ink-2">{PLANNER_MODE_DESCRIPTIONS[mode]}</p>
+          {/* Audit font (31/08/2026, screenshot di Fabrizio su questa esatta
+              riga): text-xs (12px) era piccolo per una descrizione
+              introduttiva di sezione — portato a text-sm (14px), stessa
+              dimensione applicata alla gemella identica in
+              SearchDiscoveryClient.tsx per restare consistenti. */}
+          <p className="text-sm text-ink-2">{PLANNER_MODE_DESCRIPTIONS[mode]}</p>
         </DecorativeIntroCard>
 
         <PlannerModeTabs mode={mode} onChange={setMode} />
