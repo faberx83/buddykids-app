@@ -3,6 +3,17 @@
 import { createClient } from "@/lib/supabase/server";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
 import { revalidatePath } from "next/cache";
+// Push notifications (31/08/2026, estensione trigger P0) — segnalato da
+// Fabrizio dopo un test reale ("ho mandato una richiesta... ma nessuna
+// notifica push"): inquiry_reply/center_inquiry_new erano stati lasciati
+// deliberatamente fuori dal primo giro P0 (vedi
+// TRAMA_PILOT_NOTIFICATIONS_IMPLEMENTATION.md, "Deliberatamente NON
+// agganciati"), ma "Contatta il gestore" è di fatto un flusso ACTION a tutti
+// gli effetti (una domanda che aspetta una risposta, una risposta che il
+// genitore deve vedere) quanto i 4 già cablati. Stesso principio best-effort
+// (sendPushToUser non lancia mai, un fallimento push non deve mai far
+// fallire la creazione/risposta della richiesta già salvata).
+import { sendPushToUser } from "@/lib/push/send";
 
 // Crea una richiesta del genitore verso il centro ("Contatta il gestore"
 // nella scheda attività) — ticketing semplice, vedi lib/data/inquiries.ts.
@@ -28,6 +39,40 @@ export async function createInquiryAction(input: {
   if (error) return { error: error.message };
 
   revalidatePath("/richieste");
+
+  // Push al centro — a TUTTI gli admin di quell'attività (stesso principio
+  // "notifica chi può agire" già usato per gli altri trigger P0).
+  try {
+    const { data: activityRow } = await supabase
+      .from("activities")
+      .select("name, center_id")
+      .eq("id", input.activityDbId)
+      .maybeSingle();
+    if (activityRow?.center_id) {
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("full_name")
+        .eq("id", user.id)
+        .maybeSingle();
+      const { data: centerAdmins } = await supabase
+        .from("profiles")
+        .select("id")
+        .eq("center_id", activityRow.center_id)
+        .eq("role", "center_admin");
+      await Promise.all(
+        (centerAdmins ?? []).map((admin) =>
+          sendPushToUser(admin.id, {
+            title: "Nuova richiesta",
+            body: `${profile?.full_name || "Un genitore"} ha scritto per ${activityRow.name ?? "un'attività"}.`,
+            deepLink: "/center/richieste",
+          })
+        )
+      );
+    }
+  } catch (e) {
+    console.error("[createInquiryAction] Errore inatteso durante la push al centro:", e);
+  }
+
   return {};
 }
 
@@ -66,6 +111,26 @@ export async function replyToInquiryAction(input: {
 
   revalidatePath("/center/richieste");
   revalidatePath("/richieste");
+
+  // Push al genitore — stesso principio best-effort del resto del file.
+  try {
+    const { data: row } = await supabase
+      .from("activity_inquiries")
+      .select("parent_id, activities ( name )")
+      .eq("id", input.inquiryId)
+      .maybeSingle();
+    if (row?.parent_id) {
+      const activity = Array.isArray(row.activities) ? row.activities[0] : row.activities;
+      await sendPushToUser(row.parent_id, {
+        title: `Il centro ha risposto: ${activity?.name ?? "la tua richiesta"}`,
+        body: input.reply.trim(),
+        deepLink: "/richieste",
+      });
+    }
+  } catch (e) {
+    console.error("[replyToInquiryAction] Errore inatteso durante la push al genitore:", e);
+  }
+
   return {};
 }
 
