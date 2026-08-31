@@ -107,6 +107,58 @@ test.describe("Wave 3 - Notifiche: deduplica (no browser)", () => {
   });
 });
 
+test.describe("Notification center Partner - seen ≠ resolved (no browser)", () => {
+  // Estensione 31/08/2026 ("stesso stile" del genitore lato Partner) —
+  // stesso principio NOTIF-P09 sopra, applicato ai 4 tipi center_*: solo
+  // center_group_request_new e center_checkins_unconfirmed non hanno una
+  // colonna DB "letto" (vedi lib/data/notifications-partner.ts) quindi SOLO
+  // loro sono corretti dal cursore client — center_inquiry_new/
+  // center_booking_new hanno read_by_center reale, MAI toccati qui.
+  test("NOTIF-C01 [no browser] - center_group_request_new e center_checkins_unconfirmed sono corretti dal cursore client", () => {
+    const groupReq = item({
+      id: "center_group_request_new:gr-1",
+      type: "center_group_request_new",
+      relevantAt: "2026-08-01T10:00:00.000Z",
+      isSeen: false,
+    });
+    const checkins = item({
+      id: "center_checkins_unconfirmed:3",
+      type: "center_checkins_unconfirmed",
+      relevantAt: "2026-08-01T10:00:00.000Z",
+      isSeen: false,
+    });
+    const result = applyClientCursor([groupReq, checkins], "2026-08-02T00:00:00.000Z");
+    expect(result.every((i) => i.isSeen)).toBe(true);
+  });
+
+  test("NOTIF-C01 [no browser] - center_inquiry_new e center_booking_new NON sono mai toccati dal cursore client", () => {
+    const inquiry = item({
+      id: "center_inquiry_new:inq-1",
+      type: "center_inquiry_new",
+      relevantAt: "2026-01-01T00:00:00.000Z",
+      isSeen: false,
+    });
+    const booking = item({
+      id: "center_booking_new:bk-1",
+      type: "center_booking_new",
+      relevantAt: "2026-01-01T00:00:00.000Z",
+      isSeen: false,
+    });
+    const result = applyClientCursor([inquiry, booking], "2030-01-01T00:00:00.000Z");
+    expect(result.every((i) => !i.isSeen)).toBe(true);
+  });
+
+  test("NOTIF-C02 [no browser] - id deterministico dell'aggregato check-in dipende dal conteggio (relevant_state), non da un uuid casuale", () => {
+    const id1 = makeNotificationId("center_checkins_unconfirmed", String(3));
+    const id2 = makeNotificationId("center_checkins_unconfirmed", String(3));
+    expect(id1).toBe(id2);
+    // Un conteggio diverso produce un id diverso: nuovo stato reale, non un
+    // duplicato dello stesso stato (coerente col principio "type + entity_id
+    // + relevant_state" di lib/notifications/model.ts).
+    expect(makeNotificationId("center_checkins_unconfirmed", String(4))).not.toBe(id1);
+  });
+});
+
 // ────────────────────────────────────────────────────────────────
 // Verifica end-to-end su deploy reale. Nessuna fixture dedicata "genitore
 // con invito/risposta/carpool pendente" esiste in questo progetto: dove lo
@@ -240,5 +292,34 @@ test.describe("Wave 3 - Notification Center UI", () => {
     await page.keyboard.press("Escape");
     await expect(page.getByRole("dialog", { name: "Notifiche" })).toHaveCount(0);
     await expect(bell).toBeFocused();
+  });
+});
+
+test.describe("Notification center Partner UI", () => {
+  // Estensione 31/08/2026 ("stesso stile" del genitore) — stesso pattern
+  // NOTIF-P00 sopra, verificato sul portale Partner invece che NEXTGEN
+  // genitore. Non ripete l'intera matrice P01-P15 (stesso componente
+  // condiviso, già coperto lì): solo la presenza/funzionamento base sul
+  // layout Partner, che è un contesto DOM reale diverso (DashboardLayout,
+  // non PhoneShell).
+  test("NOTIF-C00 - Il bottone Notifiche è presente sul portale Partner e apre il center senza errori", async ({ page }) => {
+    test.skip(!isRealDeployment, "Richiede un deploy con Supabase configurato e un account center_admin.");
+    await loginAs(page, "center_admin");
+    await page.goto("/center");
+    const bell = page.getByRole("button", { name: /Notifiche/ });
+    await expect(bell).toBeVisible();
+    await bell.click();
+    await expect(page.getByRole("dialog", { name: "Notifiche" })).toBeVisible();
+  });
+
+  test("NOTIF-C03 - un genitore non vede mai il notification center Partner", async ({ page }) => {
+    test.skip(!isRealDeployment, "Richiede un deploy con Supabase configurato e un account parent.");
+    await loginAs(page, "parent");
+    await page.goto("/nextgen");
+    // Un solo bottone "Notifiche" nell'intera pagina (quello genitore) — mai
+    // due bell (difesa in profondità già verificata lato dati in
+    // lib/data/notifications-partner.ts: getCenterContext() fallisce chiuso
+    // per un ruolo parent).
+    await expect(page.getByRole("button", { name: /Notifiche/ })).toHaveCount(1);
   });
 });

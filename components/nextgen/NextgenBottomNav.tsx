@@ -67,7 +67,9 @@ function useNavBadges(notifications: NotificationItem[]) {
   // lib/notifications/seen-cursor.ts per il motivo dell'estrazione.
   const [lastSeenAt, setLastSeenAt] = useState<string | null>(null);
   useEffect(() => {
-    const stored = readLastSeenAt();
+    // Questa bottom nav esiste SOLO lato Genitore (il Partner usa la sidebar
+    // di DashboardLayout) — scope "parent" fisso, nessuna variante qui.
+    const stored = readLastSeenAt("parent");
     // eslint-disable-next-line react-hooks/set-state-in-effect -- one-shot al mount per leggere un valore che esiste SOLO lato client (localStorage), stesso pattern SSR-safe già in uso in NotificationCenter.tsx/BetaFeedbackButton.tsx/InstallPrompt.tsx.
     if (stored !== null) setLastSeenAt(stored);
   }, []);

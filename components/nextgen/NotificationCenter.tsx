@@ -14,6 +14,18 @@
 // NextgenToastProvider/BetaFeedbackButton) — copre ogni pagina genitore
 // NEXTGEN senza doverlo aggiungere pagina per pagina.
 //
+// ESTENSIONE PARTNER (31/08/2026, "stesso stile" del genitore, richiesta di
+// Fabrizio) — stesso identico pattern di generalizzazione già usato da
+// BetaFeedbackButton.tsx (prop `appSource`): qui `scope` ("parent"|
+// "partner"), montato una SECONDA volta in app/center/layout.tsx. Le
+// differenze reali tra i due scope sono minime: (1) chiave cursore
+// localStorage separata (vedi lib/notifications/seen-cursor.ts, stesso
+// motivo di STORAGE_KEY separato in BetaFeedbackButton), (2) il controllo
+// "nascondi su /nextgen/admin|/nextgen/center" si applica SOLO allo scope
+// "parent" — l'istanza partner è montata direttamente nel vero layout
+// Partner (mai un placeholder). Il resto (posizione, dialog, priorità,
+// dedup, ARIA) è identico: stesso DTO NotificationItem per entrambi.
+//
 // SEEN — architettura COMPUTED (nessuna migration): per i tipi con una
 // colonna DB reale (inquiry_reply/booking_response, read_by_parent) isSeen
 // arriva già corretto dal server e NON viene mai sovrascritto qui. Per i tipi
@@ -54,7 +66,13 @@ const PRIORITY_COLOR: Record<NotificationItem["priority"], string> = {
   info: "text-ink-3",
 };
 
-export default function NotificationCenter({ initialNotifications }: { initialNotifications: NotificationItem[] }) {
+export default function NotificationCenter({
+  initialNotifications,
+  scope = "parent",
+}: {
+  initialNotifications: NotificationItem[];
+  scope?: "parent" | "partner";
+}) {
   const router = useRouter();
   const pathname = usePathname();
   const bellRef = useRef<HTMLButtonElement>(null);
@@ -70,9 +88,10 @@ export default function NotificationCenter({ initialNotifications }: { initialNo
     // e InstallPrompt.tsx) — guardia esplicita invece di un setState
     // incondizionato, cosi il valore "nessun cursore ancora noto" (null)
     // resta quello del render server senza un secondo giro superfluo.
-    const stored = readLastSeenAt();
+    const stored = readLastSeenAt(scope);
     // eslint-disable-next-line react-hooks/set-state-in-effect -- one-shot al mount per leggere un valore che esiste SOLO lato client (localStorage), stesso pattern SSR-safe già in uso in BetaFeedbackButton.tsx/InstallPrompt.tsx: senza questo useEffect il valore andrebbe letto durante il render, non disponibile server-side.
     if (stored !== null) setLastSeenAt(stored);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- one-shot al mount, `scope` è stabile per la vita del componente (deriva da una prop che non cambia dopo il mount, stesso pattern di STORAGE_KEY in BetaFeedbackButton.tsx)
   }, []);
 
   const items = sortNotifications(applyClientCursor(initialNotifications, lastSeenAt));
@@ -85,7 +104,7 @@ export default function NotificationCenter({ initialNotifications }: { initialNo
     // tipi senza colonna DB) risulteranno "visti" dal prossimo render — mai
     // indietro (Date.now() è sempre >= al cursore precedente).
     const now = new Date().toISOString();
-    writeLastSeenAt(now);
+    writeLastSeenAt(scope, now);
     setLastSeenAt(now);
   }
 
@@ -107,17 +126,28 @@ export default function NotificationCenter({ initialNotifications }: { initialNo
   // Stesso perimetro di BetaFeedbackButton.tsx: /nextgen/admin e
   // /nextgen/center condividono ancora questo layout genitore (placeholder),
   // non sono destinazioni reali del genitore — nessun notification center lì.
-  if (pathname?.startsWith("/nextgen/admin") || pathname?.startsWith("/nextgen/center")) return null;
+  // Non si applica allo scope "partner": quell'istanza è montata
+  // direttamente nel vero layout Partner (app/center/layout.tsx), il cui
+  // pathname non inizia mai per "/nextgen".
+  if (scope === "parent" && (pathname?.startsWith("/nextgen/admin") || pathname?.startsWith("/nextgen/center")))
+    return null;
 
   async function handleItemClick(item: NotificationItem) {
     // entityId è deterministico dall'id (`${type}:${entityId}`, vedi
     // makeNotificationId) — split solo sul PRIMO ":" perché alcuni uuid non
     // contengono ":" ma il body/entityId non lo contiene mai per costruzione.
+    // Il TIPO (non lo scope) determina quale azione di mark-read chiamare —
+    // entrambe le action esistenti supportano già side:"parent"|"center"
+    // (nessuna nuova server action, stesso principio REUSE di Wave 3).
     const entityId = item.id.slice(item.type.length + 1);
     if (item.type === "inquiry_reply") {
       await markInquiriesReadAction({ ids: [entityId], side: "parent", read: true });
     } else if (item.type === "booking_response") {
       await markBookingsReadAction({ ids: [entityId], side: "parent", read: true });
+    } else if (item.type === "center_inquiry_new") {
+      await markInquiriesReadAction({ ids: [entityId], side: "center", read: true });
+    } else if (item.type === "center_booking_new") {
+      await markBookingsReadAction({ ids: [entityId], side: "center", read: true });
     }
     setOpen(false);
     router.push(item.deepLink);

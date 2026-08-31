@@ -237,6 +237,52 @@ export async function getUnconfirmedParentCheckinsCount(): Promise<number> {
   return count;
 }
 
+export interface UnconfirmedCheckinsSignal {
+  count: number;
+  // Timestamp più recente tra i check-in ancora da confermare — usato dal
+  // notification center Partner (31/08/2026) per ordinare/etichettare
+  // l'unica notifica aggregata "Check-in da confermare" (nessuna riga
+  // attendance_records ha un vero "checked_in_at" dedicato: updated_at è il
+  // proxy più vicino disponibile nello schema esistente, aggiornato proprio
+  // dal check-in del genitore). null se non ce ne sono.
+  mostRecentAt: string | null;
+}
+
+// Stessa identica logica/scoping di getUnconfirmedParentCheckinsCount sopra
+// (duplicato qui invece di refactored: nessuna delle due funzioni deve
+// dipendere dall'altra, stesso pattern già presente in questo file — vedi
+// getOpenInquiriesCountForCenter/getUnreadCountForCenter in
+// lib/data/inquiries.ts che ridondano allo stesso modo), ma restituisce
+// anche il timestamp più recente: la sola COUNT non basta per costruire un
+// NotificationItem (serve relevantAt).
+export async function getUnconfirmedCheckinsSignal(): Promise<UnconfirmedCheckinsSignal> {
+  if (!isSupabaseConfigured) return { count: 0, mostRecentAt: null };
+
+  const { centerDbId, isPlatformAdmin } = await getCenterContext();
+  if (!centerDbId && !isPlatformAdmin) return { count: 0, mostRecentAt: null };
+
+  const supabase = await createClient();
+
+  let activityIds: string[] | null = null;
+  if (centerDbId) {
+    const { data: acts } = await supabase.from("activities").select("id").eq("center_id", centerDbId);
+    activityIds = (acts ?? []).map((a) => a.id as string);
+    if (activityIds.length === 0) return { count: 0, mostRecentAt: null };
+  }
+
+  let query = supabase
+    .from("attendance_records")
+    .select("updated_at")
+    .eq("checked_in_by", "parent")
+    .order("updated_at", { ascending: false });
+
+  if (activityIds) query = query.in("activity_id", activityIds);
+
+  const { data, error } = await query;
+  if (error || !data) return { count: 0, mostRecentAt: null };
+  return { count: data.length, mostRecentAt: data[0]?.updated_at ?? null };
+}
+
 // Elenco dei giorni (lun-ven) coperti da una settimana, per costruire le
 // colonne dell'appello — usa direttamente le date reali di activity_weeks
 // (non ricalcola la griglia stagionale: ogni attività può avere le proprie).

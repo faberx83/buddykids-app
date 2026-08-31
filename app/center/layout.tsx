@@ -13,6 +13,8 @@ import { generateCorrelationId } from "@/lib/telemetry/correlation";
 import { getWalkthroughProgress, WalkthroughProgressSummary } from "@/lib/walkthrough/data";
 import PartnerSpotlight from "@/components/spotlight/PartnerSpotlight";
 import BetaFeedbackButton from "@/components/nextgen/BetaFeedbackButton";
+import NotificationCenter from "@/components/nextgen/NotificationCenter";
+import { getPartnerNotifications } from "@/lib/data/notifications-partner";
 
 export default async function CenterLayout({ children }: { children: React.ReactNode }) {
   // Con Supabase collegato, il ruolo reale (da profiles.role) sostituisce del
@@ -80,6 +82,12 @@ export default async function CenterLayout({ children }: { children: React.React
   // prenotazioni non lette dal centro — stesso trattamento delle altre
   // sezioni con notifica da una parte all'altra.
   const unreadBookings = await getUnreadBookingsCountForCenter();
+
+  // Notification center Partner (31/08/2026, "stesso stile" del genitore) —
+  // aggrega gli STESSI 4 segnali già calcolati sopra (nessuna nuova query,
+  // getPartnerNotifications richiama le stesse funzioni data layer). Passato
+  // a NotificationCenter con scope="partner" più sotto.
+  const partnerNotifications = await getPartnerNotifications();
 
   // Badge profilo in alto a destra (coerente con l'app genitore) — vedi
   // AccountBadge in components/dashboard/DashboardLayout.tsx.
@@ -185,6 +193,12 @@ export default async function CenterLayout({ children }: { children: React.React
     >
       {children}
       <PartnerSpotlight progress={spotlightProgress} />
+      {/* Notification center Partner (31/08/2026) — stesso componente del
+          genitore (components/nextgen/NotificationCenter.tsx), scope
+          "partner": chiave cursore localStorage separata, nessun hide su
+          rotte placeholder (questo layout È già il layout Partner reale).
+          Montato una sola volta qui, copre ogni pagina /center/*. */}
+      <NotificationCenter initialNotifications={partnerNotifications} scope="partner" />
       {/* SPRINT 5 (NEXTGEN) → ESTENSIONE PARTNER — stesso meccanismo "Segnala
           un problema" già in uso lato genitore (app/nextgen/layout.tsx),
           contestualizzato per il Partner: area calcolata sulle rotte

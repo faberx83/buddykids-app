@@ -5,25 +5,35 @@
 // NotificationCenter.tsx (dove viveva inline, unico consumer fino ad ora)
 // perché ora SERVE ANCHE a NextgenBottomNav.tsx per calcolare isSeen con la
 // stessa identica logica (REUSE, non una seconda implementazione che
-// rischierebbe di disallinearsi). Nessuna nuova chiave/formato: stesso
-// esatto comportamento di prima, solo condiviso.
+// rischierebbe di disallinearsi).
+//
+// Estensione (stesso giorno, notification center Partner "stesso stile"):
+// due SCOPE separati (parent/partner), chiavi localStorage distinte. Non
+// per un vero requisito multi-account (un browser reale ha quasi sempre una
+// sola sessione), ma per sicurezza durante test/demo dove lo stesso
+// dispositivo può passare da un ruolo all'altro — evita che il cursore di
+// un ruolo "marchi visto" per errore le notifiche dell'altro.
 //
 // Client-only (usa window.localStorage) — chiamare SOLO da Client Component,
 // stesso vincolo già rispettato dal chiamante originale.
 
-export const LAST_SEEN_STORAGE_KEY = "trama-notifications-last-seen-at";
+export type SeenCursorScope = "parent" | "partner";
 
-export function readLastSeenAt(): string | null {
+function storageKey(scope: SeenCursorScope): string {
+  return scope === "parent" ? "trama-notifications-last-seen-at" : "trama-notifications-partner-last-seen-at";
+}
+
+export function readLastSeenAt(scope: SeenCursorScope): string | null {
   try {
-    return window.localStorage.getItem(LAST_SEEN_STORAGE_KEY);
+    return window.localStorage.getItem(storageKey(scope));
   } catch {
     return null; // localStorage non disponibile (es. modalità privata) — nessun cursore, tutto "non visto"
   }
 }
 
-export function writeLastSeenAt(iso: string) {
+export function writeLastSeenAt(scope: SeenCursorScope, iso: string) {
   try {
-    window.localStorage.setItem(LAST_SEEN_STORAGE_KEY, iso);
+    window.localStorage.setItem(storageKey(scope), iso);
   } catch {
     // best-effort, coerente col resto del progetto (es. BetaFeedbackButton)
   }

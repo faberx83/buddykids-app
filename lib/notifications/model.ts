@@ -25,7 +25,16 @@ export type NotificationType =
   | "booking_response"
   | "inquiry_reply"
   | "carpool_match_for_my_request"
-  | "carpool_match_for_my_offer";
+  | "carpool_match_for_my_offer"
+  // Estensione Partner (31/08/2026, "stesso stile" del genitore) — prefisso
+  // "center_" per non confondere mai un tipo Genitore con uno Gestore anche
+  // solo leggendo il nome, anche se lo stesso DTO/le stesse funzioni pure
+  // (sortNotifications/countUnseen/applyClientCursor) restano condivise:
+  // vedi lib/data/notifications-partner.ts per le fonti dati.
+  | "center_group_request_new"
+  | "center_inquiry_new"
+  | "center_booking_new"
+  | "center_checkins_unconfirmed";
 
 export interface NotificationItem {
   /** Deterministico: `${type}:${entityId}` — mai un uuid random generato qui. */
@@ -66,6 +75,14 @@ export const CLIENT_CURSOR_TYPES: ReadonlySet<NotificationType> = new Set([
   "group_request_accepted",
   "carpool_match_for_my_request",
   "carpool_match_for_my_offer",
+  // Partner: group_requests non ha una colonna "letto" (solo status
+  // pending/accepted/rejected, stesso motivo di group_request_accepted sopra)
+  // e l'aggregato check-in non ha alcuna colonna "letto" possibile (è un
+  // conteggio, non un record singolo) — entrambi via cursore client, MAI
+  // center_inquiry_new/center_booking_new (quelli hanno read_by_center
+  // reale, stesso principio di inquiry_reply/booking_response lato genitore).
+  "center_group_request_new",
+  "center_checkins_unconfirmed",
 ]);
 
 // Pura: applica il cursore "ultimo accesso al center" SOLO ai tipi sopra.
