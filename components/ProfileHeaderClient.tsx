@@ -83,6 +83,20 @@ export default function ProfileHeaderClient({
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Segnalazione di Fabrizio (31/08/2026): la CTA "Completa il tuo profilo"
+  // (?complete=1 -> autoOpenEdit) apriva il form, ma tutti i campi apparivano
+  // uguali — non si capiva QUALE fosse quello mancante. Evidenzia solo il/i
+  // campo/i effettivamente vuoti tra quelli che rendono il profilo
+  // "incompleto" (vedi lib/data/profile.ts#isParentProfileIncomplete: manca
+  // fullName o manca parentRole) — derivato dallo stato locale già esistente
+  // (non da un nuovo prop), quindi sparisce da solo appena l'utente compila
+  // il campo, prima ancora di salvare. Solo quando si arriva dalla CTA
+  // (autoOpenEdit): aprendo "Modifica" manualmente nessun campo è marcato.
+  const missingName = Boolean(autoOpenEdit) && !fullName.trim();
+  const missingRole = Boolean(autoOpenEdit) && showRoleSelector && !parentRole;
+  const highlightRing = accent === "violet" ? "ring-trama-orange" : "ring-orange";
+  const highlightText = accent === "violet" ? "text-trama-orange" : "text-orange";
+
   async function handleAvatarUploaded(url: string) {
     setAvatarUrl(url);
     if (isSupabaseConfigured) {
@@ -163,17 +177,27 @@ export default function ProfileHeaderClient({
 
       {editing && (
         <div className="mb-4 rounded-lg bg-white p-3.5">
-          <label className="mb-1.5 block text-xs font-semibold text-ink-2">Nome e cognome</label>
+          <label className="mb-1.5 flex items-center gap-1.5 text-xs font-semibold text-ink-2">
+            Nome e cognome
+            {missingName && <span className={`font-bold ${highlightText}`}>· manca questo</span>}
+          </label>
           <input
             value={fullName}
             onChange={(e) => setFullName(e.target.value)}
-            className={`mb-3 w-full rounded-md border border-[#E8EBF0] bg-bg px-3 py-2 text-sm outline-none ${accentBorder}`}
+            className={`mb-3 w-full rounded-md border bg-bg px-3 py-2 text-sm outline-none ${accentBorder} ${
+              missingName ? `border-transparent ring-2 ${highlightRing}` : "border-[#E8EBF0]"
+            }`}
           />
 
           {showRoleSelector && (
             <>
-              <label className="mb-1.5 block text-xs font-semibold text-ink-2">Sei</label>
-              <div className="mb-3 flex gap-2">
+              <label className="mb-1.5 flex items-center gap-1.5 text-xs font-semibold text-ink-2">
+                Sei
+                {missingRole && <span className={`font-bold ${highlightText}`}>· manca questo</span>}
+              </label>
+              <div
+                className={`mb-3 flex gap-2 rounded-full ${missingRole ? `ring-2 ${highlightRing}` : ""}`}
+              >
                 {(Object.keys(roleLabels) as ParentRole[]).map((r) => (
                   <button
                     key={r}
