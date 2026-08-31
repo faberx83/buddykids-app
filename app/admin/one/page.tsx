@@ -65,6 +65,16 @@ export default async function OneAdminPage() {
             : ""}
           .
         </p>
+        {/* Wave 1 "Pilot Observability" — link diretto, non una coda con
+            priorità/conteggio come le altre (non è un arretrato da smaltire,
+            è una vista di osservabilità): vedi app/admin/one/pilot/page.tsx. */}
+        <Link
+          href="/admin/one/pilot"
+          className="mt-2 inline-flex items-center gap-1.5 text-xs font-semibold text-white underline underline-offset-2 hover:opacity-80"
+        >
+          <i className="ti ti-users" />
+          Pilota — chi è entrato e sta usando TRAMA
+        </Link>
       </div>
 
       {queues.length === 0 ? (

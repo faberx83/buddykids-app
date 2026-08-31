@@ -39,6 +39,27 @@ export const KNOWN_PRODUCT_EVENTS = [
   "spotlight_shown",
   "spotlight_target_not_found",
   "spotlight_dismissed",
+  // TRAMA — Wave 1 "Pilot Observability" (audit TRAMA_PILOT_ARCHITECTURE_
+  // REVIEW.md sez.9): tassonomia minima di ADOZIONE feature, non di
+  // navigazione — nessun page-view/click, solo azioni che rappresentano un
+  // uso reale del coordinamento (Gruppi/Carpool) o della prenotazione.
+  // Stesso principio "whitelist deliberata" sopra: nessun user_id/PII, solo
+  // conteggi aggregati per capire adozione (mai la cronologia di un singolo
+  // utente — quella vive nei dati operativi, vedi lib/data/pilot-users.ts).
+  //
+  // "booking_created" esisteva già come logTelemetryEvent() puro (console,
+  // Build Sprint 3, app/booking/[id]/actions.ts) — qui diventa anche
+  // persistito, nessun nuovo call site.
+  "booking_created",
+  // app/actions/groups.ts — createGroupAction()/joinGroupAction()/
+  // acceptGroupInviteAction().
+  "group_created",
+  "group_joined",
+  // app/actions/groups.ts — upsertCarpoolOfferAction()/
+  // upsertCarpoolRequestAction(), solo alla PRIMA creazione (non ad ogni
+  // modifica di un'offerta/richiesta già esistente).
+  "carpool_offer_created",
+  "carpool_request_created",
 ] as const;
 
 export type KnownProductEvent = (typeof KNOWN_PRODUCT_EVENTS)[number];

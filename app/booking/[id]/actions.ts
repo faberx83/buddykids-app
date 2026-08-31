@@ -4,7 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
 import { getSeasonWeekRanges, overlaps } from "@/lib/season-weeks";
 import { getSeasonYear } from "@/lib/data/season-year";
-import { logTelemetryEvent } from "@/lib/telemetry/correlation";
+import { persistProductEvent } from "@/lib/telemetry/events";
 
 export interface CreateBookingInput {
   activityDbId: string;
@@ -247,15 +247,24 @@ export async function createBookingAction(
   // TRAMA ONE Build Sprint 3 — "context object" leggero: log minimo,
   // server-side, correlato al percorso ricerca→dettaglio→prenotazione se
   // source/correlationId sono arrivati (facoltativi, nessun impatto se
-  // assenti). Nessun dato personale, nessuna persistenza (vedi
-  // lib/telemetry/correlation.ts).
-  logTelemetryEvent({
-    event: "booking_created",
-    correlationId: input.correlationId,
-    tenant: "family",
-    role: "parent",
-    detail: input.source ? `source=${input.source}` : null,
-  });
+  // assenti). Nessun dato personale.
+  // Wave 1 "Pilot Observability" (27/08→31/08) — passato da logTelemetryEvent
+  // (solo console) a persistProductEvent (console + product_events, ora che
+  // "booking_created" è nella whitelist KNOWN_PRODUCT_EVENTS): stesso evento,
+  // stesso payload, in più persistito per il conteggio aggregato di adozione.
+  // context: {supabase, userId} riusa la sessione già aperta sopra, evitando
+  // una seconda auth.getUser() (stesso pattern già stabilito per
+  // app/actions/walkthrough.ts, vedi commento su PersistProductEventContext).
+  await persistProductEvent(
+    {
+      event: "booking_created",
+      correlationId: input.correlationId,
+      tenant: "family",
+      role: "parent",
+      detail: input.source ? `source=${input.source}` : null,
+    },
+    { supabase, userId: user.id }
+  );
 
   return { bookingId };
 }
