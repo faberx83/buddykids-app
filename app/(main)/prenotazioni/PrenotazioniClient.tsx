@@ -471,7 +471,18 @@ function CoverageStrip({ planner, nextgen }: { planner: PlannerData; nextgen?: b
         <p className="mt-2 text-[12px] text-ink-2">
           <i className="ti ti-alert-circle mr-1 text-orange-mid" />
           {gaps} settiman{gaps === 1 ? "a" : "e"} ancora da organizzare —{" "}
-          <Link href="/" className="font-semibold text-sky">
+          {/* BUGFIX (segnalato da Fabrizio, 31/08): questo link puntava
+              sempre a "/" (Home LEGACY) anche quando la card è montata su
+              NEXTGEN (/nextgen/prenotazioni) — un genitore su NEXTGEN che
+              lo cliccava finiva fuori da NEXTGEN senza alcun redirect
+              esplicito nel codice a giustificarlo, solo perché l'href era
+              hardcoded. Stesso "nextgen" già usato sopra per lo stile:
+              qui sceglie anche la destinazione e il colore coerente col
+              resto del brand NEXTGEN (trama-violet invece di sky). */}
+          <Link
+            href={nextgen ? "/nextgen/planner" : "/"}
+            className={`font-semibold ${nextgen ? "text-trama-violet" : "text-sky"}`}
+          >
             vai al Planner
           </Link>
         </p>
