@@ -174,7 +174,7 @@ export default function PlannerMapView({ pins, addresses }: { pins: PlannerMapPi
       ) : (
         <div className="rounded-2xl bg-white p-4">
           <div className="mb-2.5 flex items-center justify-between">
-            <div className="text-[13px] font-bold text-ink">Le tue attività</div>
+            <div className="font-poppins text-[13px] font-bold text-ink">Le tue attività</div>
             <span className="text-[10px] font-semibold text-ink-3">distanza stimata</span>
           </div>
           <div className="flex flex-col gap-2">

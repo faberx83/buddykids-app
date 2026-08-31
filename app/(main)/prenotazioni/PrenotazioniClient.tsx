@@ -437,7 +437,15 @@ function CoverageStrip({ planner, nextgen }: { planner: PlannerData; nextgen?: b
   const body = (
     <>
       <div className="mb-2.5 flex items-center justify-between">
-        <div className="text-sm font-bold text-ink">Copertura dell&apos;estate</div>
+        <div
+          className={
+            nextgen
+              ? "font-poppins text-[13px] font-bold text-ink"
+              : "text-sm font-bold text-ink"
+          }
+        >
+          Copertura dell&apos;estate
+        </div>
         <span className="text-[12px] font-semibold text-ink-2">
           {planner.coveredCount}/{planner.totalCount} settimane organizzate
         </span>
