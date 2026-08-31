@@ -24,3 +24,48 @@ self.addEventListener("activate", (event) => {
 // modalità "navigate" così com'è. Non intercettare nulla evita entrambi i
 // problemi, mantenendo comunque l'installabilità.
 self.addEventListener("fetch", () => {});
+
+// Push notifications (31/08/2026) — payload inviato da lib/push/send.ts
+// (server, via web-push+VAPID). Un solo service worker serve TUTTI gli
+// scope registrati (Legacy "/", Parent "/nextgen", Partner — stesso file
+// fisico /sw.js per tutti, vedi InstallPrompt.tsx): questi due listener sono
+// quindi condivisi, nessuna variante per ruolo. Il deepLink arriva già
+// pronto dal server (stesso NotificationItem.deepLink del notification
+// center in-app — STESSA fonte, non un secondo sistema di link).
+self.addEventListener("push", (event) => {
+  let data = {};
+  try {
+    data = event.data ? event.data.json() : {};
+  } catch {
+    // Payload non-JSON o assente: notifica minima invece di far fallire
+    // silenziosamente l'intero evento push.
+    data = {};
+  }
+  const title = data.title || "TRAMA";
+  const options = {
+    body: data.body || "",
+    // Icona/badge riusano gli asset PWA già esistenti (manifest*.json),
+    // nessun nuovo asset creato per questa feature.
+    icon: "/icon-nextgen-192.png",
+    badge: "/icon-nextgen-192.png",
+    data: { url: data.deepLink || "/" },
+  };
+  event.waitUntil(self.registration.showNotification(title, options));
+});
+
+// Tap sulla notifica di sistema -> apre/porta in primo piano una finestra già
+// aperta sull'URL giusto se esiste, altrimenti ne apre una nuova. Stesso
+// deepLink già usato dal notification center in-app (SEEN del banner di
+// sistema è quindi indipendente dal cursore in-app — nota nota, vedi doc).
+self.addEventListener("notificationclick", (event) => {
+  event.notification.close();
+  const url = event.notification.data?.url || "/";
+  event.waitUntil(
+    self.clients.matchAll({ type: "window", includeUncontrolled: true }).then((clientList) => {
+      for (const client of clientList) {
+        if (client.url.includes(url) && "focus" in client) return client.focus();
+      }
+      if (self.clients.openWindow) return self.clients.openWindow(url);
+    })
+  );
+});

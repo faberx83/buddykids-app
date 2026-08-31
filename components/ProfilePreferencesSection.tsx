@@ -5,6 +5,7 @@ import type { Language, Theme } from "@/lib/data/profile";
 import { updatePreferencesAction } from "@/app/actions/profile";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
 import { ComingSoonBadge } from "@/components/StatusBadge";
+import { enablePushNotifications, disablePushNotifications } from "@/lib/push/client";
 
 const languageLabels: Record<Language, string> = { it: "Italiano", en: "English" };
 
@@ -38,12 +39,40 @@ export default function ProfilePreferencesSection({
   const [notifyPush, setNotifyPush] = useState(initialNotifyPush);
   const [notifySms, setNotifySms] = useState(initialNotifySms);
   const [error, setError] = useState<string | null>(null);
+  // Solo per "Notifiche push" (31/08/2026): a differenza degli altri due
+  // toggle (un semplice salvataggio di preferenza), questo comporta una
+  // vera richiesta di permesso al browser — un'operazione un po' più lunga
+  // e che può fallire per motivi diversi da un errore di rete (permesso
+  // negato, browser non supportato). "busy" disabilita il toggle mentre è
+  // in corso, per evitare doppi click che genererebbero due prompt di
+  // permesso sovrapposti.
+  const [pushBusy, setPushBusy] = useState(false);
+  const [pushError, setPushError] = useState<string | null>(null);
 
   async function save(update: Parameters<typeof updatePreferencesAction>[0]) {
     setError(null);
     if (!isSupabaseConfigured) return;
     const result = await updatePreferencesAction(update);
     if (result.error) setError(result.error);
+  }
+
+  // Il toggle "Notifiche push" salva SEMPRE la preferenza (come gli altri
+  // due) ma in più esegue l'iscrizione/disiscrizione REALE del browser
+  // (lib/push/client.ts) — se quella fallisce (permesso negato, browser non
+  // supportato, VAPID non configurato), il toggle torna allo stato
+  // precedente invece di mostrare "attivo" senza che lo sia davvero:
+  // notifyPush deve riflettere lo stato reale, non solo l'intenzione.
+  async function handleTogglePush(next: boolean) {
+    setPushError(null);
+    setPushBusy(true);
+    const result = next ? await enablePushNotifications() : await disablePushNotifications();
+    setPushBusy(false);
+    if (result.error) {
+      setPushError(result.error);
+      return; // notifyPush NON aggiornato: il toggle visivamente resta com'era
+    }
+    setNotifyPush(next);
+    save({ notifyPush: next });
   }
 
   return (
@@ -105,14 +134,8 @@ export default function ProfilePreferencesSection({
           save({ notifyEmail: v });
         }}
       />
-      <ToggleRow
-        label="Notifiche push"
-        checked={notifyPush}
-        onChange={(v) => {
-          setNotifyPush(v);
-          save({ notifyPush: v });
-        }}
-      />
+      <ToggleRow label="Notifiche push" checked={notifyPush} onChange={handleTogglePush} disabled={pushBusy} />
+      {pushError && <p className="-mt-1 mb-1.5 text-[11px] font-medium text-orange">{pushError}</p>}
       <ToggleRow
         label="Notifiche SMS"
         checked={notifySms}
@@ -131,17 +154,20 @@ function ToggleRow({
   label,
   checked,
   onChange,
+  disabled,
 }: {
   label: string;
   checked: boolean;
   onChange: (v: boolean) => void;
+  disabled?: boolean;
 }) {
   return (
-    <label className="flex items-center justify-between py-1.5 text-sm text-ink">
+    <label className={`flex items-center justify-between py-1.5 text-sm text-ink ${disabled ? "opacity-60" : ""}`}>
       <span>{label}</span>
       <input
         type="checkbox"
         checked={checked}
+        disabled={disabled}
         onChange={(e) => onChange(e.target.checked)}
         className="h-4 w-4 accent-sky"
       />

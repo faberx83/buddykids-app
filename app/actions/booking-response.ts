@@ -20,6 +20,11 @@ import { sendEmail, isEmailConfigured } from "@/lib/email";
 // (booking_weeks/booking_days.capacity_decremented) invece della logica
 // sparsa qui prima presente. Vedi migration_18_capacity_service.sql.
 import { releaseDayCapacity, reserveDayCapacity, reserveWeekCapacity } from "@/lib/capacity/service";
+// Push notifications (31/08/2026) — trigger P0 "il centro ha una proposta
+// per te" (SOLO decision==="proposed", l'unico caso ACTION nel notification
+// center in-app, vedi lib/data/notifications.ts). Best-effort per
+// costruzione, stesso principio dell'email sopra.
+import { sendPushToUser } from "@/lib/push/send";
 
 // TRAMA ONE Build Sprint 4 (DEC-42, PCR-029 P0) — notifica email al genitore
 // quando il centro risponde a una prenotazione, stesso pattern best-effort
@@ -132,6 +137,37 @@ async function notifyParentOfBookingResponse(
   }
 }
 
+// Push notifications, trigger P0 "il centro ha una proposta per te"
+// (31/08/2026). Funzione SEPARATA da notifyParentOfBookingResponse sopra
+// invece di annidata al suo interno: quella funzione ritorna PRIMA di
+// leggere bookingId/parent_id se isEmailConfigured è false (early return,
+// vedi sopra) — annidare la push lì dentro l'avrebbe resa dipendente da
+// RESEND_API_KEY configurata, un accoppiamento sbagliato (email e push sono
+// due canali indipendenti). Costa una piccola query in più, non un
+// refactor della funzione email già in produzione.
+async function notifyParentOfBookingResponsePush(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  bookingId: string,
+  proposalNote?: string
+) {
+  try {
+    const { data: row } = await supabase
+      .from("bookings")
+      .select("parent_id, activities ( name )")
+      .eq("id", bookingId)
+      .single();
+    if (!row?.parent_id) return;
+    const activity = Array.isArray(row.activities) ? row.activities[0] : row.activities;
+    await sendPushToUser(row.parent_id, {
+      title: `Il centro ha una proposta per te: ${activity?.name ?? "la tua prenotazione"}`,
+      body: proposalNote?.trim() || "Rivedi la proposta del centro e rispondi.",
+      deepLink: `/nextgen/prenotazioni?bookingId=${bookingId}`,
+    });
+  } catch (e) {
+    console.error(`[booking-response] Errore inatteso durante la push al genitore (bookingId=${bookingId}):`, e);
+  }
+}
+
 function revalidateBookingPaths() {
   revalidatePath("/center/prenotazioni");
   revalidatePath("/prenotazioni");
@@ -197,6 +233,12 @@ export async function respondToBookingAction(input: {
   if (error) return { error: error.message };
 
   await notifyParentOfBookingResponse(supabase, input.bookingId, input.decision, input.proposalNote);
+  // ACTION solo per "proposed" (vedi lib/data/notifications.ts: accepted/
+  // rejected sono già decisioni definitive, IMPORTANT, fuori dallo scope P0
+  // delle push — decisione esplicita, non un'omissione).
+  if (input.decision === "proposed") {
+    await notifyParentOfBookingResponsePush(supabase, input.bookingId, input.proposalNote);
+  }
 
   // Decremento capacità settimanale, solo su accettazione — ora delegato al
   // servizio canonico (lib/capacity/service.ts), che verifica ESSO STESSO

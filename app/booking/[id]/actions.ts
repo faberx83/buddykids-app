@@ -5,6 +5,11 @@ import { isSupabaseConfigured } from "@/lib/supabase/env";
 import { getSeasonWeekRanges, overlaps } from "@/lib/season-weeks";
 import { getSeasonYear } from "@/lib/data/season-year";
 import { persistProductEvent } from "@/lib/telemetry/events";
+// Push notifications (31/08/2026) — trigger P0 "nuova prenotazione", verso
+// gli admin del centro dell'attività prenotata. Best-effort per
+// costruzione: una prenotazione riuscita non deve MAI dipendere dalla
+// riuscita della push.
+import { sendPushToUser } from "@/lib/push/send";
 
 export interface CreateBookingInput {
   activityDbId: string;
@@ -265,6 +270,37 @@ export async function createBookingAction(
     },
     { supabase, userId: user.id }
   );
+
+  // Push notifications, trigger P0 "nuova prenotazione" — a TUTTI gli admin
+  // del centro dell'attività (stesso principio "notifica chi può agire" già
+  // usato per il trigger "nuova richiesta gruppo" in app/actions/groups.ts).
+  // Best-effort: non deve mai far fallire una prenotazione già creata con
+  // successo (bookingId sopra è già definitivo).
+  try {
+    const { data: activityRow } = await supabase
+      .from("activities")
+      .select("name, center_id")
+      .eq("id", input.activityDbId)
+      .maybeSingle();
+    if (activityRow?.center_id) {
+      const { data: centerAdmins } = await supabase
+        .from("profiles")
+        .select("id")
+        .eq("center_id", activityRow.center_id)
+        .eq("role", "center_admin");
+      await Promise.all(
+        (centerAdmins ?? []).map((admin) =>
+          sendPushToUser(admin.id, {
+            title: "Nuova prenotazione",
+            body: `${activityRow.name ?? "Un'attività"} — una nuova prenotazione è in attesa.`,
+            deepLink: "/center/prenotazioni",
+          })
+        )
+      );
+    }
+  } catch (e) {
+    console.error(`[createBookingAction] Errore inatteso durante la push al centro (bookingId=${bookingId}):`, e);
+  }
 
   return { bookingId };
 }

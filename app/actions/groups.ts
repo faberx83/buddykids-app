@@ -15,6 +15,10 @@ import { sendEmail, isEmailConfigured } from "@/lib/email";
 // call site per la logica esistente: solo un evento in più dopo un successo
 // già determinato dal codice invariato sopra/sotto.
 import { persistProductEvent } from "@/lib/telemetry/events";
+// Push notifications (31/08/2026) — trigger P0 "invito gruppo". Best-effort
+// per costruzione (sendPushToUser non lancia mai): un invito riuscito non
+// deve MAI dipendere dalla riuscita della push.
+import { sendPushToUser } from "@/lib/push/send";
 
 // Traduce i messaggi di errore Postgres più comuni in qualcosa di leggibile
 // per un genitore, invece di mostrare il testo tecnico del database.
@@ -256,6 +260,24 @@ export async function inviteToGroupAction(groupId: string, email: string): Promi
       emailSent = true;
       await supabase.from("group_invites").update({ status: "sent", email_sent_at: new Date().toISOString() }).eq("id", invite.id);
     }
+  }
+
+  // Push notifications, trigger P0 "invito gruppo" — SOLO se la persona
+  // invitata è già un profilo TRAMA registrato (l'invito è per email, non
+  // per user_id: chi non si è mai registrato non ha né un profilo né una
+  // subscription push, sendPushToUser sarebbe comunque un no-op in quel
+  // caso, ma evitiamo anche la query profiles inutile quando non serve).
+  const { data: invitedProfile } = await supabase
+    .from("profiles")
+    .select("id")
+    .ilike("email", invitedEmail)
+    .maybeSingle();
+  if (invitedProfile) {
+    await sendPushToUser(invitedProfile.id, {
+      title: "Nuovo invito a un gruppo",
+      body: `${profile?.full_name || "Un genitore"} ti ha invitato al gruppo "${group?.name || "un gruppo"}".`,
+      deepLink: "/nextgen/groups?tab=inviti",
+    });
   }
 
   revalidatePath(`/groups/${groupId}`);
@@ -501,6 +523,27 @@ export async function sendGroupRequestAction(
   });
 
   if (error) return { error: error.message };
+
+  // Push notifications, trigger P0 "nuova richiesta gruppo" — a TUTTI gli
+  // admin di quel centro (un centro può avere più account center_admin
+  // collegati, vedi profiles.center_id): stesso principio "notifica chi può
+  // agire", non solo il primo trovato.
+  const { data: groupRow } = await supabase.from("groups").select("name").eq("id", groupId).maybeSingle();
+  const { data: centerAdmins } = await supabase
+    .from("profiles")
+    .select("id")
+    .eq("center_id", centerId)
+    .eq("role", "center_admin");
+  await Promise.all(
+    (centerAdmins ?? []).map((admin) =>
+      sendPushToUser(admin.id, {
+        title: "Nuova richiesta gruppo",
+        body: `${groupRow?.name || "Un gruppo"} — ${kidsCount} bambin${kidsCount === 1 ? "o" : "i"}, sconto ${discountPercent}%.`,
+        deepLink: "/center/group-requests",
+      })
+    )
+  );
+
   revalidatePath(`/groups/${groupId}`);
   return {};
 }

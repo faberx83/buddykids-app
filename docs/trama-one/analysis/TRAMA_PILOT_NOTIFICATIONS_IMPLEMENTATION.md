@@ -60,9 +60,29 @@ Nessuna duplicazione: Home mostra al massimo UN segnale (invariato, Wave 2), il 
 
 Cursore "seen" per i tipi senza colonna DB è per-dispositivo (vedi sopra). `inquiry_reply` è sempre IMPORTANT anche se in futuro il ticketing dovesse diventare multi-turno (oggi è "un solo giro", quindi corretto). Il badge non distingue "molte notifiche vecchie mai aperte" da "una sola nuova": è un conteggio di non-visti, non una coda prioritaria separata — coerente col principio "readability > sophistication" del task.
 
-## Future work esplicitamente escluso da questa wave
+## Estensione: Notification Center Partner (31/08/2026)
 
-Push notification, VAPID, service worker, digest email, SMS/WhatsApp, WebSocket, preferenze di notifica avanzate, cronologia notifiche permanente, event bus enterprise, `responsible_group_member_id`/bridge accompagnamento↔gruppo (week_responsibilities: gap documentato sotto), cursore "seen" sincronizzato multi-device (richiederebbe una colonna, quindi una migration).
+Stesso componente/stile del genitore (`components/nextgen/NotificationCenter.tsx`, generalizzato con prop `scope: "parent" | "partner"`, stesso pattern già stabilito da `BetaFeedbackButton`/`appSource`), montato in `app/center/layout.tsx`. Aggrega 4 tipi `center_*` (`lib/data/notifications-partner.ts`) che riusano gli STESSI segnali già calcolati per i badge della sidebar Partner: richieste gruppo in attesa (`center_group_request_new`), messaggi genitori non letti (`center_inquiry_new`), check-in da confermare (`center_checkins_unconfirmed` — unica notifica AGGREGATA, non una per riga: nessuna pagina di dettaglio per singolo check-in esiste nell'app), prenotazioni non lette (`center_booking_new`). Cursore "seen" client-side scoped separatamente da quello genitore (`lib/notifications/seen-cursor.ts`, chiavi localStorage distinte). Anche qui: nessuna tabella nuova, nessuna migration.
+
+Estensione naturale (stesso giorno, stessa richiesta): pallini contestualizzati sulla bottom nav genitore — "Prenotazioni" per `booking_response` non visto, "Profilo" per tutto il resto — riusando la stessa lista `notifications` già calcolata per la campanella.
+
+## Estensione: Push notifications (31/08/2026)
+
+Canale AGGIUNTIVO (banner di sistema, anche ad app chiusa) rispetto al notification center in-app — non lo sostituisce. Richiede persistenza reale (a differenza del resto, COMPUTED): `supabase/migration_31_push_subscriptions.sql`, applicata da Fabrizio dopo un report esplicito "MIGRATION REQUIRED" (nuova tabella `push_subscriptions`, RLS "solo le proprie", verificata live via MCP Supabase read-only prima di scrivere codice che ne dipende, stesso principio già seguito per `migration_25` in Wave 3).
+
+**Architettura**: `lib/push/send.ts` (server-only) — `sendPushToUser(userId, payload)`, usa `createServiceClient()` (Wave 1) per leggere subscription di un utente diverso dal chiamante (RLS le limiterebbe altrimenti a "solo le proprie"), invia via `web-push`+VAPID, self-cleaning sulle subscription scadute (404/410 → riga cancellata, nessun job cron). `lib/push/client.ts` — lato browser, richiesta permesso + `pushManager.subscribe()`, mai automatico al caricamento pagina. `app/actions/push-subscriptions.ts` — subscribe/unsubscribe, verifica sessione esplicita oltre a RLS. `public/sw.js` esteso con `push`/`notificationclick` (un solo service worker per tutti gli scope: Legacy/Parent/Partner).
+
+**UI**: nessun nuovo toggle creato — il toggle "Notifiche push" esisteva GIÀ in `ProfilePreferencesSection.tsx` (condiviso Parent/Partner, `profiles.notifyPush`) ma era puramente cosmetico (salvava solo una preferenza, nessuna iscrizione reale). Wired to real subscribe/unsubscribe: se l'iscrizione reale fallisce (permesso negato, browser non supportato), il toggle NON passa ad "attivo" e mostra l'errore — `notifyPush` riflette sempre lo stato reale, mai solo l'intenzione.
+
+**Trigger P0 implementati** (priorità ACTION nel notification center in-app, per non affaticare l'utente con troppe push): invito a gruppo (`inviteToGroupAction`, solo se l'email invitata corrisponde già a un profilo registrato) → push al genitore; proposta alternativa su una prenotazione (`respondToBookingAction`, solo `decision==="proposed"`) → push al genitore; nuova richiesta gruppo (`sendGroupRequestAction`) → push a tutti gli admin del centro; nuova prenotazione (`createBookingAction`) → push a tutti gli admin del centro. Ogni chiamata è best-effort per costruzione (mai un'eccezione verso il flusso di dominio che la genera).
+
+**Deliberatamente NON agganciati in questo primo giro** (priorità IMPORTANT/aggregato nel sistema in-app, o eventi computed senza un singolo punto di mutazione): `inquiry_reply`/`center_inquiry_new` quando non ACTION, `group_request_accepted`, `center_checkins_unconfirmed` (nessun "evento" singolo — è un aggregato ricalcolato), i due match carpool (richiederebbero ri-eseguire la logica di matching dentro `upsertCarpoolOfferAction`/`upsertCarpoolRequestAction` per trovare l'ALTRO utente da notificare — rimandato, non un'omissione silenziosa).
+
+**Privacy payload push**: title/body/deepLink minimi, stessa disciplina di `NotificationItem` — mai email/telefono/testi liberi del richiedente (il sistema operativo può mostrare il payload anche a schermo bloccato).
+
+## Future work esplicitamente escluso
+
+Digest email, SMS/WhatsApp, WebSocket, preferenze di notifica avanzate (per-tipo), cronologia notifiche permanente, event bus enterprise, `responsible_group_member_id`/bridge accompagnamento↔gruppo (week_responsibilities: gap documentato sotto), cursore "seen" in-app sincronizzato multi-device (richiederebbe una colonna, altra migration), push per i trigger non-P0 elencati sopra, cleanup periodico automatico delle subscription push obsolete (oggi solo self-cleaning al primo invio fallito).
 
 ### Accompagnamento/ritiro non assegnato — gap documentato, non implementato
 
@@ -70,4 +90,4 @@ Verificato `lib/data/responsibilities.ts`/`week_responsibilities`: un giorno "no
 
 ## Verifica statica
 
-`npx tsc --noEmit`: pulito. `npx eslint` sui file toccati: pulito. `npm run build`: completato senza errori. `npx playwright test --grep "no browser"`: 160/160 passati (intera suite, nessuna regressione sui test esistenti).
+`npx tsc --noEmit`: pulito. `npx eslint` sui file toccati: pulito. `npm run build`: completato senza errori. `npx playwright test --grep "no browser"`: 328/328 passati (intera suite, nessuna regressione sui test esistenti — comprende Wave 3 Parent, Notification Center Partner, Push notifications).
