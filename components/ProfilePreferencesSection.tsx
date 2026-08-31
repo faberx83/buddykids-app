@@ -1,11 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { Language, Theme } from "@/lib/data/profile";
 import { updatePreferencesAction } from "@/app/actions/profile";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
 import { ComingSoonBadge } from "@/components/StatusBadge";
-import { enablePushNotifications, disablePushNotifications } from "@/lib/push/client";
+import { enablePushNotifications, disablePushNotifications, hasBrowserPushSubscription } from "@/lib/push/client";
 
 const languageLabels: Record<Language, string> = { it: "Italiano", en: "English" };
 
@@ -48,6 +48,28 @@ export default function ProfilePreferencesSection({
   // permesso sovrapposti.
   const [pushBusy, setPushBusy] = useState(false);
   const [pushError, setPushError] = useState<string | null>(null);
+
+  // Segnalato da Fabrizio (31/08/2026, test reale): il toggle può risultare
+  // "acceso" (initialNotifyPush true, dal DB) senza che QUESTO browser abbia
+  // mai completato una vera subscription — sia perché il valore era true da
+  // prima che questa funzionalità esistesse (era cosmetico), sia perché la
+  // persona è iscritta solo su un altro device. In entrambi i casi mostrarlo
+  // "acceso" qui è fuorviante: non c'è motivo di ricliccarlo, quindi non
+  // parte mai una vera iscrizione. Corregge SOLO la visualizzazione (mai una
+  // scrittura su profiles.notifyPush): un altro device potrebbe comunque
+  // essere iscritto per davvero, e la persona può sempre ricliccare per
+  // iscrivere anche questo.
+  useEffect(() => {
+    if (!initialNotifyPush) return;
+    let cancelled = false;
+    hasBrowserPushSubscription().then((active) => {
+      if (!cancelled && !active) setNotifyPush(false);
+    });
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   async function save(update: Parameters<typeof updatePreferencesAction>[0]) {
     setError(null);

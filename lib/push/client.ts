@@ -65,6 +65,29 @@ export async function enablePushNotifications(): Promise<{ error?: string }> {
   }
 }
 
+// Segnalato da Fabrizio (31/08/2026, test reale con due account) —
+// profiles.notifyPush può essere true SENZA che esista una vera subscription
+// per QUESTO browser: sia perché il toggle era true da prima che questa
+// funzionalità esistesse (era puramente cosmetico), sia perché la persona ha
+// una subscription attiva solo su un ALTRO dispositivo (notifyPush è un solo
+// booleano per profilo, push_subscriptions è per-device). In entrambi i casi
+// mostrare il toggle "acceso" su un device che non è davvero iscritto è
+// fuorviante: la persona non ha motivo di ricliccarlo, quindi
+// enablePushNotifications() non parte mai. Usata da
+// ProfilePreferencesSection al mount per correggere SOLO la visualizzazione
+// (mai una scrittura automatica su profiles.notifyPush: un altro device
+// potrebbe comunque essere iscritto per davvero).
+export async function hasBrowserPushSubscription(): Promise<boolean> {
+  if (!isPushSupported()) return false;
+  try {
+    const registration = await navigator.serviceWorker.ready;
+    const subscription = await registration.pushManager.getSubscription();
+    return subscription !== null;
+  } catch {
+    return false;
+  }
+}
+
 // Disiscrive QUESTO device sia dal browser (pushManager) sia dal server
 // (riga push_subscriptions) — entrambi, non solo uno dei due: lasciare la
 // riga server senza disiscrivere il browser continuerebbe a mostrare push
