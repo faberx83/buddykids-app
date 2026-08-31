@@ -34,6 +34,55 @@ function firstOf<T>(value: T | T[] | null | undefined): T | null {
   return Array.isArray(value) ? (value[0] ?? null) : value;
 }
 
+export interface AcceptedGroupRequestSignal {
+  id: string;
+  groupId: string;
+  groupName: string;
+  discountPercent: number;
+  respondedAt: string;
+}
+
+// TRAMA — Wave 3 (31/08/2026, "coerenza con Coordination Signal", refactor
+// locale esplicitamente permesso dal task): estratta da dentro
+// getCoordinationSignal() per essere la STESSA fonte di verità usata anche da
+// lib/data/notifications.ts — "richiesta gruppo accettata" deve restare un
+// solo pezzo di logica (query + finestra di recency), non due copie che
+// potrebbero divergere. Il ramo Home (sotto) continua a usarne solo il primo
+// elemento; le Notifiche possono mostrarne fino a `limit`.
+export async function getRecentAcceptedGroupRequests(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  userId: string,
+  limit: number = 1
+): Promise<AcceptedGroupRequestSignal[]> {
+  const { data: memberRows } = await supabase.from("group_members").select("group_id").eq("parent_id", userId);
+  const groupIds = (memberRows ?? []).map((r) => r.group_id as string);
+  if (groupIds.length === 0) return [];
+
+  const since = new Date(Date.now() - GROUP_REQUEST_RECENCY_DAYS * 86_400_000).toISOString();
+  const { data: acceptedRows } = await supabase
+    .from("group_requests")
+    .select("id, group_id, discount_percent, responded_at, groups ( name )")
+    .in("group_id", groupIds)
+    .eq("status", "accepted")
+    .gte("responded_at", since)
+    .order("responded_at", { ascending: false })
+    .limit(limit);
+
+  return ((acceptedRows ?? []) as {
+    id: string;
+    group_id: string;
+    discount_percent: number;
+    responded_at: string;
+    groups: { name: string } | { name: string }[] | null;
+  }[]).map((row) => ({
+    id: row.id,
+    groupId: row.group_id,
+    groupName: firstOf(row.groups)?.name ?? "il tuo gruppo",
+    discountPercent: row.discount_percent,
+    respondedAt: row.responded_at,
+  }));
+}
+
 export async function getCoordinationSignal(): Promise<CoordinationSignal | null> {
   if (!isSupabaseConfigured) return null;
 
@@ -52,35 +101,17 @@ export async function getCoordinationSignal(): Promise<CoordinationSignal | null
   }
 
   // 2) MEDIUM — richiesta gruppo accettata di recente, per un gruppo di cui
-  // l'utente è membro.
-  const { data: memberRows } = await supabase.from("group_members").select("group_id").eq("parent_id", user.id);
-  const groupIds = (memberRows ?? []).map((r) => r.group_id as string);
-  if (groupIds.length > 0) {
-    const since = new Date(Date.now() - GROUP_REQUEST_RECENCY_DAYS * 86_400_000).toISOString();
-    const { data: acceptedRows } = await supabase
-      .from("group_requests")
-      .select("group_id, discount_percent, responded_at, groups ( name )")
-      .in("group_id", groupIds)
-      .eq("status", "accepted")
-      .gte("responded_at", since)
-      .order("responded_at", { ascending: false })
-      .limit(1);
-
-    if (acceptedRows && acceptedRows.length > 0) {
-      const row = acceptedRows[0] as {
-        group_id: string;
-        discount_percent: number;
-        groups: { name: string } | { name: string }[] | null;
-      };
-      const groupName = firstOf(row.groups)?.name ?? "il tuo gruppo";
-      return {
-        kind: "group_request_accepted",
-        priority: "medium",
-        groupId: row.group_id,
-        groupName,
-        discountPercent: row.discount_percent,
-      };
-    }
+  // l'utente è membro (stessa funzione condivisa con le Notifiche, qui
+  // basta il più recente).
+  const [accepted] = await getRecentAcceptedGroupRequests(supabase, user.id, 1);
+  if (accepted) {
+    return {
+      kind: "group_request_accepted",
+      priority: "medium",
+      groupId: accepted.groupId,
+      groupName: accepted.groupName,
+      discountPercent: accepted.discountPercent,
+    };
   }
 
   // 3) LOW — segnale Community, invariato.

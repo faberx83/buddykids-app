@@ -14,6 +14,9 @@ import { generateCorrelationId } from "@/lib/telemetry/correlation";
 import { getWalkthroughProgress, WalkthroughProgressSummary } from "@/lib/walkthrough/data";
 import ParentSpotlight from "@/components/spotlight/ParentSpotlight";
 import OnboardingCarousel from "@/components/nextgen/OnboardingCarousel";
+import NotificationCenter from "@/components/nextgen/NotificationCenter";
+import { getParentNotifications } from "@/lib/data/notifications";
+import { NotificationItem } from "@/lib/notifications/model";
 
 // SPRINT 0 (NEXTGEN — V2 in parallelo a LEGACY): guscio minimo dell'area
 // genitore NEXTGEN. Stesso guard di autenticazione di app/(main)/layout.tsx
@@ -73,6 +76,24 @@ export default async function NextgenLayout({ children }: { children: React.Reac
   // intero layout serve solo /nextgen, l'area Parent): doppia sicurezza a
   // costo zero contro un ipotetico account Partner/Admin che navighi qui.
   let onboardingProgress: WalkthroughProgressSummary | null = null;
+  // TRAMA — Wave 3 "Actionable In-App Notifications": calcolato qui (Server
+  // Component, stesso principio già in uso per spotlightProgress/
+  // onboardingProgress sopra) e passato come prop a NotificationCenter
+  // (client), montato una sola volta più sotto — copre ogni pagina genitore
+  // NEXTGEN senza aggiungerlo pagina per pagina. getParentNotifications()
+  // verifica ESSA STESSA sessione+ruolo "parent" (vedi lib/data/notifications.ts,
+  // stesso principio del security check Wave 1 su /admin/one/pilot): anche
+  // se in futuro questo layout cambiasse, il notification center non
+  // dipenderebbe comunque solo dal gate qui.
+  let notifications: NotificationItem[] = [];
+  // NOTIF-P11 — il notification center è una superficie SOLO Genitore: un
+  // Partner/Admin che aprisse comunque /nextgen (non bloccato da questo
+  // layout, solo dal flag TRAMA_ONE_ENABLED/route dedicate) non deve vedere
+  // nemmeno il bottone, non solo un elenco vuoto — la garanzia sui DATI vive
+  // comunque anche in lib/data/notifications.ts (fail-closed indipendente).
+  // Senza Supabase configurato (demo) resta true, stesso comportamento
+  // "esperienza genitore di default" già usato altrove in questo layout.
+  let isParentUser = !isSupabaseConfigured;
 
   if (isSupabaseConfigured) {
     const supabase = await createClient();
@@ -87,6 +108,11 @@ export default async function NextgenLayout({ children }: { children: React.Reac
       .eq("id", user.id)
       .single();
     const realRole = (profile?.role as Role) ?? "parent";
+
+    if (realRole === "parent") {
+      isParentUser = true;
+      notifications = await getParentNotifications();
+    }
 
     const enabled = await resolveFeatureFlag({
       flagName: "TRAMA_ONE_ENABLED",
@@ -123,6 +149,7 @@ export default async function NextgenLayout({ children }: { children: React.Reac
         <BetaFeedbackButton />
         <ParentSpotlight progress={spotlightProgress} />
         <OnboardingCarousel progress={onboardingProgress} />
+        {isParentUser && <NotificationCenter initialNotifications={notifications} />}
       </NextgenToastProvider>
       {/* Istanza DEDICATA a NEXTGEN: appName diverso ("TRAMA" vs quello di
           LEGACY, vedi lib/tenant.ts) -> chiave di dismiss separata in

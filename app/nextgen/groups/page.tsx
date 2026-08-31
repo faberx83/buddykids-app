@@ -8,11 +8,19 @@ import { getGroupsForUser, getPublicGroups, getMyGroupInvites } from "@/lib/data
 // LEGACY (vedi components/BottomNav.tsx, "/groups" è una voce primaria
 // LEGACY). basePath="/nextgen/groups" fa sì che creazione gruppo, "Unisciti"
 // da Scopri e accettazione inviti restino tutte dentro NEXTGEN.
-export default async function NextgenGroupsPage() {
-  const [groups, publicGroups, invites] = await Promise.all([
+export default async function NextgenGroupsPage({
+  searchParams,
+}: {
+  // TRAMA — Wave 3 (Notifiche): "tab=inviti" arriva dal deep link di un
+  // item del Notification Center ("Sei stato invitato al gruppo...") — apre
+  // direttamente la tab "Inviti" invece di "I miei gruppi" (indice di default).
+  searchParams: Promise<{ tab?: string }>;
+}) {
+  const [groups, publicGroups, invites, params] = await Promise.all([
     getGroupsForUser(),
     getPublicGroups(),
     getMyGroupInvites(),
+    searchParams,
   ]);
   return (
     <GroupsClient
@@ -22,6 +30,7 @@ export default async function NextgenGroupsPage() {
       basePath="/nextgen/groups"
       backHref="/nextgen/planner"
       showBrandIcon
+      initialTab={params.tab === "inviti" ? 2 : undefined}
     />
   );
 }

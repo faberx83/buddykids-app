@@ -36,6 +36,7 @@ export default function GroupsClient({
   basePath = "/groups",
   backHref,
   showBrandIcon,
+  initialTab,
 }: {
   initialGroups: GroupItem[];
   initialPublicGroups: PublicGroupItem[];
@@ -43,9 +44,14 @@ export default function GroupsClient({
   basePath?: string;
   backHref?: string;
   showBrandIcon?: boolean;
+  // TRAMA — Wave 3 (Notifiche): deep-link diretto alla tab "Inviti" da un
+  // item del Notification Center ("Sei stato invitato al gruppo..."), invece
+  // di far scoprire la tab al genitore a tentativi. Opt-in, default assente
+  // (comportamento invariato: parte sempre da "I miei gruppi" come prima).
+  initialTab?: number;
 }) {
   const router = useRouter();
-  const [active, setActive] = useState(0);
+  const [active, setActive] = useState(initialTab ?? 0);
   const [groups] = useState<GroupItem[]>(initialGroups);
   const [showNew, setShowNew] = useState(false);
   const [newName, setNewName] = useState("");

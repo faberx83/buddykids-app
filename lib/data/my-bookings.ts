@@ -94,6 +94,11 @@ export interface MyBooking {
   // di activity_inquiries: falso quando il centro ha appena risposto, così
   // il genitore vede un badge "il centro ha risposto".
   readByParent: boolean;
+  // TRAMA — Wave 3 (31/08/2026, Notifiche): quando il centro ha risposto,
+  // serve per ordinare/datare la notifica in modo accurato — created_at è la
+  // data della PRENOTAZIONE, non della risposta. Additivo, nessun campo
+  // esistente toccato. Null per ogni prenotazione mai gestita dal centro.
+  respondedAt: string | null;
 }
 
 function firstOf<T>(value: T | T[] | null | undefined): T | null {
@@ -148,6 +153,7 @@ interface RawRow {
   partner_decision: "pending" | "accepted" | "rejected" | "proposed" | null;
   partner_proposal_note: string | null;
   read_by_parent: boolean | null;
+  responded_at: string | null;
   activities: RawActivityRef | RawActivityRef[] | null;
   booking_weeks: { activity_weeks: RawWeekRef | RawWeekRef[] | null }[] | null;
   booking_days: { activity_days: RawDayRef | RawDayRef[] | null }[] | null;
@@ -166,7 +172,7 @@ export async function getMyBookingsForParent(): Promise<MyBooking[]> {
   const { data, error } = await supabase
     .from("bookings")
     .select(
-      "id, status, total_amount, discount_amount, created_at, partner_decision, partner_proposal_note, read_by_parent, activities ( id, slug, name, cover_image_url, emoji, img_gradient, centers ( name, city, cancellation_window_days ) ), booking_weeks ( activity_weeks ( id, label, start_date, end_date ) ), booking_days ( activity_days ( date ) ), booking_kids ( kids ( id, name ) )"
+      "id, status, total_amount, discount_amount, created_at, partner_decision, partner_proposal_note, read_by_parent, responded_at, activities ( id, slug, name, cover_image_url, emoji, img_gradient, centers ( name, city, cancellation_window_days ) ), booking_weeks ( activity_weeks ( id, label, start_date, end_date ) ), booking_days ( activity_days ( date ) ), booking_kids ( kids ( id, name ) )"
     )
     .eq("parent_id", user.id)
     .order("created_at", { ascending: false });
@@ -259,6 +265,7 @@ export async function getMyBookingsForParent(): Promise<MyBooking[]> {
       partnerDecision: row.partner_decision ?? "pending",
       partnerProposalNote: row.partner_proposal_note,
       readByParent: row.read_by_parent ?? true,
+      respondedAt: row.responded_at,
     };
   });
 }
