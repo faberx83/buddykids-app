@@ -7,7 +7,7 @@ import { PlannerData } from "@/lib/data/planner";
 import { MyBooking } from "@/lib/data/my-bookings";
 import { Activity } from "@/lib/types";
 import { TodayCheckin } from "@/lib/data/checkin";
-import { CommunityHomeSignal } from "@/lib/types";
+import { CoordinationSignal } from "@/lib/types";
 import ActivityCard from "@/components/ActivityCard";
 import NextgenBadge from "@/components/nextgen/NextgenBadge";
 import NextgenCheckinCard from "@/components/nextgen/NextgenCheckinCard";
@@ -73,7 +73,7 @@ export default function HomeDashboardClient({
   bookings,
   recommendations,
   todayCheckins,
-  communitySignal,
+  coordinationSignal,
   profileIncomplete,
   hasKids,
   activitiesAreMockFallback,
@@ -83,7 +83,7 @@ export default function HomeDashboardClient({
   bookings: MyBooking[];
   recommendations: Recommendation[];
   todayCheckins: TodayCheckin[];
-  communitySignal: CommunityHomeSignal | null;
+  coordinationSignal: CoordinationSignal | null;
   profileIncomplete: boolean;
   hasKids: boolean;
   activitiesAreMockFallback: boolean;
@@ -258,20 +258,52 @@ export default function HomeDashboardClient({
 
       {/* SPRINT 4 — piccolo segnale sociale, solo se rilevante: "Home deve
           mostrare piccoli elementi sociali" (richiesta di Fabrizio), non
-          invasivo (una riga, nessun popup), link diretto alla community.
-          TRAMA Sprint 3 — colore hardcoded #F5F2FF/#5B4FE9 sostituito coi
-          token trama-lilac/trama-violet. */}
-      {communitySignal && (
+          invasivo (una riga, nessun popup). TRAMA Sprint 3 — colore
+          hardcoded #F5F2FF/#5B4FE9 sostituito coi token trama-lilac/
+          trama-violet.
+          Wave 2 "Coordination Resurfacing" (31/08) — generalizzato da
+          "solo segnale Community" a CoordinationSignal: al massimo UNO
+          mostrato, mai un feed, stesso pattern visivo di prima (una riga,
+          un link, un'icona) per ciascuna delle 3 varianti — vedi
+          lib/data/coordination-signal.ts per la priorità. */}
+      {coordinationSignal?.kind === "group_invite_pending" && (
         <Link
-          href={`/nextgen/community/${communitySignal.communityId}`}
+          href="/nextgen/groups"
+          className="flex items-center gap-2.5 rounded-2xl bg-orange-light px-4 py-3 active:scale-[0.99]"
+        >
+          <i className="ti ti-mail-opened flex-shrink-0 text-lg text-trama-orange" />
+          <span className="text-[13px] font-medium text-ink-2">
+            Hai un invito in sospeso per il gruppo <b className="font-bold text-ink">{coordinationSignal.groupName}</b>
+            — accetta o rifiuta
+          </span>
+          <i className="ti ti-chevron-right ml-auto flex-shrink-0 text-ink-3" />
+        </Link>
+      )}
+      {coordinationSignal?.kind === "group_request_accepted" && (
+        <Link
+          href={`/nextgen/groups/${coordinationSignal.groupId}`}
+          className="flex items-center gap-2.5 rounded-2xl bg-trama-lilac/20 px-4 py-3 active:scale-[0.99]"
+        >
+          <i className="ti ti-discount-2 flex-shrink-0 text-lg text-trama-violet" />
+          <span className="text-[13px] font-medium text-ink-2">
+            Il centro ha accettato la richiesta del gruppo{" "}
+            <b className="font-bold text-ink">{coordinationSignal.groupName}</b> — sconto{" "}
+            {coordinationSignal.discountPercent}%
+          </span>
+          <i className="ti ti-chevron-right ml-auto flex-shrink-0 text-ink-3" />
+        </Link>
+      )}
+      {coordinationSignal?.kind === "community" && (
+        <Link
+          href={`/nextgen/community/${coordinationSignal.communityId}`}
           className="flex items-center gap-2.5 rounded-2xl bg-trama-lilac/20 px-4 py-3 active:scale-[0.99]"
         >
           <i className="ti ti-users-group flex-shrink-0 text-lg text-trama-violet" />
           <span className="text-[13px] font-medium text-ink-2">
             <b className="font-bold text-ink">
-              {communitySignal.interestCount} {communitySignal.interestCount === 1 ? "famiglia" : "famiglie"}
+              {coordinationSignal.interestCount} {coordinationSignal.interestCount === 1 ? "famiglia" : "famiglie"}
             </b>{" "}
-            di {communitySignal.communityName} stanno valutando {communitySignal.activityName}
+            di {coordinationSignal.communityName} stanno valutando {coordinationSignal.activityName}
           </span>
           <i className="ti ti-chevron-right ml-auto flex-shrink-0 text-ink-3" />
         </Link>

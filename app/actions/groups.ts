@@ -8,6 +8,13 @@ import { getPublicGroups, getMyGroupInvites } from "@/lib/data/groups";
 import { revalidatePath } from "next/cache";
 import { headers } from "next/headers";
 import { sendEmail, isEmailConfigured } from "@/lib/email";
+// Wave 1 "Pilot Observability" (audit TRAMA_PILOT_ARCHITECTURE_REVIEW.md
+// sez.9/sez.11) — conteggi aggregati di adozione Gruppi/Carpool, MAI un
+// identificativo utente nel payload (context serve solo a evitare una
+// seconda query di sessione, vedi PersistProductEventContext). Nessun nuovo
+// call site per la logica esistente: solo un evento in più dopo un successo
+// già determinato dal codice invariato sopra/sotto.
+import { persistProductEvent } from "@/lib/telemetry/events";
 
 // Traduce i messaggi di errore Postgres più comuni in qualcosa di leggibile
 // per un genitore, invece di mostrare il testo tecnico del database.
@@ -49,6 +56,11 @@ export async function createGroupAction(name: string): Promise<{ group?: GroupIt
     .insert({ group_id: group.id, parent_id: user.id });
 
   if (memberError) return { error: memberError.message };
+
+  await persistProductEvent(
+    { event: "group_created", tenant: "family", role: "parent" },
+    { supabase, userId: user.id }
+  );
 
   const initials =
     selfName
@@ -110,6 +122,12 @@ export async function joinGroupAction(groupId: string): Promise<{ error?: string
     .insert({ group_id: groupId, parent_id: user.id });
 
   if (error) return { error: friendlyDbError(error.message, "Errore nell'adesione al gruppo") };
+
+  await persistProductEvent(
+    { event: "group_joined", tenant: "family", role: "parent", detail: "via_link" },
+    { supabase, userId: user.id }
+  );
+
   revalidatePath(`/groups/${groupId}`);
   revalidatePath("/groups");
   return {};
@@ -258,6 +276,11 @@ export async function acceptGroupInviteAction(inviteId: string): Promise<Respond
   if (error) return { error: error.message };
   const row = data as { group_id: string | null; error: string | null } | null;
   if (!row || row.error) return { error: row?.error || "Errore nell'accettazione dell'invito" };
+
+  await persistProductEvent(
+    { event: "group_joined", tenant: "family", role: "parent", detail: "via_invite" },
+    { supabase, userId: user.id }
+  );
 
   revalidatePath("/groups");
   return { groupId: row.group_id || undefined };
@@ -514,6 +537,17 @@ export async function upsertCarpoolOfferAction(
   const { supabase, user } = await requireUser();
   if (!user) return { error: "Non autenticato" };
 
+  // Distingue "prima creazione" da "modifica di un'offerta già esistente":
+  // l'evento carpool_offer_created deve contare adozione (quante offerte
+  // NUOVE), non ogni salvataggio di un form già usato prima (altrimenti un
+  // genitore che aggiorna i posti disponibili 5 volte genererebbe 5 eventi).
+  const { data: existingOffer } = await supabase
+    .from("carpool_offers")
+    .select("group_id")
+    .eq("group_id", groupId)
+    .eq("parent_id", user.id)
+    .maybeSingle();
+
   const { error } = await supabase.from("carpool_offers").upsert(
     {
       group_id: groupId,
@@ -527,6 +561,14 @@ export async function upsertCarpoolOfferAction(
   );
 
   if (error) return { error: error.message };
+
+  if (!existingOffer) {
+    await persistProductEvent(
+      { event: "carpool_offer_created", tenant: "family", role: "parent" },
+      { supabase, userId: user.id }
+    );
+  }
+
   revalidatePath(`/groups/${groupId}`);
   return {};
 }
@@ -557,6 +599,15 @@ export async function upsertCarpoolRequestAction(
   const { supabase, user } = await requireUser();
   if (!user) return { error: "Non autenticato" };
 
+  // Stesso motivo del pre-check in upsertCarpoolOfferAction: distingue
+  // "prima richiesta" da "modifica di una richiesta già esistente".
+  const { data: existingRequest } = await supabase
+    .from("carpool_requests")
+    .select("group_id")
+    .eq("group_id", groupId)
+    .eq("parent_id", user.id)
+    .maybeSingle();
+
   const { error } = await supabase.from("carpool_requests").upsert(
     {
       group_id: groupId,
@@ -569,6 +620,14 @@ export async function upsertCarpoolRequestAction(
   );
 
   if (error) return { error: error.message };
+
+  if (!existingRequest) {
+    await persistProductEvent(
+      { event: "carpool_request_created", tenant: "family", role: "parent" },
+      { supabase, userId: user.id }
+    );
+  }
+
   revalidatePath(`/groups/${groupId}`);
   return {};
 }

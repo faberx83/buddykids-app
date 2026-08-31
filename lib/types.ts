@@ -413,6 +413,25 @@ export interface CommunityHomeSignal {
   interestCount: number;
 }
 
+// TRAMA — Wave 2 "Coordination Resurfacing" (audit TRAMA_PILOT_ARCHITECTURE_
+// REVIEW.md sez.2/12): generalizza CommunityHomeSignal, che copriva SOLO il
+// segnale Community. La Home mostra al massimo UNO di questi (mai più di
+// uno, mai un feed) — priorità AZIONE RICHIESTA > PROBLEMA/AGGIORNAMENTO
+// ORGANIZZATIVO > AGGIORNAMENTO SOCIALE, calcolata da
+// lib/data/coordination-signal.ts#getCoordinationSignal(). Il ramo
+// "community" è l'esatto CommunityHomeSignal di prima (stesso shape, stessi
+// dati) con priority:"low" aggiunta — nessuna regressione per quel caso.
+export type CoordinationSignal =
+  | ({ kind: "community"; priority: "low" } & CommunityHomeSignal)
+  | { kind: "group_invite_pending"; priority: "high"; groupId: string; groupName: string }
+  | {
+      kind: "group_request_accepted";
+      priority: "medium";
+      groupId: string;
+      groupName: string;
+      discountPercent: number;
+    };
+
 export interface CalendarEvent {
   id: string;
   day: number;

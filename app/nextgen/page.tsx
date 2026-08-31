@@ -5,7 +5,7 @@ import { getMyBookingsForParent } from "@/lib/data/my-bookings";
 import { getKidsForUser } from "@/lib/data/kids";
 import { getActivities, isMockActivitiesArray } from "@/lib/data/activities";
 import { getTodayCheckinsForParent } from "@/lib/data/checkin";
-import { getCommunityHomeSignal } from "@/lib/data/communities";
+import { getCoordinationSignal } from "@/lib/data/coordination-signal";
 import { isParentProfileIncomplete } from "@/lib/data/profile";
 import { computeMatchesForKid } from "@/lib/matching";
 import HomeDashboardClient from "./HomeDashboardClient";
@@ -30,13 +30,13 @@ export default async function NextgenHomePage() {
     data: { user },
   } = await supabase.auth.getUser();
 
-  const [planner, bookings, kids, activities, todayCheckins, communitySignal, profileIncomplete] = await Promise.all([
+  const [planner, bookings, kids, activities, todayCheckins, coordinationSignal, profileIncomplete] = await Promise.all([
     getPlannerData(),
     getMyBookingsForParent(),
     getKidsForUser(),
     getActivities(),
     getTodayCheckinsForParent(),
-    getCommunityHomeSignal(),
+    getCoordinationSignal(),
     // Gap segnalato da Fabrizio (05/08): NEXTGEN non aveva mai un equivalente
     // del prompt "Completa il tuo profilo" del Legacy — stessa fonte dati,
     // vedi NextgenProfileCompletionPrompt più sotto.
@@ -119,7 +119,7 @@ export default async function NextgenHomePage() {
       bookings={bookings}
       recommendations={recommendations}
       todayCheckins={todayCheckins}
-      communitySignal={communitySignal}
+      coordinationSignal={coordinationSignal}
       profileIncomplete={profileIncomplete}
       hasKids={kids.length > 0}
       // Addendum Sezione B — banner demo-mode per MOCK_DEMO, stesso criterio
