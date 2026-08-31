@@ -36,25 +36,12 @@ import {
 } from "@/lib/notifications/model";
 import { markInquiriesReadAction } from "@/app/actions/inquiries";
 import { markBookingsReadAction } from "@/app/actions/booking-response";
+// Estratto in un file dedicato (31/08/2026): NextgenBottomNav.tsx ora usa la
+// STESSA logica per i pallini "Prenotazioni"/"Profilo" — vedi
+// lib/notifications/seen-cursor.ts per il motivo dell'estrazione.
+import { readLastSeenAt, writeLastSeenAt } from "@/lib/notifications/seen-cursor";
 
 const BUTTON_SIZE = 52;
-const LAST_SEEN_STORAGE_KEY = "trama-notifications-last-seen-at";
-
-function readLastSeenAt(): string | null {
-  try {
-    return window.localStorage.getItem(LAST_SEEN_STORAGE_KEY);
-  } catch {
-    return null; // localStorage non disponibile (es. modalità privata) — nessun cursore, tutto "non visto"
-  }
-}
-
-function writeLastSeenAt(iso: string) {
-  try {
-    window.localStorage.setItem(LAST_SEEN_STORAGE_KEY, iso);
-  } catch {
-    // best-effort, coerente col resto del progetto (es. BetaFeedbackButton)
-  }
-}
 
 const PRIORITY_ICON: Record<NotificationItem["priority"], string> = {
   action: "ti-alert-circle",

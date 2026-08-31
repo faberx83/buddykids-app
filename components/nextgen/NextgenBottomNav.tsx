@@ -1,7 +1,10 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { NotificationItem, applyClientCursor } from "@/lib/notifications/model";
+import { readLastSeenAt } from "@/lib/notifications/seen-cursor";
 
 // SPRINT 3 (NEXTGEN) — "trasformare il Planner nella feature principale del
 // prodotto... il cuore dell'esperienza" (richiesta di Fabrizio): finché
@@ -48,8 +51,36 @@ function isActive(pathname: string, href: string): boolean {
   return pathname === href || pathname.startsWith(`${href}/`);
 }
 
-export default function NextgenBottomNav() {
+// Richiesta di Fabrizio (31/08/2026): un pallino di notifica anche sulla
+// bottom nav, "contestualizzato" — non un conteggio generico ripetuto in due
+// posti, ma ognuno dei due tab mostra SOLO ciò che gli appartiene:
+// "Prenotazioni" = risposte del centro a una PRENOTAZIONE (conferma/rifiuto/
+// proposta alternativa); "Profilo" = tutto il resto di non visto (invito
+// gruppo, risposta a una RICHIESTA/domanda, gruppo accettato, match
+// carpool) — un "catch-all" per ciò che non ha già un tab dedicato, cosi
+// niente risulta segnalato in due punti contemporaneamente. Stessa lista
+// `notifications` già calcolata una volta sola in app/nextgen/layout.tsx per
+// la campanella (NotificationCenter.tsx): zero nuove query.
+function useNavBadges(notifications: NotificationItem[]) {
+  // Stesso cursore client-side della campanella (localStorage) — stesso
+  // pattern SSR-safe one-shot-al-mount già stabilito lì, vedi
+  // lib/notifications/seen-cursor.ts per il motivo dell'estrazione.
+  const [lastSeenAt, setLastSeenAt] = useState<string | null>(null);
+  useEffect(() => {
+    const stored = readLastSeenAt();
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- one-shot al mount per leggere un valore che esiste SOLO lato client (localStorage), stesso pattern SSR-safe già in uso in NotificationCenter.tsx/BetaFeedbackButton.tsx/InstallPrompt.tsx.
+    if (stored !== null) setLastSeenAt(stored);
+  }, []);
+
+  const items = applyClientCursor(notifications, lastSeenAt);
+  const hasUnseenBookingResponse = items.some((i) => i.type === "booking_response" && !i.isSeen);
+  const hasUnseenOther = items.some((i) => i.type !== "booking_response" && !i.isSeen);
+  return { hasUnseenBookingResponse, hasUnseenOther };
+}
+
+export default function NextgenBottomNav({ notifications = [] }: { notifications?: NotificationItem[] }) {
   const pathname = usePathname();
+  const { hasUnseenBookingResponse, hasUnseenOther } = useNavBadges(notifications);
 
   return (
     <div
@@ -58,18 +89,32 @@ export default function NextgenBottomNav() {
     >
       {items.map((item) => {
         const active = isActive(pathname, item.href);
+        // Contestualizzato per tab, non un conteggio generico duplicato:
+        // vedi commento su useNavBadges sopra.
+        const showDot =
+          (item.href === "/nextgen/prenotazioni" && hasUnseenBookingResponse) ||
+          (item.href === "/nextgen/profile" && hasUnseenOther);
         return (
           <Link
             key={item.href}
             href={item.href}
             data-spotlight={item.spotlightTarget}
+            aria-label={showDot ? `${item.label}, nuove notifiche` : undefined}
             className="flex flex-1 flex-col items-center gap-[3px] active:scale-90"
           >
-            <i
-              className={`ti ${item.icon} text-[22px] transition-colors ${
-                active ? "text-trama-violet" : "text-ink-3"
-              }`}
-            />
+            <span className="relative">
+              <i
+                className={`ti ${item.icon} text-[22px] transition-colors ${
+                  active ? "text-trama-violet" : "text-ink-3"
+                }`}
+              />
+              {showDot && (
+                <span
+                  aria-hidden="true"
+                  className="absolute -right-0.5 -top-0.5 h-2 w-2 rounded-full bg-trama-orange ring-2 ring-white"
+                />
+              )}
+            </span>
             <span
               className={`font-poppins text-[10px] font-medium transition-colors ${
                 active ? "text-trama-violet" : "text-ink-3"

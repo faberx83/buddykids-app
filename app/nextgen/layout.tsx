@@ -140,7 +140,11 @@ export default async function NextgenLayout({ children }: { children: React.Reac
       <NextgenToastProvider>
         <div className="flex h-full min-h-0 flex-col">
           <div className="no-scrollbar flex-1 overflow-y-auto">{children}</div>
-          <NextgenBottomNav />
+          {/* Estensione 31/08/2026 (Fabrizio): pallini "Prenotazioni"/"Profilo"
+              contestualizzati, stessa lista `notifications` già calcolata
+              sopra per la campanella — zero nuove query, vedi
+              useNavBadges in NextgenBottomNav.tsx. */}
+          <NextgenBottomNav notifications={notifications} />
         </div>
         {/* SPRINT 5 — floating CTA "Segnala un problema", montata qui una
             sola volta cosi copre ogni pagina genitore NEXTGEN (il componente
