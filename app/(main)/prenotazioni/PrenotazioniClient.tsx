@@ -10,6 +10,7 @@ import { cancelBookingAction } from "@/app/actions/bookings";
 import PageHeader from "@/components/PageHeader";
 import { ComingSoonBadge } from "@/components/StatusBadge";
 import ContactCenterButton from "@/components/ContactCenterButton";
+import DecorativeIntroCard from "@/components/nextgen/DecorativeIntroCard";
 
 // "Le mie prenotazioni" ridisegnata da Fabrizio come dashboard di
 // pianificazione familiare (non più un semplice elenco): "L'obiettivo è
@@ -241,8 +242,13 @@ export default function PrenotazioniClient({
 
       <div className="px-5 py-4">
         {/* 1) Copertura del periodo — "in pochi secondi" capire cosa è
-            organizzato e dove ci sono ancora buchi. */}
-        <CoverageStrip planner={planner} />
+            organizzato e dove ci sono ancora buchi.
+            showBrandIcon è già il segnale (esistente, non nuovo) che questa
+            pagina è montata da NEXTGEN (vedi PageHeader sopra) — riusato qui
+            per la variante viola coi pallozzi (feedback Fabrizio 31/08:
+            coerenza con la Hero Card di Home). LEGACY (showBrandIcon
+            assente) resta con la card bianca invariata. */}
+        <CoverageStrip planner={planner} nextgen={showBrandIcon} />
 
         {/* 3) Statistiche sintetiche */}
         <div className="mt-3 grid grid-cols-3 gap-2.5">
@@ -415,7 +421,7 @@ function StatCard({ label, value, icon }: { label: string; value: string; icon: 
 // "Abbiamo organizzato tutte le prossime settimane?" con un colpo d'occhio,
 // riusando lib/data/planner.ts (la stessa logica già corretta e testata del
 // Planner in Home) invece di ricalcolare la copertura da zero qui.
-function CoverageStrip({ planner }: { planner: PlannerData }) {
+function CoverageStrip({ planner, nextgen }: { planner: PlannerData; nextgen?: boolean }) {
   // Segnalazione 25/08/2026 (Fabrizio): a fine agosto la card diceva ancora
   // "15 settimane ancora da organizzare" su 16 totali — contava anche le
   // settimane di giugno/luglio ormai CONCLUSE, mai selezionate per
@@ -427,8 +433,9 @@ function CoverageStrip({ planner }: { planner: PlannerData }) {
   const todayIso = new Date().toISOString().slice(0, 10);
   const upcoming = planner.weeks.filter((w) => !w.dismissed && w.endDate >= todayIso);
   const gaps = upcoming.filter((w) => !w.covered).length;
-  return (
-    <div className="rounded-2xl border border-[#E8EBF0] bg-white p-4">
+
+  const body = (
+    <>
       <div className="mb-2.5 flex items-center justify-between">
         <div className="text-sm font-bold text-ink">Copertura dell&apos;estate</div>
         <span className="text-[12px] font-semibold text-ink-2">
@@ -474,8 +481,19 @@ function CoverageStrip({ planner }: { planner: PlannerData }) {
           Tutte le settimane sono organizzate
         </p>
       )}
-    </div>
+    </>
   );
+
+  // Variante NEXTGEN (feedback Fabrizio, 31/08): stessi pallozzi viola della
+  // Hero Card di Home, invece della card bianca con bordo di LEGACY — vedi
+  // DecorativeIntroCard.tsx. LEGACY resta invariato di proposito (nessuna
+  // richiesta di toccarlo, la card bianca con bordo è ancora il suo
+  // linguaggio visivo attuale).
+  if (nextgen) {
+    return <DecorativeIntroCard padding="p-4">{body}</DecorativeIntroCard>;
+  }
+
+  return <div className="rounded-2xl border border-[#E8EBF0] bg-white p-4">{body}</div>;
 }
 
 // Vista "Copertura" estesa: stessa striscia, ma con il dettaglio per

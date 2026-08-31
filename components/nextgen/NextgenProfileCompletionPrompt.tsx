@@ -10,6 +10,15 @@ import Link from "next/link";
 // (isParentProfileIncomplete + kids.length), stile riallineato al resto
 // della Home NEXTGEN (Poppins, trama-violet, rounded-2xl) invece di
 // riusare il componente Legacy (che usa token pre-rebrand come bg-sky-light).
+//
+// UNA SOLA CTA (feedback Fabrizio, 31/08): prima mostrava due righe separate
+// che portavano comunque alla stessa pagina profilo (solo con un parametro
+// diverso per auto-aprire l'editor giusto) — ridondante quando erano
+// visibili insieme. Ora: se manca solo una cosa, la CTA resta specifica con
+// lo stesso deep-link automatico di prima; se mancano ENTRAMBE, un'unica
+// CTA generica porta al profilo senza auto-aprire nulla (l'header profilo e
+// la sezione bambini sono comunque entrambi visibili in quella pagina,
+// compilabili in una sola visita).
 export default function NextgenProfileCompletionPrompt({
   profileIncomplete,
   hasKids,
@@ -18,6 +27,14 @@ export default function NextgenProfileCompletionPrompt({
   hasKids: boolean;
 }) {
   if (!profileIncomplete && hasKids) return null;
+
+  const bothMissing = profileIncomplete && !hasKids;
+
+  const cta = bothMissing
+    ? { href: "/nextgen/profile", label: "Completa il tuo profilo" }
+    : profileIncomplete
+      ? { href: "/nextgen/profile?complete=1", label: "Nome, cognome e ruolo (padre/madre/tutore)" }
+      : { href: "/nextgen/profile?addKid=1", label: "Aggiungi i tuoi bambini" };
 
   return (
     <div className="rounded-2xl border border-trama-violet/15 bg-trama-lilac/15 p-5">
@@ -28,26 +45,13 @@ export default function NextgenProfileCompletionPrompt({
       <p className="mb-3 text-[13px] text-ink-2">
         Ci mancano un paio di informazioni per personalizzare Planner e consigli in base ai tuoi bambini.
       </p>
-      <div className="flex flex-col gap-2">
-        {profileIncomplete && (
-          <Link
-            href="/nextgen/profile?complete=1"
-            className="flex items-center justify-between rounded-xl bg-white px-3.5 py-3 text-[13px] font-semibold text-ink active:scale-[0.99]"
-          >
-            Nome, cognome e ruolo (padre/madre/tutore)
-            <i className="ti ti-chevron-right text-trama-violet" />
-          </Link>
-        )}
-        {!hasKids && (
-          <Link
-            href="/nextgen/profile?addKid=1"
-            className="flex items-center justify-between rounded-xl bg-white px-3.5 py-3 text-[13px] font-semibold text-ink active:scale-[0.99]"
-          >
-            Aggiungi i tuoi bambini
-            <i className="ti ti-chevron-right text-trama-violet" />
-          </Link>
-        )}
-      </div>
+      <Link
+        href={cta.href}
+        className="flex items-center justify-between rounded-xl bg-white px-3.5 py-3 text-[13px] font-semibold text-ink active:scale-[0.99]"
+      >
+        {cta.label}
+        <i className="ti ti-chevron-right text-trama-violet" />
+      </Link>
     </div>
   );
 }

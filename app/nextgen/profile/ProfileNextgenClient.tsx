@@ -72,24 +72,28 @@ export default function ProfileNextgenClient({
 
       <div className="px-5 pt-4">
         {/* SPRINT 7 — stessa texture decorativa (due cerchi) della hero
-            card di Home, vedi DecorativeIntroCard: qui come "cornice"
-            attorno alla card bianca del profilo invece di sostituirla, per
-            non toccare gli stili interni di ProfileHeaderClient (pensati
-            per uno sfondo bianco). */}
-        <DecorativeIntroCard padding="p-2">
-          <div className="rounded-2xl bg-white p-4">
-            <ProfileHeaderClient
-              initialFullName={fullName}
-              initialParentRole={parentRole}
-              initialAvatarUrl={avatarUrl}
-              email={email}
-              autoOpenEdit={autoOpenEdit}
-              initialPhone={phone}
-              initialDateOfBirth={dateOfBirth}
-              initialGender={gender}
-              accent="violet"
-            />
-          </div>
+            card di Home, vedi DecorativeIntroCard.
+            FEEDBACK FABRIZIO (31/08): la card bianca annidata dentro questa
+            cornice era ridondante — sulla Hero Card di Home il contenuto sta
+            direttamente sullo sfondo viola tenue, senza un secondo strato
+            bianco sopra. Tolto qui allo stesso modo (ProfileHeaderClient
+            resta invariato: i suoi colori — text-ink/text-ink-2 — hanno
+            contrasto sufficiente anche su bg-trama-violet/[0.08], stesso
+            principio già verificato sulla Hero Card). Il pannello di modifica
+            interno (bg-white, quando si preme "Modifica") resta bianco di
+            proposito: è un'area con campi di input, non la riga di stato. */}
+        <DecorativeIntroCard padding="p-4">
+          <ProfileHeaderClient
+            initialFullName={fullName}
+            initialParentRole={parentRole}
+            initialAvatarUrl={avatarUrl}
+            email={email}
+            autoOpenEdit={autoOpenEdit}
+            initialPhone={phone}
+            initialDateOfBirth={dateOfBirth}
+            initialGender={gender}
+            accent="violet"
+          />
         </DecorativeIntroCard>
       </div>
 

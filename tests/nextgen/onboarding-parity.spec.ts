@@ -52,16 +52,26 @@ test.describe("NEXTGEN - Onboarding neo-genitore (parità con LEGACY)", () => {
       .catch(() => false);
     test.skip(!promptVisible, "L'account di test ha già il profilo completo e almeno un bambino: nulla da verificare qui.");
 
+    // UNA SOLA CTA (feedback Fabrizio, 31/08): esattamente uno di questi tre
+    // link deve essere visibile — quello specifico se manca solo una cosa,
+    // quello generico se mancano entrambe (mai più di una riga insieme).
     const nameLink = page.getByRole("link", { name: /Nome, cognome e ruolo/ });
     const addKidLink = page.getByRole("link", { name: /Aggiungi i tuoi bambini/ });
+    const genericLink = page.getByRole("link", { name: "Completa il tuo profilo" });
     const nameLinkVisible = await nameLink.isVisible().catch(() => false);
     const addKidLinkVisible = await addKidLink.isVisible().catch(() => false);
+    const genericLinkVisible = await genericLink.isVisible().catch(() => false);
+
+    expect([nameLinkVisible, addKidLinkVisible, genericLinkVisible].filter(Boolean).length).toBe(1);
 
     if (nameLinkVisible) {
       await expect(nameLink).toHaveAttribute("href", "/nextgen/profile?complete=1");
     }
     if (addKidLinkVisible) {
       await expect(addKidLink).toHaveAttribute("href", "/nextgen/profile?addKid=1");
+    }
+    if (genericLinkVisible) {
+      await expect(genericLink).toHaveAttribute("href", "/nextgen/profile");
     }
   });
 });
