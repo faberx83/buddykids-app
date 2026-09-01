@@ -12,11 +12,20 @@
 // mentre app-shell stessa non scrolla mai). pointer-events-none sul
 // contenitore esterno: il ribbon è puramente decorativo, non deve rubare
 // click al contenuto sottostante.
+// PLANNER BETA v1.1 (Wave 5, punto 25-26) — estensione minimale: il ribbon
+// mostrava solo "Beta" senza numero di versione, e non esisteva alcuna
+// source of truth per quel numero altrove nel repo (verificato via grep).
+// Aggiunto il numero riusando lo STESSO ribbon (nessun secondo badge, come
+// richiesto), leggendo l'unica costante centralizzata in
+// lib/beta-version.ts — cambiarla lì aggiorna automaticamente ogni pagina
+// che monta NextgenBadge, senza toccare le pagine stesse.
+import { TRAMA_BETA_VERSION } from "@/lib/beta-version";
+
 export default function NextgenBadge() {
   return (
     <div className="pointer-events-none absolute right-0 top-0 z-20 h-[84px] w-[84px] overflow-hidden">
-      <span className="absolute right-[-30px] top-[16px] block w-[130px] rotate-45 bg-ink py-[3px] text-center text-[10px] font-bold uppercase tracking-wider text-white shadow-sm">
-        Beta
+      <span className="absolute right-[-30px] top-[16px] block w-[130px] rotate-45 bg-ink py-[3px] text-center text-[9px] font-bold uppercase tracking-wide text-white shadow-sm">
+        Beta · {TRAMA_BETA_VERSION}
       </span>
     </div>
   );
