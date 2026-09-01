@@ -1,5 +1,4 @@
 import type { Metadata, Viewport } from "next";
-import { redirect } from "next/navigation";
 import PhoneShell from "@/components/PhoneShell";
 import InstallPrompt from "@/components/InstallPrompt";
 import NextgenBottomNav from "@/components/nextgen/NextgenBottomNav";
@@ -15,6 +14,7 @@ import { getWalkthroughProgress, WalkthroughProgressSummary } from "@/lib/walkth
 import ParentSpotlight from "@/components/spotlight/ParentSpotlight";
 import OnboardingCarousel from "@/components/nextgen/OnboardingCarousel";
 import NotificationCenter from "@/components/nextgen/NotificationCenter";
+import NextgenAuthRedirect from "@/components/nextgen/NextgenAuthRedirect";
 import { getParentNotifications } from "@/lib/data/notifications";
 import { NotificationItem } from "@/lib/notifications/model";
 
@@ -100,7 +100,17 @@ export default async function NextgenLayout({ children }: { children: React.Reac
     const {
       data: { user },
     } = await supabase.auth.getUser();
-    if (!user) redirect("/auth/login?next=/nextgen");
+    // FIX (01/09/2026, vedi NextgenAuthRedirect.tsx per il motivo completo):
+    // niente più redirect() lato server verso /auth/login (fuori dallo
+    // scope "/nextgen" della PWA installata) — si esce presto con una shell
+    // minima che fa il redirect lato client.
+    if (!user) {
+      return (
+        <PhoneShell>
+          <NextgenAuthRedirect />
+        </PhoneShell>
+      );
+    }
 
     const { data: profile } = await supabase
       .from("profiles")
