@@ -352,36 +352,55 @@ export default function PrenotazioniClient({
           <CoperturaView planner={planner} kids={kidsWithBookings} />
         ) : (
           <>
-            {/* Raggruppamento / Ordinamento — concetti separati come richiesto */}
-            <div className="mt-4 flex flex-wrap items-center gap-2">
-              <span className="text-xs font-semibold text-ink-2">Raggruppa per:</span>
-              {GROUP_OPTIONS.map((opt) => (
-                <button
-                  key={opt.key}
-                  type="button"
-                  onClick={() => setGroupBy(opt.key)}
-                  className={`rounded-full px-3 py-1.5 text-[12px] font-semibold transition-colors ${
-                    groupBy === opt.key ? "bg-ink text-white" : "bg-white text-ink-2"
-                  }`}
-                >
-                  {opt.label}
-                </button>
-              ))}
-            </div>
-            <div className="mt-2 flex flex-wrap items-center gap-2">
-              <span className="text-xs font-semibold text-ink-2">Ordina per:</span>
-              {SORT_OPTIONS.map((opt) => (
-                <button
-                  key={opt.key}
-                  type="button"
-                  onClick={() => setSortKey(opt.key)}
-                  className={`rounded-full px-3 py-1.5 text-[12px] font-semibold transition-colors ${
-                    sortKey === opt.key ? "bg-ink text-white" : "bg-white text-ink-2"
-                  }`}
-                >
-                  {opt.label}
-                </button>
-              ))}
+            {/* Raggruppamento / Ordinamento — concetti separati come richiesto.
+                SPRINT CORRETTIVO (01/09/2026, segnalazione di Fabrizio dopo
+                la live QA: "bisogna sistemare graficamente i 'raggruppa per'
+                e 'ordina per' con un layout più moderno e semplice, fai tu
+                in base a quello che si fa di solito sulle app con motore di
+                ricerca") — le due file di pill (6 + 4 bottoni, andavano a
+                capo su due righe ciascuna) diventano due chip compatti in
+                un'unica riga, stile filtro di Google Flights/Booking:
+                etichetta + valore corrente + freccina, che aprono la stessa
+                lista di opzioni in un menu nativo al tap. Stessi state
+                (groupBy/sortKey) e stesse opzioni (GROUP_OPTIONS/
+                SORT_OPTIONS), cambia solo la presentazione. */}
+            <div className="mt-4 flex flex-wrap gap-2">
+              <label className="flex items-center gap-1.5 rounded-full bg-bg py-1.5 pl-3 pr-2.5">
+                <span className="text-[11px] font-semibold text-ink-3">Raggruppa</span>
+                <span className="relative flex items-center">
+                  <select
+                    value={groupBy}
+                    onChange={(e) => setGroupBy(e.target.value as GroupKey)}
+                    className="appearance-none bg-transparent pr-4 text-[12px] font-bold text-ink outline-none"
+                    aria-label="Raggruppa per"
+                  >
+                    {GROUP_OPTIONS.map((opt) => (
+                      <option key={opt.key} value={opt.key}>
+                        {opt.label}
+                      </option>
+                    ))}
+                  </select>
+                  <i className="ti ti-chevron-down pointer-events-none absolute right-0 text-[11px] text-ink-3" />
+                </span>
+              </label>
+              <label className="flex items-center gap-1.5 rounded-full bg-bg py-1.5 pl-3 pr-2.5">
+                <span className="text-[11px] font-semibold text-ink-3">Ordina</span>
+                <span className="relative flex items-center">
+                  <select
+                    value={sortKey}
+                    onChange={(e) => setSortKey(e.target.value as SortKey)}
+                    className="appearance-none bg-transparent pr-4 text-[12px] font-bold text-ink outline-none"
+                    aria-label="Ordina per"
+                  >
+                    {SORT_OPTIONS.map((opt) => (
+                      <option key={opt.key} value={opt.key}>
+                        {opt.label}
+                      </option>
+                    ))}
+                  </select>
+                  <i className="ti ti-chevron-down pointer-events-none absolute right-0 text-[11px] text-ink-3" />
+                </span>
+              </label>
             </div>
 
             {actionError && (
