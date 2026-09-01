@@ -8,6 +8,10 @@ import { MyBooking } from "@/lib/data/my-bookings";
 import { Activity } from "@/lib/types";
 import { TodayCheckin } from "@/lib/data/checkin";
 import { TodayResponsibilityEntry } from "@/lib/data/responsibilities";
+// TRAMA BETA v1.1.1 — FINAL GAP CLOSURE (punto 8): stesso "import type" già
+// usato in PlannerClient.tsx — ParentRole non trascina lib/supabase/server
+// nel bundle client.
+import type { ParentRole } from "@/lib/data/profile";
 import { CoordinationSignal } from "@/lib/types";
 import ActivityCard from "@/components/ActivityCard";
 import NextgenBadge from "@/components/nextgen/NextgenBadge";
@@ -77,6 +81,7 @@ export default function HomeDashboardClient({
   recommendations,
   todayCheckins,
   todayResponsibilities,
+  parentRole,
   coordinationSignal,
   profileIncomplete,
   hasKids,
@@ -88,6 +93,10 @@ export default function HomeDashboardClient({
   recommendations: Recommendation[];
   todayCheckins: TodayCheckin[];
   todayResponsibilities: TodayResponsibilityEntry[];
+  // TRAMA BETA v1.1.1 — FINAL GAP CLOSURE (punto 8): passato a
+  // TodayResponsibilityReminder per lo stesso mapping contestuale
+  // Mamma/Papà/Partner già usato nel selettore del Planner.
+  parentRole: ParentRole | null;
   coordinationSignal: CoordinationSignal | null;
   profileIncomplete: boolean;
   hasKids: boolean;
@@ -256,7 +265,7 @@ export default function HomeDashboardClient({
           {/* FEATURE (01/09/2026, richiesta di Fabrizio): reminder "chi fa
               cosa" per oggi — mostra solo quello che è già stato deciso, i
               vuoti li segnala già il Coordination Signal sopra. */}
-          <TodayResponsibilityReminder items={todayResponsibilities} />
+          <TodayResponsibilityReminder items={todayResponsibilities} parentRole={parentRole} />
         </div>
       )}
 

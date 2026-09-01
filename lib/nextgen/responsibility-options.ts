@@ -46,6 +46,24 @@ export interface WeekResponsibility {
   moment: Moment;
   responsible: ResponsibleValue;
   responsibleLabel: string | null; // solo per responsible="altro"
+  // TRAMA BETA v1.1.1 (FINAL GAP CLOSURE, punto 5) — riferimento stabile a
+  // public.family_people quando responsible="altro" corrisponde a una
+  // persona custom persistente (nullable: righe legacy/"Altro" ad-hoc senza
+  // migrazione applicata restano valide con familyPersonId=null — nessun
+  // backfill, nessuna reinterpretazione automatica delle vecchie label).
+  familyPersonId?: string | null;
+}
+
+// TRAMA BETA v1.1.1 (FINAL GAP CLOSURE, punto 3) — forma minima di una
+// persona custom persistente: id stabile, ownership implicita nel fetch
+// (già scoped per parent_id lato server, vedi lib/data/family-people.ts),
+// display_name, emoji. Nessun campo "relationship/type" libero aggiunto:
+// non richiesto da nessun punto della revisione e display_name libero
+// ("Zio Marco") già lo esprime senza bisogno di una tassonomia separata.
+export interface FamilyPerson {
+  id: string;
+  displayName: string;
+  emoji: string;
 }
 
 // TRAMA BETA v1.1.1 (UI Refinement, punto 15 — "Mamma/Papà contestuale") —
@@ -68,12 +86,74 @@ export interface WeekResponsibility {
 // (comportamento identico a prima).
 import type { ParentRole } from "@/lib/data/profile";
 
+export interface ResponsibleOption {
+  value: ResponsibleValue;
+  emoji: string;
+  label: string;
+  // Presente SOLO sulle opzioni "persona custom persistente" (punto 6 della
+  // revisione FINAL GAP CLOSURE): distingue una chip già nota (tap diretto,
+  // nessun testo da digitare) dalla voce generica "Altro" in fondo alla
+  // lista (che apre ancora l'input libero — vedi PlannerCalendarView.tsx).
+  // Il valore tecnico persistito resta "altro" in entrambi i casi: nessuna
+  // modifica al check constraint di week_responsibilities.responsible.
+  familyPersonId?: string;
+}
+
+// TRAMA BETA v1.1.1 (FINAL GAP CLOSURE, punto 6 — "source di opzioni unica,
+// ordine Io / Mamma-Papà-Partner / persone custom persistenti / Nonno /
+// Nonna / Tata / Altro"). ADAPT, non NEW: stessa funzione già introdotta
+// per il punto 15 di v1.1.1 (Mamma/Papà contestuale), ora estesa con un
+// secondo parametro opzionale — le chiamate esistenti che non lo passano
+// (nessuna persona persistente da mostrare, o migrazione non ancora
+// applicata) continuano a funzionare identiche a prima.
 export function resolveResponsibleOptions(
-  parentRole: ParentRole | null
-): { value: ResponsibleValue; emoji: string; label: string }[] {
+  parentRole: ParentRole | null,
+  familyPeople: FamilyPerson[] = []
+): ResponsibleOption[] {
   const partnerLabel = parentRole === "padre" ? "Mamma" : parentRole === "madre" ? "Papà" : "Partner";
   const partnerEmoji = parentRole === "padre" ? "👩" : parentRole === "madre" ? "👨" : "❤️";
-  return RESPONSIBLE_OPTIONS.map((opt) =>
+  const base = RESPONSIBLE_OPTIONS.map((opt) =>
     opt.value === "partner" ? { ...opt, label: partnerLabel, emoji: partnerEmoji } : opt
   );
+  if (familyPeople.length === 0) return base;
+
+  const io = base.find((o) => o.value === "io")!;
+  const partner = base.find((o) => o.value === "partner")!;
+  const rest = base.filter((o) => o.value !== "io" && o.value !== "partner" && o.value !== "altro");
+  const genericAltro = base.find((o) => o.value === "altro")!;
+  const peopleOptions: ResponsibleOption[] = familyPeople.map((p) => ({
+    value: "altro",
+    emoji: p.emoji,
+    label: p.displayName,
+    familyPersonId: p.id,
+  }));
+  return [io, partner, ...peopleOptions, ...rest, genericAltro];
+}
+
+// TRAMA BETA v1.1.1 (FINAL GAP CLOSURE, punto 8 — "non duplicare la
+// funzione di mapping: riusa/estrai helper condiviso"). Prima di questa
+// wave, PlannerCalendarView.tsx e TodayResponsibilityReminder.tsx avevano
+// due implementazioni indipendenti dello stesso calcolo (label/emoji per un
+// responsible già assegnato) — quella di Home non era contestuale al
+// parent_role (mostrava sempre "Partner" generico). Unica fonte ora:
+// responsible_label è già denormalizzato al momento del salvataggio (vedi
+// app/actions/responsibilities.ts, findOrCreateFamilyPerson) col
+// display_name reale della persona, quindi per "altro" basta la label
+// salvata — nessun bisogno di un JOIN a family_people in lettura.
+export function resolveResponsibleDisplay(
+  // responsible accetta anche null: TodayResponsibilityEntry.responsible
+  // (Home) è nullable per uno slot non ancora assegnato — il chiamante in
+  // TodayResponsibilityReminder.tsx filtra già quegli slot prima di
+  // renderizzare, ma il tipo resta nullable a monte, quindi questa firma lo
+  // accetta esplicitamente invece di forzare un cast lato chiamante.
+  entry: { responsible: ResponsibleValue | null; responsibleLabel: string | null },
+  parentRole: ParentRole | null
+): { label: string; emoji: string } {
+  if (entry.responsible === null) return { label: "", emoji: "" };
+  if (entry.responsible === "altro") {
+    return { label: entry.responsibleLabel?.trim() || "Altro", emoji: "✏️" };
+  }
+  const options = resolveResponsibleOptions(parentRole);
+  const opt = options.find((o) => o.value === entry.responsible);
+  return { label: opt?.label ?? "", emoji: opt?.emoji ?? "" };
 }

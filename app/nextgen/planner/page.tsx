@@ -6,6 +6,12 @@ import { getActivities, getActivityAvailabilityByWeek } from "@/lib/data/activit
 import { getSeasonYear } from "@/lib/data/season-year";
 import { getParentProfile } from "@/lib/data/profile";
 import { getResponsibilitiesForParent } from "@/lib/data/responsibilities";
+// TRAMA BETA v1.1.1 — FINAL GAP CLOSURE (punto 6/7): elenco delle persone
+// custom persistenti del genitore, per il selettore "Chi fa cosa?". Degrada
+// a [] se supabase/migration_32_family_people.sql non è ancora stata
+// applicata (vedi lib/data/family-people.ts) — nessun impatto sul resto
+// della pagina se la migrazione non è ancora stata eseguita.
+import { getFamilyPeopleForParent } from "@/lib/data/family-people";
 import { getPlanSharesForParent } from "@/lib/data/plan-shares";
 import { getPlannerMapPins } from "@/lib/data/planner-map";
 import { getParentAddresses } from "@/lib/data/addresses";
@@ -45,6 +51,7 @@ export default async function NextgenPlannerPage() {
     availabilityByWeek,
     profile,
     responsibilities,
+    familyPeople,
     existingShares,
     mapPins,
     communities,
@@ -58,6 +65,7 @@ export default async function NextgenPlannerPage() {
     getActivityAvailabilityByWeek(seasonYear),
     getParentProfile(),
     getResponsibilitiesForParent(),
+    getFamilyPeopleForParent(),
     getPlanSharesForParent(),
     getPlannerMapPins(),
     getCommunitiesForUser(),
@@ -109,6 +117,7 @@ export default async function NextgenPlannerPage() {
       // lib/nextgen/responsibility-options.ts#resolveResponsibleOptions).
       parentRole={profile.parentRole}
       responsibilities={responsibilities}
+      familyPeople={familyPeople}
       existingShares={existingShares}
       mapPins={mapPins}
       communities={communities}

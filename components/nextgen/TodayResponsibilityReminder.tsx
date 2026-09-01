@@ -1,5 +1,8 @@
 import { TodayResponsibilityEntry } from "@/lib/data/responsibilities";
-import { RESPONSIBLE_OPTIONS } from "@/lib/nextgen/responsibility-options";
+import { resolveResponsibleDisplay } from "@/lib/nextgen/responsibility-options";
+// "import type": stesso motivo di ParentRole altrove in questo modulo
+// client-safe — nessun import server-only nel bundle client.
+import type { ParentRole } from "@/lib/data/profile";
 
 // FEATURE (FINAL MICRO-PILOT LIVE ACCEPTANCE, 01/09/2026 — richiesta
 // esplicita di Fabrizio: "reminder giornaliero in home tutti i giorni
@@ -7,17 +10,26 @@ import { RESPONSIBLE_OPTIONS } from "@/lib/nextgen/responsibility-options";
 // (i vuoti sono già coperti separatamente dal Coordination Signal
 // "responsibility_unassigned_today", priorità più alta in Home — vedi
 // lib/data/coordination-signal.ts) — nessuna duplicazione tra i due.
-function labelFor(entry: TodayResponsibilityEntry): string {
-  if (entry.responsible === "altro") return entry.responsibleLabel?.trim() || "Altro";
-  return RESPONSIBLE_OPTIONS.find((o) => o.value === entry.responsible)?.label ?? "";
-}
-
-function emojiFor(entry: TodayResponsibilityEntry): string {
-  if (entry.responsible === "altro") return "✏️";
-  return RESPONSIBLE_OPTIONS.find((o) => o.value === entry.responsible)?.emoji ?? "";
-}
-
-export default function TodayResponsibilityReminder({ items }: { items: TodayResponsibilityEntry[] }) {
+//
+// TRAMA BETA v1.1.1 — FINAL GAP CLOSURE (punto 8 — "non duplicare la
+// funzione di mapping: riusa/estrai helper condiviso"). labelFor/emojiFor
+// (due implementazioni ad-hoc, non contestuali al parent_role) sono state
+// sostituite da resolveResponsibleDisplay, la STESSA funzione ora usata dal
+// selettore "Chi fa cosa?" del Planner (PlannerCalendarView usa
+// resolveResponsibleOptions, che condivide la stessa risoluzione
+// Mamma/Papà/Partner) — "Partner" qui diventa "Mamma"/"Papà" quando
+// parent_role è noto, esattamente come nel Planner. Per le persone custom
+// (responsible="altro") il nome mostrato resta quello reale
+// (responsible_label, già denormalizzato al salvataggio con il
+// display_name della persona — vedi app/actions/responsibilities.ts): nessun
+// cambiamento necessario per mostrare correttamente "Zio Marco" qui.
+export default function TodayResponsibilityReminder({
+  items,
+  parentRole,
+}: {
+  items: TodayResponsibilityEntry[];
+  parentRole: ParentRole | null;
+}) {
   const byKid = new Map<string, { kidName: string; andata?: TodayResponsibilityEntry; ritorno?: TodayResponsibilityEntry }>();
   for (const item of items) {
     if (!item.responsible) continue; // i vuoti li segnala il Coordination Signal, non questo reminder
@@ -40,16 +52,24 @@ export default function TodayResponsibilityReminder({ items }: { items: TodayRes
               responsabili la coniugazione corretta cambierebbe caso per
               caso — "Andata/Ritorno: [chi]" resta chiaro e inequivocabile
               per chiunque. */}
-          {row.andata && (
-            <span>
-              {emojiFor(row.andata)} Andata: <b className="font-semibold text-ink">{labelFor(row.andata)}</b>
-            </span>
-          )}
-          {row.ritorno && (
-            <span>
-              {emojiFor(row.ritorno)} Ritorno: <b className="font-semibold text-ink">{labelFor(row.ritorno)}</b>
-            </span>
-          )}
+          {row.andata &&
+            (() => {
+              const d = resolveResponsibleDisplay(row.andata, parentRole);
+              return (
+                <span>
+                  {d.emoji} Andata: <b className="font-semibold text-ink">{d.label}</b>
+                </span>
+              );
+            })()}
+          {row.ritorno &&
+            (() => {
+              const d = resolveResponsibleDisplay(row.ritorno, parentRole);
+              return (
+                <span>
+                  {d.emoji} Ritorno: <b className="font-semibold text-ink">{d.label}</b>
+                </span>
+              );
+            })()}
         </div>
       ))}
     </div>

@@ -7,7 +7,7 @@ import { getActivities, isMockActivitiesArray } from "@/lib/data/activities";
 import { getTodayCheckinsForParent } from "@/lib/data/checkin";
 import { getTodayResponsibilities } from "@/lib/data/responsibilities";
 import { getCoordinationSignal } from "@/lib/data/coordination-signal";
-import { isParentProfileIncomplete } from "@/lib/data/profile";
+import { isParentProfileIncomplete, getParentProfile } from "@/lib/data/profile";
 import { computeMatchesForKid } from "@/lib/matching";
 import HomeDashboardClient from "./HomeDashboardClient";
 
@@ -31,22 +31,38 @@ export default async function NextgenHomePage() {
     data: { user },
   } = await supabase.auth.getUser();
 
-  const [planner, bookings, kids, activities, todayCheckins, todayResponsibilities, coordinationSignal, profileIncomplete] =
-    await Promise.all([
-      getPlannerData(),
-      getMyBookingsForParent(),
-      getKidsForUser(),
-      getActivities(),
-      getTodayCheckinsForParent(),
-      // FEATURE (01/09/2026, richiesta di Fabrizio): reminder "chi fa cosa"
-      // per oggi — vedi lib/data/responsibilities.ts#getTodayResponsibilities.
-      getTodayResponsibilities(),
-      getCoordinationSignal(),
-      // Gap segnalato da Fabrizio (05/08): NEXTGEN non aveva mai un equivalente
-      // del prompt "Completa il tuo profilo" del Legacy — stessa fonte dati,
-      // vedi NextgenProfileCompletionPrompt più sotto.
-      isParentProfileIncomplete(),
-    ]);
+  const [
+    planner,
+    bookings,
+    kids,
+    activities,
+    todayCheckins,
+    todayResponsibilities,
+    coordinationSignal,
+    profileIncomplete,
+    profile,
+  ] = await Promise.all([
+    getPlannerData(),
+    getMyBookingsForParent(),
+    getKidsForUser(),
+    getActivities(),
+    getTodayCheckinsForParent(),
+    // FEATURE (01/09/2026, richiesta di Fabrizio): reminder "chi fa cosa"
+    // per oggi — vedi lib/data/responsibilities.ts#getTodayResponsibilities.
+    getTodayResponsibilities(),
+    getCoordinationSignal(),
+    // Gap segnalato da Fabrizio (05/08): NEXTGEN non aveva mai un equivalente
+    // del prompt "Completa il tuo profilo" del Legacy — stessa fonte dati,
+    // vedi NextgenProfileCompletionPrompt più sotto.
+    isParentProfileIncomplete(),
+    // TRAMA BETA v1.1.1 — FINAL GAP CLOSURE (punto 8): stessa
+    // getParentProfile() già usata dal Planner (app/nextgen/planner/page.tsx)
+    // per risolvere "Mamma"/"Papà" contestuali — qui serve solo
+    // profile.parentRole, passato a TodayResponsibilityReminder cosi il
+    // reminder giornaliero usi lo stesso mapping del selettore Planner
+    // invece di mostrare sempre "Partner" generico.
+    getParentProfile(),
+  ]);
 
   let fullName: string | null = null;
   if (user) {
@@ -125,6 +141,7 @@ export default async function NextgenHomePage() {
       recommendations={recommendations}
       todayCheckins={todayCheckins}
       todayResponsibilities={todayResponsibilities}
+      parentRole={profile.parentRole}
       coordinationSignal={coordinationSignal}
       profileIncomplete={profileIncomplete}
       hasKids={kids.length > 0}

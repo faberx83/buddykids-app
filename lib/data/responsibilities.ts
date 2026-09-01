@@ -23,6 +23,20 @@ import {
 export type { ResponsibleValue, WeekResponsibility, Weekday, Moment };
 export { RESPONSIBLE_OPTIONS };
 
+// TRAMA BETA v1.1.1 (FINAL GAP CLOSURE) — deliberatamente NON aggiunto
+// "family_person_id" a questa riga/SELECT: week_responsibilities.
+// family_person_id esiste solo DOPO l'esecuzione manuale di
+// supabase/migration_32_family_people.sql (non applicata da questa
+// sessione), e selezionarlo qui farebbe fallire l'INTERA query (quindi
+// tutto "Chi fa cosa?") con un errore "colonna inesistente" se questo
+// codice venisse deployato prima della migrazione. Non è comunque
+// necessario per la lettura: responsible_label è già denormalizzato con il
+// nome reale della persona al momento del salvataggio (vedi
+// app/actions/responsibilities.ts), quindi la UI mostra sempre il nome
+// corretto senza bisogno di leggere family_person_id. Il riferimento
+// stabile serve solo in scrittura (persistenza) e nel popolare la lista di
+// persone note nel selettore (lib/data/family-people.ts, tabella
+// separata) — mai in questa lettura.
 interface RawResponsibilityRow {
   kid_id: string;
   week_start_date: string;

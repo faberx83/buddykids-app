@@ -21,6 +21,10 @@ import type { SmartMatch } from "@/lib/nextgen/smart-search";
 // mai trascinati qui per errore (stesso bug di build causato da
 // ADDRESS_KIND_LABELS/RESPONSIBLE_OPTIONS, vedi lib/nextgen/address-kinds.ts).
 import type { WeekResponsibility } from "@/lib/data/responsibilities";
+// TRAMA BETA v1.1.1 — FINAL GAP CLOSURE: FamilyPerson vive in
+// responsibility-options.ts (modulo client-safe, nessun import
+// lib/supabase/server) — import diretto, nessun rischio di bundle.
+import type { FamilyPerson } from "@/lib/nextgen/responsibility-options";
 import type { PlanShare } from "@/lib/data/plan-shares";
 import type { PlannerMapPin } from "@/lib/data/planner-map";
 import type { Reminder } from "@/lib/nextgen/reminders";
@@ -101,6 +105,7 @@ export default function PlannerClient({
   seasonBudgetTarget,
   parentRole,
   responsibilities,
+  familyPeople,
   existingShares,
   mapPins,
   communities,
@@ -125,6 +130,12 @@ export default function PlannerClient({
   // risolvere "Mamma"/"Papà" nel selettore Chi fa cosa (PlannerCalendarView).
   parentRole: ParentRole | null;
   responsibilities: WeekResponsibility[];
+  // TRAMA BETA v1.1.1 — FINAL GAP CLOSURE (punto 6): persone custom
+  // persistenti del genitore, già lette server-side (getFamilyPeopleForParent,
+  // page.tsx) — passate a valle per popolare il selettore "Chi fa cosa?"
+  // (PlannerCalendarView) con le chip già note, senza dover ridigitare un
+  // nome già usato in una settimana precedente.
+  familyPeople: FamilyPerson[];
   existingShares: PlanShare[];
   mapPins: PlannerMapPin[];
   communities: CommunityItem[];
@@ -700,6 +711,7 @@ export default function PlannerClient({
                 responsibilities={responsibilities}
                 existingShares={existingShares}
                 parentRole={parentRole}
+                familyPeople={familyPeople}
               />
             </div>
           )}

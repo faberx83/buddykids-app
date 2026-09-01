@@ -18,6 +18,7 @@ import {
   WEEKDAYS,
   MOMENTS,
   resolveResponsibleOptions,
+  FamilyPerson,
 } from "@/lib/nextgen/responsibility-options";
 // "import type": ParentRole è solo un tipo, non trascina lib/supabase/server
 // nel bundle client — stesso motivo di SeasonWeek/KidOverlap qui sopra.
@@ -87,6 +88,7 @@ export default function PlannerCalendarView({
   responsibilities,
   existingShares,
   parentRole,
+  familyPeople,
 }: {
   weeks: SeasonWeek[];
   kids: Kid[];
@@ -97,13 +99,21 @@ export default function PlannerCalendarView({
   // l'etichetta "Mamma"/"Papà"/"Partner" nel selettore sotto, vedi
   // resolveResponsibleOptions.
   parentRole: ParentRole | null;
+  // TRAMA BETA v1.1.1 — FINAL GAP CLOSURE (punto 6/7): persone custom
+  // persistenti del genitore ("Zio Marco"...) — [] se
+  // supabase/migration_32_family_people.sql non è ancora applicata.
+  familyPeople: FamilyPerson[];
 }) {
   const showToast = useNextgenToast();
-  // ADAPT: stessa lista RESPONSIBLE_OPTIONS di sempre, solo la label/emoji
-  // dell'opzione "partner" viene risolta dinamicamente in base al ruolo del
-  // genitore che sta guardando lo schermo — nessuna nuova opzione, nessun
-  // cambio al valore tecnico persistito ("partner" resta invariato in DB).
-  const responsibleOptions = useMemo(() => resolveResponsibleOptions(parentRole), [parentRole]);
+  // ADAPT: stessa funzione già introdotta per il punto 15 di v1.1.1, ora
+  // arricchita con le persone custom persistenti (punto 6) — nessuna nuova
+  // opzione tecnica, nessun cambio al valore persistito ("altro" resta
+  // "altro" in DB anche per le persone custom, vedi app/actions/
+  // responsibilities.ts#resolveFamilyPersonId).
+  const responsibleOptions = useMemo(
+    () => resolveResponsibleOptions(parentRole, familyPeople),
+    [parentRole, familyPeople]
+  );
   const [viewMode, setViewMode] = useState<ViewMode>("mese");
   const months = useMemo(() => buildCalendarMonths(weeks, kids, overlaps), [weeks, kids, overlaps]);
   const todayIso = useMemo(() => new Date().toISOString().slice(0, 10), []);
@@ -178,11 +188,16 @@ export default function PlannerCalendarView({
     weekday: Weekday,
     moment: Moment,
     value: ResponsibleValue,
-    label?: string
+    label?: string,
+    // TRAMA BETA v1.1.1 — FINAL GAP CLOSURE: id di una persona persistente
+    // già nota (tap su una chip del selettore) — assente quando si assegna
+    // Io/Mamma-Papà-Partner/Nonno/Nonna/Tata, o quando si digita un nome
+    // nuovo nella "Altro" generica (in quel caso il server fa find-or-create).
+    familyPersonId?: string
   ) {
     const key = respKey(kidId, weekStartDate, weekday, moment);
     setSavingKey(key);
-    const res = await setResponsibilityAction(kidId, weekStartDate, weekday, moment, value, label);
+    const res = await setResponsibilityAction(kidId, weekStartDate, weekday, moment, value, label, familyPersonId);
     setSavingKey(null);
     if (res.error) {
       showToast(res.error);
@@ -197,6 +212,7 @@ export default function PlannerCalendarView({
         moment,
         responsible: value,
         responsibleLabel: value === "altro" ? label ?? null : null,
+        familyPersonId: value === "altro" ? familyPersonId ?? null : null,
       },
     }));
     setAssigningKey(null);
@@ -252,7 +268,7 @@ export default function PlannerCalendarView({
     setBulkMomentExcluded((prev) => ({ ...prev, [moment]: !prev[moment] }));
   }
 
-  async function handleBulkAssign(value: ResponsibleValue, label?: string) {
+  async function handleBulkAssign(value: ResponsibleValue, label?: string, familyPersonId?: string) {
     if (!selectedDay || !selectedDay.weekStartDate) return;
     const weekStartDate = selectedDay.weekStartDate;
     const kidIds = selectedDay.kids.map((k) => k.kidId).filter((id) => !bulkKidExcluded[id]);
@@ -266,7 +282,7 @@ export default function PlannerCalendarView({
       return;
     }
     setBulkBusy(true);
-    const res = await setWeekBulkResponsibilityAction(kidIds, weekStartDate, moments, value, label);
+    const res = await setWeekBulkResponsibilityAction(kidIds, weekStartDate, moments, value, label, familyPersonId);
     setBulkBusy(false);
     if (res.error) {
       showToast(res.error);
@@ -285,6 +301,7 @@ export default function PlannerCalendarView({
               moment,
               responsible: value,
               responsibleLabel: value === "altro" ? label ?? null : null,
+              familyPersonId: value === "altro" ? familyPersonId ?? null : null,
             };
           }
         }
@@ -722,17 +739,25 @@ export default function PlannerCalendarView({
                         })}
                       </div>
                       <div className="flex flex-wrap gap-1.5">
+                        {/* TRAMA BETA v1.1.1 — FINAL GAP CLOSURE (punto 6/7):
+                            una chip con opt.familyPersonId è una persona
+                            custom già persistente — tap diretto, nessun
+                            testo da digitare (già nota). La voce generica
+                            "Altro" (ultima della lista, senza
+                            familyPersonId) resta invariata: apre l'input
+                            libero, il server fa find-or-create sul nome
+                            digitato (app/actions/responsibilities.ts). */}
                         {responsibleOptions.map((opt) => (
                           <button
-                            key={opt.value}
+                            key={opt.familyPersonId ?? opt.value}
                             type="button"
                             disabled={bulkBusy}
                             onClick={() => {
-                              if (opt.value === "altro") {
+                              if (opt.value === "altro" && !opt.familyPersonId) {
                                 setBulkAssigningAltro(true);
                                 return;
                               }
-                              handleBulkAssign(opt.value);
+                              handleBulkAssign(opt.value, opt.familyPersonId ? opt.label : undefined, opt.familyPersonId);
                             }}
                             className="rounded-full bg-white px-2.5 py-1 text-[11px] font-semibold text-ink-2 active:scale-95 disabled:opacity-50"
                           >
@@ -932,17 +957,37 @@ export default function PlannerCalendarView({
                                     return (
                                       <>
                                         <div className="flex flex-wrap gap-1.5">
+                                          {/* TRAMA BETA v1.1.1 — FINAL GAP
+                                              CLOSURE (punto 6/7): stessa
+                                              distinzione chip-nota vs "Altro"
+                                              generico della pannello bulk
+                                              qui sopra. L'evidenziazione
+                                              "selezionato" confronta anche
+                                              responsibleLabel (non solo
+                                              value) cosi due chip "altro"
+                                              diverse (es. "Zio Marco" e
+                                              "Zia Carla") non si evidenziano
+                                              a vicenda. */}
                                           {responsibleOptions.map((opt) => (
                                             <button
-                                              key={opt.value}
+                                              key={opt.familyPersonId ?? opt.value}
                                               type="button"
                                               disabled={savingKey === assigningKey}
                                               onClick={() => {
-                                                if (opt.value === "altro") return; // richiede il testo sotto
-                                                handleAssign(k.kidId, weekStartDate, weekday, moment, opt.value);
+                                                if (opt.value === "altro" && !opt.familyPersonId) return; // richiede il testo sotto
+                                                handleAssign(
+                                                  k.kidId,
+                                                  weekStartDate,
+                                                  weekday,
+                                                  moment,
+                                                  opt.value,
+                                                  opt.familyPersonId ? opt.label : undefined,
+                                                  opt.familyPersonId
+                                                );
                                               }}
                                               className={`rounded-full px-2.5 py-1 text-[11px] font-semibold active:scale-95 ${
-                                                current?.responsible === opt.value
+                                                current?.responsible === opt.value &&
+                                                (opt.value !== "altro" || current?.responsibleLabel === opt.label)
                                                   ? "bg-trama-violet text-white"
                                                   : "bg-bg text-ink-2"
                                               }`}
