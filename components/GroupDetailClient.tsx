@@ -121,12 +121,17 @@ function VisibilityAndInviteBlock({
   groupId,
   isPublic,
   createdByMe,
+  nextgen,
 }: {
   groupId: string;
   isPublic: boolean;
   createdByMe: boolean;
+  nextgen: boolean;
 }) {
   const router = useRouter();
+  const accentBg = nextgen ? "bg-trama-violet" : "bg-sky";
+  const accentFocus = nextgen ? "focus:border-trama-violet" : "focus:border-sky";
+  const titleCls = nextgen ? "font-poppins text-[13px] font-bold text-ink" : "text-sm font-bold text-ink";
   const [togglingPublic, setTogglingPublic] = useState(false);
   const [inviteEmail, setInviteEmail] = useState("");
   const [invitingEmail, setInvitingEmail] = useState(false);
@@ -161,7 +166,7 @@ function VisibilityAndInviteBlock({
       {createdByMe && (
         <div className="mb-3 flex items-center justify-between">
           <div>
-            <div className="text-sm font-bold text-ink">Visibile in &quot;Scopri&quot;</div>
+            <div className={titleCls}>Visibile in &quot;Scopri&quot;</div>
             <p className="mt-0.5 text-xs text-ink-2">
               Se attivo, altri genitori possono trovare e unirsi a questo gruppo dalla tab
               &quot;Scopri&quot; di Gruppi.
@@ -173,7 +178,7 @@ function VisibilityAndInviteBlock({
             role="switch"
             aria-checked={isPublic}
             className={`relative h-6 w-11 flex-shrink-0 rounded-full transition-colors disabled:opacity-60 ${
-              isPublic ? "bg-sky" : "bg-[#D9DEE6]"
+              isPublic ? accentBg : "bg-[#D9DEE6]"
             }`}
           >
             <span
@@ -186,19 +191,19 @@ function VisibilityAndInviteBlock({
       )}
 
       <div className={createdByMe ? "border-t border-[#F0F2F5] pt-3" : ""}>
-        <div className="mb-2 text-sm font-bold text-ink">Invita per email</div>
+        <div className={`mb-2 ${titleCls}`}>Invita per email</div>
         <div className="flex gap-2">
           <input
             value={inviteEmail}
             onChange={(e) => setInviteEmail(e.target.value)}
             placeholder="email@esempio.it"
             type="email"
-            className="min-w-0 flex-1 rounded-md border border-[#E8EBF0] bg-bg px-3 py-2 text-sm outline-none focus:border-sky"
+            className={`min-w-0 flex-1 rounded-md border border-[#E8EBF0] bg-bg px-3 py-2 text-sm outline-none ${accentFocus}`}
           />
           <button
             onClick={handleInvite}
             disabled={invitingEmail || !inviteEmail.trim()}
-            className="flex-shrink-0 rounded-md bg-sky px-3.5 py-2 text-xs font-bold text-white disabled:opacity-60"
+            className={`flex-shrink-0 rounded-md ${accentBg} px-3.5 py-2 text-xs font-bold text-white disabled:opacity-60`}
           >
             {invitingEmail ? "Invio…" : "Invita"}
           </button>
@@ -220,11 +225,19 @@ export default function GroupDetailClient({
   activityOptions,
   inviterName,
   backHref = "/groups",
+  nextgen = false,
 }: {
   detail: GroupDetail;
   activityOptions: { dbId: string; name: string; center: string }[];
   inviterName: string;
   backHref?: string;
+  /** Segnalazione di Fabrizio (01/09/2026): "grafica legacy" rimasta dentro
+   * Gruppi — questo componente è nativamente Legacy (accento sky, niente
+   * Poppins) e viene RIUSATO com'era anche sotto /nextgen/groups/[id]. Con
+   * nextgen=true, titoli e CTA principali passano ad accento
+   * trama-violet/Poppins, stesso trattamento già dato a CoverageStrip
+   * (PrenotazioniClient.tsx). Legacy (default false) resta invariato. */
+  nextgen?: boolean;
 }) {
   const [tab, setTab] = useState<"gruppo" | "accompagnamento">("gruppo");
 
@@ -240,7 +253,9 @@ export default function GroupDetailClient({
         <div className="flex items-center gap-2.5">
           <span className="text-3xl">{detail.emoji}</span>
           <div className="min-w-0 flex-1">
-            <h1 className="text-lg font-bold text-ink">{detail.name}</h1>
+            <h1 className={nextgen ? "font-poppins text-lg font-bold text-ink" : "text-lg font-bold text-ink"}>
+              {detail.name}
+            </h1>
             <p className="text-xs text-ink-2">
               {detail.activityName
                 ? `${detail.activityName}${detail.centerName ? ` · ${detail.centerName}` : ""}`
@@ -276,9 +291,9 @@ export default function GroupDetailClient({
       </div>
 
       {tab === "gruppo" ? (
-        <GruppoTab detail={detail} activityOptions={activityOptions} />
+        <GruppoTab detail={detail} activityOptions={activityOptions} nextgen={nextgen} />
       ) : (
-        <AccompagnamentoTab detail={detail} />
+        <AccompagnamentoTab detail={detail} nextgen={nextgen} />
       )}
     </div>
   );
@@ -290,11 +305,18 @@ export default function GroupDetailClient({
 function GruppoTab({
   detail,
   activityOptions,
+  nextgen,
 }: {
   detail: GroupDetail;
   activityOptions: { dbId: string; name: string; center: string }[];
+  nextgen: boolean;
 }) {
   const router = useRouter();
+  const accentBg = nextgen ? "bg-trama-violet" : "bg-sky";
+  const accentText = nextgen ? "text-trama-violet" : "text-sky";
+  const accentFocus = nextgen ? "focus:border-trama-violet" : "focus:border-sky";
+  const accentLight = nextgen ? "bg-trama-lilac/20" : "bg-sky-light";
+  const titleCls = nextgen ? "font-poppins text-[13px] font-bold text-ink" : "text-sm font-bold text-ink";
   const [pickingActivity, setPickingActivity] = useState(false);
   const [selectedActivity, setSelectedActivity] = useState(activityOptions[0]?.dbId || "");
   const [savingActivity, setSavingActivity] = useState(false);
@@ -330,7 +352,7 @@ function GruppoTab({
       {/* Attività target */}
       {!detail.activityId && detail.createdByMe && (
         <div className="mb-4 rounded-lg border border-[#E8EBF0] bg-white p-3.5">
-          <div className="mb-2 text-sm font-bold text-ink">Collega un&apos;attività</div>
+          <div className={`mb-2 ${titleCls}`}>Collega un&apos;attività</div>
           <p className="mb-2.5 text-xs text-ink-2">
             Serve per proporre le aggregazioni e per inviare la Richiesta Gruppo al centro giusto.
           </p>
@@ -338,7 +360,7 @@ function GruppoTab({
             <button
               onClick={() => setPickingActivity(true)}
               disabled={!canSubmit}
-              className="rounded-md bg-sky px-3.5 py-2 text-xs font-bold text-white disabled:opacity-60"
+              className={`rounded-md ${accentBg} px-3.5 py-2 text-xs font-bold text-white disabled:opacity-60`}
             >
               Scegli attività
             </button>
@@ -347,7 +369,7 @@ function GruppoTab({
               <select
                 value={selectedActivity}
                 onChange={(e) => setSelectedActivity(e.target.value)}
-                className="w-full rounded-md border border-[#E8EBF0] bg-bg px-3 py-2 text-sm outline-none focus:border-sky"
+                className={`w-full rounded-md border border-[#E8EBF0] bg-bg px-3 py-2 text-sm outline-none ${accentFocus}`}
               >
                 {activityOptions.map((a) => (
                   <option key={a.dbId} value={a.dbId}>
@@ -364,7 +386,7 @@ function GruppoTab({
                   router.refresh();
                 }}
                 disabled={savingActivity}
-                className="rounded-md bg-sky px-3.5 py-2 text-xs font-bold text-white disabled:opacity-60"
+                className={`rounded-md ${accentBg} px-3.5 py-2 text-xs font-bold text-white disabled:opacity-60`}
               >
                 {savingActivity ? "Salvo…" : "Conferma"}
               </button>
@@ -373,17 +395,22 @@ function GruppoTab({
         </div>
       )}
 
-      <VisibilityAndInviteBlock groupId={detail.id} isPublic={detail.isPublic} createdByMe={detail.createdByMe} />
+      <VisibilityAndInviteBlock
+        groupId={detail.id}
+        isPublic={detail.isPublic}
+        createdByMe={detail.createdByMe}
+        nextgen={nextgen}
+      />
 
       {/* Bambini iscritti */}
       <div className="mb-4 rounded-lg border border-[#E8EBF0] bg-white">
         <div className="flex items-center justify-between border-b border-[#F0F2F5] px-3.5 py-2.5">
-          <span className="text-sm font-bold text-ink">Bambini iscritti ({kidsCount})</span>
+          <span className={titleCls}>Bambini iscritti ({kidsCount})</span>
           {!addingKid && detail.myKids.length > 0 && (
             <button
               onClick={() => setAddingKid(true)}
               disabled={!canSubmit}
-              className="text-xs font-semibold text-sky disabled:opacity-60"
+              className={`text-xs font-semibold ${accentText} disabled:opacity-60`}
             >
               + Aggiungi
             </button>
@@ -432,7 +459,7 @@ function GruppoTab({
                 const kid = detail.myKids.find((k) => k.id === kidId);
                 setSelectedTag(bestTagIdForKid(kid, detail.availableTags));
               }}
-              className="w-full rounded-md border border-[#E8EBF0] bg-bg px-3 py-2 text-sm outline-none focus:border-sky"
+              className={`w-full rounded-md border border-[#E8EBF0] bg-bg px-3 py-2 text-sm outline-none ${accentFocus}`}
             >
               {detail.myKids.map((k) => (
                 <option key={k.id} value={k.id}>
@@ -443,7 +470,7 @@ function GruppoTab({
             <select
               value={selectedTag}
               onChange={(e) => setSelectedTag(e.target.value)}
-              className="w-full rounded-md border border-[#E8EBF0] bg-bg px-3 py-2 text-sm outline-none focus:border-sky"
+              className={`w-full rounded-md border border-[#E8EBF0] bg-bg px-3 py-2 text-sm outline-none ${accentFocus}`}
             >
               <option value="">Nessuna preferenza particolare</option>
               {detail.availableTags.map((t) => (
@@ -460,7 +487,7 @@ function GruppoTab({
               value={kidNotes}
               onChange={(e) => setKidNotes(e.target.value)}
               placeholder="Note (facoltativo)"
-              className="w-full rounded-md border border-[#E8EBF0] bg-bg px-3 py-2 text-sm outline-none focus:border-sky"
+              className={`w-full rounded-md border border-[#E8EBF0] bg-bg px-3 py-2 text-sm outline-none ${accentFocus}`}
             />
             {kidError && <p className="text-xs font-medium text-orange">{kidError}</p>}
             <div className="flex gap-2">
@@ -488,7 +515,7 @@ function GruppoTab({
                   router.refresh();
                 }}
                 disabled={savingKid}
-                className="rounded-md bg-sky px-3.5 py-2 text-xs font-bold text-white disabled:opacity-60"
+                className={`rounded-md ${accentBg} px-3.5 py-2 text-xs font-bold text-white disabled:opacity-60`}
               >
                 {savingKid ? "Aggiungo…" : "Aggiungi bambino"}
               </button>
@@ -506,7 +533,7 @@ function GruppoTab({
       {/* Aggregazioni */}
       <div className="mb-4 rounded-lg border border-[#E8EBF0] bg-white">
         <div className="flex items-center justify-between border-b border-[#F0F2F5] px-3.5 py-2.5">
-          <span className="text-sm font-bold text-ink">Aggregazioni proposte</span>
+          <span className={titleCls}>Aggregazioni proposte</span>
           <button
             onClick={async () => {
               setGenerating(true);
@@ -515,7 +542,7 @@ function GruppoTab({
               router.refresh();
             }}
             disabled={!canSubmit || generating || kidsCount === 0}
-            className="text-xs font-semibold text-sky disabled:opacity-60"
+            className={`text-xs font-semibold ${accentText} disabled:opacity-60`}
           >
             {generating ? "Genero…" : "Genera aggregazioni"}
           </button>
@@ -553,13 +580,13 @@ function GruppoTab({
 
       {/* Richiesta Gruppo */}
       <div className="mb-4 rounded-lg border border-[#E8EBF0] bg-white p-3.5">
-        <div className="mb-1 text-sm font-bold text-ink">Richiesta Gruppo al centro</div>
+        <div className={`mb-1 ${titleCls}`}>Richiesta Gruppo al centro</div>
         <p className="mb-2.5 text-xs text-ink-2">
           Sconto proporzionale al numero di bambini iscritti:{" "}
           {groupDiscountTiers.map((t) => `${t.minKids}+ → ${t.percent}%`).join(" · ")}.
         </p>
-        <div className="mb-3 flex items-center gap-2 rounded-md bg-sky-light px-3 py-2">
-          <i className="ti ti-tag text-sky" />
+        <div className={`mb-3 flex items-center gap-2 rounded-md ${accentLight} px-3 py-2`}>
+          <i className={`ti ti-tag ${accentText}`} />
           <span className="text-sm font-semibold text-ink">
             Con {kidsCount} bambin{kidsCount === 1 ? "o" : "i"}: sconto stimato {previewDiscount}%
           </span>
@@ -585,7 +612,7 @@ function GruppoTab({
               value={requestMessage}
               onChange={(e) => setRequestMessage(e.target.value)}
               placeholder="Un messaggio per il centro (facoltativo)"
-              className="w-full rounded-md border border-[#E8EBF0] bg-bg px-3 py-2 text-sm outline-none focus:border-sky"
+              className={`w-full rounded-md border border-[#E8EBF0] bg-bg px-3 py-2 text-sm outline-none ${accentFocus}`}
             />
             {requestError && <p className="text-xs font-medium text-orange">{requestError}</p>}
             <button
@@ -601,7 +628,7 @@ function GruppoTab({
                 router.refresh();
               }}
               disabled={!canSubmit || sendingRequest || kidsCount === 0}
-              className="rounded-md bg-sky px-4 py-2.5 text-sm font-bold text-white disabled:opacity-60"
+              className={`rounded-md ${accentBg} px-4 py-2.5 text-sm font-bold text-white disabled:opacity-60`}
             >
               {sendingRequest ? "Invio…" : "Invia Richiesta Gruppo"}
             </button>
@@ -627,8 +654,12 @@ function StatusPill({ status }: { status: "pending" | "accepted" | "rejected" })
 // ─────────────────────────────────────────────
 // Tab "Accompagnamento"
 // ─────────────────────────────────────────────
-function AccompagnamentoTab({ detail }: { detail: GroupDetail }) {
+function AccompagnamentoTab({ detail, nextgen }: { detail: GroupDetail; nextgen: boolean }) {
   const router = useRouter();
+  const accentBg = nextgen ? "bg-trama-violet" : "bg-sky";
+  const accentFocus = nextgen ? "focus:border-trama-violet" : "focus:border-sky";
+  const accentLight = nextgen ? "bg-trama-lilac/20" : "bg-sky-light";
+  const titleCls = nextgen ? "font-poppins text-[13px] font-bold text-ink" : "text-sm font-bold text-ink";
   const myOffer = detail.carpoolOffers.find((o) => o.isOwn);
   const myRequest = detail.carpoolRequests.find((r) => r.isOwn);
 
@@ -657,7 +688,7 @@ function AccompagnamentoTab({ detail }: { detail: GroupDetail }) {
 
       {/* Offerta auto */}
       <div className="mb-4 rounded-lg border border-[#E8EBF0] bg-white p-3.5">
-        <div className="mb-2 text-sm font-bold text-ink">🚙 La tua offerta auto</div>
+        <div className={`mb-2 ${titleCls}`}>🚙 La tua offerta auto</div>
         <div className="mb-2 grid grid-cols-2 gap-2">
           <div>
             <label className="mb-1 block text-xs font-semibold text-ink-2">Posti disponibili</label>
@@ -667,7 +698,7 @@ function AccompagnamentoTab({ detail }: { detail: GroupDetail }) {
               max={8}
               value={seats}
               onChange={(e) => setSeats(Number(e.target.value))}
-              className="w-full rounded-md border border-[#E8EBF0] bg-bg px-3 py-2 text-sm outline-none focus:border-sky"
+              className={`w-full rounded-md border border-[#E8EBF0] bg-bg px-3 py-2 text-sm outline-none ${accentFocus}`}
             />
           </div>
           <div>
@@ -675,7 +706,7 @@ function AccompagnamentoTab({ detail }: { detail: GroupDetail }) {
             <select
               value={offerLegs}
               onChange={(e) => setOfferLegs(e.target.value as CarpoolLeg)}
-              className="w-full rounded-md border border-[#E8EBF0] bg-bg px-3 py-2 text-sm outline-none focus:border-sky"
+              className={`w-full rounded-md border border-[#E8EBF0] bg-bg px-3 py-2 text-sm outline-none ${accentFocus}`}
             >
               {(Object.keys(LEG_LABELS) as CarpoolLeg[]).map((l) => (
                 <option key={l} value={l}>
@@ -697,7 +728,7 @@ function AccompagnamentoTab({ detail }: { detail: GroupDetail }) {
           value={offerNotes}
           onChange={(e) => setOfferNotes(e.target.value)}
           placeholder="Note (facoltativo)"
-          className="mb-2.5 w-full rounded-md border border-[#E8EBF0] bg-bg px-3 py-2 text-sm outline-none focus:border-sky"
+          className={`mb-2.5 w-full rounded-md border border-[#E8EBF0] bg-bg px-3 py-2 text-sm outline-none ${accentFocus}`}
         />
         <div className="flex gap-2">
           <button
@@ -708,7 +739,7 @@ function AccompagnamentoTab({ detail }: { detail: GroupDetail }) {
               router.refresh();
             }}
             disabled={!canSubmit || savingOffer}
-            className="rounded-md bg-sky px-3.5 py-2 text-xs font-bold text-white disabled:opacity-60"
+            className={`rounded-md ${accentBg} px-3.5 py-2 text-xs font-bold text-white disabled:opacity-60`}
           >
             {savingOffer ? "Salvo…" : myOffer ? "Aggiorna offerta" : "Proponi un passaggio"}
           </button>
@@ -728,7 +759,7 @@ function AccompagnamentoTab({ detail }: { detail: GroupDetail }) {
 
       {/* Richiesta passaggio */}
       <div className="mb-4 rounded-lg border border-[#E8EBF0] bg-white p-3.5">
-        <div className="mb-2 text-sm font-bold text-ink">🙋 Hai bisogno di un passaggio?</div>
+        <div className={`mb-2 ${titleCls}`}>🙋 Hai bisogno di un passaggio?</div>
         <div className="mb-2 grid grid-cols-2 gap-2">
           <div>
             <label className="mb-1 block text-xs font-semibold text-ink-2">Bambini</label>
@@ -738,7 +769,7 @@ function AccompagnamentoTab({ detail }: { detail: GroupDetail }) {
               max={4}
               value={needKids}
               onChange={(e) => setNeedKids(Number(e.target.value))}
-              className="w-full rounded-md border border-[#E8EBF0] bg-bg px-3 py-2 text-sm outline-none focus:border-sky"
+              className={`w-full rounded-md border border-[#E8EBF0] bg-bg px-3 py-2 text-sm outline-none ${accentFocus}`}
             />
           </div>
           <div>
@@ -746,7 +777,7 @@ function AccompagnamentoTab({ detail }: { detail: GroupDetail }) {
             <select
               value={needLegs}
               onChange={(e) => setNeedLegs(e.target.value as CarpoolLeg)}
-              className="w-full rounded-md border border-[#E8EBF0] bg-bg px-3 py-2 text-sm outline-none focus:border-sky"
+              className={`w-full rounded-md border border-[#E8EBF0] bg-bg px-3 py-2 text-sm outline-none ${accentFocus}`}
             >
               {(Object.keys(LEG_LABELS) as CarpoolLeg[]).map((l) => (
                 <option key={l} value={l}>
@@ -773,7 +804,7 @@ function AccompagnamentoTab({ detail }: { detail: GroupDetail }) {
               router.refresh();
             }}
             disabled={!canSubmit || savingRequest}
-            className="rounded-md bg-sky px-3.5 py-2 text-xs font-bold text-white disabled:opacity-60"
+            className={`rounded-md ${accentBg} px-3.5 py-2 text-xs font-bold text-white disabled:opacity-60`}
           >
             {savingRequest ? "Salvo…" : myRequest ? "Aggiorna richiesta" : "Richiedi un passaggio"}
           </button>
@@ -794,13 +825,13 @@ function AccompagnamentoTab({ detail }: { detail: GroupDetail }) {
       {/* Abbinamenti proposti */}
       {myRequest && (
         <div className="mb-4 rounded-lg border border-[#E8EBF0] bg-white">
-          <div className="border-b border-[#F0F2F5] px-3.5 py-2.5 text-sm font-bold text-ink">
+          <div className={`border-b border-[#F0F2F5] px-3.5 py-2.5 ${titleCls}`}>
             Abbinamenti proposti per te
           </div>
           <div className="divide-y divide-[#F0F2F5]">
             {myMatches.map((o) => (
               <div key={o.id} className="flex items-center gap-2.5 px-3.5 py-2.5">
-                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-sky-light text-sm">
+                <div className={`flex h-8 w-8 items-center justify-center rounded-full ${accentLight} text-sm`}>
                   🚗
                 </div>
                 <div className="min-w-0 flex-1">
@@ -824,7 +855,7 @@ function AccompagnamentoTab({ detail }: { detail: GroupDetail }) {
 
       {/* Tutte le offerte disponibili nel gruppo */}
       <div className="rounded-lg border border-[#E8EBF0] bg-white">
-        <div className="border-b border-[#F0F2F5] px-3.5 py-2.5 text-sm font-bold text-ink">
+        <div className={`border-b border-[#F0F2F5] px-3.5 py-2.5 ${titleCls}`}>
           Tutte le offerte nel gruppo
         </div>
         <div className="divide-y divide-[#F0F2F5]">

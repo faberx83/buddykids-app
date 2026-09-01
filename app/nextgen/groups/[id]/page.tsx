@@ -10,6 +10,12 @@ import { isSupabaseConfigured } from "@/lib/supabase/env";
 // logica server-side di app/(main)/groups/[id]/page.tsx, unica differenza è
 // backHref="/nextgen/groups" passato a GroupDetailClient così il link
 // "Gruppi" in alto non riporta più dentro il layout LEGACY.
+//
+// Segnalazione di Fabrizio (01/09/2026, "dentro i gruppi è rimasta grafica
+// legacy"): il componente era riusato COSÌ COM'ERA (accento sky, niente
+// Poppins) — ora nextgen=true attiva la variante di stile violetta/Poppins
+// (vedi GroupDetailClient.tsx), stesso principio già usato per CoverageStrip
+// in app/(main)/prenotazioni/PrenotazioniClient.tsx.
 export default async function NextgenGroupDetailPage({
   params,
 }: {
@@ -34,6 +40,7 @@ export default async function NextgenGroupDetailPage({
       activityOptions={activityOptions}
       inviterName={inviterName}
       backHref="/nextgen/groups"
+      nextgen
     />
   );
 }
