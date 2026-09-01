@@ -235,30 +235,62 @@ async function attachApprovedCertificationBadges(
 // Activity ha solo uno "spotsLeft" aggregato, non per-settimana, quindi va
 // interrogata "activity_weeks" a parte (stessa tabella usata da Prenotazione
 // e dal Planner in Home).
+//
+// FIX (FINAL MICRO-PILOT LIVE ACCEPTANCE, 01/09/2026 — segnalazione di
+// Fabrizio): il filtro "Riempi" del Planner (Scopri filtrato per settimana)
+// non trovava un'attività "Giorni spot" (single_day_bookable, vedi Sprint 3)
+// che aveva davvero disponibilità in quella settimana — spariva SOLO col
+// filtro settimana attivo, tornava visibile rimuovendolo. Causa: questa
+// funzione guardava SOLO "activity_weeks" (prenotazione a settimana intera),
+// mai "activity_days" (prenotazione a giorno singolo) — un'attività
+// "Giorni spot" pura non ha mai una riga in activity_weeks, quindi non
+// risultava MAI disponibile per nessuna settimana filtrata, anche con giorni
+// aperti e posti liberi. Ora si interroga anche activity_days (stessa
+// condizione di getActivitiesWithOpenDaySpots sotto) e si unisce il
+// risultato per settimana in base alla data del giorno.
 export async function getActivityAvailabilityByWeek(seasonYear: number): Promise<Record<string, string[]>> {
   const ranges = getSeasonWeekRanges(seasonYear);
-  const result: Record<string, string[]> = {};
-  for (const r of ranges) result[isoDate(r.start)] = [];
+  const result: Record<string, Set<string>> = {};
+  for (const r of ranges) result[isoDate(r.start)] = new Set();
 
-  if (!isSupabaseConfigured) return result; // demo: nessuna attività ha un dbId da confrontare
+  if (!isSupabaseConfigured) {
+    return Object.fromEntries(Object.entries(result).map(([k, v]) => [k, Array.from(v)]));
+  }
 
   const supabase = await createClient();
-  const { data, error } = await supabase
-    .from("activity_weeks")
-    .select("activity_id, start_date, end_date")
-    .gt("spots_left", 0);
+  const [{ data: weekRows, error: weekError }, { data: dayRows, error: dayError }] = await Promise.all([
+    supabase.from("activity_weeks").select("activity_id, start_date, end_date").gt("spots_left", 0),
+    supabase
+      .from("activity_days")
+      .select("activity_id, date")
+      .eq("is_open", true)
+      .eq("single_day_bookable", true)
+      .gt("spots_left", 0),
+  ]);
 
-  if (error || !data) return result;
-
-  for (const row of data as { activity_id: string; start_date: string; end_date: string }[]) {
-    for (const r of ranges) {
-      const startIso = isoDate(r.start);
-      if (overlaps(startIso, isoDate(r.end), row.start_date, row.end_date)) {
-        result[startIso].push(row.activity_id);
+  if (!weekError && weekRows) {
+    for (const row of weekRows as { activity_id: string; start_date: string; end_date: string }[]) {
+      for (const r of ranges) {
+        const startIso = isoDate(r.start);
+        if (overlaps(startIso, isoDate(r.end), row.start_date, row.end_date)) {
+          result[startIso].add(row.activity_id);
+        }
       }
     }
   }
-  return result;
+
+  if (!dayError && dayRows) {
+    for (const row of dayRows as { activity_id: string; date: string }[]) {
+      for (const r of ranges) {
+        const startIso = isoDate(r.start);
+        if (row.date >= startIso && row.date <= isoDate(r.end)) {
+          result[startIso].add(row.activity_id);
+        }
+      }
+    }
+  }
+
+  return Object.fromEntries(Object.entries(result).map(([k, v]) => [k, Array.from(v)]));
 }
 
 /// TRAMA ONE Build Sprint 3 — "Giorni spot": filtro Parent per disponibilità
