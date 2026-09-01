@@ -142,7 +142,16 @@ export async function replyToInquiryAction(input: {
       await sendPushToUser(row.parent_id, {
         title: `Il centro ha risposto: ${activity?.name ?? "la tua richiesta"}`,
         body: input.reply.trim(),
-        deepLink: "/richieste",
+        // Bug trovato da Fabrizio (01/09/2026): toccare questa notifica apriva
+        // una scheda del browser invece dell'app installata. Causa: "/richieste"
+        // (senza prefisso) è la route LEGACY, fuori dallo scope "/nextgen"
+        // dichiarato dal manifest/service worker con cui il genitore installa
+        // la PWA (vedi manifest-nextgen.json, components/InstallPrompt.tsx) —
+        // Android non riconosce quell'URL come parte della WebAPK installata e
+        // lo apre come tab normale. Tutti gli altri deepLink verso il genitore
+        // (groups/prenotazioni) usano già correttamente il prefisso /nextgen;
+        // questo era rimasto disallineato.
+        deepLink: "/nextgen/richieste",
       });
     }
   } catch (e) {
