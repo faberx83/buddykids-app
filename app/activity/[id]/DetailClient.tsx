@@ -22,6 +22,7 @@ export default function DetailClient({
   days = [],
   bookedDayDates = [],
   nextgen = false,
+  existingBooking = null,
 }: {
   activity: Activity;
   promotions: Promotion[];
@@ -50,6 +51,16 @@ export default function DetailClient({
   // app/activity/[id]/page.tsx) — il flag arriva già risolto da lì. Legacy
   // (default false) resta invariato.
   nextgen?: boolean;
+  // PLANNER BETA v1.1 (Wave 4, punto 21-23) — segnalazione: la CTA sticky
+  // "Prenota ora" restava visibile anche quando il genitore aveva GIÀ una
+  // prenotazione attiva per questa attività (es. arrivando da Home →
+  // "Prossimo appuntamento" → questa scheda), "semanticamente errato".
+  // Risolto server-side in app/activity/[id]/page.tsx tramite
+  // getMyBookingsForParent() — STESSA fonte di verità già usata da "Le mie
+  // prenotazioni"/Planner, nessuna nuova interpretazione dello stato
+  // prenotazione. null = nessuna prenotazione attiva per questa attività
+  // (comportamento invariato, CTA acquisitiva "Prenota ora").
+  existingBooking?: { id: string; status: "pending" | "confirmed" | "cancelled"; canCancelOrModify: boolean } | null;
 }) {
   const accentBg = nextgen ? "bg-trama-violet" : "bg-sky";
   const accentText = nextgen ? "text-trama-violet" : "text-sky";
@@ -649,7 +660,36 @@ export default function DetailClient({
             <div className="text-[11px] text-ink-2">per settimana</div>
           </div>
         )}
-        {selectedDayDates.length > 0 && !meetsMinDays ? (
+        {existingBooking ? (
+          // PLANNER BETA v1.1 (Wave 4) — booking attivo ("pending" o
+          // "confirmed") già esistente per questa attività: "Prenota ora"
+          // non deve MAI comparire (sarebbe una nuova acquisizione, non
+          // un'azione su quanto già prenotato). Mostriamo SOLO l'azione
+          // realmente supportata dal backend oggi — modifica della
+          // prenotazione esistente — riusando la STESSA route condivisa
+          // già linkata da "Le mie prenotazioni" (PrenotazioniClient.tsx,
+          // "Modifica" → /prenotazioni/[id]/modifica). Nessuna nuova
+          // capability inventata: se canCancelOrModify è false (es. finestra
+          // di modifica chiusa), non forziamo comunque un link che poi
+          // fallirebbe — mostriamo solo lo stato, il "Contatta il gestore"
+          // già presente in cima alla scheda resta il canale reale per
+          // qualunque richiesta in quel caso.
+          existingBooking.canCancelOrModify ? (
+            <Link
+              href={`/prenotazioni/${existingBooking.id}/modifica`}
+              className={`rounded-lg ${accentBg} px-7 py-3.5 text-[15px] font-bold text-white transition-all hover:scale-[0.97] ${accentHoverBg}`}
+            >
+              Modifica prenotazione
+            </Link>
+          ) : (
+            <div className="text-right">
+              <div className="text-[13px] font-bold text-ink">
+                {existingBooking.status === "confirmed" ? "Prenotazione confermata" : "Prenotazione in attesa"}
+              </div>
+              <div className="text-[11px] text-ink-2">Per modifiche, usa &quot;Contatta il gestore&quot; sopra</div>
+            </div>
+          )
+        ) : selectedDayDates.length > 0 && !meetsMinDays ? (
           <button
             type="button"
             disabled
