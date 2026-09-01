@@ -187,20 +187,43 @@ export async function getPilotUsers(): Promise<PilotUserRow[]> {
   const profileById = new Map((profiles ?? []).map((p) => [p.id as string, p]));
   const onboardingByUser = new Map((tutorialRows ?? []).map((r) => [r.user_id as string, r.status as PilotOnboardingStatus]));
   const bookingMinByUser = new Map<string, string>();
+  // BUG TROVATO+CORRETTO (FINAL MICRO-PILOT LIVE ACCEPTANCE, 01/09/2026 —
+  // segnalazione di Fabrizio: "ho fatto qualche azione ma non è loggata"):
+  // "Ultima attività" (lastActivityAt) riusava questo stesso Map, che tiene
+  // solo il MINIMO (la primissima prenotazione/bambino/gruppo) per utente —
+  // corretto per "prima azione significativa", ma per "ultima attività"
+  // qualunque prenotazione/gruppo SUCCESSIVO al primo restava invisibile
+  // (verificato: faberx83+testparent@gmail.com aveva una prenotazione/un
+  // gruppo di oggi, mai riflessi in tabella perché non erano il PRIMO).
+  // Ora si tiene anche il MASSIMO per categoria, usato solo per lastAction.
+  const bookingMaxByUser = new Map<string, string>();
   for (const b of bookingRows ?? []) {
-    const cur = bookingMinByUser.get(b.parent_id as string);
-    if (!cur || new Date(b.created_at as string) < new Date(cur)) bookingMinByUser.set(b.parent_id as string, b.created_at as string);
+    const parentId = b.parent_id as string;
+    const at = b.created_at as string;
+    const curMin = bookingMinByUser.get(parentId);
+    if (!curMin || new Date(at) < new Date(curMin)) bookingMinByUser.set(parentId, at);
+    const curMax = bookingMaxByUser.get(parentId);
+    if (!curMax || new Date(at) > new Date(curMax)) bookingMaxByUser.set(parentId, at);
   }
   const kidMinByUser = new Map<string, string>();
+  const kidMaxByUser = new Map<string, string>();
   for (const k of kidRows ?? []) {
-    const cur = kidMinByUser.get(k.parent_id as string);
-    if (!cur || new Date(k.created_at as string) < new Date(cur)) kidMinByUser.set(k.parent_id as string, k.created_at as string);
+    const parentId = k.parent_id as string;
+    const at = k.created_at as string;
+    const curMin = kidMinByUser.get(parentId);
+    if (!curMin || new Date(at) < new Date(curMin)) kidMinByUser.set(parentId, at);
+    const curMax = kidMaxByUser.get(parentId);
+    if (!curMax || new Date(at) > new Date(curMax)) kidMaxByUser.set(parentId, at);
   }
   const groupMinByUser = new Map<string, string>();
+  const groupMaxByUser = new Map<string, string>();
   for (const g of groupJoinRows) {
     if (!g.joined_at) continue;
-    const cur = groupMinByUser.get(g.parent_id as string);
-    if (!cur || new Date(g.joined_at) < new Date(cur)) groupMinByUser.set(g.parent_id as string, g.joined_at);
+    const parentId = g.parent_id as string;
+    const curMin = groupMinByUser.get(parentId);
+    if (!curMin || new Date(g.joined_at) < new Date(curMin)) groupMinByUser.set(parentId, g.joined_at);
+    const curMax = groupMaxByUser.get(parentId);
+    if (!curMax || new Date(g.joined_at) > new Date(curMax)) groupMaxByUser.set(parentId, g.joined_at);
   }
 
   const membershipsByUser = new Map<string, { cohortKeys: string[]; active: boolean }>();
@@ -218,14 +241,24 @@ export async function getPilotUsers(): Promise<PilotUserRow[]> {
 
       const onboardingStatus = onboardingByUser.get(id) ?? "not_started";
 
-      const candidates: { at: string | null; label: string }[] = [
+      const firstCandidates: { at: string | null; label: string }[] = [
         { at: kidMinByUser.get(id) ?? null, label: PILOT_ACTION_LABEL.kid },
         { at: bookingMinByUser.get(id) ?? null, label: PILOT_ACTION_LABEL.booking },
         { at: groupMinByUser.get(id) ?? null, label: PILOT_ACTION_LABEL.group },
       ].filter((c) => c.at !== null);
-      candidates.sort((a, b) => new Date(a.at as string).getTime() - new Date(b.at as string).getTime());
-      const firstAction = candidates[0] ?? null;
-      const lastAction = candidates.length > 0 ? candidates[candidates.length - 1] : null;
+      firstCandidates.sort((a, b) => new Date(a.at as string).getTime() - new Date(b.at as string).getTime());
+      const firstAction = firstCandidates[0] ?? null;
+
+      // Ultima attività: MASSIMO per categoria (non lo stesso array di
+      // firstCandidates, che tiene solo il minimo — vedi commento sopra
+      // bookingMaxByUser per il bug che questo corregge).
+      const lastCandidates: { at: string | null; label: string }[] = [
+        { at: kidMaxByUser.get(id) ?? null, label: PILOT_ACTION_LABEL.kid },
+        { at: bookingMaxByUser.get(id) ?? null, label: PILOT_ACTION_LABEL.booking },
+        { at: groupMaxByUser.get(id) ?? null, label: PILOT_ACTION_LABEL.group },
+      ].filter((c) => c.at !== null);
+      lastCandidates.sort((a, b) => new Date(a.at as string).getTime() - new Date(b.at as string).getTime());
+      const lastAction = lastCandidates.length > 0 ? lastCandidates[lastCandidates.length - 1] : null;
 
       const lastSignInAt = lastSignInById.get(id) ?? null;
       const membership = membershipsByUser.get(id) ?? { cohortKeys: [], active: false };
