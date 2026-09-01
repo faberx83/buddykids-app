@@ -8,7 +8,6 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
-import { getTodayCheckinsForParent } from "./checkin";
 import { getSeasonWeekRanges, isoDate } from "@/lib/season-weeks";
 import { getSeasonYear } from "./season-year";
 // Tipi/costanti spostati in un modulo client-safe (niente import di
@@ -69,11 +68,11 @@ export async function getResponsibilitiesForParent(): Promise<WeekResponsibility
 // accompagna/ritira. Il gap documentato in TRAMA_PILOT_NOTIFICATIONS_
 // IMPLEMENTATION.md ("Accompagnamento/ritiro non assegnato") era per
 // un'INTERA settimana, senza incrocio con le prenotazioni reali — qui
-// l'ambito è ristretto a OGGI e riusa la STESSA fonte di verità già
-// battle-tested di getTodayCheckinsForParent() (lib/data/checkin.ts) per
-// sapere quali bambini hanno davvero un'attività oggi, eliminando il
-// rischio di falsi positivi descritto in quel documento (mai "manca chi
-// accompagna" per un giorno senza nessuna attività prevista).
+// l'ambito è ristretto a OGGI e incrocia con le prenotazioni reali di oggi
+// (sia a settimana intera che "Giorni spot" a giorno singolo — vedi
+// getKidsWithActivityToday sotto), eliminando il rischio di falsi positivi
+// descritto in quel documento (mai "manca chi accompagna" per un giorno
+// senza nessuna attività prevista).
 export interface TodayResponsibilityEntry {
   kidId: string;
   kidName: string;
@@ -92,17 +91,71 @@ const JS_DAY_TO_WEEKDAY: Record<number, Weekday | null> = {
   6: null, // sabato
 };
 
+interface RawTodayBookingRow {
+  booking_kids: { kid_id: string; kids: { id: string; name: string } | { id: string; name: string }[] | null }[] | null;
+  booking_weeks: { activity_weeks: { start_date: string; end_date: string } | { start_date: string; end_date: string }[] | null }[] | null;
+  booking_days: { activity_days: { date: string } | { date: string }[] | null }[] | null;
+}
+
+function firstOfRaw<T>(value: T | T[] | null | undefined): T | null {
+  if (!value) return null;
+  return Array.isArray(value) ? (value[0] ?? null) : value;
+}
+
+// BUG TROVATO+CORRETTO (FINAL MICRO-PILOT LIVE ACCEPTANCE, 01/09/2026 —
+// segnalazione di Fabrizio: "in home non vedo nulla nel coordination
+// signal del chi fa cosa"): questa funzione riusava
+// getTodayCheckinsForParent() (lib/data/checkin.ts), che guarda SOLO
+// booking_weeks/activity_weeks — un'attività "Giorni spot" (Sprint 3,
+// single_day_bookable, es. "Prova FP") prenotata a GIORNO SINGOLO non ha
+// mai una riga in booking_weeks, quindi getTodayCheckinsForParent() non la
+// vedeva mai, a nessuna data — stessa classe di bug già corretta oggi in
+// getActivityAvailabilityByWeek (lib/data/activities.ts). Qui si evita la
+// dipendenza da getTodayCheckinsForParent (che ha anche il vincolo NOT
+// NULL di attendance_records.week_id, non applicabile a un'attività senza
+// alcuna riga activity_weeks) e si interroga direttamente sia
+// booking_weeks CHE booking_days.
+async function getKidsWithActivityToday(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  userId: string,
+  todayIso: string
+): Promise<{ kidId: string; kidName: string }[]> {
+  const { data, error } = await supabase
+    .from("bookings")
+    .select(
+      "booking_kids ( kid_id, kids ( id, name ) ), booking_weeks ( activity_weeks ( start_date, end_date ) ), booking_days ( activity_days ( date ) )"
+    )
+    .eq("parent_id", userId)
+    .neq("status", "cancelled");
+
+  if (error || !data) return [];
+
+  const byKid = new Map<string, string>();
+  for (const booking of data as RawTodayBookingRow[]) {
+    const hasWeekToday = (booking.booking_weeks ?? []).some((bw) => {
+      const week = firstOfRaw(bw.activity_weeks);
+      return week && todayIso >= week.start_date && todayIso <= week.end_date;
+    });
+    const hasDayToday = (booking.booking_days ?? []).some((bd) => {
+      const day = firstOfRaw(bd.activity_days);
+      return day && day.date === todayIso;
+    });
+    if (!hasWeekToday && !hasDayToday) continue;
+
+    for (const bk of booking.booking_kids ?? []) {
+      const kid = firstOfRaw(bk.kids);
+      if (kid) byKid.set(kid.id, kid.name);
+    }
+  }
+
+  return Array.from(byKid.entries()).map(([kidId, kidName]) => ({ kidId, kidName }));
+}
+
 export async function getTodayResponsibilities(): Promise<TodayResponsibilityEntry[]> {
   if (!isSupabaseConfigured) return [];
 
   const todayWeekday = JS_DAY_TO_WEEKDAY[new Date().getDay()];
   if (!todayWeekday) return []; // weekend: nessuna colonna "Chi fa cosa?" da controllare
-
-  // Stessa fonte di verità già usata dal check-in ("bambini con
-  // un'attività attiva oggi") — zero nuova logica di incrocio
-  // planner/bookings, zero rischio dei falsi positivi già documentati.
-  const checkins = await getTodayCheckinsForParent();
-  if (checkins.length === 0) return [];
 
   const supabase = await createClient();
   const {
@@ -110,15 +163,18 @@ export async function getTodayResponsibilities(): Promise<TodayResponsibilityEnt
   } = await supabase.auth.getUser();
   if (!user) return [];
 
-  const seasonYear = await getSeasonYear();
   const todayIso = isoDate(new Date());
+  const kidsToday = await getKidsWithActivityToday(supabase, user.id, todayIso);
+  if (kidsToday.length === 0) return [];
+
+  const seasonYear = await getSeasonYear();
   const currentRange = getSeasonWeekRanges(seasonYear).find(
     (r) => todayIso >= isoDate(r.start) && todayIso <= isoDate(r.end)
   );
   if (!currentRange) return [];
   const weekStartDate = isoDate(currentRange.start);
 
-  const kidIds = Array.from(new Set(checkins.map((c) => c.kidId)));
+  const kidIds = kidsToday.map((k) => k.kidId);
   const { data, error } = await supabase
     .from("week_responsibilities")
     .select("kid_id, moment, responsible, responsible_label")
@@ -137,7 +193,7 @@ export async function getTodayResponsibilities(): Promise<TodayResponsibilityEnt
     }
   }
 
-  const kidNameById = new Map(checkins.map((c) => [c.kidId, c.kidName]));
+  const kidNameById = new Map(kidsToday.map((k) => [k.kidId, k.kidName]));
   const result: TodayResponsibilityEntry[] = [];
   for (const kidId of kidIds) {
     for (const moment of ["andata", "ritorno"] as Moment[]) {

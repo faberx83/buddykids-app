@@ -36,6 +36,28 @@ const STATUS_CLASS: Record<BookingStatus, string> = {
   cancelled: "bg-bg text-ink-3",
 };
 
+// FIX (FINAL MICRO-PILOT LIVE ACCEPTANCE, 01/09/2026 — segnalazione di
+// Fabrizio: la stessa prenotazione risultava "Confermata" qui ma "in attesa
+// di conferma del centro" nel Planner). Causa: due colonne INDIPENDENTI su
+// bookings — "status" (pending/confirmed/cancelled, transazione/pagamento
+// lato genitore — con pagamento demo diventa "confirmed" subito) e
+// "partner_decision" (pending/accepted/rejected/proposed, risposta
+// OPERATIVA del centro — vedi /center/prenotazioni "Rispondi alle
+// prenotazioni ricevute"). Il badge qui guardava SOLO "status", ignorando
+// che il centro potesse non aver ancora risposto affatto — il Planner
+// (lib/data/planner.ts) guarda invece "partner_decision", da qui la
+// discrepanza visibile. Non tocchiamo le due colonne (stato/decisione
+// restano concetti distinti, entrambi corretti nel loro dominio): qui si
+// corregge solo l'ETICHETTA mostrata al genitore, che ora riflette
+// entrambe — "Confermata" da sola resta vera solo quando il centro ha
+// anche accettato.
+function effectiveStatusBadge(b: Pick<MyBooking, "status" | "partnerDecision">): { label: string; className: string } {
+  if (b.status === "confirmed" && b.partnerDecision === "pending") {
+    return { label: "In attesa di conferma del centro", className: "bg-yellow-light text-[#9a6b00]" };
+  }
+  return { label: STATUS_LABEL[b.status], className: STATUS_CLASS[b.status] };
+}
+
 const MONTH_LABELS_IT = [
   "Gennaio", "Febbraio", "Marzo", "Aprile", "Maggio", "Giugno",
   "Luglio", "Agosto", "Settembre", "Ottobre", "Novembre", "Dicembre",
@@ -629,8 +651,10 @@ function BookingCard({
               )}
               {b.activityName}
             </span>
-            <span className={`flex-shrink-0 rounded-full px-2.5 py-1 text-[10px] font-bold ${STATUS_CLASS[b.status]}`}>
-              {STATUS_LABEL[b.status]}
+            <span
+              className={`flex-shrink-0 rounded-full px-2.5 py-1 text-[10px] font-bold ${effectiveStatusBadge(b).className}`}
+            >
+              {effectiveStatusBadge(b).label}
             </span>
           </div>
           <div className="text-xs text-ink-2">{b.weeksLabel}</div>
