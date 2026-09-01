@@ -94,6 +94,20 @@ Fix: nuova `hasBrowserPushSubscription()` in `lib/push/client.ts` (verifica real
 
 **Nota per un giro successivo, non ancora corretta**: `sendPushToUser` (lib/push/send.ts) invia a TUTTE le righe `push_subscriptions` di un utente senza controllare `profiles.notify_push` — se una persona disattiva il toggle ma la riga subscription non viene mai rimossa per qualche motivo, riceverebbe comunque la push. Non è la causa del problema segnalato (va nella direzione opposta) ma è un'incoerenza minore da chiudere in futuro.
 
+### Bug sistemico trovato con lo stesso test: RLS blocca la lookup center_admin (01/09/2026)
+
+Dopo il fix precedente, Fabrizio ha rifatto il test end-to-end (entrambi gli account con una vera subscription confermata in DB): **genitore → centro ancora nessuna notifica**, mentre centro → genitore funzionava (a parte l'icona, vedi sotto). Verifica read-only via MCP Supabase: `activity_inquiries` mostrava nuove righe create DOPO che la subscription del partner esisteva già (confermato `push_subscriptions.created_at` precedente), quindi non era più un problema di timing.
+
+Causa reale: `createInquiryAction` cercava gli admin del centro con `supabase.from("profiles").select("id").eq("center_id", ...).eq("role","center_admin")` usando il client con la SESSIONE DEL GENITORE. Le policy RLS su `profiles` permettono a un utente di vedere solo il proprio profilo (`auth.uid() = id`), più un caso specifico e unidirezionale ("il centro vede i genitori delle proprie prenotazioni") — mai il contrario. La query tornava quindi **sempre `[]`** per un genitore, senza alcun errore (RLS filtra silenziosamente, non lancia eccezioni): `sendPushToUser` non veniva mai invocata, coerente con "nessun errore nei log, nessuna notifica".
+
+Stesso identico pattern — e stesso bug latente, mai stato testato end-to-end finora — trovato anche nei due trigger P0 originari: `sendGroupRequestAction` (app/actions/groups.ts) e `createBookingAction` (app/booking/[id]/actions.ts). Corretti tutti e tre usando `createServiceClient()` (lib/supabase/service.ts, Wave 1) al posto del client con sessione utente per QUESTA sola query — stesso motivo per cui `lib/push/send.ts` già usa il service client per leggere `push_subscriptions` di un utente diverso dal chiamante.
+
+### Icona badge mancante in barra di stato Android (01/09/2026)
+
+Confermato funzionante il verso centro → genitore, ma "vibra e si trova nella tendina, ma non viene mostrata l'icona classica... anche scorrendo dall'alto niente icona". Causa: `icon-nextgen-192.png` (usata sia come `icon` sia come `badge` nel service worker) è in modalità RGB **senza canale alpha** — nessuna trasparenza. Il "badge" Android/Chrome richiede un'immagine monocromatica con trasparenza reale per ricavarne la silhouette da mostrare in barra di stato; senza alpha non mostra nulla, pur mostrando comunque la notifica nel pannello (esattamente il sintomo).
+
+Fix: generata `public/push-badge-96.png` da `icon-nextgen-512.png` (sfondo bianco reso trasparente via ImageMagick `-transparent white`, tratti colorati ricolorati in bianco pieno via `-colorize 100%` sul canale RGB con alpha preservato) — vera silhouette monocromatica del logo "trama", verificata visivamente componendola su sfondo scuro prima di usarla. `public/sw.js` ora usa `icon-nextgen-192.png` (a colori) per l'icona grande nel corpo della notifica e `push-badge-96.png` per il badge in barra di stato — un solo asset condiviso per tutti i ruoli, nessuna variante Legacy/Parent/Partner (stesso principio del resto del service worker).
+
 ## Future work esplicitamente escluso
 
 Digest email, SMS/WhatsApp, WebSocket, preferenze di notifica avanzate (per-tipo), cronologia notifiche permanente, event bus enterprise, `responsible_group_member_id`/bridge accompagnamento↔gruppo (week_responsibilities: gap documentato sotto), cursore "seen" in-app sincronizzato multi-device (richiederebbe una colonna, altra migration), push per i trigger non-P0 elencati sopra, cleanup periodico automatico delle subscription push obsolete (oggi solo self-cleaning al primo invio fallito).

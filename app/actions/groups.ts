@@ -1,6 +1,7 @@
 "use server";
 
 import { createClient } from "@/lib/supabase/server";
+import { createServiceClient } from "@/lib/supabase/service";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
 import { GroupItem, PublicGroupItem, GroupInviteItem, CarpoolLeg } from "@/lib/types";
 import { discountForGroupSize } from "@/lib/groups";
@@ -528,12 +529,23 @@ export async function sendGroupRequestAction(
   // admin di quel centro (un centro può avere più account center_admin
   // collegati, vedi profiles.center_id): stesso principio "notifica chi può
   // agire", non solo il primo trovato.
+  //
+  // Bug trovato da Fabrizio (01/09/2026) sullo stesso identico pattern in
+  // app/actions/inquiries.ts::createInquiryAction: questa lookup usava il
+  // client NORMALE (sessione del genitore) ma la RLS su profiles permette
+  // di vedere SOLO il proprio profilo — la query tornava sempre [] per un
+  // genitore, senza errore, e sendPushToUser non partiva mai. Corretto qui
+  // per lo stesso motivo, con createServiceClient() (stesso client già
+  // usato da lib/push/send.ts per leggere dati di un utente diverso).
   const { data: groupRow } = await supabase.from("groups").select("name").eq("id", groupId).maybeSingle();
-  const { data: centerAdmins } = await supabase
-    .from("profiles")
-    .select("id")
-    .eq("center_id", centerId)
-    .eq("role", "center_admin");
+  const service = createServiceClient();
+  const { data: centerAdmins } = service
+    ? await service
+        .from("profiles")
+        .select("id")
+        .eq("center_id", centerId)
+        .eq("role", "center_admin")
+    : { data: null };
   await Promise.all(
     (centerAdmins ?? []).map((admin) =>
       sendPushToUser(admin.id, {

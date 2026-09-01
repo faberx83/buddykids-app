@@ -1,6 +1,7 @@
 "use server";
 
 import { createClient } from "@/lib/supabase/server";
+import { createServiceClient } from "@/lib/supabase/service";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
 import { revalidatePath } from "next/cache";
 // Push notifications (31/08/2026, estensione trigger P0) — segnalato da
@@ -42,6 +43,20 @@ export async function createInquiryAction(input: {
 
   // Push al centro — a TUTTI gli admin di quell'attività (stesso principio
   // "notifica chi può agire" già usato per gli altri trigger P0).
+  //
+  // Bug trovato da Fabrizio con un test reale (01/09/2026, "gen --> centro
+  // nessuna notifica"): la lookup "profiles con center_id=X e
+  // role=center_admin" qui sotto usava il client NORMALE (sessione del
+  // genitore che ha appena scritto la richiesta) — ma la RLS su profiles
+  // permette a un utente di vedere SOLO il proprio profilo (più il caso
+  // inverso "il centro vede i genitori delle proprie prenotazioni", vedi
+  // migration/schema), MAI il contrario. La query tornava quindi SEMPRE []
+  // per un genitore, senza alcun errore (RLS filtra silenziosamente, non
+  // lancia un'eccezione) — sendPushToUser non veniva mai chiamata. Stesso
+  // motivo per cui lib/push/send.ts usa già createServiceClient() per
+  // leggere le subscription di UN UTENTE DIVERSO dal chiamante: qui serve
+  // lo stesso client per lo stesso identico motivo (leggere profili di
+  // ALTRI utenti, non il proprio).
   try {
     const { data: activityRow } = await supabase
       .from("activities")
@@ -54,11 +69,14 @@ export async function createInquiryAction(input: {
         .select("full_name")
         .eq("id", user.id)
         .maybeSingle();
-      const { data: centerAdmins } = await supabase
-        .from("profiles")
-        .select("id")
-        .eq("center_id", activityRow.center_id)
-        .eq("role", "center_admin");
+      const service = createServiceClient();
+      const { data: centerAdmins } = service
+        ? await service
+            .from("profiles")
+            .select("id")
+            .eq("center_id", activityRow.center_id)
+            .eq("role", "center_admin")
+        : { data: null };
       await Promise.all(
         (centerAdmins ?? []).map((admin) =>
           sendPushToUser(admin.id, {

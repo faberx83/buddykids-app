@@ -1,6 +1,7 @@
 "use server";
 
 import { createClient } from "@/lib/supabase/server";
+import { createServiceClient } from "@/lib/supabase/service";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
 import { getSeasonWeekRanges, overlaps } from "@/lib/season-weeks";
 import { getSeasonYear } from "@/lib/data/season-year";
@@ -276,6 +277,13 @@ export async function createBookingAction(
   // usato per il trigger "nuova richiesta gruppo" in app/actions/groups.ts).
   // Best-effort: non deve mai far fallire una prenotazione già creata con
   // successo (bookingId sopra è già definitivo).
+  // Bug trovato da Fabrizio (01/09/2026) sullo stesso identico pattern in
+  // app/actions/inquiries.ts::createInquiryAction: la lookup "profiles con
+  // center_id=X e role=center_admin" col client NORMALE (sessione del
+  // genitore) tornava sempre [] per via della RLS su profiles (un utente
+  // vede solo il proprio profilo) — nessun errore, sendPushToUser non
+  // partiva mai. Corretto qui con createServiceClient() (stesso client già
+  // usato da lib/push/send.ts per leggere dati di un utente diverso).
   try {
     const { data: activityRow } = await supabase
       .from("activities")
@@ -283,11 +291,14 @@ export async function createBookingAction(
       .eq("id", input.activityDbId)
       .maybeSingle();
     if (activityRow?.center_id) {
-      const { data: centerAdmins } = await supabase
-        .from("profiles")
-        .select("id")
-        .eq("center_id", activityRow.center_id)
-        .eq("role", "center_admin");
+      const service = createServiceClient();
+      const { data: centerAdmins } = service
+        ? await service
+            .from("profiles")
+            .select("id")
+            .eq("center_id", activityRow.center_id)
+            .eq("role", "center_admin")
+        : { data: null };
       await Promise.all(
         (centerAdmins ?? []).map((admin) =>
           sendPushToUser(admin.id, {

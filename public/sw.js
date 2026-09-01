@@ -44,10 +44,22 @@ self.addEventListener("push", (event) => {
   const title = data.title || "TRAMA";
   const options = {
     body: data.body || "",
-    // Icona/badge riusano gli asset PWA già esistenti (manifest*.json),
-    // nessun nuovo asset creato per questa feature.
+    // Icona grande (mostrata nel corpo della notifica espansa): riusa
+    // l'asset PWA già esistente, va bene a colori pieni.
     icon: "/icon-nextgen-192.png",
-    badge: "/icon-nextgen-192.png",
+    // Badge (l'iconcina in barra di stato Android): segnalato da Fabrizio
+    // il 01/09/2026, "non vedo alcuna icona, solo scorrendo dall'alto trovo
+    // la notifica" — icon-nextgen-192.png è RGB SENZA canale alpha (nessuna
+    // trasparenza), e Android/Chrome richiedono un'immagine monocromatica
+    // CON trasparenza reale per ricavare la silhouette del badge: senza
+    // alpha non mostra nulla in barra di stato, pur mostrando comunque la
+    // notifica nel pannello a tendina (esattamente il sintomo osservato).
+    // push-badge-96.png è generato dal logo "trama" (public/icon-nextgen-
+    // 512.png): sfondo bianco reso trasparente, tratti colorati ricolorati
+    // in bianco pieno — vera silhouette monocromatica, unica per tutti i
+    // ruoli (stesso principio "un solo service worker per tutti gli scope"
+    // già usato sopra, nessuna variante badge per Legacy/Parent/Partner).
+    badge: "/push-badge-96.png",
     data: { url: data.deepLink || "/" },
   };
   event.waitUntil(self.registration.showNotification(title, options));
