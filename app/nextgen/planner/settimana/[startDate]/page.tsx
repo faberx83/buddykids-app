@@ -17,7 +17,7 @@ import {
 } from "@/lib/nextgen/planner-insights";
 import { computeRolesToCover } from "@/lib/nextgen/week-roles";
 import { WEEKDAYS, MOMENTS } from "@/lib/nextgen/responsibility-options";
-import ActivityCard from "@/components/ActivityCard";
+import PlannerActivityCardCompact from "@/components/nextgen/PlannerActivityCardCompact";
 import PageHeader from "@/components/PageHeader";
 import NextgenBadge from "@/components/nextgen/NextgenBadge";
 
@@ -104,13 +104,16 @@ export default async function WeekDetailPage({
       <div className="px-5 py-4">
         <NextgenBadge />
 
-        {/* 1-2. Settimana + date, Stato — punto 8 della revisione. */}
-        <div className="mb-4 rounded-2xl bg-white p-4">
-          <div className="mb-1 font-poppins text-lg font-bold text-ink">
-            Settimana {week.index} <span className="font-normal text-ink-2">· {week.dateRange}</span>
-          </div>
-          <div className="flex items-center gap-1.5 text-[12.5px] font-semibold text-ink-2">
-            <i className="ti ti-info-circle text-[14px]" />
+        {/* 1-2. Date, Stato — punto 8 della revisione. TRAMA BETA v1.1.1
+            (UI Refinement, punto 7) — "Settimana N" NON va ripetuta qui:
+            è già il titolo di PageHeader sopra ("dominante" una sola
+            volta). Questo blocco mostra solo il range date + lo stato,
+            più compatto (p-3.5 invece di p-4, mb-3 invece di mb-4) per
+            portare Copertura/Organizzazione above-the-fold prima. */}
+        <div className="mb-3 rounded-2xl bg-white p-3.5">
+          <div className="mb-1 font-poppins text-sm font-bold text-ink">{week.dateRange}</div>
+          <div className="flex items-center gap-1.5 text-[12px] font-semibold text-ink-2">
+            <i className="ti ti-info-circle text-[13px]" />
             {WEEK_STATUS_LABEL[status]}
           </div>
           {hasOverlap && (
@@ -128,13 +131,13 @@ export default async function WeekDetailPage({
             usato dalla Timeline), "giorni coperti per bambino" da
             bookedDays (child-day reale, stessa fonte del blocco
             Organizzazione sotto). */}
-        <div className="mb-4 rounded-2xl bg-white p-4">
-          <div className="mb-2 font-poppins text-[13px] font-bold text-ink">Copertura</div>
+        <div className="mb-3 rounded-2xl bg-white p-3.5">
+          <div className="mb-1.5 font-poppins text-[13px] font-bold text-ink">Copertura</div>
           <p className="text-[12.5px] font-medium text-ink-2">
             {week.coveredKids.length} di {kids.length} bambini coperti questa settimana
           </p>
           {bookedDays.length > 0 && (
-            <div className="mt-2 flex flex-col gap-1">
+            <div className="mt-1.5 flex flex-col gap-1">
               {bookedDays.map((k) => (
                 <p key={k.kidId} className="text-[11.5px] text-ink-3">
                   {k.kidName}: {k.dates.length} di {WEEKDAYS.length} giorni feriali coperti
@@ -143,7 +146,7 @@ export default async function WeekDetailPage({
             </div>
           )}
           {kids.length > bookedDays.length && (
-            <p className="mt-2 text-[11.5px] text-ink-3">
+            <p className="mt-1.5 text-[11.5px] text-ink-3">
               {kids
                 .filter((kid) => !bookedDays.some((b) => b.kidId === kid.id))
                 .map((kid) => kid.name)
@@ -157,8 +160,8 @@ export default async function WeekDetailPage({
         {/* 4. Organizzazione Andata/Ritorno — punti 10-14. Mostrata SOLO se
             esiste almeno un child-day realmente prenotato. */}
         {roles.hasBookedDays && (
-          <div className="mb-4 rounded-2xl bg-white p-4">
-            <div className="mb-2.5 font-poppins text-[13px] font-bold text-ink">Organizzazione</div>
+          <div className="mb-3 rounded-2xl bg-white p-3.5">
+            <div className="mb-2 font-poppins text-[13px] font-bold text-ink">Organizzazione</div>
             {roles.missingSlots === 0 ? (
               <p className="flex items-center gap-1.5 text-[12.5px] font-semibold text-green">
                 <i className="ti ti-circle-check-filled text-[14px]" />
@@ -205,7 +208,13 @@ export default async function WeekDetailPage({
           </div>
         )}
 
-        {/* 5-6. Suggerimento principale + Alternative — punti 15-16. */}
+        {/* 5-6. Suggerimento principale + Alternative — punti 15-16.
+            TRAMA BETA v1.1.1 (UI Refinement, punto 8) — sia il
+            suggerimento principale sia le alternative usano ora la STESSA
+            variante compatta (PlannerActivityCardCompact), invece della
+            ActivityCard piena di Scopri per il principale + una riga
+            hand-rolled diversa per le alternative: un solo componente
+            condiviso, coerenza visiva, meno codice duplicato. */}
         {week.covered ? (
           <Link
             href={week.bookingId ? `/nextgen/prenotazioni?bookingId=${week.bookingId}` : "/nextgen/prenotazioni"}
@@ -217,7 +226,7 @@ export default async function WeekDetailPage({
           <>
             {mainRecommendation && (
               <div className="mb-2">
-                <div className="mb-2 font-poppins text-sm font-bold text-ink">Suggerimento principale</div>
+                <div className="mb-1.5 font-poppins text-sm font-bold text-ink">Suggerimento principale</div>
                 {mainRecommendation.reasons.length > 0 && (
                   <div className="mb-1 flex flex-wrap gap-1 px-1">
                     {mainRecommendation.reasons.map((reason) => (
@@ -230,30 +239,24 @@ export default async function WeekDetailPage({
                     ))}
                   </div>
                 )}
-                <ActivityCard
+                <PlannerActivityCardCompact
                   activity={mainRecommendation.activity}
                   matchPercent={Math.min(99, Math.round(mainRecommendation.score))}
+                  weekStartDate={week.startDate}
                 />
               </div>
             )}
             {otherRecommendations.length > 0 && (
               <div className="mb-4">
-                <div className="mb-2 font-poppins text-[13px] font-bold text-ink">Altre opzioni</div>
+                <div className="mb-1.5 font-poppins text-[13px] font-bold text-ink">Altre opzioni</div>
                 <div className="flex flex-col gap-1.5">
                   {otherRecommendations.map((m) => (
-                    <Link
+                    <PlannerActivityCardCompact
                       key={m.activity.id}
-                      href={`/activity/${m.activity.id}?week=${week.startDate}`}
-                      className="flex items-center gap-3 rounded-xl bg-white p-3 active:bg-black/[0.06]"
-                    >
-                      <span className="min-w-0 flex-1 truncate text-[12.5px] font-semibold text-ink">
-                        {m.activity.name}
-                      </span>
-                      <span className="flex-shrink-0 text-[11.5px] text-ink-2">
-                        €{m.activity.pricePerWeek}/sett. · {Math.min(99, Math.round(m.score))}% match
-                      </span>
-                      <i className="ti ti-chevron-right flex-shrink-0 text-base text-ink-3" />
-                    </Link>
+                      activity={m.activity}
+                      matchPercent={Math.min(99, Math.round(m.score))}
+                      weekStartDate={week.startDate}
+                    />
                   ))}
                 </div>
               </div>
