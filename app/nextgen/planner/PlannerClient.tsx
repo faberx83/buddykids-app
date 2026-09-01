@@ -181,7 +181,14 @@ export default function PlannerClient({
   // dentro Organizzazione, dietro un riquadro pieghevole. Se si arriva da
   // ?mode=calendario (link "Condivisione piano" dell'hub Logistica), il
   // riquadro parte gia' aperto invece di lasciare l'utente a cercarlo.
-  const [calendarExpanded, setCalendarExpanded] = useState(initialModeParam === "calendario");
+  //
+  // SPRINT CORRETTIVO 2 (01/09/2026, segnalazione ripetuta di Fabrizio dopo
+  // la live QA: "la sezione 'Calendario' non è ben visibile per il 'chi fa
+  // cosa'") — il riquadro ora parte SEMPRE aperto (non solo da deep-link):
+  // "Chi fa cosa?" vive dentro questo pannello (vedi PlannerCalendarView) ed
+  // era di fatto invisibile finché qualcuno non scopriva da solo che c'era
+  // un pulsante da espandere. Resta comunque richiudibile per chi non lo usa.
+  const [calendarExpanded, setCalendarExpanded] = useState(true);
   // SPRINT CORRETTIVO — "Ogni barra del bambino... deve portare ad un
   // dettaglio del piano (per bambino)": click su una barra apre/chiude un
   // pannello inline con le singole settimane di quel bambino (copertura
@@ -561,11 +568,16 @@ export default function PlannerClient({
             className="flex w-full items-center justify-between rounded-2xl bg-white p-4 text-left active:bg-black/[0.06]"
             aria-expanded={calendarExpanded}
           >
-            <span className="flex items-center gap-2 font-poppins text-[13px] font-bold text-ink">
-              <i className="ti ti-calendar text-[16px] text-trama-violet" />
-              Calendario
+            <span className="flex items-start gap-2">
+              <i className="ti ti-calendar mt-0.5 text-[16px] text-trama-violet" />
+              <span>
+                <span className="block font-poppins text-[13px] font-bold text-ink">Calendario e Chi fa cosa?</span>
+                <span className="block text-[11px] font-medium text-ink-2">
+                  Mese, settimana e chi accompagna ogni giorno
+                </span>
+              </span>
             </span>
-            <i className={`ti ${calendarExpanded ? "ti-chevron-up" : "ti-chevron-down"} text-[16px] text-ink-3`} />
+            <i className={`ti ${calendarExpanded ? "ti-chevron-up" : "ti-chevron-down"} flex-shrink-0 text-[16px] text-ink-3`} />
           </button>
           {calendarExpanded && (
             <div className="mt-3">
