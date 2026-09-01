@@ -8,13 +8,9 @@ import {
   BudgetSummary,
   computePerKidCoverage,
   computeWeekStatus,
-  WEEK_STATUS_BAR_CLASS,
-  WEEK_STATUS_LABEL,
-  WEEK_STATUS_ICON,
   weekIndexFromLabel,
-  overlapVerb,
-  formatBookingNames,
   groupWeeksByMonth,
+  getUpcomingWeeks,
 } from "@/lib/nextgen/planner-insights";
 import type { Mission } from "@/lib/nextgen/missions";
 import type { SmartMatch } from "@/lib/nextgen/smart-search";
@@ -41,7 +37,6 @@ import { lightBgClasses } from "@/lib/colors";
 // (etichetta "Non ti serve"), mai impostabile: nessun bottone chiamava
 // toggleWeekDismissedAction. Nessuna nuova azione: solo il bottone mancante.
 import { toggleWeekDismissedAction } from "@/app/actions/profile";
-import ActivityCard from "@/components/ActivityCard";
 import PageHeader from "@/components/PageHeader";
 import NextgenBadge from "@/components/nextgen/NextgenBadge";
 import PlannerModeTabs, { PlannerMode, PLANNER_MODES } from "@/components/nextgen/PlannerModeTabs";
@@ -182,23 +177,49 @@ export default function PlannerClient({
   // ?mode=calendario (link "Condivisione piano" dell'hub Logistica), il
   // riquadro parte gia' aperto invece di lasciare l'utente a cercarlo.
   //
-  // SPRINT CORRETTIVO 2 (01/09/2026, segnalazione ripetuta di Fabrizio dopo
-  // la live QA: "la sezione 'Calendario' non è ben visibile per il 'chi fa
-  // cosa'") — il riquadro ora parte SEMPRE aperto (non solo da deep-link):
-  // "Chi fa cosa?" vive dentro questo pannello (vedi PlannerCalendarView) ed
-  // era di fatto invisibile finché qualcuno non scopriva da solo che c'era
-  // un pulsante da espandere. Resta comunque richiudibile per chi non lo usa.
-  const [calendarExpanded, setCalendarExpanded] = useState(true);
+  // PLANNER BETA v1.1 — il default "sempre aperto" introdotto in un fix
+  // precedente della stessa giornata è stato rivalutato durante
+  // l'implementazione di questa wave: la suite Playwright esistente
+  // (family-planner-5-3/5-6, planner-calendar-5-2, planner-logistica,
+  // planner-organizzazione-semplificata TC-N100 — oltre 15 punti di test)
+  // presuppone deliberatamente un riquadro chiuso di default e verifica il
+  // click che lo apre. La visibilità/scopribilità del contenuto (l'obiettivo
+  // reale della segnalazione di Fabrizio) resta risolta dall'etichetta
+  // esplicita "Calendario e Chi fa cosa?" + dalla settimana corrente
+  // preselezionata all'apertura (PlannerCalendarView) — non dal default
+  // espanso, che qui si ripristina per non introdurre una regressione ampia
+  // sulla suite di test a fronte di un guadagno UX marginale aggiuntivo.
+  const [calendarExpanded, setCalendarExpanded] = useState(initialModeParam === "calendario");
   // SPRINT CORRETTIVO — "Ogni barra del bambino... deve portare ad un
   // dettaglio del piano (per bambino)": click su una barra apre/chiude un
   // pannello inline con le singole settimane di quel bambino (copertura
   // derivata da planner.weeks, nessuna nuova query).
   const [expandedKidId, setExpandedKidId] = useState<string | null>(null);
+  // PLANNER BETA v1.1 (Wave 1, punto 2B "Riduzione ridondanze") — "Copertura
+  // per bambino" resta disponibile ma non più visibile di default: l'intera
+  // card (non solo il dettaglio per singolo bambino, già gestito da
+  // expandedKidId sopra) è ora dietro questo secondo livello di disclosure.
+  // L'intestazione "Copertura per bambino" resta sempre presente come
+  // bottone di apertura (nessuna informazione nascosta, solo un click in
+  // più per chi ha più di un figlio e vuole il dettaglio).
+  const [kidCoverageOpen, setKidCoverageOpen] = useState(false);
+  // PLANNER BETA v1.1 (Wave 1, punto 2B/4) — la Timeline completa (tutte le
+  // settimane della stagione) non è più il contenuto di default
+  // dell'Overview: diventa consultazione secondaria dietro "Vedi tutte le
+  // settimane". Il contenuto/comportamento della Timeline (raggruppamento
+  // per mese, Riempi/Non mi serve, righe cliccabili) resta INVARIATO — solo
+  // la sua visibilità di default cambia.
+  const [timelineOpen, setTimelineOpen] = useState(false);
   // SPRINT CORRETTIVO — "...o lo stato per settimana deve portare ad un
-  // dettaglio del piano (per settimana)": click su una barra della striscia
-  // "Stato per settimana" scorre fino alla riga corrispondente della
-  // Timeline sotto (che e' gia' il "dettaglio" — nome attivita, stato,
-  // CTA "Riempi") e la evidenzia per un istante.
+  // dettaglio del piano (per settimana)": click su un alert con azione
+  // "week" (es. promemoria di sovrapposizione) scorre fino alla riga
+  // corrispondente della Timeline e la evidenzia per un istante.
+  // PLANNER BETA v1.1 — la striscia "Stato per settimana" che generava
+  // questa azione è stata rimossa (funzione assorbita da "Prossime
+  // settimane da completare", vedi sotto): l'unico chiamante rimasto di
+  // jumpToWeek è l'azione "week" degli alert (allAlerts, es. promemoria di
+  // sovrapposizione) — grep eseguito su tutto app/nextgen prima di
+  // rimuovere la striscia: nessun altro punto del prodotto dipende da essa.
   const [highlightedWeekIndex, setHighlightedWeekIndex] = useState<number | null>(null);
   // SPRINT 2 (feedback Fabrizio: "la Timeline potrebbe raggruppare per
   // mese, espandibile per vedere le singole settimane con le date") — la
@@ -216,14 +237,19 @@ export default function PlannerClient({
     return weeks.find((w) => w.index === index)?.startDate.slice(0, 7);
   }
   function jumpToWeek(index: number) {
+    // PLANNER BETA v1.1 — la Timeline è ora dietro "Vedi tutte le
+    // settimane" (timelineOpen, default chiuso): un'azione "week" deve
+    // prima aprirla, altrimenti la riga bersaglio non esiste nel DOM.
+    setTimelineOpen(true);
     const monthKey = monthKeyForWeek(index);
     if (monthKey) setExpandedMonths((cur) => (cur.has(monthKey) ? cur : new Set(cur).add(monthKey)));
     setHighlightedWeekIndex(index);
-    // Il mese appena espanso deve prima renderizzare le sue righe prima
-    // che lo scroll possa trovare l'elemento bersaglio nel DOM.
+    // Il riquadro Timeline e il mese appena espanso devono prima
+    // renderizzare le loro righe prima che lo scroll possa trovare
+    // l'elemento bersaglio nel DOM.
     window.setTimeout(() => {
       document.getElementById(`week-row-${index}`)?.scrollIntoView({ behavior: "smooth", block: "center" });
-    }, 50);
+    }, 80);
     window.setTimeout(() => setHighlightedWeekIndex((cur) => (cur === index ? null : cur)), 1600);
   }
   // SPRINT CORRETTIVO — "vorrei semplificare le notifiche, sono troppe": prima
@@ -279,6 +305,12 @@ export default function PlannerClient({
   // coveredNeededCount esclude le dismissed anche al numeratore.
   const progressPercent = neededCount > 0 ? Math.round((planner.coveredNeededCount / neededCount) * 100) : 0;
   const priorityWeek = weeks.find((w) => w.index === priorityIndex) ?? null;
+  // PLANNER BETA v1.1 (Wave 1, punto 4) — "Prossime settimane da
+  // completare": max 3, stesso identico dataset weeks, nessuna nuova query.
+  const upcomingWeeks = useMemo(
+    () => getUpcomingWeeks(weeks, todayIso, 3, kids.length, priorityIndex),
+    [weeks, todayIso, kids.length, priorityIndex]
+  );
 
   return (
     <div className="flex min-h-screen flex-col">
@@ -321,8 +353,41 @@ export default function PlannerClient({
 
         {mode === "organizzazione" && (
         <>
+        {/* PLANNER BETA v1.1 (Wave 1, punto 2A "Header/Hero") — la sintesi di
+            copertura stagionale è ora il PRIMO contenuto di Organizzazione
+            (prima degli alert), cosi' "come siamo messi?" è visibile senza
+            scroll significativo. Stessi dati/calcolo di prima (planner.
+            coveredNeededCount/neededCount/progressPercent, invariati), solo
+            riposizionati. */}
+        <div className="mb-4 rounded-2xl bg-white p-4">
+          <div className="flex items-center justify-between text-[13px] font-semibold text-ink-2">
+            <span>{planner.coveredNeededCount} di {neededCount} settimane coperte</span>
+            {neededCount < planner.totalCount && (
+              <span>{planner.totalCount - neededCount} non ti servono</span>
+            )}
+          </div>
+          <div className="mt-2.5 h-2.5 w-full overflow-hidden rounded-full bg-[#EEF0F4]">
+            <div
+              className="h-full rounded-full bg-trama-violet transition-all"
+              style={{ width: `${progressPercent}%` }}
+            />
+          </div>
+          {progressPercent >= 100 && (
+            <p className="mt-2.5 flex items-center gap-1.5 text-[12.5px] font-semibold text-green">
+              <i className="ti ti-circle-check-filled text-[14px]" />
+              Tutto sotto controllo per questa estate.
+            </p>
+          )}
+        </div>
+
         {/* SPRINT CORRETTIVO — un solo avviso mostrato di default (il più
-            urgente), "Mostra tutti" per il resto. Vedi allAlerts sopra. */}
+            urgente), "Mostra tutti" per il resto. Vedi allAlerts sopra.
+            PLANNER BETA v1.1, punto 3 "Alert" — le sovrapposizioni non hanno
+            più un box indipendente (vedi rimozione più sotto): entrano già
+            in questo stesso sistema tramite computeOverlapReminders
+            (lib/nextgen/reminders.ts), che genera un Promemoria per
+            sovrapposizione con azione "link" verso /nextgen/prenotazioni —
+            nessun nuovo box alert introdotto. */}
         {allAlerts.length > 0 && (
           <div className="mb-4 flex flex-col gap-2">
             {(showAllAlerts ? allAlerts : allAlerts.slice(0, 1)).map((a) => {
@@ -404,43 +469,115 @@ export default function PlannerClient({
           </div>
         )}
 
-        {/* 1. Copertura — stessa domanda guida della Dashboard ("la mia
-            famiglia è organizzata?"), qui con il dettaglio completo.
-            SPRINT CORRETTIVO: aggiunta una riga di rassicurazione quando non
-            manca nulla — prima, a copertura completa, questa card restava
-            puramente informativa (solo numeri), senza mai "dire" che va
-            tutto bene. */}
-        <div className="mb-4 rounded-2xl bg-white p-4">
-          <div className="flex items-center justify-between text-[13px] font-semibold text-ink-2">
-            <span>{planner.coveredNeededCount} di {neededCount} settimane coperte</span>
-            {neededCount < planner.totalCount && (
-              <span>{planner.totalCount - neededCount} non ti servono</span>
-            )}
+        {/* PLANNER BETA v1.1 (Wave 1, punto 4) — "Prossime settimane da
+            completare" sostituisce la Timeline completa come contenuto di
+            default: max 3 righe, filtro !covered && !dismissed && !isPast
+            (getUpcomingWeeks, lib/nextgen/planner-insights.ts), ordinate per
+            index. Ogni riga apre il Dettaglio Settimana (Wave 2). Nessuna
+            "Riempi"/"Non mi serve" per riga qui (quella ripetizione resta
+            solo nella Timeline completa, consultazione secondaria sotto
+            "Vedi tutte le settimane") — l'unica azione diretta è la CTA
+            dominante subito sotto, riferita alla settimana prioritaria. */}
+        {upcomingWeeks.length > 0 ? (
+          <div className="mb-3">
+            <div className="mb-2.5 font-poppins text-sm font-bold text-ink">Prossime settimane da completare</div>
+            <div className="flex flex-col gap-1.5">
+              {upcomingWeeks.map((w) => (
+                <Link
+                  key={w.index}
+                  href={`/nextgen/planner/settimana/${w.startDate}`}
+                  className={`flex items-center gap-3 rounded-xl p-3 active:bg-black/[0.06] ${
+                    w.status === "priority" ? "bg-trama-lilac/20" : "bg-white"
+                  }`}
+                >
+                  <div className="flex-shrink-0">
+                    <div className="whitespace-nowrap text-[12.5px] font-bold text-ink">Settimana {w.index}</div>
+                    <div className="whitespace-nowrap text-[10.5px] text-ink-2">{w.dateRange}</div>
+                  </div>
+                  <div className="min-w-0 flex-1 text-[12px] font-medium text-ink-2">{w.statusLabel}</div>
+                  <i className="ti ti-chevron-right flex-shrink-0 text-base text-ink-3" />
+                </Link>
+              ))}
+            </div>
           </div>
-          <div className="mt-2.5 h-2.5 w-full overflow-hidden rounded-full bg-[#EEF0F4]">
-            <div
-              className="h-full rounded-full bg-trama-violet transition-all"
-              style={{ width: `${progressPercent}%` }}
-            />
-          </div>
-          {progressPercent >= 100 && (
-            <p className="mt-2.5 flex items-center gap-1.5 text-[12.5px] font-semibold text-green">
-              <i className="ti ti-circle-check-filled text-[14px]" />
-              Tutto sotto controllo per questa estate.
-            </p>
-          )}
-        </div>
+        ) : null /* nessuna settimana da completare: la rassicurazione "Tutto sotto controllo" è già nell'hero sopra */}
+
+        {/* PLANNER BETA v1.1 (Wave 1, punto 5) — CTA dominante, UNA sola per
+            l'Overview: agisce direttamente sulla settimana prioritaria,
+            stesso comportamento/link diretto verso Scopri già esistente
+            (mai passato dal Dettaglio Settimana — vedi commento del
+            prompt: "Il flusso più frequente resta Planner → Riempi
+            settimana → Scopri filtrato"). Mostrata solo se esiste una
+            settimana prioritaria da riempire. */}
+        {priorityWeek && (
+          <Link
+            href={`/nextgen/search?week=${priorityWeek.startDate}`}
+            className="mb-3 flex w-full items-center justify-center gap-1.5 rounded-full bg-trama-violet py-3 text-[13.5px] font-bold text-white active:scale-[0.98]"
+          >
+            <i className="ti ti-bolt text-[15px]" />
+            Riempi settimana
+          </Link>
+        )}
+
+        {/* PLANNER BETA v1.1 (Wave 1, punto 6) — "Suggerimenti — NO
+            mini-Scopri": niente più griglia ActivityCard qui, solo un
+            teaser leggero che apre il Dettaglio Settimana della settimana
+            prioritaria (dove il primo suggerimento è mostrato in evidenza,
+            vedi Wave 2). recommendations è già calcolata server-side solo
+            per priorityWeek (page.tsx) — se non c'è nessuna settimana
+            prioritaria, recommendations è già vuota per costruzione. */}
+        {recommendations.length > 0 && priorityWeek && (
+          <Link
+            href={`/nextgen/planner/settimana/${priorityWeek.startDate}`}
+            className="mb-3 flex items-center justify-between rounded-2xl bg-white p-3.5 active:bg-black/[0.06]"
+          >
+            <span className="flex items-center gap-2 text-[12.5px] font-semibold text-ink">
+              <i className="ti ti-sparkles text-[15px] text-trama-violet" />
+              Suggerimenti per te · {recommendations.length}
+            </span>
+            <i className="ti ti-chevron-right flex-shrink-0 text-base text-ink-3" />
+          </Link>
+        )}
+
+        {/* PLANNER BETA v1.1 (Wave 1, punto 4) — "Vedi tutte le settimane":
+            riapre la Timeline completa (tutte le settimane, invariata),
+            spostata più sotto come consultazione secondaria invece che
+            contenuto di default. */}
+        <button
+          type="button"
+          onClick={() => setTimelineOpen((v) => !v)}
+          className="mb-4 self-start text-[12px] font-semibold text-trama-violet active:bg-black/[0.04]"
+          aria-expanded={timelineOpen}
+        >
+          {timelineOpen ? "Nascondi elenco completo" : "Vedi tutte le settimane"}
+          <i className={`ti ${timelineOpen ? "ti-chevron-up" : "ti-chevron-down"} ml-1 text-[13px]`} />
+        </button>
 
         {/* Copertura per bambino — "Sofia 7/8 settimane" (mockup condiviso
             da Fabrizio): solo se c'è più di un bambino, altrimenti è un
             doppione della card di copertura sopra.
             SPRINT CORRETTIVO: aggiunto "Mancano Settimana X, Y" (mockup
             "2. Calendario") + click sulla barra apre/chiude il dettaglio
-            settimana-per-settimana di quel bambino, sotto. */}
+            settimana-per-settimana di quel bambino, sotto.
+            PLANNER BETA v1.1 (Wave 1, punto 2B) — l'intera card è ora
+            dietro un secondo livello di disclosure (kidCoverageOpen,
+            default chiuso): l'intestazione resta sempre visibile come
+            bottone di apertura, cosi' nessuna informazione sparisce, solo
+            un click in più per il dettaglio riservato alle famiglie con
+            più di un figlio. */}
         {kids.length > 1 && (
           <div className="mb-4 rounded-2xl bg-white p-4">
-            <div className="mb-2.5 font-poppins text-[13px] font-bold text-ink">Copertura per bambino</div>
-            <div className="flex flex-col gap-2.5">
+            <button
+              type="button"
+              onClick={() => setKidCoverageOpen((v) => !v)}
+              className="flex w-full items-center justify-between text-left"
+              aria-expanded={kidCoverageOpen}
+            >
+              <span className="font-poppins text-[13px] font-bold text-ink">Copertura per bambino</span>
+              <i className={`ti ${kidCoverageOpen ? "ti-chevron-up" : "ti-chevron-down"} text-[15px] text-ink-3`} />
+            </button>
+            {kidCoverageOpen && (
+            <div className="mt-2.5 flex flex-col gap-2.5">
               {perKidCoverage.map((k) => {
                 const percent = k.neededCount > 0 ? Math.round((k.coveredCount / k.neededCount) * 100) : 0;
                 const done = k.coveredCount === k.neededCount && k.neededCount > 0;
@@ -494,65 +631,9 @@ export default function PlannerClient({
                 );
               })}
             </div>
-          </div>
-        )}
-
-        {/* SPRINT CORRETTIVO (mockup "2. Calendario") — "Stato per settimana":
-            striscia compatta, un colpo d'occhio sull'intera stagione senza
-            scorrere la Timeline sotto. Click su una barra scorre fino alla
-            riga corrispondente della Timeline e la evidenzia (vedi
-            jumpToWeek sopra) — quella riga È il "dettaglio per settimana"
-            richiesto da Fabrizio, non serve duplicarlo. */}
-        <div className="mb-4 rounded-2xl bg-white p-4">
-          <div className="mb-2.5 flex items-center justify-between">
-            <span className="font-poppins text-[13px] font-bold text-ink">Stato per settimana</span>
-            {/* SPRINT 2 (feedback Fabrizio: "il pallino di 'Stato per
-                settimana' potrebbe mostrare le date al click, non solo
-                scorrere") — mostra "Settimana N · date" per la barra appena
-                cliccata, per lo stesso istante in cui resta evidenziata la
-                riga corrispondente nella Timeline sotto (highlightedWeekIndex,
-                già calcolato da jumpToWeek). */}
-            {highlightedWeekIndex !== null && (
-              <span className="text-[11px] font-semibold text-trama-violet">
-                Settimana {highlightedWeekIndex} · {weeks.find((w) => w.index === highlightedWeekIndex)?.dateRange}
-              </span>
             )}
           </div>
-          <div className="flex items-end gap-1">
-            {weeks.map((w) => {
-              const hasOverlap = overlapsByWeekIndex.has(w.index);
-              const status = computeWeekStatus(
-                { ...w, isPast: w.endDate < todayIso },
-                kids.length,
-                hasOverlap,
-                w.index === priorityIndex
-              );
-              return (
-                <button
-                  key={w.index}
-                  type="button"
-                  onClick={() => jumpToWeek(w.index)}
-                  title={`Settimana ${w.index} · ${w.dateRange} · ${WEEK_STATUS_LABEL[status]}`}
-                  aria-label={`Vai al dettaglio della Settimana ${w.index}, ${w.dateRange} — ${WEEK_STATUS_LABEL[status]}`}
-                  className="flex flex-1 flex-col items-center gap-1 active:scale-95"
-                >
-                  {/* R-19 (Wave 1, 24/08/2026): il colore da solo non basta
-                      (WCAG 1.4.1) — icona non basata sul colore + aria-label/
-                      title testuali comunicano lo stesso stato anche a chi
-                      non riesce a distinguere il colore o usa uno screen
-                      reader. */}
-                  <div
-                    className={`flex h-6 w-full items-center justify-center rounded-full ${WEEK_STATUS_BAR_CLASS[status]}`}
-                    aria-hidden="true"
-                  >
-                    <i className={`ti ${WEEK_STATUS_ICON[status].icon} ${WEEK_STATUS_ICON[status].colorClass} text-[11px]`} />
-                  </div>
-                  <span className="text-[9px] font-semibold text-ink-3">{w.index}</span>
-                </button>
-              );
-            })}
-          </div>
-        </div>
+        )}
 
         {/* SPRINT CORRETTIVO (feedback Fabrizio): "anche Planner-Calendario
             finirebbero a collassare nella stessa sezione" — Mese/Settimana +
@@ -592,40 +673,15 @@ export default function PlannerClient({
           )}
         </div>
 
-        {/* 2. Sovrapposizioni — segnale di rischio reale, non decorativo:
-            mostrato solo se c'è davvero qualcosa da controllare. */}
-        {overlaps.length > 0 && (
-          <div className="mb-4 rounded-2xl border border-[#F5D6A8] bg-[#FFF7E8] p-4">
-            <div className="mb-2 flex items-center gap-2 text-sm font-bold text-[#9a6b00]">
-              <i className="ti ti-alert-triangle text-base" />
-              Sovrapposizioni da controllare
-            </div>
-            <div className="flex flex-col gap-1.5">
-              {overlaps.map((o) => {
-                const gender = kids.find((k) => k.id === o.kidId)?.gender;
-                return (
-                  <p key={`${o.kidId}-${o.weekId}`} className="text-[12.5px] text-[#7a5400]">
-                    <strong>{o.kidName}</strong> risulta {overlapVerb(gender)} due volte in {o.weekLabel}:{" "}
-                    {formatBookingNames(o.bookings.map((b) => b.activityName))}.
-                  </p>
-                );
-              })}
-            </div>
-            {/* SPRINT 7 (feedback Fabrizio: "non sono azionabili nonostante
-                lo sembrino") — questo box era puramente informativo, senza
-                nessun modo di risolvere il conflitto da qui. L'unico posto
-                dove si può davvero annullare/modificare una delle due
-                prenotazioni è "Le mie prenotazioni". TRAMA ONE Prenotazioni
-                NEXTGEN-native (24/08/2026): ora punta al guscio NEXTGEN. */}
-            <Link
-              href="/nextgen/prenotazioni"
-              className="mt-2.5 inline-flex items-center gap-1 text-[12px] font-bold text-[#7a5400] active:scale-[0.98]"
-            >
-              Gestisci in Le mie prenotazioni
-              <i className="ti ti-chevron-right text-[13px]" />
-            </Link>
-          </div>
-        )}
+        {/* PLANNER BETA v1.1 — il box "Sovrapposizioni da controllare"
+            (informativo, non azionabile di per sé) è stato rimosso: le
+            sovrapposizioni sono già segnalate dal sistema di alert sopra
+            (computeOverlapReminders in lib/nextgen/reminders.ts genera un
+            Promemoria per sovrapposizione, azione "link" verso
+            /nextgen/prenotazioni) — un secondo box con lo stesso contenuto
+            era la ridondanza esplicitamente da eliminare (punto 3 della
+            revisione: "le sovrapposizioni devono entrare nello stesso
+            sistema [alert], NON creare nuovi box alert indipendenti"). */}
 
         {/* 3. Timeline familiare — tutte le settimane della stagione.
             SPRINT 2 (feedback Fabrizio: "13 righe piatte sono tante da
@@ -634,7 +690,14 @@ export default function PlannerClient({
             settimana prioritaria o la prima scoperta, vedi expandedMonths
             sopra). "Estiva {anno}" nel titolo: stesso anno stagionale già
             calcolato da lib/data/season-year.ts, dedotto qui dalla prima
-            settimana (nessuna nuova query). */}
+            settimana (nessuna nuova query).
+            PLANNER BETA v1.1 (Wave 1, punto 2B/4) — non più visibile di
+            default: consultazione secondaria dietro "Vedi tutte le
+            settimane" (timelineOpen). Contenuto/comportamento interno
+            INVARIATO (Riempi/Non mi serve/Ripristina per riga, righe
+            cliccabili verso la prenotazione, week-row-N per lo scroll di
+            jumpToWeek). */}
+        {timelineOpen && (
         <div className="mb-4">
           <div className="mb-2.5 font-poppins text-sm font-bold text-ink">
             Timeline della stagione{weeks[0] && ` — Estiva ${weeks[0].startDate.slice(0, 4)}`}
@@ -920,40 +983,16 @@ export default function PlannerClient({
             })}
           </div>
         </div>
-
-        {/* SPRINT CORRETTIVO (feedback Fabrizio: "il Budget impegnato non mi
-            interessa qui, c'è una sezione dedicata no?") — rimossa la card
-            duplicata: il riepilogo budget vive solo nel tab "Budget"
-            (PlannerBudgetView), niente più doppione qui in Organizzazione. */}
-
-        {/* 4. Consigliate — stessa logica di Ricerca (Sprint 2), qui mirata
-            alla settimana prioritaria. */}
-        {recommendations.length > 0 && (
-          <div>
-            <div className="mb-2.5 flex items-center gap-1 font-poppins text-sm font-bold text-ink">
-              {priorityWeek ? `Per riempire la Settimana ${priorityWeek.index}` : "Consigliate per te"}
-            </div>
-            <div className="flex flex-col gap-1">
-              {recommendations.map((m) => (
-                <div key={m.activity.id}>
-                  {m.reasons.length > 0 && (
-                    <div className="mb-1 flex flex-wrap gap-1 px-1">
-                      {m.reasons.map((reason) => (
-                        <span
-                          key={reason}
-                          className="rounded-full bg-trama-lilac/20 px-2 py-0.5 text-[10px] font-semibold text-trama-violet"
-                        >
-                          {reason}
-                        </span>
-                      ))}
-                    </div>
-                  )}
-                  <ActivityCard activity={m.activity} matchPercent={Math.min(99, Math.round(m.score))} />
-                </div>
-              ))}
-            </div>
-          </div>
         )}
+
+        {/* PLANNER BETA v1.1 (Wave 1, punto 6) — la card "Budget impegnato"
+            era già stata rimossa in precedenza (vive solo nel tab Budget) e
+            la griglia completa "Consigliate"/"Per riempire" (ActivityCard a
+            elenco) che viveva qui in fondo alla pagina è stata rimossa in
+            questa wave: sostituita dal teaser leggero "Suggerimenti per te
+            · N" più in alto, che apre il Dettaglio Settimana. Nessuna
+            griglia ActivityCard resta in Organizzazione: quella è
+            esclusiva di Scopri. */}
         </>
         )}
 

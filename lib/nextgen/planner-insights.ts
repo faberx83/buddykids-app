@@ -316,6 +316,54 @@ export const WEEK_STATUS_LABEL: Record<WeekStatus, string> = {
   past: "Settimana passata",
 };
 
+// PLANNER BETA v1.1 (Wave 1) — "Prossime settimane da completare": sostituisce
+// la Timeline completa (tutte le settimane, sempre visibile) come contenuto
+// di default dell'Overview. Filtro esplicito della proposta approvata:
+// !covered && !dismissed && !isPast(todayIso), ordinate per index, massimo
+// `limit` righe. Nessuna nuova query: stesso identico dataset (weeks) già
+// usato da computeWeekStatus/Timeline — questa è solo una funzione pura di
+// selezione/ordinamento sopra dati che il Planner legge già.
+// Nota: con week.covered=false garantito dal filtro, computeWeekStatus può
+// restituire solo "past" (escluso), "priority" o "uncovered" per queste righe
+// (mai "partial"/"conflict"/"awaiting"/"covered", che richiedono covered=true)
+// — coerente con SeasonWeek.covered ("almeno un bambino ha una prenotazione
+// questa settimana").
+export interface UpcomingWeekSummary {
+  index: number;
+  startDate: string;
+  dateRange: string;
+  status: WeekStatus;
+  statusLabel: string;
+}
+
+export function getUpcomingWeeks(
+  weeks: SeasonWeek[],
+  todayIso: string,
+  limit: number,
+  totalKids: number,
+  priorityIndex: number | null
+): UpcomingWeekSummary[] {
+  return weeks
+    .filter((w) => !w.covered && !w.dismissed && w.endDate >= todayIso)
+    .sort((a, b) => a.index - b.index)
+    .slice(0, limit)
+    .map((w) => {
+      const status = computeWeekStatus(
+        { ...w, isPast: w.endDate < todayIso },
+        totalKids,
+        false,
+        w.index === priorityIndex
+      );
+      return {
+        index: w.index,
+        startDate: w.startDate,
+        dateRange: w.dateRange,
+        status,
+        statusLabel: WEEK_STATUS_LABEL[status],
+      };
+    });
+}
+
 // Icona Tabler + colore testo scelto per contrasto leggibile sul relativo
 // WEEK_STATUS_BAR_CLASS (le barre chiare — "uncovered" — usano un'icona
 // scura, le barre scure/sature usano un'icona bianca).
