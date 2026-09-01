@@ -40,6 +40,18 @@ Nessuna. Tutte le tabelle/colonne lette esistevano già.
 ### Test
 `tests/one/pilot-observability.spec.ts` — 8 test `[no browser]` sulla logica pura di `computePilotStatus()` + whitelist eventi (tutti passati, vedi sotto), più un gruppo di test gated (`isRealDeployment`) per PILOT-A01/A02/A03/A04/A07/A00, che usano gli account Beta reali già verificati in produzione durante l'audit (`mariafpoli@gmail.com`) invece di fixture sintetiche.
 
+### Estensione: "Ultima attività" + drill-down per utente (01/09/2026)
+
+Segnalato da Fabrizio: "Ultimo accesso" (auth.users.last_sign_in_at) sembrava poco aggiornato — perché riflette solo il login, non l'uso reale del prodotto (un genitore può restare loggato per giorni mentre prenota/aggiunge un bambino, senza rifare login). Valutato l'impatto prima di scrivere codice: `product_events` esiste già ed è popolata (verificato via MCP Supabase read-only, 1886+ righe da inizio agosto), ma è **deliberatamente anonima** (nessuna colonna `user_id`, scelta di design per policy no-PII, vedi `migration_20_product_events.sql`) — non utilizzabile per uno storico per-utente senza un cambio di quella policy. Scelto quindi il percorso a basso impatto, concordato con Fabrizio: nessuna migration, nessun cambio alla policy privacy di `product_events`.
+
+**Cosa è stato aggiunto**:
+- `lib/data/pilot-users.ts` — `lastActivityAt`/`lastActivityLabel` su `PilotUserRow`: stesse 3 fonti già lette per `firstMeaningfulActionAt` (kid/booking/group), preso il MASSIMO invece del minimo dagli stessi candidati già ordinati — nessuna query nuova.
+- `lib/data/pilot-users.ts` — `getPilotUserDetail(userId)` + tipo `PilotUserDetail`/`PilotTimelineEvent`: stesse 3 fonti lette per UN SOLO utente (`.eq` invece di `.in` su tutta la cohort), TUTTE le righe diventano eventi di una timeline (non solo min/max) — stessa disciplina no-PII del resto del file, solo `PILOT_ACTION_LABEL` generici + timestamp, mai nomi di bambini/attività/gruppi. Stesso gate `isCurrentUserPlatformAdmin()`, stesso perimetro "solo chi è nella cohort" (404 altrimenti).
+- `app/admin/one/pilot/PilotAdminClient.tsx` — nuova colonna "Ultima attività"; l'email di ogni riga è ora un link al dettaglio.
+- `app/admin/one/pilot/[id]/page.tsx` (NUOVO) — dettaglio utente: info sintetiche + timeline completa (più recente in alto), stesso stile a card della lista.
+
+**Non implementato in questa estensione** (per scelta esplicita, concordata con Fabrizio dopo aver presentato l'impatto): dare a `product_events` un identificativo utente per includere anche gli eventi di prodotto più granulari (onboarding, elementi in evidenza...) nello storico — cambierebbe la policy privacy-by-design di quella tabella, decisione rimandata.
+
 ## WAVE 2 — Coordination Resurfacing
 
 **Cosa è stato riusato**: dettaglio Gruppo NextGen + Carpool (già esistenti, vedi correzione sopra, zero righe toccate); `getMyGroupInvites`/RPC `list_my_group_invites()` (migration_25, già applicata) per il segnale ad alta priorità; `getCommunityHomeSignal()` (invariata) come ramo a bassa priorità; stesso pattern visivo "una riga, un'icona, un link" già in Home.

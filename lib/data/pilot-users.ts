@@ -58,8 +58,37 @@ export interface PilotUserRow {
   /** Prima azione persistita indicativa di uso reale — vedi PILOT_ACTION_LABEL. */
   firstMeaningfulActionAt: string | null;
   firstMeaningfulActionLabel: string | null;
+  // Segnalato da Fabrizio (01/09/2026): "Ultimo accesso" (auth, si aggiorna
+  // solo al login) sembra "non aggiornato" perché non riflette l'uso reale
+  // del prodotto — un genitore può prenotare/aggiungere un bambino restando
+  // loggato per giorni senza rifare login. lastActivityAt è il MASSIMO delle
+  // stesse 3 fonti già usate per firstMeaningfulActionAt (kid/booking/group),
+  // nessuna query nuova: stesso identico dato, letto due volte (min e max)
+  // invece di una sola.
+  lastActivityAt: string | null;
+  lastActivityLabel: string | null;
   lastSignInAt: string | null;
   status: PilotStatus;
+}
+
+export interface PilotTimelineEvent {
+  at: string;
+  label: string;
+}
+
+export interface PilotUserDetail {
+  id: string;
+  email: string | null;
+  fullName: string | null;
+  createdAt: string;
+  role: string;
+  cohortKeys: string[];
+  cohortActive: boolean;
+  onboardingStatus: PilotOnboardingStatus;
+  lastSignInAt: string | null;
+  status: PilotStatus;
+  /** Tutte le azioni (non solo la prima/ultima), più recente prima. */
+  timeline: PilotTimelineEvent[];
 }
 
 // Onboarding Beta: un solo tutorial, un solo step (lib/walkthrough/registry.ts
@@ -196,6 +225,7 @@ export async function getPilotUsers(): Promise<PilotUserRow[]> {
       ].filter((c) => c.at !== null);
       candidates.sort((a, b) => new Date(a.at as string).getTime() - new Date(b.at as string).getTime());
       const firstAction = candidates[0] ?? null;
+      const lastAction = candidates.length > 0 ? candidates[candidates.length - 1] : null;
 
       const lastSignInAt = lastSignInById.get(id) ?? null;
       const membership = membershipsByUser.get(id) ?? { cohortKeys: [], active: false };
@@ -211,6 +241,8 @@ export async function getPilotUsers(): Promise<PilotUserRow[]> {
         onboardingStatus,
         firstMeaningfulActionAt: firstAction?.at ?? null,
         firstMeaningfulActionLabel: firstAction?.label ?? null,
+        lastActivityAt: lastAction?.at ?? null,
+        lastActivityLabel: lastAction?.label ?? null,
         lastSignInAt,
         status: computePilotStatus(onboardingStatus, firstAction?.at ?? null, lastSignInAt),
       };
@@ -230,4 +262,77 @@ export async function getPilotUsers(): Promise<PilotUserRow[]> {
  */
 export function isPilotLastSignInAvailable(): boolean {
   return createServiceClient() !== null;
+}
+
+// Drill-down per utente (01/09/2026, richiesto da Fabrizio dopo aver notato
+// che "Ultimo accesso" in tabella sembrava poco aggiornato): stesse 3 fonti
+// dati di getPilotUsers() sopra (kids/bookings/group_members), ma qui lette
+// per UN SOLO utente (query .eq invece di .in su tutta la cohort) e SENZA
+// prendere solo il minimo/massimo — ogni riga diventa un evento nella
+// timeline, così l'admin vede "quante volte" e "quando", non solo "la
+// prima/ultima". Stessa disciplina no-PII del resto del file: solo
+// PILOT_ACTION_LABEL generici + timestamp, mai nomi di bambini/attività/
+// gruppi (anche se is_platform_admin() li renderebbe leggibili via RLS).
+export async function getPilotUserDetail(userId: string): Promise<PilotUserDetail | null> {
+  if (!isSupabaseConfigured) return null;
+
+  const supabase = await createClient();
+  if (!(await isCurrentUserPlatformAdmin(supabase))) return null;
+
+  // Stesso perimetro "solo pilota" della lista: se l'utente non ha nessuna
+  // riga in beta_cohort_memberships, non è mai stato nella cohort — 404,
+  // non un errore.
+  const { data: membership } = await supabase
+    .from("beta_cohort_memberships")
+    .select("cohort_key, active")
+    .eq("user_id", userId);
+  if (!membership || membership.length === 0) return null;
+
+  const [{ data: profile }, { data: tutorialRow }, { data: bookingRows }, { data: kidRows }] = await Promise.all([
+    supabase.from("profiles").select("id, email, full_name, role, created_at").eq("id", userId).maybeSingle(),
+    supabase
+      .from("tutorial_progress")
+      .select("status")
+      .eq("tutorial_key", ONBOARDING_TUTORIAL_KEY)
+      .eq("user_id", userId)
+      .maybeSingle(),
+    supabase.from("bookings").select("created_at").eq("parent_id", userId),
+    supabase.from("kids").select("created_at").eq("parent_id", userId),
+  ]);
+  if (!profile) return null;
+
+  let groupJoinRows: { joined_at: string | null }[] = [];
+  let lastSignInAt: string | null = null;
+  const serviceClient = createServiceClient();
+  if (serviceClient) {
+    const { data } = await serviceClient.from("group_members").select("joined_at").eq("parent_id", userId);
+    groupJoinRows = data ?? [];
+    const { data: authUserData } = await serviceClient.auth.admin.getUserById(userId);
+    lastSignInAt = authUserData?.user?.last_sign_in_at ?? null;
+  }
+
+  const timeline: PilotTimelineEvent[] = [
+    ...(kidRows ?? []).map((k) => ({ at: k.created_at as string, label: PILOT_ACTION_LABEL.kid })),
+    ...(bookingRows ?? []).map((b) => ({ at: b.created_at as string, label: PILOT_ACTION_LABEL.booking })),
+    ...groupJoinRows
+      .filter((g): g is { joined_at: string } => Boolean(g.joined_at))
+      .map((g) => ({ at: g.joined_at, label: PILOT_ACTION_LABEL.group })),
+  ].sort((a, b) => new Date(b.at).getTime() - new Date(a.at).getTime());
+
+  const onboardingStatus = (tutorialRow?.status as PilotOnboardingStatus) ?? "not_started";
+  const firstMeaningfulActionAt = timeline.length > 0 ? timeline[timeline.length - 1].at : null;
+
+  return {
+    id: userId,
+    email: (profile.email as string) ?? null,
+    fullName: (profile.full_name as string) ?? null,
+    createdAt: profile.created_at as string,
+    role: (profile.role as string) ?? "parent",
+    cohortKeys: membership.map((m) => m.cohort_key as string),
+    cohortActive: membership.some((m) => Boolean(m.active)),
+    onboardingStatus,
+    lastSignInAt,
+    status: computePilotStatus(onboardingStatus, firstMeaningfulActionAt, lastSignInAt),
+    timeline,
+  };
 }

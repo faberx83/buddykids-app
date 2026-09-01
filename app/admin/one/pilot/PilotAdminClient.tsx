@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import Link from "next/link";
 import type { PilotStatus, PilotUserRow } from "@/lib/data/pilot-users";
 
 // Wave 1 "Pilot Observability" — stesso stile a card/tabella già stabilito in
@@ -115,6 +116,9 @@ export default function PilotAdminClient({
                   Prima attività
                 </th>
                 <th className="border-b border-[#E8EBF0] px-3 py-2 text-left font-semibold text-ink-2">
+                  Ultima attività
+                </th>
+                <th className="border-b border-[#E8EBF0] px-3 py-2 text-left font-semibold text-ink-2">
                   Ultimo accesso
                 </th>
                 <th className="border-b border-[#E8EBF0] px-3 py-2 text-left font-semibold text-ink-2">Stato</th>
@@ -124,7 +128,9 @@ export default function PilotAdminClient({
               {filtered.map((u) => (
                 <tr key={u.id} data-testid={`pilot-user-${u.id}`}>
                   <td className="border-b border-[#F0F2F5] px-3 py-2 text-ink">
-                    <div className="font-medium">{u.email ?? "—"}</div>
+                    <Link href={`/admin/one/pilot/${u.id}`} className="font-medium text-trama-violet underline">
+                      {u.email ?? "—"}
+                    </Link>
                     {u.fullName && <div className="text-[11px] text-ink-2">{u.fullName}</div>}
                   </td>
                   <td className="border-b border-[#F0F2F5] px-3 py-2 text-ink-2">{formatDate(u.createdAt)}</td>
@@ -145,6 +151,16 @@ export default function PilotAdminClient({
                       <>
                         {u.firstMeaningfulActionLabel}
                         <div className="text-[11px] text-ink-3">{formatDate(u.firstMeaningfulActionAt)}</div>
+                      </>
+                    ) : (
+                      "—"
+                    )}
+                  </td>
+                  <td className="border-b border-[#F0F2F5] px-3 py-2 text-ink-2">
+                    {u.lastActivityAt ? (
+                      <>
+                        {u.lastActivityLabel}
+                        <div className="text-[11px] text-ink-3">{formatDate(u.lastActivityAt)}</div>
                       </>
                     ) : (
                       "—"
