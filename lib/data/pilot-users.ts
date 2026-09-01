@@ -281,7 +281,24 @@ export async function getPilotUsers(): Promise<PilotUserRow[]> {
       };
     })
     .filter((r): r is PilotUserRow => r !== null)
-    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+    // FIX (FINAL MICRO-PILOT LIVE ACCEPTANCE, 01/09/2026 — segnalazione di
+    // Fabrizio: "'ultima attività' pilota dovrebbe essere aggiornata per
+    // data"): la tabella era ordinata per data di REGISTRAZIONE
+    // (createdAt), non per attività recente — chi si era iscritto prima ma
+    // era rimasto inattivo restava sempre in cima, sopra chi stava usando
+    // TRAMA davvero in questo momento. Ora: prima chi ha attività reale più
+    // recente, poi (nessuna attività per nessuno dei due) chi si è
+    // registrato più di recente — così la tabella resta comunque ordinata
+    // in modo sensato anche a inizio pilota, quando quasi nessuno ha ancora
+    // "ultima attività".
+    .sort((a, b) => {
+      if (a.lastActivityAt && b.lastActivityAt) {
+        return new Date(b.lastActivityAt).getTime() - new Date(a.lastActivityAt).getTime();
+      }
+      if (a.lastActivityAt) return -1;
+      if (b.lastActivityAt) return 1;
+      return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+    });
 
   return rows;
 }
