@@ -8,12 +8,27 @@ import { loginAs, isRealDeployment } from "../fixtures/roles";
 // NextgenBottomNav (nuovo, solo sotto /nextgen).
 
 test.describe("NEXTGEN - Planner (Sprint 3)", () => {
-  test("TC-N13 - /nextgen/planner mostra la timeline completa delle 13 settimane", async ({ page }) => {
+  // PLANNER BETA v1.1 (Wave 1, punto 4) — la Timeline completa non è più il
+  // contenuto di default di Organizzazione: sostituita da "Prossime
+  // settimane da completare" (max 3) + CTA dominante, con la Timeline
+  // spostata dietro il toggle "Vedi tutte le settimane" (timelineOpen,
+  // default chiuso) come consultazione secondaria. Il contenuto interno
+  // della Timeline (tutte le 13 settimane) resta INVARIATO — questo test è
+  // aggiornato per aprirla esplicitamente prima di verificarlo, invece di
+  // assumerla visibile al caricamento.
+  test("TC-N13 - /nextgen/planner: 'Vedi tutte le settimane' apre la timeline completa delle 13 settimane", async ({ page }) => {
     test.skip(!isRealDeployment, "Richiede un deploy con Supabase configurato e l'account genitore di test.");
     await loginAs(page, "parent");
     await page.goto("/nextgen/planner");
 
     await expect(page.getByText(/settimane coperte/)).toBeVisible();
+    await expect(page.getByText("Timeline della stagione")).not.toBeVisible();
+
+    const toggle = page.getByRole("button", { name: "Vedi tutte le settimane" });
+    await expect(toggle).toHaveAttribute("aria-expanded", "false");
+    await toggle.click();
+    await expect(toggle).toHaveAttribute("aria-expanded", "true");
+
     await expect(page.getByText("Timeline della stagione")).toBeVisible();
     await expect(page.getByText("Settimana 1", { exact: true })).toBeVisible();
     await expect(page.getByText("Settimana 13", { exact: true })).toBeVisible();
@@ -186,12 +201,20 @@ test.describe("NEXTGEN - Planner (Sprint 3)", () => {
   // "Riempi" (vedi PlannerClient.tsx riga ~797) letto da
   // SearchDiscoveryClient.tsx (riga ~262) per pre-applicare il filtro
   // settimana in Scopri — nessun test end-to-end lo copriva ancora.
-  test("TC-N670 - 'Riempi' su una settimana scoperta porta a Scopri con quella settimana già preselezionata", async ({
+  // PLANNER BETA v1.1 (Wave 1) — il "Riempi" per singola settimana non vive
+  // più nell'Overview di default (sostituito dalla CTA dominante "Riempi
+  // settimana" legata alla settimana prioritaria + dalle righe di "Prossime
+  // settimane da completare", che aprono il Dettaglio Settimana invece di
+  // un link diretto): resta però, invariato, nella Timeline completa
+  // (consultazione secondaria dietro "Vedi tutte le settimane") — qui
+  // apriamo esplicitamente quella prima di cercare il bottone.
+  test("TC-N670 - 'Riempi' su una settimana scoperta (Timeline completa) porta a Scopri con quella settimana già preselezionata", async ({
     page,
   }) => {
     test.skip(!isRealDeployment, "Richiede un deploy con Supabase configurato e un account genitore di test con almeno una settimana scoperta futura.");
     await loginAs(page, "parent");
     await page.goto("/nextgen/planner");
+    await page.getByRole("button", { name: "Vedi tutte le settimane" }).click();
 
     const riempiButton = page.getByRole("link", { name: "Riempi" }).first();
     if (!(await riempiButton.isVisible().catch(() => false))) {
@@ -213,21 +236,22 @@ test.describe("NEXTGEN - Planner (Sprint 3)", () => {
     await expect(page.getByText("Settimane (1)", { exact: true })).toBeVisible();
   });
 
-  // R-09: le due viste ("Stato per settimana" compatta e riga Timeline)
-  // devono SEMPRE concordare sullo stesso stato per la stessa settimana in
-  // una famiglia con più di un figlio — regressione storica già corretta
-  // una volta (segnalata da Fabrizio: "c'è qualcosa che non quadra, né nei
-  // dati né nei colori", vedi commento in PlannerClient.tsx riga ~590) per
-  // una isPartial locale che ignorava awaitingPartnerConfirmation. Da
-  // allora entrambe le viste usano la STESSA computeWeekStatus — questo
-  // test verifica che il testo "manca N bambino/i" mostrato nella Timeline
-  // corrisponda davvero al numero di figli non coperti in quella settimana.
-  test("TC-N671 - famiglia con più figli: 'manca N bambino/i' nella Timeline riflette il conteggio reale dei figli scoperti", async ({
+  // R-09, aggiornato per PLANNER BETA v1.1: la seconda vista storicamente
+  // confrontata qui — la striscia compatta "Stato per settimana" — è stata
+  // RIMOSSA in Wave 1 (punto 2B della revisione: ridondante con la Timeline
+  // e con gli alert unificati). Non esiste più una seconda vista con cui
+  // confrontare lo stato, quindi il test verifica ora solo che il testo
+  // "manca N bambino/i" mostrato nella riga Timeline (comportamento interno
+  // invariato, vedi PlannerClient.tsx) sia internamente coerente: N > 0 e
+  // riferito a una riga identificabile (week-row-N). La Timeline è dietro
+  // "Vedi tutte le settimane" (timelineOpen, default chiuso) da questa wave.
+  test("TC-N671 - famiglia con più figli: 'manca N bambino/i' nella Timeline è coerente (N > 0, riga identificabile)", async ({
     page,
   }) => {
     test.skip(!isRealDeployment, "Richiede un deploy con Supabase configurato e un account genitore di test con 2+ figli e almeno una settimana con copertura parziale.");
     await loginAs(page, "parent");
     await page.goto("/nextgen/planner");
+    await page.getByRole("button", { name: "Vedi tutte le settimane" }).click();
 
     const partialLabel = page.getByText(/manca \d+ bambino\/i/).first();
     if (!(await partialLabel.isVisible().catch(() => false))) {
@@ -239,22 +263,12 @@ test.describe("NEXTGEN - Planner (Sprint 3)", () => {
     const missingCount = Number(match?.[1]);
     expect(missingCount).toBeGreaterThan(0);
 
-    // La striscia compatta "Stato per settimana" (sopra la Timeline) per la
-    // STESSA settimana deve mostrare lo stesso stato "Copertura parziale"
-    // (WEEK_STATUS_LABEL.partial, vedi R-19/Wave 1) — coerenza garantita solo
-    // perché entrambe le viste chiamano la stessa computeWeekStatus. Recupera
-    // l'indice settimana dall'id della riga Timeline (week-row-N) per
-    // trovare il bottone corrispondente nella striscia (title include
-    // "Settimana N").
     const rowId = await page
       .locator("[id^='week-row-']")
       .filter({ has: partialLabel })
       .first()
       .getAttribute("id");
     expect(rowId).toMatch(/^week-row-\d+$/);
-    const weekIndex = rowId?.replace("week-row-", "");
-    const compactBar = page.locator(`button[title*="Settimana ${weekIndex} "]`);
-    await expect(compactBar).toHaveAttribute("title", /Copertura parziale/);
   });
 
   // Segnalazione 26/08/2026 (Fabrizio): "l'opzione di segnare una settimana
@@ -267,12 +281,17 @@ test.describe("NEXTGEN - Planner (Sprint 3)", () => {
   // etichetta "Non ti serve" + bottone "Ripristina" al suo posto, contatore
   // "X di Y settimane coperte" aggiornato (denominatore -1); click su
   // "Ripristina" -> torna "Scoperta"/"Riempi", contatore ripristinato.
-  test("TC-N685 - 'Non mi serve' in NEXTGEN Planner esclude/ripristina una settimana (parità con LEGACY)", async ({
+  // PLANNER BETA v1.1 (Wave 1) — "Non mi serve"/"Ripristina" restano solo
+  // nelle righe della Timeline completa (comportamento interno invariato),
+  // ora dietro "Vedi tutte le settimane" (timelineOpen, default chiuso): la
+  // nuova lista "Prossime settimane da completare" non ha azioni per riga.
+  test("TC-N685 - 'Non mi serve' in NEXTGEN Planner (Timeline completa) esclude/ripristina una settimana (parità con LEGACY)", async ({
     page,
   }) => {
     test.skip(!isRealDeployment, "Richiede un deploy con Supabase configurato e un account genitore di test con almeno una settimana scoperta futura.");
     await loginAs(page, "parent");
     await page.goto("/nextgen/planner");
+    await page.getByRole("button", { name: "Vedi tutte le settimane" }).click();
 
     const nonMiServeButton = page.getByRole("button", { name: "Non mi serve" }).first();
     if (!(await nonMiServeButton.isVisible().catch(() => false))) {

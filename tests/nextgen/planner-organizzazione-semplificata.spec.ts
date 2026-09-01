@@ -30,6 +30,15 @@ test.describe("NEXTGEN - Planner, Organizzazione semplificata", () => {
     await expect(page.getByRole("button", { name: `Mostra tutti (${total})` })).toBeVisible();
   });
 
+  // PLANNER BETA v1.1 (Wave 1, punto 2B) — "Copertura per bambino" è ora
+  // essa stessa dietro un secondo livello di disclosure (kidCoverageOpen,
+  // default chiuso): l'intestazione va aperta PRIMA di poter cliccare la
+  // barra di un bambino. Il vecchio selettore generico
+  // 'button[aria-expanded="false"]' agganciava per posizione il primo
+  // bottone pieghevole della pagina — ora ce ne sono altri prima nel DOM
+  // ("Vedi tutte le settimane", l'intestazione stessa di questa card),
+  // quindi sostituito con un selettore scoped al contenuto della riga
+  // bambino (nome + "N/M settimane"/"Tutto organizzato!").
   test("TC-N98 - Cliccare la barra di copertura di un bambino apre/chiude il dettaglio settimana per settimana", async ({
     page,
   }) => {
@@ -37,40 +46,41 @@ test.describe("NEXTGEN - Planner, Organizzazione semplificata", () => {
     await loginAs(page, "parent");
     await page.goto("/nextgen/planner");
 
-    const heading = page.getByText("Copertura per bambino", { exact: true });
+    const heading = page.getByRole("button", { name: "Copertura per bambino" });
     if (!(await heading.isVisible().catch(() => false))) {
       test.skip(true, "L'account di test ha un solo figlio: la card non è mostrata.");
     }
-    const kidButton = page.locator('button[aria-expanded="false"]').first();
-    await kidButton.click();
-    await expect(page.locator('button[aria-expanded="true"]').first()).toBeVisible();
+    await expect(heading).toHaveAttribute("aria-expanded", "false");
+    await heading.click();
+    await expect(heading).toHaveAttribute("aria-expanded", "true");
 
-    // Richiudendo, il dettaglio scompare di nuovo (il riquadro Calendario
-    // parte anch'esso chiuso di default, quindi nessun aria-expanded=true
-    // dovrebbe restare in pagina).
-    await page.locator('button[aria-expanded="true"]').first().click();
-    await expect(page.locator('button[aria-expanded="true"]')).toHaveCount(0);
+    const kidButton = page.getByRole("button", { name: /\d+\/\d+ settimane|Tutto organizzato/ }).first();
+    await expect(kidButton).toHaveAttribute("aria-expanded", "false");
+    await kidButton.click();
+    await expect(kidButton).toHaveAttribute("aria-expanded", "true");
+
+    // Richiudendo, il dettaglio scompare di nuovo.
+    await kidButton.click();
+    await expect(kidButton).toHaveAttribute("aria-expanded", "false");
   });
 
-  test("TC-N99 - 'Stato per settimana': cliccare una barra evidenzia la riga corrispondente della Timeline", async ({
+  // PLANNER BETA v1.1 (Wave 1, punto 2B) — la striscia compatta "Stato per
+  // settimana" verificata da questo test è stata RIMOSSA (ridondante con
+  // Timeline + sistema di alert unificato — grep eseguito su tutto
+  // app/nextgen prima di rimuoverla, vedi commento in
+  // PlannerClient.tsx#jumpToWeek: nessun altro punto del prodotto dipendeva
+  // da essa). L'azione jumpToWeek che generava sopravvive solo tramite
+  // l'alert "settimana prioritaria" — coperta ora da
+  // planner-organizzazione-sprint2.spec.ts#TC-272. Questo test diventa una
+  // regressione minima: verifica che la striscia non sia tornata per errore.
+  test("TC-N99 - 'Stato per settimana' non è più presente in Organizzazione (rimossa, ridondante con Timeline+alert)", async ({
     page,
   }) => {
     test.skip(!isRealDeployment, "Richiede un deploy con Supabase configurato e l'account genitore di test.");
     await loginAs(page, "parent");
     await page.goto("/nextgen/planner");
 
-    await expect(page.getByText("Stato per settimana")).toBeVisible();
-    // Regex con virgola finale: "Vai al dettaglio della Settimana 1" per
-    // substring matcha anche "...Settimana 10/11/12/13" (nome accessibile
-    // completo include ", GIU 1-5" ecc. dopo il numero) — strict mode
-    // violation trovata nel run reale del 28/07 (Gate C). La virgola dopo
-    // "Settimana 1" esclude quei bottoni senza dover hardcodare l'intervallo
-    // di date (variabile in base alla stagione).
-    await page.getByRole("button", { name: /Vai al dettaglio della Settimana 1,/ }).click();
-
-    const row = page.locator("#week-row-1");
-    await expect(row).toBeVisible();
-    await expect(row).toHaveClass(/ring-trama-violet/);
+    await expect(page.getByText("Stato per settimana", { exact: true })).toHaveCount(0);
   });
 
   // Vedi anche family-planner-5-1.spec.ts#TC-N43 (4 tab, non più 5) e
@@ -91,9 +101,12 @@ test.describe("NEXTGEN - Planner, Organizzazione semplificata", () => {
     await toggle.click();
     await expect(toggle).toHaveAttribute("aria-expanded", "true");
     // exact:true invece qui: "Mese"/"Settimana" senza matchano per substring
-    // anche i bottoni "Mese precedente"/"Vai al dettaglio della Settimana N"
-    // della sezione "Stato per settimana", sempre presente in questa stessa
-    // pagina (stesso strict mode violation di TC-N50/TC-N54).
+    // anche bottoni tipo "Mese precedente" o "Settimana N" (stesso strict
+    // mode violation di TC-N50/TC-N54). PLANNER BETA v1.1: la sezione
+    // "Stato per settimana" che un tempo condivideva questo problema è
+    // stata rimossa (vedi TC-N99), ma il rischio di ambiguità resta con
+    // altri elementi della pagina (es. "Settimana N" nella Timeline/
+    // "Prossime settimane da completare").
     await expect(page.getByRole("button", { name: "Mese", exact: true })).toBeVisible();
     await expect(page.getByRole("button", { name: "Settimana", exact: true })).toBeVisible();
 
@@ -129,17 +142,34 @@ test.describe("NEXTGEN - Planner, Organizzazione semplificata", () => {
   // nulla). Ora l'azione porta a "Le mie prenotazioni", dove si può davvero
   // annullare/modificare una delle due prenotazioni in conflitto — sia dal
   // promemoria in cima sia dal box "Sovrapposizioni da controllare".
-  test("TC-N298 - Il box 'Sovrapposizioni da controllare' porta a 'Le mie prenotazioni'", async ({ page }) => {
+  // PLANNER BETA v1.1, punto 3 della revisione — il box indipendente
+  // "Sovrapposizioni da controllare" è stato RIMOSSO: la ridondanza con
+  // l'alert di sovrapposizione (già esistente, computeOverlapReminders in
+  // lib/nextgen/reminders.ts) era esplicitamente da eliminare ("le
+  // sovrapposizioni devono entrare nello stesso sistema [alert], NON creare
+  // nuovi box alert indipendenti"). L'alert stesso è invariato: intero testo
+  // cliccabile (non un link separato "Gestisci in Le mie prenotazioni" —
+  // quello esiste solo nel Dettaglio Settimana, route diversa), href
+  // "/nextgen/prenotazioni" (non "/prenotazioni", diversamente da prima).
+  test("TC-N298 - La sovrapposizione confluisce nell'alert unificato e porta a 'Le mie prenotazioni'", async ({ page }) => {
     test.skip(!isRealDeployment, "Richiede un deploy con Supabase configurato e un account genitore di test con una sovrapposizione attiva.");
     await loginAs(page, "parent");
     await page.goto("/nextgen/planner");
 
-    const heading = page.getByText("Sovrapposizioni da controllare", { exact: true });
-    if (!(await heading.isVisible().catch(() => false))) {
+    await expect(page.getByText("Sovrapposizioni da controllare", { exact: true })).toHaveCount(0);
+
+    const overlapPattern = /risulta prenotat[oa] due volte in .*: controlla quale attività tenere\./;
+    let overlapAlert = page.getByRole("link", { name: overlapPattern }).first();
+    if (!(await overlapAlert.isVisible().catch(() => false))) {
+      const showAll = page.getByRole("button", { name: /Mostra tutti/ });
+      if (await showAll.isVisible().catch(() => false)) {
+        await showAll.click();
+        overlapAlert = page.getByRole("link", { name: overlapPattern }).first();
+      }
+    }
+    if (!(await overlapAlert.isVisible().catch(() => false))) {
       test.skip(true, "Nessuna sovrapposizione attiva per l'account di test.");
     }
-    const link = page.getByRole("link", { name: "Gestisci in Le mie prenotazioni" });
-    await expect(link).toBeVisible();
-    await expect(link).toHaveAttribute("href", "/prenotazioni");
+    await expect(overlapAlert).toHaveAttribute("href", "/nextgen/prenotazioni");
   });
 });

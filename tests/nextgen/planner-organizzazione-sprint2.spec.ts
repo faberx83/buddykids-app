@@ -7,10 +7,15 @@ import { loginAs, isRealDeployment } from "../fixtures/roles";
 // settimana mostrate al click su "Stato per settimana".
 
 test.describe("NEXTGEN - Planner Organizzazione, Sprint 2 (Timeline mensile)", () => {
-  test("TC-271 - La Timeline è raggruppata per mese, pieghevole", async ({ page }) => {
+  // PLANNER BETA v1.1 (Wave 1) — la Timeline non è più visibile di default:
+  // aperta esplicitamente tramite "Vedi tutte le settimane" prima di
+  // verificare il raggruppamento per mese (contenuto/comportamento interno
+  // invariato).
+  test("TC-271 - La Timeline (Vedi tutte le settimane) è raggruppata per mese, pieghevole", async ({ page }) => {
     test.skip(!isRealDeployment, "Richiede un deploy con Supabase configurato e l'account genitore di test.");
     await loginAs(page, "parent");
     await page.goto("/nextgen/planner");
+    await page.getByRole("button", { name: "Vedi tutte le settimane" }).click();
 
     await expect(page.getByText(/Timeline della stagione/)).toBeVisible();
     // Almeno un'intestazione di mese (Giugno/Luglio/Agosto/Settembre — la
@@ -19,21 +24,54 @@ test.describe("NEXTGEN - Planner Organizzazione, Sprint 2 (Timeline mensile)", (
     await expect(monthHeader).toBeVisible();
   });
 
-  test("TC-272 - Cliccare una barra di 'Stato per settimana' apre il mese giusto, evidenzia la riga e mostra le date", async ({
+  // PLANNER BETA v1.1 (Wave 1, punto 2B) — la striscia compatta "Stato per
+  // settimana" che generava l'azione qui testata è stata RIMOSSA (grep
+  // eseguito su tutto app/nextgen prima di rimuoverla, vedi commento in
+  // PlannerClient.tsx#jumpToWeek: nessun altro punto del prodotto dipendeva
+  // da essa). jumpToWeek(index) resta, ma l'unico chiamante rimasto è
+  // l'azione "week" degli alert unificati (allAlerts — es. il promemoria
+  // "La Settimana N è la prossima da organizzare/è ancora scoperta",
+  // computePriorityWeekReminder in lib/nextgen/reminders.ts). Questo test
+  // sostituisce TC-272 esercitando quel percorso reale: click sull'alert →
+  // la Timeline si apre da sé (timelineOpen), il mese giusto si espande e
+  // la riga corrispondente viene evidenziata.
+  test("TC-272 - Cliccare l'alert 'settimana prioritaria' apre la Timeline, il mese giusto ed evidenzia la riga", async ({
     page,
   }) => {
-    test.skip(!isRealDeployment, "Richiede un deploy con Supabase configurato e l'account genitore di test.");
+    test.skip(!isRealDeployment, "Richiede un deploy con Supabase configurato e l'account genitore di test con una settimana prioritaria imminente (entro 14 giorni).");
     await loginAs(page, "parent");
     await page.goto("/nextgen/planner");
 
-    const firstWeekBar = page.getByRole("button", { name: /Vai al dettaglio della Settimana 1,/ });
-    await firstWeekBar.click();
+    const alertPattern = /La Settimana (\d+) (inizia tra|\(tra)/;
+    let alertButton = page.getByRole("button", { name: alertPattern }).first();
+    if (!(await alertButton.isVisible().catch(() => false))) {
+      // SPRINT 7 — un solo alert mostrato di default: se quello prioritario
+      // non è il più urgente, va rivelato con "Mostra tutti".
+      const showAll = page.getByRole("button", { name: /Mostra tutti/ });
+      if (await showAll.isVisible().catch(() => false)) {
+        await showAll.click();
+        alertButton = page.getByRole("button", { name: alertPattern }).first();
+      }
+    }
+    if (!(await alertButton.isVisible().catch(() => false))) {
+      test.skip(true, "Nessuna settimana prioritaria imminente (entro 14 giorni) per l'account di test in questo momento.");
+    }
 
-    // La data della settimana compare accanto al titolo "Stato per settimana".
-    await expect(page.getByText(/Settimana 1 ·/).first()).toBeVisible();
-    // La riga corrispondente nella Timeline esiste nel DOM (il mese si è
-    // aperto automaticamente) ed è evidenziata.
-    await expect(page.locator("#week-row-1")).toBeVisible();
+    const alertText = await alertButton.textContent();
+    const weekIndex = alertText?.match(/Settimana (\d+)/)?.[1];
+    expect(weekIndex).toBeDefined();
+
+    await alertButton.click();
+
+    // jumpToWeek apre la Timeline (prima nascosta), espande il mese e
+    // scrolla/evidenzia la riga — la riga bersaglio deve quindi esistere ed
+    // essere visibile nel DOM subito dopo il click.
+    await expect(page.getByText(/Timeline della stagione/)).toBeVisible();
+    const row = page.locator(`#week-row-${weekIndex}`);
+    await expect(row).toBeVisible();
+    // L'anello di evidenziazione (ring-2 ring-trama-violet) è temporaneo
+    // (sparisce dopo 1.6s, vedi jumpToWeek) — verificato subito dopo il click.
+    await expect(row).toHaveClass(/ring-trama-violet/);
   });
 
   test("TC-273 - Una riga Timeline con prenotazione attiva è cliccabile e apre 'Le mie prenotazioni'", async ({
@@ -56,12 +94,23 @@ test.describe("NEXTGEN - Planner Organizzazione, Sprint 2 (Timeline mensile)", (
     // aggiornato per riflettere il comportamento reale e attuale.
     await loginAs(page, "parent");
     await page.goto("/nextgen/planner");
+    // PLANNER BETA v1.1 (Wave 1) — la Timeline è dietro "Vedi tutte le
+    // settimane" (timelineOpen, default chiuso): va aperta prima di poter
+    // aprire i singoli mesi. Il vecchio selettore generico
+    // 'button[aria-expanded="false"]' ora aggancerebbe anche gli altri
+    // toggle nuovi di questa wave (lo stesso "Vedi tutte le settimane",
+    // "Copertura per bambino", "Calendario e Chi fa cosa?"), non più solo i
+    // mesi — sostituito con un selettore scoped al nome dei mesi.
+    await page.getByRole("button", { name: "Vedi tutte le settimane" }).click();
 
     // Apri tutti i mesi per trovare una riga coperta con prenotazione reale.
-    const monthButtons = page.locator('button[aria-expanded="false"]');
+    const monthButtons = page.getByRole("button", { name: /Giugno|Luglio|Agosto|Settembre/ });
     const count = await monthButtons.count();
     for (let i = 0; i < count; i++) {
-      await monthButtons.nth(0).click();
+      const btn = monthButtons.nth(i);
+      if ((await btn.getAttribute("aria-expanded")) === "false") {
+        await btn.click();
+      }
     }
 
     const clickableRow = page.locator('[id^="week-row-"] a[href^="/prenotazioni?bookingId="]').first();
