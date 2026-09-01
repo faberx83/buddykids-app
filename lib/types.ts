@@ -423,6 +423,18 @@ export interface CommunityHomeSignal {
 // dati) con priority:"low" aggiunta — nessuna regressione per quel caso.
 export type CoordinationSignal =
   | ({ kind: "community"; priority: "low" } & CommunityHomeSignal)
+  // FEATURE (01/09/2026, richiesta di Fabrizio dopo la live QA): manca chi
+  // accompagna/ritira un bambino OGGI — vedi
+  // lib/data/responsibilities.ts#getTodayResponsibilities(). Priorità più
+  // alta di group_invite_pending: un invito di gruppo può aspettare un
+  // giorno, "chi porta il bambino oggi" no.
+  | {
+      kind: "responsibility_unassigned_today";
+      priority: "high";
+      kidId: string;
+      kidName: string;
+      moment: "andata" | "ritorno";
+    }
   | { kind: "group_invite_pending"; priority: "high"; groupId: string; groupName: string }
   | {
       kind: "group_request_accepted";

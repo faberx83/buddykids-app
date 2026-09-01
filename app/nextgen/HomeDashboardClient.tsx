@@ -7,10 +7,12 @@ import { PlannerData } from "@/lib/data/planner";
 import { MyBooking } from "@/lib/data/my-bookings";
 import { Activity } from "@/lib/types";
 import { TodayCheckin } from "@/lib/data/checkin";
+import { TodayResponsibilityEntry } from "@/lib/data/responsibilities";
 import { CoordinationSignal } from "@/lib/types";
 import ActivityCard from "@/components/ActivityCard";
 import NextgenBadge from "@/components/nextgen/NextgenBadge";
 import NextgenCheckinCard from "@/components/nextgen/NextgenCheckinCard";
+import TodayResponsibilityReminder from "@/components/nextgen/TodayResponsibilityReminder";
 import BookingVisualCard from "@/components/nextgen/BookingVisualCard";
 import NextgenProfileCompletionPrompt from "@/components/nextgen/NextgenProfileCompletionPrompt";
 import MockDataBanner from "@/components/MockDataBanner";
@@ -74,6 +76,7 @@ export default function HomeDashboardClient({
   bookings,
   recommendations,
   todayCheckins,
+  todayResponsibilities,
   coordinationSignal,
   profileIncomplete,
   hasKids,
@@ -84,6 +87,7 @@ export default function HomeDashboardClient({
   bookings: MyBooking[];
   recommendations: Recommendation[];
   todayCheckins: TodayCheckin[];
+  todayResponsibilities: TodayResponsibilityEntry[];
   coordinationSignal: CoordinationSignal | null;
   profileIncomplete: boolean;
   hasKids: boolean;
@@ -249,6 +253,10 @@ export default function HomeDashboardClient({
         <div>
           <div className="mb-3 font-poppins text-[21px] font-semibold text-ink">Oggi</div>
           <NextgenCheckinCard items={todayCheckins} />
+          {/* FEATURE (01/09/2026, richiesta di Fabrizio): reminder "chi fa
+              cosa" per oggi — mostra solo quello che è già stato deciso, i
+              vuoti li segnala già il Coordination Signal sopra. */}
+          <TodayResponsibilityReminder items={todayResponsibilities} />
         </div>
       )}
 
@@ -272,6 +280,23 @@ export default function HomeDashboardClient({
           mostrato, mai un feed, stesso pattern visivo di prima (una riga,
           un link, un'icona) per ciascuna delle 3 varianti — vedi
           lib/data/coordination-signal.ts per la priorità. */}
+      {/* FEATURE (01/09/2026, richiesta di Fabrizio): manca chi
+          accompagna/ritira OGGI — priorità più alta delle altre, vedi
+          lib/data/coordination-signal.ts. Deep link al Planner (dove vive
+          "Chi fa cosa?", dentro il pannello Organizzazione). */}
+      {coordinationSignal?.kind === "responsibility_unassigned_today" && (
+        <Link
+          href="/nextgen/planner"
+          className="flex items-center gap-2.5 rounded-2xl bg-orange-light px-4 py-3 active:scale-[0.99]"
+        >
+          <i className="ti ti-car flex-shrink-0 text-lg text-trama-orange" />
+          <span className="text-[13px] font-medium text-ink-2">
+            Manca ancora chi {coordinationSignal.moment === "andata" ? "accompagna" : "ritira"}{" "}
+            <b className="font-bold text-ink">{coordinationSignal.kidName}</b> oggi — dillo nel Planner
+          </span>
+          <i className="ti ti-chevron-right ml-auto flex-shrink-0 text-ink-3" />
+        </Link>
+      )}
       {coordinationSignal?.kind === "group_invite_pending" && (
         <Link
           href="/nextgen/groups"

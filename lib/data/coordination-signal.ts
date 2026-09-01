@@ -11,6 +11,10 @@ import "server-only";
 // nel progetto, RLS invariata).
 //
 // Priorità (mai più di UN segnale mostrato in Home):
+//  0. HIGH   — manca chi accompagna/ritira un bambino OGGI (01/09/2026,
+//              richiesta di Fabrizio) — controllata PRIMA dell'invito di
+//              gruppo: un invito può aspettare un giorno, "chi porta il
+//              bambino oggi" no.
 //  1. HIGH   — un'azione è richiesta all'utente (invito di gruppo pendente:
 //              accetta/rifiuta).
 //  2. MEDIUM — un aggiornamento organizzativo rilevante (una richiesta
@@ -25,6 +29,7 @@ import "server-only";
 import { createClient } from "@/lib/supabase/server";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
 import { getCommunityHomeSignal } from "./communities";
+import { getTodayResponsibilities } from "./responsibilities";
 import { CoordinationSignal } from "@/lib/types";
 
 const GROUP_REQUEST_RECENCY_DAYS = 14;
@@ -91,6 +96,21 @@ export async function getCoordinationSignal(): Promise<CoordinationSignal | null
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) return null;
+
+  // 0) HIGH — manca chi accompagna/ritira un bambino OGGI (solo per bambini
+  // con un'attività reale oggi, vedi getTodayResponsibilities per il motivo
+  // per cui questo non rischia i falsi positivi del gap documentato).
+  const todayGaps = (await getTodayResponsibilities()).filter((r) => r.responsible === null);
+  if (todayGaps.length > 0) {
+    const gap = todayGaps[0];
+    return {
+      kind: "responsibility_unassigned_today",
+      priority: "high",
+      kidId: gap.kidId,
+      kidName: gap.kidName,
+      moment: gap.moment,
+    };
+  }
 
   // 1) HIGH — invito di gruppo pendente (stessa RPC di getMyGroupInvites,
   // qui basta sapere se ce n'è almeno uno).
