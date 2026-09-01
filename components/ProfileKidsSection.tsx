@@ -3,10 +3,27 @@
 import { useState } from "react";
 import AddKidForm from "@/components/AddKidForm";
 import AvatarUploadButton from "@/components/AvatarUploadButton";
-import { Kid } from "@/lib/types";
+import { Kid, KidGender } from "@/lib/types";
 import { categories as interestOptions } from "@/lib/mock-data";
-import { updateKidInterestsAction, updateKidAvatarAction } from "@/app/actions/kids";
+import { updateKidInterestsAction, updateKidAvatarAction, updateKidAction } from "@/app/actions/kids";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
+
+// Duplicata volutamente da lib/data/kids.ts#ageFromBirthDate (stesso
+// principio già usato per KIDS_AVATARS_BUCKET in app/actions/kids.ts):
+// lib/data/kids.ts importa lib/supabase/server (next/headers), un
+// componente "use client" non può attraversare quel confine — vedi anche
+// lib/nextgen/responsibility-options.ts per lo stesso motivo.
+function ageFromBirthDate(birthDate: string): number {
+  if (!birthDate) return 0;
+  const today = new Date();
+  const birth = new Date(birthDate + "T00:00:00Z");
+  let age = today.getUTCFullYear() - birth.getUTCFullYear();
+  const hadBirthdayThisYear =
+    today.getUTCMonth() > birth.getUTCMonth() ||
+    (today.getUTCMonth() === birth.getUTCMonth() && today.getUTCDate() >= birth.getUTCDate());
+  if (!hadBirthdayThisYear) age -= 1;
+  return Math.max(age, 0);
+}
 
 export default function ProfileKidsSection({
   initialKids,
@@ -26,6 +43,61 @@ export default function ProfileKidsSection({
   const [showAddKid, setShowAddKid] = useState(Boolean(autoOpenAddKid));
   const [editingKidId, setEditingKidId] = useState<string | null>(null);
   const [savingInterests, setSavingInterests] = useState(false);
+  // FEATURE (01/09/2026, richiesta di Fabrizio: "deve essere possibile
+  // modificare caratteristiche figlio, tra cui età perché magari c'è un
+  // errore") — bozza locale nome/data di nascita/genere per il bambino in
+  // modifica, inizializzata quando si apre il pannello (vedi startEditing).
+  const [editName, setEditName] = useState("");
+  const [editBirthDate, setEditBirthDate] = useState("");
+  const [editGender, setEditGender] = useState<KidGender | "">("");
+  const [savingDetails, setSavingDetails] = useState(false);
+  const [detailsError, setDetailsError] = useState<string | null>(null);
+
+  function startEditing(kid: Kid) {
+    if (editingKidId === kid.id) {
+      setEditingKidId(null);
+      return;
+    }
+    setEditingKidId(kid.id);
+    setEditName(kid.name);
+    setEditBirthDate(kid.birthDate ?? "");
+    setEditGender(kid.gender ?? "");
+    setDetailsError(null);
+  }
+
+  async function saveDetails(kidId: string) {
+    setDetailsError(null);
+    if (!editName.trim()) {
+      setDetailsError("Inserisci un nome");
+      return;
+    }
+    if (!editBirthDate) {
+      setDetailsError("Inserisci la data di nascita");
+      return;
+    }
+    setSavingDetails(true);
+    const result = isSupabaseConfigured
+      ? await updateKidAction(kidId, editName, editBirthDate, editGender || undefined)
+      : {};
+    setSavingDetails(false);
+    if (result.error) {
+      setDetailsError(result.error);
+      return;
+    }
+    setKids((prev) =>
+      prev.map((k) =>
+        k.id === kidId
+          ? {
+              ...k,
+              name: editName.trim(),
+              birthDate: editBirthDate,
+              age: ageFromBirthDate(editBirthDate),
+              gender: editGender || undefined,
+            }
+          : k
+      )
+    );
+  }
 
   async function handleAvatarUploaded(kidId: string, url: string) {
     setKids((prev) => prev.map((k) => (k.id === kidId ? { ...k, avatarUrl: url } : k)));
@@ -102,10 +174,7 @@ export default function ProfileKidsSection({
                 }
               />
             </div>
-            <div
-              onClick={() => setEditingKidId((prev) => (prev === k.id ? null : k.id))}
-              className="flex flex-1 cursor-pointer items-center gap-3"
-            >
+            <div onClick={() => startEditing(k)} className="flex flex-1 cursor-pointer items-center gap-3">
             <div className="flex-1">
               <div className="text-sm font-bold text-ink">{k.name}</div>
               <div className="mb-1 text-xs text-ink-2">
@@ -132,6 +201,50 @@ export default function ProfileKidsSection({
 
           {editingKidId === k.id && (
             <div className="mt-3 border-t border-[#F0F2F5] pt-3">
+              {/* FEATURE (01/09/2026, richiesta di Fabrizio: "deve essere
+                  possibile modificare caratteristiche figlio, tra cui età
+                  perché magari c'è un errore") — stessi campi di
+                  AddKidForm.tsx, ora modificabili anche dopo la creazione. */}
+              <div className="mb-2.5 grid grid-cols-2 gap-2">
+                <input
+                  value={editName}
+                  onChange={(e) => setEditName(e.target.value)}
+                  placeholder="Nome"
+                  className="col-span-2 rounded-md border border-[#E8EBF0] bg-white px-3 py-2 text-sm outline-none focus:border-sky"
+                />
+                <label className="text-[11px] text-ink-2">
+                  Data di nascita
+                  <input
+                    type="date"
+                    value={editBirthDate}
+                    onChange={(e) => setEditBirthDate(e.target.value)}
+                    className="mt-1 w-full rounded-md border border-[#E8EBF0] bg-white px-3 py-2 text-sm outline-none focus:border-sky"
+                  />
+                </label>
+                <label className="text-[11px] text-ink-2">
+                  Genere (opzionale)
+                  <select
+                    value={editGender}
+                    onChange={(e) => setEditGender(e.target.value as KidGender | "")}
+                    className="mt-1 w-full rounded-md border border-[#E8EBF0] bg-white px-3 py-2 text-sm outline-none focus:border-sky"
+                  >
+                    <option value="">Preferisco non dire</option>
+                    <option value="F">Femmina</option>
+                    <option value="M">Maschio</option>
+                    <option value="altro">Altro</option>
+                  </select>
+                </label>
+              </div>
+              {detailsError && <p className="mb-2 text-xs font-medium text-orange">{detailsError}</p>}
+              <button
+                type="button"
+                onClick={() => saveDetails(k.id)}
+                disabled={savingDetails}
+                className={`mb-3 rounded-md ${accentBg} px-4 py-2 text-xs font-bold text-white disabled:opacity-60`}
+              >
+                {savingDetails ? "Salvo…" : "Salva dati"}
+              </button>
+
               <div className="mb-1.5 text-[11px] text-ink-2">
                 Interessi — usati per suggerire le attività più adatte in Home
               </div>

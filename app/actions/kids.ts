@@ -85,6 +85,39 @@ export async function addKidAction(
   };
 }
 
+// FEATURE (FINAL MICRO-PILOT LIVE ACCEPTANCE, 01/09/2026 — richiesta
+// esplicita di Fabrizio: "deve essere possibile modificare caratteristiche
+// figlio, tra cui età perché magari c'è un errore"). Prima non esisteva
+// alcuna azione per correggere nome/data di nascita/genere dopo la
+// creazione — solo interessi (sotto) e avatar (più sotto) erano
+// modificabili. Stesso pattern di updateKidInterestsAction: .eq("parent_id",
+// user.id) garantisce che un genitore possa modificare solo i PROPRI figli.
+export async function updateKidAction(
+  kidId: string,
+  name: string,
+  birthDate: string,
+  gender?: KidGender
+): Promise<{ error?: string }> {
+  if (!isSupabaseConfigured) return { error: "Supabase non configurato" };
+  if (!name.trim()) return { error: "Inserisci un nome" };
+  if (!birthDate) return { error: "Inserisci la data di nascita" };
+
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { error: "Non autenticato" };
+
+  const { error } = await supabase
+    .from("kids")
+    .update({ name: name.trim(), birth_date: birthDate, gender: gender ?? null })
+    .eq("id", kidId)
+    .eq("parent_id", user.id);
+
+  if (error) return { error: error.message };
+  return {};
+}
+
 // Aggiorna solo gli interessi di un bambino già esistente (usato dal profilo
 // genitore per completare/correggere le preferenze dopo la creazione).
 export async function updateKidInterestsAction(
