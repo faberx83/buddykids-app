@@ -146,6 +146,16 @@ export default function PlannerCalendarView({
     return map;
   });
   const [assigningKey, setAssigningKey] = useState<string | null>(null);
+  // PLANNER BETA v1.1 (Wave 3, punto 18) — "quando un giorno contiene più
+  // attività/bambini, mostra una sola activity card espansa alla volta": in
+  // questo componente il "blocco attività" per un giorno/settimana
+  // selezionata è il riquadro per-bambino sotto (selectedDay.kids.map),
+  // finora sempre tutti espansi insieme quando la famiglia ha più di un
+  // figlio. null = nessuna scelta esplicita ancora fatta per questa
+  // selezione: si ricade sul primo bambino (vedi effectiveExpandedKidId
+  // nel render), senza bisogno di un useEffect per re-inizializzare lo
+  // stato ad ogni cambio di selectedDay.
+  const [expandedKidKey, setExpandedKidKey] = useState<string | null>(null);
   const [altroText, setAltroText] = useState("");
   const [savingKey, setSavingKey] = useState<string | null>(null);
 
@@ -706,16 +716,57 @@ export default function PlannerCalendarView({
                 </div>
               )}
 
-              {selectedDay.kids.map((k) => {
+              {/* PLANNER BETA v1.1 (Wave 3, punto 18) — con più di un
+                  bambino coperto lo stesso giorno/settimana, una sola card
+                  resta espansa alla volta (le altre diventano header
+                  compatti cliccabili): meno densità visiva quando la
+                  famiglia ha più figli. Con un solo bambino il
+                  comportamento resta identico a prima (sempre espanso,
+                  nessun header da cliccare). effectiveExpandedKidId
+                  ricade sul primo bambino della selezione corrente se
+                  expandedKidKey è vuoto o si riferisce a un bambino non più
+                  presente (es. dopo aver cambiato giorno/settimana) — senza
+                  bisogno di un useEffect di re-inizializzazione. */}
+              {(() => {
+                const effectiveExpandedKidId =
+                  selectedDay.kids.length <= 1
+                    ? (selectedDay.kids[0]?.kidId ?? null)
+                    : (selectedDay.kids.some((k) => k.kidId === expandedKidKey)
+                        ? expandedKidKey
+                        : (selectedDay.kids[0]?.kidId ?? null));
+                return selectedDay.kids.map((k) => {
                 const weekStartDate = selectedDay.weekStartDate;
+                const isExpanded = k.kidId === effectiveExpandedKidId;
+
+                if (!isExpanded) {
+                  return (
+                    <button
+                      key={k.kidId}
+                      type="button"
+                      onClick={() => setExpandedKidKey(k.kidId)}
+                      className="flex items-center gap-2 rounded-xl bg-bg px-3 py-2.5 text-left active:bg-black/[0.04]"
+                    >
+                      <span className={`h-2.5 w-2.5 rounded-full ${DOT_BG[k.accentColor]}`} />
+                      <span className="flex-1 text-[12.5px] font-semibold text-ink">{k.kidName}</span>
+                      <i className="ti ti-chevron-down text-[14px] text-ink-3" />
+                    </button>
+                  );
+                }
 
                 return (
                   <div key={k.kidId} className="flex flex-col gap-1.5">
-                    <div className="flex items-center gap-2 text-[12.5px]">
+                    <button
+                      type="button"
+                      onClick={() => selectedDay.kids.length > 1 && setExpandedKidKey(null)}
+                      className="flex items-center gap-2 text-left text-[12.5px]"
+                    >
                       <span className={`h-2.5 w-2.5 rounded-full ${DOT_BG[k.accentColor]}`} />
                       <span className="font-semibold text-ink">{k.kidName}</span>
                       <span className="text-ink-2">{selectedDay.activityName ?? "attività prenotata"}</span>
-                    </div>
+                      {selectedDay.kids.length > 1 && (
+                        <i className="ti ti-chevron-up ml-auto text-[14px] text-ink-3" />
+                      )}
+                    </button>
 
                     {/* SPRINT CORRETTIVO 2 (01/09/2026, seconda segnalazione
                         ripetuta di Fabrizio dopo la live QA: "è necessario
@@ -868,7 +919,8 @@ export default function PlannerCalendarView({
                     )}
                   </div>
                 );
-              })}
+                });
+              })()}
               {selectedDay.hasConflict && (
                 <p className="mt-1 text-[11.5px] text-[#7a5400]">
                   Controlla il dettaglio in Organizzazione: uno o più bambini risultano prenotati due volte questa
