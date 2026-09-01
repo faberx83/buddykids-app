@@ -176,8 +176,11 @@ export default async function CenterDashboardPage() {
                   Le famiglie sono in attesa di conferma
                 </div>
               </div>
+              {/* FIX (01/09/2026, segnalazione di Fabrizio: "se clicco su
+                  Rispondi va in 404"): la route reale è /center/prenotazioni
+                  — /center/bookings non è mai esistita come pagina. */}
               <Link
-                href="/center/bookings"
+                href="/center/prenotazioni"
                 className="flex-shrink-0 whitespace-nowrap rounded-lg bg-trama-orange px-3.5 py-2 text-[11.5px] font-bold text-white"
               >
                 Rispondi
@@ -266,7 +269,10 @@ export default async function CenterDashboardPage() {
       <div className="rounded-[14px] bg-white shadow-[0_1px_3px_rgba(0,0,0,0.04)]">
         <div className="flex items-center justify-between border-b border-[#F0F2F5] px-4 py-3.5">
           <span className="text-[13.5px] font-bold text-ink">Prenotazioni recenti</span>
-          <Link href="/center/bookings" className="text-xs font-medium text-sky">
+          {/* FIX (01/09/2026): stesso 404 del bottone "Rispondi" sopra —
+              /center/bookings non è mai esistita, la route reale è
+              /center/prenotazioni. */}
+          <Link href="/center/prenotazioni" className="text-xs font-medium text-sky">
             Vedi tutte
           </Link>
         </div>
