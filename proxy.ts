@@ -17,7 +17,7 @@ import { tenantForHost, TENANT_CONFIG, familyHost } from "@/lib/tenant";
 // mostrare "/center" nella barra degli indirizzi.
 // ─────────────────────────────────────────────────────────────────
 
-function mainDomainUrl(request: NextRequest, rawHost: string): URL {
+function mainDomainUrl(request: NextRequest, rawHost: string, reason?: "wrong_role"): URL {
   const url = request.nextUrl.clone();
   // Con alias .vercel.app "sciolti" (non sottodomini dello stesso dominio,
   // vedi lib/tenant.ts) non c'è un prefisso partner./admin. da togliere per
@@ -27,6 +27,17 @@ function mainDomainUrl(request: NextRequest, rawHost: string): URL {
   url.host = familyHost(rawHost);
   url.pathname = "/";
   url.search = "";
+  // Segnalazione di Fabrizio (FINAL MICRO-PILOT LIVE ACCEPTANCE, 01/09/2026):
+  // un utente autenticato ma col ruolo sbagliato per partner./admin. veniva
+  // rimbalzato qui in silenzio — nessun "accesso negato", sembrava un
+  // redirect casuale (e IDENTICO per Partner e Admin, dato che entrambi
+  // atterrano sulla home famiglie). Non è una falla: il rimbalzo avviene qui
+  // in middleware, PRIMA che qualunque pagina/dato di /center o /admin venga
+  // caricato — nessun dato del tenant protetto viene mai fetchato o
+  // renderizzato per il ruolo sbagliato. Aggiunto solo un motivo esplicito in
+  // query string così la Home famiglie può mostrare un avviso comprensibile
+  // invece del silenzio (vedi app/(main)/page.tsx).
+  if (reason) url.searchParams.set("denied", reason);
   return url;
 }
 
@@ -162,7 +173,7 @@ export async function proxy(request: NextRequest) {
       }
       // Autenticato ma con il ruolo sbagliato: qui sì, torna al dominio
       // principale (mostrare di nuovo il login non servirebbe a nulla).
-      return copyCookies(sessionResponse, NextResponse.redirect(mainDomainUrl(request, rawHost)));
+      return copyCookies(sessionResponse, NextResponse.redirect(mainDomainUrl(request, rawHost, "wrong_role")));
     }
   }
 

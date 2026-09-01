@@ -3,6 +3,7 @@ import HomeFeed from "@/components/HomeFeed";
 import HomeProfilePrompt from "@/components/HomeProfilePrompt";
 import CheckinPrompt from "@/components/CheckinPrompt";
 import MockDataBanner from "@/components/MockDataBanner";
+import AccessDeniedBanner from "@/components/AccessDeniedBanner";
 import { categories } from "@/lib/mock-data";
 import { getActivities, getActivityAvailabilityByWeek, isMockActivitiesArray } from "@/lib/data/activities";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
@@ -46,7 +47,12 @@ async function getDisplayIdentity() {
   return { displayName, initials, avatarUrl: (profile?.avatar_url as string | null) ?? null };
 }
 
-export default async function HomePage() {
+export default async function HomePage({
+  searchParams,
+}: {
+  searchParams: Promise<{ denied?: string }>;
+}) {
+  const { denied } = await searchParams;
   const [
     activities,
     { displayName, initials, avatarUrl },
@@ -122,6 +128,7 @@ export default async function HomePage() {
         </Link>
       </div>
 
+      <AccessDeniedBanner denied={denied} />
       <HomeProfilePrompt profileIncomplete={profileIncomplete} hasKids={kids.length > 0} />
       {/* Addendum Sezione B (Feature Control Center) — requisito banner
           demo-mode per lo stato MOCK_DEMO. Mostrato SOLO quando Supabase è
