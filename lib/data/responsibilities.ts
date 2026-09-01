@@ -151,6 +151,81 @@ async function getKidsWithActivityToday(
   return Array.from(byKid.entries()).map(([kidId, kidName]) => ({ kidId, kidName }));
 }
 
+// PLANNER BETA v1.1 (Wave 2, Dettaglio Settimana) — generalizzazione di
+// getKidsWithActivityToday sopra da UNA data a un INSIEME di date (i 5
+// giorni feriali lun-ven di una settimana stagionale): STESSA identica
+// fonte di verità (booking_weeks/activity_weeks per le prenotazioni a
+// settimana intera, booking_days/activity_days per "Giorni spot"), nessuna
+// nuova interpretazione del calendario — richiesto esplicitamente dalla
+// revisione ("verifica come il progetto determina oggi che uno specifico
+// bambino sia coperto in uno specifico giorno, riusa quella stessa fonte,
+// non creare una seconda interpretazione del calendario").
+//
+// Deduplica automatica per (kid, giorno): l'accumulo avviene in un Set per
+// bambino, quindi due prenotazioni/attività diverse dello stesso bambino
+// che ricadono sullo stesso giorno producono comunque UNA sola data in
+// output — coerente con "CURRENT DOMAIN LIMITATION — ACTIVITY-LEVEL
+// TRANSPORT NOT MODELED" (week_responsibilities è chiave per kid+weekday+
+// moment, non per singola occorrenza di attività: non possiamo comunque
+// distinguere due Andate diverse per lo stesso bambino nello stesso giorno,
+// quindi non ha senso generarle).
+export interface KidBookedDays {
+  kidId: string;
+  kidName: string;
+  dates: string[]; // ISO, sottoinsieme ordinato di weekdayDates
+}
+
+export async function getKidsBookedDaysForWeek(weekdayDates: string[]): Promise<KidBookedDays[]> {
+  if (!isSupabaseConfigured || weekdayDates.length === 0) return [];
+
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return [];
+
+  const { data, error } = await supabase
+    .from("bookings")
+    .select(
+      "booking_kids ( kid_id, kids ( id, name ) ), booking_weeks ( activity_weeks ( start_date, end_date ) ), booking_days ( activity_days ( date ) )"
+    )
+    .eq("parent_id", user.id)
+    .neq("status", "cancelled");
+
+  if (error || !data) return [];
+
+  const byKid = new Map<string, { kidName: string; dates: Set<string> }>();
+  for (const booking of data as RawTodayBookingRow[]) {
+    const weekRanges = (booking.booking_weeks ?? [])
+      .map((bw) => firstOfRaw(bw.activity_weeks))
+      .filter((w): w is { start_date: string; end_date: string } => Boolean(w));
+    const dayDates = new Set(
+      (booking.booking_days ?? [])
+        .map((bd) => firstOfRaw(bd.activity_days))
+        .filter((d): d is { date: string } => Boolean(d))
+        .map((d) => d.date)
+    );
+    const coveredDates = weekdayDates.filter(
+      (iso) => dayDates.has(iso) || weekRanges.some((w) => iso >= w.start_date && iso <= w.end_date)
+    );
+    if (coveredDates.length === 0) continue;
+
+    for (const bk of booking.booking_kids ?? []) {
+      const kid = firstOfRaw(bk.kids);
+      if (!kid) continue;
+      const entry = byKid.get(kid.id) ?? { kidName: kid.name, dates: new Set<string>() };
+      for (const d of coveredDates) entry.dates.add(d);
+      byKid.set(kid.id, entry);
+    }
+  }
+
+  return Array.from(byKid.entries()).map(([kidId, v]) => ({
+    kidId,
+    kidName: v.kidName,
+    dates: Array.from(v.dates).sort(),
+  }));
+}
+
 export async function getTodayResponsibilities(): Promise<TodayResponsibilityEntry[]> {
   if (!isSupabaseConfigured) return [];
 
