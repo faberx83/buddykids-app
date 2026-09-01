@@ -5,7 +5,21 @@ import { pillClasses } from "@/lib/colors";
 // TRAMA ONE (24/08/2026) — basePath opzionale (default "/groups") per essere
 // riusato anche dal guscio NEXTGEN-native app/nextgen/groups, che deve
 // restare dentro le proprie route invece di rimandare al layout LEGACY.
-export default function GroupCard({ group, basePath = "/groups" }: { group: GroupItem; basePath?: string }) {
+// nextgen (01/09/2026, segnalazione Fabrizio "grafica legacy" in Gruppi):
+// il pill "Apri gruppo" era hardcoded sky/sky-light — stesso trattamento
+// già dato a GroupDetailClient/CoverageStrip. Legacy (default false) resta
+// invariato.
+export default function GroupCard({
+  group,
+  basePath = "/groups",
+  nextgen = false,
+}: {
+  group: GroupItem;
+  basePath?: string;
+  nextgen?: boolean;
+}) {
+  const accentBg = nextgen ? "bg-trama-lilac/20" : "bg-sky-light";
+  const accentText = nextgen ? "text-trama-violet" : "text-sky";
   return (
     <Link
       href={`${basePath}/${group.id}`}
@@ -53,7 +67,7 @@ export default function GroupCard({ group, basePath = "/groups" }: { group: Grou
             <i className={`ti ${group.discountBadgeColor === "green" ? "ti-tag" : "ti-users"} text-xs`} />
             {group.discountLabel}
           </div>
-          <span className="flex items-center gap-1 rounded-md bg-sky-light px-3.5 py-1.5 text-xs font-semibold text-sky">
+          <span className={`flex items-center gap-1 rounded-md ${accentBg} px-3.5 py-1.5 text-xs font-semibold ${accentText}`}>
             Apri gruppo
             <i className="ti ti-chevron-right text-xs" />
           </span>

@@ -38,6 +38,7 @@ export default function BookingClient({
   bookedWeekIds: bookedWeekIdsList,
   inviteDiscount,
   days = [],
+  nextgen = false,
 }: {
   activity: Activity;
   weeks: Week[];
@@ -52,7 +53,22 @@ export default function BookingClient({
   // bookingMode !== "week_only". Vuoto per ogni altra attività — nessun
   // cambio di comportamento lì.
   days?: DayAvailability[];
+  // nextgen (01/09/2026, segnalazione Fabrizio "grafica legacy" nel flusso di
+  // prenotazione): non esiste /nextgen/booking/... dedicata, Legacy e
+  // NextGen linkano entrambi a /booking/[id] — il flag è risolto server-side
+  // in app/booking/[id]/page.tsx (stesso resolver TRAMA_ONE_ENABLED di
+  // resolveHomeHref() in .../success/page.tsx) e passato qui. Default false:
+  // nessun impatto sul call site quando il flag risolve a false.
+  nextgen?: boolean;
 }) {
+  const accentBg = nextgen ? "bg-trama-violet" : "bg-sky";
+  const accentText = nextgen ? "text-trama-violet" : "text-sky";
+  const accentLight = nextgen ? "bg-trama-lilac/20" : "bg-sky-light";
+  const accentBorder = nextgen ? "border-trama-lilac/50" : "border-sky-mid";
+  const accentHoverBg = nextgen ? "hover:bg-[#594F9E]" : "hover:bg-[#3A9FDC]";
+  const accentHoverText = nextgen ? "hover:text-trama-violet" : "hover:text-sky";
+  const accentHoverBorder = nextgen ? "hover:border-trama-violet" : "hover:border-sky";
+  const titleCls = nextgen ? "font-poppins text-base font-bold text-ink" : "text-base font-bold text-ink";
   const bookedWeekIds = useMemo(() => new Set(bookedWeekIdsList), [bookedWeekIdsList]);
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -324,12 +340,12 @@ export default function BookingClient({
   return (
     <div className="flex h-full min-h-screen flex-col sm:min-h-0 sm:flex-1">
       <PageHeader title="Prenota il tuo posto" onBack={handleBack} />
-      <StepIndicator step={step} />
+      <StepIndicator step={step} nextgen={nextgen} />
 
       <div ref={scrollRef} className="no-scrollbar flex-1 overflow-y-auto px-5 py-[18px]">
         {step === 1 && dayBookingMode && (
           <div>
-            <div className="mb-1 text-base font-bold text-ink">Giorni scelti</div>
+            <div className={`mb-1 ${titleCls}`}>Giorni scelti</div>
             <div className="mb-3 text-[13px] text-ink-2">
               Hai selezionato questi giorni dalla scheda attività — torna indietro per cambiarli
             </div>
@@ -344,7 +360,7 @@ export default function BookingClient({
                   return (
                     <span
                       key={d.date}
-                      className="rounded-md bg-sky-light px-2.5 py-1.5 text-[12px] font-semibold text-ink"
+                      className={`rounded-md ${accentLight} px-2.5 py-1.5 text-[12px] font-semibold text-ink`}
                     >
                       {dateObj.toLocaleDateString("it-IT", { day: "numeric", month: "short", timeZone: "UTC" })}
                       {d.specialEmoji ? ` ${d.specialEmoji}` : ""}
@@ -375,20 +391,20 @@ export default function BookingClient({
 
         {step === 1 && !dayBookingMode && (
           <div>
-            <div className="mb-1 text-base font-bold text-ink">Scegli le settimane</div>
+            <div className={`mb-1 ${titleCls}`}>Scegli le settimane</div>
             <div className="mb-3 text-[13px] text-ink-2">
               Puoi selezionare più settimane — stessa numerazione del Planner in Home
             </div>
             {requestedWeekConfirmed && requestedWeeksConfirmed.length === 1 && (
-              <div className="mb-3 flex items-center gap-2 rounded-lg border border-sky-mid bg-sky-light px-3 py-2.5 text-[12px] font-medium text-ink">
-                <i className="ti ti-circle-check-filled text-base text-sky" />
+              <div className={`mb-3 flex items-center gap-2 rounded-lg border ${accentBorder} ${accentLight} px-3 py-2.5 text-[12px] font-medium text-ink`}>
+                <i className={`ti ti-circle-check-filled text-base ${accentText}`} />
                 Hai già scelto la <b>{requestedWeeksConfirmed[0].label}</b> ({requestedWeeksConfirmed[0].dates}) dal
                 Planner — è selezionata qui sotto.
               </div>
             )}
             {requestedWeekConfirmed && requestedWeeksConfirmed.length > 1 && (
-              <div className="mb-3 flex items-center gap-2 rounded-lg border border-sky-mid bg-sky-light px-3 py-2.5 text-[12px] font-medium text-ink">
-                <i className="ti ti-circle-check-filled text-base text-sky" />
+              <div className={`mb-3 flex items-center gap-2 rounded-lg border ${accentBorder} ${accentLight} px-3 py-2.5 text-[12px] font-medium text-ink`}>
+                <i className={`ti ti-circle-check-filled text-base ${accentText}`} />
                 Hai già scelto {requestedWeeksConfirmed.length} settimane da Scopri — sono selezionate qui sotto.
               </div>
             )}
@@ -413,7 +429,7 @@ export default function BookingClient({
             <button
               type="button"
               onClick={() => setShowAllWeeks((v) => !v)}
-              className="mb-4 text-xs font-semibold text-sky"
+              className={`mb-4 text-xs font-semibold ${accentText}`}
             >
               {showAllWeeks ? "Mostra solo questa e le vicine" : `Vedi tutte le ${weeks.length} settimane`}
             </button>
@@ -442,7 +458,7 @@ export default function BookingClient({
 
         {step === 2 && (
           <div>
-            <div className="mb-1 text-base font-bold text-ink">Chi partecipa?</div>
+            <div className={`mb-1 ${titleCls}`}>Chi partecipa?</div>
             <div className="mb-4 text-[13px] text-ink-2">Seleziona bambini e aggiungi amici</div>
             <div className="mb-2.5 text-[13px] font-bold text-ink">I tuoi bambini</div>
             {kids.length === 0 && !showAddKid && (
@@ -471,7 +487,7 @@ export default function BookingClient({
             ) : (
               <div
                 onClick={() => setShowAddKid(true)}
-                className="flex cursor-pointer items-center gap-2.5 rounded-md border-[1.5px] border-dashed border-[#C5CDD8] p-3 text-[13px] font-medium text-ink-2 transition-colors hover:border-sky hover:text-sky"
+                className={`flex cursor-pointer items-center gap-2.5 rounded-md border-[1.5px] border-dashed border-[#C5CDD8] p-3 text-[13px] font-medium text-ink-2 transition-colors ${accentHoverBorder} ${accentHoverText}`}
               >
                 <i className="ti ti-plus text-xl" />
                 Aggiungi bambino
@@ -482,22 +498,22 @@ export default function BookingClient({
               <ComingSoonBadge />
             </div>
             <div className="mb-2.5 text-xs text-ink-2">Invita amici per sconti di gruppo</div>
-            <div className="mt-2.5 flex items-center gap-3 rounded-md border-[1.5px] border-[#E3F0FB] bg-sky-light p-3 opacity-70 transition-colors">
-              <div className="flex h-[42px] w-[42px] flex-shrink-0 items-center justify-center rounded-full bg-sky-light">
-                <i className="ti ti-user-plus text-xl text-sky" />
+            <div className={`mt-2.5 flex items-center gap-3 rounded-md border-[1.5px] ${accentBorder} ${accentLight} p-3 opacity-70 transition-colors`}>
+              <div className={`flex h-[42px] w-[42px] flex-shrink-0 items-center justify-center rounded-full ${accentLight}`}>
+                <i className={`ti ti-user-plus text-xl ${accentText}`} />
               </div>
               <div>
-                <div className="text-sm font-semibold text-sky">Invita un amico</div>
+                <div className={`text-sm font-semibold ${accentText}`}>Invita un amico</div>
                 <div className="text-xs text-ink-2">Ottieni -10% per ogni amico</div>
               </div>
-              <i className="ti ti-share ml-auto text-lg text-sky" />
+              <i className={`ti ti-share ml-auto text-lg ${accentText}`} />
             </div>
           </div>
         )}
 
         {step === 3 && (
           <div>
-            <div className="mb-1 text-base font-bold text-ink">Pagamento</div>
+            <div className={`mb-1 ${titleCls}`}>Pagamento</div>
             <div className="mb-4 text-[13px] text-ink-2">Scegli il metodo di pagamento</div>
             <PayMethodCard
               icon="ti-credit-card"
@@ -614,7 +630,7 @@ export default function BookingClient({
             (step === 1 && dayBookingMode && selectedDayRows.length === 0) ||
             (step === 2 && selectedKids.length === 0)
           }
-          className="w-full rounded-lg bg-sky py-[15px] text-[15px] font-bold text-white transition-colors hover:bg-[#3A9FDC] disabled:cursor-not-allowed disabled:opacity-60"
+          className={`w-full rounded-lg ${accentBg} py-[15px] text-[15px] font-bold text-white transition-colors ${accentHoverBg} disabled:cursor-not-allowed disabled:opacity-60`}
         >
           {submitting ? "Attendere…" : step === 3 ? "Conferma e paga" : "Continua"}
         </button>

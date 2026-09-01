@@ -47,6 +47,14 @@ export default async function BookingSuccessPage({
 
   const summary = bookingId ? await getBookingSummary(bookingId) : null;
   const homeHref = await resolveHomeHref();
+  // Segnalazione di Fabrizio (01/09/2026, "grafica legacy" residua): il
+  // bottone "Torna alla Home" restava sky anche per un utente NEXTGEN.
+  // homeHref è già il segnale server-side risolto sopra (TRAMA_ONE_ENABLED)
+  // — lo riusiamo qui invece di richiamare resolveFeatureFlag una seconda
+  // volta, stesso principio già seguito dal link "Invita amici" sotto.
+  const nextgen = homeHref === "/nextgen";
+  const accentBg = nextgen ? "bg-trama-violet" : "bg-sky";
+  const accentHoverBg = nextgen ? "hover:bg-[#594F9E]" : "hover:bg-[#3A9FDC]";
 
   return (
     <PhoneShell>
@@ -85,7 +93,7 @@ export default async function BookingSuccessPage({
         />
         <Link
           href={homeHref}
-          className="mb-2.5 block w-full rounded-lg bg-sky py-3.5 text-sm font-bold text-white transition-colors hover:bg-[#3A9FDC]"
+          className={`mb-2.5 block w-full rounded-lg ${accentBg} py-3.5 text-sm font-bold text-white transition-colors ${accentHoverBg}`}
         >
           Torna alla Home
         </Link>

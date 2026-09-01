@@ -29,6 +29,10 @@ const tabs = ["I miei gruppi", "Scopri", "Inviti"];
 // questa schermata dalla bottom nav (nessun back, nessun basePath diverso
 // da "/groups"), NEXTGEN la raggiunge come sotto-pagina del Planner e ha
 // bisogno di un back-arrow e di restare dentro /nextgen/groups/*.
+// nextgen (01/09/2026, segnalazione Fabrizio "grafica legacy" in Gruppi):
+// la tab bar, "+Nuovo", il form "Crea gruppo", "Unisciti" (Scopri) e
+// "Accetta" (Inviti) erano hardcoded sky/orange. Stesso trattamento già
+// dato a GroupDetailClient.tsx (nextgen=false di default, Legacy invariato).
 export default function GroupsClient({
   initialGroups,
   initialPublicGroups,
@@ -37,6 +41,7 @@ export default function GroupsClient({
   backHref,
   showBrandIcon,
   initialTab,
+  nextgen = false,
 }: {
   initialGroups: GroupItem[];
   initialPublicGroups: PublicGroupItem[];
@@ -49,8 +54,14 @@ export default function GroupsClient({
   // di far scoprire la tab al genitore a tentativi. Opt-in, default assente
   // (comportamento invariato: parte sempre da "I miei gruppi" come prima).
   initialTab?: number;
+  nextgen?: boolean;
 }) {
   const router = useRouter();
+  const accentBg = nextgen ? "bg-trama-violet" : "bg-sky";
+  const accentFocus = nextgen ? "focus:border-trama-violet" : "focus:border-sky";
+  const accentLight = nextgen ? "bg-trama-lilac/20" : "bg-sky-light/40";
+  const accentBorder = nextgen ? "border-trama-lilac/40" : "border-[#E3F0FB]";
+  const titleCls = nextgen ? "font-poppins text-lg font-bold text-ink" : "text-lg font-bold text-ink";
   const [active, setActive] = useState(initialTab ?? 0);
   const [groups] = useState<GroupItem[]>(initialGroups);
   const [showNew, setShowNew] = useState(false);
@@ -93,7 +104,7 @@ export default function GroupsClient({
               className="h-5 w-auto flex-shrink-0"
             />
           )}
-          <h2 className="text-lg font-bold text-ink">Gruppi & Community</h2>
+          <h2 className={titleCls}>Gruppi & Community</h2>
         </div>
         <div className="flex rounded-lg bg-[#F4F6FA] p-[3px]">
           {tabs.map((t, i) => (
@@ -108,7 +119,7 @@ export default function GroupsClient({
             >
               {t}
               {i === 2 && initialInvites.length > 0 && (
-                <span className="ml-1 inline-flex h-4 min-w-[16px] items-center justify-center rounded-full bg-orange px-1 text-[9px] font-bold text-white">
+                <span className={`ml-1 inline-flex h-4 min-w-[16px] items-center justify-center rounded-full ${accentBg} px-1 text-[9px] font-bold text-white`}>
                   {initialInvites.length}
                 </span>
               )}
@@ -133,7 +144,7 @@ export default function GroupsClient({
             {!showNew && (
               <button
                 onClick={() => setShowNew(true)}
-                className="ml-auto whitespace-nowrap rounded-md bg-sky px-3 py-2 text-xs font-bold text-white"
+                className={`ml-auto whitespace-nowrap rounded-md ${accentBg} px-3 py-2 text-xs font-bold text-white`}
               >
                 + Nuovo
               </button>
@@ -141,12 +152,12 @@ export default function GroupsClient({
           </div>
 
           {showNew && (
-            <div className="mx-5 mb-3 rounded-md border-[1.5px] border-[#E3F0FB] bg-sky-light/40 p-3">
+            <div className={`mx-5 mb-3 rounded-md border-[1.5px] ${accentBorder} ${accentLight} p-3`}>
               <input
                 value={newName}
                 onChange={(e) => setNewName(e.target.value)}
                 placeholder="Nome del gruppo"
-                className="mb-2 w-full rounded-md border border-[#E8EBF0] bg-white px-3 py-2 text-sm outline-none focus:border-sky"
+                className={`mb-2 w-full rounded-md border border-[#E8EBF0] bg-white px-3 py-2 text-sm outline-none ${accentFocus}`}
               />
               {error && <p className="mb-2 text-xs font-medium text-orange">{error}</p>}
               <div className="flex gap-2">
@@ -154,7 +165,7 @@ export default function GroupsClient({
                   type="button"
                   onClick={handleCreate}
                   disabled={saving}
-                  className="rounded-md bg-sky px-4 py-2 text-xs font-bold text-white disabled:opacity-60"
+                  className={`rounded-md ${accentBg} px-4 py-2 text-xs font-bold text-white disabled:opacity-60`}
                 >
                   {saving ? "Creo…" : "Crea gruppo"}
                 </button>
@@ -180,14 +191,18 @@ export default function GroupsClient({
           )}
 
           {groups.map((g) => (
-            <GroupCard key={g.id} group={g} basePath={basePath} />
+            <GroupCard key={g.id} group={g} basePath={basePath} nextgen={nextgen} />
           ))}
           <div className="h-5" />
         </>
       )}
 
-      {active === 1 && <ScopriTab initialPublicGroups={initialPublicGroups} basePath={basePath} />}
-      {active === 2 && <InvitiTab initialInvites={initialInvites} basePath={basePath} />}
+      {active === 1 && (
+        <ScopriTab initialPublicGroups={initialPublicGroups} basePath={basePath} nextgen={nextgen} />
+      )}
+      {active === 2 && (
+        <InvitiTab initialInvites={initialInvites} basePath={basePath} nextgen={nextgen} />
+      )}
     </div>
   );
 }
@@ -198,10 +213,13 @@ export default function GroupsClient({
 function ScopriTab({
   initialPublicGroups,
   basePath = "/groups",
+  nextgen = false,
 }: {
   initialPublicGroups: PublicGroupItem[];
   basePath?: string;
+  nextgen?: boolean;
 }) {
+  const accentBg = nextgen ? "bg-trama-violet" : "bg-sky";
   const router = useRouter();
   const [groups, setGroups] = useState(initialPublicGroups);
   const [joiningId, setJoiningId] = useState<string | null>(null);
@@ -255,7 +273,7 @@ function ScopriTab({
           <button
             onClick={() => handleJoin(g.id)}
             disabled={joiningId === g.id}
-            className="flex-shrink-0 whitespace-nowrap rounded-md bg-sky px-3 py-2 text-xs font-bold text-white disabled:opacity-60"
+            className={`flex-shrink-0 whitespace-nowrap rounded-md ${accentBg} px-3 py-2 text-xs font-bold text-white disabled:opacity-60`}
           >
             {joiningId === g.id ? "Un momento…" : "Unisciti"}
           </button>
@@ -271,10 +289,13 @@ function ScopriTab({
 function InvitiTab({
   initialInvites,
   basePath = "/groups",
+  nextgen = false,
 }: {
   initialInvites: GroupInviteItem[];
   basePath?: string;
+  nextgen?: boolean;
 }) {
+  const accentBg = nextgen ? "bg-trama-violet" : "bg-sky";
   const router = useRouter();
   const [invites, setInvites] = useState(initialInvites);
   const [busyId, setBusyId] = useState<string | null>(null);
@@ -333,7 +354,7 @@ function InvitiTab({
             <button
               onClick={() => handleAccept(inv.id)}
               disabled={busyId === inv.id}
-              className="rounded-md bg-sky px-3.5 py-2 text-xs font-bold text-white disabled:opacity-60"
+              className={`rounded-md ${accentBg} px-3.5 py-2 text-xs font-bold text-white disabled:opacity-60`}
             >
               {busyId === inv.id ? "Un momento…" : "Accetta"}
             </button>

@@ -141,6 +141,15 @@ export default function PrenotazioniClient({
   // Default false: nessun impatto sul call site LEGACY esistente.
   showBrandIcon?: boolean;
 }) {
+  // Segnalazione di Fabrizio (01/09/2026, "grafica legacy" residua): solo
+  // CoverageStrip aveva la variante nextgen (via showBrandIcon come proxy),
+  // il resto della pagina (StatCard, link "Modifica", box "Proposta del
+  // centro") restava sky hardcoded. showBrandIcon è già il segnale
+  // affidabile "questa pagina è montata da NEXTGEN" (stesso identico prop
+  // usato sopra per CoverageStrip) — lo riusiamo qui come `nextgen` per
+  // restare coerenti con lo stesso pattern del resto dell'app invece di
+  // aggiungere un secondo prop ridondante.
+  const nextgen = !!showBrandIcon;
   const router = useRouter();
   const [view, setView] = useState<ViewKey>("elenco");
   const [kidFilter, setKidFilter] = useState<string | null>(initialKidFilter);
@@ -248,16 +257,17 @@ export default function PrenotazioniClient({
             per la variante viola coi pallozzi (feedback Fabrizio 31/08:
             coerenza con la Hero Card di Home). LEGACY (showBrandIcon
             assente) resta con la card bianca invariata. */}
-        <CoverageStrip planner={planner} nextgen={showBrandIcon} />
+        <CoverageStrip planner={planner} nextgen={nextgen} />
 
         {/* 3) Statistiche sintetiche */}
         <div className="mt-3 grid grid-cols-3 gap-2.5">
-          <StatCard label="Attività prenotate" value={String(stats.count)} icon="ti-ticket" />
-          <StatCard label="Speso finora" value={`€${stats.totalSpent}`} icon="ti-coin" />
+          <StatCard label="Attività prenotate" value={String(stats.count)} icon="ti-ticket" nextgen={nextgen} />
+          <StatCard label="Speso finora" value={`€${stats.totalSpent}`} icon="ti-coin" nextgen={nextgen} />
           <StatCard
             label="Prossimo impegno"
             value={stats.next ? stats.next.firstWeekLabel ?? "—" : "Nessuno"}
             icon="ti-calendar-event"
+            nextgen={nextgen}
           />
         </div>
 
@@ -391,6 +401,7 @@ export default function PrenotazioniClient({
                               onAskCancel={() => setConfirmCancelId(b.id)}
                               onCancelConfirmed={() => handleCancel(b.id)}
                               onCancelAbort={() => setConfirmCancelId(null)}
+                              nextgen={nextgen}
                             />
                           ))}
                         </div>
@@ -407,10 +418,21 @@ export default function PrenotazioniClient({
   );
 }
 
-function StatCard({ label, value, icon }: { label: string; value: string; icon: string }) {
+function StatCard({
+  label,
+  value,
+  icon,
+  nextgen,
+}: {
+  label: string;
+  value: string;
+  icon: string;
+  nextgen?: boolean;
+}) {
+  const accentText = nextgen ? "text-trama-violet" : "text-sky";
   return (
     <div className="rounded-xl border border-[#E8EBF0] bg-white p-3">
-      <i className={`ti ${icon} text-[15px] text-sky`} />
+      <i className={`ti ${icon} text-[15px] ${accentText}`} />
       <div className="mt-1.5 truncate text-[13px] font-bold text-ink">{value}</div>
       <div className="text-[10.5px] leading-tight text-ink-2">{label}</div>
     </div>
@@ -572,6 +594,7 @@ function BookingCard({
   onAskCancel,
   onCancelConfirmed,
   onCancelAbort,
+  nextgen,
 }: {
   booking: MyBooking;
   highlighted: boolean;
@@ -580,7 +603,10 @@ function BookingCard({
   onAskCancel: () => void;
   onCancelConfirmed: () => void;
   onCancelAbort: () => void;
+  nextgen?: boolean;
 }) {
+  const accentText = nextgen ? "text-trama-violet" : "text-sky";
+  const accentLight = nextgen ? "bg-trama-lilac/20" : "bg-sky-light";
   return (
     <div
       id={`booking-${b.id}`}
@@ -616,8 +642,8 @@ function BookingCard({
               quindi va segnalato qui esplicitamente, non solo con lo status
               badge sopra (che mostrerebbe ancora "In attesa"). */}
           {b.partnerDecision === "proposed" && b.partnerProposalNote && (
-            <div className="mt-1.5 rounded-md bg-sky-light p-2 text-[11px] text-ink">
-              <span className="font-semibold text-sky">Proposta del centro: </span>
+            <div className={`mt-1.5 rounded-md ${accentLight} p-2 text-[11px] text-ink`}>
+              <span className={`font-semibold ${accentText}`}>Proposta del centro: </span>
               {b.partnerProposalNote}
             </div>
           )}
@@ -637,7 +663,7 @@ function BookingCard({
             <>
               <Link
                 href={`/prenotazioni/${b.id}/modifica`}
-                className="flex items-center gap-1 text-[12px] font-semibold text-sky"
+                className={`flex items-center gap-1 text-[12px] font-semibold ${accentText}`}
               >
                 <i className="ti ti-edit text-[13px]" /> Modifica
               </Link>

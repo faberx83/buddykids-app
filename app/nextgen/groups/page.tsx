@@ -8,6 +8,13 @@ import { getGroupsForUser, getPublicGroups, getMyGroupInvites } from "@/lib/data
 // LEGACY (vedi components/BottomNav.tsx, "/groups" è una voce primaria
 // LEGACY). basePath="/nextgen/groups" fa sì che creazione gruppo, "Unisciti"
 // da Scopri e accettazione inviti restino tutte dentro NEXTGEN.
+//
+// nextgen (01/09/2026, segnalazione Fabrizio "grafica legacy" in Gruppi):
+// GroupsClient era riusato COSÌ COM'ERA (accento sky/orange) — ora
+// nextgen=true attiva la variante violetta/Poppins su tab bar, "+Nuovo",
+// "Crea gruppo", "Unisciti" e "Accetta", stesso principio di
+// GroupDetailClient.tsx. Legacy (app/(main)/groups/page.tsx, nessuna
+// prop nextgen) resta invariato.
 export default async function NextgenGroupsPage({
   searchParams,
 }: {
@@ -31,6 +38,7 @@ export default async function NextgenGroupsPage({
       backHref="/nextgen/planner"
       showBrandIcon
       initialTab={params.tab === "inviti" ? 2 : undefined}
+      nextgen
     />
   );
 }

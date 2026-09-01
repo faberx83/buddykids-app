@@ -6,6 +6,8 @@ import { getEligibleInviteDiscount } from "@/lib/data/invites";
 import { getActivityDays } from "@/lib/data/activity-days";
 import { createClient } from "@/lib/supabase/server";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
+import { resolveFeatureFlag } from "@/lib/feature-flags/resolve";
+import { generateCorrelationId } from "@/lib/telemetry/correlation";
 import PhoneShell from "@/components/PhoneShell";
 import BookingClient from "./BookingClient";
 
@@ -27,12 +29,28 @@ export default async function BookingPage({
   // Prenotare scrive davvero su Supabase (bookings/booking_weeks/booking_kids)
   // legato all'utente autenticato: qui, a differenza del dettaglio attività,
   // richiediamo il login prima di entrare nel flusso.
+  //
+  // nextgen (01/09/2026, segnalazione Fabrizio "grafica legacy" nel flusso di
+  // prenotazione): non esiste una route /nextgen/booking dedicata — Legacy e
+  // NextGen linkano entrambi a /booking/[id] (vedi app/activity/[id]/
+  // DetailClient.tsx e components/PlannerView.tsx) — quindi il flag va
+  // risolto qui server-side, stesso resolver TRAMA_ONE_ENABLED già usato da
+  // resolveHomeHref() in app/booking/[id]/success/page.tsx, invece che dalla
+  // route (che qui non distingue i due profili).
+  let nextgen = false;
   if (isSupabaseConfigured) {
     const supabase = await createClient();
     const {
       data: { user },
     } = await supabase.auth.getUser();
     if (!user) redirect(`/auth/login?next=/booking/${id}`);
+    nextgen = await resolveFeatureFlag({
+      flagName: "TRAMA_ONE_ENABLED",
+      userId: user.id,
+      role: "parent",
+      tenant: "family",
+      correlationId: generateCorrelationId(),
+    });
   }
 
   const activity = await getActivityBySlug(id);
@@ -63,6 +81,7 @@ export default async function BookingPage({
         bookedWeekIds={bookedWeekIds}
         inviteDiscount={inviteDiscount}
         days={days}
+        nextgen={nextgen}
       />
     </PhoneShell>
   );
