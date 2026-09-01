@@ -9,25 +9,31 @@ import { loginAs, isRealDeployment } from "../fixtures/roles";
 // per il dettaglio completo di ciascuna modifica.
 
 test.describe("NEXTGEN - Planner, Organizzazione semplificata", () => {
-  test("TC-N97 - Promemoria/Missioni mostrano un solo avviso di default, con 'Mostra tutti' per il resto", async ({
+  // TRAMA BETA v1.1.1 (UI Refinement, punto 3) — "Mostra tutti (N)" è
+  // diventato "Altri N avvisi" (N = avvisi NASCOSTI, non il totale — un
+  // avviso è già visibile di default), copy più contestuale al posto del
+  // conteggio assoluto ripetuto. Comportamento/stato (showAllAlerts)
+  // invariato.
+  test("TC-N97 - Promemoria/Missioni mostrano un solo avviso di default, con 'Altri N avvisi' per il resto", async ({
     page,
   }) => {
     test.skip(!isRealDeployment, "Richiede un deploy con Supabase configurato e un account genitore di test con almeno 2 avvisi (promemoria+missioni) attivi.");
     await loginAs(page, "parent");
     await page.goto("/nextgen/planner");
 
-    const showAllButton = page.getByRole("button", { name: /Mostra tutti \(\d+\)/ });
+    const showAllButton = page.getByRole("button", { name: /Altri \d+ avvis[io]/ });
     if (!(await showAllButton.isVisible().catch(() => false))) {
       test.skip(true, "L'account di test ha 0 o 1 solo avviso attivo: nulla da espandere.");
     }
-    const countMatch = (await showAllButton.textContent())!.match(/\((\d+)\)/);
-    const total = countMatch ? Number(countMatch[1]) : 0;
+    const label = await showAllButton.textContent();
 
     await showAllButton.click();
     await expect(page.getByRole("button", { name: "Mostra meno" })).toBeVisible();
     // Torna alla visualizzazione compatta.
     await page.getByRole("button", { name: "Mostra meno" }).click();
-    await expect(page.getByRole("button", { name: `Mostra tutti (${total})` })).toBeVisible();
+    if (label) {
+      await expect(page.getByRole("button", { name: label.trim() })).toBeVisible();
+    }
   });
 
   // PLANNER BETA v1.1 (Wave 1, punto 2B) — "Copertura per bambino" è ora
@@ -161,7 +167,8 @@ test.describe("NEXTGEN - Planner, Organizzazione semplificata", () => {
     const overlapPattern = /risulta prenotat[oa] due volte in .*: controlla quale attività tenere\./;
     let overlapAlert = page.getByRole("link", { name: overlapPattern }).first();
     if (!(await overlapAlert.isVisible().catch(() => false))) {
-      const showAll = page.getByRole("button", { name: /Mostra tutti/ });
+      // TRAMA BETA v1.1.1 — "Mostra tutti (N)" è diventato "Altri N avvisi".
+      const showAll = page.getByRole("button", { name: /Altri \d+ avvis[io]/ });
       if (await showAll.isVisible().catch(() => false)) {
         await showAll.click();
         overlapAlert = page.getByRole("link", { name: overlapPattern }).first();

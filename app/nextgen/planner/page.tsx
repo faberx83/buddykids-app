@@ -102,6 +102,12 @@ export default async function NextgenPlannerPage() {
       missions={missions}
       reminders={reminders}
       seasonBudgetTarget={profile.seasonBudgetTarget}
+      // TRAMA BETA v1.1.1 (UI Refinement, punto 15) — profile.parentRole era
+      // già letto qui (riga sopra, getParentProfile()) ma mai passato a
+      // valle: nessuna nuova query, solo un prop in più per risolvere
+      // "Mamma"/"Papà" nel selettore Chi fa cosa (vedi
+      // lib/nextgen/responsibility-options.ts#resolveResponsibleOptions).
+      parentRole={profile.parentRole}
       responsibilities={responsibilities}
       existingShares={existingShares}
       mapPins={mapPins}

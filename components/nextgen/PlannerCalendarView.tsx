@@ -13,12 +13,15 @@ import { buildCalendarMonths, defaultMonthKey, CalendarDay } from "@/lib/nextgen
 import {
   WeekResponsibility,
   ResponsibleValue,
-  RESPONSIBLE_OPTIONS,
   Weekday,
   Moment,
   WEEKDAYS,
   MOMENTS,
+  resolveResponsibleOptions,
 } from "@/lib/nextgen/responsibility-options";
+// "import type": ParentRole è solo un tipo, non trascina lib/supabase/server
+// nel bundle client — stesso motivo di SeasonWeek/KidOverlap qui sopra.
+import type { ParentRole } from "@/lib/data/profile";
 import {
   setResponsibilityAction,
   clearResponsibilityAction,
@@ -83,14 +86,24 @@ export default function PlannerCalendarView({
   overlaps,
   responsibilities,
   existingShares,
+  parentRole,
 }: {
   weeks: SeasonWeek[];
   kids: Kid[];
   overlaps: KidOverlap[];
   responsibilities: WeekResponsibility[];
   existingShares: PlanShare[];
+  // TRAMA BETA v1.1.1 (UI Refinement, punto 15) — usato solo per risolvere
+  // l'etichetta "Mamma"/"Papà"/"Partner" nel selettore sotto, vedi
+  // resolveResponsibleOptions.
+  parentRole: ParentRole | null;
 }) {
   const showToast = useNextgenToast();
+  // ADAPT: stessa lista RESPONSIBLE_OPTIONS di sempre, solo la label/emoji
+  // dell'opzione "partner" viene risolta dinamicamente in base al ruolo del
+  // genitore che sta guardando lo schermo — nessuna nuova opzione, nessun
+  // cambio al valore tecnico persistito ("partner" resta invariato in DB).
+  const responsibleOptions = useMemo(() => resolveResponsibleOptions(parentRole), [parentRole]);
   const [viewMode, setViewMode] = useState<ViewMode>("mese");
   const months = useMemo(() => buildCalendarMonths(weeks, kids, overlaps), [weeks, kids, overlaps]);
   const todayIso = useMemo(() => new Date().toISOString().slice(0, 10), []);
@@ -676,7 +689,7 @@ export default function PlannerCalendarView({
                     })}
                   </div>
                   <div className="flex flex-wrap gap-1.5">
-                    {RESPONSIBLE_OPTIONS.map((opt) => (
+                    {responsibleOptions.map((opt) => (
                       <button
                         key={opt.value}
                         type="button"
@@ -801,7 +814,7 @@ export default function PlannerCalendarView({
                                   const key = respKey(k.kidId, weekStartDate, wd.value, mo.value);
                                   const current = localResp[key];
                                   const currentOption = current
-                                    ? RESPONSIBLE_OPTIONS.find((o) => o.value === current.responsible)
+                                    ? responsibleOptions.find((o) => o.value === current.responsible)
                                     : null;
                                   const isAssigning = assigningKey === key;
                                   const currentLabel = current
@@ -859,7 +872,7 @@ export default function PlannerCalendarView({
                                     return (
                                       <>
                                         <div className="flex flex-wrap gap-1.5">
-                                          {RESPONSIBLE_OPTIONS.map((opt) => (
+                                          {responsibleOptions.map((opt) => (
                                             <button
                                               key={opt.value}
                                               type="button"

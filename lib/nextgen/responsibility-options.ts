@@ -47,3 +47,33 @@ export interface WeekResponsibility {
   responsible: ResponsibleValue;
   responsibleLabel: string | null; // solo per responsible="altro"
 }
+
+// TRAMA BETA v1.1.1 (UI Refinement, punto 15 — "Mamma/Papà contestuale") —
+// segnalazione: il selettore mostrava sempre "Partner" in modo generico,
+// anche quando l'app conosce già il ruolo del genitore che sta guardando lo
+// schermo (profiles.parent_role, "padre"/"madre"/"tutore" — già letto da
+// app/nextgen/planner/page.tsx come profile.parentRole, ma mai passato più
+// giù). ADAPT, non NEW: nessuna nuova opzione responsabile, nessuna
+// modifica allo schema — riusiamo lo stesso valore tecnico "partner" già
+// persistito (week_responsibilities.responsible resta invariato: "partner"
+// in DB, qualunque sia l'etichetta mostrata), risolvendo dinamicamente solo
+// la LABEL visibile. "import type" per ParentRole (da lib/data/profile.ts,
+// che importa lib/supabase/server): il tipo viene eliminato a compile-time,
+// stesso pattern già usato per SeasonWeek/KidOverlap altrove in questo
+// modulo client-safe — nessun import server-only finisce nel bundle client.
+//
+// Nessuna inferenza da nome/avatar/sesso presunto/email (esplicitamente
+// vietato dalla revisione): SOLO parent_role, esplicito nel profilo. Se il
+// ruolo non è noto (profilo incompleto) o è "tutore", fallback a "Partner"
+// (comportamento identico a prima).
+import type { ParentRole } from "@/lib/data/profile";
+
+export function resolveResponsibleOptions(
+  parentRole: ParentRole | null
+): { value: ResponsibleValue; emoji: string; label: string }[] {
+  const partnerLabel = parentRole === "padre" ? "Mamma" : parentRole === "madre" ? "Papà" : "Partner";
+  const partnerEmoji = parentRole === "padre" ? "👩" : parentRole === "madre" ? "👨" : "❤️";
+  return RESPONSIBLE_OPTIONS.map((opt) =>
+    opt.value === "partner" ? { ...opt, label: partnerLabel, emoji: partnerEmoji } : opt
+  );
+}

@@ -46,8 +46,9 @@ test.describe("NEXTGEN - Planner Organizzazione, Sprint 2 (Timeline mensile)", (
     let alertButton = page.getByRole("button", { name: alertPattern }).first();
     if (!(await alertButton.isVisible().catch(() => false))) {
       // SPRINT 7 — un solo alert mostrato di default: se quello prioritario
-      // non è il più urgente, va rivelato con "Mostra tutti".
-      const showAll = page.getByRole("button", { name: /Mostra tutti/ });
+      // non è il più urgente, va rivelato con il toggle. TRAMA BETA v1.1.1 —
+      // "Mostra tutti (N)" è diventato "Altri N avvisi".
+      const showAll = page.getByRole("button", { name: /Altri \d+ avvis[io]/ });
       if (await showAll.isVisible().catch(() => false)) {
         await showAll.click();
         alertButton = page.getByRole("button", { name: alertPattern }).first();

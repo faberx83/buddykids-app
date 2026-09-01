@@ -28,6 +28,10 @@ import type { Reminder } from "@/lib/nextgen/reminders";
 // — ParentAddress è solo un tipo, quindi non trascina lib/data/addresses.ts
 // (che importa lib/supabase/server) nel bundle client.
 import type { ParentAddress } from "@/lib/nextgen/address-kinds";
+// "import type": stesso motivo — ParentRole è solo un tipo (da
+// lib/data/profile.ts, che importa lib/supabase/server), non trascina il
+// modulo server nel bundle client.
+import type { ParentRole } from "@/lib/data/profile";
 import { Kid, CommunityItem, GroupItem } from "@/lib/types";
 import { lightBgClasses } from "@/lib/colors";
 // Wiring mancante segnalato da Fabrizio (26/08/2026): "Non mi serve" esiste
@@ -95,6 +99,7 @@ export default function PlannerClient({
   missions,
   reminders,
   seasonBudgetTarget,
+  parentRole,
   responsibilities,
   existingShares,
   mapPins,
@@ -115,6 +120,10 @@ export default function PlannerClient({
   missions: Mission[];
   reminders: Reminder[];
   seasonBudgetTarget: number | null;
+  // TRAMA BETA v1.1.1 (UI Refinement, punto 15) — già letto server-side da
+  // getParentProfile() in page.tsx, ora anche passato a valle per
+  // risolvere "Mamma"/"Papà" nel selettore Chi fa cosa (PlannerCalendarView).
+  parentRole: ParentRole | null;
   responsibilities: WeekResponsibility[];
   existingShares: PlanShare[];
   mapPins: PlannerMapPin[];
@@ -334,14 +343,25 @@ export default function PlannerClient({
             (che restano invariati e continuano a funzionare per tutti gli
             altri usi, es. Home/Admin/Center, mai stati rotti). */}
         <NextgenBadge />
-        <DecorativeIntroCard className="mb-4">
-          {/* Audit font (31/08/2026, screenshot di Fabrizio su questa esatta
-              riga): text-xs (12px) era piccolo per una descrizione
-              introduttiva di sezione — portato a text-sm (14px), stessa
-              dimensione applicata alla gemella identica in
-              SearchDiscoveryClient.tsx per restare consistenti. */}
-          <p className="text-sm text-ink-2">{PLANNER_MODE_DESCRIPTIONS[mode]}</p>
-        </DecorativeIntroCard>
+        {/* TRAMA BETA v1.1.1 (UI Refinement, punto 2) — segnalazione: il box
+            descrittivo occupava uno spazio hero prima ancora della vera
+            informazione utile (copertura reale). Per la modalità
+            Organizzazione la card introduttiva viene rimossa: la Coverage
+            Hero (subito sotto, dentro il branch "organizzazione") diventa
+            il primo contenuto e assorbe quel ruolo. Per le altre 3 modalità
+            (Mappa/Budget/Gruppi) — fuori dal perimetro di questa revisione,
+            "NON tornare a ridisegnare l'architettura" — la card resta
+            invariata. */}
+        {mode !== "organizzazione" && (
+          <DecorativeIntroCard className="mb-4">
+            {/* Audit font (31/08/2026, screenshot di Fabrizio su questa esatta
+                riga): text-xs (12px) era piccolo per una descrizione
+                introduttiva di sezione — portato a text-sm (14px), stessa
+                dimensione applicata alla gemella identica in
+                SearchDiscoveryClient.tsx per restare consistenti. */}
+            <p className="text-sm text-ink-2">{PLANNER_MODE_DESCRIPTIONS[mode]}</p>
+          </DecorativeIntroCard>
+        )}
 
         <PlannerModeTabs mode={mode} onChange={setMode} />
 
@@ -389,7 +409,7 @@ export default function PlannerClient({
             sovrapposizione con azione "link" verso /nextgen/prenotazioni —
             nessun nuovo box alert introdotto. */}
         {allAlerts.length > 0 && (
-          <div className="mb-4 flex flex-col gap-2">
+          <div className="mb-4 flex flex-col gap-1.5">
             {(showAllAlerts ? allAlerts : allAlerts.slice(0, 1)).map((a) => {
               // SPRINT 7 — spazio a destra riservato alla X di dismiss, cosi'
               // non si sovrappone al testo o alla freccina di azione.
@@ -457,13 +477,19 @@ export default function PlannerClient({
                 </div>
               );
             })}
+            {/* TRAMA BETA v1.1.1 (UI Refinement, punto 3) — segnalazione:
+                "Mostra tutti (6)" sembrava un link scollegato dall'avviso
+                sopra. Testo reso contestuale ("Altri N avvisi", N = avvisi
+                nascosti, non il totale) invece di ripetere il conteggio
+                assoluto — nessuna nuova card, stessa azione/stato
+                (showAllAlerts) di prima. */}
             {allAlerts.length > 1 && (
               <button
                 type="button"
                 onClick={() => setShowAllAlerts((v) => !v)}
                 className="self-start text-[11.5px] font-semibold text-trama-violet active:bg-black/[0.04]"
               >
-                {showAllAlerts ? "Mostra meno" : `Mostra tutti (${allAlerts.length})`}
+                {showAllAlerts ? "Mostra meno" : `Altri ${allAlerts.length - 1} avvis${allAlerts.length - 1 === 1 ? "o" : "i"}`}
               </button>
             )}
           </div>
@@ -525,17 +551,22 @@ export default function PlannerClient({
             prioritaria (dove il primo suggerimento è mostrato in evidenza,
             vedi Wave 2). recommendations è già calcolata server-side solo
             per priorityWeek (page.tsx) — se non c'è nessuna settimana
-            prioritaria, recommendations è già vuota per costruzione. */}
+            prioritaria, recommendations è già vuota per costruzione.
+            TRAMA BETA v1.1.1 (UI Refinement, punto 5) — il teaser era una
+            card bg-white a piena larghezza, che competeva visivamente con
+            la CTA dominante "Riempi settimana" appena sopra. Convertito in
+            un semplice link testuale terziario (nessun container, icona
+            discreta), coerente con "non deve competere con la CTA
+            primaria". Stesso href/comportamento/dato, solo peso visivo
+            ridotto. */}
         {recommendations.length > 0 && priorityWeek && (
           <Link
             href={`/nextgen/planner/settimana/${priorityWeek.startDate}`}
-            className="mb-3 flex items-center justify-between rounded-2xl bg-white p-3.5 active:bg-black/[0.06]"
+            className="mb-3 flex items-center gap-1.5 self-start text-[12.5px] font-semibold text-trama-violet active:bg-black/[0.04]"
           >
-            <span className="flex items-center gap-2 text-[12.5px] font-semibold text-ink">
-              <i className="ti ti-sparkles text-[15px] text-trama-violet" />
-              Suggerimenti per te · {recommendations.length}
-            </span>
-            <i className="ti ti-chevron-right flex-shrink-0 text-base text-ink-3" />
+            <i className="ti ti-sparkles text-[13px]" />
+            Suggerimenti per te · {recommendations.length}
+            <i className="ti ti-chevron-right text-[13px]" />
           </Link>
         )}
 
@@ -668,6 +699,7 @@ export default function PlannerClient({
                 overlaps={overlaps}
                 responsibilities={responsibilities}
                 existingShares={existingShares}
+                parentRole={parentRole}
               />
             </div>
           )}
@@ -909,6 +941,25 @@ export default function PlannerClient({
                             </Link>
                           );
                         }
+                        // TRAMA BETA v1.1.1 (UI Refinement, punto 6) —
+                        // "quando si espande la Timeline, non deve
+                        // ricomparire il vecchio Planner denso... niente CTA
+                        // 'Riempi' ripetute". La riga stessa diventa
+                        // navigabile verso il Dettaglio Settimana (Wave 2 di
+                        // Planner Beta v1.1): lì il genitore trova la stessa
+                        // identica capability (suggerimento principale +
+                        // "Vedi tutte in Scopri", entrambi con "?week=" già
+                        // preselezionato) senza bisogno di un secondo bottone
+                        // "Riempi" ripetuto per ogni riga. Nessuna capability
+                        // persa, solo un salto indiretto in più — coerente
+                        // con il modello di progressive disclosure già
+                        // adottato per "Prossime settimane da completare".
+                        // Righe "Non ti serve"/passate NON diventano
+                        // navigabili (il Dettaglio Settimana non gestisce
+                        // quegli stati in modo utile): restano righe
+                        // informative, invariate. "Non mi serve"/"Ripristina"
+                        // restano bottoni SEPARATI dal Link (mai annidati:
+                        // un <button> dentro un <a> non è HTML valido).
                         return (
                           <div
                             key={w.index}
@@ -917,7 +968,24 @@ export default function PlannerClient({
                               isHighlighted ? "ring-2 ring-trama-violet" : ""
                             }`}
                           >
-                            {rowContent}
+                            {!w.dismissed && !isPastUncovered ? (
+                              <Link
+                                href={`/nextgen/planner/settimana/${w.startDate}`}
+                                className="flex min-w-0 flex-1 items-center gap-3 active:bg-black/[0.06]"
+                              >
+                                {rowContent}
+                                {/* Affordance di clickabilità — prima limitata
+                                    alle sole righe coperte con bookingId,
+                                    ora serve anche qui perché l'intera riga
+                                    è diventata un link verso il Dettaglio
+                                    Settimana. */}
+                                {!(w.covered && w.bookingId) && (
+                                  <i className="ti ti-chevron-right flex-shrink-0 text-base text-ink-3" />
+                                )}
+                              </Link>
+                            ) : (
+                              <div className="flex min-w-0 flex-1 items-center gap-3">{rowContent}</div>
+                            )}
                             {/* Wiring "Non ti serve"/"Ripristina" (26/08/2026,
                                 Fabrizio: l'azione esisteva solo lato LEGACY,
                                 components/PlannerView.tsx — stessa azione
@@ -953,25 +1021,6 @@ export default function PlannerClient({
                                   Non mi serve
                                 </button>
                               )
-                            )}
-                            {/* BUG CORRETTO 06/08/2026 (segnalato da
-                                Fabrizio: "se clicco una settimana 'riempi'
-                                poi nella sezione 'scopri' deve essere già
-                                applicato il filtro sulla settimana che ho
-                                selezionato") — "Riempi" portava sempre a
-                                "/nextgen/search" senza dire QUALE settimana,
-                                cosi' Scopri precompilava sempre la prima
-                                settimana scoperta della stagione invece di
-                                quella su cui si era davvero cliccato. Ora
-                                passa "?week=<data ISO>" (letto da
-                                SearchDiscoveryClient.tsx). */}
-                            {!w.dismissed && !w.covered && !isPastUncovered && (
-                              <Link
-                                href={`/nextgen/search?week=${w.startDate}`}
-                                className="flex-shrink-0 rounded-full bg-trama-violet px-3 py-1.5 text-[11px] font-bold text-white active:scale-[0.97]"
-                              >
-                                Riempi
-                              </Link>
                             )}
                           </div>
                         );

@@ -198,17 +198,16 @@ test.describe("NEXTGEN - Planner (Sprint 3)", () => {
   // area di regressione esplicitamente richiesta, oltre ai test puri su
   // computeWeekStatus (tests/nextgen/planner-week-status.spec.ts). Il fix
   // del 06/08/2026 (Task #518/#519) ha aggiunto "?week=<data ISO>" al link
-  // "Riempi" (vedi PlannerClient.tsx riga ~797) letto da
-  // SearchDiscoveryClient.tsx (riga ~262) per pre-applicare il filtro
-  // settimana in Scopri — nessun test end-to-end lo copriva ancora.
-  // PLANNER BETA v1.1 (Wave 1) — il "Riempi" per singola settimana non vive
-  // più nell'Overview di default (sostituito dalla CTA dominante "Riempi
-  // settimana" legata alla settimana prioritaria + dalle righe di "Prossime
-  // settimane da completare", che aprono il Dettaglio Settimana invece di
-  // un link diretto): resta però, invariato, nella Timeline completa
-  // (consultazione secondaria dietro "Vedi tutte le settimane") — qui
-  // apriamo esplicitamente quella prima di cercare il bottone.
-  test("TC-N670 - 'Riempi' su una settimana scoperta (Timeline completa) porta a Scopri con quella settimana già preselezionata", async ({
+  // "Riempi" letto da SearchDiscoveryClient.tsx (riga ~262) per
+  // pre-applicare il filtro settimana in Scopri.
+  // TRAMA BETA v1.1.1 (UI Refinement, punto 6) — il bottone "Riempi" per
+  // singola riga è stato rimosso anche dalla Timeline completa ("niente CTA
+  // Riempi ripetute"): la riga stessa è ora un link verso il Dettaglio
+  // Settimana, che porta avanti lo stesso "?week=" tramite il proprio link
+  // "Vedi tutte in Scopri" — stessa capability, un salto indiretto in più.
+  // Test aggiornato per esercitare questo percorso reale invece del bottone
+  // rimosso.
+  test("TC-N670 - una riga della Timeline apre il Dettaglio Settimana, che porta a Scopri con quella settimana già preselezionata", async ({
     page,
   }) => {
     test.skip(!isRealDeployment, "Richiede un deploy con Supabase configurato e un account genitore di test con almeno una settimana scoperta futura.");
@@ -216,14 +215,21 @@ test.describe("NEXTGEN - Planner (Sprint 3)", () => {
     await page.goto("/nextgen/planner");
     await page.getByRole("button", { name: "Vedi tutte le settimane" }).click();
 
-    const riempiButton = page.getByRole("link", { name: "Riempi" }).first();
-    if (!(await riempiButton.isVisible().catch(() => false))) {
-      test.skip(true, "Nessuna settimana scoperta futura per l'account di test (nessun bottone 'Riempi' visibile).");
+    const weekDetailRow = page.locator('[id^="week-row-"] a[href^="/nextgen/planner/settimana/"]').first();
+    if (!(await weekDetailRow.isVisible().catch(() => false))) {
+      test.skip(true, "Nessuna settimana scoperta futura per l'account di test (nessuna riga navigabile nella Timeline).");
     }
-    const href = await riempiButton.getAttribute("href");
+    await weekDetailRow.click();
+    await expect(page).toHaveURL(/\/nextgen\/planner\/settimana\/\d{4}-\d{2}-\d{2}/);
+
+    const scopriLink = page.getByRole("link", { name: "Vedi tutte in Scopri" });
+    if (!(await scopriLink.isVisible().catch(() => false))) {
+      test.skip(true, "Nessun suggerimento disponibile per questa settimana (settimana probabilmente già coperta).");
+    }
+    const href = await scopriLink.getAttribute("href");
     expect(href).toMatch(/\/nextgen\/search\?week=\d{4}-\d{2}-\d{2}/);
 
-    await riempiButton.click();
+    await scopriLink.click();
     await expect(page).toHaveURL(/\/nextgen\/search\?week=\d{4}-\d{2}-\d{2}/);
 
     // Il filtro data letto da "?week=" deve risultare già applicato/attivo
