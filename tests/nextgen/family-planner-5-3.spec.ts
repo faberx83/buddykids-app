@@ -238,7 +238,9 @@ test.describe("NEXTGEN - Family Planner Sprint 5.3 (Logistica/Chi fa cosa/Condiv
     }
     await coveredDay.click();
 
-    await expect(page.getByText("Applica a tutta la settimana")).toBeVisible();
+    // TRAMA BETA v1.1.1 (punto 12) — "Applica a tutta la settimana" è ora
+    // collassato di default: va aperto prima di interagire con le chip.
+    await page.getByRole("button", { name: "Applica a tutta la settimana" }).click();
     await page.getByRole("button", { name: /Nonna/ }).first().click();
     await expect(page.getByText(/Assegnato a tutta la settimana/)).toBeVisible();
 
@@ -258,7 +260,10 @@ test.describe("NEXTGEN - Family Planner Sprint 5.3 (Logistica/Chi fa cosa/Condiv
     }
     await coveredDay.click();
 
-    const kidChips = page.locator("div.bg-\\[\\#F5F2FF\\] button:has(span.rounded-full)");
+    // TRAMA BETA v1.1.1 (punto 12) — pannello collassato di default.
+    await page.getByRole("button", { name: "Applica a tutta la settimana" }).click();
+
+    const kidChips = page.getByTestId("bulk-assign-panel").locator("button:has(span.rounded-full)");
     if ((await kidChips.count()) < 2) {
       test.skip(true, "Meno di 2 bambini coperti questa settimana per l'account di test — il selettore bambini non è mostrato.");
     }
@@ -285,7 +290,9 @@ test.describe("NEXTGEN - Family Planner Sprint 5.3 (Logistica/Chi fa cosa/Condiv
       test.skip(true, "Tutte le celle sono già assegnate per l'account di test.");
     }
 
-    const bulkPanel = page.locator("div.bg-\\[\\#F5F2FF\\]").first();
+    // TRAMA BETA v1.1.1 (punto 12) — pannello collassato di default.
+    await page.getByRole("button", { name: "Applica a tutta la settimana" }).click();
+    const bulkPanel = page.getByTestId("bulk-assign-panel");
     await bulkPanel.getByRole("button", { name: "Ritorno" }).click(); // deseleziona Ritorno: resta solo Andata
     await bulkPanel.getByRole("button", { name: /Nonno/ }).click();
 

@@ -237,6 +237,12 @@ export default function PlannerCalendarView({
   const [bulkAssigningAltro, setBulkAssigningAltro] = useState(false);
   const [bulkAltroText, setBulkAltroText] = useState("");
   const [bulkBusy, setBulkBusy] = useState(false);
+  // TRAMA BETA v1.1.1 (UI Refinement, punto 12 — "Bulk assign non deve
+  // essere protagonista") — "Applica a tutta la settimana" è un'azione di
+  // accelerazione, non la prima cosa che il genitore deve vedere aprendo un
+  // giorno. Default COLLASSATO; le opzioni esistenti (bambini/momento/
+  // responsabile) restano identiche, solo dietro un toggle.
+  const [bulkOpen, setBulkOpen] = useState(false);
 
   function toggleBulkKid(kidId: string) {
     setBulkKidExcluded((prev) => ({ ...prev, [kidId]: !prev[kidId] }));
@@ -430,9 +436,12 @@ export default function PlannerCalendarView({
         ))}
       </div>
 
-      {/* Legenda per bambino */}
+      {/* Legenda per bambino
+          TRAMA BETA v1.1.1 (UI Refinement, punto 10) — legenda più
+          compatta (meno padding/gap): stessa informazione, meno spazio
+          verticale prima del calendario vero e proprio. */}
       {kids.length > 0 && (
-        <div className="flex flex-wrap items-center gap-3 rounded-2xl bg-white px-3.5 py-2.5">
+        <div className="flex flex-wrap items-center gap-2.5 rounded-2xl bg-white px-3 py-2">
           {kidLegend.map((k) => (
             <div key={k.kidId} className="flex items-center gap-1.5">
               <span className={`h-2.5 w-2.5 rounded-full ${DOT_BG[k.accentColor ?? "sky"]}`} />
@@ -447,8 +456,8 @@ export default function PlannerCalendarView({
       )}
 
       {viewMode === "mese" ? (
-        <div className="rounded-2xl bg-white p-4">
-          <div className="mb-3 flex items-center justify-between">
+        <div className="rounded-2xl bg-white p-3.5">
+          <div className="mb-2.5 flex items-center justify-between">
             <button
               type="button"
               disabled={monthIndex <= 0}
@@ -470,7 +479,7 @@ export default function PlannerCalendarView({
             </button>
           </div>
 
-          <div className="mb-1.5 grid grid-cols-7 gap-1">
+          <div className="mb-1 grid grid-cols-7 gap-1">
             {WEEKDAY_SHORT_IT.map((d, i) => (
               <div key={i} className="text-center text-[10px] font-bold text-ink-3">
                 {d}
@@ -516,16 +525,25 @@ export default function PlannerCalendarView({
           </div>
 
           {/* SPRINT 5.3 — Condivisione Piano: link pubblico di sola lettura
-              per il mese visualizzato. */}
+              per il mese visualizzato.
+              TRAMA BETA v1.1.1 (UI Refinement, punto 13) — "Condividi
+              {mese}" e "Condividi" (settimana, sotto) non devono competere
+              come CTA primarie: la primary action del Calendario è
+              organizzare le responsabilità, non condividere. Da pillola a
+              piena larghezza a chip piccolo allineato a destra (stessa
+              taglia/stile del "Condividi" per singola settimana) — stessa
+              funzionalità/azione (openShare), solo peso visivo ridotto. */}
           {monthShareScope && (
-            <button
-              type="button"
-              onClick={() => openShare(monthShareScope.start, monthShareScope.end, activeMonth.label)}
-              className="mt-3 flex w-full items-center justify-center gap-1.5 rounded-full bg-trama-lilac/20 py-2 text-[12px] font-bold text-trama-violet active:brightness-95"
-            >
-              <i className="ti ti-share text-[14px]" />
-              Condividi {activeMonth.label}
-            </button>
+            <div className="mt-3 flex justify-end">
+              <button
+                type="button"
+                onClick={() => openShare(monthShareScope.start, monthShareScope.end, activeMonth.label)}
+                className="flex items-center gap-1 rounded-full bg-trama-lilac/20 px-2.5 py-1 text-[11px] font-bold text-trama-violet active:brightness-95"
+              >
+                <i className="ti ti-share text-[12px]" />
+                Condividi {activeMonth.label}
+              </button>
+            </div>
           )}
         </div>
       ) : (
@@ -642,88 +660,105 @@ export default function PlannerCalendarView({
                   multiplo (setWeekBulkResponsibilityAction), non 10-20
                   chiamate singole. */}
               {selectedDay.weekStartDate && (
-                <div className="rounded-xl bg-trama-lilac/20 p-3">
-                  <div className="mb-1.5 flex items-center gap-1.5 text-[11.5px] font-bold text-trama-violet">
-                    <i className="ti ti-bolt text-[13px]" />
-                    Applica a tutta la settimana
-                  </div>
-                  {selectedDay.kids.length > 1 && (
-                    <div className="mb-2 flex flex-wrap gap-2">
-                      {selectedDay.kids.map((k) => {
-                        const included = !bulkKidExcluded[k.kidId];
-                        return (
+                <div className="rounded-xl bg-bg" data-testid="bulk-assign-panel">
+                  {/* TRAMA BETA v1.1.1 (punto 12) — collassato di default:
+                      questa è un'accelerazione, non la prima cosa vista.
+                      TRAMA BETA v1.1.1 (punto 9) — sfondo neutro (bg-bg),
+                      non più lilla: il lilla pieno resta riservato alla CTA
+                      primaria e allo stato "selezionato". */}
+                  <button
+                    type="button"
+                    onClick={() => setBulkOpen((v) => !v)}
+                    className="flex w-full items-center justify-between gap-1.5 rounded-xl px-3 py-2 text-[11.5px] font-bold text-trama-violet active:bg-black/[0.04]"
+                  >
+                    <span className="flex items-center gap-1.5">
+                      <i className="ti ti-bolt text-[13px]" />
+                      Applica a tutta la settimana
+                    </span>
+                    <i className={`ti ti-chevron-${bulkOpen ? "up" : "down"} text-[13px] text-ink-3`} />
+                  </button>
+                  {bulkOpen && (
+                    <div className="px-3 pb-3">
+                      {selectedDay.kids.length > 1 && (
+                        <div className="mb-2 flex flex-wrap gap-2">
+                          {selectedDay.kids.map((k) => {
+                            const included = !bulkKidExcluded[k.kidId];
+                            return (
+                              <button
+                                key={k.kidId}
+                                type="button"
+                                onClick={() => toggleBulkKid(k.kidId)}
+                                className={`flex items-center gap-1.5 rounded-full bg-white px-2.5 py-1 text-[11px] font-semibold active:scale-95 ${
+                                  included ? "text-ink" : "text-ink-3 line-through"
+                                }`}
+                              >
+                                <span className={`h-2 w-2 rounded-full ${DOT_BG[k.accentColor]}`} />
+                                {k.kidName}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      )}
+                      {/* FEEDBACK SUCCESSIVO DI FABRIZIO: "ci vuole qualcosa
+                          di flessibile" — solo Andata, solo Ritorno, o
+                          entrambi (default). Stessa tecnica "chip toggle"
+                          dei bambini. */}
+                      <div className="mb-2 flex flex-wrap gap-2">
+                        {MOMENTS.map((mo) => {
+                          const included = !bulkMomentExcluded[mo.value];
+                          return (
+                            <button
+                              key={mo.value}
+                              type="button"
+                              onClick={() => toggleBulkMoment(mo.value)}
+                              className={`flex items-center gap-1 rounded-full bg-white px-2.5 py-1 text-[11px] font-semibold active:scale-95 ${
+                                included ? "text-trama-violet" : "text-ink-3 line-through"
+                              }`}
+                            >
+                              <i className={`ti ${mo.icon} text-[11px]`} />
+                              {mo.label}
+                            </button>
+                          );
+                        })}
+                      </div>
+                      <div className="flex flex-wrap gap-1.5">
+                        {responsibleOptions.map((opt) => (
                           <button
-                            key={k.kidId}
+                            key={opt.value}
                             type="button"
-                            onClick={() => toggleBulkKid(k.kidId)}
-                            className={`flex items-center gap-1.5 rounded-full bg-white px-2.5 py-1 text-[11px] font-semibold active:scale-95 ${
-                              included ? "text-ink" : "text-ink-3 line-through"
-                            }`}
+                            disabled={bulkBusy}
+                            onClick={() => {
+                              if (opt.value === "altro") {
+                                setBulkAssigningAltro(true);
+                                return;
+                              }
+                              handleBulkAssign(opt.value);
+                            }}
+                            className="rounded-full bg-white px-2.5 py-1 text-[11px] font-semibold text-ink-2 active:scale-95 disabled:opacity-50"
                           >
-                            <span className={`h-2 w-2 rounded-full ${DOT_BG[k.accentColor]}`} />
-                            {k.kidName}
+                            {opt.emoji} {opt.label}
                           </button>
-                        );
-                      })}
-                    </div>
-                  )}
-                  {/* FEEDBACK SUCCESSIVO DI FABRIZIO: "ci vuole qualcosa di
-                      flessibile" — solo Andata, solo Ritorno, o entrambi
-                      (default). Stessa tecnica "chip toggle" dei bambini. */}
-                  <div className="mb-2 flex flex-wrap gap-2">
-                    {MOMENTS.map((mo) => {
-                      const included = !bulkMomentExcluded[mo.value];
-                      return (
-                        <button
-                          key={mo.value}
-                          type="button"
-                          onClick={() => toggleBulkMoment(mo.value)}
-                          className={`flex items-center gap-1 rounded-full bg-white px-2.5 py-1 text-[11px] font-semibold active:scale-95 ${
-                            included ? "text-trama-violet" : "text-ink-3 line-through"
-                          }`}
-                        >
-                          <i className={`ti ${mo.icon} text-[11px]`} />
-                          {mo.label}
-                        </button>
-                      );
-                    })}
-                  </div>
-                  <div className="flex flex-wrap gap-1.5">
-                    {responsibleOptions.map((opt) => (
-                      <button
-                        key={opt.value}
-                        type="button"
-                        disabled={bulkBusy}
-                        onClick={() => {
-                          if (opt.value === "altro") {
-                            setBulkAssigningAltro(true);
-                            return;
-                          }
-                          handleBulkAssign(opt.value);
-                        }}
-                        className="rounded-full bg-white px-2.5 py-1 text-[11px] font-semibold text-ink-2 active:scale-95 disabled:opacity-50"
-                      >
-                        {opt.emoji} {opt.label}
-                      </button>
-                    ))}
-                  </div>
-                  {bulkAssigningAltro && (
-                    <div className="mt-2 flex items-center gap-1.5">
-                      <input
-                        type="text"
-                        value={bulkAltroText}
-                        onChange={(e) => setBulkAltroText(e.target.value)}
-                        placeholder="Altro: scrivi chi (es. Zia Carla)"
-                        className="min-w-0 flex-1 rounded-lg border border-[#E8EBF0] bg-white px-2.5 py-1.5 text-[11.5px] text-ink"
-                      />
-                      <button
-                        type="button"
-                        disabled={bulkBusy || !bulkAltroText.trim()}
-                        onClick={() => handleBulkAssign("altro", bulkAltroText)}
-                        className="flex-shrink-0 rounded-lg bg-trama-violet px-2.5 py-1.5 text-[11px] font-bold text-white active:scale-[0.97] disabled:opacity-40"
-                      >
-                        OK
-                      </button>
+                        ))}
+                      </div>
+                      {bulkAssigningAltro && (
+                        <div className="mt-2 flex items-center gap-1.5">
+                          <input
+                            type="text"
+                            value={bulkAltroText}
+                            onChange={(e) => setBulkAltroText(e.target.value)}
+                            placeholder="Altro: scrivi chi (es. Zia Carla)"
+                            className="min-w-0 flex-1 rounded-lg border border-[#E8EBF0] bg-white px-2.5 py-1.5 text-[11.5px] text-ink"
+                          />
+                          <button
+                            type="button"
+                            disabled={bulkBusy || !bulkAltroText.trim()}
+                            onClick={() => handleBulkAssign("altro", bulkAltroText)}
+                            className="flex-shrink-0 rounded-lg bg-trama-violet px-2.5 py-1.5 text-[11px] font-bold text-white active:scale-[0.97] disabled:opacity-40"
+                          >
+                            OK
+                          </button>
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>
@@ -799,67 +834,92 @@ export default function PlannerCalendarView({
                         subito SOTTO il giorno cliccato invece che in fondo
                         all'intera griglia — meno probabile perdersi tra
                         quale cella si sta modificando. */}
+                    {/* TRAMA BETA v1.1.1 (UI Refinement, punto 11 —
+                        "Chi fa cosa: nuovo layout compatto") — la card
+                        precedente (SPRINT CORRETTIVO 2, sopra) usava un
+                        riquadro alto con due bottoni a piena etichetta per
+                        giorno: leggibile ma pesante quando si guarda tutta
+                        la settimana insieme. Stessa identica logica/azioni
+                        (handleAssign/handleClear/assigningKey/localResp,
+                        NON toccate — punto 17: "non modificare il calcolo
+                        child-day") — solo una riga per giorno: etichetta
+                        giorno a sinistra, poi Andata → Ritorno affiancati
+                        con icona/emoji della persona assegnata (target:
+                        "Lun 31   👨 Io  →   👴 Nonno"). Tap sul singolo
+                        momento apre lo stesso pannello di scelta di prima,
+                        ora sotto la riga del giorno anziché sotto l'intera
+                        settimana. */}
                     {weekStartDate && (
-                      <div className="ml-4 flex flex-col gap-2 pl-0.5">
+                      <div className="ml-4 flex flex-col gap-1 pl-0.5">
                         {WEEKDAYS.map((wd) => {
                           const dayKeys = MOMENTS.map((mo) => respKey(k.kidId, weekStartDate, wd.value, mo.value));
                           const isAssigningThisDay = assigningKey !== null && dayKeys.includes(assigningKey);
                           return (
-                            <div key={wd.value} className="rounded-xl bg-bg p-2.5">
-                              <div className="mb-1.5 text-[10.5px] font-bold text-ink-3">
-                                {wd.label} · {formatDayMonth(addDaysIso(weekStartDate, wd.dayOffset))}
-                              </div>
-                              <div className="flex gap-1.5">
-                                {MOMENTS.map((mo) => {
-                                  const key = respKey(k.kidId, weekStartDate, wd.value, mo.value);
-                                  const current = localResp[key];
-                                  const currentOption = current
-                                    ? responsibleOptions.find((o) => o.value === current.responsible)
-                                    : null;
-                                  const isAssigning = assigningKey === key;
-                                  const currentLabel = current
-                                    ? current.responsible === "altro"
-                                      ? current.responsibleLabel || "Altro"
-                                      : currentOption?.label
-                                    : null;
-                                  return (
-                                    <button
-                                      key={key}
-                                      type="button"
-                                      onClick={() => {
-                                        setAssigningKey(isAssigning ? null : key);
-                                        setAltroText(
-                                          current?.responsible === "altro" ? current.responsibleLabel ?? "" : ""
-                                        );
-                                      }}
-                                      className={`flex flex-1 items-center gap-1.5 rounded-lg px-2.5 py-2 text-left text-[11.5px] font-semibold active:scale-[0.97] ${
-                                        isAssigning
-                                          ? "bg-trama-lilac/20 ring-1 ring-trama-violet"
-                                          : current
-                                            ? "bg-[#E8F9EE] text-ink"
-                                            : "bg-white text-ink-3"
-                                      }`}
-                                    >
-                                      <i
-                                        className={`ti ${mo.icon} flex-shrink-0 text-[12px] ${
-                                          current ? "text-green" : "text-ink-3"
-                                        }`}
-                                      />
-                                      <span className="min-w-0 flex-1 truncate">
-                                        {mo.label}
-                                        {current ? (
-                                          <span className="block truncate text-[11px] font-normal text-ink-2">
-                                            {currentOption?.emoji} {currentLabel}
-                                          </span>
-                                        ) : (
-                                          <span className="block text-[11px] font-normal text-orange-mid">
-                                            + Assegna
-                                          </span>
+                            <div key={wd.value} className="rounded-lg bg-bg px-2 py-1.5">
+                              <div className="flex items-center gap-1.5">
+                                <span
+                                  className="w-[54px] flex-shrink-0 text-[10.5px] font-bold text-ink-3"
+                                  title={formatDayMonth(addDaysIso(weekStartDate, wd.dayOffset))}
+                                >
+                                  {/* Target UI (punto 11): "Lun 31" — solo giorno del mese, il
+                                      mese completo resta disponibile via title/tooltip. */}
+                                  {wd.label} {Number(addDaysIso(weekStartDate, wd.dayOffset).slice(-2))}
+                                </span>
+                                <div className="flex min-w-0 flex-1 items-center gap-1">
+                                  {MOMENTS.map((mo, moIdx) => {
+                                    const key = respKey(k.kidId, weekStartDate, wd.value, mo.value);
+                                    const current = localResp[key];
+                                    const currentOption = current
+                                      ? responsibleOptions.find((o) => o.value === current.responsible)
+                                      : null;
+                                    const isAssigning = assigningKey === key;
+                                    const currentLabel = current
+                                      ? current.responsible === "altro"
+                                        ? current.responsibleLabel || "Altro"
+                                        : currentOption?.label
+                                      : null;
+                                    return (
+                                      <span key={key} className="flex min-w-0 flex-1 items-center gap-1">
+                                        {moIdx > 0 && (
+                                          <i className="ti ti-arrow-narrow-right flex-shrink-0 text-[11px] text-ink-3" />
                                         )}
+                                        <button
+                                          type="button"
+                                          title={current ? (currentLabel ?? "Assegnato") : "Nessuno assegnato"}
+                                          onClick={() => {
+                                            setAssigningKey(isAssigning ? null : key);
+                                            setAltroText(
+                                              current?.responsible === "altro" ? current.responsibleLabel ?? "" : ""
+                                            );
+                                          }}
+                                          className={`flex min-w-0 flex-1 items-center gap-1 rounded-md px-1.5 py-1 text-left text-[11px] font-semibold active:scale-[0.97] ${
+                                            isAssigning
+                                              ? "bg-trama-lilac/20 ring-1 ring-trama-violet"
+                                              : current
+                                                ? "bg-[#E8F9EE] text-ink"
+                                                : "bg-white text-ink-3"
+                                          }`}
+                                        >
+                                          {/* Etichetta "Andata"/"Ritorno" mantenuta nell'albero
+                                              di accessibilità (screen reader + query testuali)
+                                              ma non più visibile: nel layout compatto il
+                                              contesto Andata/Ritorno è dato dall'ordine e dalla
+                                              freccia tra le due chip, come nel target
+                                              "👨 Io → 👴 Nonno". */}
+                                          <span className="sr-only">{mo.label}</span>
+                                          <i
+                                            className={`ti ${mo.icon} flex-shrink-0 text-[10px] ${
+                                              current ? "text-green" : "text-ink-3"
+                                            }`}
+                                          />
+                                          <span className="min-w-0 truncate">
+                                            {current ? `${currentOption?.emoji ?? ""} ${currentLabel}` : "+ Assegna"}
+                                          </span>
+                                        </button>
                                       </span>
-                                    </button>
-                                  );
-                                })}
+                                    );
+                                  })}
+                                </div>
                               </div>
 
                               {isAssigningThisDay && (
