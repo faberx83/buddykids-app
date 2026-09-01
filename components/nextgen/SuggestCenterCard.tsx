@@ -21,14 +21,21 @@ export default function SuggestCenterCard({ demandContext }: { demandContext: Ce
   const [error, setError] = useState<string | null>(null);
 
   if (done) {
+    // FIX (FINAL MICRO-PILOT LIVE ACCEPTANCE, 01/09/2026 — segnalazione di
+    // Fabrizio: il testo "va a capo in modo non coerente ed elegante"):
+    // testo centrato multi-riga con un link inline si spezza in modo
+    // imprevedibile su schermi stretti — allineato a sinistra, pattern
+    // standard per messaggi di conferma a più righe.
     return (
-      <div className="rounded-lg border border-[#D8DEE8] bg-white p-4 text-center text-sm text-ink-2">
-        <i className="ti ti-circle-check-filled mr-1 text-green" />
-        Grazie! Abbiamo ricevuto la tua segnalazione — la trovi in{" "}
-        <a href="/nextgen/center-leads" className="font-semibold text-trama-violet underline">
-          I tuoi suggerimenti
-        </a>
-        .
+      <div className="flex items-start gap-2 rounded-lg border border-[#D8DEE8] bg-white p-4 text-left text-sm text-ink-2">
+        <i className="ti ti-circle-check-filled mt-0.5 flex-shrink-0 text-green" />
+        <p>
+          Grazie! Abbiamo ricevuto la tua segnalazione — la trovi in{" "}
+          <a href="/nextgen/center-leads" className="font-semibold text-trama-violet underline">
+            I tuoi suggerimenti
+          </a>
+          .
+        </p>
       </div>
     );
   }

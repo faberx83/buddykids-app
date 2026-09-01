@@ -164,12 +164,20 @@ function VisibilityAndInviteBlock({
   return (
     <div className="mb-4 rounded-lg border border-[#E8EBF0] bg-white p-3.5">
       {createdByMe && (
-        <div className="mb-3 flex items-center justify-between">
+        // FIX (FINAL MICRO-PILOT LIVE ACCEPTANCE, 01/09/2026 — segnalazione
+        // di Fabrizio: "il pulsante è sfalsato..e non ho capito come
+        // funziona..dove lo vedo?"): items-center allineava il toggle al
+        // centro dell'INTERO blocco (titolo + descrizione a 2 righe),
+        // risultando visivamente sfalsato rispetto al titolo — ora
+        // items-start + un piccolo offset lo allinea alla prima riga.
+        // Copy chiarita: il gruppo compare nella tab "Scopri" di Gruppi
+        // (non è un filtro da applicare, è dove ALTRI genitori lo trovano).
+        <div className="mb-3 flex items-start justify-between gap-3">
           <div>
             <div className={titleCls}>Visibile in &quot;Scopri&quot;</div>
             <p className="mt-0.5 text-xs text-ink-2">
-              Se attivo, altri genitori possono trovare e unirsi a questo gruppo dalla tab
-              &quot;Scopri&quot; di Gruppi.
+              Se attivo, il gruppo compare nella tab &quot;Scopri&quot; di Gruppi, dove altri
+              genitori possono trovarlo e chiedere di unirsi.
             </p>
           </div>
           <button
@@ -177,7 +185,7 @@ function VisibilityAndInviteBlock({
             disabled={togglingPublic}
             role="switch"
             aria-checked={isPublic}
-            className={`relative h-6 w-11 flex-shrink-0 rounded-full transition-colors disabled:opacity-60 ${
+            className={`relative mt-0.5 h-6 w-11 flex-shrink-0 rounded-full transition-colors disabled:opacity-60 ${
               isPublic ? accentBg : "bg-[#D9DEE6]"
             }`}
           >
