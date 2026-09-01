@@ -472,6 +472,7 @@ export default function BookingClient({
                 kid={k}
                 selected={selectedKids.includes(k.id)}
                 onToggle={() => toggleKid(k.id)}
+                nextgen={nextgen}
               />
             ))}
 
@@ -521,6 +522,7 @@ export default function BookingClient({
               sub="•••• •••• •••• 4242"
               selected={payMethod === "card"}
               onSelect={() => setPayMethod("card")}
+              nextgen={nextgen}
             />
             <PayMethodCard
               icon="ti-brand-apple"
@@ -528,6 +530,7 @@ export default function BookingClient({
               sub="Touch ID rapido"
               selected={payMethod === "apple"}
               onSelect={() => setPayMethod("apple")}
+              nextgen={nextgen}
             />
             <PayMethodCard
               icon="ti-building-bank"
@@ -535,6 +538,7 @@ export default function BookingClient({
               sub="IBAN: IT60 X054 2811..."
               selected={payMethod === "bank"}
               onSelect={() => setPayMethod("bank")}
+              nextgen={nextgen}
             />
             <div className="mt-4 rounded-md bg-bg p-3.5">
               <Row

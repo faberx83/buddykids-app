@@ -3,6 +3,10 @@ import { getActivityBySlug, getPromotionsForActivity } from "@/lib/data/activiti
 import { getFavoriteActivityIds } from "@/lib/data/favorites";
 import { getApprovedCertificationsForActivity } from "@/lib/data/certifications";
 import { getActivityDays, getBookedDayDatesForActivity } from "@/lib/data/activity-days";
+import { createClient } from "@/lib/supabase/server";
+import { isSupabaseConfigured } from "@/lib/supabase/env";
+import { resolveFeatureFlag } from "@/lib/feature-flags/resolve";
+import { generateCorrelationId } from "@/lib/telemetry/correlation";
 import PhoneShell from "@/components/PhoneShell";
 import DetailClient from "./DetailClient";
 
@@ -12,6 +16,34 @@ export default async function ActivityDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
+
+  // nextgen (01/09/2026, segnalazione Fabrizio "grafica legacy" nel dettaglio
+  // attività): non esiste una route /nextgen/activity/... dedicata — Legacy e
+  // NextGen linkano entrambi a /activity/[id] (vedi components/PlannerView.tsx,
+  // components/nextgen/BookingVisualCard.tsx, components/nextgen/
+  // PlannerMapView.tsx, app/nextgen/community/[id]/CommunityDetailClient.tsx),
+  // quindi il flag va risolto qui server-side, stesso resolver TRAMA_ONE_ENABLED
+  // già usato da app/booking/[id]/page.tsx. A differenza della Prenotazione,
+  // questa pagina permette la visione anonima (nessun redirect al login) — se
+  // non c'è un utente autenticato risolviamo semplicemente a false invece di
+  // forzare un login, che sarebbe un cambio di comportamento e non solo di stile.
+  let nextgen = false;
+  if (isSupabaseConfigured) {
+    const supabase = await createClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (user) {
+      nextgen = await resolveFeatureFlag({
+        flagName: "TRAMA_ONE_ENABLED",
+        userId: user.id,
+        role: "parent",
+        tenant: "family",
+        correlationId: generateCorrelationId(),
+      });
+    }
+  }
+
   const activity = await getActivityBySlug(id);
   if (!activity) return notFound();
   // TRAMA ONE Build Sprint 3: "Giorni spot" — la disponibilità giorno-per-
@@ -43,6 +75,7 @@ export default async function ActivityDetailPage({
         certifications={certifications}
         days={days}
         bookedDayDates={[...bookedDayDates]}
+        nextgen={nextgen}
       />
     </PhoneShell>
   );

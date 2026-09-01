@@ -21,6 +21,7 @@ export default function DetailClient({
   certifications = [],
   days = [],
   bookedDayDates = [],
+  nextgen = false,
 }: {
   activity: Activity;
   promotions: Promotion[];
@@ -43,7 +44,20 @@ export default function DetailClient({
   // lib/data/activity-days.ts#getBookedDayDatesForActivity. Date ISO
   // (yyyy-mm-dd). Vuoto per ogni attività a sola settimana intera.
   bookedDayDates?: string[];
+  // nextgen (01/09/2026, segnalazione Fabrizio "grafica legacy" nel
+  // dettaglio attività): questa route è condivisa da Legacy e NextGen
+  // (nessuna /nextgen/activity/... dedicata, vedi
+  // app/activity/[id]/page.tsx) — il flag arriva già risolto da lì. Legacy
+  // (default false) resta invariato.
+  nextgen?: boolean;
 }) {
+  const accentBg = nextgen ? "bg-trama-violet" : "bg-sky";
+  const accentText = nextgen ? "text-trama-violet" : "text-sky";
+  const accentBorder = nextgen ? "border-trama-violet" : "border-sky";
+  const accentLight = nextgen ? "bg-trama-lilac/20" : "bg-sky-light";
+  const accentHoverBorder = nextgen ? "hover:border-trama-violet" : "hover:border-sky";
+  const accentHoverBg = nextgen ? "hover:bg-[#594F9E]" : "hover:bg-[#3A9FDC]";
+  const titleCls = nextgen ? "font-poppins text-[13px] font-bold text-ink" : "text-sm font-bold text-ink";
   const router = useRouter();
   const searchParams = useSearchParams();
   // Settimana passata da Cerca (a sua volta arrivata dal "Riempi" del
@@ -345,7 +359,7 @@ export default function DetailClient({
         </div>
         <div className="my-3 h-px bg-[#F0F2F5]" />
 
-        <div className="mb-2.5 text-sm font-bold text-ink">Programma della giornata</div>
+        <div className={`mb-2.5 ${titleCls}`}>Programma della giornata</div>
         <div className="mb-3.5 rounded-md bg-bg p-3">
           {activity.schedule.map((s, i) => (
             <div key={i} className="flex items-start gap-2.5 py-1.5">
@@ -369,7 +383,7 @@ export default function DetailClient({
         {showDaySelection && (
           <>
             <div className="mb-1 flex items-center justify-between">
-              <div className="text-sm font-bold text-ink">Giorni spot</div>
+              <div className={titleCls}>Giorni spot</div>
               {activity.minDaysPerBooking && activity.minDaysPerBooking > 1 && (
                 <span className="text-[11px] font-medium text-ink-2">
                   Minimo {activity.minDaysPerBooking} giorni
@@ -380,16 +394,16 @@ export default function DetailClient({
               Scegli solo i giorni che ti servono, invece dell&apos;intera settimana
             </div>
             {filterWeekRanges.length > 0 && (
-              <div className="mb-2.5 flex items-center justify-between gap-2 rounded-md bg-sky-light px-3 py-2 text-[11px] font-medium text-ink">
+              <div className={`mb-2.5 flex items-center justify-between gap-2 rounded-md ${accentLight} px-3 py-2 text-[11px] font-medium text-ink`}>
                 <span>
-                  <i className="ti ti-filter mr-1 text-sm text-sky" />
+                  <i className={`ti ti-filter mr-1 text-sm ${accentText}`} />
                   Mostro solo i giorni di {filterWeekRanges.length === 1 ? "questa settimana" : `queste ${filterWeekRanges.length} settimane`}{" "}
                   (dal Planner/Scopri)
                 </span>
                 <button
                   type="button"
                   onClick={() => router.replace(`/activity/${activity.id}`)}
-                  className="flex-shrink-0 whitespace-nowrap font-semibold text-sky active:bg-black/[0.04]"
+                  className={`flex-shrink-0 whitespace-nowrap font-semibold ${accentText} active:bg-black/[0.04]`}
                 >
                   Vedi tutti
                 </button>
@@ -438,8 +452,8 @@ export default function DetailClient({
                             : soldOut
                             ? "cursor-not-allowed border-[#E8EBF0] bg-[#FAFBFD] text-ink-3"
                             : selected
-                            ? "border-sky bg-sky-light text-ink"
-                            : "border-[#E8EBF0] bg-white text-ink hover:border-sky"
+                            ? `${accentBorder} ${accentLight} text-ink`
+                            : `border-[#E8EBF0] bg-white text-ink ${accentHoverBorder}`
                         }`}
                       >
                         <span className="text-[10px] font-semibold uppercase text-ink-2">
@@ -460,7 +474,7 @@ export default function DetailClient({
                             Prenotato
                           </span>
                         ) : (
-                          <span className="text-[11px] font-semibold text-sky">
+                          <span className={`text-[11px] font-semibold ${accentText}`}>
                             {soldOut ? "Pieno" : `€${price}`}
                           </span>
                         )}
@@ -480,7 +494,7 @@ export default function DetailClient({
                     {selectedDayDates.length} giorn{selectedDayDates.length === 1 ? "o" : "i"} selezionat
                     {selectedDayDates.length === 1 ? "o" : "i"}
                   </span>
-                  <span className="text-sky">€{daysCost}</span>
+                  <span className={accentText}>€{daysCost}</span>
                 </div>
                 {!meetsMinDays && activity.minDaysPerBooking && (
                   <p className="mt-1.5 text-[11.5px] font-medium text-orange">
@@ -493,7 +507,7 @@ export default function DetailClient({
           </>
         )}
 
-        <InfoRow icon="ti-coin-euro" label="Costo settimana" value={`€${activity.pricePerWeek}`} valueColor="text-sky" />
+        <InfoRow icon="ti-coin-euro" label="Costo settimana" value={`€${activity.pricePerWeek}`} valueColor={accentText} />
         <InfoRow icon="ti-calendar" label="Settimane disponibili" value={activity.weeksAvailable} />
         <InfoRow
           icon="ti-users"
@@ -509,12 +523,12 @@ export default function DetailClient({
 
         {certifications.length > 0 && (
           <>
-            <div className="mb-2.5 text-sm font-bold text-ink">Certificazioni</div>
+            <div className={`mb-2.5 ${titleCls}`}>Certificazioni</div>
             <div className="mb-3.5 flex flex-wrap gap-2">
               {certifications.map((cert) => (
                 <span
                   key={cert.id}
-                  className="flex items-center gap-1.5 rounded-md bg-sky-light px-2.5 py-1.5 text-[11px] font-semibold text-sky"
+                  className={`flex items-center gap-1.5 rounded-md ${accentLight} px-2.5 py-1.5 text-[11px] font-semibold ${accentText}`}
                 >
                   <i className="ti ti-certificate text-[13px]" />
                   {cert.label}
@@ -525,7 +539,7 @@ export default function DetailClient({
           </>
         )}
 
-        <div className="mb-2.5 text-sm font-bold text-ink">Servizi disponibili</div>
+        <div className={`mb-2.5 ${titleCls}`}>Servizi disponibili</div>
         <div className="mb-3.5 flex flex-wrap gap-2">
           <ServiceTag
             icon="ti-sunrise"
@@ -584,7 +598,7 @@ export default function DetailClient({
 
         {activity.dietaryOptions && activity.dietaryOptions.length > 0 && (
           <>
-            <div className="mb-2.5 text-sm font-bold text-ink">Diete e intolleranze gestite</div>
+            <div className={`mb-2.5 ${titleCls}`}>Diete e intolleranze gestite</div>
             <div className="mb-3.5 flex flex-wrap gap-2">
               {activity.dietaryOptions.map((option) => (
                 <span
@@ -600,7 +614,7 @@ export default function DetailClient({
         )}
         <div className="my-3 h-px bg-[#F0F2F5]" />
 
-        <div className="mb-2.5 text-sm font-bold text-ink">
+        <div className={`mb-2.5 ${titleCls}`}>
           Recensioni ({activity.reviewsCount})
         </div>
         {activity.reviews.map((r, i) => (
@@ -659,7 +673,7 @@ export default function DetailClient({
             // dello step "book_activity" (lib/walkthrough/registry.ts,
             // discover_book_parent).
             data-spotlight="book_activity"
-            className="rounded-lg bg-sky px-7 py-3.5 text-[15px] font-bold text-white transition-all hover:scale-[0.97] hover:bg-[#3A9FDC]"
+            className={`rounded-lg ${accentBg} px-7 py-3.5 text-[15px] font-bold text-white transition-all hover:scale-[0.97] ${accentHoverBg}`}
           >
             Prenota ora
           </Link>
