@@ -1,4 +1,5 @@
 import Link from "next/link";
+import PushNotificationsPrompt from "@/components/PushNotificationsPrompt";
 import { getWalkthroughAdminSummary, getWalkthroughRestartCount } from "@/lib/walkthrough/data";
 import { computeWalkthroughFunnel } from "@/lib/walkthrough/funnel";
 import { getCommandCenterQueues, summarizeCommandCenterQueues } from "@/lib/data/command-center";
@@ -76,6 +77,10 @@ export default async function OneAdminPage() {
           Pilota — chi è entrato e sta usando TRAMA
         </Link>
       </div>
+
+      {/* Invito proattivo push (01/09/2026) — stesso componente condiviso
+          di genitore/partner, si autonasconde da solo se non applicabile. */}
+      <PushNotificationsPrompt />
 
       {queues.length === 0 ? (
         <div className="rounded-lg border border-dashed border-navy-3 p-6 text-center">

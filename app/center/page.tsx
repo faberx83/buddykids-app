@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import StatCard from "@/components/dashboard/StatCard";
 import StatusBadge from "@/components/dashboard/StatusBadge";
 import AdminMockDataBanner from "@/components/admin/AdminMockDataBanner";
+import PushNotificationsPrompt from "@/components/PushNotificationsPrompt";
 import { getActivitiesForCenter, getPromotionsForActivities } from "@/lib/data/activities";
 import { getBookingsForCenter } from "@/lib/data/center-bookings";
 import { getOpenInquiriesCountForCenter } from "@/lib/data/inquiries";
@@ -136,6 +137,10 @@ export default async function CenterDashboardPage() {
       {isMockCenter && (
         <AdminMockDataBanner description="Nessun centro reale collegato a questo account — i numeri qui sotto sono di esempio, non prenotazioni/attività/richieste reali." />
       )}
+
+      {/* Invito proattivo push (01/09/2026) — stesso componente condiviso
+          del genitore, si autonasconde da solo se non applicabile. */}
+      <PushNotificationsPrompt />
 
       {onboardingIncomplete && !isMockCenter && (
         <div className="mb-4 flex items-center gap-3 rounded-xl bg-yellow-light p-3.5">

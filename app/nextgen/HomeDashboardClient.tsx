@@ -14,6 +14,7 @@ import NextgenCheckinCard from "@/components/nextgen/NextgenCheckinCard";
 import BookingVisualCard from "@/components/nextgen/BookingVisualCard";
 import NextgenProfileCompletionPrompt from "@/components/nextgen/NextgenProfileCompletionPrompt";
 import MockDataBanner from "@/components/MockDataBanner";
+import PushNotificationsPrompt from "@/components/PushNotificationsPrompt";
 
 // SPRINT 1 (NEXTGEN) — Dashboard Genitore come "Family Operating System":
 // la schermata risponde a "la mia famiglia è organizzata per le prossime
@@ -165,6 +166,11 @@ export default function HomeDashboardClient({
           concreta prima di mostrare lo stato. Si autonasconde da solo
           appena completo (stessa logica del Legacy). */}
       <NextgenProfileCompletionPrompt profileIncomplete={profileIncomplete} hasKids={hasKids} />
+
+      {/* Invito proattivo push (01/09/2026) — vedi commento in testa a
+          components/PushNotificationsPrompt.tsx per le condizioni "quando
+          mostrarlo". Si autonasconde da solo se non applicabile. */}
+      <PushNotificationsPrompt />
 
       {/* Addendum Sezione B (Feature Control Center) — banner demo-mode per
           lo stato MOCK_DEMO, stesso criterio di app/(main)/page.tsx. */}
