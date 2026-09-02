@@ -1,10 +1,12 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { CenterBooking, BookingStatus, PartnerDecision } from "@/lib/data/center-bookings";
+import { CenterBooking, BookingStatus, PartnerDecision, DayPartnerDecision } from "@/lib/data/center-bookings";
 import {
   respondToBookingAction,
   respondToBookingDayAction,
+  respondToBookingDaysAction,
+  promoteWaitlistedDayAction,
   cancelBookingDayAction,
   markBookingsReadAction,
 } from "@/app/actions/booking-response";
@@ -25,6 +27,18 @@ const STATUS_LABEL: Record<BookingStatus, string> = {
   pending: "In attesa",
   confirmed: "Confermata",
   cancelled: "Annullata",
+};
+
+// Etichetta/colore per lo stato di un singolo "Giorno spot" — a differenza
+// di DECISION_LABEL sopra (livello intera prenotazione, niente "waitlisted"
+// possibile lì), qui copre anche "waitlisted" (migrazione 34, segnalazione
+// beta 02/09/2026: giorno pieno al momento dell'accettazione, richiesta
+// rimasta in coda invece di essere rifiutata).
+const DAY_DECISION_LABEL: Record<DayPartnerDecision, { label: string; cls: string }> = {
+  pending: { label: "Da rispondere", cls: "bg-orange-light text-trama-orange" },
+  accepted: { label: "Accettato", cls: "bg-green-light text-[#2d8f52]" },
+  rejected: { label: "Rifiutato", cls: "bg-white text-ink-3" },
+  waitlisted: { label: "In lista d'attesa", cls: "bg-sky-light text-sky" },
 };
 
 const MONTH_LABELS_IT = [
@@ -106,6 +120,15 @@ export default function PrenotazioniClient({
   const [errorId, setErrorId] = useState<string | null>(null);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [bulkBusy, setBulkBusy] = useState(false);
+  // "Seleziona tutto su più giorni" (segnalazione beta 02/09/2026) — stato
+  // di selezione INDIPENDENTE dal "selected" sopra (quello è per
+  // markBookingsReadAction a livello di intera prenotazione): qui è per
+  // giorno, dentro una singola prenotazione "Giorni spot", per poter
+  // accettare/rifiutare più giorni in blocco con verifica di disponibilità
+  // per ciascuno (app/actions/booking-response.ts::respondToBookingDaysAction).
+  const [selectedDaysByBooking, setSelectedDaysByBooking] = useState<Record<string, Set<string>>>({});
+  const [dayBulkBusy, setDayBulkBusy] = useState<string | null>(null); // bookingId in corso
+  const [dayBulkSummary, setDayBulkSummary] = useState<Record<string, string>>({});
   const [activeFilter, setActiveFilter] = useState<FilterKey | null>(null);
   // Gruppi mese comprimibili (stesso pattern di
   // app/(main)/prenotazioni/PrenotazioniClient.tsx) — chiave prefissata con
@@ -197,6 +220,83 @@ export default function PrenotazioniClient({
         b.id !== bookingId ? b : { ...b, days: b.days.filter((d) => d.activityDayId !== activityDayId) }
       )
     );
+  }
+
+  function toggleDaySelected(bookingId: string, activityDayId: string) {
+    setSelectedDaysByBooking((prev) => {
+      const current = new Set(prev[bookingId] ?? []);
+      if (current.has(activityDayId)) current.delete(activityDayId);
+      else current.add(activityDayId);
+      return { ...prev, [bookingId]: current };
+    });
+  }
+
+  function toggleAllDaysSelected(bookingId: string, pendingDayIds: string[]) {
+    setSelectedDaysByBooking((prev) => {
+      const current = prev[bookingId] ?? new Set<string>();
+      const allSelected = pendingDayIds.length > 0 && pendingDayIds.every((id) => current.has(id));
+      return { ...prev, [bookingId]: allSelected ? new Set() : new Set(pendingDayIds) };
+    });
+  }
+
+  async function respondSelectedDays(bookingId: string, decision: "accepted" | "rejected") {
+    const ids = Array.from(selectedDaysByBooking[bookingId] ?? []);
+    if (ids.length === 0) return;
+    setDayBulkBusy(bookingId);
+    setDayBulkSummary((prev) => ({ ...prev, [bookingId]: "" }));
+    const result = await respondToBookingDaysAction({ bookingId, activityDayIds: ids, decision });
+    setDayBulkBusy(null);
+    if (result.error) {
+      setDayBulkSummary((prev) => ({ ...prev, [bookingId]: "Errore, riprova." }));
+      return;
+    }
+    // waitlisted_unavailable/error non toccano lo stato del giorno (resta
+    // "pending", coerente con app/actions/booking-response.ts::applyDayDecision).
+    setBookings((prev) =>
+      prev.map((b) => {
+        if (b.id !== bookingId) return b;
+        return {
+          ...b,
+          days: b.days.map((d) => {
+            const outcome = result.results[d.activityDayId];
+            if (outcome === "accepted" || outcome === "rejected" || outcome === "waitlisted") {
+              return { ...d, partnerDecision: outcome };
+            }
+            return d;
+          }),
+        };
+      })
+    );
+    patchBooking(bookingId, { readByCenter: true });
+    setSelectedDaysByBooking((prev) => ({ ...prev, [bookingId]: new Set() }));
+
+    const parts: string[] = [];
+    if (result.accepted > 0) parts.push(`${result.accepted} accettat${result.accepted === 1 ? "o" : "i"}`);
+    if (result.rejected > 0) parts.push(`${result.rejected} rifiutat${result.rejected === 1 ? "o" : "i"}`);
+    if (result.waitlisted > 0) {
+      parts.push(`${result.waitlisted} in lista d'attesa (pien${result.waitlisted === 1 ? "o" : "i"})`);
+    }
+    if (result.waitlistUnavailable > 0) {
+      parts.push(
+        `${result.waitlistUnavailable} rimast${result.waitlistUnavailable === 1 ? "o" : "i"} in attesa (nessun posto — lista d'attesa non ancora disponibile in questo ambiente)`
+      );
+    }
+    if (result.failed > 0) parts.push(`${result.failed} error${result.failed === 1 ? "e" : "i"}`);
+    setDayBulkSummary((prev) => ({ ...prev, [bookingId]: parts.join(" · ") }));
+  }
+
+  async function promoteDay(bookingId: string, activityDayId: string) {
+    const busyKey = `promote:${bookingId}:${activityDayId}`;
+    setErrorId(null);
+    setBusyId(busyKey);
+    const result = await promoteWaitlistedDayAction({ bookingId, activityDayId });
+    setBusyId(null);
+    if (result.error) {
+      setErrorId(busyKey);
+      return;
+    }
+    patchDay(bookingId, activityDayId, { partnerDecision: "accepted" });
+    patchBooking(bookingId, { readByCenter: true });
   }
 
   function toggleOne(id: string) {
@@ -301,59 +401,131 @@ export default function PrenotazioniClient({
 
           {b.isDayBased ? (
             <div className="mb-2.5 space-y-1.5">
-              {b.days.map((d) => {
-                const dayBusyKey = `${b.id}:${d.activityDayId}`;
+              {(() => {
+                const pendingDayIds = b.days.filter((d) => d.partnerDecision === "pending").map((d) => d.activityDayId);
+                const selectedForBooking = selectedDaysByBooking[b.id] ?? new Set<string>();
+                const selectedCount = pendingDayIds.filter((id) => selectedForBooking.has(id)).length;
+                const allDaysSelected = pendingDayIds.length > 0 && selectedCount === pendingDayIds.length;
+                const bookingBulkBusy = dayBulkBusy === b.id;
                 return (
-                  <div
-                    key={d.activityDayId}
-                    className="flex flex-wrap items-center justify-between gap-2 rounded-md bg-bg p-2.5 text-xs"
-                  >
-                    <span className="font-medium text-ink">
-                      {formatDate(d.date)} · €{d.price}
-                    </span>
-                    {d.partnerDecision === "pending" ? (
-                      <div className="flex gap-1.5">
-                        <button
-                          onClick={() => respondDay(b.id, d.activityDayId, "accepted")}
-                          disabled={busyId === dayBusyKey}
-                          className="rounded-md bg-partner px-2.5 py-1.5 text-[11px] font-bold text-white disabled:opacity-60"
-                        >
-                          Accetta
-                        </button>
-                        <button
-                          onClick={() => respondDay(b.id, d.activityDayId, "rejected")}
-                          disabled={busyId === dayBusyKey}
-                          className="rounded-md bg-white px-2.5 py-1.5 text-[11px] font-bold text-ink-2 shadow-[0_1px_3px_rgba(0,0,0,0.08)] disabled:opacity-60"
-                        >
-                          Rifiuta
-                        </button>
-                      </div>
-                    ) : (
-                      <div className="flex items-center gap-2">
-                        <span
-                          className={`rounded-full px-2 py-0.5 text-[10.5px] font-semibold ${
-                            d.partnerDecision === "accepted"
-                              ? "bg-green-light text-[#2d8f52]"
-                              : "bg-white text-ink-3"
-                          }`}
-                        >
-                          {d.partnerDecision === "accepted" ? "Accettato" : "Rifiutato"}
-                        </span>
-                        <button
-                          onClick={() => cancelDay(b.id, d.activityDayId)}
-                          disabled={busyId === `cancel:${b.id}:${d.activityDayId}`}
-                          className="text-[11px] font-semibold text-ink-3 underline disabled:opacity-60"
-                        >
-                          Rimuovi giorno
-                        </button>
+                  <>
+                    {/* "Seleziona tutto su più giorni" — segnalazione beta
+                        02/09/2026: mostra i controlli SOLO quando ha senso
+                        (almeno 2 giorni ancora da decidere), stesso principio
+                        del bottone "Seleziona tutte" in cima alla pagina. */}
+                    {pendingDayIds.length > 1 && (
+                      <div className="mb-1 flex flex-wrap items-center justify-between gap-2 rounded-md border border-dashed border-[#D8DCE3] px-2.5 py-1.5">
+                        <label className="flex items-center gap-1.5 text-[11px] font-semibold text-ink-2">
+                          <input
+                            type="checkbox"
+                            checked={allDaysSelected}
+                            onChange={() => toggleAllDaysSelected(b.id, pendingDayIds)}
+                            className="h-3.5 w-3.5"
+                          />
+                          Seleziona tutti i giorni ({pendingDayIds.length})
+                        </label>
+                        {selectedCount > 0 && (
+                          <div className="flex gap-1.5">
+                            <button
+                              onClick={() => respondSelectedDays(b.id, "accepted")}
+                              disabled={bookingBulkBusy}
+                              className="rounded-md bg-partner px-2.5 py-1.5 text-[11px] font-bold text-white disabled:opacity-60"
+                            >
+                              {bookingBulkBusy ? "…" : `Accetta selezionati (${selectedCount})`}
+                            </button>
+                            <button
+                              onClick={() => respondSelectedDays(b.id, "rejected")}
+                              disabled={bookingBulkBusy}
+                              className="rounded-md bg-white px-2.5 py-1.5 text-[11px] font-bold text-ink-2 shadow-[0_1px_3px_rgba(0,0,0,0.08)] disabled:opacity-60"
+                            >
+                              Rifiuta selezionati
+                            </button>
+                          </div>
+                        )}
                       </div>
                     )}
-                    {errorId === dayBusyKey && (
-                      <p className="w-full text-[11px] font-medium text-orange">Errore, riprova.</p>
+                    {dayBulkSummary[b.id] && (
+                      <p className="mb-1 rounded-md bg-bg px-2.5 py-1.5 text-[11px] font-medium text-ink-2">
+                        {dayBulkSummary[b.id]}
+                      </p>
                     )}
-                  </div>
+                    {b.days.map((d) => {
+                      const dayBusyKey = `${b.id}:${d.activityDayId}`;
+                      const promoteBusyKey = `promote:${b.id}:${d.activityDayId}`;
+                      return (
+                        <div
+                          key={d.activityDayId}
+                          className="flex flex-wrap items-center justify-between gap-2 rounded-md bg-bg p-2.5 text-xs"
+                        >
+                          <span className="flex items-center gap-1.5 font-medium text-ink">
+                            {d.partnerDecision === "pending" && pendingDayIds.length > 1 && (
+                              <input
+                                type="checkbox"
+                                checked={selectedForBooking.has(d.activityDayId)}
+                                onChange={() => toggleDaySelected(b.id, d.activityDayId)}
+                                className="h-3.5 w-3.5"
+                              />
+                            )}
+                            {formatDate(d.date)} · €{d.price}
+                          </span>
+                          {d.partnerDecision === "pending" ? (
+                            <div className="flex gap-1.5">
+                              <button
+                                onClick={() => respondDay(b.id, d.activityDayId, "accepted")}
+                                disabled={busyId === dayBusyKey}
+                                className="rounded-md bg-partner px-2.5 py-1.5 text-[11px] font-bold text-white disabled:opacity-60"
+                              >
+                                Accetta
+                              </button>
+                              <button
+                                onClick={() => respondDay(b.id, d.activityDayId, "rejected")}
+                                disabled={busyId === dayBusyKey}
+                                className="rounded-md bg-white px-2.5 py-1.5 text-[11px] font-bold text-ink-2 shadow-[0_1px_3px_rgba(0,0,0,0.08)] disabled:opacity-60"
+                              >
+                                Rifiuta
+                              </button>
+                            </div>
+                          ) : (
+                            <div className="flex items-center gap-2">
+                              <span
+                                className={`rounded-full px-2 py-0.5 text-[10.5px] font-semibold ${DAY_DECISION_LABEL[d.partnerDecision].cls}`}
+                              >
+                                {DAY_DECISION_LABEL[d.partnerDecision].label}
+                              </span>
+                              {/* "waitlisted" — segnalazione beta 02/09/2026: il
+                                  giorno era pieno al momento dell'accettazione.
+                                  "Promuovi" riprova la riserva ora (es. dopo che
+                                  un altro giorno/prenotazione è stato annullato). */}
+                              {d.partnerDecision === "waitlisted" ? (
+                                <button
+                                  onClick={() => promoteDay(b.id, d.activityDayId)}
+                                  disabled={busyId === promoteBusyKey}
+                                  className="text-[11px] font-semibold text-sky underline disabled:opacity-60"
+                                >
+                                  {busyId === promoteBusyKey ? "…" : "Promuovi"}
+                                </button>
+                              ) : (
+                                <button
+                                  onClick={() => cancelDay(b.id, d.activityDayId)}
+                                  disabled={busyId === `cancel:${b.id}:${d.activityDayId}`}
+                                  className="text-[11px] font-semibold text-ink-3 underline disabled:opacity-60"
+                                >
+                                  Rimuovi giorno
+                                </button>
+                              )}
+                            </div>
+                          )}
+                          {(errorId === dayBusyKey || errorId === promoteBusyKey) && (
+                            <p className="w-full text-[11px] font-medium text-orange">
+                              {errorId === promoteBusyKey ? "Ancora nessun posto disponibile per questo giorno." : "Errore, riprova."}
+                            </p>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </>
                 );
-              })}
+              })()}
             </div>
           ) : (
             <div className="mb-2.5 rounded-md bg-bg p-2.5 text-xs text-ink">
