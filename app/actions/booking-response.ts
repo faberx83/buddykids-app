@@ -14,7 +14,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
 import { revalidatePath } from "next/cache";
-import { sendEmail, isEmailConfigured } from "@/lib/email";
 // TRAMA ONE Build Sprint 6 (backlog vincolante P1, Capacity) — reserve/release
 // centralizzati in lib/capacity/service.ts, con idempotenza esplicita
 // (booking_weeks/booking_days.capacity_decremented) invece della logica
@@ -23,119 +22,23 @@ import { releaseDayCapacity, reserveDayCapacity, reserveWeekCapacity } from "@/l
 // Push notifications (31/08/2026) — trigger P0 "il centro ha una proposta
 // per te" (SOLO decision==="proposed", l'unico caso ACTION nel notification
 // center in-app, vedi lib/data/notifications.ts). Best-effort per
-// costruzione, stesso principio dell'email sopra.
+// costruzione, stesso principio dell'email sotto.
 import { sendPushToUser } from "@/lib/push/send";
-
-// TRAMA ONE Build Sprint 4 (DEC-42, PCR-029 P0) — notifica email al genitore
-// quando il centro risponde a una prenotazione, stesso pattern best-effort
-// già usato in app/actions/attendance.ts::setAttendanceAction (un eventuale
-// errore di invio non fa mai fallire la risposta del centro, che è già stata
-// salvata su bookings prima di questa chiamata).
-// Task #360 (PT-MVP-12/backlog #355) — esteso per accettare un'etichetta di
-// giorno opzionale: la stessa email serve sia per la risposta a livello di
-// intera prenotazione (dayLabel assente) sia per la risposta a un singolo
-// "Giorno spot" (dayLabel = data formattata), riusando lo stesso testo/subject
-// invece di duplicare la funzione per il caso per-giorno introdotto da
-// respondToBookingDayAction.
-// TRAMA ONE Build Sprint 6 (backlog vincolante P2, "email fire-and-forget",
-// SPRINT_GOVERNANCE.md riga 151, DEC-49) — piccolo helper per scrivere
-// l'esito dell'ultimo tentativo di invio su bookings.email_delivery_status
-// (migration_19, non ancora applicata da Fabrizio). Scrittura anch'essa
-// best-effort: se fallisce (es. migrazione non ancora applicata in
-// produzione) non deve mai far fallire la risposta del centro, già salvata
-// prima di arrivare qui — per questo è avvolta nel try/catch del chiamante,
-// non ha uno suo try/catch dedicato.
-async function recordEmailDeliveryStatus(
-  supabase: Awaited<ReturnType<typeof createClient>>,
-  bookingId: string,
-  status: "sent" | "failed" | "not_configured" | "no_recipient",
-  error?: string
-) {
-  await supabase
-    .from("bookings")
-    .update({
-      email_delivery_status: status,
-      email_delivery_error: error ?? null,
-      email_delivery_attempted_at: new Date().toISOString(),
-    })
-    .eq("id", bookingId);
-}
-
-async function notifyParentOfBookingResponse(
-  supabase: Awaited<ReturnType<typeof createClient>>,
-  bookingId: string,
-  decision: "accepted" | "rejected" | "proposed",
-  proposalNote?: string,
-  dayLabel?: string
-) {
-  if (!isEmailConfigured) {
-    // Non è un fallimento: stesso comportamento "invio disattivato" già
-    // documentato in lib/email.ts (nessuna RESEND_API_KEY configurata).
-    // Registrato comunque per distinguere da un vero errore di invio.
-    try {
-      await recordEmailDeliveryStatus(supabase, bookingId, "not_configured");
-    } catch {
-      /* best effort, colonne potrebbero non esistere ancora (migration_19) */
-    }
-    return;
-  }
-  try {
-    const { data: row } = await supabase
-      .from("bookings")
-      .select("parent_id, activities ( name )")
-      .eq("id", bookingId)
-      .single();
-    if (!row?.parent_id) {
-      await recordEmailDeliveryStatus(supabase, bookingId, "no_recipient");
-      return;
-    }
-    const activity = Array.isArray(row.activities) ? row.activities[0] : row.activities;
-    const { data: parentRow } = await supabase
-      .from("profiles")
-      .select("email, full_name")
-      .eq("id", row.parent_id)
-      .single();
-    if (!parentRow?.email) {
-      await recordEmailDeliveryStatus(supabase, bookingId, "no_recipient");
-      return;
-    }
-
-    const greeting = `Ciao${parentRow.full_name ? " " + parentRow.full_name.split(" ")[0] : ""},`;
-    const activityName = activity?.name ?? "la tua prenotazione";
-    const forWhat = dayLabel ? `<strong>${activityName}</strong> per il giorno <strong>${dayLabel}</strong>` : `<strong>${activityName}</strong>`;
-    let subject: string;
-    let body: string;
-    if (decision === "accepted") {
-      subject = dayLabel ? `Giorno confermato: ${activityName} (${dayLabel})` : `Prenotazione accettata: ${activityName}`;
-      body = `<p>${greeting}</p><p>Il centro ha <strong>accettato</strong> la tua prenotazione per ${forWhat}.</p>`;
-    } else if (decision === "rejected") {
-      subject = dayLabel ? `Giorno non accettato: ${activityName} (${dayLabel})` : `Prenotazione non accettata: ${activityName}`;
-      body = `<p>${greeting}</p><p>Il centro non ha potuto accettare la tua prenotazione per ${forWhat}. Contatta il centro per maggiori informazioni.</p>`;
-    } else {
-      subject = `Il centro ha una proposta per te: ${activityName}`;
-      body = `<p>${greeting}</p><p>Il centro ha inviato una proposta alternativa per ${forWhat}:</p><p>${proposalNote ?? ""}</p>`;
-    }
-    const result = await sendEmail({ to: parentRow.email, subject, html: body });
-    if (result.error) {
-      console.error(
-        `[booking-response] Notifica email al genitore fallita definitivamente dopo ${result.attempts} tentativo/i (bookingId=${bookingId}, decision=${decision}): ${result.error}`
-      );
-    }
-    await recordEmailDeliveryStatus(
-      supabase,
-      bookingId,
-      result.error ? "failed" : "sent",
-      result.error
-    );
-  } catch (e) {
-    // best effort — non blocca la risposta già salvata. Logghiamo comunque
-    // esplicitamente (prima la catch era silenziosa, causa del debito P2).
-    console.error(
-      `[booking-response] Errore inatteso durante la notifica email al genitore (bookingId=${bookingId}, decision=${decision}):`,
-      e
-    );
-  }
-}
+// Notifica email al genitore + applyDayDecision (verifica di disponibilità
+// prima di scrivere la decisione finale + lista d'attesa, segnalazione beta
+// 02/09/2026) — estratti in lib/booking-response/ il 02/09/2026 PER
+// TESTABILITÀ: questo file è "use server" e importa lib/push/send.ts sopra
+// (`import "server-only"`), un import che i test Playwright non-browser non
+// risolvono fuori dal bundler di Next. Vedi il commento in testa a
+// lib/booking-response/apply-day-decision.ts e
+// tests/one/booking-days-waitlist.spec.ts. Nessun comportamento cambiato,
+// solo spostato.
+import { notifyParentOfBookingResponse } from "@/lib/booking-response/notify";
+import {
+  applyDayDecision,
+  DayDecisionStatus,
+} from "@/lib/booking-response/apply-day-decision";
+export type { DayDecisionStatus, DayDecisionResult } from "@/lib/booking-response/apply-day-decision";
 
 // Push notifications, trigger P0 "il centro ha una proposta per te"
 // (31/08/2026). Funzione SEPARATA da notifyParentOfBookingResponse sopra
@@ -263,12 +166,108 @@ export async function respondToBookingAction(input: {
 // ─────────────────────────────────────────────
 // Risposta per SINGOLO GIORNO (Giorni spot — accettazione/rifiuto parziale,
 // richiesto esplicitamente da SPRINT_GOVERNANCE.md).
+//
+// 02/09/2026 — segnalazione beta (genitore, /center/prenotazioni): "seleziona
+// tutto su più giorni" in accettazione + "come si verifica se ho ancora
+// disponibilità" + "considerare lista d'attesa". La logica di verifica
+// disponibilità/lista d'attesa (con il fix del bug di overbooking silenzioso
+// che c'era prima) vive ora in
+// lib/booking-response/apply-day-decision.ts::applyDayDecision (importata
+// sopra), condivisa da questa funzione, dalla nuova
+// respondToBookingDaysAction (accettazione multi-giorno) e da
+// promoteWaitlistedDayAction più sotto.
 // ─────────────────────────────────────────────
 export async function respondToBookingDayAction(input: {
   bookingId: string;
   activityDayId: string;
   decision: "accepted" | "rejected";
-}): Promise<{ error?: string }> {
+}): Promise<{ error?: string; result?: DayDecisionStatus }> {
+  if (!isSupabaseConfigured) return { error: "Supabase non configurato" };
+
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { error: "Non autenticato" };
+
+  const result = await applyDayDecision(supabase, input.bookingId, input.activityDayId, input.decision);
+  if (result.status === "error") return { error: result.error };
+
+  revalidateBookingPaths();
+  return { result: result.status };
+}
+
+// ─────────────────────────────────────────────
+// "Seleziona tutto su più giorni" (segnalazione beta 02/09/2026) — risposta
+// in blocco a più giorni della STESSA prenotazione "Giorni spot" in una
+// sola chiamata, riusando applyDayDecision (stessa verifica di
+// disponibilità/lista d'attesa per OGNI giorno selezionato, nessuna logica
+// duplicata). Ritorna un riepilogo per-esito invece di un singolo
+// error/ok: il centro deve sapere ESATTAMENTE quanti giorni sono stati
+// accettati, quanti messi in lista d'attesa (pieni) e quanti falliti — un
+// "successo/fallimento" unico avrebbe nascosto un accettazione parziale
+// (es. 5 di 7 giorni), l'esito più comune quando alcuni giorni sono pieni.
+// ─────────────────────────────────────────────
+export interface BulkDayDecisionSummary {
+  accepted: number;
+  rejected: number;
+  waitlisted: number;
+  waitlistUnavailable: number;
+  failed: number;
+  error?: string; // valorizzato solo se l'intera operazione non è potuta partire (es. non autenticato) — nessun giorno processato.
+  results: Record<string, DayDecisionStatus | "error">;
+}
+
+export async function respondToBookingDaysAction(input: {
+  bookingId: string;
+  activityDayIds: string[];
+  decision: "accepted" | "rejected";
+}): Promise<BulkDayDecisionSummary> {
+  const empty = { accepted: 0, rejected: 0, waitlisted: 0, waitlistUnavailable: 0, failed: 0, results: {} };
+  if (!isSupabaseConfigured) return { ...empty, error: "Supabase non configurato" };
+  if (input.activityDayIds.length === 0) return empty;
+
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { ...empty, error: "Non autenticato" };
+
+  const summary: BulkDayDecisionSummary = { accepted: 0, rejected: 0, waitlisted: 0, waitlistUnavailable: 0, failed: 0, results: {} };
+
+  // Sequenziale, deliberatamente NON Promise.all: ogni riga passa da
+  // reserveDayCapacity, che fa CAS su activity_days.spots_left (vedi
+  // lib/capacity/service.ts) — eseguire le richieste in parallelo
+  // aumenterebbe solo la contesa CAS senza alcun vantaggio reale (il centro
+  // clicca un bottone, non è un percorso ad alta frequenza), stesso
+  // principio prudente già seguito da releaseAllWeekCapacityForBooking.
+  for (const activityDayId of input.activityDayIds) {
+    const result = await applyDayDecision(supabase, input.bookingId, activityDayId, input.decision);
+    summary.results[activityDayId] = result.status;
+    if (result.status === "error") summary.failed++;
+    else if (result.status === "accepted") summary.accepted++;
+    else if (result.status === "rejected") summary.rejected++;
+    else if (result.status === "waitlisted") summary.waitlisted++;
+    else if (result.status === "waitlisted_unavailable") summary.waitlistUnavailable++;
+  }
+
+  revalidateBookingPaths();
+  return summary;
+}
+
+// ─────────────────────────────────────────────
+// Promozione MANUALE da lista d'attesa (segnalazione beta 02/09/2026) — il
+// centro riprova la riserva quando pensa che si sia liberato un posto (es.
+// dopo cancelBookingDayAction su un altro giorno pieno). Promozione
+// automatica in tempo reale (trigger su ogni cancellazione) è
+// esplicitamente FUORI scope qui — vedi nota in
+// supabase/migration_34_booking_days_waitlist.sql: più delicata (notifiche,
+// race condition tra più giorni in coda), lasciata a un momento successivo.
+// ─────────────────────────────────────────────
+export async function promoteWaitlistedDayAction(input: {
+  bookingId: string;
+  activityDayId: string;
+}): Promise<{ error?: string; promoted?: boolean }> {
   if (!isSupabaseConfigured) return { error: "Supabase non configurato" };
 
   const supabase = await createClient();
@@ -279,42 +278,30 @@ export async function respondToBookingDayAction(input: {
 
   const { data: day, error: fetchError } = await supabase
     .from("booking_days")
-    .select("booking_id, activity_day_id, partner_decision, capacity_decremented")
+    .select("partner_decision")
     .eq("booking_id", input.bookingId)
     .eq("activity_day_id", input.activityDayId)
     .single();
   if (fetchError || !day) return { error: "Giorno non trovato in questa prenotazione" };
+  if (day.partner_decision !== "waitlisted") return { error: "Questo giorno non è in lista d'attesa" };
 
-  const update: Record<string, unknown> = { partner_decision: input.decision };
+  const capacityResult = await reserveDayCapacity(supabase, input.bookingId, input.activityDayId);
+  if (!capacityResult.applied) {
+    return { error: "Ancora nessun posto disponibile per questo giorno.", promoted: false };
+  }
 
   const { error } = await supabase
     .from("booking_days")
-    .update(update)
+    .update({ partner_decision: "accepted" })
     .eq("booking_id", input.bookingId)
     .eq("activity_day_id", input.activityDayId);
   if (error) return { error: error.message };
 
-  // Decremento capacità del giorno, ora delegato al servizio canonico
-  // (lib/capacity/service.ts) — stesso comportamento di prima (idempotenza
-  // via booking_days.capacity_decremented), solo centralizzato.
-  if (input.decision === "accepted" && !day.capacity_decremented) {
-    await reserveDayCapacity(supabase, input.bookingId, input.activityDayId);
-  }
-
-  // Notifica/badge a livello di intera prenotazione, coerente col pattern
-  // read_by_side: una risposta su un singolo giorno è comunque "una novità"
-  // per il genitore sulla prenotazione nel suo complesso.
   await supabase
     .from("bookings")
     .update({ read_by_parent: false, read_by_center: true, responded_at: new Date().toISOString() })
     .eq("id", input.bookingId);
 
-  // Task #360 (PT-MVP-12/backlog #355) — gap individuato durante il check di
-  // coerenza TRAMA ONE del 27/07: la risposta a livello di INTERA prenotazione
-  // (respondToBookingAction) già inviava l'email al genitore da Sprint 4, ma
-  // la risposta per SINGOLO GIORNO (questa funzione) non lo faceva — il
-  // genitore vedeva l'esito solo come badge in-app. Stesso pattern
-  // best-effort, dopo che lo stato è già stato salvato.
   const { data: activityDay } = await supabase
     .from("activity_days")
     .select("date")
@@ -323,10 +310,10 @@ export async function respondToBookingDayAction(input: {
   const dayLabel = activityDay?.date
     ? new Date(activityDay.date + "T00:00:00").toLocaleDateString("it-IT", { day: "numeric", month: "long" })
     : undefined;
-  await notifyParentOfBookingResponse(supabase, input.bookingId, input.decision, undefined, dayLabel);
+  await notifyParentOfBookingResponse(supabase, input.bookingId, "accepted", undefined, dayLabel);
 
   revalidateBookingPaths();
-  return {};
+  return { promoted: true };
 }
 
 // ─────────────────────────────────────────────

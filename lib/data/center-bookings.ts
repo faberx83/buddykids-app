@@ -16,7 +16,14 @@ import { isSupabaseConfigured } from "@/lib/supabase/env";
 import { getCenterContext } from "@/lib/data/center-admin";
 
 export type PartnerDecision = "pending" | "accepted" | "rejected" | "proposed";
-export type DayPartnerDecision = "pending" | "accepted" | "rejected";
+// "waitlisted" (migrazione 34, NON applicata da questa sessione — vedi
+// supabase/migration_34_booking_days_waitlist.sql): il giorno era pieno al
+// momento del tentativo di accettazione, la richiesta resta in coda invece
+// di essere rifiutata. Finché la migrazione non è applicata, il codice
+// applicativo non scrive mai questo valore (degrada a "pending" con un
+// messaggio, vedi app/actions/booking-response.ts) — il tipo lo include già
+// per non dover ritoccare data layer/UI una seconda volta.
+export type DayPartnerDecision = "pending" | "accepted" | "rejected" | "waitlisted";
 export type BookingStatus = "pending" | "confirmed" | "cancelled";
 
 export interface CenterBookingDay {
@@ -25,6 +32,9 @@ export interface CenterBookingDay {
   price: number;
   partnerDecision: DayPartnerDecision;
   partnerNote: string | null;
+  // Migrazione 34: valorizzato solo quando partnerDecision === "waitlisted",
+  // usato per ordinare la promozione manuale (il più vecchio in coda prima).
+  waitlistedAt: string | null;
 }
 
 export interface CenterBookingWeek {
@@ -87,10 +97,28 @@ interface RawRow {
     price: number;
     partner_decision: DayPartnerDecision;
     partner_note: string | null;
+    // Migrazione 34 (waitlisted_at) — colonna additiva NON ancora applicata
+    // da questa sessione. Selezionarla comunque qui è sicuro: PostgREST la
+    // legge come null finché la colonna non esiste? No — se la colonna non
+    // esiste la query PostgREST intera fallirebbe con "colonna
+    // inesistente". Per questo NON è inclusa in SELECT sotto finché
+    // Fabrizio non applica la migrazione (vedi commento su SELECT). Il
+    // campo resta nel tipo/mapping, valorizzato a null lato client, per non
+    // dover ritoccare data layer/UI una seconda volta al momento
+    // dell'applicazione.
     activity_days: { date: string } | { date: string }[] | null;
   }[] | null;
 }
 
+// NOTA migrazione 34 (supabase/migration_34_booking_days_waitlist.sql, NON
+// applicata): "waitlisted_at" non è incluso in questo SELECT perché
+// PostgREST fa fallire l'INTERA query se una colonna richiesta non esiste
+// ancora nel DB — a differenza di una colonna JS opzionale, qui non c'è un
+// modo sicuro di "provare a leggerla" senza rischiare di rompere l'intera
+// Inbox prenotazioni finché la migrazione non è applicata. Quando Fabrizio
+// applica migration_34, aggiungere ", waitlisted_at" dentro
+// "booking_days ( ... )" qui sotto e leggere bd.waitlisted_at in mapRow
+// invece del "null" fisso attuale — RawRow lo ha già in tipo per allora.
 const SELECT = `
   id, status, partner_decision, partner_proposal_note, partner_proposed_at,
   responded_at, cancelled_by, read_by_center, read_by_parent, total_amount,
@@ -111,6 +139,9 @@ function mapRow(row: RawRow): CenterBooking {
     price: bd.price,
     partnerDecision: bd.partner_decision,
     partnerNote: bd.partner_note,
+    // waitlisted_at non è nel SELECT (vedi nota sopra, migrazione 34 non
+    // applicata) — fisso a null finché non lo sarà.
+    waitlistedAt: null as string | null,
   }));
 
   return {
