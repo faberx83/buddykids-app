@@ -5,6 +5,8 @@ import { getWeeksForActivity } from "@/lib/data/weeks";
 import { getActivityDays, getBookedDayDatesForActivity } from "@/lib/data/activity-days";
 import { createClient } from "@/lib/supabase/server";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
+import { resolveFeatureFlag } from "@/lib/feature-flags/resolve";
+import { generateCorrelationId } from "@/lib/telemetry/correlation";
 import PhoneShell from "@/components/PhoneShell";
 import ModificaPrenotazioneClient from "./ModificaPrenotazioneClient";
 
@@ -20,12 +22,25 @@ export default async function ModificaPrenotazionePage({
 }) {
   const { id } = await params;
 
+  // nextgen (01/09/2026, segnalazione Fabrizio "grafica legacy" residua su
+  // "Modifica prenotazione"): stessa situazione di /booking/[id] — non esiste
+  // una route /nextgen/prenotazioni/[id]/modifica dedicata, quindi il flag va
+  // risolto qui server-side con lo stesso resolver TRAMA_ONE_ENABLED (vedi
+  // app/booking/[id]/page.tsx) invece che dalla route.
+  let nextgen = false;
   if (isSupabaseConfigured) {
     const supabase = await createClient();
     const {
       data: { user },
     } = await supabase.auth.getUser();
     if (!user) redirect(`/auth/login?next=/prenotazioni/${id}/modifica`);
+    nextgen = await resolveFeatureFlag({
+      flagName: "TRAMA_ONE_ENABLED",
+      userId: user.id,
+      role: "parent",
+      tenant: "family",
+      correlationId: generateCorrelationId(),
+    });
   }
 
   const bookings = await getMyBookingsForParent();
@@ -56,6 +71,7 @@ export default async function ModificaPrenotazionePage({
         weeks={weeks}
         days={days}
         bookedDayDates={[...bookedDayDates]}
+        nextgen={nextgen}
       />
     </PhoneShell>
   );

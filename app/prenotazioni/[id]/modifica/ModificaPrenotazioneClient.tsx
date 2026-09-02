@@ -40,6 +40,7 @@ export default function ModificaPrenotazioneClient({
   weeks,
   days = [],
   bookedDayDates = [],
+  nextgen = false,
 }: {
   booking: MyBooking;
   activity: Activity;
@@ -56,8 +57,16 @@ export default function ModificaPrenotazioneClient({
   // qui un giorno già coperto da un'altra prenotazione separata.
   days?: DayAvailability[];
   bookedDayDates?: string[];
+  // nextgen (01/09/2026, audit layout legacy): risolto server-side in
+  // page.tsx via resolveFeatureFlag (route condivisa Legacy/NextGen, stesso
+  // pattern di app/booking/[id]/BookingClient.tsx) — stessa palette "trama"
+  // usata lì, invece del blu legacy hardcoded.
+  nextgen?: boolean;
 }) {
   const router = useRouter();
+  const accentBg = nextgen ? "bg-trama-violet" : "bg-sky";
+  const accentText = nextgen ? "text-trama-violet" : "text-sky";
+  const accentHoverBorder = nextgen ? "hover:border-trama-violet" : "hover:border-sky";
   const [selectedWeeks, setSelectedWeeks] = useState<string[]>(booking.weekIds);
   // Editor giorni: inizializzato con i giorni REALMENTE prenotati su QUESTA
   // prenotazione (booking.dayDates) — toggle locale, nessuna chiamata al
@@ -272,7 +281,7 @@ export default function ModificaPrenotazioneClient({
   if (!booking.canCancelOrModify) {
     return (
       <div className="flex h-full min-h-screen flex-col sm:min-h-0 sm:flex-1">
-        <PageHeader title="Modifica prenotazione" onBack={() => router.back()} />
+        <PageHeader title="Modifica prenotazione" onBack={() => router.back()} showBrandIcon={nextgen} />
         <div className="px-5 py-6">
           <div className="rounded-lg border border-orange-mid bg-orange-light p-4 text-[13px] text-ink">
             <div className="mb-1 font-bold">Non modificabile da qui</div>
@@ -289,7 +298,7 @@ export default function ModificaPrenotazioneClient({
 
   return (
     <div className="flex h-full min-h-screen flex-col sm:min-h-0 sm:flex-1">
-      <PageHeader title="Modifica prenotazione" onBack={() => router.back()} />
+      <PageHeader title="Modifica prenotazione" onBack={() => router.back()} showBrandIcon={nextgen} />
       <div className="flex-1 overflow-y-auto px-5 py-[18px]">
         <div className="mb-1 text-base font-bold text-ink">{booking.activityName}</div>
 
@@ -356,7 +365,7 @@ export default function ModificaPrenotazioneClient({
                               ? "border-green bg-green-light text-ink"
                               : disabled
                               ? "cursor-not-allowed border-[#E8EBF0] bg-[#FAFBFD] text-ink-3"
-                              : "border-[#E8EBF0] bg-white text-ink hover:border-sky"
+                              : `border-[#E8EBF0] bg-white text-ink ${accentHoverBorder}`
                           }`}
                         >
                           <span className="text-[10px] font-semibold uppercase text-ink-2">
@@ -365,7 +374,7 @@ export default function ModificaPrenotazioneClient({
                           <span className="text-sm font-bold">
                             {dayNum} {monthShort}
                           </span>
-                          <span className={`text-[11px] font-semibold ${selected ? "text-green" : "text-sky"}`}>
+                          <span className={`text-[11px] font-semibold ${selected ? "text-green" : accentText}`}>
                             {selected ? "Incluso" : bookedElsewhere ? "Altra prenot." : full ? "Pieno" : `€${dayPrice(day, activity.pricePerWeek)}`}
                           </span>
                         </button>
@@ -403,7 +412,7 @@ export default function ModificaPrenotazioneClient({
               type="button"
               onClick={handleSaveDays}
               disabled={savingDays || daysUnchanged || selectedDayDates.length === 0}
-              className="mt-4 w-full rounded-md bg-sky px-4 py-3 text-sm font-bold text-white disabled:opacity-50"
+              className={`mt-4 w-full rounded-md ${accentBg} px-4 py-3 text-sm font-bold text-white disabled:opacity-50`}
             >
               {savingDays ? "Salvataggio…" : "Salva modifiche"}
             </button>
@@ -458,7 +467,7 @@ export default function ModificaPrenotazioneClient({
               type="button"
               onClick={handleSave}
               disabled={submitting || unchanged || selectedWeeks.length === 0}
-              className="mt-4 w-full rounded-md bg-sky px-4 py-3 text-sm font-bold text-white disabled:opacity-50"
+              className={`mt-4 w-full rounded-md ${accentBg} px-4 py-3 text-sm font-bold text-white disabled:opacity-50`}
             >
               {submitting ? "Salvataggio…" : "Salva modifiche"}
             </button>
