@@ -13,6 +13,10 @@ import { isSupabaseConfigured } from "@/lib/supabase/env";
 import { getSeasonWeekRanges, isoDate, formatShortRange, overlaps } from "@/lib/season-weeks";
 import { getSeasonYear } from "@/lib/data/season-year";
 import { PillColor } from "@/lib/types";
+// BUG CORRETTO 02/09/2026 (segnalazione Fabrizio) — vedi il commento sopra
+// RawBookingRow.booking_days e lib/booking-response/effective-decision.ts
+// per la ROOT CAUSE ANALYSIS completa.
+import { effectiveDayBasedDecision } from "@/lib/booking-response/effective-decision";
 
 // Copertura di UN bambino per una settimana — una famiglia con più bambini
 // può avere iscrizioni diverse (campi diversi, o solo alcuni bambini
@@ -109,7 +113,12 @@ interface RawBookingRow {
   // BUG CORRETTO 06/08/2026: prenotazioni "Giorni spot" (booking_days, Sprint
   // 3) non venivano lette affatto da questa query — la settimana risultava
   // sempre scoperta anche con giorni realmente prenotati.
-  booking_days: { activity_days: { date: string } | { date: string }[] | null }[] | null;
+  //
+  // BUG CORRETTO 02/09/2026 (segnalazione Fabrizio, Sett.14 "Prova FP"): il
+  // campo partner_decision non era selezionato QUI (solo a livello di
+  // bookings sopra) — vedi lib/booking-response/effective-decision.ts per il
+  // motivo per cui serve leggerlo per-giorno invece del solo campo booking-level.
+  booking_days: { partner_decision: string | null; activity_days: { date: string } | { date: string }[] | null }[] | null;
   booking_kids: { kid_id: string }[] | null;
 }
 
@@ -167,7 +176,7 @@ export async function getPlannerData(): Promise<PlannerData> {
   const { data, error } = await supabase
     .from("bookings")
     .select(
-      "id, status, partner_decision, activities ( slug, name, pills ), booking_weeks ( activity_weeks ( start_date, end_date ) ), booking_days ( activity_days ( date ) ), booking_kids ( kid_id )"
+      "id, status, partner_decision, activities ( slug, name, pills ), booking_weeks ( activity_weeks ( start_date, end_date ) ), booking_days ( partner_decision, activity_days ( date ) ), booking_kids ( kid_id )"
     )
     .eq("parent_id", user.id)
     .neq("status", "cancelled");
@@ -232,7 +241,18 @@ export async function getPlannerData(): Promise<PlannerData> {
     const activityName = activity?.name;
     const activityTagColor = activity?.pills?.[0]?.color;
     const activitySlug = activity?.slug;
-    const partnerDecision = row.partner_decision ?? "pending";
+    // BUG CORRETTO 02/09/2026 (segnalazione Fabrizio, Sett.14 "Prova FP"):
+    // qui, a differenza del giro sopra (booking_weeks, dove
+    // row.partner_decision è la risposta autoritativa scritta da
+    // respondToBookingAction), una prenotazione a giorni riceve le sue
+    // decisioni giorno per giorno (applyDayDecision scrive SOLO su
+    // booking_days.partner_decision, mai su bookings.partner_decision) — usare
+    // row.partner_decision qui la mostrava "in attesa" per sempre anche a
+    // conferma completata. Vedi lib/booking-response/effective-decision.ts.
+    const partnerDecision = effectiveDayBasedDecision(
+      (row.booking_days ?? []).map((bd) => bd.partner_decision),
+      row.partner_decision ?? "pending"
+    );
     const kidIds = (row.booking_kids ?? []).map((bk) => bk.kid_id);
     if (kidIds.length === 0 || !activityName) continue;
 

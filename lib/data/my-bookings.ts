@@ -12,6 +12,11 @@ import { createClient } from "@/lib/supabase/server";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
 import { getSeasonWeekRanges, overlaps } from "@/lib/season-weeks";
 import { getSeasonYear } from "@/lib/data/season-year";
+// BUG CORRETTO 02/09/2026 (segnalazione Fabrizio) — vedi commento sopra
+// RawRow.booking_days e lib/booking-response/effective-decision.ts per la
+// ROOT CAUSE ANALYSIS completa (stesso difetto già corretto in
+// lib/data/planner.ts).
+import { effectiveDayBasedDecision } from "@/lib/booking-response/effective-decision";
 
 export type BookingStatus = "pending" | "confirmed" | "cancelled";
 
@@ -156,7 +161,9 @@ interface RawRow {
   responded_at: string | null;
   activities: RawActivityRef | RawActivityRef[] | null;
   booking_weeks: { activity_weeks: RawWeekRef | RawWeekRef[] | null }[] | null;
-  booking_days: { activity_days: RawDayRef | RawDayRef[] | null }[] | null;
+  // BUG CORRETTO 02/09/2026: partner_decision non era selezionato qui (solo a
+  // livello di bookings sopra) — vedi lib/booking-response/effective-decision.ts.
+  booking_days: { partner_decision: string | null; activity_days: RawDayRef | RawDayRef[] | null }[] | null;
   booking_kids: { kids: { id: string; name: string } | { id: string; name: string }[] | null }[] | null;
 }
 
@@ -172,7 +179,7 @@ export async function getMyBookingsForParent(): Promise<MyBooking[]> {
   const { data, error } = await supabase
     .from("bookings")
     .select(
-      "id, status, total_amount, discount_amount, created_at, partner_decision, partner_proposal_note, read_by_parent, responded_at, activities ( id, slug, name, cover_image_url, emoji, img_gradient, centers ( name, city, cancellation_window_days ) ), booking_weeks ( activity_weeks ( id, label, start_date, end_date ) ), booking_days ( activity_days ( date ) ), booking_kids ( kids ( id, name ) )"
+      "id, status, total_amount, discount_amount, created_at, partner_decision, partner_proposal_note, read_by_parent, responded_at, activities ( id, slug, name, cover_image_url, emoji, img_gradient, centers ( name, city, cancellation_window_days ) ), booking_weeks ( activity_weeks ( id, label, start_date, end_date ) ), booking_days ( partner_decision, activity_days ( date ) ), booking_kids ( kids ( id, name ) )"
     )
     .eq("parent_id", user.id)
     .order("created_at", { ascending: false });
@@ -209,6 +216,21 @@ export async function getMyBookingsForParent(): Promise<MyBooking[]> {
       .sort();
     const isDayBased = weekRows.length === 0 && dayRows.length > 0;
     const daysLabel = isDayBased ? dayRows.map((d) => formatDateShort(d)).join(", ") : null;
+
+    // BUG CORRETTO 02/09/2026 (segnalazione Fabrizio, Sett.14 "Prova FP"): per
+    // le prenotazioni a giorni, row.partner_decision resta "pending" per
+    // sempre (applyDayDecision scrive solo su booking_days.partner_decision,
+    // mai sul campo a livello di prenotazione) — qui si aggrega la decisione
+    // vera dai singoli giorni invece di fidarsi di quel campo. Per le
+    // prenotazioni a settimana intera (row.partner_decision È la risposta
+    // autoritativa, scritta da respondToBookingAction) il comportamento resta
+    // INVARIATO. Vedi lib/booking-response/effective-decision.ts.
+    const effectivePartnerDecision = isDayBased
+      ? effectiveDayBasedDecision(
+          (row.booking_days ?? []).map((bd) => bd.partner_decision),
+          row.partner_decision ?? "pending"
+        )
+      : (row.partner_decision ?? "pending");
 
     const weeksLabel =
       weekRows
@@ -262,7 +284,7 @@ export async function getMyBookingsForParent(): Promise<MyBooking[]> {
       cancellationWindowDays,
       daysUntilStart,
       canCancelOrModify,
-      partnerDecision: row.partner_decision ?? "pending",
+      partnerDecision: effectivePartnerDecision,
       partnerProposalNote: row.partner_proposal_note,
       readByParent: row.read_by_parent ?? true,
       respondedAt: row.responded_at,
