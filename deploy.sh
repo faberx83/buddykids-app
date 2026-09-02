@@ -20,11 +20,14 @@
 #   DEPLOY_NOTIFY_SECRET=<secret> bash deploy.sh   # abilita la notifica di fine deploy (ok/ko) sul banner
 #                                                   # dell'app Admin (/admin) — stesso secret impostato come
 #                                                   # variabile d'ambiente DEPLOY_NOTIFY_SECRET su Vercel.
-#                                                   # Se non impostato, la notifica viene semplicemente saltata
-#                                                   # (nessun impatto sul deploy). Vedi
-#                                                   # supabase/migration_33_deploy_events.sql (DA APPLICARE
-#                                                   # manualmente prima del primo uso) e
-#                                                   # app/internal/deploy-notify/route.ts.
+#                                                   # Se non impostato (né qui né in .env.deploy sotto), la
+#                                                   # notifica viene semplicemente saltata (nessun impatto sul
+#                                                   # deploy). Vedi supabase/migration_33_deploy_events.sql
+#                                                   # (applicata) e app/internal/deploy-notify/route.ts.
+#   (una tantum) cp .env.deploy.example .env.deploy, poi compila DEPLOY_NOTIFY_SECRET
+#                                                   # nel file — da quel momento "bash deploy.sh" da solo invia
+#                                                   # la notifica ad ogni deploy, senza doverlo scrivere ogni
+#                                                   # volta sul comando (file gitignored, mai su GitHub).
 #
 # Ottimizzazione tempo/costo (28/07, richiesta di Fabrizio): il passo [5/5]
 # di verifica post-deploy usa TEST_SCOPE=critical di default — 18 journey
@@ -71,16 +74,41 @@
 set -e
 
 # ────────────────────────────────────────────────────────────────
+# Carica ".env.deploy" (se presente), gitignored — stesso file/scopo di
+# ".env.test" per test-deploy.sh, ma con precedenza esplicita in più: un
+# valore passato inline sul comando (es. "DEPLOY_NOTIFY_SECRET=xyz bash
+# deploy.sh") vince SEMPRE su quanto c'è in ".env.deploy" (un semplice
+# "source", come fa test-deploy.sh con .env.test, sovrascriverebbe invece
+# qualunque cosa passata inline, perché viene eseguito dopo — qui la
+# precedenza viene ripristinata esplicitamente subito dopo il source).
+# Risolve la richiesta di Fabrizio (02/09/2026: "non puoi impostarlo sempre
+# nel comando di deploy?"): invece di scrivere DEPLOY_NOTIFY_SECRET=<secret>
+# davanti a "bash deploy.sh" ogni volta, lo si mette UNA volta in
+# ".env.deploy" (copia ".env.deploy.example") e da quel momento "bash
+# deploy.sh" da solo lo trova. Il secret resta SOLO su questa macchina (mai
+# in git, ".env*" è in .gitignore) e su Vercel (env var di produzione,
+# impostata separatamente da Fabrizio) — non è mai stato e non deve mai
+# essere scritto dentro deploy.sh stesso, che invece viene pubblicato su
+# GitHub ad ogni deploy.
+if [ -f .env.deploy ]; then
+  _deploy_notify_secret_inline="${DEPLOY_NOTIFY_SECRET:-}"
+  set -a
+  source .env.deploy
+  set +a
+  [ -n "$_deploy_notify_secret_inline" ] && DEPLOY_NOTIFY_SECRET="$_deploy_notify_secret_inline"
+  unset _deploy_notify_secret_inline
+fi
+
+# ────────────────────────────────────────────────────────────────
 # Notifica di fine deploy (ok/ko) sul banner dell'app Admin (richiesta di
 # Fabrizio, 02/09/2026). registrata con un `trap ... EXIT` così scatta SEMPRE
 # — completamento normale, un blocco preflight (`exit 1` più sotto), o
 # qualunque comando che fallisca sotto `set -e` (es. `vercel --prod`) —
 # senza dover aggiungere una chiamata a mano ad ogni possibile punto di
 # uscita dello script. Best-effort: se DEPLOY_NOTIFY_SECRET non è
-# impostato, o l'endpoint non risponde (es.
-# supabase/migration_33_deploy_events.sql non ancora applicata), la
-# notifica viene semplicemente saltata — non fa MAI fallire né rallentare
-# in modo bloccante il deploy stesso (--max-time 10, `|| true`).
+# impostato (né inline né via .env.deploy sotto), o l'endpoint non risponde,
+# la notifica viene semplicemente saltata — non fa MAI fallire né
+# rallentare in modo bloccante il deploy stesso (--max-time 10, `|| true`).
 #
 # urlencode: nessuna dipendenza esterna (python3/jq potrebbero non esserci
 # sulla macchina che lancia lo script) — snippet bash puro standard.
