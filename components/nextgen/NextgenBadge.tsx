@@ -21,10 +21,19 @@
 // che monta NextgenBadge, senza toccare le pagine stesse.
 import { TRAMA_BETA_VERSION } from "@/lib/beta-version";
 
+// TRAMA BETA v1.1.1 (FINAL VISUAL CONFORMANCE PASS, punto 11) —
+// segnalazione: il ribbon "BETA · v1.1" competeva visivamente col
+// PageHeader appena sotto (troppo ingombrante rispetto al mockup HD
+// approvato). Ridotto proporzionalmente (box 84px→64px, banda 130px→100px,
+// padding verticale 3px→2px, font 9px→8.5px) e tono più leggero
+// (bg-ink→bg-ink/85, meno "nero pieno") — stessa identica meccanica di
+// posizionamento (absolute, ancorato a .app-shell), stesso testo/contenuto
+// (nessun secondo badge), solo meno ingombrante. Testo resta interamente
+// leggibile: nessun clipping, nessuna compressione ulteriore del carattere.
 export default function NextgenBadge() {
   return (
-    <div className="pointer-events-none absolute right-0 top-0 z-20 h-[84px] w-[84px] overflow-hidden">
-      <span className="absolute right-[-30px] top-[16px] block w-[130px] rotate-45 bg-ink py-[3px] text-center text-[9px] font-bold uppercase tracking-wide text-white shadow-sm">
+    <div className="pointer-events-none absolute right-0 top-0 z-20 h-16 w-16 overflow-hidden">
+      <span className="absolute right-[-22px] top-3 block w-[100px] rotate-45 bg-ink/85 py-[2px] text-center text-[8.5px] font-bold uppercase tracking-wide text-white shadow-sm">
         Beta · {TRAMA_BETA_VERSION}
       </span>
     </div>
