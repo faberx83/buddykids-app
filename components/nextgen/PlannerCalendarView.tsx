@@ -20,6 +20,11 @@ import {
   resolveResponsibleOptions,
   FamilyPerson,
 } from "@/lib/nextgen/responsibility-options";
+// TRAMA BETA v1.1.1 (FINAL VISUAL CONFORMANCE PASS, punto 8) — helper puro
+// (nessuna dipendenza server-only) che decide lo STATO cromatico
+// dell'assegnazione ("mine" / "other" / "unassigned"), estratto per essere
+// coperto da un test unitario indipendente dal browser (VIS111-07/08).
+import { responsibilityToneFor } from "@/lib/nextgen/responsibility-tone";
 // "import type": ParentRole è solo un tipo, non trascina lib/supabase/server
 // nel bundle client — stesso motivo di SeasonWeek/KidOverlap qui sopra.
 import type { ParentRole } from "@/lib/data/profile";
@@ -445,7 +450,11 @@ export default function PlannerCalendarView({
   });
 
   return (
-    <div className="flex flex-col gap-3">
+    // TRAMA BETA v1.1.1 (FINAL VISUAL CONFORMANCE PASS, punto 6) — gap
+    // verticale fra i blocchi (selettore/legenda/calendario/riepilogo)
+    // ridotto da 3 (12px) a 2.5 (10px): stesso contenuto, meno "aria" prima
+    // che la parte operativa (riepilogo giorno/settimana) sia raggiungibile.
+    <div className="flex flex-col gap-2.5">
       {/* Selettore Mese/Settimana */}
       <div className="flex gap-2">
         {(
@@ -563,16 +572,20 @@ export default function PlannerCalendarView({
               TRAMA BETA v1.1.1 (UI Refinement, punto 13) — "Condividi
               {mese}" e "Condividi" (settimana, sotto) non devono competere
               come CTA primarie: la primary action del Calendario è
-              organizzare le responsabilità, non condividere. Da pillola a
-              piena larghezza a chip piccolo allineato a destra (stessa
-              taglia/stile del "Condividi" per singola settimana) — stessa
-              funzionalità/azione (openShare), solo peso visivo ridotto. */}
+              organizzare le responsabilità, non condividere.
+              TRAMA BETA v1.1.1 (FINAL VISUAL CONFORMANCE PASS, punto 6) —
+              ancora troppo "pillola" per essere davvero terziario: rimossa
+              la pillola di sfondo (bg-trama-lilac/20), resta solo testo +
+              icona, stesso trattamento di un link secondario del prodotto
+              (es. "Vedi tutte le settimane" in PlannerClient.tsx). Stessa
+              funzionalità/azione (openShare), spazio verticale sopra
+              ridotto (mt-3→mt-2). */}
           {monthShareScope && (
-            <div className="mt-3 flex justify-end">
+            <div className="mt-2 flex justify-end">
               <button
                 type="button"
                 onClick={() => openShare(monthShareScope.start, monthShareScope.end, activeMonth.label)}
-                className="flex items-center gap-1 rounded-full bg-trama-lilac/20 px-2.5 py-1 text-[11px] font-bold text-trama-violet active:brightness-95"
+                className="flex items-center gap-1 rounded-full px-1 py-1 text-[11px] font-semibold text-trama-violet active:bg-black/[0.04]"
               >
                 <i className="ti ti-share text-[12px]" />
                 Condividi {activeMonth.label}
@@ -623,7 +636,15 @@ export default function PlannerCalendarView({
                 <div className="w-16 flex-shrink-0 whitespace-nowrap text-[11.5px] font-bold text-ink">
                   Sett. {w.index}
                 </div>
-                <div className="flex flex-1 items-center gap-1">
+                {/* TRAMA BETA v1.1.1 (FINAL VISUAL CONFORMANCE PASS, punto
+                    12) — segnalazione: questa riga comunicava "coperta da
+                    un bambino" SOLO con un pallino colorato (il nome era
+                    leggibile solo via title/tooltip, inutile su touch) —
+                    niente distingueva lo stato senza già sapere a memoria
+                    quale colore appartiene a quale bambino dalla legenda
+                    sopra. Ogni pallino ora porta anche il nome, in chip
+                    compatte (dot + testo), non solo colore. */}
+                <div className="flex flex-1 flex-wrap items-center gap-1">
                   {w.dismissed ? (
                     <span className="text-[11.5px] text-ink-3">Non ti serve</span>
                   ) : w.coveredKids.length > 0 ? (
@@ -633,9 +654,11 @@ export default function PlannerCalendarView({
                       return (
                         <span
                           key={ck.kidId}
-                          className={`h-2.5 w-2.5 rounded-full ${DOT_BG[kid.accentColor ?? "sky"]}`}
-                          title={kid.name}
-                        />
+                          className="flex items-center gap-1 rounded-full bg-bg px-1.5 py-0.5"
+                        >
+                          <span className={`h-2 w-2 flex-shrink-0 rounded-full ${DOT_BG[kid.accentColor ?? "sky"]}`} />
+                          <span className="text-[10.5px] font-semibold text-ink-2">{kid.name}</span>
+                        </span>
                       );
                     })
                   ) : (
@@ -664,7 +687,10 @@ export default function PlannerCalendarView({
                 </span>
               )}
               {/* SPRINT 5.3 — Condivisione Piano: link pubblico per questa
-                  singola settimana. */}
+                  singola settimana.
+                  TRAMA BETA v1.1.1 (FINAL VISUAL CONFORMANCE PASS, punto 6)
+                  — stesso trattamento terziario applicato a "Condividi
+                  {mese}" sopra: niente pillola di sfondo, solo testo+icona. */}
               {!selectedDay.dismissed && selectedDay.weekStartDate && selectedDay.weekEndDate && (
                 <button
                   type="button"
@@ -675,7 +701,7 @@ export default function PlannerCalendarView({
                       selectedDay.weekLabel ?? "Settimana"
                     )
                   }
-                  className="flex items-center gap-1 rounded-full bg-trama-lilac/20 px-2.5 py-1 text-[11px] font-bold text-trama-violet active:brightness-95"
+                  className="flex items-center gap-1 rounded-full px-1 py-1 text-[11px] font-semibold text-trama-violet active:bg-black/[0.04]"
                 >
                   <i className="ti ti-share text-[12px]" />
                   Condividi
@@ -893,6 +919,28 @@ export default function PlannerCalendarView({
                         settimana. */}
                     {weekStartDate && (
                       <div className="ml-4 flex flex-col gap-1 pl-0.5">
+                        {/* TRAMA BETA v1.1.1 (FINAL VISUAL CONFORMANCE PASS,
+                            punto 7) — segnalazione: le righe mostravano
+                            soprattutto frecce + nomi, la distinzione
+                            Andata/Ritorno era troppo implicita (solo
+                            l'ordine e una freccina piccola). Intestazione
+                            stabile sopra le righe, stessa larghezza dello
+                            spacer del giorno (54px) cosi le due colonne si
+                            allineano visivamente alle chip sotto — le chip
+                            restano l'unico modo INTERATTIVO di leggere chi è
+                            assegnato, questa è solo l'etichetta di colonna. */}
+                        <div className="flex items-center gap-1.5 px-2">
+                          <span className="w-[54px] flex-shrink-0" aria-hidden="true" />
+                          <div className="flex min-w-0 flex-1 items-center gap-1">
+                            <span className="min-w-0 flex-1 truncate text-center text-[9px] font-bold uppercase tracking-wide text-ink-3">
+                              Andata
+                            </span>
+                            <span className="w-[13px] flex-shrink-0" aria-hidden="true" />
+                            <span className="min-w-0 flex-1 truncate text-center text-[9px] font-bold uppercase tracking-wide text-ink-3">
+                              Ritorno
+                            </span>
+                          </div>
+                        </div>
                         {WEEKDAYS.map((wd) => {
                           const dayKeys = MOMENTS.map((mo) => respKey(k.kidId, weekStartDate, wd.value, mo.value));
                           const isAssigningThisDay = assigningKey !== null && dayKeys.includes(assigningKey);
@@ -920,6 +968,23 @@ export default function PlannerCalendarView({
                                         ? current.responsibleLabel || "Altro"
                                         : currentOption?.label
                                       : null;
+                                    // TRAMA BETA v1.1.1 (FINAL VISUAL
+                                    // CONFORMANCE PASS, punto 8) —
+                                    // segnalazione: tutte le assegnazioni
+                                    // risultavano dello stesso verde,
+                                    // qualunque fosse la persona assegnata
+                                    // (il colore non comunicava nulla di
+                                    // utile). Semantica corretta: il colore
+                                    // indica lo STATO ("assegnato a me" /
+                                    // "assegnato ad altri" / "da
+                                    // assegnare"), non l'identità della
+                                    // persona — "io" è l'unico valore che
+                                    // corrisponde davvero al genitore che
+                                    // sta guardando lo schermo (vedi
+                                    // ResponsibleValue, lib/nextgen/
+                                    // responsibility-options.ts).
+                                    const tone = responsibilityToneFor(current?.responsible ?? null);
+                                    const isMine = tone === "mine";
                                     return (
                                       <span key={key} className="flex min-w-0 flex-1 items-center gap-1">
                                         {moIdx > 0 && (
@@ -938,20 +1003,22 @@ export default function PlannerCalendarView({
                                             isAssigning
                                               ? "bg-trama-lilac/20 ring-1 ring-trama-violet"
                                               : current
-                                                ? "bg-[#E8F9EE] text-ink"
-                                                : "bg-white text-ink-3"
+                                                ? isMine
+                                                  ? "bg-[#E8F9EE] text-ink" // assegnato a me: verde leggero
+                                                  : "bg-sky-light text-ink" // assegnato ad altra persona: azzurro NextGen
+                                                : "bg-white text-ink-3" // da assegnare: neutro
                                           }`}
                                         >
                                           {/* Etichetta "Andata"/"Ritorno" mantenuta nell'albero
                                               di accessibilità (screen reader + query testuali)
                                               ma non più visibile: nel layout compatto il
-                                              contesto Andata/Ritorno è dato dall'ordine e dalla
-                                              freccia tra le due chip, come nel target
-                                              "👨 Io → 👴 Nonno". */}
+                                              contesto Andata/Ritorno è dato dall'intestazione
+                                              di colonna sopra + dall'ordine/freccia tra le due
+                                              chip, come nel target "👨 Io → 👴 Nonno". */}
                                           <span className="sr-only">{mo.label}</span>
                                           <i
                                             className={`ti ${mo.icon} flex-shrink-0 text-[10px] ${
-                                              current ? "text-green" : "text-ink-3"
+                                              current ? (isMine ? "text-green" : "text-sky") : "text-ink-3"
                                             }`}
                                           />
                                           <span className="min-w-0 truncate">
