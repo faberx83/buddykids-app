@@ -63,14 +63,36 @@ const STATUS_CLASS: Record<BookingStatus, string> = {
 // risposta completata) — la label distingue i due casi con una nota in più
 // quando stillPendingDayCount > 0, invece di far credere che la risposta
 // del centro sia già definitiva.
+//
+// AGGIORNAMENTO 02/09/2026 (terza passata — "come funziona la lista
+// d'attesa, chi la vede?"): un giorno "waitlisted" (pieno al momento
+// dell'accettazione) era visibile al genitore SOLO via email
+// (notifyParentOfBookingResponse) — mai dentro l'app, dove finiva
+// indistinguibile da un giorno su cui il centro non aveva ancora nemmeno
+// guardato. waitlistedDayCount isola il sottoinsieme per un badge dedicato.
 function effectiveStatusBadge(
-  b: Pick<MyBooking, "status" | "partnerDecision" | "acceptedDayCount" | "totalDayCount" | "stillPendingDayCount">
+  b: Pick<
+    MyBooking,
+    "status" | "partnerDecision" | "acceptedDayCount" | "totalDayCount" | "stillPendingDayCount" | "waitlistedDayCount"
+  >
 ): { label: string; className: string } {
   if (b.status === "confirmed" && b.partnerDecision === "partial") {
     const base = `Confermata parzialmente (${b.acceptedDayCount} di ${b.totalDayCount} giorni)`;
+    const notes: string[] = [];
+    if (b.waitlistedDayCount > 0) {
+      notes.push(`${b.waitlistedDayCount} in lista d'attesa (pien${b.waitlistedDayCount === 1 ? "o" : "i"})`);
+    }
+    const trulyPending = b.stillPendingDayCount - b.waitlistedDayCount;
+    if (trulyPending > 0) notes.push("il centro deve ancora rispondere per gli altri");
     return {
-      label: b.stillPendingDayCount > 0 ? `${base} — il centro deve ancora rispondere per gli altri` : base,
+      label: notes.length > 0 ? `${base} — ${notes.join(", ")}` : base,
       className: "bg-[#F0EEFF] text-[#6F63C5]",
+    };
+  }
+  if (b.status === "confirmed" && b.partnerDecision === "pending" && b.waitlistedDayCount > 0) {
+    return {
+      label: `In lista d'attesa (${b.waitlistedDayCount} giorn${b.waitlistedDayCount === 1 ? "o" : "i"} pien${b.waitlistedDayCount === 1 ? "o" : "i"}) — ti avviseremo se si libera un posto`,
+      className: "bg-sky-light text-sky",
     };
   }
   if (b.status === "confirmed" && b.partnerDecision === "pending") {

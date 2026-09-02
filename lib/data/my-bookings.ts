@@ -109,6 +109,13 @@ export interface MyBooking {
   acceptedDayCount: number;
   totalDayCount: number;
   stillPendingDayCount: number;
+  // 02/09/2026 — segnalazione Fabrizio: "in lista d'attesa" (giorno pieno al
+  // momento dell'accettazione) era visibile SOLO via email al genitore, mai
+  // dentro l'app — sottoinsieme di stillPendingDayCount, isolato qui per
+  // mostrare un badge dedicato ("In lista d'attesa") invece del generico "in
+  // attesa di conferma del centro", che farebbe credere che il centro non
+  // abbia ancora nemmeno guardato la richiesta.
+  waitlistedDayCount: number;
   partnerProposalNote: string | null;
   // "Letta" dal punto di vista del genitore — stesso pattern read_by_parent
   // di activity_inquiries: falso quando il centro ha appena risposto, così
@@ -255,6 +262,9 @@ export async function getMyBookingsForParent(): Promise<MyBooking[]> {
     const stillPendingDayCount = isDayBased
       ? (row.booking_days ?? []).filter((bd) => bd.partner_decision === "pending" || bd.partner_decision === "waitlisted").length
       : 0;
+    const waitlistedDayCount = isDayBased
+      ? (row.booking_days ?? []).filter((bd) => bd.partner_decision === "waitlisted").length
+      : 0;
 
     const weeksLabel =
       weekRows
@@ -312,6 +322,7 @@ export async function getMyBookingsForParent(): Promise<MyBooking[]> {
       acceptedDayCount,
       totalDayCount,
       stillPendingDayCount,
+      waitlistedDayCount,
       partnerProposalNote: row.partner_proposal_note,
       readByParent: row.read_by_parent ?? true,
       respondedAt: row.responded_at,
