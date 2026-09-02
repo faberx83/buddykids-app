@@ -16,6 +16,14 @@
 #   ALLOW_PROD_FROM_NON_MAIN=1 bash deploy.sh      # override esplicito per deployare da un branch diverso da main
 #   ALLOW_DIRTY_PROD=1 bash deploy.sh              # override esplicito per deployare con working tree sporco
 #   ALLOW_PUSH_FAILURES=1 bash deploy.sh           # override esplicito per proseguire anche se il push fallisce
+#   DEPLOY_NOTIFY_SECRET=<secret> bash deploy.sh   # abilita la notifica di fine deploy (ok/ko) sul banner
+#                                                   # dell'app Admin (/admin) — stesso secret impostato come
+#                                                   # variabile d'ambiente DEPLOY_NOTIFY_SECRET su Vercel.
+#                                                   # Se non impostato, la notifica viene semplicemente saltata
+#                                                   # (nessun impatto sul deploy). Vedi
+#                                                   # supabase/migration_33_deploy_events.sql (DA APPLICARE
+#                                                   # manualmente prima del primo uso) e
+#                                                   # app/internal/deploy-notify/route.ts.
 #
 # Ottimizzazione tempo/costo (28/07, richiesta di Fabrizio): il passo [5/5]
 # di verifica post-deploy usa ora TEST_SCOPE=critical di default — 18 journey
@@ -44,6 +52,62 @@
 #     test-deploy.sh (che li gestisce, vedi quello script).
 
 set -e
+
+# ────────────────────────────────────────────────────────────────
+# Notifica di fine deploy (ok/ko) sul banner dell'app Admin (richiesta di
+# Fabrizio, 02/09/2026). registrata con un `trap ... EXIT` così scatta SEMPRE
+# — completamento normale, un blocco preflight (`exit 1` più sotto), o
+# qualunque comando che fallisca sotto `set -e` (es. `vercel --prod`) —
+# senza dover aggiungere una chiamata a mano ad ogni possibile punto di
+# uscita dello script. Best-effort: se DEPLOY_NOTIFY_SECRET non è
+# impostato, o l'endpoint non risponde (es.
+# supabase/migration_33_deploy_events.sql non ancora applicata), la
+# notifica viene semplicemente saltata — non fa MAI fallire né rallentare
+# in modo bloccante il deploy stesso (--max-time 10, `|| true`).
+#
+# urlencode: nessuna dipendenza esterna (python3/jq potrebbero non esserci
+# sulla macchina che lancia lo script) — snippet bash puro standard.
+# ────────────────────────────────────────────────────────────────
+urlencode() {
+  local string="${1}" strlen pos c o encoded=""
+  strlen=${#string}
+  for (( pos=0; pos<strlen; pos++ )); do
+    c=${string:$pos:1}
+    case "$c" in
+      [-_.~a-zA-Z0-9]) o="${c}" ;;
+      *) printf -v o '%%%02X' "'${c}" ;;
+    esac
+    encoded+="${o}"
+  done
+  printf '%s' "${encoded}"
+}
+
+notify_deploy() {
+  local exit_code="${1:-0}"
+  local status="ok"
+  [ "$exit_code" -ne 0 ] && status="ko"
+
+  if [ -z "$DEPLOY_NOTIFY_SECRET" ]; then
+    return 0
+  fi
+
+  local target="${TEST_BASE_URL:-https://buddykids-app.vercel.app}"
+  local url="${target}/internal/deploy-notify"
+  local qs="secret=$(urlencode "$DEPLOY_NOTIFY_SECRET")&status=${status}"
+  [ -n "${CURRENT_BRANCH:-}" ] && qs="${qs}&branch=$(urlencode "$CURRENT_BRANCH")"
+  [ -n "${CURRENT_COMMIT:-}" ] && qs="${qs}&commit=$(urlencode "$CURRENT_COMMIT")"
+  [ -n "${TEST_SCOPE:-}" ] && qs="${qs}&testScope=$(urlencode "$TEST_SCOPE")"
+  local test_result="${DEPLOY_TEST_RESULT_SUMMARY:-}"
+  [ -n "$test_result" ] && qs="${qs}&testResult=$(urlencode "$test_result")"
+  local msg=""
+  [ "$status" = "ko" ] && [ -n "${LOG_FILE:-}" ] && msg="Log: ${LOG_FILE}"
+  [ -n "$msg" ] && qs="${qs}&message=$(urlencode "$msg")"
+
+  curl -fsS --max-time 10 "${url}?${qs}" >/dev/null 2>&1 \
+    && echo "🔔 Notifica banner Admin inviata ($status)." \
+    || echo "⚠️  Notifica banner Admin non riuscita (non blocca il deploy — verifica DEPLOY_NOTIFY_SECRET e che supabase/migration_33_deploy_events.sql sia stata applicata)."
+}
+trap 'notify_deploy $?' EXIT
 
 # ────────────────────────────────────────────────────────────────
 # Logging automatico su file: ogni esecuzione di questo script scrive il

@@ -5,6 +5,11 @@ import { isSupabaseConfigured } from "@/lib/supabase/env";
 import { Role } from "@/lib/types";
 import { resolveFeatureFlag } from "@/lib/feature-flags/resolve";
 import { generateCorrelationId } from "@/lib/telemetry/correlation";
+// Notifica "ultimo deploy ok/ko" — vedi supabase/migration_33_deploy_events.sql,
+// app/internal/deploy-notify/route.ts (chiamato da deploy.sh a fine
+// esecuzione) e components/admin/DeployStatusBanner.tsx.
+import { getLatestDeployEvent } from "@/lib/data/deploy-events";
+import DeployStatusBanner from "@/components/admin/DeployStatusBanner";
 
 // Segnalazione di Fabrizio: cosa manca lato Admin tra le nuove funzionalità
 // (ticketing, presenze/check-in, preferiti)? Ho proposto e costruito 3
@@ -53,6 +58,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   // il flag risolve a false la voce semplicemente non compare, nessun'altra
   // voce/redirect è toccata).
   let navItems = baseNavItems;
+  let deployEvent: Awaited<ReturnType<typeof getLatestDeployEvent>> = null;
 
   if (isSupabaseConfigured) {
     const supabase = await createClient();
@@ -86,6 +92,14 @@ export default async function AdminLayout({ children }: { children: React.ReactN
         ...baseNavItems,
       ];
     }
+
+    // Notifica "ultimo deploy ok/ko" (richiesta di Fabrizio) — solo per un
+    // platform_admin reale: getLatestDeployEvent() è comunque protetto da
+    // RLS (is_platform_admin()), questo controllo evita solo una query
+    // superflua per gli altri ruoli.
+    if (realRole === "platform_admin") {
+      deployEvent = await getLatestDeployEvent();
+    }
   }
 
   return (
@@ -96,6 +110,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
       realRole={realRole}
       variant="admin"
     >
+      <DeployStatusBanner event={deployEvent} />
       {children}
     </DashboardLayout>
   );
