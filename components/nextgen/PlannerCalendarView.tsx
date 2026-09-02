@@ -25,6 +25,12 @@ import {
 // dell'assegnazione ("mine" / "other" / "unassigned"), estratto per essere
 // coperto da un test unitario indipendente dal browser (VIS111-07/08).
 import { responsibilityToneFor } from "@/lib/nextgen/responsibility-tone";
+// TRAMA BETA v1.1.1 (FINAL FUNCTIONAL + UI CONSISTENCY FIXES, punto 8-13) —
+// logica pura del toggle "Andata/Ritorno" nel bulk assign, estratta per
+// essere testata senza browser — vedi lib/nextgen/bulk-assign.ts per la
+// ROOT CAUSE ANALYSIS completa (il modello era ad esclusione, non a
+// selezione: toccare "Andata" la ESCLUDEVA di default, mostrato barrato).
+import { toggleInMap, selectedMoments, isBulkAssignReady } from "@/lib/nextgen/bulk-assign";
 // "import type": ParentRole è solo un tipo, non trascina lib/supabase/server
 // nel bundle client — stesso motivo di SeasonWeek/KidOverlap qui sopra.
 import type { ParentRole } from "@/lib/data/profile";
@@ -251,10 +257,24 @@ export default function PlannerCalendarView({
   // figlio non vede alcun controllo in più.
   const [bulkKidExcluded, setBulkKidExcluded] = useState<Record<string, boolean>>({});
   // FEEDBACK SUCCESSIVO DI FABRIZIO: "ci vuole qualcosa di flessibile" —
-  // oltre ai bambini, anche solo Andata, solo Ritorno, o entrambi (non
-  // sempre chi porta è anche chi ritira). Stessa convenzione "di default
-  // tutto incluso, si tracciano solo le esclusioni" già usata per i bambini.
-  const [bulkMomentExcluded, setBulkMomentExcluded] = useState<Record<Moment, boolean>>({} as Record<Moment, boolean>);
+  // oltre ai bambini, anche solo Andata, solo Ritorno, o entrambi.
+  //
+  // TRAMA BETA v1.1.1 (FINAL FUNCTIONAL + UI CONSISTENCY FIXES, punto 8-13)
+  // — segnalazione: toccare "Andata" lo mostrava barrato, controintuitivo
+  // ("mi aspetto che toccare Andata significhi applicarla, non escluderla").
+  // ROOT CAUSE (vedi lib/nextgen/bulk-assign.ts): non era solo visivo, la
+  // logica stessa era ad ESCLUSIONE (default = tutto incluso senza toccare
+  // nulla, il tap escludeva). Cambiato in modello a SELEZIONE POSITIVA:
+  // default = NESSUN momento selezionato, il tap SELEZIONA (seconda volta
+  // deseleziona) — "selezionato" ora significa "verrà applicato", mai
+  // "escluso". L'assegnazione a una persona resta disabilitata finché
+  // nessun momento è selezionato (isBulkAssignReady), niente più
+  // applicazione ambigua implicita di entrambi i momenti di default.
+  // Il modello ad esclusione dei BAMBINI (sotto, bulkKidExcluded) resta
+  // INVARIATO: lì "escluso" è semanticamente corretto (il default
+  // "gestiti insieme" non è mai stato segnalato come confuso) — vedi
+  // commento originale di Fabrizio qui sopra.
+  const [bulkMomentsSelected, setBulkMomentsSelected] = useState<Record<Moment, boolean>>({} as Record<Moment, boolean>);
   const [bulkAssigningAltro, setBulkAssigningAltro] = useState(false);
   const [bulkAltroText, setBulkAltroText] = useState("");
   const [bulkBusy, setBulkBusy] = useState(false);
@@ -270,14 +290,14 @@ export default function PlannerCalendarView({
   }
 
   function toggleBulkMoment(moment: Moment) {
-    setBulkMomentExcluded((prev) => ({ ...prev, [moment]: !prev[moment] }));
+    setBulkMomentsSelected((prev) => toggleInMap(prev, moment) as Record<Moment, boolean>);
   }
 
   async function handleBulkAssign(value: ResponsibleValue, label?: string, familyPersonId?: string) {
     if (!selectedDay || !selectedDay.weekStartDate) return;
     const weekStartDate = selectedDay.weekStartDate;
     const kidIds = selectedDay.kids.map((k) => k.kidId).filter((id) => !bulkKidExcluded[id]);
-    const moments = MOMENTS.map((mo) => mo.value).filter((mo) => !bulkMomentExcluded[mo]);
+    const moments = selectedMoments(bulkMomentsSelected);
     if (kidIds.length === 0) {
       showToast("Seleziona almeno un bambino");
       return;
@@ -761,18 +781,28 @@ export default function PlannerCalendarView({
                       )}
                       {/* FEEDBACK SUCCESSIVO DI FABRIZIO: "ci vuole qualcosa
                           di flessibile" — solo Andata, solo Ritorno, o
-                          entrambi (default). Stessa tecnica "chip toggle"
-                          dei bambini. */}
-                      <div className="mb-2 flex flex-wrap gap-2">
+                          entrambi.
+                          TRAMA BETA v1.1.1 (FINAL FUNCTIONAL + UI
+                          CONSISTENCY FIXES, punto 8-13) — modello a
+                          SELEZIONE POSITIVA: nessun momento selezionato di
+                          default, tap per selezionare/deselezionare
+                          (secondo tap = deseleziona). Selezionato = violetto
+                          pieno (stato NextGen chiaro), non selezionato =
+                          chip neutra/secondaria. MAI line-through: qui
+                          "selezionato" significa sempre "verrà applicato",
+                          mai "escluso" (vedi bulk-assign.ts per la ROOT
+                          CAUSE ANALYSIS completa). */}
+                      <div className="mb-1.5 flex flex-wrap gap-2">
                         {MOMENTS.map((mo) => {
-                          const included = !bulkMomentExcluded[mo.value];
+                          const selected = bulkMomentsSelected[mo.value] === true;
                           return (
                             <button
                               key={mo.value}
                               type="button"
                               onClick={() => toggleBulkMoment(mo.value)}
-                              className={`flex items-center gap-1 rounded-full bg-white px-2.5 py-1 text-[11px] font-semibold active:scale-95 ${
-                                included ? "text-trama-violet" : "text-ink-3 line-through"
+                              aria-pressed={selected}
+                              className={`flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-semibold transition-colors active:scale-95 ${
+                                selected ? "bg-trama-violet text-white" : "bg-white text-ink-2"
                               }`}
                             >
                               <i className={`ti ${mo.icon} text-[11px]`} />
@@ -781,6 +811,14 @@ export default function PlannerCalendarView({
                           );
                         })}
                       </div>
+                      {/* Nessun momento selezionato: l'assegnazione a una
+                          persona sarebbe ambigua (punto 12) — bottoni
+                          disabilitati + micro-hint, nessuna nuova modale. */}
+                      {!isBulkAssignReady(bulkMomentsSelected) && (
+                        <p className="mb-1.5 text-[10.5px] font-medium text-ink-3">
+                          Seleziona Andata, Ritorno o entrambi
+                        </p>
+                      )}
                       <div className="flex flex-wrap gap-1.5">
                         {/* TRAMA BETA v1.1.1 — FINAL GAP CLOSURE (punto 6/7):
                             una chip con opt.familyPersonId è una persona
@@ -794,7 +832,7 @@ export default function PlannerCalendarView({
                           <button
                             key={opt.familyPersonId ?? opt.value}
                             type="button"
-                            disabled={bulkBusy}
+                            disabled={bulkBusy || !isBulkAssignReady(bulkMomentsSelected)}
                             onClick={() => {
                               if (opt.value === "altro" && !opt.familyPersonId) {
                                 setBulkAssigningAltro(true);
@@ -808,6 +846,23 @@ export default function PlannerCalendarView({
                           </button>
                         ))}
                       </div>
+                      {/* TRAMA BETA v1.1.1 (punto 8-13, ultimo punto —
+                          "comportamento overwrite deve essere intenzionale/
+                          comprensibile, documentato") — setWeekBulkResponsibilityAction
+                          fa un upsert su parent_id,kid_id,week_start_date,
+                          weekday,moment: sovrascrive DAVVERO ogni assegnazione
+                          già presente nei giorni/momenti selezionati. Coerente
+                          con l'etichetta stessa del pulsante ("tutta la
+                          settimana") — non è un comportamento nascosto, ma va
+                          reso esplicito qui invece che silenzioso. Nessuna
+                          nuova modale di conferma: il rischio è comprensibile
+                          dalla sola etichetta + questa riga, non "genuinely
+                          dangerous" al punto da giustificare un blocco. */}
+                      {isBulkAssignReady(bulkMomentsSelected) && (
+                        <p className="mt-1.5 text-[10px] text-ink-3">
+                          Sostituisce eventuali assegnazioni già presenti nei giorni selezionati.
+                        </p>
+                      )}
                       {bulkAssigningAltro && (
                         <div className="mt-2 flex items-center gap-1.5">
                           <input
@@ -929,14 +984,24 @@ export default function PlannerCalendarView({
                             allineano visivamente alle chip sotto — le chip
                             restano l'unico modo INTERATTIVO di leggere chi è
                             assegnato, questa è solo l'etichetta di colonna. */}
+                        {/* TRAMA BETA v1.1.1 (FINAL FUNCTIONAL + UI
+                            CONSISTENCY FIXES, punto 6) — segnalazione: le
+                            etichette ANDATA/RITORNO erano troppo piccole/
+                            chiare (9px, text-ink-3) per essere lette al volo.
+                            Layout compatto approvato INVARIATO (nessun
+                            ritorno alle maxi-card) — solo contrasto/peso/
+                            dimensione aumentati (10.5px, font-extrabold,
+                            text-ink-2 invece di text-ink-3): restano parole
+                            intere ("Andata"/"Ritorno"), mai comunicate solo
+                            via freccia/colore. */}
                         <div className="flex items-center gap-1.5 px-2">
                           <span className="w-[54px] flex-shrink-0" aria-hidden="true" />
                           <div className="flex min-w-0 flex-1 items-center gap-1">
-                            <span className="min-w-0 flex-1 truncate text-center text-[9px] font-bold uppercase tracking-wide text-ink-3">
+                            <span className="min-w-0 flex-1 truncate text-center text-[10.5px] font-extrabold uppercase tracking-wide text-ink-2">
                               Andata
                             </span>
                             <span className="w-[13px] flex-shrink-0" aria-hidden="true" />
-                            <span className="min-w-0 flex-1 truncate text-center text-[9px] font-bold uppercase tracking-wide text-ink-3">
+                            <span className="min-w-0 flex-1 truncate text-center text-[10.5px] font-extrabold uppercase tracking-wide text-ink-2">
                               Ritorno
                             </span>
                           </div>

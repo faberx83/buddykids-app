@@ -17,6 +17,13 @@ import NotificationCenter from "@/components/nextgen/NotificationCenter";
 import NextgenAuthRedirect from "@/components/nextgen/NextgenAuthRedirect";
 import { getParentNotifications } from "@/lib/data/notifications";
 import { NotificationItem } from "@/lib/notifications/model";
+// TRAMA BETA v1.1.1 (FINAL FUNCTIONAL + UI CONSISTENCY FIXES, punto 7) —
+// vedi lib/nextgen/floating-controls.ts per la ROOT CAUSE ANALYSIS: pb-40
+// (fix VIS111 punto 10, sotto) copre solo l'ULTIMA riga di contenuto, non le
+// righe che transitano sotto bell/chat DURANTE uno scroll attivo. Provider +
+// contenitore scrollabile condivisi qui, così ogni pagina genitore NEXTGEN
+// eredita il fix senza bisogno di toccarle una per una.
+import { NextgenScrollActivityProvider, NextgenScrollArea } from "@/components/nextgen/NextgenScrollActivity";
 
 // SPRINT 0 (NEXTGEN — V2 in parallelo a LEGACY): guscio minimo dell'area
 // genitore NEXTGEN. Stesso guard di autenticazione di app/(main)/layout.tsx
@@ -148,39 +155,57 @@ export default async function NextgenLayout({ children }: { children: React.Reac
   return (
     <PhoneShell>
       <NextgenToastProvider>
-        <div className="flex h-full min-h-0 flex-col">
-          {/* TRAMA BETA v1.1.1 (FINAL VISUAL CONFORMANCE PASS, punto 10) —
-              segnalazione: bell (NotificationCenter, bottom-24 left-4) e
-              chat (BetaFeedbackButton, bottom-24 right-4) sono
-              position:absolute ancorati a .app-shell, quindi FLUTTUANO
-              SEMPRE nella stessa fascia (96-148px dal fondo dell'app-shell)
-              — non sono figli di questo div scrollabile, quindi lo scroll
-              del contenuto non li "supera" mai: qualunque riga/CTA che
-              finisce in quella fascia quando si scrolla in fondo alla
-              pagina resta coperta. Fix layout unico (non per singola
-              schermata, verificato su Planner Overview e Week Detail, ma
-              si applica a OGNI pagina genitore NEXTGEN essendo qui nel
-              layout condiviso): padding-bottom sul contenitore scrollabile
-              abbastanza grande da garantire che l'ULTIMA riga di contenuto
-              reale possa sempre scorrere sopra la fascia dei floating
-              button (96px offset + 52px altezza pulsante + margine), invece
-              di restarci sotto. Nessun impatto sulle pagine senza
-              contenuto lungo: è solo spazio bianco extra in fondo. */}
-          <div className="no-scrollbar flex-1 overflow-y-auto pb-40">{children}</div>
-          {/* Estensione 31/08/2026 (Fabrizio): pallini "Prenotazioni"/"Profilo"
-              contestualizzati, stessa lista `notifications` già calcolata
-              sopra per la campanella — zero nuove query, vedi
-              useNavBadges in NextgenBottomNav.tsx. */}
-          <NextgenBottomNav notifications={notifications} />
-        </div>
-        {/* SPRINT 5 — floating CTA "Segnala un problema", montata qui una
-            sola volta cosi copre ogni pagina genitore NEXTGEN (il componente
-            stesso si nasconde su /nextgen/admin e /nextgen/center, vedi
-            BetaFeedbackButton.tsx). */}
-        <BetaFeedbackButton />
-        <ParentSpotlight progress={spotlightProgress} />
-        <OnboardingCarousel progress={onboardingProgress} />
-        {isParentUser && <NotificationCenter initialNotifications={notifications} />}
+        {/* TRAMA BETA v1.1.1 (FINAL FUNCTIONAL + UI CONSISTENCY FIXES,
+            punto 7) — Provider condiviso: bell/chat sotto sono FRATELLI del
+            div scrollabile (non figli), quindi lo stato "sto scrollando"
+            deve passare per context invece che per prop — vedi
+            components/nextgen/NextgenScrollActivity.tsx. */}
+        <NextgenScrollActivityProvider>
+          <div className="flex h-full min-h-0 flex-col">
+            {/* TRAMA BETA v1.1.1 (FINAL VISUAL CONFORMANCE PASS, punto 10) —
+                segnalazione: bell (NotificationCenter, bottom-24 left-4) e
+                chat (BetaFeedbackButton, bottom-24 right-4) sono
+                position:absolute ancorati a .app-shell, quindi FLUTTUANO
+                SEMPRE nella stessa fascia (96-148px dal fondo dell'app-shell)
+                — non sono figli di questo div scrollabile, quindi lo scroll
+                del contenuto non li "supera" mai: qualunque riga/CTA che
+                finisce in quella fascia quando si scrolla in fondo alla
+                pagina resta coperta. Fix layout unico (non per singola
+                schermata, verificato su Planner Overview e Week Detail, ma
+                si applica a OGNI pagina genitore NEXTGEN essendo qui nel
+                layout condiviso): padding-bottom sul contenitore scrollabile
+                abbastanza grande da garantire che l'ULTIMA riga di contenuto
+                reale possa sempre scorrere sopra la fascia dei floating
+                button (96px offset + 52px altezza pulsante + margine), invece
+                di restarci sotto. Nessun impatto sulle pagine senza
+                contenuto lungo: è solo spazio bianco extra in fondo.
+                TRAMA BETA v1.1.1 (FINAL FUNCTIONAL + UI CONSISTENCY FIXES,
+                punto 7) — questo copre solo l'ULTIMA riga; segnalazione
+                successiva: durante uno scroll attivo una riga che transita
+                MOMENTANEAMENTE sotto la fascia bell/chat resta comunque
+                intercettata dal tap. NextgenScrollArea (invece del div
+                semplice) notifica il Provider ad ogni evento onScroll, cosi
+                bell/chat possono attenuarsi e lasciar passare il tap SOLO
+                mentre il contenuto si sta davvero muovendo — vedi
+                lib/nextgen/floating-controls.ts per la ROOT CAUSE completa e
+                BetaFeedbackButton.tsx/NotificationCenter.tsx per il
+                consumo. */}
+            <NextgenScrollArea className="no-scrollbar flex-1 overflow-y-auto pb-40">{children}</NextgenScrollArea>
+            {/* Estensione 31/08/2026 (Fabrizio): pallini "Prenotazioni"/"Profilo"
+                contestualizzati, stessa lista `notifications` già calcolata
+                sopra per la campanella — zero nuove query, vedi
+                useNavBadges in NextgenBottomNav.tsx. */}
+            <NextgenBottomNav notifications={notifications} />
+          </div>
+          {/* SPRINT 5 — floating CTA "Segnala un problema", montata qui una
+              sola volta cosi copre ogni pagina genitore NEXTGEN (il componente
+              stesso si nasconde su /nextgen/admin e /nextgen/center, vedi
+              BetaFeedbackButton.tsx). */}
+          <BetaFeedbackButton />
+          <ParentSpotlight progress={spotlightProgress} />
+          <OnboardingCarousel progress={onboardingProgress} />
+          {isParentUser && <NotificationCenter initialNotifications={notifications} />}
+        </NextgenScrollActivityProvider>
       </NextgenToastProvider>
       {/* Istanza DEDICATA a NEXTGEN: appName diverso ("TRAMA" vs quello di
           LEGACY, vedi lib/tenant.ts) -> chiave di dismiss separata in

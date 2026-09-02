@@ -5,6 +5,8 @@ import { usePathname } from "next/navigation";
 import { areaLabelFromPath, centerAreaLabelFromPath } from "@/lib/nextgen/beta-feedback-areas";
 import { submitBetaFeedbackAction } from "@/app/actions/beta-feedback";
 import { useNextgenToast } from "@/components/nextgen/NextgenToastProvider";
+import { useNextgenIsScrolling } from "@/components/nextgen/NextgenScrollActivity";
+import { floatingControlClassName } from "@/lib/nextgen/floating-controls";
 
 // SPRINT 5 (NEXTGEN) — "Segnala un problema" (feedback Fabrizio: floating CTA
 // draggabile presente su ogni pagina dell'app genitori durante la BETA, per
@@ -86,6 +88,13 @@ export default function BetaFeedbackButton({
 } = {}) {
   const pathname = usePathname();
   const showToast = useNextgenToast();
+  // TRAMA BETA v1.1.1 (FINAL FUNCTIONAL + UI CONSISTENCY FIXES, punto 7) —
+  // vedi lib/nextgen/floating-controls.ts per la ROOT CAUSE ANALYSIS: mentre
+  // il contenuto sottostante si sta scrollando, il bottone si attenua e
+  // lascia passare il tap (pointer-events-none) cosi non intercetta più un
+  // tocco diretto a una riga del Planner che transita momentaneamente sotto
+  // di lui — torna pienamente interattivo non appena lo scroll si ferma.
+  const isScrolling = useNextgenIsScrolling();
   const buttonRef = useRef<HTMLButtonElement>(null);
   const STORAGE_KEY = appSource === "gestore" ? "trama-beta-feedback-pos-gestore" : "trama-beta-feedback-pos";
   const areaLabel = appSource === "gestore" ? centerAreaLabelFromPath : areaLabelFromPath;
@@ -211,9 +220,9 @@ export default function BetaFeedbackButton({
         onPointerUp={handlePointerUp}
         aria-label="Segnala un problema"
         style={{ width: BUTTON_SIZE, height: BUTTON_SIZE, touchAction: "none", ...(pos ? { left: pos.x, top: pos.y } : {}) }}
-        className={`absolute z-[70] flex items-center justify-center rounded-full bg-trama-violet text-white shadow-lg active:scale-95 ${
-          pos ? "" : "bottom-24 right-4"
-        }`}
+        className={`absolute z-[70] flex items-center justify-center rounded-full bg-trama-violet text-white shadow-lg transition-all duration-150 active:scale-95 ${floatingControlClassName(
+          isScrolling
+        )} ${pos ? "" : "bottom-24 right-4"}`}
       >
         <i className="ti ti-message-report text-[22px]" />
       </button>

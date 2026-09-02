@@ -52,6 +52,15 @@ import { markBookingsReadAction } from "@/app/actions/booking-response";
 // STESSA logica per i pallini "Prenotazioni"/"Profilo" — vedi
 // lib/notifications/seen-cursor.ts per il motivo dell'estrazione.
 import { readLastSeenAt, writeLastSeenAt } from "@/lib/notifications/seen-cursor";
+// TRAMA BETA v1.1.1 (FINAL FUNCTIONAL + UI CONSISTENCY FIXES, punto 7) —
+// vedi lib/nextgen/floating-controls.ts per la ROOT CAUSE ANALYSIS. Il
+// Provider è montato solo in app/nextgen/layout.tsx (scope "parent"): per
+// scope="partner" (app/center/layout.tsx, LEGACY, nessun Provider) l'hook
+// ricade sul default del context (isScrolling sempre false) — nessun
+// crash, nessuna regressione, semplicemente il fix non si applica lì (non
+// segnalato per quella superficie).
+import { useNextgenIsScrolling } from "@/components/nextgen/NextgenScrollActivity";
+import { floatingControlClassName } from "@/lib/nextgen/floating-controls";
 
 const BUTTON_SIZE = 52;
 
@@ -75,6 +84,7 @@ export default function NotificationCenter({
 }) {
   const router = useRouter();
   const pathname = usePathname();
+  const isScrolling = useNextgenIsScrolling();
   const bellRef = useRef<HTMLButtonElement>(null);
   const closeRef = useRef<HTMLButtonElement>(null);
   const [open, setOpen] = useState(false);
@@ -163,7 +173,9 @@ export default function NotificationCenter({
         aria-haspopup="dialog"
         aria-expanded={open}
         style={{ width: BUTTON_SIZE, height: BUTTON_SIZE }}
-        className="absolute bottom-24 left-4 z-[70] flex items-center justify-center rounded-full bg-white text-ink shadow-lg active:scale-95"
+        className={`absolute bottom-24 left-4 z-[70] flex items-center justify-center rounded-full bg-white text-ink shadow-lg transition-all duration-150 active:scale-95 ${floatingControlClassName(
+          isScrolling
+        )}`}
       >
         <i className="ti ti-bell text-[22px]" aria-hidden="true" />
         {unseenCount > 0 && (
