@@ -149,7 +149,24 @@ export default async function NextgenLayout({ children }: { children: React.Reac
     <PhoneShell>
       <NextgenToastProvider>
         <div className="flex h-full min-h-0 flex-col">
-          <div className="no-scrollbar flex-1 overflow-y-auto">{children}</div>
+          {/* TRAMA BETA v1.1.1 (FINAL VISUAL CONFORMANCE PASS, punto 10) —
+              segnalazione: bell (NotificationCenter, bottom-24 left-4) e
+              chat (BetaFeedbackButton, bottom-24 right-4) sono
+              position:absolute ancorati a .app-shell, quindi FLUTTUANO
+              SEMPRE nella stessa fascia (96-148px dal fondo dell'app-shell)
+              — non sono figli di questo div scrollabile, quindi lo scroll
+              del contenuto non li "supera" mai: qualunque riga/CTA che
+              finisce in quella fascia quando si scrolla in fondo alla
+              pagina resta coperta. Fix layout unico (non per singola
+              schermata, verificato su Planner Overview e Week Detail, ma
+              si applica a OGNI pagina genitore NEXTGEN essendo qui nel
+              layout condiviso): padding-bottom sul contenitore scrollabile
+              abbastanza grande da garantire che l'ULTIMA riga di contenuto
+              reale possa sempre scorrere sopra la fascia dei floating
+              button (96px offset + 52px altezza pulsante + margine), invece
+              di restarci sotto. Nessun impatto sulle pagine senza
+              contenuto lungo: è solo spazio bianco extra in fondo. */}
+          <div className="no-scrollbar flex-1 overflow-y-auto pb-40">{children}</div>
           {/* Estensione 31/08/2026 (Fabrizio): pallini "Prenotazioni"/"Profilo"
               contestualizzati, stessa lista `notifications` già calcolata
               sopra per la campanella — zero nuove query, vedi
