@@ -132,18 +132,22 @@ export default async function AdminBookingsPage() {
   );
 }
 
-function PartnerDecisionBadge({ decision }: { decision: "pending" | "accepted" | "rejected" | "proposed" }) {
+function PartnerDecisionBadge({ decision }: { decision: "pending" | "accepted" | "rejected" | "proposed" | "partial" }) {
   const cls: Record<typeof decision, string> = {
     pending: "bg-orange-light text-trama-orange",
     accepted: "bg-green-light text-[#2d8f52]",
     rejected: "bg-bg text-ink-3",
     proposed: "bg-sky-light text-sky",
+    // "partial" (02/09/2026) — Giorni spot con esito misto, vedi
+    // lib/booking-response/effective-decision.ts.
+    partial: "bg-[#F0EEFF] text-[#6F63C5]",
   };
   const label: Record<typeof decision, string> = {
     pending: "Da rispondere",
     accepted: "Accettata",
     rejected: "Rifiutata",
     proposed: "Proposta inviata",
+    partial: "Confermata parzialmente",
   };
   return (
     <span className={`rounded-full px-2.5 py-1 text-[11px] font-semibold ${cls[decision]}`}>{label[decision]}</span>

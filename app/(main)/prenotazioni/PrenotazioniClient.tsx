@@ -51,7 +51,21 @@ const STATUS_CLASS: Record<BookingStatus, string> = {
 // corregge solo l'ETICHETTA mostrata al genitore, che ora riflette
 // entrambe — "Confermata" da sola resta vera solo quando il centro ha
 // anche accettato.
-function effectiveStatusBadge(b: Pick<MyBooking, "status" | "partnerDecision">): { label: string; className: string } {
+// AGGIORNAMENTO 02/09/2026 (feature "conferma parziale", segnalazione di
+// Fabrizio) — un genitore con una prenotazione "Giorni spot" dove il centro
+// ha finito di rispondere ma con esito misto (es. 3 giorni su 5 accettati,
+// gli altri rifiutati) non deve vedere "Confermata" (falso: alcuni giorni
+// non ci sono) né "In attesa di conferma del centro" (falso: il centro ha
+// già risposto a tutto) — vedi lib/booking-response/effective-decision.ts.
+function effectiveStatusBadge(
+  b: Pick<MyBooking, "status" | "partnerDecision" | "acceptedDayCount" | "totalDayCount">
+): { label: string; className: string } {
+  if (b.status === "confirmed" && b.partnerDecision === "partial") {
+    return {
+      label: `Confermata parzialmente (${b.acceptedDayCount} di ${b.totalDayCount} giorni)`,
+      className: "bg-[#F0EEFF] text-[#6F63C5]",
+    };
+  }
   if (b.status === "confirmed" && b.partnerDecision === "pending") {
     return { label: "In attesa di conferma del centro", className: "bg-yellow-light text-[#9a6b00]" };
   }

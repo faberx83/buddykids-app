@@ -16,11 +16,17 @@ import { isSupabaseConfigured } from "@/lib/supabase/env";
 // partner_decision invece di status (l'asse rilevante per il centro: cosa
 // deve ancora fare/ha fatto rispetto alla RISPOSTA, non lo stato finale
 // della prenotazione).
+// "partial" (02/09/2026, feature richiesta esplicitamente da Fabrizio):
+// prenotazione "Giorni spot" con TUTTI i giorni ormai decisi ma esito misto
+// (alcuni accettati, altri rifiutati) — nulla resta da fare per il centro,
+// ma non è né una piena accettazione né un pieno rifiuto. Vedi
+// lib/booking-response/effective-decision.ts.
 const DECISION_LABEL: Record<PartnerDecision, { label: string; cls: string }> = {
   pending: { label: "Da rispondere", cls: "bg-orange-light text-trama-orange" },
   accepted: { label: "Accettata", cls: "bg-green-light text-[#2d8f52]" },
   rejected: { label: "Rifiutata", cls: "bg-bg text-ink-3" },
   proposed: { label: "Proposta inviata", cls: "bg-sky-light text-sky" },
+  partial: { label: "Confermata parzialmente", cls: "bg-[#F0EEFF] text-[#6F63C5]" },
 };
 
 const STATUS_LABEL: Record<BookingStatus, string> = {
@@ -82,7 +88,7 @@ function formatDate(iso: string): string {
 // molte prenotazioni miste (accettate/rifiutate/proposte tutte dentro
 // "Storico" oggi). "Tutte" (nessun filtro attivo) torna alla vista
 // originale a due sezioni, invariata per chi la preferisce.
-type FilterKey = "pending" | "proposed" | "accepted" | "rejected";
+type FilterKey = "pending" | "proposed" | "accepted" | "partial" | "rejected";
 
 const KPI_CONFIG: Record<FilterKey, { label: string; cls: string; predicate: (b: CenterBooking) => boolean }> = {
   pending: {
@@ -100,13 +106,21 @@ const KPI_CONFIG: Record<FilterKey, { label: string; cls: string; predicate: (b:
     cls: "text-[#2d8f52]",
     predicate: (b) => b.status !== "cancelled" && b.partnerDecision === "accepted",
   },
+  // "partial" (02/09/2026) — Giorni spot con tutti i giorni ormai decisi ma
+  // esito misto: bucket separato da "Accettate" (nulla travestito da piena
+  // accettazione) e da "Da rispondere" (il centro non deve più rispondere).
+  partial: {
+    label: "Confermate parzialmente",
+    cls: "text-[#6F63C5]",
+    predicate: (b) => b.status !== "cancelled" && b.partnerDecision === "partial",
+  },
   rejected: {
     label: "Rifiutate",
     cls: "text-ink-3",
     predicate: (b) => b.status === "cancelled" && b.cancelledBy === "center",
   },
 };
-const KPI_ORDER: FilterKey[] = ["pending", "proposed", "accepted", "rejected"];
+const KPI_ORDER: FilterKey[] = ["pending", "proposed", "accepted", "partial", "rejected"];
 
 export default function PrenotazioniClient({
   initialBookings,
@@ -654,7 +668,7 @@ export default function PrenotazioniClient({
           con i KPI principali, cliccabili, che rimandano alla sezione
           giusta". Click su una card attiva/disattiva il filtro; "Tutte"
           torna alla vista originale a due sezioni. */}
-      <div className="mb-5 grid grid-cols-2 gap-2 sm:grid-cols-4">
+      <div className="mb-5 grid grid-cols-2 gap-2 sm:grid-cols-5">
         {KPI_ORDER.map((key) => {
           const cfg = KPI_CONFIG[key];
           const count = bookings.filter(cfg.predicate).length;

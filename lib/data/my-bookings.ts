@@ -93,7 +93,17 @@ export interface MyBooking {
   // TRAMA ONE Build Sprint 4 (DEC-42) — risposta del Partner, additiva.
   // "pending" per ogni prenotazione mai gestita dal centro (comportamento
   // AS-IS invariato per chi non usa ancora la nuova UI di risposta).
-  partnerDecision: "pending" | "accepted" | "rejected" | "proposed";
+  // "partial" (02/09/2026) — SOLO per prenotazioni a giorni: tutti i giorni
+  // decisi dal centro, ma esito misto (alcuni accettati, altri rifiutati).
+  // Vedi lib/booking-response/effective-decision.ts.
+  partnerDecision: "pending" | "accepted" | "rejected" | "proposed" | "partial";
+  // 02/09/2026 — SOLO per prenotazioni a giorni (isDayBased): quanti giorni
+  // sono stati accettati sul totale prenotato. Usati per la label "Confermata
+  // parzialmente (X di Y giorni)" quando partnerDecision === "partial", così
+  // il genitore capisce ESATTAMENTE cosa è confermato senza dover aprire il
+  // dettaglio giorno per giorno. 0/0 per le prenotazioni a settimana intera.
+  acceptedDayCount: number;
+  totalDayCount: number;
   partnerProposalNote: string | null;
   // "Letta" dal punto di vista del genitore — stesso pattern read_by_parent
   // di activity_inquiries: falso quando il centro ha appena risposto, così
@@ -231,6 +241,12 @@ export async function getMyBookingsForParent(): Promise<MyBooking[]> {
           row.partner_decision ?? "pending"
         )
       : (row.partner_decision ?? "pending");
+    // Conteggio per la label "Confermata parzialmente (X di Y giorni)" —
+    // 0/0 per le prenotazioni a settimana intera (isDayBased false).
+    const totalDayCount = isDayBased ? (row.booking_days ?? []).length : 0;
+    const acceptedDayCount = isDayBased
+      ? (row.booking_days ?? []).filter((bd) => bd.partner_decision === "accepted").length
+      : 0;
 
     const weeksLabel =
       weekRows
@@ -285,6 +301,8 @@ export async function getMyBookingsForParent(): Promise<MyBooking[]> {
       daysUntilStart,
       canCancelOrModify,
       partnerDecision: effectivePartnerDecision,
+      acceptedDayCount,
+      totalDayCount,
       partnerProposalNote: row.partner_proposal_note,
       readByParent: row.read_by_parent ?? true,
       respondedAt: row.responded_at,

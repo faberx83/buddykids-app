@@ -14,8 +14,19 @@
 import { createClient } from "@/lib/supabase/server";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
 import { getCenterContext } from "@/lib/data/center-admin";
+// BUG CORRETTO 02/09/2026 (segnalazione beta di Fabrizio dalla stessa Inbox,
+// /center/prenotazioni: "Verificare come mai la prenotazione accettata
+// risulta ancora da rispondere? Capire dove sono finite le modifiche della
+// segnalazione precedente") — il fix dello stesso giorno per il difetto
+// gemello (bookings.partner_decision mai aggiornato per le prenotazioni a
+// giorni, vedi Sett.14 "Prova FP") aveva coperto SOLO lib/data/planner.ts e
+// lib/data/my-bookings.ts (lato genitore): da questa Inbox lato GESTORE,
+// letteralmente nulla era cambiato — stesso identico difetto, mai chiuso
+// qui. Esteso ora lo stesso helper puro condiviso, che include anche il
+// nuovo esito "partial" (conferma parziale, vedi commento lì).
+import { effectiveDayBasedDecision } from "@/lib/booking-response/effective-decision";
 
-export type PartnerDecision = "pending" | "accepted" | "rejected" | "proposed";
+export type PartnerDecision = "pending" | "accepted" | "rejected" | "proposed" | "partial";
 // "waitlisted" (migrazione 34, NON applicata da questa sessione — vedi
 // supabase/migration_34_booking_days_waitlist.sql): il giorno era pieno al
 // momento del tentativo di accettazione, la richiesta resta in coda invece
@@ -144,10 +155,25 @@ function mapRow(row: RawRow): CenterBooking {
     waitlistedAt: null as string | null,
   }));
 
+  // BUG CORRETTO 02/09/2026: per le prenotazioni "Giorni spot" (booking_days),
+  // row.partner_decision resta "pending" per sempre — il centro risponde
+  // giorno per giorno tramite applyDayDecision, che scrive SOLO su
+  // booking_days.partner_decision. Aggregazione via effectiveDayBasedDecision
+  // (stesso helper già in uso lato genitore): "accepted"/"rejected" solo se
+  // uniforme su tutti i giorni, "partial" se tutti decisi ma con esito misto,
+  // altrimenti "pending" (il centro ha ancora giorni da decidere). Le
+  // prenotazioni a settimana intera restano INVARIATE.
+  const effectivePartnerDecision = days.length > 0
+    ? effectiveDayBasedDecision(
+        days.map((d) => d.partnerDecision),
+        row.partner_decision
+      )
+    : row.partner_decision;
+
   return {
     id: row.id,
     status: row.status,
-    partnerDecision: row.partner_decision,
+    partnerDecision: effectivePartnerDecision,
     partnerProposalNote: row.partner_proposal_note,
     partnerProposedAt: row.partner_proposed_at,
     respondedAt: row.responded_at,

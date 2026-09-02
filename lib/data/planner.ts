@@ -37,7 +37,12 @@ export interface KidCoverage {
   // per ogni prenotazione mai gestita dal centro (comportamento AS-IS
   // invariato: prima di questo sprint "confirmed" non era mai raggiungibile,
   // quindi ogni settimana "coperta" era in realtà solo "richiesta").
-  partnerDecision: "pending" | "accepted" | "rejected" | "proposed";
+  // "partial" (02/09/2026) — SOLO per Giorni spot: tutti i giorni decisi dal
+  // centro ma esito misto. Trattato come "non accettata" ai fini di
+  // awaitingPartnerConfirmation più sotto (coerente col principio "mai
+  // dichiarare più di quanto i dati confermino": una copertura mista resta
+  // da verificare per il genitore). Vedi lib/booking-response/effective-decision.ts.
+  partnerDecision: "pending" | "accepted" | "rejected" | "proposed" | "partial";
   // Task #357 (Fabrizio: il click su una settimana coperta deve mostrare LA
   // MIA prenotazione, non la scheda marketing dell'attività) — id della
   // prenotazione reale che copre questa settimana per questo bambino, per
