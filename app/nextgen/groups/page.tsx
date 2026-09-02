@@ -21,7 +21,17 @@ export default async function NextgenGroupsPage({
   // TRAMA — Wave 3 (Notifiche): "tab=inviti" arriva dal deep link di un
   // item del Notification Center ("Sei stato invitato al gruppo...") — apre
   // direttamente la tab "Inviti" invece di "I miei gruppi" (indice di default).
-  searchParams: Promise<{ tab?: string }>;
+  //
+  // TRAMA BETA v1.1.1 (FINAL FUNCTIONAL + UI CONSISTENCY FIXES, punto 4) —
+  // segnalazione: "Planner → tab Gruppi → Gruppi & Community → Back" riportava
+  // sempre a Planner/Organizzazione (backHref hardcoded "/nextgen/planner",
+  // che apre sempre la tab di default). "from" arriva come query string da
+  // PlannerGroupsView.tsx (link "Vedi tutti"/card diretta) quando l'origine è
+  // davvero la tab Gruppi del Planner — nessun hack su browser history, stessa
+  // convenzione già in uso per "tab" qui sopra. Se "from" non è
+  // "planner-gruppi" (o assente), comportamento INVARIATO: GroupsClient
+  // ricade sul backHref statico "/nextgen/planner" passato sotto.
+  searchParams: Promise<{ tab?: string; from?: string }>;
 }) {
   const [groups, publicGroups, invites, params] = await Promise.all([
     getGroupsForUser(),
@@ -36,6 +46,7 @@ export default async function NextgenGroupsPage({
       initialInvites={invites}
       basePath="/nextgen/groups"
       backHref="/nextgen/planner"
+      backContext={params.from}
       showBrandIcon
       initialTab={params.tab === "inviti" ? 2 : undefined}
       nextgen

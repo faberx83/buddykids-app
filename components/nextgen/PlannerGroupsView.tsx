@@ -53,7 +53,7 @@ function CommunityCard({ community }: { community: CommunityItem }) {
 
 function GroupCard({ group }: { group: GroupItem }) {
   return (
-    <Link href={`/nextgen/groups/${group.id}`} className="flex items-center gap-3 rounded-2xl bg-white p-3.5 active:bg-black/[0.06]">
+    <Link href={`/nextgen/groups/${group.id}?from=planner-gruppi`} className="flex items-center gap-3 rounded-2xl bg-white p-3.5 active:bg-black/[0.06]">
       <span
         className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full text-lg"
         style={{ background: group.gradient }}
@@ -103,7 +103,15 @@ export default function PlannerGroupsView({
       <div>
         <div className="mb-2.5 flex items-center justify-between">
           <span className="font-poppins text-[13px] font-bold text-ink">I tuoi Gruppi sconto</span>
-          <Link href="/nextgen/groups" className="text-[12px] font-semibold text-trama-violet active:bg-black/[0.04]">
+          {/* TRAMA BETA v1.1.1 (FINAL FUNCTIONAL + UI CONSISTENCY FIXES, punto 4) —
+              "?from=planner-gruppi" marca l'origine Planner/Gruppi cosi il Back
+              dalla lista (e dal dettaglio) torni qui, non a Planner/Organizzazione.
+              I link Community sopra restano INVARIATI: fuori scope (vedi §4-5,
+              "Gruppi & Community" è il titolo della sola pagina Gruppi). */}
+          <Link
+            href="/nextgen/groups?from=planner-gruppi"
+            className="text-[12px] font-semibold text-trama-violet active:bg-black/[0.04]"
+          >
             {groups.length > 0 ? "Vedi tutti" : "Scopri come"}
           </Link>
         </div>

@@ -10,6 +10,7 @@ import {
   declineGroupInviteAction,
 } from "@/app/actions/groups";
 import { GroupItem, PublicGroupItem, GroupInviteItem } from "@/lib/types";
+import { resolveGroupsListBackHref, groupsDetailQuery } from "@/lib/nextgen/groups-back-nav";
 
 const tabs = ["I miei gruppi", "Scopri", "Inviti"];
 
@@ -39,6 +40,7 @@ export default function GroupsClient({
   initialInvites,
   basePath = "/groups",
   backHref,
+  backContext,
   showBrandIcon,
   initialTab,
   nextgen = false,
@@ -48,6 +50,15 @@ export default function GroupsClient({
   initialInvites: GroupInviteItem[];
   basePath?: string;
   backHref?: string;
+  // TRAMA BETA v1.1.1 (FINAL FUNCTIONAL + UI CONSISTENCY FIXES, punto 4-5) —
+  // marcatore di contesto opzionale propagato via query string ("from",
+  // vedi app/nextgen/groups/page.tsx): quando vale "planner-gruppi", il Back
+  // di questa pagina deve tornare alla tab Gruppi del Planner (non a
+  // Organizzazione, il default di backHref) E ogni link verso il dettaglio
+  // di un gruppo deve portare con sé lo stesso contesto, cosi il Back da lì
+  // torni qui (non altrove) — vedi detailQuery sotto. Assente/qualunque
+  // altro valore: comportamento INVARIATO (backHref statico come prima).
+  backContext?: string;
   showBrandIcon?: boolean;
   // TRAMA — Wave 3 (Notifiche): deep-link diretto alla tab "Inviti" da un
   // item del Notification Center ("Sei stato invitato al gruppo..."), invece
@@ -69,6 +80,9 @@ export default function GroupsClient({
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
+  const resolvedBackHref = resolveGroupsListBackHref(backContext, backHref);
+  const detailQuery = groupsDetailQuery(backContext);
+
   async function handleCreate() {
     setError(null);
     setSaving(true);
@@ -80,16 +94,16 @@ export default function GroupsClient({
     }
     // Appena creato, si entra subito nella configurazione del gruppo
     // (bambini, attività, richiesta) invece di restare sulla lista.
-    router.push(`${basePath}/${result.group.id}`);
+    router.push(`${basePath}/${result.group.id}${detailQuery}`);
   }
 
   return (
     <div className="animate-fade-in">
       <div className="flex-shrink-0 border-b border-[#F0F2F5] bg-white px-5 py-3.5">
         <div className="mb-3 flex items-center gap-3">
-          {backHref && (
+          {resolvedBackHref && (
             <button
-              onClick={() => router.push(backHref)}
+              onClick={() => router.push(resolvedBackHref)}
               aria-label="Indietro"
               className="flex items-center text-[22px] text-ink"
             >
@@ -191,17 +205,27 @@ export default function GroupsClient({
           )}
 
           {groups.map((g) => (
-            <GroupCard key={g.id} group={g} basePath={basePath} nextgen={nextgen} />
+            <GroupCard key={g.id} group={g} basePath={basePath} nextgen={nextgen} detailQuery={detailQuery} />
           ))}
           <div className="h-5" />
         </>
       )}
 
       {active === 1 && (
-        <ScopriTab initialPublicGroups={initialPublicGroups} basePath={basePath} nextgen={nextgen} />
+        <ScopriTab
+          initialPublicGroups={initialPublicGroups}
+          basePath={basePath}
+          nextgen={nextgen}
+          detailQuery={detailQuery}
+        />
       )}
       {active === 2 && (
-        <InvitiTab initialInvites={initialInvites} basePath={basePath} nextgen={nextgen} />
+        <InvitiTab
+          initialInvites={initialInvites}
+          basePath={basePath}
+          nextgen={nextgen}
+          detailQuery={detailQuery}
+        />
       )}
     </div>
   );
@@ -214,10 +238,12 @@ function ScopriTab({
   initialPublicGroups,
   basePath = "/groups",
   nextgen = false,
+  detailQuery = "",
 }: {
   initialPublicGroups: PublicGroupItem[];
   basePath?: string;
   nextgen?: boolean;
+  detailQuery?: string;
 }) {
   const accentBg = nextgen ? "bg-trama-violet" : "bg-sky";
   const router = useRouter();
@@ -236,7 +262,7 @@ function ScopriTab({
     }
     // Rimuovi dalla lista "Scopri" (ora sei membro) e vai al gruppo.
     setGroups((prev) => prev.filter((g) => g.id !== groupId));
-    router.push(`${basePath}/${groupId}`);
+    router.push(`${basePath}/${groupId}${detailQuery}`);
   }
 
   if (groups.length === 0) {
@@ -290,10 +316,12 @@ function InvitiTab({
   initialInvites,
   basePath = "/groups",
   nextgen = false,
+  detailQuery = "",
 }: {
   initialInvites: GroupInviteItem[];
   basePath?: string;
   nextgen?: boolean;
+  detailQuery?: string;
 }) {
   const accentBg = nextgen ? "bg-trama-violet" : "bg-sky";
   const router = useRouter();
@@ -311,7 +339,7 @@ function InvitiTab({
       return;
     }
     setInvites((prev) => prev.filter((i) => i.id !== inviteId));
-    if (result.groupId) router.push(`${basePath}/${result.groupId}`);
+    if (result.groupId) router.push(`${basePath}/${result.groupId}${detailQuery}`);
   }
 
   async function handleDecline(inviteId: string) {

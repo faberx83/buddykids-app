@@ -13,16 +13,23 @@ export default function GroupCard({
   group,
   basePath = "/groups",
   nextgen = false,
+  detailQuery = "",
 }: {
   group: GroupItem;
   basePath?: string;
   nextgen?: boolean;
+  // TRAMA BETA v1.1.1 (FINAL FUNCTIONAL + UI CONSISTENCY FIXES, punto 4-5) —
+  // suffisso query string opzionale (es. "?from=planner-gruppi") propagato
+  // da GroupsClient quando la lista è stata raggiunta da Planner/Gruppi, cosi
+  // il Back dal dettaglio torni lì e non alla lista "nuda". Assente:
+  // comportamento INVARIATO (href identico a prima).
+  detailQuery?: string;
 }) {
   const accentBg = nextgen ? "bg-trama-lilac/20" : "bg-sky-light";
   const accentText = nextgen ? "text-trama-violet" : "text-sky";
   return (
     <Link
-      href={`${basePath}/${group.id}`}
+      href={`${basePath}/${group.id}${detailQuery}`}
       className="mx-5 mb-3 block cursor-pointer overflow-hidden rounded-lg border border-[#F0F2F5] bg-white transition-transform hover:scale-[0.98]"
     >
       <div
