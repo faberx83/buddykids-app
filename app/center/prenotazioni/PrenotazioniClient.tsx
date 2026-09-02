@@ -166,6 +166,14 @@ export default function PrenotazioniClient({
   const [errorId, setErrorId] = useState<string | null>(null);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [bulkBusy, setBulkBusy] = useState(false);
+  // 02/09/2026 — segnalazione beta di Fabrizio: "mi manca la possibilità di
+  // selezionare tutte le richieste di prenotazione e approvarle/rifiutarle".
+  // Riusa lo stesso "selected" già esistente per Segna come letta/non letta
+  // (nessuna doppia selezione da gestire) — riepilogo separato perché
+  // un'azione bulk può toccare sia prenotazioni a settimana intera (accetta/
+  // rifiuta l'intera prenotazione) sia a giorni (accetta/rifiuta solo i
+  // giorni ancora pending di quella prenotazione, non quelli già decisi).
+  const [bulkResponseSummary, setBulkResponseSummary] = useState<string | null>(null);
   // "Seleziona tutto su più giorni" (segnalazione beta 02/09/2026) — stato
   // di selezione INDIPENDENTE dal "selected" sopra (quello è per
   // markBookingsReadAction a livello di intera prenotazione): qui è per
@@ -367,6 +375,101 @@ export default function PrenotazioniClient({
     if (result.error) return;
     setBookings((prev) => prev.map((b) => (ids.includes(b.id) ? { ...b, readByCenter: read } : b)));
     setSelected(new Set());
+  }
+
+  // 02/09/2026 — "mi manca la possibilità di selezionare tutte le richieste
+  // di prenotazione e approvarle/rifiutarle" (segnalazione beta di Fabrizio).
+  // Riusa le stesse server action già esistenti per la risposta singola
+  // (respondToBookingAction per le prenotazioni a settimana intera,
+  // respondToBookingDaysAction — già usata da "seleziona tutto su più
+  // giorni" DENTRO una prenotazione — per quelle a giorni), chiamate in
+  // sequenza per ogni prenotazione selezionata invece che in parallelo:
+  // stesso principio prudente di respondToBookingDaysAction lato server
+  // (CAS su spots_left, la contesa in parallelo non porterebbe benefici
+  // reali qui). Ogni prenotazione selezionata che non ha PIÙ nulla da
+  // decidere (già accettata/rifiutata/annullata, o "Giorni spot" con zero
+  // giorni ancora pending) viene saltata silenziosamente — il riepiloego
+  // finale la conta comunque, per trasparenza.
+  async function respondSelectedBookings(decision: "accepted" | "rejected") {
+    if (selected.size === 0) return;
+    setBulkBusy(true);
+    setBulkResponseSummary(null);
+    const ids = Array.from(selected);
+    let processed = 0;
+    let skipped = 0;
+    let failed = 0;
+    let waitlistedDaysTotal = 0;
+
+    for (const id of ids) {
+      const booking = bookings.find((b) => b.id === id);
+      if (!booking || booking.status === "cancelled") {
+        skipped++;
+        continue;
+      }
+      if (booking.isDayBased) {
+        const pendingDayIds = booking.days.filter((d) => d.partnerDecision === "pending").map((d) => d.activityDayId);
+        if (pendingDayIds.length === 0) {
+          skipped++;
+          continue;
+        }
+        const result = await respondToBookingDaysAction({ bookingId: id, activityDayIds: pendingDayIds, decision });
+        if (result.error) {
+          failed++;
+          continue;
+        }
+        setBookings((prev) =>
+          prev.map((b) => {
+            if (b.id !== id) return b;
+            return {
+              ...b,
+              readByCenter: true,
+              days: b.days.map((d) => {
+                const outcome = result.results[d.activityDayId];
+                if (outcome === "accepted" || outcome === "rejected" || outcome === "waitlisted") {
+                  return { ...d, partnerDecision: outcome };
+                }
+                return d;
+              }),
+            };
+          })
+        );
+        waitlistedDaysTotal += result.waitlisted;
+        processed++;
+      } else {
+        // Solo prenotazioni davvero "Da rispondere" — una "proposed" aspetta
+        // una decisione del GENITORE sulla proposta del centro, non va mai
+        // forzata accettata/rifiutata da qui.
+        if (booking.partnerDecision !== "pending") {
+          skipped++;
+          continue;
+        }
+        const result = await respondToBookingAction({ bookingId: id, decision });
+        if (result.error) {
+          failed++;
+          continue;
+        }
+        patchBooking(id, {
+          partnerDecision: decision,
+          status: decision === "accepted" ? "confirmed" : "cancelled",
+          readByCenter: true,
+          cancelledBy: decision === "rejected" ? "center" : null,
+        });
+        processed++;
+      }
+    }
+
+    setBulkBusy(false);
+    setSelected(new Set());
+
+    const parts: string[] = [
+      `${processed} prenotazion${processed === 1 ? "e" : "i"} ${decision === "accepted" ? "accettat" : "rifiutat"}${processed === 1 ? "a" : "e"}`,
+    ];
+    if (waitlistedDaysTotal > 0) {
+      parts.push(`${waitlistedDaysTotal} giorn${waitlistedDaysTotal === 1 ? "o" : "i"} pien${waitlistedDaysTotal === 1 ? "o" : "i"} finit${waitlistedDaysTotal === 1 ? "o" : "i"} in lista d'attesa`);
+    }
+    if (skipped > 0) parts.push(`${skipped} saltat${skipped === 1 ? "a" : "e"} (già decisa/annullata o senza giorni da rispondere)`);
+    if (failed > 0) parts.push(`${failed} error${failed === 1 ? "e" : "i"}`);
+    setBulkResponseSummary(parts.join(" · "));
   }
 
   const pending = bookings.filter(bookingNeedsAction);
@@ -699,7 +802,27 @@ export default function PrenotazioniClient({
             Seleziona tutte
           </label>
           {selected.size > 0 && (
-            <div className="flex gap-2">
+            <div className="flex flex-wrap gap-2">
+              {/* "mi manca la possibilità di selezionare tutte le richieste
+                  di prenotazione e approvarle/rifiutarle" (segnalazione beta
+                  02/09/2026) — accetta/rifiuta in blocco tutte le
+                  prenotazioni selezionate che hanno ancora qualcosa da
+                  decidere (a settimana intera o "Giorni spot", vedi
+                  respondSelectedBookings sopra). */}
+              <button
+                onClick={() => respondSelectedBookings("accepted")}
+                disabled={bulkBusy}
+                className="rounded-full bg-partner px-3 py-1.5 text-[11px] font-bold text-white disabled:opacity-60"
+              >
+                Accetta selezionate ({selected.size})
+              </button>
+              <button
+                onClick={() => respondSelectedBookings("rejected")}
+                disabled={bulkBusy}
+                className="rounded-full bg-white px-3 py-1.5 text-[11px] font-bold text-orange shadow-[0_1px_3px_rgba(0,0,0,0.08)] disabled:opacity-60"
+              >
+                Rifiuta selezionate ({selected.size})
+              </button>
               <button
                 onClick={() => markSelected(true)}
                 disabled={bulkBusy}
@@ -716,6 +839,12 @@ export default function PrenotazioniClient({
               </button>
             </div>
           )}
+        </div>
+      )}
+
+      {bulkResponseSummary && (
+        <div className="mb-4 rounded-lg border border-[#E8EBF0] bg-white px-4 py-2.5 text-xs font-medium text-ink-2">
+          {bulkResponseSummary}
         </div>
       )}
 
