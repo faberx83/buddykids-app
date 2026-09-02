@@ -172,6 +172,17 @@ export default function PlannerClient({
   // mount, nessun override successivo. Validato contro le settimane reali
   // dentro PlannerCalendarView (qui restiamo una stringa "grezza").
   const initialWeekParam = searchParams.get("week");
+  // BUGFIX (segnalato da Fabrizio: "non fa accadere nulla il click" sull'alert
+  // di coordinamento nel Coverage Hero) — ROOT CAUSE: quell'alert è un <Link>
+  // verso /nextgen/planner?mode=calendario&week=..., ma essendo la STESSA
+  // route già montata, Next.js App Router non rimonta PlannerClient: l'URL
+  // cambia ma mode/calendarExpanded/initialWeekParam sono tutti calcolati UNA
+  // SOLA VOLTA al mount (useState(initial...)), quindi restano quelli di
+  // prima — nessun effetto visibile, anche se l'URL in barra è corretto.
+  // Fix: quel click ora aggiorna direttamente questo stato locale (vedi
+  // weekOverride sotto e il bottone al posto del Link, più giù) invece di
+  // affidarsi a una navigazione same-route che l'App Router non propaga.
+  const [weekOverride, setWeekOverride] = useState<string | null>(initialWeekParam);
 
   // Wiring "Non ti serve" (26/08/2026, richiesto da Fabrizio dopo aver
   // verificato che l'azione esisteva solo lato LEGACY, components/PlannerView.tsx):
@@ -523,9 +534,22 @@ export default function PlannerClient({
                   competizione). Compatto, una riga, nessuna nuova maxi-card
                   — stesso pattern visivo delle altre righe di questo hero. */}
               {organizationState === "coordination_gap" && (
-                <Link
-                  href={`/nextgen/planner?mode=calendario&week=${coordinationGap.firstGapWeekStartDate}`}
-                  className="mt-2 flex items-center gap-1.5 text-[12.5px] active:opacity-70"
+                <button
+                  type="button"
+                  onClick={() => {
+                    // BUGFIX (vedi commento su weekOverride sopra) — stato
+                    // locale aggiornato direttamente, mai una navigazione
+                    // same-route: apre il pannello, seleziona la settimana
+                    // del gap, e ci scorre sopra (stesso pattern di jumpToWeek
+                    // più sotto per gli alert "week").
+                    setMode("organizzazione");
+                    setCalendarExpanded(true);
+                    setWeekOverride(coordinationGap.firstGapWeekStartDate);
+                    window.setTimeout(() => {
+                      document.getElementById("planner-calendario-section")?.scrollIntoView({ behavior: "smooth", block: "start" });
+                    }, 80);
+                  }}
+                  className="mt-2 flex w-full items-center gap-1.5 text-left text-[12.5px] active:opacity-70"
                 >
                   <i className="ti ti-alert-triangle-filled flex-shrink-0 text-[14px] text-trama-orange" />
                   <span className="font-semibold text-ink">
@@ -534,7 +558,7 @@ export default function PlannerClient({
                     <span className="font-medium text-ink-2">Settimana {coordinationGap.firstGapWeekIndex}</span>
                   </span>
                   <i className="ti ti-chevron-right ml-auto flex-shrink-0 text-ink-3" />
-                </Link>
+                </button>
               )}
               {/* Nota storica/stagionale: SOLO secondaria e discreta (mai
                   KPI primario), mostrata solo se aggiunge davvero
@@ -849,7 +873,7 @@ export default function PlannerClient({
             riquadro pieghevole, invece che da un tab a sé. Bottone chiamato
             "Calendario" di proposito: stesso testo del vecchio tab, cosi il
             click per aprirlo resta identico a prima. */}
-        <div className="mb-4">
+        <div className="mb-4" id="planner-calendario-section">
           <button
             type="button"
             onClick={() => setCalendarExpanded((v) => !v)}
@@ -878,10 +902,14 @@ export default function PlannerClient({
                 parentRole={parentRole}
                 familyPeople={familyPeople}
                 // TRAMA BETA v1.1.1 — ORGANIZATION COMPLETENESS (§8): deep-link
-                // ?week= verso la settimana con il primo gap di coordinamento
-                // (Home/alert qui sopra) — override deterministico, PlannerCalendarView
-                // valida che corrisponda a una settimana reale prima di usarlo.
-                initialWeekStartDate={initialWeekParam}
+                // verso la settimana con il primo gap di coordinamento (dalla
+                // query string ?week= all'apertura da Home, O dal click
+                // sull'alert qui sopra, che aggiorna weekOverride
+                // direttamente — vedi BUGFIX su weekOverride più sopra).
+                // PlannerCalendarView valida che corrisponda a una settimana
+                // reale prima di usarlo, e reagisce anche ai CAMBI di questo
+                // prop dopo il mount (non solo al valore iniziale).
+                initialWeekStartDate={weekOverride}
               />
             </div>
           )}

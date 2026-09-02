@@ -135,6 +135,42 @@ export default function PlannerCalendarView({
   const [viewMode, setViewMode] = useState<ViewMode>("mese");
   const months = useMemo(() => buildCalendarMonths(weeks, kids, overlaps), [weeks, kids, overlaps]);
   const todayIso = useMemo(() => new Date().toISOString().slice(0, 10), []);
+  // BUGFIX (segnalato da Fabrizio: click sull'alert di coordinamento del
+  // Coverage Hero "non fa accadere nulla") — conflictIdx e la costruzione di
+  // un CalendarDay da una SeasonWeek erano scritti SOLO dentro l'initializer
+  // di useState(selectedDay) (eseguito una sola volta, al mount): un cambio
+  // di initialWeekStartDate DOPO il mount (il caso reale del click, che
+  // aggiorna lo stato del genitore senza rimontare questo componente — la
+  // route resta la stessa) non aveva alcun modo di rientrare qui. Estratti
+  // sopra il livello degli useState così sia l'inizializzazione iniziale
+  // SIA il nuovo useEffect qui sotto (che reagisce ai cambi successivi)
+  // possono riusarli — nessuna logica duplicata.
+  const conflictIdx = useMemo(() => {
+    function weekIdxFromLabel(label: string): number | null {
+      const m = label.match(/\d+/);
+      return m ? Number(m[0]) : null;
+    }
+    return new Set(overlaps.map((o) => weekIdxFromLabel(o.weekLabel)).filter((i): i is number => i !== null));
+  }, [overlaps]);
+  function dayFromWeek(candidate: SeasonWeek): CalendarDay {
+    return {
+      dateIso: candidate.startDate,
+      dayOfMonth: 0,
+      weekIndex: candidate.index,
+      weekLabel: candidate.label,
+      weekStartDate: candidate.startDate,
+      weekEndDate: candidate.endDate,
+      inSeason: true,
+      covered: candidate.covered,
+      dismissed: candidate.dismissed,
+      activityName: candidate.activityName,
+      kids: candidate.coveredKids
+        .map((ck) => kids.find((k) => k.id === ck.kidId))
+        .filter((k): k is Kid => Boolean(k))
+        .map((k) => ({ kidId: k.id, kidName: k.name, accentColor: k.accentColor ?? "sky" })),
+      hasConflict: conflictIdx.has(candidate.index),
+    };
+  }
   const [monthKey, setMonthKey] = useState<string>(() => {
     // TRAMA BETA v1.1.1 — ORGANIZATION COMPLETENESS (§8): stesso deep-link
     // di selectedDay sopra — il mese mostrato di default deve contenere la
@@ -156,13 +192,6 @@ export default function PlannerCalendarView({
   // o settimana sotto).
   const [selectedDay, setSelectedDay] = useState<CalendarDay | null>(() => {
     if (weeks.length === 0) return null;
-    function weekIdxFromLabel(label: string): number | null {
-      const m = label.match(/\d+/);
-      return m ? Number(m[0]) : null;
-    }
-    const conflictIdx = new Set(
-      overlaps.map((o) => weekIdxFromLabel(o.weekLabel)).filter((i): i is number => i !== null)
-    );
     // TRAMA BETA v1.1.1 — ORGANIZATION COMPLETENESS (§8): il deep-link vince
     // sulla preselezione "settimana corrente" di default, ma SOLO se
     // corrisponde davvero a una delle settimane reali passate in weeks —
@@ -174,25 +203,31 @@ export default function PlannerCalendarView({
       weeks.find((w) => !w.dismissed && todayIso >= w.startDate && todayIso <= w.endDate) ??
       weeks.find((w) => !w.dismissed && w.coveredKids.length > 0) ??
       null;
-    if (!candidate) return null;
-    return {
-      dateIso: candidate.startDate,
-      dayOfMonth: 0,
-      weekIndex: candidate.index,
-      weekLabel: candidate.label,
-      weekStartDate: candidate.startDate,
-      weekEndDate: candidate.endDate,
-      inSeason: true,
-      covered: candidate.covered,
-      dismissed: candidate.dismissed,
-      activityName: candidate.activityName,
-      kids: candidate.coveredKids
-        .map((ck) => kids.find((k) => k.id === ck.kidId))
-        .filter((k): k is Kid => Boolean(k))
-        .map((k) => ({ kidId: k.id, kidName: k.name, accentColor: k.accentColor ?? "sky" })),
-      hasConflict: conflictIdx.has(candidate.index),
-    };
+    return candidate ? dayFromWeek(candidate) : null;
   });
+
+  // BUGFIX (segnalato da Fabrizio: click sull'alert di coordinamento "non fa
+  // accadere nulla") — reagisce ai cambi di initialWeekStartDate DOPO il
+  // mount (il click aggiorna lo stato del genitore, PlannerClient.tsx, senza
+  // rimontare questo componente): l'useState sopra copre solo il valore alla
+  // primissima apertura del pannello. Pattern "adjusting state when a prop
+  // changes" (react.dev) — setState durante il RENDER, non dentro un
+  // useEffect: evita un giro di render in più e l'errore di lint
+  // react-hooks/set-state-in-effect ("Calling setState synchronously within
+  // an effect can trigger cascading renders"), che questo repo tratta come
+  // errore bloccante. Stesso identico "vince solo se è una settimana reale"
+  // di sopra.
+  const [appliedWeekStartDate, setAppliedWeekStartDate] = useState(initialWeekStartDate ?? null);
+  if ((initialWeekStartDate ?? null) !== appliedWeekStartDate) {
+    setAppliedWeekStartDate(initialWeekStartDate ?? null);
+    if (initialWeekStartDate) {
+      const candidate = weeks.find((w) => w.startDate === initialWeekStartDate);
+      if (candidate) {
+        setMonthKey(candidate.startDate.slice(0, 7));
+        setSelectedDay(dayFromWeek(candidate));
+      }
+    }
+  }
 
   // Stato locale delle assegnazioni "Chi fa cosa?", inizializzato dal prop e
   // aggiornato in modo ottimistico dopo ogni salvataggio — evita di dover
