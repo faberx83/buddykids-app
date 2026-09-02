@@ -384,7 +384,7 @@ export default function BookingClient({
                   valueClass="text-green"
                 />
               )}
-              <Row label="Totale stimato" value={`€${subtotal - groupDiscount}`} total />
+              <Row label="Totale stimato" value={`€${subtotal - groupDiscount}`} total nextgen={nextgen} />
             </div>
           </div>
         )}
@@ -451,6 +451,7 @@ export default function BookingClient({
                 label="Totale stimato"
                 value={`€${subtotal - groupDiscount}`}
                 total
+                nextgen={nextgen}
               />
             </div>
           </div>
@@ -565,7 +566,7 @@ export default function BookingClient({
               {inviteDiscountAmount > 0 && (
                 <Row label={`Sconto invito 🎁 (-${inviteDiscount!.percent}%)`} value={`-€${inviteDiscountAmount}`} valueClass="text-green" />
               )}
-              <Row label="Totale" value={`€${total}`} total />
+              <Row label="Totale" value={`€${total}`} total nextgen={nextgen} />
             </div>
           </div>
         )}
@@ -657,11 +658,16 @@ function Row({
   value,
   valueClass,
   total,
+  nextgen,
 }: {
   label: string;
   value: string;
   valueClass?: string;
   total?: boolean;
+  // nextgen (audit layout legacy, 02/09/2026): "Totale"/"Totale stimato" era
+  // rimasto hardcoded text-sky anche nelle chiamate con nextgen=true, unico
+  // residuo blu legacy in un componente altrimenti già dual-mode.
+  nextgen?: boolean;
 }) {
   return (
     <div
@@ -672,7 +678,7 @@ function Row({
       }`}
     >
       <span>{label}</span>
-      <span className={total ? "text-sky" : valueClass}>{value}</span>
+      <span className={total ? (nextgen ? "text-trama-violet" : "text-sky") : valueClass}>{value}</span>
     </div>
   );
 }
