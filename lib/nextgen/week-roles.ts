@@ -114,3 +114,84 @@ export function computeRolesToCover(
     missing,
   };
 }
+
+// TRAMA BETA v1.1.1 — ORGANIZATION COMPLETENESS (02/09/2026): finora
+// computeRolesToCover veniva chiamato una sola volta, per UNA settimana
+// (Dettaglio Settimana). Serve ora lo STESSO identico calcolo aggregato su
+// PIÙ settimane (future/rilevanti) per Home e Planner Overview — così si
+// può distinguere "copertura ATTIVITÀ" (ha una prenotazione? già gestito da
+// planner.covered / computeHeroWeeksSummary, INVARIATI) da "copertura
+// COORDINAMENTO" (per ogni child-day prenotato, sappiamo chi fa Andata e chi
+// fa Ritorno?). Deliberatamente NIENTE nuova formula: computeCoordinationGap
+// è solo un loop che richiama computeRolesToCover una volta per settimana
+// futura rilevante, riusando lo stesso "bookedDays" passato per intero (la
+// funzione già ignora da sola le date fuori dai 5 giorni feriali della
+// settimana in esame, vedi "weekdayByDate.get(dateIso) ?? continue" sopra) —
+// nessuna nuova query, nessun secondo calcolo divergente.
+//
+// Perimetro "futuro/rilevante" IDENTICO a computeHeroWeeksSummary (lib/
+// nextgen/planner-insights.ts, "FINAL HERO SEMANTIC FIX", non toccato):
+// !dismissed && endDate >= todayIso — stessa convenzione di date già usata
+// da upcomingWeeks/priorityWeek, nessuna nuova interpretazione del
+// calendario/timezone.
+export interface CoordinationGapSummary {
+  // Somma di missingSlots su tutte le settimane future rilevanti — "quanti
+  // passaggi Andata/Ritorno mancano da assegnare, in totale, da qui in poi".
+  totalMissing: number;
+  // Prima settimana futura rilevante con almeno 1 slot mancante (per il
+  // deep-link "Settimana N" — §8/§9 del prompt), null se nessun gap.
+  firstGapWeekStartDate: string | null;
+  firstGapWeekIndex: number | null;
+  // Unione di tutti gli slot mancanti, per eventuale dettaglio futuro (non
+  // usato direttamente dalla UI di questa wave, ma utile per i test).
+  missing: RoleSlot[];
+}
+
+export function computeCoordinationGap(
+  weeks: { index: number; startDate: string; dismissed: boolean; endDate: string }[],
+  bookedDays: KidBookedDaysInput[],
+  responsibilities: WeekResponsibility[],
+  todayIso: string
+): CoordinationGapSummary {
+  const futureRelevant = weeks
+    .filter((w) => !w.dismissed && w.endDate >= todayIso)
+    .sort((a, b) => a.index - b.index);
+
+  let totalMissing = 0;
+  let firstGapWeekStartDate: string | null = null;
+  let firstGapWeekIndex: number | null = null;
+  const missing: RoleSlot[] = [];
+
+  for (const week of futureRelevant) {
+    const summary = computeRolesToCover(week.startDate, bookedDays, responsibilities);
+    if (summary.missingSlots > 0) {
+      totalMissing += summary.missingSlots;
+      missing.push(...summary.missing);
+      if (firstGapWeekStartDate === null) {
+        firstGapWeekStartDate = week.startDate;
+        firstGapWeekIndex = week.index;
+      }
+    }
+  }
+
+  return { totalMissing, firstGapWeekStartDate, firstGapWeekIndex, missing };
+}
+
+// TRAMA BETA v1.1.1 — regola formale di "ORGANIZZAZIONE COMPLETA" (§10 del
+// prompt): completa SOLO se copertura ATTIVITÀ (dato esistente, calcolato da
+// Home/Planner con la loro rispettiva logica invariata) E copertura
+// COORDINAMENTO (missingCoordinationCount, da computeCoordinationGap sopra)
+// sono ENTRAMBE vere. L'attività ha sempre priorità: se manca la copertura
+// attività, lo stato è "activity_gap" a prescindere dal coordinamento (un
+// gap di coordinamento non deve mai mascherare un problema di attività più
+// fondamentale — §6 CASO C).
+export type OrganizationState = "full" | "coordination_gap" | "activity_gap";
+
+export function computeOrganizationState(
+  activityCoverageComplete: boolean,
+  missingCoordinationCount: number
+): OrganizationState {
+  if (!activityCoverageComplete) return "activity_gap";
+  if (missingCoordinationCount > 0) return "coordination_gap";
+  return "full";
+}
