@@ -4,10 +4,11 @@
 # test Playwright automatica contro il deploy appena pubblicato.
 #
 # Uso: dalla cartella del progetto, esegui:
-#   bash deploy.sh                                 # deploy + TEST_SCOPE=critical (default, veloce — vedi sotto)
-#   TEST_SCOPE=all bash deploy.sh                  # deploy + suite Playwright INTERA (entrambi i browser) — usarlo
-#                                                   # prima di un rilascio o periodicamente, non ad ogni deploy
-#   SKIP_TESTS=1 bash deploy.sh                    # salta i test (deploy rapido, senza verifica)
+#   bash deploy.sh                                 # deploy normale — [5/5] E2E live NON eseguiti (vedi RUN_E2E sotto)
+#   RUN_E2E=1 bash deploy.sh                       # deploy + E2E live post-deploy, TEST_SCOPE=critical (default)
+#   RUN_E2E=1 TEST_SCOPE=all bash deploy.sh        # deploy + suite Playwright live INTERA (entrambi i browser) —
+#                                                   # usarlo prima di un rilascio o periodicamente, non ad ogni deploy
+#   SKIP_TESTS=1 bash deploy.sh                    # override esplicito: forza lo skip di [5/5] anche con RUN_E2E=1
 #   ONLY_SITEMAP=1 bash deploy.sh                  # SOLO sitemap, nessun deploy (vedi sotto)
 #   TEST_BASE_URL=<url> ONLY_SITEMAP=1 bash deploy.sh  # sitemap contro <url> invece della produzione
 #   ALLOW_TEST_FAILURES=1 bash deploy.sh           # non blocca su test falliti (passato a test-deploy.sh)
@@ -26,13 +27,29 @@
 #                                                   # app/internal/deploy-notify/route.ts.
 #
 # Ottimizzazione tempo/costo (28/07, richiesta di Fabrizio): il passo [5/5]
-# di verifica post-deploy usa ora TEST_SCOPE=critical di default — 18 journey
+# di verifica post-deploy usa TEST_SCOPE=critical di default — 18 journey
 # critiche, solo browser desktop — invece della suite intera x2 browser
 # (~880 test), che restava la scelta giusta prima ma era troppo lenta ad ogni
 # singolo deploy e pesava sull'Active CPU del piano gratuito Vercel (4h/mese
 # incluse su Hobby — vedi https://vercel.com/docs/functions/usage-and-pricing).
 # La suite intera resta disponibile con TEST_SCOPE=all, da usare prima di un
 # rilascio o con una cadenza periodica a scelta, non dopo ogni deploy.
+#
+# RUN_E2E opt-in (02/09/2026, richiesta esplicita di Fabrizio: "voglio
+# evitare che [i test E2E live] accada[no] automaticamente ad ogni deploy"):
+# il passo [5/5] — che include cleanup dei dati di test
+# (tests/cleanup-test-data.mjs, chiamata Supabase con la service_role key) E
+# la suite Playwright vera e propria contro produzione — ora NON parte più
+# di default. Senza RUN_E2E=1, "bash deploy.sh" esegue solo il deploy vero e
+# proprio (preflight branch/tree, push GitHub, vercel --prod, alias): zero
+# traffico di test verso Supabase/produzione. RUN_E2E=1 riattiva l'intero
+# ciclo [5/5] così com'era prima (stesso identico comportamento, stesso
+# default TEST_SCOPE=critical, stessa gestione di TEST_SCOPE/
+# ALLOW_TEST_FAILURES/INCLUDE_MOBILE — nessuna logica di test-deploy.sh
+# toccata). SKIP_TESTS resta un override esplicito che forza lo skip anche
+# con RUN_E2E=1 (nessun meccanismo duplicato: SKIP_TESTS continua a
+# significare esattamente quello che significava prima, RUN_E2E aggiunge
+# solo il nuovo default "spento").
 #
 # TRAMA ONE Build Sprint 0 — Pre-Migration Hardening (vedi
 # docs/trama-one/analysis/SPRINT_0_TECH_NOTES.md per il dettaglio):
@@ -242,19 +259,32 @@ echo "✅ Deploy pubblicato: https://buddykids-app.vercel.app (+ alias partner/a
 
 if [ -n "$SKIP_TESTS" ]; then
   echo ""
-  echo "⏭️  Test saltati (SKIP_TESTS impostato)."
-else
+  echo "⏭️  [5/5] Test saltati (SKIP_TESTS impostato)."
+elif [ "$RUN_E2E" = "1" ]; then
   # Ottimizzazione tempo/costo (28/07): il default di questo passo era
   # sempre TEST_SCOPE=all (~880 test x 2 browser) DOPO OGNI SINGOLO DEPLOY —
   # troppo lento e pesante sull'Active CPU Vercel del piano gratuito.
   # Default ora "critical" (18 journey critiche, solo chromium — vedi
   # test-deploy.sh), pensato apposta per un controllo veloce post-deploy.
   # La suite intera resta un comando esplicito quando serve una copertura
-  # completa (prima di un rilascio, o periodicamente): TEST_SCOPE=all bash
-  # deploy.sh. Se TEST_SCOPE è già valorizzato (dall'utente) non viene
-  # toccato: questo default si applica solo quando non specificato.
+  # completa (prima di un rilascio, o periodicamente): RUN_E2E=1
+  # TEST_SCOPE=all bash deploy.sh. Se TEST_SCOPE è già valorizzato
+  # (dall'utente) non viene toccato: questo default si applica solo quando
+  # non specificato.
   TEST_SCOPE="${TEST_SCOPE:-critical}"
   echo ""
-  echo "[5/5] 🧪 Verifico con la suite di test (TEST_SCOPE=$TEST_SCOPE — usa TEST_SCOPE=all bash deploy.sh per la suite intera)..."
+  echo "[5/5] 🧪 RUN_E2E=1: eseguo cleanup dati test + suite Playwright live contro produzione (TEST_SCOPE=$TEST_SCOPE — usa RUN_E2E=1 TEST_SCOPE=all bash deploy.sh per la suite intera)..."
   TEST_SCOPE="$TEST_SCOPE" bash test-deploy.sh https://buddykids-app.vercel.app
+else
+  # RUN_E2E opt-in (vedi commento in testa al file): default ora "spento" —
+  # nessun cleanup/seed di dati di test, nessuna chiamata Supabase
+  # preparatoria, nessuna suite Playwright contro produzione. Il deploy
+  # vero e proprio (push/vercel/alias, sopra) è comunque già completo a
+  # questo punto.
+  echo ""
+  echo "[5/5] ⏭️  E2E live saltati (default — nessun cleanup/seed fixture, nessuna chiamata Supabase di test, nessun Playwright contro produzione)."
+  echo "      Per eseguirli:"
+  echo "        RUN_E2E=1 bash deploy.sh"
+  echo "      Suite completa:"
+  echo "        RUN_E2E=1 TEST_SCOPE=all bash deploy.sh"
 fi
