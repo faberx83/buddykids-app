@@ -14,6 +14,12 @@ import {
   type RawEntryBookingRow,
   type SharedPlanEntry,
 } from "@/lib/plan-shares/build-entries";
+// TRAMA BETA v1.1.1 — PIANO CONDIVISO: WeekResponsibility è lo stesso tipo
+// già usato da lib/data/responsibilities.ts (client-safe, vedi lib/nextgen/
+// responsibility-options.ts) — nessuna nuova forma dati. ParentRole è solo
+// un tipo (import type, eliminato a compile-time).
+import type { WeekResponsibility } from "@/lib/nextgen/responsibility-options";
+import type { ParentRole } from "@/lib/data/profile";
 
 export interface PlanShare {
   id: string;
@@ -139,14 +145,48 @@ async function getSharedPlanEntriesViaServiceRole(token: string): Promise<Shared
   const { data, error } = await supabase
     .from("bookings")
     .select(
-      "partner_decision, activities ( name ), booking_weeks ( activity_weeks ( start_date, end_date ) ), booking_days ( partner_decision, activity_days ( date ) ), booking_kids ( kid_id, kids ( name ) )"
+      // TRAMA BETA v1.1.1 — PIANO CONDIVISO (02/09/2026): address/hours/days
+      // e centers(name) sono le STESSE colonne già lette da
+      // lib/data/activities.ts per il resto dell'app — nessuna nuova
+      // colonna/tabella, solo aggiunte alla select esistente.
+      "partner_decision, activities ( name, address, hours, days, centers ( name ) ), booking_weeks ( activity_weeks ( start_date, end_date ) ), booking_days ( partner_decision, activity_days ( date ) ), booking_kids ( kid_id, kids ( name ) )"
     )
     .eq("parent_id", share.parent_id)
     .neq("status", "cancelled");
   if (error || !data) return [];
 
+  // TRAMA BETA v1.1.1 — PIANO CONDIVISO: "chi fa cosa" per il periodo
+  // condiviso, e il ruolo del genitore PROPRIETARIO del link (per risolvere
+  // "Io"/"Partner" in terza persona — vedi resolvePublicResponsibleLabel).
+  // Stesso client service-role già usato sopra (mai esposto al browser),
+  // stesso scoping per parent_id del proprietario — MAI il parent_id/kid_id
+  // finiscono nell'output pubblico (solo le etichette risolte).
+  const [{ data: respData }, { data: profileData }] = await Promise.all([
+    supabase
+      .from("week_responsibilities")
+      .select("kid_id, week_start_date, weekday, moment, responsible, responsible_label")
+      .eq("parent_id", share.parent_id),
+    supabase.from("profiles").select("parent_role").eq("id", share.parent_id).maybeSingle(),
+  ]);
+  const responsibilities: WeekResponsibility[] = (respData ?? []).map((r) => ({
+    kidId: r.kid_id as string,
+    weekStartDate: r.week_start_date as string,
+    weekday: r.weekday as WeekResponsibility["weekday"],
+    moment: r.moment as WeekResponsibility["moment"],
+    responsible: r.responsible as WeekResponsibility["responsible"],
+    responsibleLabel: r.responsible_label as string | null,
+  }));
+  const ownerParentRole = (profileData?.parent_role as ParentRole | null) ?? null;
+
   const seasonYear = seasonYearFromDates([share.scope_start, share.scope_end], new Date().getUTCFullYear());
-  return buildSharedPlanEntriesFromRows(data as RawEntryBookingRow[], share.scope_start, share.scope_end, seasonYear);
+  return buildSharedPlanEntriesFromRows(
+    data as RawEntryBookingRow[],
+    share.scope_start,
+    share.scope_end,
+    seasonYear,
+    responsibilities,
+    ownerParentRole
+  );
 }
 
 // Fallback: se SUPABASE_SERVICE_ROLE_KEY non è configurata su questo
@@ -166,6 +206,15 @@ async function getSharedPlanEntriesViaRpcFallback(token: string): Promise<Shared
     weekStartDate: r.week_start_date,
     weekEndDate: r.week_end_date,
     status: r.status,
+    // TRAMA BETA v1.1.1 — PIANO CONDIVISO: la funzione SQL get_shared_plan
+    // non restituisce questi campi (non estendibile senza migration, vedi
+    // vincolo "no DB changes") — null/[] qui, MAI un errore: il fallback
+    // resta un puro downgrade di contenuto, mai di funzionamento.
+    centerName: null,
+    address: null,
+    hours: null,
+    days: null,
+    responsibilities: [],
   }));
 }
 

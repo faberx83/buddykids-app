@@ -157,3 +157,44 @@ export function resolveResponsibleDisplay(
   const opt = options.find((o) => o.value === entry.responsible);
   return { label: opt?.label ?? "", emoji: opt?.emoji ?? "" };
 }
+
+// TRAMA BETA v1.1.1 — PIANO CONDIVISO: "chi fa cosa" (02/09/2026, richiesta
+// esplicita di Fabrizio dopo aver visto la pagina pubblica del piano
+// condiviso: "il mercoledì tocca alla tata, gli altri giorni ai nonni" deve
+// essere leggibile da chi riceve il link, non solo dal genitore che lo ha
+// creato).
+//
+// resolveResponsibleDisplay (sopra) è scritta in PRIMA persona per il
+// genitore loggato: "io" -> "Io", "partner" -> l'etichetta dell'ALTRO
+// genitore vista dal genitore che guarda lo schermo. Sulla pagina pubblica
+// (nonni/tata, senza login) quella prospettiva è sbagliata: "Io" non
+// significa nulla per chi legge, e "partner" andrebbe letto rispetto al
+// genitore PROPRIETARIO del piano, non rispetto a chi guarda. Questa
+// funzione risolve in TERZA persona: "io" -> il ruolo del genitore
+// proprietario stesso (es. "Papà"), "partner" -> l'altro genitore (es.
+// "Mamma"), entrambi derivati dallo stesso profiles.parent_role del
+// proprietario (mai un'inferenza da nome/email/avatar, stesso vincolo di
+// resolveResponsibleOptions sopra) — "Genitore"/"Partner" generici se il
+// ruolo non è noto. nonno/nonna/tata/altro restano identici (già
+// naturalmente in terza persona).
+export function resolvePublicResponsibleLabel(
+  entry: { responsible: ResponsibleValue | null; responsibleLabel: string | null },
+  ownerParentRole: ParentRole | null
+): { label: string; emoji: string } {
+  if (entry.responsible === null) return { label: "", emoji: "" };
+  if (entry.responsible === "altro") {
+    return { label: entry.responsibleLabel?.trim() || "Altro", emoji: "✏️" };
+  }
+  if (entry.responsible === "io") {
+    const label = ownerParentRole === "padre" ? "Papà" : ownerParentRole === "madre" ? "Mamma" : "Genitore";
+    const emoji = ownerParentRole === "padre" ? "👨" : ownerParentRole === "madre" ? "👩" : "🧑";
+    return { label, emoji };
+  }
+  if (entry.responsible === "partner") {
+    const label = ownerParentRole === "padre" ? "Mamma" : ownerParentRole === "madre" ? "Papà" : "Partner";
+    const emoji = ownerParentRole === "padre" ? "👩" : ownerParentRole === "madre" ? "👨" : "❤️";
+    return { label, emoji };
+  }
+  const opt = RESPONSIBLE_OPTIONS.find((o) => o.value === entry.responsible);
+  return { label: opt?.label ?? "", emoji: opt?.emoji ?? "" };
+}

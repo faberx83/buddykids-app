@@ -140,7 +140,7 @@ pureTest.describe("TRAMA BETA v1.1.1 — SHARE-01..06: buildSharedPlanEntriesFro
     pureExpect(entries).toHaveLength(0);
   });
 
-  pureTest("SHARE-06 - share pubblica non espone dati personali/tecnici non necessari (solo kidName/activityName/date/status)", () => {
+  pureTest("SHARE-06 - share pubblica espone SOLO i campi pubblici approvati (aggiornato 02/09/2026: +centro/indirizzo/orari/chi fa cosa, MAI parent_id/kid_id/booking_id/email/telefono)", () => {
     const rows: RawEntryBookingRow[] = [
       dayRow({
         booking_days: [{ partner_decision: "accepted", activity_days: { date: "2026-09-01" } }],
@@ -148,11 +148,18 @@ pureTest.describe("TRAMA BETA v1.1.1 — SHARE-01..06: buildSharedPlanEntriesFro
     ];
     const entries = buildSharedPlanEntriesFromRows(rows, "2026-08-31", "2026-09-04", 2026);
     pureExpect(entries).toHaveLength(1);
-    // Nessun parent_id/kid_id/booking_id/email/telefono/indirizzo/metadato
-    // tecnico: SOLO i 5 campi pubblici approvati (punto 3).
-    pureExpect(Object.keys(entries[0]).sort()).toEqual(
-      ["activityName", "kidName", "status", "weekEndDate", "weekStartDate"].sort()
+    // TRAMA BETA v1.1.1 — PIANO CONDIVISO (02/09/2026, richiesta esplicita e
+    // confermata di Fabrizio): l'insieme di campi pubblici si allarga
+    // deliberatamente a centro/indirizzo/orari/"chi fa cosa" — MAI però a
+    // identificatori tecnici o dati di contatto (parent_id/kid_id/
+    // booking_id/email/telefono), che restano assenti quanto prima.
+    const keys = Object.keys(entries[0]).sort();
+    pureExpect(keys).toEqual(
+      ["activityName", "address", "centerName", "days", "hours", "kidName", "responsibilities", "status", "weekEndDate", "weekStartDate"].sort()
     );
+    for (const forbidden of ["parentId", "parent_id", "kidId", "kid_id", "bookingId", "booking_id", "email", "phone", "telefono"]) {
+      pureExpect(keys).not.toContain(forbidden);
+    }
   });
 
   // Ramo booking_weeks (settimana intera) — verifica che il secondo bug

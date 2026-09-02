@@ -1,13 +1,29 @@
 import { getSharedPlanMeta, getSharedPlanEntries } from "@/lib/data/plan-shares";
+import { WEEKDAYS } from "@/lib/nextgen/responsibility-options";
 
 // SPRINT 5.3 (NEXTGEN) — "Condivisione Piano": pagina pubblica di sola
 // lettura, SENZA login — per chi non ha un account (nonni, tata, altri
-// genitori). Passa sempre dalle funzioni RPC get_shared_plan_meta()/
-// get_shared_plan() (security definer, vedi supabase/schema.sql), che
-// restituiscono SOLO nome bambino/attività/date/stato — mai importi,
-// indirizzi o dati di contatto. Route fuori da "/nextgen" di proposito:
-// niente toggle LEGACY/NEXTGEN né banner "Installa l'app" (vedi
-// VersionToggle.tsx/InstallPrompt.tsx, entrambi escludono "/share").
+// genitori). Passa sempre da getSharedPlanEntries()/getSharedPlanMeta()
+// (lib/data/plan-shares.ts, service-role/RPC security-definer, vedi quel
+// file), che restituiscono SOLO campi pensati apposta per essere pubblici
+// (mai importi, contatti, parent_id/kid_id/booking_id). Route fuori da
+// "/nextgen" di proposito: niente toggle LEGACY/NEXTGEN né banner
+// "Installa l'app" (vedi VersionToggle.tsx/InstallPrompt.tsx, entrambi
+// escludono "/share").
+//
+// TRAMA BETA v1.1.1 — PIANO CONDIVISO (02/09/2026, richiesta esplicita di
+// Fabrizio dopo aver visto la pagina live: "le informazioni sono poche...
+// nome del centro, attività, indirizzo (Naviga), orari, chi fa cosa" — per
+// chi accompagna/ritira davvero (nonni, tata) sapere solo "In attesa di
+// conferma" non basta). Aggiunti centro/indirizzo/orari/"chi fa cosa" per
+// giorno (vedi SharedPlanEntry, lib/plan-shares/build-entries.ts) — scelta
+// consapevole e confermata dall'utente: il link resta pubblico e senza
+// login, quindi ora espone più dettagli operativi di prima (non più solo
+// nome/attività/data/stato). Indirizzo/centro/orari sono dati pubblici
+// dell'attività stessa (già visibili a chiunque su Scopri, senza account);
+// "chi fa cosa" mostra emoji+etichetta (es. "🧑‍🍼 Tata"), mai un nome
+// completo/contatto non già scritto dal genitore stesso (responsible_label
+// libero, "altro").
 
 const MONTH_LABELS_IT = [
   "gennaio", "febbraio", "marzo", "aprile", "maggio", "giugno",
@@ -19,9 +35,17 @@ const STATUS_LABEL: Record<string, string> = {
   confirmed: "Confermata",
 };
 
+const WEEKDAY_LABEL_IT: Record<string, string> = Object.fromEntries(WEEKDAYS.map((w) => [w.value, w.label]));
+
 function friendlyDate(iso: string): string {
   const d = new Date(iso + "T00:00:00Z");
   return `${d.getUTCDate()} ${MONTH_LABELS_IT[d.getUTCMonth()]}`;
+}
+
+// Link diretto a Google Maps — stesso servizio già usato altrove nell'app
+// per "Naviga" (Planner Mappa), nessun nuovo provider di mappe introdotto.
+function mapsUrl(address: string): string {
+  return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(address)}`;
 }
 
 export default async function SharedPlannerPage({ params }: { params: Promise<{ token: string }> }) {
@@ -74,16 +98,68 @@ export default async function SharedPlannerPage({ params }: { params: Promise<{ 
                 <div className="mb-2 text-[11px] font-bold uppercase tracking-wide text-ink-3">
                   {friendlyDate(weekStartDate)} – {friendlyDate(w.weekEndDate)}
                 </div>
-                <div className="flex flex-col gap-2">
+                <div className="flex flex-col gap-3">
                   {w.items.map((item, i) => (
-                    <div key={i} className="flex items-center justify-between gap-2 text-[13px]">
-                      <div className="min-w-0">
-                        <span className="font-semibold text-ink">{item.kidName}</span>
-                        <span className="text-ink-2"> · {item.activityName}</span>
+                    <div key={i} className={i > 0 ? "border-t border-black/5 pt-3" : ""}>
+                      <div className="flex items-center justify-between gap-2 text-[13px]">
+                        <div className="min-w-0">
+                          <span className="font-semibold text-ink">{item.kidName}</span>
+                          <span className="text-ink-2"> · {item.activityName}</span>
+                        </div>
+                        <span className="flex-shrink-0 text-[10.5px] font-semibold text-ink-3">
+                          {STATUS_LABEL[item.status] ?? item.status}
+                        </span>
                       </div>
-                      <span className="flex-shrink-0 text-[10.5px] font-semibold text-ink-3">
-                        {STATUS_LABEL[item.status] ?? item.status}
-                      </span>
+
+                      {(item.centerName || item.address) && (
+                        <div className="mt-1.5 flex items-center gap-2 text-[11.5px] text-ink-2">
+                          <i className="ti ti-map-pin flex-shrink-0 text-ink-3" />
+                          <span className="min-w-0 flex-1 truncate">
+                            {item.centerName}
+                            {item.centerName && item.address ? " · " : ""}
+                            {item.address}
+                          </span>
+                          {item.address && (
+                            <a
+                              href={mapsUrl(item.address)}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="flex-shrink-0 font-semibold text-trama-violet"
+                            >
+                              Naviga →
+                            </a>
+                          )}
+                        </div>
+                      )}
+
+                      {(item.days || item.hours) && (
+                        <div className="mt-1 flex items-center gap-2 text-[11.5px] text-ink-2">
+                          <i className="ti ti-clock flex-shrink-0 text-ink-3" />
+                          <span>{[item.days, item.hours].filter(Boolean).join(" · ")}</span>
+                        </div>
+                      )}
+
+                      {item.responsibilities.length > 0 && (
+                        <div className="mt-2 rounded-xl bg-bg/60 px-2.5 py-2">
+                          <div className="mb-1 text-[9.5px] font-bold uppercase tracking-wide text-ink-3">
+                            Chi accompagna / ritira
+                          </div>
+                          <div className="flex flex-col gap-0.5">
+                            {item.responsibilities.map((cell) => (
+                              <div key={cell.weekday} className="flex items-center gap-2 text-[11.5px] text-ink-2">
+                                <span className="w-7 flex-shrink-0 font-semibold text-ink-3">
+                                  {WEEKDAY_LABEL_IT[cell.weekday]}
+                                </span>
+                                <span className="min-w-0 flex-1">
+                                  {cell.andata ? `${cell.andata.emoji} ${cell.andata.label}` : "Da assegnare"}
+                                  <span className="mx-1 text-ink-3">→</span>
+                                  {cell.ritorno ? `${cell.ritorno.emoji} ${cell.ritorno.label}` : "Da assegnare"}
+                                </span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
                     </div>
                   ))}
                 </div>
