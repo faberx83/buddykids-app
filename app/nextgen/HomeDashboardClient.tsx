@@ -7,12 +7,18 @@ import { PlannerData } from "@/lib/data/planner";
 import { MyBooking } from "@/lib/data/my-bookings";
 import { Activity } from "@/lib/types";
 import { TodayCheckin } from "@/lib/data/checkin";
-import { TodayResponsibilityEntry } from "@/lib/data/responsibilities";
+import { TodayResponsibilityEntry, KidBookedDays } from "@/lib/data/responsibilities";
 // TRAMA BETA v1.1.1 — FINAL GAP CLOSURE (punto 8): stesso "import type" già
 // usato in PlannerClient.tsx — ParentRole non trascina lib/supabase/server
 // nel bundle client.
 import type { ParentRole } from "@/lib/data/profile";
 import { CoordinationSignal } from "@/lib/types";
+import type { WeekResponsibility } from "@/lib/nextgen/responsibility-options";
+// TRAMA BETA v1.1.1 — ORGANIZATION COMPLETENESS: stesso helper puro già
+// usato dal Dettaglio Settimana (computeRolesToCover) e dalla Coverage Hero
+// del Planner — qui riusato per lo stesso calcolo aggregato su più
+// settimane, nessuna nuova formula (vedi lib/nextgen/week-roles.ts).
+import { computeCoordinationGap, computeOrganizationState } from "@/lib/nextgen/week-roles";
 import ActivityCard from "@/components/ActivityCard";
 import NextgenBadge from "@/components/nextgen/NextgenBadge";
 import NextgenCheckinCard from "@/components/nextgen/NextgenCheckinCard";
@@ -86,6 +92,8 @@ export default function HomeDashboardClient({
   profileIncomplete,
   hasKids,
   activitiesAreMockFallback,
+  responsibilities,
+  coordinationBookedDays,
 }: {
   firstName: string | null;
   planner: PlannerData;
@@ -101,6 +109,12 @@ export default function HomeDashboardClient({
   profileIncomplete: boolean;
   hasKids: boolean;
   activitiesAreMockFallback: boolean;
+  // TRAMA BETA v1.1.1 — ORGANIZATION COMPLETENESS: dati grezzi stagionali
+  // (stessa fonte di "Chi fa cosa?" nel Planner, INVARIATA) da cui deriviamo
+  // il gap di coordinamento via useMemo, stessa convenzione di
+  // computeHeroWeeksSummary/priorityWeek in PlannerClient.tsx.
+  responsibilities: WeekResponsibility[];
+  coordinationBookedDays: KidBookedDays[];
 }) {
   const router = useRouter();
   const todayIso = useMemo(() => new Date().toISOString().slice(0, 10), []);
@@ -153,6 +167,33 @@ export default function HomeDashboardClient({
     const rest = gaps.length - names.length;
     return names.join(", ") + (rest > 0 ? ` e altre ${rest}` : "");
   }, [gaps]);
+
+  // TRAMA BETA v1.1.1 — ORGANIZATION COMPLETENESS (§2-§10 del prompt):
+  // "copertura ATTIVITÀ" (ha un'attività nei giorni/settimane che deve
+  // coprire? — gaps/missingWeeksText sopra, INVARIATI) è una dimensione
+  // diversa da "copertura COORDINAMENTO" (per ogni child-day prenotato,
+  // sappiamo chi fa Andata e chi fa Ritorno? — week_responsibilities). Le due
+  // non sono mai state sinonimi: una settimana può avere attività complete e
+  // coordinamento incompleto, e finora questo stato era invisibile (Home
+  // diceva "Organizzata al 100%" anche con 2 passaggi Andata/Ritorno non
+  // assegnati — segnalazione Fabrizio, Sett.15 "Prova FP"/Lino).
+  //
+  // computeCoordinationGap riusa computeRolesToCover (già usato dal
+  // Dettaglio Settimana) una volta per ciascuna settimana futura rilevante
+  // (planner.weeks, stesso perimetro !dismissed/endDate>=todayIso di
+  // computeHeroWeeksSummary nel Planner) — nessuna nuova query, nessun
+  // secondo calcolo divergente.
+  const coordinationGap = useMemo(
+    () => computeCoordinationGap(planner.weeks, coordinationBookedDays, responsibilities, todayIso),
+    [planner.weeks, coordinationBookedDays, responsibilities, todayIso]
+  );
+  // Regola formale "ORGANIZZAZIONE COMPLETA" (§10): attività E coordinamento
+  // entrambe complete. gaps.length===0 è la stessa condizione che oggi fa
+  // scattare il ramo "Tutte le settimane utili sono coperte" (invariata) —
+  // qui viene solo anche passata al gate del coordinamento, l'attività resta
+  // sempre prioritaria (§6 CASO C: un gap di coordinamento non deve mai
+  // mascherare un problema di attività più fondamentale).
+  const organizationState = computeOrganizationState(gaps.length === 0, coordinationGap.totalMissing);
 
   return (
     <div className="flex flex-col gap-9 px-5 py-6">
@@ -211,8 +252,20 @@ export default function HomeDashboardClient({
           {/* SEGNALAZIONE DI FABRIZIO: "sistemare le dimensioni font perché
               vanno a capo" — 28px (era 30px) resta nel range richiesto
               (28-32px) ma lascia più margine sugli schermi stretti. */}
+          {/* TRAMA BETA v1.1.1 — ORGANIZATION COMPLETENESS (§6 CASO B): con
+              attività complete ma coordinamento incompleto, "Organizzata al
+              100%" sarebbe falso (il genitore non sa ancora chi accompagna/
+              ritira 2 giorni) — niente percentuale composita inventata
+              (nessun 90%/95%), solo un titolo onesto "Attività organizzate"
+              che NON dichiara lo stato complessivo. Negli altri due stati
+              (CASO A "full" e CASO C "activity_gap") il titolo resta
+              esattamente quello di prima, invariato. */}
           <h2 className="mb-3 font-poppins text-[28px] font-bold leading-tight text-ink">
-            {statusEmoji} Organizzata al {percent}%
+            {organizationState === "coordination_gap" ? (
+              <>✓ Attività organizzate</>
+            ) : (
+              <>{statusEmoji} Organizzata al {percent}%</>
+            )}
           </h2>
           {/* "Mancano ancora"/"Prossimo impegno" ristrutturate da frase unica
               (rischio di andare a capo a metà) a blocchi etichetta+valore,
@@ -233,6 +286,30 @@ export default function HomeDashboardClient({
                 <div className="text-base font-semibold text-ink">Tutte le settimane utili sono coperte.</div>
               </div>
             )}
+            {/* TRAMA BETA v1.1.1 — ORGANIZATION COMPLETENESS (§6 CASO B, §8):
+                mostrata SOLO quando l'attività è già completa (mai insieme al
+                blocco "Mancano ancora" sopra — §6 CASO C: un problema di
+                attività resta sempre prioritario, un gap di coordinamento
+                non deve mai apparire accanto a un gap di attività più
+                fondamentale, coerente con ORG-COMP-05/PLANNER-ORG-05).
+                Deep link diretto alla prima settimana futura col gap
+                (§8: Home → Planner → Calendario e Chi fa cosa? →
+                Settimana N), non solo l'apertura generica
+                dell'accordion. */}
+            {organizationState === "coordination_gap" && (
+              <Link
+                href={`/nextgen/planner?mode=calendario&week=${coordinationGap.firstGapWeekStartDate}`}
+                className="flex items-start gap-2 active:opacity-70"
+              >
+                <i className="ti ti-alert-triangle-filled mt-0.5 flex-shrink-0 text-base text-trama-orange" />
+                <div className="min-w-0">
+                  <div className="text-[11px] font-bold uppercase tracking-wide text-ink-3">
+                    {coordinationGap.totalMissing === 1 ? "1 passaggio da assegnare" : `${coordinationGap.totalMissing} passaggi da assegnare`}
+                  </div>
+                  <div className="text-base font-semibold text-ink">Settimana {coordinationGap.firstGapWeekIndex}</div>
+                </div>
+              </Link>
+            )}
             {nextAppointment && (
               <div className="flex items-start gap-2">
                 <i className="ti ti-map-pin-filled mt-0.5 flex-shrink-0 text-base text-trama-violet" />
@@ -246,12 +323,24 @@ export default function HomeDashboardClient({
               </div>
             )}
           </div>
+          {/* TRAMA BETA v1.1.1 — ORGANIZATION COMPLETENESS (§7): quando c'è un
+              gap di coordinamento noto e concreto, la CTA primaria non deve
+              restare genericamente "Continua a pianificare" — usa l'azione
+              specifica già nota ("Completa organizzazione", stesso
+              deep-link della riga sopra). Negli altri due stati la CTA resta
+              esattamente quella di prima, invariata. */}
           <button
             type="button"
-            onClick={() => router.push("/nextgen/planner")}
+            onClick={() =>
+              router.push(
+                organizationState === "coordination_gap"
+                  ? `/nextgen/planner?mode=calendario&week=${coordinationGap.firstGapWeekStartDate}`
+                  : "/nextgen/planner"
+              )
+            }
             className="rounded-full bg-trama-violet px-5 py-3 text-sm font-bold text-white active:scale-[0.97]"
           >
-            Continua a pianificare
+            {organizationState === "coordination_gap" ? "Completa organizzazione" : "Continua a pianificare"}
           </button>
         </div>
       </div>

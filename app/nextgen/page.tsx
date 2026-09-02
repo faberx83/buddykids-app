@@ -5,11 +5,22 @@ import { getMyBookingsForParent } from "@/lib/data/my-bookings";
 import { getKidsForUser } from "@/lib/data/kids";
 import { getActivities, isMockActivitiesArray } from "@/lib/data/activities";
 import { getTodayCheckinsForParent } from "@/lib/data/checkin";
-import { getTodayResponsibilities } from "@/lib/data/responsibilities";
+import { getTodayResponsibilities, getResponsibilitiesForParent, getKidsBookedDaysForWeek } from "@/lib/data/responsibilities";
 import { getCoordinationSignal } from "@/lib/data/coordination-signal";
 import { isParentProfileIncomplete, getParentProfile } from "@/lib/data/profile";
 import { computeMatchesForKid } from "@/lib/matching";
+import { WEEKDAYS } from "@/lib/nextgen/responsibility-options";
 import HomeDashboardClient from "./HomeDashboardClient";
+
+// TRAMA BETA v1.1.1 — ORGANIZATION COMPLETENESS: stessa tecnica di addDaysIso
+// duplicata altrove nel repo (piccola funzione pura, vedi lib/nextgen/
+// week-roles.ts e app/nextgen/planner/settimana/[startDate]/page.tsx) —
+// converte l'offset in giorni di WEEKDAYS in una data ISO reale.
+function addDaysIso(iso: string, days: number): string {
+  const d = new Date(iso + "T00:00:00Z");
+  d.setUTCDate(d.getUTCDate() + days);
+  return d.toISOString().slice(0, 10);
+}
 
 // SPRINT 1 (NEXTGEN) — Dashboard Genitore: "la mia famiglia è organizzata per
 // le prossime settimane?" sostituisce "quali prenotazioni ho?" come domanda
@@ -31,8 +42,30 @@ export default async function NextgenHomePage() {
     data: { user },
   } = await supabase.auth.getUser();
 
+  // TRAMA BETA v1.1.1 — ORGANIZATION COMPLETENESS: getPlannerData() va
+  // risolta PRIMA del resto (invece che nello stesso Promise.all) perché il
+  // fetch dei booked-days per il coordinamento (sotto) ha bisogno delle
+  // date reali di planner.weeks — non una nuova interpretazione delle
+  // settimane, solo una dipendenza in più tra due fetch già esistenti.
+  const planner = await getPlannerData();
+
+  // Union delle date lun-ven di TUTTE le settimane non "dismissed" (non solo
+  // future: il filtro "futuro/rilevante" — stessa convenzione di
+  // computeHeroWeeksSummary, !dismissed && endDate>=todayIso — viene
+  // applicato lato client in HomeDashboardClient con l'orologio del client,
+  // non qui: così non c'è rischio di disallineamento tra il todayIso del
+  // server e quello del client per una manciata di secondi/minuti). Una
+  // sola query invece di una per settimana (getKidsBookedDaysForWeek accetta
+  // già un array arbitrario di date, vedi lib/data/responsibilities.ts).
+  const weekdayDatesUnion = Array.from(
+    new Set(
+      planner.weeks
+        .filter((w) => !w.dismissed)
+        .flatMap((w) => WEEKDAYS.map((wd) => addDaysIso(w.startDate, wd.dayOffset)))
+    )
+  );
+
   const [
-    planner,
     bookings,
     kids,
     activities,
@@ -41,8 +74,9 @@ export default async function NextgenHomePage() {
     coordinationSignal,
     profileIncomplete,
     profile,
+    responsibilities,
+    coordinationBookedDays,
   ] = await Promise.all([
-    getPlannerData(),
     getMyBookingsForParent(),
     getKidsForUser(),
     getActivities(),
@@ -62,6 +96,12 @@ export default async function NextgenHomePage() {
     // reminder giornaliero usi lo stesso mapping del selettore Planner
     // invece di mostrare sempre "Partner" generico.
     getParentProfile(),
+    // TRAMA BETA v1.1.1 — ORGANIZATION COMPLETENESS: stessa
+    // getResponsibilitiesForParent() già usata dal Planner (Chi fa cosa?,
+    // NON modificata) — qui serve per calcolare il gap di coordinamento
+    // stagionale con lo stesso helper puro (computeCoordinationGap).
+    getResponsibilitiesForParent(),
+    getKidsBookedDaysForWeek(weekdayDatesUnion),
   ]);
 
   let fullName: string | null = null;
@@ -145,6 +185,12 @@ export default async function NextgenHomePage() {
       coordinationSignal={coordinationSignal}
       profileIncomplete={profileIncomplete}
       hasKids={kids.length > 0}
+      // TRAMA BETA v1.1.1 — ORGANIZATION COMPLETENESS: dati grezzi per il
+      // gap di coordinamento stagionale, calcolato lato client (stessa
+      // convenzione di computeHeroWeeksSummary/priorityWeek: raw data via
+      // props, derivato via useMemo — vedi PlannerClient.tsx).
+      responsibilities={responsibilities}
+      coordinationBookedDays={coordinationBookedDays}
       // Addendum Sezione B — banner demo-mode per MOCK_DEMO, stesso criterio
       // di app/(main)/page.tsx (vedi commento li' per il rischio coperto).
       // isSupabaseConfigured qui e' gia' garantito true (il ramo false

@@ -22,7 +22,11 @@ import type { SmartMatch } from "@/lib/nextgen/smart-search";
 // lib/data/plan-shares.ts (che importano lib/supabase/server) non vengano
 // mai trascinati qui per errore (stesso bug di build causato da
 // ADDRESS_KIND_LABELS/RESPONSIBLE_OPTIONS, vedi lib/nextgen/address-kinds.ts).
-import type { WeekResponsibility } from "@/lib/data/responsibilities";
+import type { WeekResponsibility, KidBookedDays } from "@/lib/data/responsibilities";
+// TRAMA BETA v1.1.1 — ORGANIZATION COMPLETENESS: stesso helper puro già
+// usato dal Dettaglio Settimana (computeRolesToCover) e da Home — riusato
+// qui per il gap di coordinamento stagionale, nessuna nuova formula.
+import { computeCoordinationGap, computeOrganizationState } from "@/lib/nextgen/week-roles";
 // TRAMA BETA v1.1.1 — FINAL GAP CLOSURE: FamilyPerson vive in
 // responsibility-options.ts (modulo client-safe, nessun import
 // lib/supabase/server) — import diretto, nessun rischio di bundle.
@@ -107,6 +111,7 @@ export default function PlannerClient({
   seasonBudgetTarget,
   parentRole,
   responsibilities,
+  coordinationBookedDays,
   familyPeople,
   existingShares,
   mapPins,
@@ -132,6 +137,11 @@ export default function PlannerClient({
   // risolvere "Mamma"/"Papà" nel selettore Chi fa cosa (PlannerCalendarView).
   parentRole: ParentRole | null;
   responsibilities: WeekResponsibility[];
+  // TRAMA BETA v1.1.1 — ORGANIZATION COMPLETENESS: dati grezzi stagionali
+  // (stessa fonte di "Chi fa cosa?", INVARIATA) per il gap di coordinamento
+  // — derivato via computeCoordinationGap, stessa convenzione di
+  // heroWeeks/priorityWeek (raw data via props, derivato via useMemo).
+  coordinationBookedDays: KidBookedDays[];
   // TRAMA BETA v1.1.1 — FINAL GAP CLOSURE (punto 6): persone custom
   // persistenti del genitore, già lette server-side (getFamilyPeopleForParent,
   // page.tsx) — passate a valle per popolare il selettore "Chi fa cosa?"
@@ -155,6 +165,13 @@ export default function PlannerClient({
     ? (initialModeParam as PlannerMode)
     : "organizzazione";
   const [mode, setMode] = useState<PlannerMode>(initialMode);
+  // TRAMA BETA v1.1.1 — ORGANIZATION COMPLETENESS (§8): deep-link opzionale
+  // verso una settimana specifica dentro Calendario/Chi fa cosa (dalla CTA
+  // "N passaggi da assegnare" di Home o dell'alert di coordinamento qui
+  // sotto) — stessa tecnica di ?mode=, un solo useState letto una volta al
+  // mount, nessun override successivo. Validato contro le settimane reali
+  // dentro PlannerCalendarView (qui restiamo una stringa "grezza").
+  const initialWeekParam = searchParams.get("week");
 
   // Wiring "Non ti serve" (26/08/2026, richiesto da Fabrizio dopo aver
   // verificato che l'azione esisteva solo lato LEGACY, components/PlannerView.tsx):
@@ -211,7 +228,9 @@ export default function PlannerClient({
   // preselezionata all'apertura (PlannerCalendarView) — non dal default
   // espanso, che qui si ripristina per non introdurre una regressione ampia
   // sulla suite di test a fronte di un guadagno UX marginale aggiuntivo.
-  const [calendarExpanded, setCalendarExpanded] = useState(initialModeParam === "calendario");
+  const [calendarExpanded, setCalendarExpanded] = useState(
+    initialModeParam === "calendario" || Boolean(initialWeekParam)
+  );
   // SPRINT CORRETTIVO — "Ogni barra del bambino... deve portare ad un
   // dettaglio del piano (per bambino)": click su una barra apre/chiude un
   // pannello inline con le singole settimane di quel bambino (copertura
@@ -337,6 +356,26 @@ export default function PlannerClient({
     () => getUpcomingWeeks(weeks, todayIso, 3, kids.length, priorityIndex),
     [weeks, todayIso, kids.length, priorityIndex]
   );
+  // TRAMA BETA v1.1.1 — ORGANIZATION COMPLETENESS (§9): "3 su 3 organizzate"
+  // (copertura ATTIVITÀ, sopra) è una dimensione diversa da "sappiamo chi fa
+  // Andata/Ritorno per ogni child-day prenotato?" (copertura COORDINAMENTO).
+  // computeCoordinationGap riusa computeRolesToCover (già usato dal Dettaglio
+  // Settimana) una volta per settimana futura rilevante — nessuna nuova
+  // query, nessun secondo calcolo divergente.
+  const coordinationGap = useMemo(
+    () => computeCoordinationGap(weeks, coordinationBookedDays, responsibilities, todayIso),
+    [weeks, coordinationBookedDays, responsibilities, todayIso]
+  );
+  // Copertura ATTIVITÀ "complete" nello stesso senso già usato dalla riga
+  // "Tutto organizzato" del Coverage Hero sotto: nessuna settimana futura
+  // prioritaria da riempire (priorityWeek null), oppure stagione di fatto
+  // conclusa (nessuna settimana futura rilevante — in quel caso
+  // coordinationGap.totalMissing è comunque già 0, la stessa identica
+  // finestra "futuro/rilevante" di computeHeroWeeksSummary non ha nulla da
+  // aggregare). L'attività resta sempre prioritaria: un gap di coordinamento
+  // non deve mai mascherare un gap di attività più fondamentale (§6 CASO C).
+  const activityCoverageComplete = heroWeeks.hasFutureRelevant ? priorityWeek === null : true;
+  const organizationState = computeOrganizationState(activityCoverageComplete, coordinationGap.totalMissing);
 
   return (
     <div className="flex min-h-screen flex-col">
@@ -476,6 +515,27 @@ export default function PlannerClient({
                   </>
                 )}
               </div>
+              {/* TRAMA BETA v1.1.1 — ORGANIZATION COMPLETENESS (§9): alert di
+                  coordinamento, SECONDARIO rispetto a un eventuale gap di
+                  attività (mostrato SOLO nel ramo "priorityWeek null" sopra —
+                  mai insieme al box "Prossimo passo: completa la Settimana
+                  N", coerente con PLANNER-ORG-05: nessuna CTA doppia/in
+                  competizione). Compatto, una riga, nessuna nuova maxi-card
+                  — stesso pattern visivo delle altre righe di questo hero. */}
+              {organizationState === "coordination_gap" && (
+                <Link
+                  href={`/nextgen/planner?mode=calendario&week=${coordinationGap.firstGapWeekStartDate}`}
+                  className="mt-2 flex items-center gap-1.5 text-[12.5px] active:opacity-70"
+                >
+                  <i className="ti ti-alert-triangle-filled flex-shrink-0 text-[14px] text-trama-orange" />
+                  <span className="font-semibold text-ink">
+                    {coordinationGap.totalMissing === 1 ? "1 passaggio da assegnare" : `${coordinationGap.totalMissing} passaggi da assegnare`}
+                    {" — "}
+                    <span className="font-medium text-ink-2">Settimana {coordinationGap.firstGapWeekIndex}</span>
+                  </span>
+                  <i className="ti ti-chevron-right ml-auto flex-shrink-0 text-ink-3" />
+                </Link>
+              )}
               {/* Nota storica/stagionale: SOLO secondaria e discreta (mai
                   KPI primario), mostrata solo se aggiunge davvero
                   informazione rispetto al rapporto "prossime settimane"
@@ -817,6 +877,11 @@ export default function PlannerClient({
                 existingShares={existingShares}
                 parentRole={parentRole}
                 familyPeople={familyPeople}
+                // TRAMA BETA v1.1.1 — ORGANIZATION COMPLETENESS (§8): deep-link
+                // ?week= verso la settimana con il primo gap di coordinamento
+                // (Home/alert qui sopra) — override deterministico, PlannerCalendarView
+                // valida che corrisponda a una settimana reale prima di usarlo.
+                initialWeekStartDate={initialWeekParam}
               />
             </div>
           )}

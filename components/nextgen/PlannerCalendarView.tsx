@@ -100,6 +100,7 @@ export default function PlannerCalendarView({
   existingShares,
   parentRole,
   familyPeople,
+  initialWeekStartDate,
 }: {
   weeks: SeasonWeek[];
   kids: Kid[];
@@ -114,6 +115,12 @@ export default function PlannerCalendarView({
   // persistenti del genitore ("Zio Marco"...) — [] se
   // supabase/migration_32_family_people.sql non è ancora applicata.
   familyPeople: FamilyPerson[];
+  // TRAMA BETA v1.1.1 — ORGANIZATION COMPLETENESS (§8): deep-link opzionale
+  // (da Home o dall'alert di coordinamento del Coverage Hero) verso una
+  // settimana specifica — override deterministico della preselezione
+  // "settimana corrente" sotto, SOLO se corrisponde a una settimana reale
+  // (nessuna settimana inventata da una stringa arbitraria in query string).
+  initialWeekStartDate?: string | null;
 }) {
   const showToast = useNextgenToast();
   // ADAPT: stessa funzione già introdotta per il punto 15 di v1.1.1, ora
@@ -128,7 +135,16 @@ export default function PlannerCalendarView({
   const [viewMode, setViewMode] = useState<ViewMode>("mese");
   const months = useMemo(() => buildCalendarMonths(weeks, kids, overlaps), [weeks, kids, overlaps]);
   const todayIso = useMemo(() => new Date().toISOString().slice(0, 10), []);
-  const [monthKey, setMonthKey] = useState<string>(() => defaultMonthKey(months, todayIso));
+  const [monthKey, setMonthKey] = useState<string>(() => {
+    // TRAMA BETA v1.1.1 — ORGANIZATION COMPLETENESS (§8): stesso deep-link
+    // di selectedDay sopra — il mese mostrato di default deve contenere la
+    // settimana del gap, altrimenti la riga preselezionata risulterebbe in
+    // un mese diverso da quello visibile alla prima apertura.
+    if (initialWeekStartDate && weeks.some((w) => w.startDate === initialWeekStartDate)) {
+      return initialWeekStartDate.slice(0, 7);
+    }
+    return defaultMonthKey(months, todayIso);
+  });
   // SPRINT CORRETTIVO 2 (01/09/2026, segnalazione di Fabrizio: "è necessario
   // cliccare un giorno per capire che sotto c'è chi fa cosa") — invece di
   // partire vuoto e richiedere un click prima di mostrare qualunque cosa, si
@@ -147,7 +163,14 @@ export default function PlannerCalendarView({
     const conflictIdx = new Set(
       overlaps.map((o) => weekIdxFromLabel(o.weekLabel)).filter((i): i is number => i !== null)
     );
+    // TRAMA BETA v1.1.1 — ORGANIZATION COMPLETENESS (§8): il deep-link vince
+    // sulla preselezione "settimana corrente" di default, ma SOLO se
+    // corrisponde davvero a una delle settimane reali passate in weeks —
+    // altrimenti si ricade silenziosamente sulla stessa logica di sempre
+    // (routing deterministico, nessun crash/stato invalido da una query
+    // string manomessa o obsoleta).
     const candidate =
+      (initialWeekStartDate ? weeks.find((w) => w.startDate === initialWeekStartDate) : undefined) ??
       weeks.find((w) => !w.dismissed && todayIso >= w.startDate && todayIso <= w.endDate) ??
       weeks.find((w) => !w.dismissed && w.coveredKids.length > 0) ??
       null;

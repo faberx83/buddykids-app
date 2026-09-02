@@ -5,7 +5,8 @@ import { getKidsForUser } from "@/lib/data/kids";
 import { getActivities, getActivityAvailabilityByWeek } from "@/lib/data/activities";
 import { getSeasonYear } from "@/lib/data/season-year";
 import { getParentProfile } from "@/lib/data/profile";
-import { getResponsibilitiesForParent } from "@/lib/data/responsibilities";
+import { getResponsibilitiesForParent, getKidsBookedDaysForWeek } from "@/lib/data/responsibilities";
+import { WEEKDAYS } from "@/lib/nextgen/responsibility-options";
 // TRAMA BETA v1.1.1 — FINAL GAP CLOSURE (punto 6/7): elenco delle persone
 // custom persistenti del genitore, per il selettore "Chi fa cosa?". Degrada
 // a [] se supabase/migration_32_family_people.sql non è ancora stata
@@ -22,6 +23,15 @@ import { computeKidOverlaps, computeBudgetSummary, computePriorityWeekIndex } fr
 import { computeMissions } from "@/lib/nextgen/missions";
 import { computeReminders } from "@/lib/nextgen/reminders";
 import PlannerClient from "./PlannerClient";
+
+// TRAMA BETA v1.1.1 — ORGANIZATION COMPLETENESS: stessa tecnica di
+// addDaysIso duplicata altrove nel repo (lib/nextgen/week-roles.ts,
+// app/nextgen/page.tsx, app/nextgen/planner/settimana/[startDate]/page.tsx).
+function addDaysIso(iso: string, days: number): string {
+  const d = new Date(iso + "T00:00:00Z");
+  d.setUTCDate(d.getUTCDate() + days);
+  return d.toISOString().slice(0, 10);
+}
 
 // SPRINT 3 (NEXTGEN) — "trasformare il Planner nella feature principale del
 // prodotto... il cuore dell'esperienza" (richiesta di Fabrizio): timeline
@@ -78,6 +88,21 @@ export default async function NextgenPlannerPage() {
     getParentAddresses(),
   ]);
 
+  // TRAMA BETA v1.1.1 — ORGANIZATION COMPLETENESS: stessa tecnica già usata
+  // in app/nextgen/page.tsx (Home) — union delle date lun-ven di tutte le
+  // settimane non "dismissed", una sola query invece di una per settimana
+  // (getKidsBookedDaysForWeek accetta già un array arbitrario di date). Il
+  // filtro "futuro/rilevante" (stessa convenzione di computeHeroWeeksSummary)
+  // viene applicato lato client in PlannerClient.tsx con todayIso, non qui.
+  const weekdayDatesUnion = Array.from(
+    new Set(
+      planner.weeks
+        .filter((w) => !w.dismissed)
+        .flatMap((w) => WEEKDAYS.map((wd) => addDaysIso(w.startDate, wd.dayOffset)))
+    )
+  );
+  const coordinationBookedDays = await getKidsBookedDaysForWeek(weekdayDatesUnion);
+
   const overlaps = computeKidOverlaps(bookings);
   const budget = computeBudgetSummary(bookings, activities);
   const todayIso = new Date().toISOString().slice(0, 10);
@@ -117,6 +142,10 @@ export default async function NextgenPlannerPage() {
       // lib/nextgen/responsibility-options.ts#resolveResponsibleOptions).
       parentRole={profile.parentRole}
       responsibilities={responsibilities}
+      // TRAMA BETA v1.1.1 — ORGANIZATION COMPLETENESS: dati grezzi per il
+      // gap di coordinamento stagionale (§9), derivato lato client via
+      // computeCoordinationGap, stessa convenzione di heroWeeks/priorityWeek.
+      coordinationBookedDays={coordinationBookedDays}
       familyPeople={familyPeople}
       existingShares={existingShares}
       mapPins={mapPins}
