@@ -389,10 +389,36 @@ export default function PlannerClient({
             (prima degli alert), cosi' "come siamo messi?" è visibile senza
             scroll significativo. Stessi dati/calcolo di prima (planner.
             coveredNeededCount/neededCount/progressPercent, invariati), solo
-            riposizionati. */}
+            riposizionati.
+            TRAMA BETA v1.1.1 (FINAL VISUAL CONFORMANCE PASS, punti 1-2) —
+            ripristinato l'hero come card compatta con titolo stagione +
+            riga "Prossimo passo", per allinearlo al mockup HD approvato
+            (era regredito a "X di Y settimane coperte" + barra nuda, senza
+            più il ruolo di vero hero). "Prossimo passo" NON usa più solo
+            progressPercent>=100 per decidere se rassicurare: quella soglia
+            confronta contro l'INTERA stagione (comprese le settimane ormai
+            passate, mai più prenotabili), mentre "cosa resta davvero da
+            fare" è già disponibile in priorityWeek (stessa fonte della CTA
+            "Riempi settimana" sotto) — se non c'è alcuna settimana
+            prioritaria, non c'è nulla di azionabile, quindi va mostrata la
+            rassicurazione ANCHE con un progressPercent basso (es. "3 di
+            16": le 13 settimane restanti sono semplicemente già passate,
+            non "da fare"). Verificato con una query read-only reale
+            sull'account di test (parent_id 19fb4a74…, kid "Lino", oggi
+            2026-09-02): le uniche 3 settimane non ancora trascorse
+            (Sett. 14/15/16, Sett. 15 su "Giorni spot" parziali) sono TUTTE
+            già coperte da prenotazioni confermate — zero settimane future
+            scoperte, quindi "Prossime settimane da completare"/"Riempi
+            settimana"/"Suggerimenti per te" non comparivano perché non
+            c'era nulla da mostrare (comportamento CORRETTO del filtro
+            !covered && !dismissed && !isPast, non un bug), ma l'hero non lo
+            comunicava — da qui la sensazione di "non conforme"/rotto. */}
         <div className="mb-4 rounded-2xl bg-white p-4">
+          <div className="mb-2 font-poppins text-[11px] font-bold uppercase tracking-wide text-ink-3">
+            Estate {weeks[0]?.startDate.slice(0, 4) ?? ""}
+          </div>
           <div className="flex items-center justify-between text-[13px] font-semibold text-ink-2">
-            <span>{planner.coveredNeededCount} di {neededCount} settimane coperte</span>
+            <span>{planner.coveredNeededCount} di {neededCount} settimane organizzate</span>
             {neededCount < planner.totalCount && (
               <span>{planner.totalCount - neededCount} non ti servono</span>
             )}
@@ -403,12 +429,26 @@ export default function PlannerClient({
               style={{ width: `${progressPercent}%` }}
             />
           </div>
-          {progressPercent >= 100 && (
-            <p className="mt-2.5 flex items-center gap-1.5 text-[12.5px] font-semibold text-green">
-              <i className="ti ti-circle-check-filled text-[14px]" />
-              Tutto sotto controllo per questa estate.
-            </p>
-          )}
+          <div className="mt-2.5 flex items-center gap-1.5 text-[12.5px]">
+            {priorityWeek ? (
+              <>
+                <i className="ti ti-bolt flex-shrink-0 text-[14px] text-trama-violet" />
+                <span className="font-semibold text-ink">
+                  Prossimo passo:{" "}
+                  <span className="font-medium text-ink-2">
+                    Settimana {priorityWeek.index} da organizzare
+                  </span>
+                </span>
+              </>
+            ) : (
+              <>
+                <i className="ti ti-circle-check-filled flex-shrink-0 text-[14px] text-green" />
+                <span className="font-semibold text-green">
+                  Tutto organizzato per le settimane rimaste.
+                </span>
+              </>
+            )}
+          </div>
         </div>
 
         {/* SPRINT CORRETTIVO — un solo avviso mostrato di default (il più
@@ -419,8 +459,12 @@ export default function PlannerClient({
             (lib/nextgen/reminders.ts), che genera un Promemoria per
             sovrapposizione con azione "link" verso /nextgen/prenotazioni —
             nessun nuovo box alert introdotto. */}
+        {/* TRAMA BETA v1.1.1 (FINAL VISUAL CONFORMANCE PASS, punto 4) —
+            "Altri N avvisi" deve leggersi collegato semanticamente alla
+            card alert sopra: gap ridotto da 1.5 (6px) a 1 (4px), stesso
+            peso visivo del link (nessuna nuova classe di enfasi). */}
         {allAlerts.length > 0 && (
-          <div className="mb-4 flex flex-col gap-1.5">
+          <div className="mb-4 flex flex-col gap-1">
             {(showAllAlerts ? allAlerts : allAlerts.slice(0, 1)).map((a) => {
               // SPRINT 7 — spazio a destra riservato alla X di dismiss, cosi'
               // non si sovrappone al testo o alla freccina di azione.
@@ -841,10 +885,17 @@ export default function PlannerClient({
                                 (solo flex-shrink-0, nessun width fisso): la
                                 colonna si allarga quanto serve, il testo non
                                 va mai a capo, qualunque sia il numero della
-                                settimana. */}
-                            <div className="flex-shrink-0">
-                              <div className="whitespace-nowrap text-[12.5px] font-bold text-ink">Settimana {w.index}</div>
-                              <div className="whitespace-nowrap text-[10.5px] text-ink-2">{w.dateRange}</div>
+                                settimana.
+                                TRAMA BETA v1.1.1 (FINAL VISUAL CONFORMANCE
+                                PASS, punto 5) — "Settimana N" + range date su
+                                UNA sola riga ("Sett. 3 · GIU 15-19") invece di
+                                due righe impilate: la Timeline completa
+                                occupava troppo spazio verticale ("5
+                                settimane passate quasi un'intera viewport").
+                                Stesso identico dato (w.index/w.dateRange),
+                                solo compattato — nessuna informazione persa. */}
+                            <div className="flex-shrink-0 whitespace-nowrap text-[12px] font-bold text-ink">
+                              Sett. {w.index} <span className="font-medium text-ink-3">· {w.dateRange}</span>
                             </div>
                             <div className="min-w-0 flex-1">
                               {w.dismissed ? (
@@ -945,7 +996,7 @@ export default function PlannerClient({
                               key={w.index}
                               id={`week-row-${w.index}`}
                               href={`/nextgen/prenotazioni?bookingId=${w.bookingId}`}
-                              className={`flex items-center gap-3 rounded-xl p-3 transition-colors hover:bg-black/[0.03] active:bg-black/[0.06] ${rowBg} ${
+                              className={`flex items-center gap-2.5 rounded-lg py-2 px-2.5 transition-colors hover:bg-black/[0.03] active:bg-black/[0.06] ${rowBg} ${
                                 isHighlighted ? "ring-2 ring-trama-violet" : ""
                               }`}
                             >
@@ -976,14 +1027,14 @@ export default function PlannerClient({
                           <div
                             key={w.index}
                             id={`week-row-${w.index}`}
-                            className={`flex items-center gap-3 rounded-xl p-3 transition-shadow ${rowBg} ${
+                            className={`flex items-center gap-2.5 rounded-lg py-2 px-2.5 transition-shadow ${rowBg} ${
                               isHighlighted ? "ring-2 ring-trama-violet" : ""
                             }`}
                           >
                             {!w.dismissed && !isPastUncovered ? (
                               <Link
                                 href={`/nextgen/planner/settimana/${w.startDate}`}
-                                className="flex min-w-0 flex-1 items-center gap-3 active:bg-black/[0.06]"
+                                className="flex min-w-0 flex-1 items-center gap-2.5 active:bg-black/[0.06]"
                               >
                                 {rowContent}
                                 {/* Affordance di clickabilità — prima limitata
@@ -996,7 +1047,7 @@ export default function PlannerClient({
                                 )}
                               </Link>
                             ) : (
-                              <div className="flex min-w-0 flex-1 items-center gap-3">{rowContent}</div>
+                              <div className="flex min-w-0 flex-1 items-center gap-2.5">{rowContent}</div>
                             )}
                             {/* Wiring "Non ti serve"/"Ripristina" (26/08/2026,
                                 Fabrizio: l'azione esisteva solo lato LEGACY,
