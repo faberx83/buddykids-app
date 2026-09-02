@@ -11,6 +11,8 @@ import {
   weekIndexFromLabel,
   groupWeeksByMonth,
   getUpcomingWeeks,
+  computeHeroWeeksSummary,
+  formatItalianDayMonth,
 } from "@/lib/nextgen/planner-insights";
 import type { Mission } from "@/lib/nextgen/missions";
 import type { SmartMatch } from "@/lib/nextgen/smart-search";
@@ -325,6 +327,10 @@ export default function PlannerClient({
   // coveredNeededCount esclude le dismissed anche al numeratore.
   const progressPercent = neededCount > 0 ? Math.round((planner.coveredNeededCount / neededCount) * 100) : 0;
   const priorityWeek = weeks.find((w) => w.index === priorityIndex) ?? null;
+  // TRAMA BETA v1.1.1 — FINAL HERO SEMANTIC FIX: quale rapporto mostrare
+  // come metrica primaria del Coverage Hero (vedi commento sulla card più
+  // sotto e computeHeroWeeksSummary in lib/nextgen/planner-insights.ts).
+  const heroWeeks = useMemo(() => computeHeroWeeksSummary(weeks, todayIso), [weeks, todayIso]);
   // PLANNER BETA v1.1 (Wave 1, punto 4) — "Prossime settimane da
   // completare": max 3, stesso identico dataset weeks, nessuna nuova query.
   const upcomingWeeks = useMemo(
@@ -412,43 +418,98 @@ export default function PlannerClient({
             settimana"/"Suggerimenti per te" non comparivano perché non
             c'era nulla da mostrare (comportamento CORRETTO del filtro
             !covered && !dismissed && !isPast, non un bug), ma l'hero non lo
-            comunicava — da qui la sensazione di "non conforme"/rotto. */}
+            comunicava — da qui la sensazione di "non conforme"/rotto.
+            TRAMA BETA v1.1.1 — FINAL HERO SEMANTIC FIX (02/09/2026): quel
+            fix aveva risolto SOLO la riga "Prossimo passo", non la metrica
+            primaria sopra — restava possibile mostrare insieme "3 di 16
+            settimane organizzate" (rapporto storico basso, comprese le 13
+            settimane passate mai più prenotabili) E "Tutto organizzato"
+            (perché priorityWeek è null): due segnali che sembrano
+            contraddirsi. Fix: quando esiste almeno una settimana futura
+            rilevante (heroWeeks.hasFutureRelevant — stesso perimetro
+            !dismissed/!isPast già usato da upcomingWeeks/priorityWeek, non
+            toccati), la card diventa "PROSSIME SETTIMANE" e la metrica
+            primaria è futureCovered/futureTotal, non più il rapporto
+            sull'intera stagione (che resta disponibile solo come nota
+            secondaria discreta, quando aggiunge informazione reale). Se
+            invece NON esiste alcuna settimana futura rilevante (stagione di
+            fatto conclusa), niente "Prossimo passo" artificiale: si mostra
+            uno stato conclusivo coerente basato sul rapporto stagionale
+            reale. */}
         <div className="mb-4 rounded-2xl bg-white p-4">
-          <div className="mb-2 font-poppins text-[11px] font-bold uppercase tracking-wide text-ink-3">
-            Estate {weeks[0]?.startDate.slice(0, 4) ?? ""}
-          </div>
-          <div className="flex items-center justify-between text-[13px] font-semibold text-ink-2">
-            <span>{planner.coveredNeededCount} di {neededCount} settimane organizzate</span>
-            {neededCount < planner.totalCount && (
-              <span>{planner.totalCount - neededCount} non ti servono</span>
-            )}
-          </div>
-          <div className="mt-2.5 h-2.5 w-full overflow-hidden rounded-full bg-[#EEF0F4]">
-            <div
-              className="h-full rounded-full bg-trama-violet transition-all"
-              style={{ width: `${progressPercent}%` }}
-            />
-          </div>
-          <div className="mt-2.5 flex items-center gap-1.5 text-[12.5px]">
-            {priorityWeek ? (
-              <>
-                <i className="ti ti-bolt flex-shrink-0 text-[14px] text-trama-violet" />
-                <span className="font-semibold text-ink">
-                  Prossimo passo:{" "}
-                  <span className="font-medium text-ink-2">
-                    Settimana {priorityWeek.index} da organizzare
-                  </span>
+          {heroWeeks.hasFutureRelevant ? (
+            <>
+              <div className="mb-2 font-poppins text-[11px] font-bold uppercase tracking-wide text-ink-3">
+                Prossime settimane
+              </div>
+              <div className="flex items-center justify-between text-[13px] font-semibold text-ink-2">
+                <span>
+                  {heroWeeks.futureCovered} su {heroWeeks.futureTotal} organizzate
                 </span>
-              </>
-            ) : (
-              <>
-                <i className="ti ti-circle-check-filled flex-shrink-0 text-[14px] text-green" />
-                <span className="font-semibold text-green">
-                  Tutto organizzato per le settimane rimaste.
-                </span>
-              </>
-            )}
-          </div>
+              </div>
+              <div className="mt-2.5 h-2.5 w-full overflow-hidden rounded-full bg-[#EEF0F4]">
+                <div
+                  className="h-full rounded-full bg-trama-violet transition-all"
+                  style={{ width: `${heroWeeks.futurePercent}%` }}
+                />
+              </div>
+              <div className="mt-2.5 flex items-center gap-1.5 text-[12.5px]">
+                {priorityWeek ? (
+                  <>
+                    <i className="ti ti-bolt flex-shrink-0 text-[14px] text-trama-violet" />
+                    <span className="font-semibold text-ink">
+                      Prossimo passo:{" "}
+                      <span className="font-medium text-ink-2">
+                        completa la Settimana {priorityWeek.index}
+                      </span>
+                    </span>
+                  </>
+                ) : (
+                  <>
+                    <i className="ti ti-circle-check-filled flex-shrink-0 text-[14px] text-green" />
+                    <span className="font-semibold text-green">
+                      Tutto organizzato
+                      {heroWeeks.lastFutureEndDate
+                        ? ` fino al ${formatItalianDayMonth(heroWeeks.lastFutureEndDate)}.`
+                        : "."}
+                    </span>
+                  </>
+                )}
+              </div>
+              {/* Nota storica/stagionale: SOLO secondaria e discreta (mai
+                  KPI primario), mostrata solo se aggiunge davvero
+                  informazione rispetto al rapporto "prossime settimane"
+                  appena mostrato sopra (stagione con settimane passate). */}
+              {neededCount !== heroWeeks.futureTotal && (
+                <div className="mt-2 text-[11px] text-ink-3">
+                  {planner.coveredNeededCount} di {neededCount} nella stagione
+                  {neededCount < planner.totalCount && ` · ${planner.totalCount - neededCount} non ti servono`}
+                </div>
+              )}
+            </>
+          ) : (
+            <>
+              <div className="mb-2 font-poppins text-[11px] font-bold uppercase tracking-wide text-ink-3">
+                Stagione {weeks[0]?.startDate.slice(0, 4) ?? ""}
+              </div>
+              <div className="flex items-center justify-between text-[13px] font-semibold text-ink-2">
+                <span>{planner.coveredNeededCount} di {neededCount} settimane organizzate</span>
+                {neededCount < planner.totalCount && (
+                  <span>{planner.totalCount - neededCount} non ti servono</span>
+                )}
+              </div>
+              <div className="mt-2.5 h-2.5 w-full overflow-hidden rounded-full bg-[#EEF0F4]">
+                <div
+                  className="h-full rounded-full bg-trama-violet transition-all"
+                  style={{ width: `${progressPercent}%` }}
+                />
+              </div>
+              <div className="mt-2.5 flex items-center gap-1.5 text-[12.5px]">
+                <i className="ti ti-flag-filled flex-shrink-0 text-[14px] text-ink-3" />
+                <span className="font-semibold text-ink-2">Stagione conclusa.</span>
+              </div>
+            </>
+          )}
         </div>
 
         {/* SPRINT CORRETTIVO — un solo avviso mostrato di default (il più

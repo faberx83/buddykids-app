@@ -418,3 +418,61 @@ export function groupWeeksByMonth(weeks: SeasonWeek[]): WeekMonthGroup[] {
   }
   return groups;
 }
+
+// TRAMA BETA v1.1.1 — FINAL HERO SEMANTIC FIX (02/09/2026, segnalazione di
+// Fabrizio): quando le uniche settimane NON coperte sono ormai tutte nel
+// passato, il Coverage Hero mostrava insieme "3 di 16 settimane
+// organizzate" (rapporto storico/stagionale, basso) e "Tutto organizzato"
+// (derivato da priorityWeek === null) — semanticamente confuso, perché la
+// metrica primaria non era orientata alle settimane ancora rilevanti.
+// Funzione pura che il Coverage Hero (PlannerClient.tsx) usa per decidere
+// QUALE rapporto mostrare come primario: futureCovered/futureTotal invece
+// del rapporto sull'intera stagione, quando esistono settimane non passate.
+// Stesso identico perimetro "organizzabile" già usato da
+// getUpcomingWeeks/computePriorityWeekIndex (!dismissed, confronto
+// endDate>=todayIso) — NESSUNA di quelle due funzioni viene toccata o
+// richiamata da qui, solo lo stesso criterio duplicato per coerenza. Non
+// influisce in alcun modo su upcomingWeeks/priorityWeek/child-day/
+// Timeline/Calendar: è puro copy/KPI dell'hero.
+export interface HeroWeeksSummary {
+  // true se esiste almeno una settimana non passata nel perimetro
+  // organizzabile (!dismissed) — se false la stagione è di fatto conclusa e
+  // non c'è alcuna metrica "prossime settimane" sensata da mostrare.
+  hasFutureRelevant: boolean;
+  futureCovered: number;
+  futureTotal: number;
+  futurePercent: number;
+  // Data di fine dell'ultima settimana futura rilevante (per "Tutto
+  // organizzato fino al [data]"), null se hasFutureRelevant è false.
+  lastFutureEndDate: string | null;
+}
+
+export function computeHeroWeeksSummary(
+  weeks: { index: number; covered: boolean; dismissed: boolean; endDate: string }[],
+  todayIso: string
+): HeroWeeksSummary {
+  const futureRelevant = weeks
+    .filter((w) => !w.dismissed && w.endDate >= todayIso)
+    .sort((a, b) => a.index - b.index);
+  const futureCovered = futureRelevant.filter((w) => w.covered).length;
+  const futureTotal = futureRelevant.length;
+  return {
+    hasFutureRelevant: futureTotal > 0,
+    futureCovered,
+    futureTotal,
+    futurePercent: futureTotal > 0 ? Math.round((futureCovered / futureTotal) * 100) : 0,
+    lastFutureEndDate: futureTotal > 0 ? futureRelevant[futureRelevant.length - 1].endDate : null,
+  };
+}
+
+// "2026-09-18" -> "18 settembre" — usato SOLO dalla riga "Tutto organizzato
+// fino al..." del Coverage Hero. Riusa gli stessi nomi mese di
+// MONTH_LABELS_IT sopra (minuscolo, come da convenzione italiana per una
+// data in prosa), nessuna dipendenza da Intl/locale del browser.
+export function formatItalianDayMonth(iso: string): string {
+  const monthIdx = Number(iso.slice(5, 7)) - 1;
+  const day = Number(iso.slice(8, 10));
+  const monthName = MONTH_LABELS_IT[monthIdx]?.toLowerCase();
+  if (!Number.isFinite(day) || !monthName) return iso;
+  return `${day} ${monthName}`;
+}

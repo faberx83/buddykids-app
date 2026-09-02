@@ -1,7 +1,12 @@
 import { test, expect } from "../fixtures/roles";
 import { loginAs, isRealDeployment } from "../fixtures/roles";
 import { test as pureTest, expect as pureExpect } from "@playwright/test";
-import { getUpcomingWeeks, computePriorityWeekIndex } from "@/lib/nextgen/planner-insights";
+import {
+  getUpcomingWeeks,
+  computePriorityWeekIndex,
+  computeHeroWeeksSummary,
+  formatItalianDayMonth,
+} from "@/lib/nextgen/planner-insights";
 import { responsibilityToneFor } from "@/lib/nextgen/responsibility-tone";
 import type { SeasonWeek } from "@/lib/data/planner";
 
@@ -84,6 +89,70 @@ pureTest.describe("TRAMA BETA v1.1.1 — VIS111-02: getUpcomingWeeks/computePrio
   });
 });
 
+// TRAMA BETA v1.1.1 — FINAL HERO SEMANTIC FIX. computeHeroWeeksSummary è
+// una funzione pura (nessun DOM/Supabase): copre HERO-SEM-01..03 senza
+// bisogno di un browser/deploy reale.
+pureTest.describe("TRAMA BETA v1.1.1 — HERO-SEM-01..03: computeHeroWeeksSummary (Coverage Hero, FINAL HERO SEMANTIC FIX)", () => {
+  pureTest("HERO-SEM-01 - 13 settimane passate non coperte + 3 future coperte -> hero mostra 3/3 future + 'Tutto organizzato'", () => {
+    const today = "2026-09-02";
+    const weeks: SeasonWeek[] = [
+      ...Array.from({ length: 13 }, (_, i) => makeWeek({ index: i + 1, endDate: "2026-08-01", covered: false })),
+      makeWeek({ index: 14, startDate: "2026-08-31", endDate: "2026-09-04", covered: true }),
+      makeWeek({ index: 15, startDate: "2026-09-07", endDate: "2026-09-11", covered: true }),
+      makeWeek({ index: 16, startDate: "2026-09-14", endDate: "2026-09-18", covered: true }),
+    ];
+    const summary = computeHeroWeeksSummary(weeks, today);
+    pureExpect(summary.hasFutureRelevant).toBe(true);
+    pureExpect(summary.futureCovered).toBe(3);
+    pureExpect(summary.futureTotal).toBe(3);
+    pureExpect(summary.futurePercent).toBe(100);
+    pureExpect(summary.lastFutureEndDate).toBe("2026-09-18");
+    pureExpect(formatItalianDayMonth(summary.lastFutureEndDate!)).toBe("18 settembre");
+    // priorityWeek deve essere null in questo scenario (nessuna settimana
+    // futura scoperta) -> il Coverage Hero mostra "Tutto organizzato fino
+    // al 18 settembre", non "Prossimo passo" (nessuna CTA artificiale).
+    pureExpect(computePriorityWeekIndex(weeks, today)).toBeNull();
+  });
+
+  pureTest("HERO-SEM-02 - 2 future coperte + 1 future scoperta -> hero mostra 2/3 + prossimo passo", () => {
+    const today = "2026-09-02";
+    const weeks: SeasonWeek[] = [
+      ...Array.from({ length: 13 }, (_, i) => makeWeek({ index: i + 1, endDate: "2026-08-01", covered: false })),
+      makeWeek({ index: 14, startDate: "2026-08-31", endDate: "2026-09-04", covered: true }),
+      makeWeek({ index: 15, startDate: "2026-09-07", endDate: "2026-09-11", covered: true }),
+      makeWeek({ index: 16, startDate: "2026-09-14", endDate: "2026-09-18", covered: false }),
+    ];
+    const summary = computeHeroWeeksSummary(weeks, today);
+    pureExpect(summary.hasFutureRelevant).toBe(true);
+    pureExpect(summary.futureCovered).toBe(2);
+    pureExpect(summary.futureTotal).toBe(3);
+    pureExpect(summary.futurePercent).toBe(67);
+    // priorityWeek esiste (Settimana 16, l'unica futura scoperta) -> il
+    // Coverage Hero mostra "Prossimo passo: completa la Settimana 16".
+    pureExpect(computePriorityWeekIndex(weeks, today)).toBe(16);
+  });
+
+  pureTest("HERO-SEM-03 - nessuna settimana futura rilevante -> stato conclusivo, nessuna CTA artificiale", () => {
+    const today = "2026-09-02";
+    // Tutte le settimane sono passate (endDate < today) oppure escluse dal
+    // perimetro organizzabile (dismissed) -> nessuna settimana "futura
+    // rilevante", stagione di fatto conclusa.
+    const weeks: SeasonWeek[] = [
+      ...Array.from({ length: 15 }, (_, i) => makeWeek({ index: i + 1, endDate: "2026-08-01", covered: i < 10 })),
+      makeWeek({ index: 16, startDate: "2026-09-14", endDate: "2026-09-18", covered: false, dismissed: true }),
+    ];
+    const summary = computeHeroWeeksSummary(weeks, today);
+    pureExpect(summary.hasFutureRelevant).toBe(false);
+    pureExpect(summary.futureTotal).toBe(0);
+    pureExpect(summary.futureCovered).toBe(0);
+    pureExpect(summary.lastFutureEndDate).toBeNull();
+    // Nessuna settimana futura rilevante -> nessuna CTA "Prossimo passo"
+    // possibile in questo scenario (priorityWeek richiede sempre
+    // !isPast, coerentemente vuoto qui).
+    pureExpect(computePriorityWeekIndex(weeks, today)).toBeNull();
+  });
+});
+
 pureTest.describe("TRAMA BETA v1.1.1 — VIS111-07/08/10: responsibilityToneFor (regressione pura, punto 8)", () => {
   pureTest("VIS111-07a - responsabile 'io' -> tono 'mine' (verde, stato positivo)", () => {
     pureExpect(responsibilityToneFor("io")).toBe("mine");
@@ -116,12 +185,18 @@ pureTest.describe("TRAMA BETA v1.1.1 — VIS111-07/08/10: responsibilityToneFor 
 });
 
 test.describe("TRAMA BETA v1.1.1 — Overview/Tabs/Timeline/Calendario/Chi fa cosa/Floating actions (e2e, punto 15)", () => {
-  test("VIS111-01 - l'Overview mostra un Coverage Hero (titolo stagione + progresso + 'Prossimo passo'), non più il box descrittivo nudo", async ({ page }) => {
+  test("VIS111-01 - l'Overview mostra un Coverage Hero (titolo + progresso + riga di stato), non più il box descrittivo nudo", async ({ page }) => {
     test.skip(!isRealDeployment, "Richiede un deploy con Supabase configurato e un account genitore di test.");
     await loginAs(page, "parent");
     await page.goto("/nextgen/planner");
-    await expect(page.getByText(/settimane organizzate/)).toBeVisible();
-    await expect(page.getByText(/Prossimo passo|Tutto organizzato/)).toBeVisible();
+    // FINAL HERO SEMANTIC FIX (punto successivo di questa stessa wave): la
+    // metrica primaria è ora "X su Y organizzate" (settimane future
+    // rilevanti) quando ne esistono, oppure "X di Y settimane organizzate"
+    // (rapporto stagionale) nello stato conclusivo — vedi
+    // computeHeroWeeksSummary e HERO-SEM-01/02/03 più sotto per la
+    // copertura puntuale della logica.
+    await expect(page.getByText(/organizzate/)).toBeVisible();
+    await expect(page.getByText(/Prossimo passo|Tutto organizzato|Stagione conclusa/)).toBeVisible();
   });
 
   test("VIS111-03 - 'Riempi settimana'/CTA primaria compare al più una volta, legata a priorityWeek", async ({ page }) => {
