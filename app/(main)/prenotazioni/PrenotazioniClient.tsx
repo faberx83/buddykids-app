@@ -52,17 +52,24 @@ const STATUS_CLASS: Record<BookingStatus, string> = {
 // entrambe — "Confermata" da sola resta vera solo quando il centro ha
 // anche accettato.
 // AGGIORNAMENTO 02/09/2026 (feature "conferma parziale", segnalazione di
-// Fabrizio) — un genitore con una prenotazione "Giorni spot" dove il centro
-// ha finito di rispondere ma con esito misto (es. 3 giorni su 5 accettati,
-// gli altri rifiutati) non deve vedere "Confermata" (falso: alcuni giorni
-// non ci sono) né "In attesa di conferma del centro" (falso: il centro ha
-// già risposto a tutto) — vedi lib/booking-response/effective-decision.ts.
+// Fabrizio) — un genitore con una prenotazione "Giorni spot" con almeno un
+// giorno accettato ma non tutti non deve vedere "Confermata" (falso: alcuni
+// giorni non ci sono, o non ancora) né un generico "In attesa di conferma
+// del centro" (falso/incompleto: nasconderebbe che qualcosa è GIÀ
+// confermato) — vedi lib/booking-response/effective-decision.ts.
+//
+// AGGIORNAMENTO 02/09/2026 (seconda passata): "partial" ora scatta anche
+// mentre il centro deve ancora rispondere per alcuni giorni (non solo a
+// risposta completata) — la label distingue i due casi con una nota in più
+// quando stillPendingDayCount > 0, invece di far credere che la risposta
+// del centro sia già definitiva.
 function effectiveStatusBadge(
-  b: Pick<MyBooking, "status" | "partnerDecision" | "acceptedDayCount" | "totalDayCount">
+  b: Pick<MyBooking, "status" | "partnerDecision" | "acceptedDayCount" | "totalDayCount" | "stillPendingDayCount">
 ): { label: string; className: string } {
   if (b.status === "confirmed" && b.partnerDecision === "partial") {
+    const base = `Confermata parzialmente (${b.acceptedDayCount} di ${b.totalDayCount} giorni)`;
     return {
-      label: `Confermata parzialmente (${b.acceptedDayCount} di ${b.totalDayCount} giorni)`,
+      label: b.stillPendingDayCount > 0 ? `${base} — il centro deve ancora rispondere per gli altri` : base,
       className: "bg-[#F0EEFF] text-[#6F63C5]",
     };
   }

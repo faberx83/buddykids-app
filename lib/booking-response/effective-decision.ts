@@ -48,8 +48,25 @@
 //    finito di rispondere) restava "pending" per sempre — sia lato gestore
 //    (mostrato ancora "Da rispondere", pur non essendoci più nulla da fare)
 //    sia lato genitore ("in attesa", pur essendo in realtà una risposta
-//    definitiva e mista). Nuovo valore "partial": TUTTI i giorni sono stati
-//    decisi (nessuno pending/waitlisted) ma l'esito non è uniforme.
+//    definitiva e mista). Nuovo valore "partial": almeno un giorno è stato
+//    accettato, ma non tutti.
+//
+// AGGIORNAMENTO 02/09/2026 (seconda passata, feedback diretto di Fabrizio):
+// la primissima versione di "partial" scattava SOLO quando il centro aveva
+// finito di rispondere a ogni giorno (nessun pending/waitlisted residuo).
+// Fabrizio: "la conferma parziale serve anche nei casi in cui ci sono giorni
+// non ancora gestiti (1 accettato e 1 boh)" — cioè l'informazione "almeno un
+// giorno è già confermato" è utile SUBITO, anche se il centro deve ancora
+// decidere sugli altri, non solo a risposta completata. "partial" ora
+// scatta appena c'è almeno un giorno accettato che convive con QUALSIASI
+// altro esito (pending, waitlisted o rejected) — la label mostra sempre "X
+// di Y giorni confermati" (mai un'accettazione piena millantata). Il segnale
+// "il centro ha ancora qualcosa da decidere" resta comunque disponibile
+// separatamente (vedi bookingNeedsAction in PrenotazioniClient.tsx, che
+// guarda i singoli booking_days invece di questo esito aggregato): una
+// prenotazione "partial" con un giorno ancora pending continua a comparire
+// nel filtro "Da rispondere" del gestore, non sparisce solo perché ha già
+// un'etichetta diversa.
 export type PartnerDecision = "pending" | "accepted" | "rejected" | "proposed" | "partial";
 
 // Aggrega la decisione "effettiva" di una prenotazione a giorni singoli
@@ -57,16 +74,17 @@ export type PartnerDecision = "pending" | "accepted" | "rejected" | "proposed" |
 // campo (mai aggiornato) a livello di prenotazione.
 //
 // Regola (PRODUCT TRUTH — mai dichiarare più di quanto i dati confermino):
-// - "accepted" SOLO se OGNI giorno presente è stato accettato — un'accettazione
-//   parziale (es. 2 giorni su 4) non deve mai apparire come "Confermata".
+// - "accepted" SOLO se OGNI giorno presente è stato accettato.
 // - "rejected" SOLO se TUTTI i giorni sono stati rifiutati.
-// - "pending" finché almeno un giorno è ancora "pending" o "waitlisted" — il
-//   centro (o la lista d'attesa) ha ancora qualcosa in sospeso su questa
-//   prenotazione.
-// - "partial" quando TUTTI i giorni sono stati decisi in modo definitivo
-//   (nessuno pending/waitlisted) ma l'esito è misto (alcuni accettati, altri
-//   rifiutati) — il centro non deve più fare nulla, ma non è né una piena
-//   accettazione né un pieno rifiuto: MAI travestita da "Confermata".
+// - "partial" appena ALMENO UN giorno è accettato ma non tutti — vale sia a
+//   risposta completata (es. 3 accettati + 2 rifiutati) sia a risposta
+//   ancora in corso (es. 1 accettato + 1 ancora pending/waitlisted): in
+//   entrambi i casi c'è già un'informazione reale e positiva da mostrare
+//   ("X di Y giorni confermati"), non ha senso nasconderla dietro un
+//   generico "pending" finché il centro non finisce di rispondere.
+// - "pending" in ogni altro caso — NESSUN giorno ancora accettato (tutto
+//   pending/waitlisted, o un mix di rifiutati e ancora da decidere ma senza
+//   nessuna conferma vera): non c'è ancora nulla di positivo da comunicare.
 //
 // `fallback` è usato solo se non ci sono giorni da aggregare (array vuoto —
 // non dovrebbe capitare per una prenotazione davvero "a giorni", ma tiene la
@@ -85,7 +103,6 @@ export function effectiveDayBasedDecision(
   const normalized = dayDecisions.map((d) => (d ?? "pending") as DayDecisionValue);
   if (normalized.every((d) => d === "accepted")) return "accepted";
   if (normalized.every((d) => d === "rejected")) return "rejected";
-  const stillOpen = normalized.some((d) => d === "pending" || d === "waitlisted");
-  if (stillOpen) return "pending";
-  return "partial";
+  if (normalized.some((d) => d === "accepted")) return "partial";
+  return "pending";
 }

@@ -16,11 +16,14 @@ import { isSupabaseConfigured } from "@/lib/supabase/env";
 // partner_decision invece di status (l'asse rilevante per il centro: cosa
 // deve ancora fare/ha fatto rispetto alla RISPOSTA, non lo stato finale
 // della prenotazione).
-// "partial" (02/09/2026, feature richiesta esplicitamente da Fabrizio):
-// prenotazione "Giorni spot" con TUTTI i giorni ormai decisi ma esito misto
-// (alcuni accettati, altri rifiutati) — nulla resta da fare per il centro,
-// ma non è né una piena accettazione né un pieno rifiuto. Vedi
-// lib/booking-response/effective-decision.ts.
+// "partial" (02/09/2026, feature richiesta esplicitamente da Fabrizio —
+// esplicitamente ANCHE quando restano giorni ancora da decidere, non solo a
+// risposta completata: "1 accettato e 1 boh" deve già mostrare l'informazione
+// positiva) — appena almeno un giorno è accettato ma non tutti. NON implica
+// "nulla resta da fare": una prenotazione "partial" può ancora avere giorni
+// pending/waitlisted, per cui resta visibile nel filtro "Da rispondere" (vedi
+// bookingNeedsAction più sotto, che guarda i singoli giorni invece di questa
+// etichetta aggregata). Vedi lib/booking-response/effective-decision.ts.
 const DECISION_LABEL: Record<PartnerDecision, { label: string; cls: string }> = {
   pending: { label: "Da rispondere", cls: "bg-orange-light text-trama-orange" },
   accepted: { label: "Accettata", cls: "bg-green-light text-[#2d8f52]" },
@@ -90,11 +93,26 @@ function formatDate(iso: string): string {
 // originale a due sezioni, invariata per chi la preferisce.
 type FilterKey = "pending" | "proposed" | "accepted" | "partial" | "rejected";
 
+// 02/09/2026 — dopo l'allargamento di "partial" (vedi effective-decision.ts:
+// scatta appena c'è almeno un giorno accettato, ANCHE se altri giorni sono
+// ancora pending/waitlisted), b.partnerDecision === "pending" da solo non
+// basta più per sapere se il centro ha ancora qualcosa da decidere: una
+// prenotazione "1 giorno accettato + 1 ancora da rispondere" è già
+// "partial", non "pending". Per le prenotazioni a giorni si guarda quindi
+// direttamente ogni singolo booking_day invece della sola etichetta
+// aggregata — per quelle a settimana intera (niente giorni, un'unica
+// risposta indivisibile) partnerDecision resta l'unica fonte, invariato.
+function bookingNeedsAction(b: CenterBooking): boolean {
+  if (b.status === "cancelled") return false;
+  if (b.isDayBased) return b.days.some((d) => d.partnerDecision === "pending" || d.partnerDecision === "waitlisted");
+  return b.partnerDecision === "pending";
+}
+
 const KPI_CONFIG: Record<FilterKey, { label: string; cls: string; predicate: (b: CenterBooking) => boolean }> = {
   pending: {
     label: "Da rispondere",
     cls: "text-trama-orange",
-    predicate: (b) => b.status !== "cancelled" && b.partnerDecision === "pending",
+    predicate: bookingNeedsAction,
   },
   proposed: {
     label: "Proposte in attesa del genitore",
@@ -337,8 +355,8 @@ export default function PrenotazioniClient({
     setSelected(new Set());
   }
 
-  const pending = bookings.filter((b) => b.status !== "cancelled" && b.partnerDecision === "pending");
-  const decided = bookings.filter((b) => !(b.status !== "cancelled" && b.partnerDecision === "pending"));
+  const pending = bookings.filter(bookingNeedsAction);
+  const decided = bookings.filter((b) => !bookingNeedsAction(b));
   const allSelected = bookings.length > 0 && selected.size === bookings.length;
   const pendingBuckets = useMonthBuckets(pending);
   const decidedBuckets = useMonthBuckets(decided);

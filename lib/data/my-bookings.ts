@@ -93,17 +93,22 @@ export interface MyBooking {
   // TRAMA ONE Build Sprint 4 (DEC-42) — risposta del Partner, additiva.
   // "pending" per ogni prenotazione mai gestita dal centro (comportamento
   // AS-IS invariato per chi non usa ancora la nuova UI di risposta).
-  // "partial" (02/09/2026) — SOLO per prenotazioni a giorni: tutti i giorni
-  // decisi dal centro, ma esito misto (alcuni accettati, altri rifiutati).
-  // Vedi lib/booking-response/effective-decision.ts.
+  // "partial" (02/09/2026) — SOLO per prenotazioni a giorni: almeno un
+  // giorno accettato ma non tutti (può includere giorni ancora pending/
+  // waitlisted — non implica che il centro abbia finito di rispondere, vedi
+  // stillPendingDayCount sotto). Vedi lib/booking-response/effective-decision.ts.
   partnerDecision: "pending" | "accepted" | "rejected" | "proposed" | "partial";
   // 02/09/2026 — SOLO per prenotazioni a giorni (isDayBased): quanti giorni
-  // sono stati accettati sul totale prenotato. Usati per la label "Confermata
-  // parzialmente (X di Y giorni)" quando partnerDecision === "partial", così
-  // il genitore capisce ESATTAMENTE cosa è confermato senza dover aprire il
-  // dettaglio giorno per giorno. 0/0 per le prenotazioni a settimana intera.
+  // sono stati accettati sul totale prenotato, e quanti restano ancora da
+  // decidere (pending/waitlisted) da parte del centro. Usati per la label
+  // "Confermata parzialmente (X di Y giorni)" quando partnerDecision ===
+  // "partial", con nota separata se il centro deve ancora rispondere per il
+  // resto — così il genitore capisce ESATTAMENTE cosa è confermato senza
+  // dover aprire il dettaglio giorno per giorno. Tutti 0 per le prenotazioni
+  // a settimana intera.
   acceptedDayCount: number;
   totalDayCount: number;
+  stillPendingDayCount: number;
   partnerProposalNote: string | null;
   // "Letta" dal punto di vista del genitore — stesso pattern read_by_parent
   // di activity_inquiries: falso quando il centro ha appena risposto, così
@@ -242,10 +247,13 @@ export async function getMyBookingsForParent(): Promise<MyBooking[]> {
         )
       : (row.partner_decision ?? "pending");
     // Conteggio per la label "Confermata parzialmente (X di Y giorni)" —
-    // 0/0 per le prenotazioni a settimana intera (isDayBased false).
+    // 0/0/0 per le prenotazioni a settimana intera (isDayBased false).
     const totalDayCount = isDayBased ? (row.booking_days ?? []).length : 0;
     const acceptedDayCount = isDayBased
       ? (row.booking_days ?? []).filter((bd) => bd.partner_decision === "accepted").length
+      : 0;
+    const stillPendingDayCount = isDayBased
+      ? (row.booking_days ?? []).filter((bd) => bd.partner_decision === "pending" || bd.partner_decision === "waitlisted").length
       : 0;
 
     const weeksLabel =
@@ -303,6 +311,7 @@ export async function getMyBookingsForParent(): Promise<MyBooking[]> {
       partnerDecision: effectivePartnerDecision,
       acceptedDayCount,
       totalDayCount,
+      stillPendingDayCount,
       partnerProposalNote: row.partner_proposal_note,
       readByParent: row.read_by_parent ?? true,
       respondedAt: row.responded_at,
