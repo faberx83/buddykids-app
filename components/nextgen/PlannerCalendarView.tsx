@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 // "import type" per SeasonWeek/PlanShare: sono usati SOLO come tipo in
 // questo componente client — con "import type" il compilatore li elimina
 // sempre dal bundle, cosi lib/data/planner.ts e lib/data/plan-shares.ts (che
@@ -332,6 +332,23 @@ export default function PlannerCalendarView({
   const [shareLabel, setShareLabel] = useState("");
   const [shareBusy, setShareBusy] = useState(false);
   const [shareResultUrl, setShareResultUrl] = useState<string | null>(null);
+  // FIX (segnalazione live di Fabrizio, 02/09/2026: "non sembra funzionare" /
+  // "neanche il tasto Condividi") — il bottone Condividi ha SEMPRE
+  // funzionato lato stato (openShare imposta sharingScope, invariato), ma il
+  // pannello "Condividi piano" è renderizzato in fondo alla card, DOPO tutto
+  // il contenuto "Chi fa cosa?" — che nel refinement v1.1.1 (punto 11) è
+  // diventato più alto quando ci sono più bambini/giorni assegnati. Su
+  // schermo il pannello si apriva correttamente ma FUORI dallo schermo
+  // visibile, senza scroll automatico: sembrava che il tasto non facesse
+  // nulla. sharePanelRef + scrollIntoView porta il pannello in vista appena
+  // si apre, stesso comportamento sia per "Condividi {mese}" sia per
+  // "Condividi" (settimana).
+  const sharePanelRef = useRef<HTMLDivElement | null>(null);
+  useEffect(() => {
+    if (sharingScope) {
+      sharePanelRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+    }
+  }, [sharingScope]);
 
   function openShare(start: string, end: string, defaultLabel: string) {
     setSharingScope({ start, end, defaultLabel });
@@ -1056,7 +1073,7 @@ export default function PlannerCalendarView({
           da "Condividi" (mese o settimana). Nessun periodo personalizzato in
           questa fase — vedi commento su monthShareScope. */}
       {sharingScope && (
-        <div className="rounded-2xl border border-[#E8EBF0] bg-white p-4">
+        <div ref={sharePanelRef} className="rounded-2xl border border-[#E8EBF0] bg-white p-4">
           <div className="mb-2.5 flex items-center justify-between">
             <div className="font-poppins text-[13px] font-bold text-ink">Condividi piano</div>
             <button type="button" onClick={() => setSharingScope(null)} className="text-ink-3 active:scale-95" aria-label="Chiudi">
