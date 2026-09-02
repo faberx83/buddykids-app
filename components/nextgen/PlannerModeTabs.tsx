@@ -62,13 +62,25 @@ export default function PlannerModeTabs({
 
   return (
     <div className="relative -mx-5 mb-4">
-      <div ref={scrollRef} className="no-scrollbar flex gap-2 overflow-x-auto px-5">
+      {/* TRAMA BETA v1.1.1 (FINAL VISUAL CONFORMANCE PASS, punto 3) —
+          segnalazione: a 390px "Gruppi" (l'ultimo tab) toccava il bordo
+          dello schermo senza respiro, sembrando troncato anche quando era
+          in realtà interamente visibile. Due correzioni, non alternative:
+          (1) padding/gap ridotti (px-4→px-3.5, gap-2→gap-1.5) cosi le 4
+          modalità stanno più comodamente nella larghezza disponibile senza
+          intaccare il touch target (resta py-2, ~36px di altezza); (2)
+          pr-2 sul contenitore scrollabile, cosi l'ULTIMO chip ha sempre un
+          margine dal bordo — anche quando lo scroll orizzontale intenzionale
+          (già esistente, canScrollLeft/Right sotto) resta l'unica soluzione
+          possibile su schermi molto stretti, non deve mai sembrare
+          "tagliato". */}
+      <div ref={scrollRef} className="no-scrollbar flex gap-1.5 overflow-x-auto px-5 pr-7">
         {PLANNER_MODES.map((m) => (
           <button
             key={m.key}
             type="button"
             onClick={() => onChange(m.key)}
-            className={`flex flex-shrink-0 items-center gap-1.5 rounded-full px-4 py-2 text-[12.5px] font-bold transition-colors active:scale-95 ${
+            className={`flex flex-shrink-0 items-center gap-1.5 rounded-full px-3.5 py-2 text-[12.5px] font-bold transition-colors active:scale-95 ${
               mode === m.key ? "bg-trama-violet text-white" : "bg-bg text-ink-2"
             }`}
           >
