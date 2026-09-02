@@ -50,6 +50,20 @@ const DAY_DECISION_LABEL: Record<DayPartnerDecision, { label: string; cls: strin
   waitlisted: { label: "In lista d'attesa", cls: "bg-sky-light text-sky" },
 };
 
+// 02/09/2026 — segnalazione beta di Fabrizio: "il gestore quando riceve una
+// prenotazione, se non ha quei dati [disponibilità], come fa a decidere?".
+// Prima di oggi la Inbox non mostrava MAI spots_left/capacity — il centro
+// doveva accettare "alla cieca" e scoprire solo dopo (via lista d'attesa
+// automatica) se il posto non c'era più. Stessa soglia/wording già in uso
+// lato genitore per le settimane (components/WeekCard.tsx: <=3 = "ultimi",
+// qui adattato al linguaggio del gestore).
+function spotsLeftLabel(spotsLeft: number, capacity: number): { label: string; cls: string } {
+  if (capacity <= 0) return { label: "Capacità non impostata", cls: "text-ink-3" };
+  if (spotsLeft <= 0) return { label: "0 posti liberi", cls: "text-orange" };
+  if (spotsLeft <= 3) return { label: `⚡ ultimi ${spotsLeft} posti`, cls: "text-[#9a6b00]" };
+  return { label: `${spotsLeft} posti liberi`, cls: "text-green" };
+}
+
 const MONTH_LABELS_IT = [
   "Gennaio", "Febbraio", "Marzo", "Aprile", "Maggio", "Giugno",
   "Luglio", "Agosto", "Settembre", "Ottobre", "Novembre", "Dicembre",
@@ -501,7 +515,15 @@ export default function PrenotazioniClient({
                             {formatDate(d.date)} · €{d.price}
                           </span>
                           {d.partnerDecision === "pending" ? (
-                            <div className="flex gap-1.5">
+                            <div className="flex items-center gap-2">
+                              {/* Disponibilità PRIMA di decidere (segnalazione
+                                  beta 02/09/2026: "se non ha quei dati, come
+                                  fa a decidere?") — spots_left è già al netto
+                                  di ogni accettazione precedente, MAI di
+                                  questa o altre richieste ancora pending. */}
+                              <span className={`text-[10.5px] font-semibold ${spotsLeftLabel(d.spotsLeft, d.capacity).cls}`}>
+                                {spotsLeftLabel(d.spotsLeft, d.capacity).label}
+                              </span>
                               <button
                                 onClick={() => respondDay(b.id, d.activityDayId, "accepted")}
                                 disabled={busyId === dayBusyKey}
@@ -561,8 +583,23 @@ export default function PrenotazioniClient({
             </div>
           ) : (
             <div className="mb-2.5 rounded-md bg-bg p-2.5 text-xs text-ink">
-              {b.weeks.length} settiman{b.weeks.length === 1 ? "a" : "e"} · Totale €{b.totalAmount}
-              {b.shuttleIncluded ? " · con navetta" : ""}
+              <div>
+                {b.weeks.length} settiman{b.weeks.length === 1 ? "a" : "e"} · Totale €{b.totalAmount}
+                {b.shuttleIncluded ? " · con navetta" : ""}
+              </div>
+              {/* Disponibilità PRIMA di decidere (segnalazione beta
+                  02/09/2026: "se non ha quei dati, come fa a decidere?") —
+                  una riga per settimana, stessa fonte/soglie della griglia
+                  Giorni spot sopra. */}
+              {b.partnerDecision === "pending" && b.weeks.length > 0 && (
+                <div className="mt-1.5 flex flex-wrap gap-x-3 gap-y-0.5">
+                  {b.weeks.map((w) => (
+                    <span key={w.weekId} className={`text-[10.5px] font-semibold ${spotsLeftLabel(w.spotsLeft, w.capacity).cls}`}>
+                      {formatDate(w.startDate)}: {spotsLeftLabel(w.spotsLeft, w.capacity).label}
+                    </span>
+                  ))}
+                </div>
+              )}
             </div>
           )}
 

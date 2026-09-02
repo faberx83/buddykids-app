@@ -46,11 +46,29 @@ export interface CenterBookingDay {
   // Migrazione 34: valorizzato solo quando partnerDecision === "waitlisted",
   // usato per ordinare la promozione manuale (il più vecchio in coda prima).
   waitlistedAt: string | null;
+  // 02/09/2026 — segnalazione beta di Fabrizio ("il gestore quando riceve
+  // una prenotazione, se non ha quei dati [disponibilità], come fa a
+  // decidere?"): activity_days.spots_left/capacity, MAI mostrati finora
+  // nella Inbox. spots_left è già al netto di ogni ACCETTAZIONE precedente
+  // (decrementato da reserveDayCapacity solo all'accettazione, vedi
+  // lib/capacity/service.ts) — le richieste ancora "pending" non lo
+  // intaccano, quindi è esattamente il numero "posti liberi ORA, prima di
+  // decidere su questa richiesta" che serve al centro. Cambia in tempo
+  // reale man mano che il centro accetta altre richieste per lo stesso
+  // giorno: se più richieste pending mostrano lo stesso spots_left, accettarle
+  // tutte può superare la capacità — è normale, il numero riflette lo stato
+  // AL MOMENTO DEL CARICAMENTO pagina, non una prenotazione.
+  spotsLeft: number;
+  capacity: number;
 }
 
 export interface CenterBookingWeek {
   weekId: string;
   startDate: string;
+  // Vedi commento su CenterBookingDay.spotsLeft — stessa logica, da
+  // activity_weeks.spots_left/capacity.
+  spotsLeft: number;
+  capacity: number;
 }
 
 export interface CenterBooking {
@@ -102,7 +120,10 @@ interface RawRow {
   activities: { slug: string; name: string } | { slug: string; name: string }[] | null;
   profiles: { full_name: string | null; email: string } | { full_name: string | null; email: string }[] | null;
   booking_kids: { kids: { name: string } | { name: string }[] | null }[] | null;
-  booking_weeks: { week_id: string; activity_weeks: { start_date: string } | { start_date: string }[] | null }[] | null;
+  booking_weeks: {
+    week_id: string;
+    activity_weeks: { start_date: string; spots_left: number | null; capacity: number | null } | { start_date: string; spots_left: number | null; capacity: number | null }[] | null;
+  }[] | null;
   booking_days: {
     activity_day_id: string;
     price: number;
@@ -117,7 +138,7 @@ interface RawRow {
     // campo resta nel tipo/mapping, valorizzato a null lato client, per non
     // dover ritoccare data layer/UI una seconda volta al momento
     // dell'applicazione.
-    activity_days: { date: string } | { date: string }[] | null;
+    activity_days: { date: string; spots_left: number | null; capacity: number | null } | { date: string; spots_left: number | null; capacity: number | null }[] | null;
   }[] | null;
 }
 
@@ -137,23 +158,28 @@ const SELECT = `
   activities ( slug, name ),
   profiles!parent_id ( full_name, email ),
   booking_kids ( kids ( name ) ),
-  booking_weeks ( week_id, activity_weeks ( start_date ) ),
-  booking_days ( activity_day_id, price, partner_decision, partner_note, activity_days ( date ) )
+  booking_weeks ( week_id, activity_weeks ( start_date, spots_left, capacity ) ),
+  booking_days ( activity_day_id, price, partner_decision, partner_note, activity_days ( date, spots_left, capacity ) )
 `;
 
 function mapRow(row: RawRow): CenterBooking {
   const activity = firstOf(row.activities);
   const parent = firstOf(row.profiles);
-  const days = (row.booking_days ?? []).map((bd) => ({
-    activityDayId: bd.activity_day_id,
-    date: firstOf(bd.activity_days)?.date ?? "",
-    price: bd.price,
-    partnerDecision: bd.partner_decision,
-    partnerNote: bd.partner_note,
-    // waitlisted_at non è nel SELECT (vedi nota sopra, migrazione 34 non
-    // applicata) — fisso a null finché non lo sarà.
-    waitlistedAt: null as string | null,
-  }));
+  const days = (row.booking_days ?? []).map((bd) => {
+    const activityDay = firstOf(bd.activity_days);
+    return {
+      activityDayId: bd.activity_day_id,
+      date: activityDay?.date ?? "",
+      price: bd.price,
+      partnerDecision: bd.partner_decision,
+      partnerNote: bd.partner_note,
+      // waitlisted_at non è nel SELECT (vedi nota sopra, migrazione 34 non
+      // applicata) — fisso a null finché non lo sarà.
+      waitlistedAt: null as string | null,
+      spotsLeft: activityDay?.spots_left ?? 0,
+      capacity: activityDay?.capacity ?? 0,
+    };
+  });
 
   // BUG CORRETTO 02/09/2026: per le prenotazioni "Giorni spot" (booking_days),
   // row.partner_decision resta "pending" per sempre — il centro risponde
@@ -191,10 +217,15 @@ function mapRow(row: RawRow): CenterBooking {
     discountAmount: row.discount_amount,
     shuttleIncluded: row.shuttle_included,
     createdAt: row.created_at,
-    weeks: (row.booking_weeks ?? []).map((bw) => ({
-      weekId: bw.week_id,
-      startDate: firstOf(bw.activity_weeks)?.start_date ?? "",
-    })),
+    weeks: (row.booking_weeks ?? []).map((bw) => {
+      const activityWeek = firstOf(bw.activity_weeks);
+      return {
+        weekId: bw.week_id,
+        startDate: activityWeek?.start_date ?? "",
+        spotsLeft: activityWeek?.spots_left ?? 0,
+        capacity: activityWeek?.capacity ?? 0,
+      };
+    }),
     days,
     isDayBased: days.length > 0,
   };
