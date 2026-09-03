@@ -4,59 +4,87 @@ import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import PageHeader from "@/components/PageHeader";
-import { DemoBadge } from "@/components/StatusBadge";
+import { useNextgenToast } from "@/components/nextgen/NextgenToastProvider";
 import { ADDRESS_KIND_LABELS, ParentAddress } from "@/lib/nextgen/address-kinds";
+import { saveTravelReminderAction, SaveTravelReminderInput } from "@/app/actions/travel-reminders";
+import type { TravelReminderSettings } from "@/lib/data/travel-reminders";
 
-// SPRINT CORRETTIVO (Fabrizio, screenshot "13. PROMEMORIA E AVVISI") —
-// anteprima dell'impostazione "avvisami prima di partire" (promemoria di
-// spostamento legato a calendario/mappa, con allarme e ripetizione
-// configurabili). ANTEPRIMA: nessuna notifica push reale, nessun salvataggio
-// su Supabase — solo stato locale, per far vedere la direzione della
-// funzione prima di costruire l'integrazione vera (notifiche push +
-// geocodifica reale degli indirizzi, oggi ancora stubbata anche in
-// PlannerMapView). Non va confuso con i Promemoria testuali già reali nel
-// Planner (lib/nextgen/reminders.ts): quelli restano invariati, sono
-// alert basati su dati veri (finestra di cancellazione, budget, ecc.),
-// senza impostazioni utente. Questa pagina è la futura UI di preferenze per
-// UN tipo diverso di promemoria (spostamento/partenza), non ancora esistito.
+// SPRINT CORRETTIVO 3 (Fabrizio 03/09/2026: "possiamo attivare i reminder
+// ora che ci sono le notifiche?") — non più solo anteprima. Vedi
+// supabase/migration_36_travel_reminders.sql per il contesto completo.
+//
+// SCOPE RIDOTTO PER LA BETA (confermato con Fabrizio): l'orario di partenza
+// è impostato MANUALMENTE dal genitore ("A che ora devi partire?"), non
+// calcolato da un tempo di percorrenza reale — servirebbe geocodifica +
+// un servizio di instradamento a pagamento, non presente oggi (gli
+// indirizzi salvati sono testo libero senza coordinate). Il resto
+// dell'esperienza resta uguale all'anteprima: toggle attivo, allarme N
+// minuti prima, scelta dell'indirizzo di partenza (usato solo nel testo del
+// messaggio push, non nel calcolo).
+//
+// "Ripeti" (3 opzioni nell'anteprima originale) rimosso: un sistema di push
+// non ha un modo di "chiedere conferma ogni volta" prima di inviare (nessun
+// passaggio interattivo lato server) — tenerlo come selettore decorativo
+// che non fa nulla sarebbe un controllo finto, peggio di non averlo.
+// "Mai" è già coperto dal toggle "Promemoria attivo".
 const ALARM_OPTIONS = [
   { value: 15, label: "15 min prima" },
   { value: 30, label: "30 min prima" },
   { value: 60, label: "1 ora prima" },
-];
+] as const;
 
-const REPEAT_OPTIONS = [
-  { value: "sempre", label: "Ogni volta che succede" },
-  { value: "chiedimi", label: "Chiedimi ogni volta" },
-  { value: "mai", label: "Mai (disattiva)" },
-];
-
-export default function PromemoriaClient({ addresses }: { addresses: ParentAddress[] }) {
+export default function PromemoriaClient({
+  addresses,
+  initial,
+}: {
+  addresses: ParentAddress[];
+  initial: TravelReminderSettings;
+}) {
   const router = useRouter();
-  const [active, setActive] = useState(true);
-  const [expanded, setExpanded] = useState(true);
-  const [alarmMinutes, setAlarmMinutes] = useState(30);
-  const [repeat, setRepeat] = useState("sempre");
+  const toast = useNextgenToast();
+  const [active, setActive] = useState(initial.active);
+  const [expanded, setExpanded] = useState(initial.active);
+  const [targetTime, setTargetTime] = useState(initial.targetTime);
+  const [alarmMinutes, setAlarmMinutes] = useState<number>(initial.alarmMinutes);
+  const [saving, setSaving] = useState(false);
 
-  // SPRINT CORRETTIVO 2 (Fabrizio: "'Partenza consigliata' deve prevedere
-  // selezione dell'indirizzo di partenza") — riusa gli stessi 4 slot di
-  // /nextgen/planner/indirizzi (Casa/Lavoro Genitore 1/Lavoro Genitore
-  // 2/Altro), filtrando quelli non ancora compilati (address vuoto). Scelta
-  // di default: "casa" se impostata, altrimenti il primo indirizzo
-  // compilato — coerente con la decisione già presa da Fabrizio per la
-  // Mappa ("va bene metter origine uno degli indirizzi, ma lasciare scelta
-  // all'utente"): qui si applica lo stesso principio.
   const availableAddresses = useMemo(() => addresses.filter((a) => a.address.trim() !== ""), [addresses]);
   const [originKind, setOriginKind] = useState<string | null>(() => {
+    if (initial.originKind && availableAddresses.some((a) => a.kind === initial.originKind)) return initial.originKind;
     const casa = availableAddresses.find((a) => a.kind === "casa");
     return casa?.kind ?? availableAddresses[0]?.kind ?? null;
   });
   const selectedOrigin = availableAddresses.find((a) => a.kind === originKind) ?? null;
-  // SPRINT 4 correttivo — label personalizzata ora possibile per qualunque
-  // kind (non solo "altro", vedi lib/nextgen/address-kinds.ts), quindi
-  // l'helper non deve più distinguere per kind: usa il nome salvato se c'è,
-  // altrimenti l'etichetta di default.
   const originLabel = (a: ParentAddress) => a.label || ADDRESS_KIND_LABELS[a.kind];
+
+  // Salvataggio immediato a ogni modifica (stesso pattern del toggle
+  // "Visibile in Scopri" in GroupDetailClient.tsx) invece di un pulsante
+  // "Salva" separato — l'anteprima precedente non ne aveva uno, restare
+  // vicini a quell'esperienza per non introdurre un passaggio in più.
+  async function persist(next: Partial<SaveTravelReminderInput>) {
+    setSaving(true);
+    const payload: SaveTravelReminderInput = {
+      active,
+      targetTime,
+      alarmMinutes: alarmMinutes as 15 | 30 | 60,
+      originKind,
+      ...next,
+    };
+    const result = await saveTravelReminderAction(payload);
+    setSaving(false);
+    if (result.error) {
+      toast("Non siamo riusciti a salvare, riprova.", "info");
+      return;
+    }
+    router.refresh();
+  }
+
+  function handleToggleActive() {
+    const next = !active;
+    setActive(next);
+    setExpanded(next);
+    persist({ active: next });
+  }
 
   return (
     <div className="flex min-h-screen flex-col">
@@ -67,32 +95,31 @@ export default function PromemoriaClient({ addresses }: { addresses: ParentAddre
       <PageHeader title="Promemoria" onBack={() => router.push("/nextgen/profile/famiglia")} showBrandIcon />
 
       <div className="flex flex-col gap-3 px-5 py-4">
-        <div className="flex items-center gap-2">
-          <DemoBadge label="Anteprima" />
-          <p className="text-[11.5px] text-ink-2">
-            Le impostazioni qui sotto non vengono ancora salvate: arriveranno con le notifiche push in una prossima
-            release.
-          </p>
-        </div>
+        {/* SPRINT CORRETTIVO 3 — rimosso il badge "Anteprima": le
+            impostazioni sotto sono ora salvate davvero. Nota onesta sul
+            requisito di piattaforma (permesso push del browser) invece del
+            vecchio avviso "non ancora salvate". */}
+        <p className="text-[11.5px] text-ink-2">
+          Riceverai una notifica push nei giorni in cui hai un&apos;attività prenotata. Assicurati di aver attivato le
+          notifiche in{" "}
+          <Link href="/nextgen/profile/impostazioni/preferenze" className="font-semibold text-trama-violet active:bg-black/[0.04]">
+            Profilo → Preferenze
+          </Link>
+          .
+        </p>
 
         <div className="rounded-2xl bg-white p-4">
           <button
             type="button"
-            onClick={() => setActive((v) => !v)}
-            className="flex w-full items-center justify-between active:bg-black/[0.04]"
+            onClick={handleToggleActive}
+            disabled={saving}
+            className="flex w-full items-center justify-between active:bg-black/[0.04] disabled:opacity-60"
             aria-pressed={active}
           >
             <span className="text-[14px] font-bold text-ink">Promemoria attivo</span>
-            {/* BUGFIX (segnalato da Fabrizio, screenshot: il pallino restava
-                a destra anche a interruttore spento) — al pallino mancava
-                un'ancora "left" esplicita: senza di essa il posizionamento
-                assoluto dipende dalla "static position" calcolata dal
-                browser invece che da una coordinata fissa, e in pratica
-                risultava sempre a destra, indipendentemente da "active".
-                Ora "left-0.5" fissa il punto di partenza (spento = tutto a
-                sinistra) e la classe transform sposta il pallino SOLO
-                quando è acceso ("translate-x-5" = +20px, track 44px - 2
-                margini da 2px - pallino 20px), niente più ambiguità. */}
+            {/* Stesso pattern del toggle già corretto qui sotto (vedi
+                storico bug "il pallino restava a destra anche a interruttore
+                spento" — mancava un'ancora "left" esplicita). */}
             <span
               className={`relative h-6 w-11 flex-shrink-0 rounded-full transition-colors ${active ? "bg-green" : "bg-[#E0E3E9]"}`}
             >
@@ -105,8 +132,7 @@ export default function PromemoriaClient({ addresses }: { addresses: ParentAddre
           {active && (
             <>
               <p className="mt-3 text-[12.5px] text-ink-2">
-                Ti avviseremo quando è ora di partire per la prossima attività in calendario, in base al tragitto
-                stimato.
+                Ti avviseremo all&apos;orario che imposti qui sotto, nei giorni in cui hai un&apos;attività prenotata.
               </p>
 
               <div className="mt-3 border-t border-[#F0F2F5] pt-3">
@@ -115,29 +141,32 @@ export default function PromemoriaClient({ addresses }: { addresses: ParentAddre
                   onClick={() => setExpanded((v) => !v)}
                   className="flex w-full items-center justify-between text-[13px] font-bold text-green active:bg-black/[0.04]"
                 >
-                  Partenza consigliata
+                  Partenza
                   <i className={`ti ${expanded ? "ti-chevron-up" : "ti-chevron-down"} text-[16px]`} />
                 </button>
 
                 {expanded && (
                   <div className="mt-2.5 flex flex-col gap-2.5">
+                    {/* SPRINT CORRETTIVO 3 — sostituito il calcolo finto
+                        ("Esempio: 16:00") con un orario REALE impostato dal
+                        genitore: vedi nota di scope in cima al file sul
+                        perché non calcoliamo un tempo di percorrenza vero
+                        in questa fase. */}
                     <div className="flex items-center gap-2.5 rounded-xl bg-bg p-3">
                       <i className="ti ti-clock-hour-4 text-[22px] text-trama-violet" />
-                      <div>
-                        <div className="text-[15px] font-bold text-ink">Esempio: 16:00</div>
-                        <div className="text-[11px] text-ink-2">
-                          {selectedOrigin
-                            ? `Calcolata sul tragitto stimato da ${originLabel(selectedOrigin)}`
-                            : "Calcolata sul tragitto stimato prima di partire"}
-                        </div>
+                      <div className="min-w-0 flex-1">
+                        <div className="mb-1 text-[11.5px] font-semibold text-ink-2">A che ora devi partire?</div>
+                        <input
+                          type="time"
+                          value={targetTime}
+                          onChange={(e) => setTargetTime(e.target.value)}
+                          onBlur={() => persist({ targetTime })}
+                          disabled={saving}
+                          className="w-full rounded-lg border border-[#E8EBF0] bg-white px-2.5 py-1.5 text-[14px] font-bold text-ink outline-none disabled:opacity-60"
+                        />
                       </div>
                     </div>
 
-                    {/* SPRINT CORRETTIVO 2 (Fabrizio: "'Partenza consigliata'
-                        deve prevedere selezione dell'indirizzo di
-                        partenza") — stessa logica già confermata per la
-                        Mappa: si propone un indirizzo di default (Casa), ma
-                        la scelta resta sempre dell'utente. */}
                     {availableAddresses.length > 0 ? (
                       <div>
                         <div className="mb-1.5 text-[11.5px] font-semibold text-ink-2">Da dove parti?</div>
@@ -148,9 +177,13 @@ export default function PromemoriaClient({ addresses }: { addresses: ParentAddre
                               <button
                                 key={a.kind}
                                 type="button"
-                                onClick={() => setOriginKind(a.kind)}
+                                disabled={saving}
+                                onClick={() => {
+                                  setOriginKind(a.kind);
+                                  persist({ originKind: a.kind });
+                                }}
                                 aria-pressed={isSelected}
-                                className={`rounded-full px-3 py-1.5 text-[12px] font-semibold transition-colors active:scale-95 ${
+                                className={`rounded-full px-3 py-1.5 text-[12px] font-semibold transition-colors active:scale-95 disabled:opacity-60 ${
                                   isSelected
                                     ? "bg-trama-violet text-white"
                                     : "bg-bg text-ink-2 hover:bg-[#EEF0F4]"
@@ -171,7 +204,7 @@ export default function PromemoriaClient({ addresses }: { addresses: ParentAddre
                         <Link href="/nextgen/planner/indirizzi" className="font-semibold text-trama-violet active:bg-black/[0.04]">
                           Aggiungine uno
                         </Link>{" "}
-                        per calcolare la partenza.
+                        per personalizzare l&apos;avviso.
                       </p>
                     )}
                   </div>
@@ -182,25 +215,15 @@ export default function PromemoriaClient({ addresses }: { addresses: ParentAddre
                 <span className="font-semibold text-ink">Allarme</span>
                 <select
                   value={alarmMinutes}
-                  onChange={(e) => setAlarmMinutes(Number(e.target.value))}
-                  className="rounded-lg border border-[#E8EBF0] bg-white px-2.5 py-1.5 text-[12.5px] font-medium text-ink"
+                  disabled={saving}
+                  onChange={(e) => {
+                    const next = Number(e.target.value);
+                    setAlarmMinutes(next);
+                    persist({ alarmMinutes: next as 15 | 30 | 60 });
+                  }}
+                  className="rounded-lg border border-[#E8EBF0] bg-white px-2.5 py-1.5 text-[12.5px] font-medium text-ink disabled:opacity-60"
                 >
                   {ALARM_OPTIONS.map((o) => (
-                    <option key={o.value} value={o.value}>
-                      {o.label}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div className="mt-2.5 flex items-center justify-between text-[13px]">
-                <span className="font-semibold text-ink">Ripeti</span>
-                <select
-                  value={repeat}
-                  onChange={(e) => setRepeat(e.target.value)}
-                  className="rounded-lg border border-[#E8EBF0] bg-white px-2.5 py-1.5 text-[12.5px] font-medium text-ink"
-                >
-                  {REPEAT_OPTIONS.map((o) => (
                     <option key={o.value} value={o.value}>
                       {o.label}
                     </option>
