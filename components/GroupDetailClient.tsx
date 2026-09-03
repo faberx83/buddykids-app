@@ -189,9 +189,20 @@ function VisibilityAndInviteBlock({
               isPublic ? accentBg : "bg-[#D9DEE6]"
             }`}
           >
+            {/* FIX (segnalazione Fabrizio 03/09/2026: "il pulsantino SCOPRI
+                è ancora sfasato"): stesso identico bug già diagnosticato e
+                corretto in PromemoriaClient.tsx — al pallino mancava
+                un'ancora "left" esplicita, quindi il posizionamento assoluto
+                dipendeva dalla "static position" calcolata dal browser
+                invece che da una coordinata fissa (in pratica risultava
+                spesso spostato/fuori dal track, specialmente in WebView
+                Android). "left-0.5" fissa il punto di partenza; translate-x-5
+                (20px) invece di translate-x-[22px] perché ora parte già da
+                2px, non da 0 — stessa posizione finale, stessa matematica
+                già verificata in PromemoriaClient. */}
             <span
-              className={`absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform ${
-                isPublic ? "translate-x-[22px]" : "translate-x-0.5"
+              className={`absolute left-0.5 top-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform ${
+                isPublic ? "translate-x-5" : "translate-x-0"
               }`}
             />
           </button>
