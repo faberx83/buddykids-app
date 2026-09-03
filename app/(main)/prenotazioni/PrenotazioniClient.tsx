@@ -70,14 +70,22 @@ const STATUS_CLASS: Record<BookingStatus, string> = {
 // (notifyParentOfBookingResponse) — mai dentro l'app, dove finiva
 // indistinguibile da un giorno su cui il centro non aveva ancora nemmeno
 // guardato. waitlistedDayCount isola il sottoinsieme per un badge dedicato.
+//
+// FIX (segnalazione Fabrizio 02/09/2026, "la scritta di conferma fa
+// fuori"): la nota (es. "— il centro deve ancora rispondere per gli
+// altri") veniva concatenata nella stessa pillola arrotondata del badge,
+// che è flex-shrink-0 — con un testo lungo la pillola sfondava il bordo
+// destro della card invece di andare a capo. Il pill ora porta SOLO
+// l'etichetta breve; la nota è un campo separato, renderizzato dal
+// chiamante su una riga propria sotto la card (stesso pattern già usato
+// per "Proposta del centro").
 function effectiveStatusBadge(
   b: Pick<
     MyBooking,
     "status" | "partnerDecision" | "acceptedDayCount" | "totalDayCount" | "stillPendingDayCount" | "waitlistedDayCount"
   >
-): { label: string; className: string } {
+): { label: string; className: string; note?: string } {
   if (b.status === "confirmed" && b.partnerDecision === "partial") {
-    const base = `Confermata parzialmente (${b.acceptedDayCount} di ${b.totalDayCount} giorni)`;
     const notes: string[] = [];
     if (b.waitlistedDayCount > 0) {
       notes.push(`${b.waitlistedDayCount} in lista d'attesa (pien${b.waitlistedDayCount === 1 ? "o" : "i"})`);
@@ -85,14 +93,16 @@ function effectiveStatusBadge(
     const trulyPending = b.stillPendingDayCount - b.waitlistedDayCount;
     if (trulyPending > 0) notes.push("il centro deve ancora rispondere per gli altri");
     return {
-      label: notes.length > 0 ? `${base} — ${notes.join(", ")}` : base,
+      label: `Confermata parzialmente (${b.acceptedDayCount} di ${b.totalDayCount} giorni)`,
       className: "bg-[#F0EEFF] text-[#6F63C5]",
+      note: notes.length > 0 ? notes.join(", ") : undefined,
     };
   }
   if (b.status === "confirmed" && b.partnerDecision === "pending" && b.waitlistedDayCount > 0) {
     return {
-      label: `In lista d'attesa (${b.waitlistedDayCount} giorn${b.waitlistedDayCount === 1 ? "o" : "i"} pien${b.waitlistedDayCount === 1 ? "o" : "i"}) — ti avviseremo se si libera un posto`,
+      label: `In lista d'attesa (${b.waitlistedDayCount} giorn${b.waitlistedDayCount === 1 ? "o" : "i"} pien${b.waitlistedDayCount === 1 ? "o" : "i"})`,
       className: "bg-sky-light text-sky",
+      note: "Ti avviseremo se si libera un posto.",
     };
   }
   if (b.status === "confirmed" && b.partnerDecision === "pending") {
@@ -691,6 +701,7 @@ function BookingCard({
 }) {
   const accentText = nextgen ? "text-trama-violet" : "text-sky";
   const accentLight = nextgen ? "bg-trama-lilac/20" : "bg-sky-light";
+  const statusBadge = effectiveStatusBadge(b);
   return (
     <div
       id={`booking-${b.id}`}
@@ -714,11 +725,14 @@ function BookingCard({
               {b.activityName}
             </span>
             <span
-              className={`flex-shrink-0 rounded-full px-2.5 py-1 text-[10px] font-bold ${effectiveStatusBadge(b).className}`}
+              className={`flex-shrink-0 rounded-full px-2.5 py-1 text-[10px] font-bold ${statusBadge.className}`}
             >
-              {effectiveStatusBadge(b).label}
+              {statusBadge.label}
             </span>
           </div>
+          {statusBadge.note && (
+            <div className="mb-0.5 text-[11px] text-ink-2">{statusBadge.note}</div>
+          )}
           <div className="text-xs text-ink-2">{b.weeksLabel}</div>
           {b.centerName && <div className="text-xs text-ink-3">{b.centerName}{b.centerCity ? ` · ${b.centerCity}` : ""}</div>}
           {b.kidNames.length > 0 && <div className="mt-0.5 text-xs text-ink-2">{b.kidNames.join(", ")}</div>}
