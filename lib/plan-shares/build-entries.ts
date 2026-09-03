@@ -89,7 +89,9 @@ export interface RawEntryActivityRef {
   address: string | null;
   hours: string | null;
   days: string | null;
-  centers: { name: string } | { name: string }[] | null;
+  // "address" qui sotto per il fallback (vedi buildSharedPlanEntriesFromRows,
+  // fix "Naviga" mancante 03/09/2026).
+  centers: { name: string; address: string | null } | { name: string; address: string | null }[] | null;
 }
 
 export interface RawEntryBookingRow {
@@ -193,8 +195,17 @@ export function buildSharedPlanEntriesFromRows(
     const activityRef = firstOf(row.activities);
     const activityName = activityRef?.name;
     if (!activityName) continue;
-    const centerName = firstOf(activityRef.centers)?.name ?? null;
-    const address = activityRef.address ?? null;
+    const centerRef = firstOf(activityRef.centers);
+    const centerName = centerRef?.name ?? null;
+    // Fix "Naviga" mancante (segnalazione Fabrizio 03/09/2026, verificato su
+    // dati reali: 2 attività su 9 hanno activities.address vuoto/non
+    // compilato dal gestore, ma il centro a cui appartengono ha un
+    // indirizzo reale — es. "Prova FP"/"Centro estivo prova candidatura").
+    // Il gestore spesso compila l'indirizzo solo a livello di centro
+    // (profilo), non per ogni singola attività: se activities.address è
+    // vuoto usiamo centers.address come fallback, invece di nascondere
+    // "Naviga" per un dato che in realtà esiste.
+    const address = (activityRef.address || centerRef?.address) ?? null;
     const hours = activityRef.hours ?? null;
     const days = activityRef.days ?? null;
     const kidRefs = row.booking_kids ?? [];

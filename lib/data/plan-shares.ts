@@ -149,7 +149,10 @@ async function getSharedPlanEntriesViaServiceRole(token: string): Promise<Shared
       // e centers(name) sono le STESSE colonne già lette da
       // lib/data/activities.ts per il resto dell'app — nessuna nuova
       // colonna/tabella, solo aggiunte alla select esistente.
-      "partner_decision, activities ( name, address, hours, days, centers ( name ) ), booking_weeks ( activity_weeks ( start_date, end_date ) ), booking_days ( partner_decision, activity_days ( date ) ), booking_kids ( kid_id, kids ( name ) )"
+      // Fix "Naviga" mancante (segnalazione Fabrizio 03/09/2026): centers.address
+      // aggiunto alla select — vedi build-entries.ts per il fallback quando
+      // l'attività non ha un indirizzo proprio compilato dal gestore.
+      "partner_decision, activities ( name, address, hours, days, centers ( name, address ) ), booking_weeks ( activity_weeks ( start_date, end_date ) ), booking_days ( partner_decision, activity_days ( date ) ), booking_kids ( kid_id, kids ( name ) )"
     )
     .eq("parent_id", share.parent_id)
     .neq("status", "cancelled");

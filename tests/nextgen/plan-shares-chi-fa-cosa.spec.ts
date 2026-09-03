@@ -36,7 +36,7 @@ const ACTIVITY_FULL = {
   address: "Via Roma 12, Milano",
   hours: "8:00-18:00",
   days: "Lun-Ven",
-  centers: { name: "Centro Estivo Prova" },
+  centers: { name: "Centro Estivo Prova", address: null },
 };
 
 function dayRow(overrides: Partial<RawEntryBookingRow> & { booking_days: RawEntryBookingRow["booking_days"] }): RawEntryBookingRow {
@@ -91,6 +91,46 @@ pureTest.describe("Piano condiviso — centro/indirizzo/orari (dalla stessa riga
     pureExpect(entries[0].address).toBeNull();
     pureExpect(entries[0].hours).toBeNull();
     pureExpect(entries[0].days).toBeNull();
+  });
+
+  // Fix "Naviga" mancante (segnalazione Fabrizio 03/09/2026): verificato su
+  // dati reali che il gestore compila spesso l'indirizzo solo a livello di
+  // centro (profilo), non per ogni singola attività — activities.address
+  // resta vuoto/null pur avendo il centro un indirizzo reale. "Naviga" deve
+  // comunque comparire, usando l'indirizzo del centro come fallback.
+  pureTest("activities.address vuoto/null -> usa centers.address come fallback (link 'Naviga' non deve sparire)", () => {
+    const rows: RawEntryBookingRow[] = [
+      dayRow({
+        activities: {
+          name: "Prova FP",
+          address: "",
+          hours: null,
+          days: null,
+          centers: { name: "Centro estivo prova candidatura", address: "Piazzale della Cooperazione 1" },
+        },
+        booking_days: [{ partner_decision: "accepted", activity_days: { date: "2026-09-07" } }],
+      }),
+    ];
+    const entries = buildSharedPlanEntriesFromRows(rows, "2026-09-07", "2026-09-11", 2026);
+    pureExpect(entries).toHaveLength(1);
+    pureExpect(entries[0].address).toBe("Piazzale della Cooperazione 1");
+  });
+
+  pureTest("activities.address compilato -> ha priorità su centers.address (mai sovrascritto)", () => {
+    const rows: RawEntryBookingRow[] = [
+      dayRow({
+        activities: {
+          name: "Prova FP",
+          address: "Via specifica dell'attività 5",
+          hours: null,
+          days: null,
+          centers: { name: "Centro", address: "Indirizzo del centro, diverso" },
+        },
+        booking_days: [{ partner_decision: "accepted", activity_days: { date: "2026-09-07" } }],
+      }),
+    ];
+    const entries = buildSharedPlanEntriesFromRows(rows, "2026-09-07", "2026-09-11", 2026);
+    pureExpect(entries[0].address).toBe("Via specifica dell'attività 5");
   });
 });
 
