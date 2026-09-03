@@ -706,7 +706,10 @@ export default function PrenotazioniClient({
             </div>
           )}
 
-          <div className="mb-1 text-[11px] text-ink-3">
+          {/* Segnalazione Fabrizio 02/09/2026: la didascalia "flottava" subito
+              sotto l'ultimo giorno, senza alcuna separazione — sembrava
+              disallineata invece che una riga di riepilogo a sé stante. */}
+          <div className="mb-1 mt-2 border-t border-[#F0F2F5] pt-2 text-[11px] text-ink-3">
             Stato prenotazione: {STATUS_LABEL[b.status]}
           </div>
 

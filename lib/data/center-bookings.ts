@@ -165,21 +165,27 @@ const SELECT = `
 function mapRow(row: RawRow): CenterBooking {
   const activity = firstOf(row.activities);
   const parent = firstOf(row.profiles);
-  const days = (row.booking_days ?? []).map((bd) => {
-    const activityDay = firstOf(bd.activity_days);
-    return {
-      activityDayId: bd.activity_day_id,
-      date: activityDay?.date ?? "",
-      price: bd.price,
-      partnerDecision: bd.partner_decision,
-      partnerNote: bd.partner_note,
-      // waitlisted_at non è nel SELECT (vedi nota sopra, migrazione 34 non
-      // applicata) — fisso a null finché non lo sarà.
-      waitlistedAt: null as string | null,
-      spotsLeft: activityDay?.spots_left ?? 0,
-      capacity: activityDay?.capacity ?? 0,
-    };
-  });
+  const days = (row.booking_days ?? [])
+    .map((bd) => {
+      const activityDay = firstOf(bd.activity_days);
+      return {
+        activityDayId: bd.activity_day_id,
+        date: activityDay?.date ?? "",
+        price: bd.price,
+        partnerDecision: bd.partner_decision,
+        partnerNote: bd.partner_note,
+        // waitlisted_at non è nel SELECT (vedi nota sopra, migrazione 34 non
+        // applicata) — fisso a null finché non lo sarà.
+        waitlistedAt: null as string | null,
+        spotsLeft: activityDay?.spots_left ?? 0,
+        capacity: activityDay?.capacity ?? 0,
+      };
+    })
+    // Segnalazione Fabrizio 02/09/2026: i giorni comparivano nell'ordine
+    // restituito da Supabase (ordine di inserimento riga, non cronologico) —
+    // es. "7, 10, 9, 11, 8 set" invece di "7, 8, 9, 10, 11 set". Ordine
+    // cronologico esplicito, indipendente dall'ordine fisico delle righe.
+    .sort((a, b) => a.date.localeCompare(b.date));
 
   // BUG CORRETTO 02/09/2026: per le prenotazioni "Giorni spot" (booking_days),
   // row.partner_decision resta "pending" per sempre — il centro risponde
