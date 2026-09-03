@@ -1,5 +1,5 @@
 import { test as pureTest, expect as pureExpect } from "@playwright/test";
-import { effectiveDayBasedDecision } from "@/lib/booking-response/effective-decision";
+import { effectiveDayBasedDecision, pendingRevenue } from "@/lib/booking-response/effective-decision";
 
 // Segnalazione Fabrizio (02/09/2026): Sett.14 ("Prova FP", Lino) accettata dal
 // centro giorno per giorno (verificato via query diretta: booking_days.
@@ -89,5 +89,60 @@ pureTest.describe("effectiveDayBasedDecision — 'partial' (conferma parziale, a
 
   pureTest("rifiutato + in lista d'attesa, NESSUN accettato -> resta pending", () => {
     pureExpect(effectiveDayBasedDecision(["rejected", "waitlisted"], "pending")).toBe("pending");
+  });
+});
+
+// 03/09/2026 — KPI "Fatturato in sospeso" nella dashboard gestore
+// (segnalazione Fabrizio: "in dashboard GESTORE inserirei qualche KPI in
+// più, che sia utile a vedere le azioni da svolgere o le informazioni
+// utili"). Mirror esatto di acceptedRevenue, ma per il denaro legato a
+// decisioni non ancora prese dal centro.
+pureTest.describe("pendingRevenue — fatturato legato a decisioni ancora da prendere (KPI dashboard gestore)", () => {
+  pureTest("prenotazione a giorni: conta solo i giorni pending/waitlisted, mai gli accettati/rifiutati", () => {
+    pureExpect(
+      pendingRevenue({
+        isDayBased: true,
+        partnerDecision: "partial",
+        totalAmount: 100,
+        days: [
+          { partnerDecision: "accepted", price: 25 },
+          { partnerDecision: "pending", price: 25 },
+          { partnerDecision: "waitlisted", price: 25 },
+          { partnerDecision: "rejected", price: 25 },
+        ],
+      })
+    ).toBe(50);
+  });
+
+  pureTest("prenotazione a giorni tutta accettata -> 0 in sospeso (nulla da decidere)", () => {
+    pureExpect(
+      pendingRevenue({
+        isDayBased: true,
+        partnerDecision: "accepted",
+        totalAmount: 100,
+        days: [
+          { partnerDecision: "accepted", price: 50 },
+          { partnerDecision: "accepted", price: 50 },
+        ],
+      })
+    ).toBe(0);
+  });
+
+  pureTest("prenotazione a settimana intera pending -> l'intero importo è in sospeso", () => {
+    pureExpect(
+      pendingRevenue({ isDayBased: false, partnerDecision: "pending", totalAmount: 120, days: [] })
+    ).toBe(120);
+  });
+
+  pureTest("prenotazione a settimana intera 'proposed' -> 0 (la palla è dal lato del genitore, non del centro)", () => {
+    pureExpect(
+      pendingRevenue({ isDayBased: false, partnerDecision: "proposed", totalAmount: 120, days: [] })
+    ).toBe(0);
+  });
+
+  pureTest("prenotazione a settimana intera accettata -> 0 in sospeso", () => {
+    pureExpect(
+      pendingRevenue({ isDayBased: false, partnerDecision: "accepted", totalAmount: 120, days: [] })
+    ).toBe(0);
   });
 });

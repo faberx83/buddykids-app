@@ -5,7 +5,7 @@ import AdminMockDataBanner from "@/components/admin/AdminMockDataBanner";
 import PushNotificationsPrompt from "@/components/PushNotificationsPrompt";
 import { getActivitiesForCenter, getPromotionsForActivities } from "@/lib/data/activities";
 import { getBookingsForCenter } from "@/lib/data/center-bookings";
-import { bookingNeedsAction, acceptedRevenue, PARTNER_DECISION_LABEL } from "@/lib/booking-response/effective-decision";
+import { bookingNeedsAction, acceptedRevenue, pendingRevenue, PARTNER_DECISION_LABEL } from "@/lib/booking-response/effective-decision";
 import { getOpenInquiriesCountForCenter } from "@/lib/data/inquiries";
 import { getGroupRequestsForCenter } from "@/lib/data/group-requests";
 import { getMyCenter } from "@/lib/data/center-admin";
@@ -71,6 +71,15 @@ async function maybeRedirectToOnboarding() {
   }
 }
 
+// Stesso pattern già in uso in lib/data/command-center.ts (daysSince via
+// Date.now()) — estratta qui come funzione a parte (non un componente/hook)
+// perché eslint (react-hooks/purity) segnala Date.now() se chiamato
+// direttamente nel corpo del componente di pagina sotto: chiamarlo da una
+// funzione separata risolve l'avviso senza perdere nulla in leggibilità.
+function daysSince(iso: string): number {
+  return Math.max(0, Math.floor((Date.now() - new Date(iso).getTime()) / (1000 * 60 * 60 * 24)));
+}
+
 const ONBOARDING_STATUS_LABEL: Record<CenterOnboardingStatus, string> = {
   LEAD: "Candidatura non ancora avviata",
   CLAIMED: "Profilo in compilazione",
@@ -119,6 +128,28 @@ export default async function CenterDashboardPage() {
   // Già ordinate per created_at desc dalla query in getBookingsForCenter().
   const recentBookings = activeBookings.slice(0, 5);
   const onboardingIncomplete = onboarding.status !== "APPROVED";
+
+  // KPI aggiuntive (segnalazione Fabrizio 03/09/2026: "in dashboard GESTORE
+  // inserirei qualche KPI in più, che sia utile a vedere le azioni da
+  // svolgere o le informazioni utili") — tutte derivate dagli stessi dati
+  // già caricati sopra (nessuna nuova query), stesso principio di riuso già
+  // applicato a pendingBookings/confirmedRevenue.
+  //
+  // 1) Fatturato "in sospeso": quanto valgono in euro le richieste su cui il
+  //    centro deve ancora decidere — risponde a "quanto vale, in soldi,
+  //    quello che ho da fare?", non solo "quante richieste".
+  const revenueAwaitingDecision = activeBookings.reduce((sum, b) => sum + pendingRevenue(b), 0);
+  // 2) Da quanti giorni aspetta la richiesta più vecchia ancora da
+  //    evadere — un conteggio da solo non dice se è urgente o arrivata
+  //    stamattina.
+  const oldestPendingDays =
+    pendingBookings.length > 0
+      ? daysSince(pendingBookings.reduce((a, b) => (a.createdAt < b.createdAt ? a : b)).createdAt)
+      : 0;
+  // 3) Proposte inviate al genitore, in attesa della SUA risposta — non è
+  //    un'azione da svolgere per il centro (la palla è dal lato del
+  //    genitore), ma spiega perché quelle prenotazioni non si muovono.
+  const awaitingParentReply = activeBookings.filter((b) => b.partnerDecision === "proposed");
 
   return (
     <div className="animate-fade-in">
@@ -179,6 +210,11 @@ export default async function CenterDashboardPage() {
                 </div>
                 <div className="mt-0.5 text-[11.5px] text-[#8a5a33]">
                   Le famiglie sono in attesa di conferma
+                  {/* Segnalazione Fabrizio 03/09/2026: un conteggio da solo
+                      non dice quanto è urgente — la più vecchia da quanti
+                      giorni aspetta. */}
+                  {oldestPendingDays > 0 &&
+                    ` · la più vecchia da ${oldestPendingDays} giorn${oldestPendingDays === 1 ? "o" : "i"}`}
                 </div>
               </div>
               {/* FIX (01/09/2026, segnalazione di Fabrizio: "se clicco su
@@ -267,6 +303,27 @@ export default async function CenterDashboardPage() {
           icon="ti-coin-euro"
           iconBg="#F0EEFF"
           iconColor="#8B7CF8"
+          elevated
+        />
+        {/* KPI aggiuntive (segnalazione Fabrizio 03/09/2026) — vedi commento
+            sopra su revenueAwaitingDecision/awaitingParentReply per il
+            perché di queste due, invece di es. un grafico occupazione che
+            richiederebbe una query nuova su tutte le settimane/giorni delle
+            attività (non solo quelle già prenotate), fuori scope oggi. */}
+        <StatCard
+          label="Fatturato in sospeso"
+          value={`€${revenueAwaitingDecision}`}
+          icon="ti-hourglass"
+          iconBg="#FFF0EA"
+          iconColor="#FF8C5A"
+          elevated
+        />
+        <StatCard
+          label="In attesa del genitore"
+          value={String(awaitingParentReply.length)}
+          icon="ti-message-2"
+          iconBg="#E8F6FD"
+          iconColor="#4DAFEF"
           elevated
         />
       </div>

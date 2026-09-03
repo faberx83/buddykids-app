@@ -172,3 +172,28 @@ export function acceptedRevenue(b: {
   }
   return b.partnerDecision === "accepted" ? b.totalAmount : 0;
 }
+
+// Segnalazione Fabrizio 03/09/2026 ("in dashboard GESTORE inserirei qualche
+// KPI in più, che sia utile a vedere le azioni da svolgere o le
+// informazioni utili"): stesso principio di acceptedRevenue, mirror per il
+// fatturato "in sospeso" — quanto valgono in euro le richieste su cui il
+// centro deve ancora decidere. Per una prenotazione a giorni conta solo i
+// giorni ancora pending/waitlisted (mai quelli già accettati o rifiutati,
+// già "chiusi" per definizione); per una a settimana intera l'intero
+// importo solo se la prenotazione è ancora "pending" (una "proposed" ha un
+// importo potenzialmente diverso da quello originale, in attesa di risposta
+// del GENITORE non del centro — non la contiamo qui per non sovrapporla a
+// un'azione che spetta al centro).
+export function pendingRevenue(b: {
+  isDayBased: boolean;
+  partnerDecision: PartnerDecision;
+  totalAmount: number;
+  days: { partnerDecision: string; price: number }[];
+}): number {
+  if (b.isDayBased) {
+    return b.days
+      .filter((d) => d.partnerDecision === "pending" || d.partnerDecision === "waitlisted")
+      .reduce((sum, d) => sum + d.price, 0);
+  }
+  return b.partnerDecision === "pending" ? b.totalAmount : 0;
+}
