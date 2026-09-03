@@ -12,12 +12,24 @@ import { sendEmail, isEmailConfigured } from "@/lib/email";
 // garantisce che un genitore possa scrivere solo per i propri bambini.
 export async function parentCheckinAction(input: {
   activityId: string;
-  weekId: string;
+  // Segnalazione Fabrizio 03/09/2026 ("non vedo la notifica di check-in"):
+  // una prenotazione "Giorni spot" non ha una vera activity_weeks — weekId
+  // è ora opzionale, activityDayId lo sostituisce in quel caso (MAI
+  // entrambi). Vedi supabase/migration_35_attendance_day_based.sql (NON
+  // ANCORA applicata): finché non lo è, chiamare questa action con
+  // activityDayId fallisce con un errore Postgres esplicito (colonna/
+  // vincolo mancanti) invece di un crash silenzioso — comportamento
+  // temporaneo e atteso, non un bug di questo commit.
+  weekId?: string | null;
+  activityDayId?: string | null;
   kidId: string;
   date: string;
   status: "presente" | "in_ritardo" | "assente";
 }): Promise<{ error?: string }> {
   if (!isSupabaseConfigured) return { error: "Supabase non configurato" };
+  if (!input.weekId && !input.activityDayId) {
+    return { error: "Check-in non valido: manca sia la settimana che il giorno di riferimento." };
+  }
 
   const supabase = await createClient();
   const {
@@ -28,7 +40,8 @@ export async function parentCheckinAction(input: {
   const { error } = await supabase.from("attendance_records").upsert(
     {
       activity_id: input.activityId,
-      week_id: input.weekId,
+      week_id: input.weekId ?? null,
+      activity_day_id: input.activityDayId ?? null,
       kid_id: input.kidId,
       date: input.date,
       status: input.status,
@@ -36,7 +49,15 @@ export async function parentCheckinAction(input: {
       checkin_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
     },
-    { onConflict: "kid_id,week_id,date" }
+    // IMPORTANTE: il target di ON CONFLICT resta "kid_id,week_id,date" per
+    // un check-in a settimana — INVARIATO, stesso vincolo di sempre, mai
+    // toccato da migration_35 (vedi commento lì, "IMPORTANTE"). Un
+    // check-in "a giorno" (activityDayId) usa invece "kid_id,occurrence_id,
+    // date", il nuovo vincolo additivo che quella migrazione introduce —
+    // non esiste finché non viene applicata, quindi SOLO questo secondo
+    // ramo fallisce con un errore esplicito prima di allora (mai il primo,
+    // mai una regressione per i check-in a settimana già funzionanti).
+    { onConflict: input.activityDayId ? "kid_id,occurrence_id,date" : "kid_id,week_id,date" }
   );
 
   if (error) return { error: error.message };

@@ -30,17 +30,18 @@ const STATUS_SUMMARY: Record<CheckinStatus, { label: string; cls: string; icon: 
 
 function checkinCode(item: TodayCheckin): string {
   // Codice leggibile e stabile (non un vero token di sicurezza): prime 4
-  // lettere del nome attività + ultime 4 dell'id settimana, ad uso puramente
-  // visivo/cerimoniale.
+  // lettere del nome attività + ultime 4 dell'id settimana/giorno, ad uso
+  // puramente visivo/cerimoniale. checkinKey (weekId o activityDayId,
+  // sempre presente) invece di weekId da solo — vedi lib/data/checkin.ts.
   const a = item.activityName.replace(/[^A-Za-z]/g, "").slice(0, 4).toUpperCase() || "BUDK";
-  const w = item.weekId.replace(/-/g, "").slice(-4).toUpperCase();
+  const w = item.checkinKey.replace(/-/g, "").slice(-4).toUpperCase();
   return `${a}-${w}`;
 }
 
 export default function NextgenCheckinCard({ items }: { items: TodayCheckin[] }) {
   const toast = useNextgenToast();
   const [statuses, setStatuses] = useState<Record<string, CheckinStatus | null>>(
-    Object.fromEntries(items.map((i) => [`${i.kidId}:${i.weekId}`, i.status]))
+    Object.fromEntries(items.map((i) => [`${i.kidId}:${i.checkinKey}`, i.status]))
   );
   const [savingKey, setSavingKey] = useState<string | null>(null);
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
@@ -48,7 +49,7 @@ export default function NextgenCheckinCard({ items }: { items: TodayCheckin[] })
   if (items.length === 0) return null;
 
   async function answer(item: TodayCheckin, status: CheckinStatus) {
-    const key = `${item.kidId}:${item.weekId}`;
+    const key = `${item.kidId}:${item.checkinKey}`;
     const previous = statuses[key] ?? null;
     setStatuses((prev) => ({ ...prev, [key]: status }));
 
@@ -66,6 +67,7 @@ export default function NextgenCheckinCard({ items }: { items: TodayCheckin[] })
     const result = await parentCheckinAction({
       activityId: item.activityId,
       weekId: item.weekId,
+      activityDayId: item.activityDayId,
       kidId: item.kidId,
       date: item.date,
       status,
@@ -98,7 +100,7 @@ export default function NextgenCheckinCard({ items }: { items: TodayCheckin[] })
   return (
     <div className="flex flex-col gap-2.5">
       {items.map((item) => {
-        const key = `${item.kidId}:${item.weekId}`;
+        const key = `${item.kidId}:${item.checkinKey}`;
         const status = statuses[key];
         const saving = savingKey === key;
         const isCollapsed = !!status && !expanded.has(key);

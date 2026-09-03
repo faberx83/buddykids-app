@@ -21,7 +21,7 @@ const STATUS_SUMMARY: Record<CheckinStatus, { label: string; cls: string; icon: 
 
 export default function CheckinPrompt({ items }: { items: TodayCheckin[] }) {
   const [statuses, setStatuses] = useState<Record<string, CheckinStatus | null>>(
-    Object.fromEntries(items.map((i) => [`${i.kidId}:${i.weekId}`, i.status]))
+    Object.fromEntries(items.map((i) => [`${i.kidId}:${i.checkinKey}`, i.status]))
   );
   const [savingKey, setSavingKey] = useState<string | null>(null);
   // Segnalazione di Fabrizio: dopo aver risposto, la card deve ridursi a un
@@ -35,7 +35,7 @@ export default function CheckinPrompt({ items }: { items: TodayCheckin[] }) {
   if (items.length === 0) return null;
 
   async function answer(item: TodayCheckin, status: CheckinStatus) {
-    const key = `${item.kidId}:${item.weekId}`;
+    const key = `${item.kidId}:${item.checkinKey}`;
     const previous = statuses[key] ?? null;
     setStatuses((prev) => ({ ...prev, [key]: status }));
 
@@ -53,6 +53,7 @@ export default function CheckinPrompt({ items }: { items: TodayCheckin[] }) {
     const result = await parentCheckinAction({
       activityId: item.activityId,
       weekId: item.weekId,
+      activityDayId: item.activityDayId,
       kidId: item.kidId,
       date: item.date,
       status,
@@ -83,7 +84,7 @@ export default function CheckinPrompt({ items }: { items: TodayCheckin[] }) {
   return (
     <div className="mx-5 mt-4 flex flex-col gap-2.5">
       {items.map((item) => {
-        const key = `${item.kidId}:${item.weekId}`;
+        const key = `${item.kidId}:${item.checkinKey}`;
         const status = statuses[key];
         const saving = savingKey === key;
         const isCollapsed = !!status && !expanded.has(key);

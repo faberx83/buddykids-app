@@ -23,7 +23,20 @@ export interface TodayCheckin {
   activityEmoji: string;
   activityImgGradient: string;
   coverImageUrl: string | null;
-  weekId: string;
+  // Segnalazione Fabrizio 03/09/2026 ("non vedo la notifica di check-in"):
+  // una prenotazione "Giorni spot" (booking_days) non ha mai una vera
+  // activity_weeks — weekId è ora null in quel caso, activityDayId prende
+  // il suo posto. MAI entrambi valorizzati (vedi supabase/migration_35_
+  // attendance_day_based.sql, NON ANCORA applicata — finché non lo è,
+  // questi record restano generati e mostrati in Home ma il salvataggio
+  // fallisce in modo esplicito, vedi app/actions/checkin.ts).
+  weekId: string | null;
+  activityDayId: string | null;
+  // Identificativo stabile e SEMPRE presente (weekId oppure activityDayId)
+  // — usato come chiave di raggruppamento lato UI invece di weekId da solo,
+  // così i componenti non devono distinguere i due casi per il semplice
+  // scopo di avere una key/un identificativo univoco.
+  checkinKey: string;
   weekLabel: string;
   kidId: string;
   kidName: string;
@@ -61,6 +74,15 @@ function firstOf<T>(value: T | T[] | null | undefined): T | null {
   return Array.isArray(value) ? (value[0] ?? null) : value;
 }
 
+// Stessa funzione di lib/data/my-bookings.ts (non esportata da lì) — usata
+// solo come fallback quando un giorno spot non ricade in nessuna
+// "Settimana N" canonica (non dovrebbe capitare per un'attività
+// configurata correttamente, ma tiene la label sempre leggibile).
+function formatDateShort(iso: string): string {
+  const d = new Date(iso + "T00:00:00Z");
+  return d.toLocaleDateString("it-IT", { day: "numeric", month: "short", timeZone: "UTC" });
+}
+
 interface RawActivityRef {
   id: string;
   name: string;
@@ -77,11 +99,21 @@ interface RawWeekRef {
   end_date: string;
 }
 
+interface RawDayRef {
+  id: string;
+  date: string;
+}
+
 interface RawBookingRow {
   activities: RawActivityRef | RawActivityRef[] | null;
   booking_kids: { kid_id: string; kids: { id: string; name: string } | { id: string; name: string }[] | null }[] | null;
   booking_weeks: {
     activity_weeks: RawWeekRef | RawWeekRef[] | null;
+  }[] | null;
+  // Segnalazione Fabrizio 03/09/2026 — vedi commento su TodayCheckin sopra.
+  booking_days: {
+    partner_decision: string;
+    activity_days: RawDayRef | RawDayRef[] | null;
   }[] | null;
 }
 
@@ -111,7 +143,7 @@ export async function getTodayCheckinsForParent(): Promise<TodayCheckin[]> {
   const { data, error } = await supabase
     .from("bookings")
     .select(
-      "activities ( id, name, slug, emoji, img_gradient, cover_image_url ), booking_kids ( kid_id, kids ( id, name ) ), booking_weeks ( activity_weeks ( id, label, start_date, end_date ) )"
+      "activities ( id, name, slug, emoji, img_gradient, cover_image_url ), booking_kids ( kid_id, kids ( id, name ) ), booking_weeks ( activity_weeks ( id, label, start_date, end_date ) ), booking_days ( partner_decision, activity_days ( id, date ) )"
     )
     .eq("parent_id", user.id)
     .neq("status", "cancelled");
@@ -139,7 +171,7 @@ export async function getTodayCheckinsForParent(): Promise<TodayCheckin[]> {
       for (const bk of booking.booking_kids ?? []) {
         const kid = firstOf(bk.kids);
         if (!kid) continue;
-        const key = `${kid.id}:${week.id}`;
+        const key = `${kid.id}:week:${week.id}`;
         if (map.has(key)) continue;
         map.set(key, {
           activityId: activity.id,
@@ -149,6 +181,52 @@ export async function getTodayCheckinsForParent(): Promise<TodayCheckin[]> {
           activityImgGradient: activity.img_gradient || "linear-gradient(135deg,#E8F6FD,#E3F9F5)",
           coverImageUrl: activity.cover_image_url,
           weekId: week.id,
+          activityDayId: null,
+          checkinKey: week.id,
+          weekLabel,
+          kidId: kid.id,
+          kidName: kid.name,
+          date: today,
+          status: null,
+          checkedInByParent: false,
+          checkinAt: null,
+        });
+      }
+    }
+
+    // Segnalazione Fabrizio 03/09/2026 ("non vedo la notifica di check-in",
+    // Lino su "Prova FP" — booking_mode "mixed", nessuna activity_weeks che
+    // copra oggi): il ramo sopra guarda SOLO booking_weeks, quindi una
+    // prenotazione "Giorni spot" con un giorno accettato proprio oggi non
+    // produceva mai una card di check-in. Solo giorni ACCETTATI dal centro
+    // (un giorno ancora pending/rifiutato/in lista d'attesa non è un
+    // impegno confermato — niente "è arrivato?" per qualcosa che potrebbe
+    // non esserci).
+    for (const bd of booking.booking_days ?? []) {
+      if (bd.partner_decision !== "accepted") continue;
+      const day = firstOf(bd.activity_days);
+      if (!day || day.date !== today) continue;
+
+      const canonicalWeek = seasonWeeks.find((sw) =>
+        overlaps(day.date, day.date, sw.start.toISOString().slice(0, 10), sw.end.toISOString().slice(0, 10))
+      );
+      const weekLabel = canonicalWeek ? `Settimana ${canonicalWeek.index}` : formatDateShort(day.date);
+
+      for (const bk of booking.booking_kids ?? []) {
+        const kid = firstOf(bk.kids);
+        if (!kid) continue;
+        const key = `${kid.id}:day:${day.id}`;
+        if (map.has(key)) continue;
+        map.set(key, {
+          activityId: activity.id,
+          activityName: activity.name,
+          activitySlug: activity.slug ?? activity.id,
+          activityEmoji: activity.emoji || "🏫",
+          activityImgGradient: activity.img_gradient || "linear-gradient(135deg,#E8F6FD,#E3F9F5)",
+          coverImageUrl: activity.cover_image_url,
+          weekId: null,
+          activityDayId: day.id,
+          checkinKey: day.id,
           weekLabel,
           kidId: kid.id,
           kidName: kid.name,
@@ -164,6 +242,15 @@ export async function getTodayCheckinsForParent(): Promise<TodayCheckin[]> {
   const results = Array.from(map.values());
   if (results.length === 0) return [];
 
+  // NOTA (finché supabase/migration_35_attendance_day_based.sql non è
+  // applicata): questa select guarda solo week_id — corretto anche per i
+  // risultati "a giorno" costruiti sopra, perché senza quella migrazione
+  // NESSUN record attendance_records può esistere con weekId null (il
+  // vincolo NOT NULL blocca la scrittura, vedi app/actions/checkin.ts) —
+  // quindi non c'è nulla da recuperare per loro, mai un falso match. Da
+  // estendere con activity_day_id in una commit successiva SOLO dopo aver
+  // confermato che la migrazione è stata applicata (stesso pattern già
+  // usato per waitlisted_at in lib/data/center-bookings.ts).
   const { data: existing } = await supabase
     .from("attendance_records")
     .select("kid_id, week_id, status, checked_in_by, checkin_at")
