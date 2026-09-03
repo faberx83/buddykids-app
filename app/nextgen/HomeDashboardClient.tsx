@@ -80,6 +80,37 @@ function friendlyDate(iso: string): string {
   return `${weekday} ${day} ${month}`;
 }
 
+function addDaysIso(iso: string, days: number): string {
+  const d = new Date(iso + "T00:00:00Z");
+  d.setUTCDate(d.getUTCDate() + days);
+  return d.toISOString().slice(0, 10);
+}
+
+// Segnalazione Fabrizio 03/09/2026: "Prossimo impegno" (nella Hero) e
+// "Prossimo appuntamento" (la card sotto) mostravano SEMPRE la stessa
+// prenotazione — nextAppointment era un solo valore, riusato due volte.
+// Non è utile duplicare la stessa informazione: la Hero ora risponde a "cosa
+// devo sapere A BREVE" (da domani a fine di questa settimana), la card sotto
+// a "cosa mi aspetta LA SETTIMANA PROSSIMA" — due orizzonti temporali
+// diversi, non lo stesso dato ripetuto due volte.
+//
+// Data di riferimento per l'ordinamento: prima si usava solo
+// booking.firstWeekStart, che per una prenotazione "Giorni spot" è la data
+// del PRIMO giorno prenotato in assoluto (anche se ormai passato) — una
+// prenotazione con giorni [2 set (passato), 8 set (futuro)] sarebbe sparita
+// da "upcoming" nonostante avesse ancora un giorno futuro reale. Qui si
+// calcola invece la prima data REALMENTE futura (giorno prenotato più vicino
+// per le "Giorni spot", inizio settimana più vicino per le prenotazioni a
+// settimana intera).
+function nearestFutureDate(b: MyBooking, todayIso: string): string | null {
+  if (b.isDayBased) {
+    const future = b.dayDates.filter((d) => d >= todayIso).sort();
+    return future[0] ?? null;
+  }
+  const futureWeeks = b.weeks.map((w) => w.startDate).filter((d) => d >= todayIso).sort();
+  return futureWeeks[0] ?? (b.firstWeekStart && b.firstWeekStart >= todayIso ? b.firstWeekStart : null);
+}
+
 export default function HomeDashboardClient({
   firstName,
   planner,
@@ -120,14 +151,59 @@ export default function HomeDashboardClient({
   const todayIso = useMemo(() => new Date().toISOString().slice(0, 10), []);
   const active = useMemo(() => bookings.filter((b) => b.status !== "cancelled"), [bookings]);
 
+  // Segnalazione Fabrizio 03/09/2026 — vedi commento su nearestFutureDate
+  // sopra: "upcoming" ora ordina per la prima data REALMENTE futura di
+  // ciascuna prenotazione, non più per firstWeekStart (che per una
+  // prenotazione "Giorni spot" può restare nel passato anche con giorni
+  // futuri residui).
   const upcoming = useMemo(
     () =>
       active
-        .filter((b) => b.firstWeekStart && b.firstWeekStart >= todayIso)
-        .sort((a, b) => (a.firstWeekStart ?? "").localeCompare(b.firstWeekStart ?? "")),
+        .map((b) => ({ booking: b, date: nearestFutureDate(b, todayIso) }))
+        .filter((x): x is { booking: MyBooking; date: string } => x.date !== null)
+        .sort((a, b) => a.date.localeCompare(b.date)),
     [active, todayIso]
   );
-  const nextAppointment = upcoming[0] ?? null;
+  // Fine della settimana corrente (domenica) e della settimana successiva —
+  // confine usato per separare "a breve" da "settimana prossima". Le
+  // attività sono tipicamente lun-ven, ma il confine resta la domenica per
+  // restare generico (non assume nulla sul calendario del centro).
+  const { endOfWeekIso, endOfNextWeekIso } = useMemo(() => {
+    const d = new Date(todayIso + "T00:00:00Z");
+    const daysUntilSunday = (7 - d.getUTCDay()) % 7;
+    const endOfWeek = addDaysIso(todayIso, daysUntilSunday);
+    return { endOfWeekIso: endOfWeek, endOfNextWeekIso: addDaysIso(endOfWeek, 7) };
+  }, [todayIso]);
+  // "Prossimo impegno" (Hero) — SOLO ciò che cade da domani a fine di questa
+  // settimana: è la sezione dell'urgenza, niente forza a mostrarla se non
+  // c'è nulla di davvero imminente.
+  const thisWeekEntry = upcoming.find((x) => x.date <= endOfWeekIso) ?? null;
+  // "Prossimo appuntamento" (card sotto) — preferisce la settimana
+  // successiva; se non c'è nulla la settimana prossima ma esiste comunque
+  // un impegno più lontano diverso da quello già mostrato in Hero, lo mostra
+  // qui invece di lasciare la sezione vuota (mai duplicare lo stesso
+  // elemento nelle due sezioni).
+  const nextWeekEntry = upcoming.find((x) => x.date > endOfWeekIso && x.date <= endOfNextWeekIso) ?? null;
+  const fallbackEntry = upcoming.find((x) => x.booking.id !== thisWeekEntry?.booking.id) ?? null;
+  const nextAppointmentEntry = nextWeekEntry ?? fallbackEntry;
+  const nextAppointment = nextAppointmentEntry?.booking ?? null;
+
+  // Segnalazione Fabrizio 03/09/2026: "se ci sono prenotazioni non complete,
+  // rifiuti del centro vanno notificati in qualche modo" — prima nessuna
+  // sezione di Home segnalava un rifiuto o una conferma parziale, solo "Le
+  // mie prenotazioni" (badge, mai in Home). "Attività da confermare" più
+  // sotto guarda booking.status (transazione/pagamento, quasi sempre già
+  // "confirmed" col pagamento demo), non partnerDecision (risposta operativa
+  // del centro) — le due colonne sono concetti distinti, vedi
+  // lib/data/my-bookings.ts. Qui si guarda esplicitamente partnerDecision.
+  const rejectedBookings = useMemo(
+    () => active.filter((b) => b.partnerDecision === "rejected"),
+    [active]
+  );
+  const partialBookings = useMemo(
+    () => active.filter((b) => b.partnerDecision === "partial"),
+    [active]
+  );
 
   // SPRINT 5.1 — "Attività da confermare": solo le prenotazioni in stato
   // "pending", niente più raggruppa/ordina/comprimi (quell'elenco completo
@@ -310,14 +386,18 @@ export default function HomeDashboardClient({
                 </div>
               </Link>
             )}
-            {nextAppointment && (
+            {/* Segnalazione Fabrizio 03/09/2026: prima mostrava sempre la
+                stessa prenotazione già ripetuta sotto in "Prossimo
+                appuntamento" — ora è la sola urgenza "a breve" (da domani a
+                fine di questa settimana), assente del tutto se non c'è
+                niente di così imminente (nessuna urgenza finta). */}
+            {thisWeekEntry && (
               <div className="flex items-start gap-2">
                 <i className="ti ti-map-pin-filled mt-0.5 flex-shrink-0 text-base text-trama-violet" />
                 <div className="min-w-0">
                   <div className="text-[11px] font-bold uppercase tracking-wide text-ink-3">Prossimo impegno</div>
                   <div className="truncate text-base font-semibold text-ink">
-                    {nextAppointment.activityName}
-                    {nextAppointment.firstWeekStart ? `, ${friendlyDate(nextAppointment.firstWeekStart)}` : ""}
+                    {thisWeekEntry.booking.activityName}, {friendlyDate(thisWeekEntry.date)}
                   </div>
                 </div>
               </div>
@@ -345,6 +425,47 @@ export default function HomeDashboardClient({
         </div>
       </div>
 
+      {/* 1.5) Rifiuti/conferme parziali del centro — segnalazione Fabrizio
+          03/09/2026: "se ci sono prenotazioni non complete, rifiuti del
+          centro vanno notificati in qualche modo". Prima nessuna sezione di
+          Home guardava partnerDecision (solo "Le mie prenotazioni" lo
+          faceva, mai qui) — un rifiuto o una conferma solo parziale
+          potevano passare del tutto inosservati in Home. Stesso stile
+          "riga cliccabile" dei CoordinationSignal più sotto, ma prioritari:
+          un rifiuto è un'informazione che richiede un'azione, va mostrato
+          subito dopo la Hero, prima ancora del check-in di oggi. */}
+      {rejectedBookings.length > 0 && (
+        <Link
+          href="/nextgen/prenotazioni"
+          className="flex items-center gap-2.5 rounded-2xl bg-[#FDEEEE] px-4 py-3 active:scale-[0.99]"
+        >
+          <i className="ti ti-alert-circle-filled flex-shrink-0 text-lg text-[#C0392B]" />
+          <span className="text-[13px] font-medium text-ink-2">
+            Il centro non ha accettato{" "}
+            <b className="font-bold text-ink">
+              {rejectedBookings.length === 1 ? "1 richiesta" : `${rejectedBookings.length} richieste`}
+            </b>{" "}
+            — verifica cosa fare
+          </span>
+          <i className="ti ti-chevron-right ml-auto flex-shrink-0 text-ink-3" />
+        </Link>
+      )}
+      {partialBookings.length > 0 && (
+        <Link
+          href="/nextgen/prenotazioni"
+          className="flex items-center gap-2.5 rounded-2xl bg-[#F0EEFF] px-4 py-3 active:scale-[0.99]"
+        >
+          <i className="ti ti-alert-triangle-filled flex-shrink-0 text-lg text-[#6F63C5]" />
+          <span className="text-[13px] font-medium text-ink-2">
+            <b className="font-bold text-ink">
+              {partialBookings.length === 1 ? "1 prenotazione" : `${partialBookings.length} prenotazioni`}
+            </b>{" "}
+            confermat{partialBookings.length === 1 ? "a" : "e"} solo in parte dal centro — controlla i dettagli
+          </span>
+          <i className="ti ti-chevron-right ml-auto flex-shrink-0 text-ink-3" />
+        </Link>
+      )}
+
       {/* 2) Check-in di oggi — momento fondamentale, non una funzione
           secondaria: prima non compariva affatto in NEXTGEN. */}
       {todayCheckins.length > 0 && (
@@ -360,10 +481,18 @@ export default function HomeDashboardClient({
 
       {/* 3) Prossimo appuntamento — un solo elemento, non una lista: il resto
           è nell'elenco "Prenotazioni" più sotto, per non dover valutare 3
-          card diverse nella stessa schermata. */}
+          card diverse nella stessa schermata.
+          Segnalazione Fabrizio 03/09/2026: prima duplicava esattamente
+          "Prossimo impegno" sopra (stesso identico dato, due volte). Ora
+          copre un orizzonte diverso — preferibilmente la settimana
+          prossima, il titolo lo dice esplicitamente quando è così — e va in
+          fallback sul primo impegno successivo diverso da quello già
+          mostrato in Hero solo se non c'è nulla la settimana prossima. */}
       {nextAppointment && (
         <div>
-          <div className="mb-3 font-poppins text-[21px] font-semibold text-ink">Prossimo appuntamento</div>
+          <div className="mb-3 font-poppins text-[21px] font-semibold text-ink">
+            {nextWeekEntry ? "La settimana prossima" : "Prossimo appuntamento"}
+          </div>
           <BookingVisualCard booking={nextAppointment} />
         </div>
       )}
