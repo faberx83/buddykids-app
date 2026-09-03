@@ -67,7 +67,27 @@ export async function getActivityDays(activity: Activity): Promise<DayAvailabili
 // cancellata (stessa convenzione di getBookedWeekIdsForActivity: non esiste
 // ancora un vero step di pagamento/conferma separato).
 export async function getBookedDayDatesForActivity(activityDbId: string): Promise<Set<string>> {
-  const empty = new Set<string>();
+  const decisions = await getBookedDayDecisionsForActivity(activityDbId);
+  return new Set(decisions.keys());
+}
+
+export type BookedDayDecision = "pending" | "accepted" | "rejected" | "waitlisted";
+
+// Segnalazione Fabrizio 02/09/2026 ("se ho 1 giornata accettata e 1
+// rifiutata... cosa capisco?"): getBookedDayDatesForActivity restituiva solo
+// l'ESISTENZA di una riga booking_days per quella data, non la sua
+// partner_decision — un giorno accettato, uno in attesa e uno rifiutato
+// risultavano tutti indistintamente "Prenotato" nella griglia "Giorni spot"
+// (app/activity/[id]/DetailClient.tsx). Nuova funzione che espone anche la
+// decisione per data, senza rompere il Set<string> già usato altrove (vedi
+// wrapper sopra, che resta invariato per i chiamanti che non ne hanno
+// bisogno, es. ModificaPrenotazioneClient.tsx dove bookedDayDates ha un
+// significato diverso — giorni prenotati ALTROVE, solo per bloccare
+// duplicati, non per mostrarne lo stato).
+export async function getBookedDayDecisionsForActivity(
+  activityDbId: string
+): Promise<Map<string, BookedDayDecision>> {
+  const empty = new Map<string, BookedDayDecision>();
   if (!isSupabaseConfigured) return empty;
 
   const supabase = await createClient();
@@ -78,19 +98,23 @@ export async function getBookedDayDatesForActivity(activityDbId: string): Promis
 
   const { data, error } = await supabase
     .from("bookings")
-    .select("booking_days ( activity_days ( date ) )")
+    .select("booking_days ( partner_decision, activity_days ( date ) )")
     .eq("activity_id", activityDbId)
     .eq("parent_id", user.id)
     .neq("status", "cancelled");
 
   if (error || !data) return empty;
 
-  const dates = new Set<string>();
-  for (const row of data as { booking_days: { activity_days: { date: string } | { date: string }[] | null }[] | null }[]) {
+  const decisions = new Map<string, BookedDayDecision>();
+  for (const row of data as {
+    booking_days:
+      | { partner_decision: BookedDayDecision | null; activity_days: { date: string } | { date: string }[] | null }[]
+      | null;
+  }[]) {
     for (const bd of row.booking_days ?? []) {
       const ref = Array.isArray(bd.activity_days) ? bd.activity_days[0] : bd.activity_days;
-      if (ref?.date) dates.add(ref.date);
+      if (ref?.date) decisions.set(ref.date, bd.partner_decision ?? "pending");
     }
   }
-  return dates;
+  return decisions;
 }

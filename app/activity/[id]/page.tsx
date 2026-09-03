@@ -2,7 +2,7 @@ import { notFound } from "next/navigation";
 import { getActivityBySlug, getPromotionsForActivity } from "@/lib/data/activities";
 import { getFavoriteActivityIds } from "@/lib/data/favorites";
 import { getApprovedCertificationsForActivity } from "@/lib/data/certifications";
-import { getActivityDays, getBookedDayDatesForActivity } from "@/lib/data/activity-days";
+import { getActivityDays, getBookedDayDecisionsForActivity, BookedDayDecision } from "@/lib/data/activity-days";
 import { getMyBookingsForParent } from "@/lib/data/my-bookings";
 import { createClient } from "@/lib/supabase/server";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
@@ -81,7 +81,7 @@ export default async function ActivityDetailPage({
   // storico) saltiamo del tutto la query, invariato per tutte le attività non
   // ancora configurate a Giorni spot lato Gestore.
   const wantsDayAvailability = activity.bookingMode && activity.bookingMode !== "week_only";
-  const [promotions, favoriteIds, certifications, days, bookedDayDates] = await Promise.all([
+  const [promotions, favoriteIds, certifications, days, bookedDayDecisions] = await Promise.all([
     getPromotionsForActivity(activity),
     getFavoriteActivityIds(),
     getApprovedCertificationsForActivity(activity.dbId),
@@ -89,9 +89,12 @@ export default async function ActivityDetailPage({
     // Segnalazione 25/08/2026 (Fabrizio): i giorni già prenotati per questa
     // attività devono distinguersi visivamente nella scheda "Giorni spot",
     // altrimenti sembra che il genitore non abbia prenotato nulla.
+    // AGGIORNAMENTO 02/09/2026: non basta più sapere CHE è prenotato — serve
+    // anche COME (accettato/in attesa/rifiutato/lista d'attesa), vedi
+    // getBookedDayDecisionsForActivity.
     wantsDayAvailability && activity.dbId
-      ? getBookedDayDatesForActivity(activity.dbId)
-      : Promise.resolve(new Set<string>()),
+      ? getBookedDayDecisionsForActivity(activity.dbId)
+      : Promise.resolve(new Map<string, BookedDayDecision>()),
   ]);
   const initialFavorite = Boolean(activity.dbId && favoriteIds.has(activity.dbId));
 
@@ -103,7 +106,7 @@ export default async function ActivityDetailPage({
         initialFavorite={initialFavorite}
         certifications={certifications}
         days={days}
-        bookedDayDates={[...bookedDayDates]}
+        bookedDayDecisions={Object.fromEntries(bookedDayDecisions)}
         nextgen={nextgen}
         existingBooking={existingBooking}
       />

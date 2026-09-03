@@ -4,6 +4,11 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import { Activity, CertificationItem, DayAvailability, Promotion } from "@/lib/types";
+// "import type" (non un import valore): lib/data/activity-days.ts è
+// server-only (createClient di lib/supabase/server) — un import normale
+// trascinerebbe quel modulo nel bundle client. Il tipo viene eraso a
+// compile-time, quindi resta sicuro anche da un componente "use client".
+import type { BookedDayDecision } from "@/lib/data/activity-days";
 import { badgeClasses } from "@/lib/colors";
 import ImageLightbox from "@/components/ImageLightbox";
 import ContactCenterButton from "@/components/ContactCenterButton";
@@ -20,7 +25,7 @@ export default function DetailClient({
   initialFavorite,
   certifications = [],
   days = [],
-  bookedDayDates = [],
+  bookedDayDecisions = {},
   nextgen = false,
   existingBooking = null,
 }: {
@@ -42,9 +47,12 @@ export default function DetailClient({
   // Segnalazione 25/08/2026 (Fabrizio): i giorni già prenotati da questo
   // genitore per questa attività (qualunque bambino) devono distinguersi
   // visivamente dai giorni ancora liberi — vedi
-  // lib/data/activity-days.ts#getBookedDayDatesForActivity. Date ISO
-  // (yyyy-mm-dd). Vuoto per ogni attività a sola settimana intera.
-  bookedDayDates?: string[];
+  // lib/data/activity-days.ts#getBookedDayDecisionsForActivity.
+  // AGGIORNAMENTO 02/09/2026 ("se ho 1 giornata accettata e 1 rifiutata...
+  // cosa capisco?"): non basta più sapere CHE il giorno è prenotato, serve
+  // anche COME il centro ha risposto — data ISO (yyyy-mm-dd) → decisione.
+  // Vuoto per ogni attività a sola settimana intera.
+  bookedDayDecisions?: Record<string, BookedDayDecision>;
   // nextgen (01/09/2026, segnalazione Fabrizio "grafica legacy" nel
   // dettaglio attività): questa route è condivisa da Legacy e NextGen
   // (nessuna /nextgen/activity/... dedicata, vedi
@@ -134,7 +142,21 @@ export default function DetailClient({
         .sort((a, b) => a.date.localeCompare(b.date)),
     [days, todayIso]
   );
-  const bookedDaySet = useMemo(() => new Set(bookedDayDates), [bookedDayDates]);
+  // Giorni già impegnati su una richiesta ESISTENTE (accettata/in attesa/in
+  // lista d'attesa) — "rifiutato" escluso di proposito: quel giorno è
+  // tornato libero e va restare selezionabile per una nuova richiesta (vedi
+  // "wasRejected" più sotto). Usato per bloccare il toggle, non solo per lo
+  // stile del pulsante: prima il click passava comunque, aggiungendo alla
+  // selezione un giorno già coperto da un'altra richiesta.
+  const lockedDaySet = useMemo(
+    () =>
+      new Set(
+        Object.entries(bookedDayDecisions)
+          .filter(([, decision]) => decision !== "rejected")
+          .map(([date]) => date)
+      ),
+    [bookedDayDecisions]
+  );
   // Se si arriva da "Riempi"/Scopri con una o più settimane selezionate,
   // mostra solo i "giorni spot" che cadono in quelle settimane invece di
   // tutta la stagione — questo è il fix del bug segnalato.
@@ -173,6 +195,7 @@ export default function DetailClient({
   const [selectedDayDates, setSelectedDayDates] = useState<string[]>([]);
   const toggleDay = (day: DayAvailability) => {
     if (!day.singleDayBookable || day.spotsLeft <= 0) return;
+    if (lockedDaySet.has(day.date)) return;
     setSelectedDayDates((prev) =>
       prev.includes(day.date) ? prev.filter((d) => d !== day.date) : [...prev, day.date]
     );
@@ -445,21 +468,42 @@ export default function DetailClient({
                       );
                     }
                     const soldOut = day.spotsLeft <= 0 || !day.singleDayBookable;
-                    const alreadyBooked = bookedDaySet.has(day.date);
+                    // AGGIORNAMENTO 02/09/2026 (segnalazione Fabrizio: "se ho 1
+                    // giornata accettata e 1 rifiutata... cosa capisco?") — un
+                    // giorno "già prenotato" non è più un blocco unico: la
+                    // decisione del centro (accettato/in attesa/rifiutato/
+                    // lista d'attesa) determina sia il badge sia se il giorno
+                    // resta bloccato o torna selezionabile. "Rifiutato" non è
+                    // trattato come "prenotato" — il centro l'ha liberato,
+                    // quindi torna nel flusso normale (selezionabile se non
+                    // pieno), con solo un'etichetta in più per lo storico.
+                    const dayDecision = bookedDayDecisions[day.date];
+                    const alreadyBooked = dayDecision === "accepted" || dayDecision === "pending" || dayDecision === "waitlisted";
+                    const wasRejected = dayDecision === "rejected";
                     const selected = selectedDayDates.includes(day.date);
                     const price = dayPrice(day, activity.pricePerWeek);
                     const dateObj = new Date(day.date + "T00:00:00Z");
                     const dayNum = dateObj.getUTCDate();
                     const monthShort = dateObj.toLocaleDateString("it-IT", { month: "short", timeZone: "UTC" });
+                    const bookedStyle: Record<string, string> = {
+                      accepted: "border-green bg-green-light text-ink",
+                      pending: "border-trama-orange bg-orange-light text-ink",
+                      waitlisted: "border-sky bg-sky-light text-ink",
+                    };
+                    const bookedBadge: Record<string, { icon: string; label: string; cls: string }> = {
+                      accepted: { icon: "ti-circle-check", label: "Prenotato", cls: "text-green" },
+                      pending: { icon: "ti-clock", label: "In attesa", cls: "text-trama-orange" },
+                      waitlisted: { icon: "ti-hourglass-high", label: "Lista d'attesa", cls: "text-sky" },
+                    };
                     return (
                       <button
                         key={day.date}
                         type="button"
-                        disabled={soldOut}
+                        disabled={soldOut || alreadyBooked}
                         onClick={() => toggleDay(day)}
                         className={`relative flex min-h-[76px] flex-col items-center justify-center rounded-md border-[1.5px] px-1 py-2 text-center transition-colors ${
                           alreadyBooked
-                            ? "border-green bg-green-light text-ink"
+                            ? bookedStyle[dayDecision as string]
                             : soldOut
                             ? "cursor-not-allowed border-[#E8EBF0] bg-[#FAFBFD] text-ink-3"
                             : selected
@@ -480,16 +524,19 @@ export default function DetailClient({
                             solo prezzo, così un giorno già coperto non si
                             confonde con uno ancora libero. */}
                         {alreadyBooked ? (
-                          <span className="text-[11px] font-semibold text-green">
-                            <i className="ti ti-circle-check mr-0.5 text-[10px]" />
-                            Prenotato
+                          <span className={`text-[11px] font-semibold ${bookedBadge[dayDecision as string].cls}`}>
+                            <i className={`ti ${bookedBadge[dayDecision as string].icon} mr-0.5 text-[10px]`} />
+                            {bookedBadge[dayDecision as string].label}
                           </span>
                         ) : (
                           <span className={`text-[11px] font-semibold ${accentText}`}>
                             {soldOut ? "Pieno" : `€${price}`}
                           </span>
                         )}
-                        {!alreadyBooked && day.discountPercent ? (
+                        {wasRejected && !soldOut && (
+                          <span className="text-[9.5px] font-medium text-ink-3">Rifiutato in precedenza</span>
+                        )}
+                        {!alreadyBooked && !wasRejected && day.discountPercent ? (
                           <span className="text-[10px] font-medium text-green">-{day.discountPercent}%</span>
                         ) : null}
                       </button>
