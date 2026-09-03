@@ -6,6 +6,10 @@ import PageHeader from "@/components/PageHeader";
 import WeekCard from "@/components/WeekCard";
 import { Activity, Week, DayAvailability } from "@/lib/types";
 import { MyBooking } from "@/lib/data/my-bookings";
+// "import type" (non un import valore): lib/data/activity-days.ts è
+// server-only — stesso motivo/stessa tecnica già usata in
+// app/activity/[id]/DetailClient.tsx per lo stesso identico tipo.
+import type { BookedDayDecision } from "@/lib/data/activity-days";
 import { buildFamilyTiers, familyDiscountAmount } from "@/lib/family-discount";
 import { dayPrice } from "@/lib/day-pricing";
 import {
@@ -39,7 +43,7 @@ export default function ModificaPrenotazioneClient({
   activity,
   weeks,
   days = [],
-  bookedDayDates = [],
+  bookedDayDecisions = {},
   nextgen = false,
 }: {
   booking: MyBooking;
@@ -51,12 +55,23 @@ export default function ModificaPrenotazioneClient({
   // filtro "solo futuro" per la griglia interattiva è fatto qui sotto, ma
   // servono anche i giorni passati per calcolare correttamente il prezzo
   // già congelato di eventuali giorni prenotati che ricadono nel passato,
-  // mai rimossi silenziosamente da questa pagina). `bookedDayDates`: giorni
-  // di QUESTA attività già prenotati dal genitore su QUALUNQUE prenotazione
-  // (incluse altre, non solo questa) — usato per impedire di "aggiungere"
-  // qui un giorno già coperto da un'altra prenotazione separata.
+  // mai rimossi silenziosamente da questa pagina).
+  //
+  // FIX (segnalazione Fabrizio 03/09/2026: "i dettagli della prenotazione e
+  // modifica hanno info diverse... manca coerenza") — prima era
+  // bookedDayDates: string[] (solo esistenza: "è già prenotato, sì/no"),
+  // che qui faceva trattare OGNI giorno di QUESTA prenotazione come
+  // "Incluso" indistintamente, anche uno già RIFIUTATO dal centro: diverso
+  // (e sbagliato) rispetto a quanto la scheda attività ("Dettagli") mostra
+  // per la STESSA identica prenotazione. `bookedDayDecisions`: stessa mappa
+  // data→decisione già usata da DetailClient.tsx (getBookedDayDecisionsForActivity)
+  // — copre TUTTE le prenotazioni del genitore su questa attività (incluse
+  // le altre, non solo questa), usata sia per "Altra prenot." (giorni di
+  // ALTRE prenotazioni, come prima) sia per mostrare la decisione REALE dei
+  // giorni di QUESTA prenotazione (accettato/in attesa/lista d'attesa/
+  // rifiutato) invece del generico "Incluso" per tutti.
   days?: DayAvailability[];
-  bookedDayDates?: string[];
+  bookedDayDecisions?: Record<string, BookedDayDecision>;
   // nextgen (01/09/2026, audit layout legacy): risolto server-side in
   // page.tsx via resolveFeatureFlag (route condivisa Legacy/NextGen, stesso
   // pattern di app/booking/[id]/BookingClient.tsx) — stessa palette "trama"
@@ -71,7 +86,17 @@ export default function ModificaPrenotazioneClient({
   // Editor giorni: inizializzato con i giorni REALMENTE prenotati su QUESTA
   // prenotazione (booking.dayDates) — toggle locale, nessuna chiamata al
   // server finché non si preme "Salva modifiche".
-  const [selectedDayDates, setSelectedDayDates] = useState<string[]>(booking.dayDates);
+  //
+  // FIX 03/09/2026 (vedi commento su bookedDayDecisions più sopra): un
+  // giorno già RIFIUTATO dal centro non parte più pre-selezionato — non è
+  // più davvero parte della prenotazione (il centro ha detto no), tenerlo
+  // "Incluso" per default avrebbe fatto ri-sottomettere una richiesta senza
+  // che il genitore l'abbia scelto esplicitamente. Resta comunque
+  // ri-selezionabile con un tocco, stessa interazione di un giorno "Rifiutato
+  // in precedenza" nella scheda attività (DetailClient.tsx).
+  const [selectedDayDates, setSelectedDayDates] = useState<string[]>(() =>
+    booking.dayDates.filter((d) => bookedDayDecisions[d] !== "rejected")
+  );
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   // SPRINT (feedback Fabrizio: "nella 'modifica prenotazione' deve esserci
@@ -105,16 +130,31 @@ export default function ModificaPrenotazioneClient({
   const [savingDays, setSavingDays] = useState(false);
   const [daysError, setDaysError] = useState<string | null>(null);
   const todayIso = useMemo(() => new Date().toISOString().slice(0, 10), []);
-  const originalDaySet = useMemo(() => new Set(booking.dayDates), [booking.dayDates]);
+  // Set RAW di tutti i giorni che appartengono a questa prenotazione,
+  // qualunque sia la loro decisione (incluso un giorno rifiutato) — usato
+  // per (a) sapere se un giorno è "di questa prenotazione" per leggerne la
+  // decisione reale, (b) escludere questi stessi giorni da bookedElsewhereSet
+  // sotto (un giorno rifiutato di QUESTA prenotazione non è "un'altra
+  // prenotazione"). NON è più la base di partenza di selectedDayDates (vedi
+  // sopra) né del confronto "è cambiato qualcosa?" (vedi initialDaySet sotto).
+  const ownDaySet = useMemo(() => new Set(booking.dayDates), [booking.dayDates]);
+  // Base di confronto per "daysUnchanged" — deve combaciare con
+  // l'inizializzazione di selectedDayDates sopra (giorni rifiutati esclusi),
+  // altrimenti il pulsante "Salva modifiche" risulterebbe abilitato al primo
+  // render anche senza che il genitore abbia toccato nulla.
+  const initialDaySet = useMemo(
+    () => new Set(booking.dayDates.filter((d) => bookedDayDecisions[d] !== "rejected")),
+    [booking.dayDates, bookedDayDecisions]
+  );
   const selectedDaySet = useMemo(() => new Set(selectedDayDates), [selectedDayDates]);
   // Giorni prenotati altrove (altra prenotazione della stessa attività) —
   // mai proponibili come "aggiungibili" qui, per non creare una seconda
   // prenotazione sullo stesso posto.
   const bookedElsewhereSet = useMemo(() => {
-    const elsewhere = new Set(bookedDayDates);
+    const elsewhere = new Set(Object.keys(bookedDayDecisions));
     for (const d of booking.dayDates) elsewhere.delete(d);
     return elsewhere;
-  }, [bookedDayDates, booking.dayDates]);
+  }, [bookedDayDecisions, booking.dayDates]);
   const dayById = useMemo(() => new Map(days.map((d) => [d.date, d])), [days]);
   // Griglia interattiva: solo giorni futuri/odierni e aperti — stesso filtro
   // di DetailClient.tsx (task #584). I giorni già prenotati ma ormai passati
@@ -166,8 +206,8 @@ export default function ModificaPrenotazioneClient({
   const daysTotal = daysSubtotal - daysFamilyDiscount;
 
   const daysUnchanged =
-    selectedDayDates.length === booking.dayDates.length &&
-    selectedDayDates.every((d) => originalDaySet.has(d));
+    selectedDayDates.length === initialDaySet.size &&
+    selectedDayDates.every((d) => initialDaySet.has(d));
 
   async function handleSaveDays() {
     setSavingDays(true);
@@ -313,7 +353,18 @@ export default function ModificaPrenotazioneClient({
                 giorno che resterà (o entrerà) in questa prenotazione dopo
                 "Salva modifiche", bordo tratteggiato = giorno non
                 configurato dal Gestore in quella settimana, grigio pieno =
-                pieno o già coperto da un'altra prenotazione. */}
+                pieno o già coperto da un'altra prenotazione.
+
+                FIX 03/09/2026 (Fabrizio: "i dettagli della prenotazione e
+                modifica hanno info diverse... manca coerenza"): quando il
+                giorno fa già parte di QUESTA prenotazione, il colore ora
+                riflette la decisione REALE del centro (bookedDayDecisions),
+                stesso linguaggio visivo di DetailClient — verde "Prenotato"
+                = accettato, arancio "In attesa" = decisione non ancora
+                presa, azzurro "Lista d'attesa" = in coda. Un giorno
+                rifiutato dal centro non è più pre-selezionato/verde: torna
+                prenotabile normalmente con la nota "Rifiutato in
+                precedenza". */}
             <p className="mb-3 text-[13px] text-ink-2">
               Aggiungi o rimuovi giorni singoli — funzionalità di test per verificare l&apos;effetto lato
               gestore. Puoi modificare fino a {booking.cancellationWindowDays} giorni prima del primo
@@ -340,7 +391,7 @@ export default function ModificaPrenotazioneClient({
                         return (
                           <div
                             key={weekday}
-                            className="flex min-h-[68px] flex-col items-center justify-center rounded-md border border-dashed border-[#E8EBF0] px-1 py-2 text-center text-[10px] text-ink-3"
+                            className="flex min-h-[76px] flex-col items-center justify-center rounded-md border border-dashed border-[#E8EBF0] px-1 py-2 text-center text-[10px] text-ink-3"
                           >
                             {weekdayShort[weekday]}
                             <span className="mt-1">—</span>
@@ -351,6 +402,29 @@ export default function ModificaPrenotazioneClient({
                       const bookedElsewhere = bookedElsewhereSet.has(day.date);
                       const full = !day.singleDayBookable || day.spotsLeft <= 0;
                       const disabled = !selected && (bookedElsewhere || full);
+                      // FIX 03/09/2026 — decisione REALE del centro per un
+                      // giorno di QUESTA prenotazione (se già esistente),
+                      // stessa fonte/stesso linguaggio di DetailClient.tsx
+                      // ("Dettagli"), per coerenza tra le due pagine.
+                      const ownDecision = ownDaySet.has(day.date) ? bookedDayDecisions[day.date] : undefined;
+                      const wasRejected = ownDecision === "rejected";
+                      // Un giorno appena aggiunto ora (mai esistito, o
+                      // rifiutato e ri-selezionato) non ha ancora nessuna
+                      // decisione: resta "Incluso" come prima — solo un
+                      // giorno GIÀ deciso dal centro (accepted/pending/
+                      // waitlisted) mostra quella decisione invece del
+                      // generico "Incluso".
+                      const decidedStyle: Record<string, string> = {
+                        accepted: "border-green bg-green-light text-ink",
+                        pending: "border-trama-orange bg-orange-light text-ink",
+                        waitlisted: "border-sky bg-sky-light text-ink",
+                      };
+                      const decidedBadge: Record<string, { icon: string; label: string; cls: string }> = {
+                        accepted: { icon: "ti-circle-check", label: "Prenotato", cls: "text-green" },
+                        pending: { icon: "ti-clock", label: "In attesa", cls: "text-trama-orange" },
+                        waitlisted: { icon: "ti-hourglass-high", label: "Lista d'attesa", cls: "text-sky" },
+                      };
+                      const showsDecision = selected && ownDecision && ownDecision in decidedStyle;
                       const dateObj = new Date(day.date + "T00:00:00Z");
                       const dayNum = dateObj.getUTCDate();
                       const monthShort = dateObj.toLocaleDateString("it-IT", { month: "short", timeZone: "UTC" });
@@ -360,8 +434,10 @@ export default function ModificaPrenotazioneClient({
                           type="button"
                           disabled={disabled}
                           onClick={() => toggleDay(day)}
-                          className={`flex min-h-[68px] flex-col items-center justify-center rounded-md border-[1.5px] px-1 py-2 text-center transition-colors ${
-                            selected
+                          className={`relative flex min-h-[76px] flex-col items-center justify-center rounded-md border-[1.5px] px-1 py-2 text-center transition-colors ${
+                            showsDecision
+                              ? decidedStyle[ownDecision as string]
+                              : selected
                               ? "border-green bg-green-light text-ink"
                               : disabled
                               ? "cursor-not-allowed border-[#E8EBF0] bg-[#FAFBFD] text-ink-3"
@@ -374,9 +450,19 @@ export default function ModificaPrenotazioneClient({
                           <span className="text-sm font-bold">
                             {dayNum} {monthShort}
                           </span>
-                          <span className={`text-[11px] font-semibold ${selected ? "text-green" : accentText}`}>
-                            {selected ? "Incluso" : bookedElsewhere ? "Altra prenot." : full ? "Pieno" : `€${dayPrice(day, activity.pricePerWeek)}`}
-                          </span>
+                          {showsDecision ? (
+                            <span className={`text-[11px] font-semibold ${decidedBadge[ownDecision as string].cls}`}>
+                              <i className={`ti ${decidedBadge[ownDecision as string].icon} mr-0.5 text-[10px]`} />
+                              {decidedBadge[ownDecision as string].label}
+                            </span>
+                          ) : (
+                            <span className={`text-[11px] font-semibold ${selected ? "text-green" : accentText}`}>
+                              {selected ? "Incluso" : bookedElsewhere ? "Altra prenot." : full ? "Pieno" : `€${dayPrice(day, activity.pricePerWeek)}`}
+                            </span>
+                          )}
+                          {wasRejected && !selected && !full && (
+                            <span className="text-[9px] font-medium text-ink-3">Rifiutato in precedenza</span>
+                          )}
                         </button>
                       );
                     })}

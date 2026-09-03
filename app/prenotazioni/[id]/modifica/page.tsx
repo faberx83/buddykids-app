@@ -2,7 +2,7 @@ import { notFound, redirect } from "next/navigation";
 import { getMyBookingsForParent } from "@/lib/data/my-bookings";
 import { getActivityBySlug } from "@/lib/data/activities";
 import { getWeeksForActivity } from "@/lib/data/weeks";
-import { getActivityDays, getBookedDayDatesForActivity } from "@/lib/data/activity-days";
+import { getActivityDays, getBookedDayDecisionsForActivity } from "@/lib/data/activity-days";
 import { createClient } from "@/lib/supabase/server";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
 import { resolveFeatureFlag } from "@/lib/feature-flags/resolve";
@@ -55,12 +55,24 @@ export default async function ModificaPrenotazionePage({
   // giorni). Carichiamo giorni + già-prenotati SOLO per prenotazioni a
   // Giorni spot (stesso identico gate di app/activity/[id]/page.tsx),
   // nessun costo aggiuntivo per il ramo a settimana intera invariato sotto.
-  const [weeks, days, bookedDayDates] = await Promise.all([
+  //
+  // FIX (segnalazione Fabrizio 03/09/2026: "i dettagli della prenotazione e
+  // modifica hanno info diverse... manca coerenza") — questa pagina usava
+  // getBookedDayDatesForActivity (solo esistenza: "è già prenotato sì/no"),
+  // perdendo la decisione REALE del centro per ogni giorno (accettato/in
+  // attesa/rifiutato) — la stessa che la scheda attività (DetailClient.tsx,
+  // "Dettagli") mostra correttamente. Risultato: un giorno rifiutato dal
+  // centro appariva qui identico a uno accettato ("Incluso" verde per
+  // entrambi), un'informazione diversa (e sbagliata) rispetto a "Dettagli"
+  // per la STESSA prenotazione. Stessa fonte dati di DetailClient
+  // (getBookedDayDecisionsForActivity) invece di una query/semantica
+  // diversa per lo stesso concetto.
+  const [weeks, days, bookedDayDecisions] = await Promise.all([
     getWeeksForActivity(activity),
     booking.isDayBased ? getActivityDays(activity) : Promise.resolve([]),
     booking.isDayBased && activity.dbId
-      ? getBookedDayDatesForActivity(activity.dbId)
-      : Promise.resolve(new Set<string>()),
+      ? getBookedDayDecisionsForActivity(activity.dbId)
+      : Promise.resolve(new Map()),
   ]);
 
   return (
@@ -70,7 +82,7 @@ export default async function ModificaPrenotazionePage({
         activity={activity}
         weeks={weeks}
         days={days}
-        bookedDayDates={[...bookedDayDates]}
+        bookedDayDecisions={Object.fromEntries(bookedDayDecisions)}
         nextgen={nextgen}
       />
     </PhoneShell>
