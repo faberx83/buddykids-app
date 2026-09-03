@@ -6,9 +6,21 @@ import { sendPushToUser } from "@/lib/push/send";
 import { ADDRESS_KIND_LABELS, AddressKind } from "@/lib/nextgen/address-kinds";
 
 // Promemoria di partenza — endpoint chiamato dal cron di Vercel (vedi
-// vercel.json, "*/15 * * * *"), MAI dal browser. Segnalazione Fabrizio
+// vercel.json), MAI dal browser. Segnalazione Fabrizio
 // 03/09/2026: "possiamo attivare i reminder ora che ci sono le
 // notifiche?" — vedi supabase/migration_36_travel_reminders.sql per il
+//
+// FIX 03/09/2026 (deploy fallito: "Hobby accounts are limited to daily
+// cron jobs" — Vercel rifiuta "*/15 * * * *" sul piano Hobby, bloccando
+// l'INTERO deploy, non solo questa feature). Schedule ridotto a una sola
+// esecuzione al giorno ("0 15 * * *", ~16-17 in Europe/Rome). Conseguenza
+// onesta: con un solo giro/giorno, il promemoria scatta SOLO per i
+// genitori il cui orario configurato cade entro TOLERANCE_MINUTES da
+// quel singolo orario di esecuzione — per orari diversi non suona,
+// nessun errore visibile, semplicemente non nella finestra. Fabrizio ha
+// confermato di restare su Hobby "per ora" (2 per ora): per un
+// comportamento realmente puntuale su qualsiasi orario serve il piano
+// Pro (cron ogni 15 min, come originariamente previsto).
 // contesto completo e lo scope ridotto per la beta (orario impostato dal
 // genitore, non calcolato da un tempo di percorrenza reale).
 //
@@ -25,7 +37,10 @@ import { ADDRESS_KIND_LABELS, AddressKind } from "@/lib/nextgen/address-kinds";
 // comunque 200 con "processed: 0", nessun comportamento distruttivo se
 // Vercel prova a chiamarlo prima che la migration sia pronta.
 
-const TOLERANCE_MINUTES = 20; // >= intervallo del cron (15 min) + margine
+// NB: con cron Hobby (1 esecuzione/giorno) questa tolleranza NON copre
+// più l'intero giorno come farebbe con un cron ogni 15 min — vedi
+// commento in cima al file.
+const TOLERANCE_MINUTES = 20;
 
 function timingSafeEqual(a: string, b: string): boolean {
   if (a.length !== b.length) return false;
