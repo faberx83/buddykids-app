@@ -106,3 +106,69 @@ export function effectiveDayBasedDecision(
   if (normalized.some((d) => d === "accepted")) return "partial";
   return "pending";
 }
+
+// Segnalazione Fabrizio 03/09/2026 ("aggiornare dashboard gestore con dati
+// reali"): app/center/page.tsx (dashboard del centro) legge già Supabase per
+// intero (nessun mock, a differenza di quanto un audit precedente al 24/08
+// riportava per questa pagina — corretto in quella data, prima di questa
+// sessione) — ma DUE numeri restavano concettualmente sbagliati perché
+// derivati da bookings.status (transazione/pagamento, quasi sempre già
+// "confirmed" col pagamento demo) invece che da partnerDecision (risposta
+// OPERATIVA del centro, la stessa distinzione documentata sopra e in
+// app/(main)/prenotazioni/PrenotazioniClient.tsx): "Fatturato confermato"
+// includeva prenotazioni ancora in attesa o già rifiutate dal centro come se
+// fossero fatturato reale, e "Prenotazioni in attesa" — usando lo stesso
+// bug di visibilità già corretto nell'Inbox — non contava una prenotazione
+// "partial" con giorni ancora da decidere. Estratti qui (invece che
+// duplicati in page.tsx) perché la stessa identica logica serve
+// all'Inbox gestore (PrenotazioniClient.tsx) — riuso, non una terza
+// implementazione.
+interface BookingDecisionLike {
+  status: string;
+  isDayBased: boolean;
+  partnerDecision: PartnerDecision;
+  days: { partnerDecision: string }[];
+}
+
+// "Da rispondere" — per una prenotazione a giorni, l'esito aggregato può
+// essere "partial" pur avendo ancora giorni pending/waitlisted (vedi sopra):
+// guarda i singoli giorni invece di fidarsi della sola etichetta aggregata,
+// altrimenti una prenotazione con "1 accettato + 1 ancora da decidere"
+// sparirebbe dal conteggio di ciò che il centro deve ancora fare.
+export function bookingNeedsAction(b: BookingDecisionLike): boolean {
+  if (b.status === "cancelled") return false;
+  if (b.isDayBased) return b.days.some((d) => d.partnerDecision === "pending" || d.partnerDecision === "waitlisted");
+  return b.partnerDecision === "pending";
+}
+
+// Etichetta/colore condivisa per PartnerDecision — prima duplicata solo in
+// PrenotazioniClient.tsx (Inbox gestore); estratta qui il 03/09/2026 così
+// anche app/center/page.tsx (dashboard) può mostrare lo stesso stato
+// operativo con lo stesso linguaggio/colore, invece di continuare a
+// mostrare bookings.status (che con pagamento demo è quasi sempre
+// "Confermata" indipendentemente da cosa il centro abbia deciso).
+export const PARTNER_DECISION_LABEL: Record<PartnerDecision, { label: string; cls: string }> = {
+  pending: { label: "Da rispondere", cls: "bg-orange-light text-trama-orange" },
+  accepted: { label: "Accettata", cls: "bg-green-light text-[#2d8f52]" },
+  rejected: { label: "Rifiutata", cls: "bg-bg text-ink-3" },
+  proposed: { label: "Proposta inviata", cls: "bg-sky-light text-sky" },
+  partial: { label: "Confermata parzialmente", cls: "bg-[#F0EEFF] text-[#6F63C5]" },
+};
+
+// Fatturato REALMENTE confermato dal centro — mai bookings.total_amount
+// preso per intero: per una prenotazione a giorni conta solo il prezzo dei
+// giorni EFFETTIVAMENTE accettati (bd.price), per una a settimana intera
+// l'intero importo solo se accettata. Una richiesta ancora pending, o
+// rifiutata, o solo parzialmente accettata, non vale mai il suo
+// total_amount pieno.
+export function acceptedRevenue(b: {
+  isDayBased: boolean;
+  partnerDecision: PartnerDecision;
+  totalAmount: number;
+  days: { partnerDecision: string; price: number }[];
+}): number {
+  if (b.isDayBased) {
+    return b.days.filter((d) => d.partnerDecision === "accepted").reduce((sum, d) => sum + d.price, 0);
+  }
+  return b.partnerDecision === "accepted" ? b.totalAmount : 0;
+}

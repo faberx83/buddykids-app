@@ -1,7 +1,8 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { CenterBooking, BookingStatus, PartnerDecision, DayPartnerDecision } from "@/lib/data/center-bookings";
+import { CenterBooking, BookingStatus, DayPartnerDecision } from "@/lib/data/center-bookings";
+import { bookingNeedsAction, PARTNER_DECISION_LABEL } from "@/lib/booking-response/effective-decision";
 import {
   respondToBookingAction,
   respondToBookingDayAction,
@@ -24,13 +25,9 @@ import { isSupabaseConfigured } from "@/lib/supabase/env";
 // pending/waitlisted, per cui resta visibile nel filtro "Da rispondere" (vedi
 // bookingNeedsAction più sotto, che guarda i singoli giorni invece di questa
 // etichetta aggregata). Vedi lib/booking-response/effective-decision.ts.
-const DECISION_LABEL: Record<PartnerDecision, { label: string; cls: string }> = {
-  pending: { label: "Da rispondere", cls: "bg-orange-light text-trama-orange" },
-  accepted: { label: "Accettata", cls: "bg-green-light text-[#2d8f52]" },
-  rejected: { label: "Rifiutata", cls: "bg-bg text-ink-3" },
-  proposed: { label: "Proposta inviata", cls: "bg-sky-light text-sky" },
-  partial: { label: "Confermata parzialmente", cls: "bg-[#F0EEFF] text-[#6F63C5]" },
-};
+// DECISION_LABEL spostata in lib/booking-response/effective-decision.ts come
+// PARTNER_DECISION_LABEL (03/09/2026) — riusata anche da app/center/page.tsx.
+const DECISION_LABEL = PARTNER_DECISION_LABEL;
 
 const STATUS_LABEL: Record<BookingStatus, string> = {
   pending: "In attesa",
@@ -116,11 +113,9 @@ type FilterKey = "pending" | "proposed" | "accepted" | "partial" | "rejected";
 // direttamente ogni singolo booking_day invece della sola etichetta
 // aggregata — per quelle a settimana intera (niente giorni, un'unica
 // risposta indivisibile) partnerDecision resta l'unica fonte, invariato.
-function bookingNeedsAction(b: CenterBooking): boolean {
-  if (b.status === "cancelled") return false;
-  if (b.isDayBased) return b.days.some((d) => d.partnerDecision === "pending" || d.partnerDecision === "waitlisted");
-  return b.partnerDecision === "pending";
-}
+// bookingNeedsAction spostato in lib/booking-response/effective-decision.ts
+// (03/09/2026) — serve identico anche alla dashboard del centro
+// (app/center/page.tsx), riuso invece di una seconda implementazione.
 
 const KPI_CONFIG: Record<FilterKey, { label: string; cls: string; predicate: (b: CenterBooking) => boolean }> = {
   pending: {

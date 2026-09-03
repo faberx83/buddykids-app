@@ -1,11 +1,11 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import StatCard from "@/components/dashboard/StatCard";
-import StatusBadge from "@/components/dashboard/StatusBadge";
 import AdminMockDataBanner from "@/components/admin/AdminMockDataBanner";
 import PushNotificationsPrompt from "@/components/PushNotificationsPrompt";
 import { getActivitiesForCenter, getPromotionsForActivities } from "@/lib/data/activities";
 import { getBookingsForCenter } from "@/lib/data/center-bookings";
+import { bookingNeedsAction, acceptedRevenue, PARTNER_DECISION_LABEL } from "@/lib/booking-response/effective-decision";
 import { getOpenInquiriesCountForCenter } from "@/lib/data/inquiries";
 import { getGroupRequestsForCenter } from "@/lib/data/group-requests";
 import { getMyCenter } from "@/lib/data/center-admin";
@@ -106,10 +106,15 @@ export default async function CenterDashboardPage() {
   const activePromotions = (await getPromotionsForActivities(myActivities)).filter((p) => p.active);
 
   const activeBookings = bookings.filter((b) => b.status !== "cancelled");
-  const pendingBookings = activeBookings.filter((b) => b.partnerDecision === "pending");
-  const confirmedRevenue = activeBookings
-    .filter((b) => b.status === "confirmed")
-    .reduce((sum, b) => sum + b.totalAmount, 0);
+  // Segnalazione Fabrizio 03/09/2026 ("aggiornare dashboard gestore con dati
+  // reali"): questa pagina legge già Supabase per intero (fix R-02 del
+  // 24/08, precedente a questa sessione) — il problema reale erano questi
+  // due numeri, derivati da bookings.status (pagamento, quasi sempre già
+  // "confirmed" col pagamento demo) invece che da partnerDecision (risposta
+  // OPERATIVA del centro). Stessi helper condivisi già usati dall'Inbox
+  // (/center/prenotazioni), vedi lib/booking-response/effective-decision.ts.
+  const pendingBookings = activeBookings.filter(bookingNeedsAction);
+  const confirmedRevenue = activeBookings.reduce((sum, b) => sum + acceptedRevenue(b), 0);
   const pendingGroupRequests = groupRequests.filter((r) => r.status === "pending");
   // Già ordinate per created_at desc dalla query in getBookingsForCenter().
   const recentBookings = activeBookings.slice(0, 5);
@@ -292,7 +297,18 @@ export default async function CenterDashboardPage() {
                 <td className="px-4 py-2.5 text-ink-2">{b.activityName}</td>
                 <td className="px-4 py-2.5 font-semibold text-ink">€{b.totalAmount}</td>
                 <td className="px-4 py-2.5">
-                  <StatusBadge status={b.status} />
+                  {/* Segnalazione Fabrizio 03/09/2026: qui prima si mostrava
+                      bookings.status, quasi sempre "Confermata" col
+                      pagamento demo indipendentemente da cosa il centro
+                      avesse deciso — non era falso, ma rispondeva alla
+                      domanda sbagliata ("il genitore ha pagato?" invece di
+                      "il centro ha risposto?"). partnerDecision è la stessa
+                      risposta operativa già mostrata nell'Inbox. */}
+                  <span
+                    className={`rounded-full px-2.5 py-1 text-[11px] font-semibold ${PARTNER_DECISION_LABEL[b.partnerDecision].cls}`}
+                  >
+                    {PARTNER_DECISION_LABEL[b.partnerDecision].label}
+                  </span>
                 </td>
               </tr>
             ))}
