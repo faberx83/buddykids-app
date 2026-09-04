@@ -116,7 +116,21 @@ export default async function ActivityDetailPage({
   // DetailClient.tsx, che per "mixed" mostra comunque entrambi i selettori.
   const offeredWeeks = weeksForAvailability.filter((w) => w.offered);
   const hasAvailableWeek = offeredWeeks.some((w) => !w.soldOut);
-  const hasAvailableDay = days.some((d) => d.singleDayBookable && d.spotsLeft > 0);
+  // FIX (TRAMA FINAL HARDENING CLOSURE, segnalazione live 04/09/2026 su
+  // "Coding & Robotica Kids"/TechKids Milano — banner "Ultimi posti
+  // disponibili" + CTA "Prenota ora" attiva per un'attività con TUTTI i
+  // giorni activity_days nel passato, dati seed congelati al 2025): questo
+  // calcolo leggeva `days` SENZA il filtro "solo giorni futuri" che
+  // DetailClient.tsx applica correttamente al proprio elenco selezionabile
+  // (vedi `allBookableDays`/todayIso lì, task #243) — un giorno passato con
+  // spots_left>0 (mai più prenotabile per definizione temporale) faceva
+  // risultare hasAvailableDay=true, quindi activityAvailable=true per
+  // un'attività "mixed"/"day_only" realmente esaurita nel tempo. Stesso
+  // identico confronto sulla data ISO completa già usato da DetailClient,
+  // ora applicato anche qui — la STESSA regola, non una nuova, in due punti
+  // che devono concordare per costruzione.
+  const todayIso = new Date().toISOString().slice(0, 10);
+  const hasAvailableDay = days.some((d) => d.isOpen && d.date >= todayIso && d.singleDayBookable && d.spotsLeft > 0);
   const activityAvailable =
     activity.bookingMode === "day_only"
       ? hasAvailableDay
