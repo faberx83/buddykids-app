@@ -72,10 +72,14 @@ export default async function BookingSuccessPage({
           <SRow label="Attività" value={activity.name} />
           <SRow label="Bambino/i" value={summary?.kidNames ?? "Marco, 10 anni"} />
           <SRow label="Settimane" value={summary?.weeksLabel ?? "24 giu – 12 lug"} />
-          <SRow
-            label="Navetta"
-            value={(summary?.shuttleIncluded ?? true) ? "Inclusa ✓" : "Non inclusa"}
-          />
+          {/* FEATURE servizi extra (segnalazione Fabrizio 04/09/2026) — solo
+              i servizi REALMENTE scelti, non più un'unica riga "Navetta"
+              sempre presente: prima di questa feature la navetta era
+              inclusa/addebitata automaticamente, mai una vera scelta. */}
+          {summary?.preServiceIncluded && <SRow label="Ingresso anticipato" value="Incluso ✓" />}
+          {summary?.postServiceIncluded && <SRow label="Uscita posticipata" value="Incluso ✓" />}
+          {summary?.mealIncluded && <SRow label="Mensa" value="Inclusa ✓" />}
+          {summary?.shuttleIncluded && <SRow label="Navetta" value="Inclusa ✓" />}
           <div className="mt-2 flex justify-between border-t border-[#E8EBF0] pt-2.5 text-[13px]">
             <span className="font-bold text-ink">Totale pagato</span>
             <span className="font-semibold text-sky">€{summary?.totalAmount ?? 592}</span>

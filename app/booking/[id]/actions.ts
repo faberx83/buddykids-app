@@ -25,6 +25,14 @@ export interface CreateBookingInput {
   totalAmount: number;
   discountAmount: number;
   shuttleIncluded: boolean;
+  // FEATURE servizi extra (segnalazione Fabrizio 04/09/2026: "il genitore
+  // deve poter scegliere se accedere a tutti i servizi") — scelta esplicita
+  // per l'intera prenotazione (vedi migration_37_booking_services.sql).
+  // Prima di questa feature solo shuttleIncluded esisteva, e veniva
+  // calcolato automaticamente (mai una vera scelta) — vedi BookingClient.tsx.
+  preServiceIncluded: boolean;
+  postServiceIncluded: boolean;
+  mealIncluded: boolean;
   paymentMethod: "card" | "apple_pay" | "bank_transfer";
   // Se presente, lo sconto invito è stato incluso nel totale mostrato al
   // genitore: dopo aver creato la prenotazione lo segniamo "usato" (una sola
@@ -180,19 +188,41 @@ export async function createBookingAction(
     if (conflicts.length > 0) return { conflicts };
   }
 
-  const { data: booking, error } = await supabase
-    .from("bookings")
-    .insert({
-      parent_id: user.id,
-      activity_id: input.activityDbId,
-      status: "confirmed",
-      payment_method: input.paymentMethod,
-      total_amount: input.totalAmount,
-      discount_amount: input.discountAmount,
-      shuttle_included: input.shuttleIncluded,
-    })
-    .select("id")
-    .single();
+  const bookingInsert: Record<string, unknown> = {
+    parent_id: user.id,
+    activity_id: input.activityDbId,
+    status: "confirmed",
+    payment_method: input.paymentMethod,
+    total_amount: input.totalAmount,
+    discount_amount: input.discountAmount,
+    shuttle_included: input.shuttleIncluded,
+    pre_service_included: input.preServiceIncluded,
+    post_service_included: input.postServiceIncluded,
+    meal_included: input.mealIncluded,
+  };
+
+  let { data: booking, error } = await supabase.from("bookings").insert(bookingInsert).select("id").single();
+
+  // Migration 37 (servizi extra, NON ancora applicata da Fabrizio) —
+  // pre_service_included/post_service_included/meal_included possono
+  // mancare ancora nel DB: a differenza di booking_weeks/booking_days sotto
+  // (tabelle SEPARATE, il cui insert può fallire da solo senza toccare la
+  // prenotazione), queste sono colonne sulla STESSA riga "bookings" appena
+  // creata — se il DB le rifiuta, l'INSERT INTERO fallisce e la
+  // prenotazione stessa non verrebbe creata. Si ritenta quindi senza quei 3
+  // campi: il genitore paga comunque il totale corretto (totalAmount include
+  // già il costo dei servizi scelti, calcolato lato client), il centro
+  // semplicemente non vede ancora QUALE servizio è stato scelto finché la
+  // migration non è applicata — mai una prenotazione persa.
+  if (error?.code === "42703") {
+    const {
+      pre_service_included: _pre,
+      post_service_included: _post,
+      meal_included: _meal,
+      ...bookingInsertBase
+    } = bookingInsert;
+    ({ data: booking, error } = await supabase.from("bookings").insert(bookingInsertBase).select("id").single());
+  }
 
   if (error || !booking) return { error: error?.message || "Errore nella prenotazione" };
 

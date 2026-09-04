@@ -147,8 +147,24 @@ export default function BookingClient({
   );
   const requestedWeekConfirmed = requestedWeeksConfirmed.length > 0;
 
-  const [step, setStep] = useState<1 | 2 | 3>(1);
+  // FEATURE servizi extra (segnalazione Fabrizio 04/09/2026: "il genitore
+  // deve poter scegliere se accedere a tutti i servizi es. mensa,
+  // pre-scuola") — "step" non è più fisso a 3: uno step "Servizi" in più
+  // compare SOLO se l'attività offre almeno un servizio selezionabile (vedi
+  // hasAnyService/stepSequence sotto), quindi il tipo diventa un numero
+  // generico invece di 1|2|3.
+  const [step, setStep] = useState<number>(1);
   const [kids, setKids] = useState<Kid[]>(initialKids);
+  // Scelta esplicita del genitore per ciascun servizio extra, per l'INTERA
+  // prenotazione (nessuna eccezione per singolo giorno/settimana, deciso con
+  // Fabrizio) — default OFF: prima di questa feature la navetta veniva
+  // inclusa/addebitata AUTOMATICAMENTE se il centro la offriva, mai una vera
+  // scelta. Pre-scuola/post-scuola/mensa erano solo badge informativi, mai
+  // selezionabili né addebitabili: ora lo sono, stesso principio.
+  const [shuttleSelected, setShuttleSelected] = useState(false);
+  const [preServiceSelected, setPreServiceSelected] = useState(false);
+  const [postServiceSelected, setPostServiceSelected] = useState(false);
+  const [mealSelected, setMealSelected] = useState(false);
   // BUG CORRETTO 07/08/2026 — se da Scopri arrivano più settimane
   // selezionate, le preseleziona TUTTE (quelle davvero prenotabili qui),
   // non solo la prima: prima l'utente doveva riselezionarle a mano una per
@@ -192,6 +208,34 @@ export default function BookingClient({
     return weeks.slice(Math.max(0, idx - 1), idx + 2);
   }, [weeks, showAllWeeks, focusWeek]);
 
+  // FEATURE servizi extra — quali servizi ha senso offrire per QUESTA
+  // attività/prenotazione. Niente su Giorni spot (dayBookingMode): stesso
+  // principio già seguito per la navetta prima di questa feature ("niente
+  // regola di proporzionamento a giorno singolo è stata definita... niente
+  // costo navetta su Giorni spot invece di inventare una tariffa non
+  // richiesta") — esteso qui a pre/post-scuola/mensa per coerenza.
+  const canOfferShuttle = !dayBookingMode && activity.shuttlePrice > 0;
+  const canOfferPreService = !dayBookingMode && Boolean(activity.preService?.available);
+  const canOfferPostService = !dayBookingMode && Boolean(activity.postService?.available);
+  // Mensa: mealOption è solo un'informazione statica (inclusa/pranzo al
+  // sacco/nessuna) finché il gestore non imposta un sovrapprezzo > 0 — solo
+  // allora diventa un servizio SELEZIONABILE dal genitore (vedi
+  // ActivityEditForm.tsx e migration_37).
+  const canOfferMeal =
+    !dayBookingMode && activity.mealOption !== "none" && (activity.mealPriceExtra ?? 0) > 0;
+  const hasAnyService = canOfferShuttle || canOfferPreService || canOfferPostService || canOfferMeal;
+  // Sequenza di step dinamica: "Servizi" compare SOLO se hasAnyService, così
+  // un'attività senza nessun servizio extra ha lo stesso wizard a 3 step di
+  // sempre (nessun cambiamento visibile per chi non ne ha bisogno).
+  const stepSequence = hasAnyService
+    ? (["weeks", "services", "kids", "payment"] as const)
+    : (["weeks", "kids", "payment"] as const);
+  const stepLabels = hasAnyService
+    ? ["Settimane", "Servizi", "Bambini", "Pagamento"]
+    : ["Settimane", "Bambini", "Pagamento"];
+  const totalSteps = stepSequence.length;
+  const currentStepKind = stepSequence[Math.min(step, totalSteps) - 1];
+
   const nWeeks = selectedWeeks.length || 1;
   const kidsCount = selectedKids.length || 1;
   // Prezzo di UN bambino, usato come base sia per il totale sia per
@@ -215,13 +259,21 @@ export default function BookingClient({
     ? Math.round(subtotal * (inviteDiscount.percent / 100))
     : 0;
   const groupDiscount = weekDiscount + familyDiscount + inviteDiscountAmount;
-  // Navetta: prezzo definito oggi solo "a settimana" (activity.shuttlePrice) —
-  // nessuna regola di proporzionamento a giorno singolo è stata definita
-  // ("selezione servizi per giorno" resta esplicitamente MANCANTE, vedi
-  // SPRINT_3_FEATURE_PRESERVATION_MATRIX.md): niente costo navetta su
-  // prenotazioni a Giorni spot invece di inventare una tariffa non richiesta.
-  const shuttleCost = dayBookingMode ? 0 : activity.shuttlePrice * nWeeks * kidsCount;
-  const total = subtotal - groupDiscount + shuttleCost;
+  // Navetta/pre-scuola/post-scuola/mensa: prezzo definito oggi solo "a
+  // settimana" — nessuna regola di proporzionamento a giorno singolo è
+  // stata definita (niente su Giorni spot, vedi canOffer* sopra). Da questa
+  // feature (segnalazione Fabrizio "il genitore deve poter scegliere se
+  // accedere a tutti i servizi") ciascuno è addebitato SOLO se il genitore
+  // lo ha selezionato esplicitamente nello step "Servizi" — prima la
+  // navetta veniva inclusa/addebitata automaticamente senza scelta.
+  const shuttleCost = canOfferShuttle && shuttleSelected ? activity.shuttlePrice * nWeeks * kidsCount : 0;
+  const preServiceCost =
+    canOfferPreService && preServiceSelected ? (activity.preService?.priceExtra || 0) * nWeeks * kidsCount : 0;
+  const postServiceCost =
+    canOfferPostService && postServiceSelected ? (activity.postService?.priceExtra || 0) * nWeeks * kidsCount : 0;
+  const mealCost = canOfferMeal && mealSelected ? (activity.mealPriceExtra || 0) * nWeeks * kidsCount : 0;
+  const servicesCost = shuttleCost + preServiceCost + postServiceCost + mealCost;
+  const total = subtotal - groupDiscount + servicesCost;
 
   const toggleWeek = (w: Week) => {
     if (!bookable(w, bookedWeekIds)) return;
@@ -249,7 +301,12 @@ export default function BookingClient({
         : undefined,
       totalAmount: total,
       discountAmount: groupDiscount,
-      shuttleIncluded: !dayBookingMode && activity.shuttlePrice > 0,
+      // FEATURE servizi extra: ora una scelta esplicita del genitore (stato
+      // sopra), non più calcolata automaticamente da "l'attività la offre".
+      shuttleIncluded: canOfferShuttle && shuttleSelected,
+      preServiceIncluded: canOfferPreService && preServiceSelected,
+      postServiceIncluded: canOfferPostService && postServiceSelected,
+      mealIncluded: canOfferMeal && mealSelected,
       paymentMethod: paymentMethodMap[payMethod] ?? "card",
       inviteId: inviteDiscountAmount > 0 ? inviteDiscount?.inviteId : undefined,
       confirmOverlap,
@@ -297,8 +354,8 @@ export default function BookingClient({
   };
 
   const handleNext = async () => {
-    if (step < 3) {
-      setStep((s) => (s + 1) as 1 | 2 | 3);
+    if (step < totalSteps) {
+      setStep((s) => s + 1);
       return;
     }
 
@@ -331,7 +388,7 @@ export default function BookingClient({
   // qui con un push da un <Link>, quindi "indietro" è sempre il dettaglio).
   function handleBack() {
     if (step > 1) {
-      setStep((s) => (s - 1) as 1 | 2 | 3);
+      setStep((s) => s - 1);
       return;
     }
     router.back();
@@ -340,10 +397,10 @@ export default function BookingClient({
   return (
     <div className="flex h-full min-h-screen flex-col sm:min-h-0 sm:flex-1">
       <PageHeader title="Prenota il tuo posto" onBack={handleBack} />
-      <StepIndicator step={step} nextgen={nextgen} />
+      <StepIndicator step={step} labels={stepLabels} nextgen={nextgen} />
 
       <div ref={scrollRef} className="no-scrollbar flex-1 overflow-y-auto px-5 py-[18px]">
-        {step === 1 && dayBookingMode && (
+        {currentStepKind === "weeks" && dayBookingMode && (
           <div>
             <div className={`mb-1 ${titleCls}`}>Giorni scelti</div>
             <div className="mb-3 text-[13px] text-ink-2">
@@ -389,7 +446,7 @@ export default function BookingClient({
           </div>
         )}
 
-        {step === 1 && !dayBookingMode && (
+        {currentStepKind === "weeks" && !dayBookingMode && (
           <div>
             <div className={`mb-1 ${titleCls}`}>Scegli le settimane</div>
             <div className="mb-3 text-[13px] text-ink-2">
@@ -457,7 +514,77 @@ export default function BookingClient({
           </div>
         )}
 
-        {step === 2 && (
+        {currentStepKind === "services" && (
+          <div>
+            <div className={`mb-1 ${titleCls}`}>Servizi extra</div>
+            <div className="mb-4 text-[13px] text-ink-2">
+              Scegli solo quelli che ti servono — il costo si somma al totale
+            </div>
+            {canOfferPreService && activity.preService && (
+              <ServiceToggleRow
+                icon="ti-sunrise"
+                title="Ingresso anticipato"
+                sub={`Disponibile da ${activity.preService.time}`}
+                price={preServiceCost}
+                priceLabel={`+€${activity.preService.priceExtra}/sett. × ${kidsCount}`}
+                selected={preServiceSelected}
+                onToggle={() => setPreServiceSelected((v) => !v)}
+                accentBg={accentBg}
+                accentBorder={accentBorder}
+                accentLight={accentLight}
+              />
+            )}
+            {canOfferPostService && activity.postService && (
+              <ServiceToggleRow
+                icon="ti-sunset-2"
+                title="Uscita posticipata"
+                sub={`Disponibile fino a ${activity.postService.time}`}
+                price={postServiceCost}
+                priceLabel={`+€${activity.postService.priceExtra}/sett. × ${kidsCount}`}
+                selected={postServiceSelected}
+                onToggle={() => setPostServiceSelected((v) => !v)}
+                accentBg={accentBg}
+                accentBorder={accentBorder}
+                accentLight={accentLight}
+              />
+            )}
+            {canOfferMeal && (
+              <ServiceToggleRow
+                icon="ti-tools-kitchen-2"
+                title="Mensa"
+                sub={activity.mealOption === "included" ? "Pasto seguito dal centro" : "Servizio pranzo"}
+                price={mealCost}
+                priceLabel={`+€${activity.mealPriceExtra}/sett. × ${kidsCount}`}
+                selected={mealSelected}
+                onToggle={() => setMealSelected((v) => !v)}
+                accentBg={accentBg}
+                accentBorder={accentBorder}
+                accentLight={accentLight}
+              />
+            )}
+            {canOfferShuttle && (
+              <ServiceToggleRow
+                icon="ti-bus"
+                title="Navetta"
+                sub="Trasporto da/verso il centro"
+                price={shuttleCost}
+                priceLabel={`+€${activity.shuttlePrice}/sett. × ${kidsCount}`}
+                selected={shuttleSelected}
+                onToggle={() => setShuttleSelected((v) => !v)}
+                accentBg={accentBg}
+                accentBorder={accentBorder}
+                accentLight={accentLight}
+              />
+            )}
+            {servicesCost > 0 && (
+              <div className="mt-3 rounded-md bg-bg p-3.5">
+                <Row label="Servizi extra selezionati" value={`€${servicesCost}`} />
+              </div>
+            )}
+          </div>
+        )}
+
+        {currentStepKind === "kids" && (
           <div>
             <div className={`mb-1 ${titleCls}`}>Chi partecipa?</div>
             <div className="mb-4 text-[13px] text-ink-2">Seleziona bambini e aggiungi amici</div>
@@ -513,7 +640,7 @@ export default function BookingClient({
           </div>
         )}
 
-        {step === 3 && (
+        {currentStepKind === "payment" && (
           <div>
             <div className={`mb-1 ${titleCls}`}>Pagamento</div>
             <div className="mb-4 text-[13px] text-ink-2">Scegli il metodo di pagamento</div>
@@ -554,6 +681,15 @@ export default function BookingClient({
                 label={`${kidNames.join(", ") || "Bambino"} — ${selectedKids.length} bambino${selectedKids.length === 1 ? "" : "i"}`}
                 value={`×${selectedKids.length || 1}`}
               />
+              {preServiceCost > 0 && (
+                <Row label={`Ingresso anticipato (${nWeeks} sett. × ${kidsCount})`} value={`€${preServiceCost}`} />
+              )}
+              {postServiceCost > 0 && (
+                <Row label={`Uscita posticipata (${nWeeks} sett. × ${kidsCount})`} value={`€${postServiceCost}`} />
+              )}
+              {mealCost > 0 && (
+                <Row label={`Mensa (${nWeeks} sett. × ${kidsCount})`} value={`€${mealCost}`} />
+              )}
               {shuttleCost > 0 && (
                 <Row label={`Navetta (${nWeeks} sett. × ${kidsCount})`} value={`€${shuttleCost}`} />
               )}
@@ -632,15 +768,76 @@ export default function BookingClient({
           onClick={handleNext}
           disabled={
             submitting ||
-            (step === 1 && dayBookingMode && selectedDayRows.length === 0) ||
-            (step === 2 && selectedKids.length === 0)
+            (currentStepKind === "weeks" && dayBookingMode && selectedDayRows.length === 0) ||
+            (currentStepKind === "kids" && selectedKids.length === 0)
           }
           className={`w-full rounded-lg ${accentBg} py-[15px] text-[15px] font-bold text-white transition-colors ${accentHoverBg} disabled:cursor-not-allowed disabled:opacity-60`}
         >
-          {submitting ? "Attendere…" : step === 3 ? "Conferma e paga" : "Continua"}
+          {submitting ? "Attendere…" : currentStepKind === "payment" ? "Conferma e paga" : "Continua"}
         </button>
       </div>
     </div>
+  );
+}
+
+// FEATURE servizi extra (segnalazione Fabrizio 04/09/2026) — una riga per
+// servizio nel nuovo step "Servizi": tocco ovunque sulla riga per
+// selezionare/deselezionare, stesso principio già usato per WeekCard/KidRow
+// in questo stesso wizard (target di tocco grande, non solo la checkbox).
+function ServiceToggleRow({
+  icon,
+  title,
+  sub,
+  price,
+  priceLabel,
+  selected,
+  onToggle,
+  accentBg,
+  accentBorder,
+  accentLight,
+}: {
+  icon: string;
+  title: string;
+  sub: string;
+  price: number;
+  priceLabel: string;
+  selected: boolean;
+  onToggle: () => void;
+  accentBg: string;
+  accentBorder: string;
+  accentLight: string;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onToggle}
+      className={`mb-2.5 flex w-full items-center gap-3 rounded-lg border-[1.5px] p-3 text-left transition-colors ${
+        selected ? `${accentBorder} ${accentLight}` : "border-[#E8EBF0] bg-white"
+      }`}
+    >
+      <div
+        className={`flex h-[38px] w-[38px] flex-shrink-0 items-center justify-center rounded-full ${
+          selected ? accentBg : "bg-bg"
+        }`}
+      >
+        <i className={`ti ${icon} text-lg ${selected ? "text-white" : "text-ink-2"}`} />
+      </div>
+      <div className="min-w-0 flex-1">
+        <div className="text-[13px] font-bold text-ink">{title}</div>
+        <div className="text-[11.5px] text-ink-2">{sub}</div>
+        <div className="text-[11px] font-semibold text-ink-3">{priceLabel}</div>
+      </div>
+      <div className="flex flex-shrink-0 flex-col items-end gap-1">
+        {price > 0 && <span className="text-[13px] font-bold text-ink">€{price}</span>}
+        <div
+          className={`flex h-5 w-5 items-center justify-center rounded-md border-[1.5px] ${
+            selected ? `${accentBg} border-transparent` : "border-[#C5CDD8] bg-white"
+          }`}
+        >
+          {selected && <i className="ti ti-check text-xs text-white" />}
+        </div>
+      </div>
+    </button>
   );
 }
 

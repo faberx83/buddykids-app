@@ -3,8 +3,23 @@
 // altro call site), quindi sicuro da estendere con lo stesso pattern di
 // GroupDetailClient.tsx senza rischiare di toccare pagine Legacy-only.
 // Legacy (default false) resta invariato.
-export default function StepIndicator({ step, nextgen = false }: { step: 1 | 2 | 3; nextgen?: boolean }) {
-  const labels = ["Settimane", "Bambini", "Pagamento"];
+//
+// FEATURE servizi extra (segnalazione Fabrizio 04/09/2026: "il genitore deve
+// poter scegliere se accedere a tutti i servizi") — il wizard ora può avere
+// 3 O 4 step (uno step "Servizi" in più solo se l'attività ne offre almeno
+// uno, vedi BookingClient.tsx#hasAnyService): "step"/"labels" diventano
+// generici invece dei 3 hardcoded di prima, così lo stesso componente
+// funziona per entrambi i casi senza duplicazione.
+export default function StepIndicator({
+  step,
+  labels = ["Settimane", "Bambini", "Pagamento"],
+  nextgen = false,
+}: {
+  step: number;
+  labels?: string[];
+  nextgen?: boolean;
+}) {
+  const total = labels.length;
   const accentBg = nextgen ? "bg-trama-violet" : "bg-sky";
   const accentText = nextgen ? "text-trama-violet" : "text-sky";
   const accentRing = nextgen
@@ -20,7 +35,7 @@ export default function StepIndicator({ step, nextgen = false }: { step: 1 | 2 |
   return (
     <>
       <div className="flex flex-shrink-0 items-center px-5 pt-[18px]">
-        {[1, 2, 3].map((i) => (
+        {Array.from({ length: total }, (_, idx) => idx + 1).map((i) => (
           <div key={i} className="flex flex-1 items-center last:flex-none">
             <div
               className={`flex h-[30px] w-[30px] flex-shrink-0 items-center justify-center rounded-full text-xs font-bold transition-all ${dotClass(
@@ -29,7 +44,7 @@ export default function StepIndicator({ step, nextgen = false }: { step: 1 | 2 |
             >
               {i}
             </div>
-            {i < 3 && (
+            {i < total && (
               <div
                 className={`h-0.5 flex-1 transition-colors ${
                   i < step ? accentBg : "bg-[#F0F2F5]"
@@ -43,11 +58,11 @@ export default function StepIndicator({ step, nextgen = false }: { step: 1 | 2 |
         {labels.map((label, i) => (
           <span
             key={label}
-            // L'ultima label ("Pagamento") non ha spazio a destra (il 3° pallino
-            // è a filo bordo): centrarla in un box fisso da 30px la faceva
-            // sporgere oltre il bordo dello schermo. Qui resta larghezza
-            // naturale e ancorata a destra, cosi cresce verso sinistra invece
-            // che tagliarsi contro il margine.
+            // L'ultima label ("Pagamento") non ha spazio a destra (l'ultimo
+            // pallino è a filo bordo): centrarla in un box fisso da 30px la
+            // faceva sporgere oltre il bordo dello schermo. Qui resta
+            // larghezza naturale e ancorata a destra, cosi cresce verso
+            // sinistra invece che tagliarsi contro il margine.
             className={`whitespace-nowrap text-[10px] font-medium ${
               i + 1 === step ? `font-bold ${accentText}` : "text-ink-3"
             } ${i === labels.length - 1 ? "text-right" : "w-[30px] text-center"}`}
