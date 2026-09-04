@@ -1,3 +1,14 @@
+// NOTA DI ESECUZIONE (aggiornata 04/09/2026, TRAMA FINAL HARDENING §4-8):
+// da questa wave, lib/capacity/service.ts importa (per il trigger della
+// push "è tornato un posto") lib/notifications/availability-push.ts,
+// marcato "server-only" — il pacchetto reale lancia SEMPRE un errore se
+// risolto senza la condition "react-server" (Next la imposta
+// internamente, il runner Node di Playwright no). Da qui in poi questo
+// file va eseguito con:
+//   NODE_OPTIONS=--conditions=react-server npx playwright test tests/one/capacity-concurrency.spec.ts --project=chromium
+// Non impostato di default in package.json "test" per non rischiare di
+// alterare la risoluzione moduli del webServer (`npm run dev`) condiviso
+// con gli altri ~880 test E2E dello stesso comando.
 import { test, expect } from "@playwright/test";
 import { reserveWeekCapacity, releaseWeekCapacity } from "@/lib/capacity/service";
 

@@ -124,7 +124,11 @@ function firstOf<T>(value: T | T[] | null | undefined): T | null {
 // ATTIVA (non cancellata, qualunque attività) che copre il periodo dato —
 // vedi punto 4) nel commento di testa: soddisfa insieme "già coperto per
 // quell'attività" e "settimana non più scoperta nel Planner".
-async function getKidsAlreadyCoveredForPeriod(
+// Esportata (TRAMA FINAL HARDENING §21-23, test locali) SOLO per essere
+// testabile in isolamento con un client Supabase fittizio (stesso pattern
+// già usato in tests/one/capacity-concurrency.spec.ts) — nessun nuovo
+// consumatore reale al di fuori di questo modulo.
+export async function getKidsAlreadyCoveredForPeriod(
   service: ServiceClient,
   parentIds: string[],
   periodStart: string,
