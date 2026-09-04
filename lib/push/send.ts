@@ -49,6 +49,21 @@ export async function sendPushToUser(userId: string, payload: PushPayload): Prom
     const service = createServiceClient();
     if (!service) return; // Supabase non configurato o service key assente
 
+    // FIX (TRAMA FINAL HARDENING §9, root cause audit) — profiles.notify_push
+    // esiste da tempo (impostazioni Notifiche, lib/data/profile.ts) ma non
+    // era MAI letto qui: nessuno dei 6 punti di invio esistenti
+    // (booking-response.ts, booking/[id]/actions.ts, inquiries.ts x2,
+    // groups.ts x2, travel-reminders cron) verificava la preferenza —
+    // notify_push=false non impediva alcuna push. Centralizzato QUI (unico
+    // punto di invio reale, webpush.sendNotification) invece che in ognuno
+    // dei chiamanti: ogni punto di invio ATTUALE e FUTURO rispetta
+    // automaticamente la preferenza, senza dover ricordare di controllarla
+    // ogni volta. Default true (stesso default già usato da
+    // getProfile/lib/data/profile.ts, notify_push null = non ancora
+    // impostato esplicitamente) — SOLO false disattiva davvero.
+    const { data: profile } = await service.from("profiles").select("notify_push").eq("id", userId).maybeSingle();
+    if (profile && profile.notify_push === false) return; // preferenza esplicita: nessuna push, punto.
+
     const { data: subs, error } = await service
       .from("push_subscriptions")
       .select("id, endpoint, p256dh, auth")
