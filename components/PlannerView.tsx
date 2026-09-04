@@ -5,6 +5,7 @@ import Link from "next/link";
 import { Activity, Kid, PillColor } from "@/lib/types";
 import { PlannerData, SeasonWeek } from "@/lib/data/planner";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
+import { isAgeEligible } from "@/lib/matching";
 import { toggleWeekDismissedAction } from "@/app/actions/profile";
 import { lightBgClasses, solidBgClasses } from "@/lib/colors";
 import { categories } from "@/lib/mock-data";
@@ -142,12 +143,26 @@ export default function PlannerView({
     return categories.filter((c) => kid.interests!.includes(`${c.emoji} ${c.label}`)).map((c) => c.id);
   }, [selectedKidId, kids]);
 
+  // Bambino selezionato per il filtro età sotto (stesso identico principio
+  // di kidInterestTagIds appena sopra: solo in vista per-bambino).
+  const selectedKidForAge = useMemo(
+    () => (selectedKidId ? kids.find((k) => k.id === selectedKidId) : null),
+    [selectedKidId, kids]
+  );
+
   // Suggerimenti per riempire la settimana prioritaria: SOLO attività con
   // disponibilità reale in quella settimana (activity_weeks.spots_left > 0)
   // e, se un bambino specifico è selezionato, che rientrano nelle sue
   // preferenze — prima erano semplicemente le 4 attività con rating
   // migliore, senza alcun filtro (potevano non avere posti, o non
   // interessare affatto quel bambino).
+  //
+  // FIX (TRAMA FINAL HARDENING §18, segnalazione live 04/09/2026) — questo
+  // filtro non guardava MAI l'età: un bambino di 4 anni poteva ricevere il
+  // suggerimento "riempi questa settimana" con un'attività dichiarata
+  // 6-12 anni, incompatibile per definizione. Riusa isAgeEligible
+  // (lib/matching.ts) — stessa regola canonica ora già hard-cutoff lì,
+  // nessuna seconda soglia inventata qui.
   const suggestions = useMemo(() => {
     if (!priorityWeek) return [];
     const availableIds =
@@ -159,11 +174,12 @@ export default function PlannerView({
       .filter((a) => {
         if (availableIds && a.dbId && !availableIds.has(a.dbId)) return false;
         if (kidInterestTagIds.length > 0 && !a.tagIds.some((id) => kidInterestTagIds.includes(id))) return false;
+        if (selectedKidForAge && !isAgeEligible(selectedKidForAge.age, a.ageRange)) return false;
         return true;
       })
       .sort((a, b) => b.rating - a.rating || b.reviewsCount - a.reviewsCount)
       .slice(0, 4);
-  }, [activities, priorityWeek, availabilityByWeek, kidInterestTagIds]);
+  }, [activities, priorityWeek, availabilityByWeek, kidInterestTagIds, selectedKidForAge]);
 
   async function toggleDismissed(week: SeasonWeek) {
     const nextDismissed = !week.dismissed;

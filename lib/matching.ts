@@ -18,13 +18,32 @@ function parseAgeRange(ageRange: string): [number, number] | null {
   return [Number(match[1]), Number(match[2])];
 }
 
+// FIX (TRAMA FINAL HARDENING §18, segnalazione live 04/09/2026: un bambino
+// di 4 anni su un'attività dichiarata 6-12 anni mostrava "Match 65%" +
+// "Piace a [bambino]") — root cause: questo punteggio era un decadimento
+// morbido (Math.max(0, 50 - distanza*15)), MAI un taglio netto — a distanza
+// 2 restituiva ancora 20 punti, che sommati a interessi/rating potevano
+// facilmente superare qualunque soglia di "buon match". "HARD" per
+// esplicita richiesta: fuori range = ZERO, nessun punteggio parziale che
+// possa far apparire un'attività age-incompatibile come "quasi adatta".
+// isAgeEligible() è la stessa identica regola, esposta come booleano puro
+// per chi ha bisogno del solo giudizio di idoneità (non del punteggio).
+export function isAgeEligible(kidAge: number, ageRange: string): boolean {
+  const parsed = parseAgeRange(ageRange);
+  // Fascia età non leggibile/assente: non possiamo dichiarare
+  // un'incompatibilità che i dati non confermano — resta idoneo (nessun
+  // hard cutoff senza un dato reale su cui basarlo).
+  if (!parsed) return true;
+  const [min, max] = parsed;
+  return kidAge >= min && kidAge <= max;
+}
+
 function ageScore(kidAge: number, ageRange: string): number {
   const parsed = parseAgeRange(ageRange);
   if (!parsed) return 25; // fascia età non leggibile: punteggio neutro
   const [min, max] = parsed;
   if (kidAge >= min && kidAge <= max) return 50;
-  const distance = kidAge < min ? min - kidAge : kidAge - max;
-  return Math.max(0, 50 - distance * 15);
+  return 0; // hard cutoff — vedi commento sopra
 }
 
 function normalizeKeyword(text: string): string {
@@ -57,6 +76,15 @@ function ratingScore(activity: Activity): number {
 }
 
 export function matchPercentForKid(kid: Kid, activity: Activity): number {
+  // FIX (TRAMA FINAL HARDENING §18) — non basta azzerare SOLO il contributo
+  // età (sopra): interessi (fino a 40) + rating (fino a 10) da soli
+  // potevano ancora sommare a 50, abbastanza per restare tra i "Perfetti
+  // per [bambino]" (top 4, components/PerBambinoView.tsx) o superare la
+  // soglia "Piace a [bambino]" (lib/nextgen/smart-search.ts) nonostante
+  // l'età fosse realmente incompatibile — "non può MAI essere una
+  // raccomandazione per riempire la settimana di quel bambino" richiede lo
+  // zero TOTALE, non solo sulla componente età.
+  if (!isAgeEligible(kid.age, activity.ageRange)) return 0;
   const total = ageScore(kid.age, activity.ageRange) + interestScore(kid, activity) + ratingScore(activity);
   return Math.max(0, Math.min(99, Math.round(total)));
 }
