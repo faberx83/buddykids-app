@@ -18,7 +18,12 @@ import { revalidatePath } from "next/cache";
 // centralizzati in lib/capacity/service.ts, con idempotenza esplicita
 // (booking_weeks/booking_days.capacity_decremented) invece della logica
 // sparsa qui prima presente. Vedi migration_18_capacity_service.sql.
-import { releaseDayCapacity, reserveDayCapacity, reserveWeekCapacity } from "@/lib/capacity/service";
+import {
+  releaseDayCapacity,
+  releaseWeekCapacity,
+  reserveDayCapacity,
+  reserveWeekCapacity,
+} from "@/lib/capacity/service";
 // Push notifications (31/08/2026) — trigger P0 "il centro ha una proposta
 // per te" (SOLO decision==="proposed", l'unico caso ACTION nel notification
 // center in-app, vedi lib/data/notifications.ts). Best-effort per
@@ -109,6 +114,62 @@ export async function respondToBookingAction(input: {
   if (fetchError || !booking) return { error: "Prenotazione non trovata" };
   if (booking.status === "cancelled") return { error: "Questa prenotazione è stata annullata" };
 
+  // FIX (TRAMA FINAL HARDENING, segnalazione Fabrizio 04/09/2026 — root
+  // cause audit): prima di questo fix, "accepted" scriveva status=
+  // 'confirmed' PRIMA di verificare se reserveWeekCapacity riusciva
+  // davvero, e il risultato della reserve veniva scartato senza leggerlo —
+  // overbooking silenzioso identico al bug già corretto per i giorni spot
+  // in applyDayDecision.ts (vedi commento lì), mai chiuso qui per le
+  // prenotazioni a settimana intera. A differenza dei giorni spot, non
+  // esiste un concetto di "lista d'attesa" a livello di intera prenotazione
+  // (introdurne uno sarebbe un redesign, fuori scope di questa wave): se la
+  // capacità di ALMENO UNA delle settimane è esaurita, l'accettazione viene
+  // RIFIUTATA esplicitamente (nessuna scrittura di stato, errore chiaro al
+  // gestore) invece di confermare oltre capacità — e le eventuali settimane
+  // già riservate in questo stesso tentativo vengono rilasciate (rollback
+  // compensativo), così un fallimento parziale non lascia capacità
+  // "fantasma" bloccata.
+  if (input.decision === "accepted" && booking.partner_decision !== "accepted") {
+    const { data: weeks } = await supabase
+      .from("booking_weeks")
+      .select("week_id, capacity_decremented")
+      .eq("booking_id", input.bookingId);
+    const weekRows = weeks ?? [];
+    const reservedSoFar: string[] = [];
+    let capacityError = false;
+    for (const w of weekRows) {
+      const weekId = w.week_id as string;
+      // Idempotenza: se questa riga booking_weeks ha GIÀ riservato la
+      // capacità (es. tentativo precedente riuscito parzialmente e poi
+      // interrotto prima del commit dello status, o doppio submit), NON è
+      // un fallimento — reserveWeekCapacity la ritratterebbe come
+      // "applied:false" indistinguibile da "capacità esaurita" (stesso
+      // shape di ritorno), quindi va riconosciuta qui PRIMA di chiamarla,
+      // altrimenti una richiesta idempotente verrebbe rifiutata per errore.
+      if (w.capacity_decremented) continue;
+      const result = await reserveWeekCapacity(supabase, input.bookingId, weekId, undefined);
+      if (!result.applied) {
+        capacityError = true;
+        break;
+      }
+      reservedSoFar.push(weekId);
+    }
+    if (capacityError) {
+      // Rollback delle settimane riservate in QUESTO tentativo (non quelle
+      // già decrementate da un tentativo precedente, che restano valide —
+      // releaseWeekCapacity è comunque idempotente e no-op se
+      // capacity_decremented è già false, quindi rilasciare solo
+      // reservedSoFar è corretto e sufficiente).
+      for (const reservedWeekId of reservedSoFar) {
+        await releaseWeekCapacity(supabase, input.bookingId, reservedWeekId);
+      }
+      return {
+        error:
+          "Non ci sono più posti disponibili per almeno una delle settimane di questa prenotazione (probabilmente accettata nel frattempo un'altra richiesta sull'ultimo posto). La prenotazione NON è stata confermata — contatta la famiglia per un'alternativa.",
+      };
+    }
+  }
+
   const nowIso = new Date().toISOString();
   const update: Record<string, unknown> = {
     partner_decision: input.decision,
@@ -121,6 +182,8 @@ export async function respondToBookingAction(input: {
   };
 
   if (input.decision === "accepted") {
+    // Arriviamo qui SOLO se la capacità di ogni settimana è stata riservata
+    // con successo sopra (o se questa prenotazione era già accettata prima).
     update.status = "confirmed";
   } else if (input.decision === "rejected") {
     update.status = "cancelled";
@@ -141,22 +204,6 @@ export async function respondToBookingAction(input: {
   // delle push — decisione esplicita, non un'omissione).
   if (input.decision === "proposed") {
     await notifyParentOfBookingResponsePush(supabase, input.bookingId, input.proposalNote);
-  }
-
-  // Decremento capacità settimanale, solo su accettazione — ora delegato al
-  // servizio canonico (lib/capacity/service.ts), che verifica ESSO STESSO
-  // l'idempotenza per riga (booking_weeks.capacity_decremented, migration_18)
-  // invece di fare affidamento solo sul controllo booking.partner_decision
-  // qui sopra: due risposte quasi simultanee sulla stessa riga non possono
-  // più decrementare due volte.
-  if (input.decision === "accepted" && booking.partner_decision !== "accepted") {
-    const { data: weeks } = await supabase
-      .from("booking_weeks")
-      .select("week_id")
-      .eq("booking_id", input.bookingId);
-    for (const w of weeks ?? []) {
-      await reserveWeekCapacity(supabase, input.bookingId, w.week_id);
-    }
   }
 
   revalidateBookingPaths();
