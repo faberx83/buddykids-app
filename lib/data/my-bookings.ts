@@ -116,6 +116,17 @@ export interface MyBooking {
   // attesa di conferma del centro", che farebbe credere che il centro non
   // abbia ancora nemmeno guardato la richiesta.
   waitlistedDayCount: number;
+  // FIX (TRAMA FINAL HARDENING §16, segnalazione live 04/09/2026) — la nota
+  // "il centro deve ancora rispondere per gli altri" veniva mostrata sopra
+  // weeksLabel/daysLabel, che elenca SEMPRE TUTTI i giorni prenotati
+  // (accettati + rifiutati + ancora pending), mai filtrato — un genitore con
+  // "1 di 3 giorni confermati" vedeva quella nota accanto alla lista di
+  // TUTTI E 3 i giorni, come se tutti e 3 fossero ancora da decidere, anche
+  // quello già accettato. Solo le date GENUINAMENTE pending (non accettate,
+  // non rifiutate, non in lista d'attesa — quel sottoinsieme ha già la sua
+  // etichetta dedicata, vedi waitlistedDayCount) — null se non isDayBased o
+  // se non ce ne sono.
+  stillPendingDayDatesLabel: string | null;
   partnerProposalNote: string | null;
   // "Letta" dal punto di vista del genitore — stesso pattern read_by_parent
   // di activity_inquiries: falso quando il centro ha appena risposto, così
@@ -265,6 +276,19 @@ export async function getMyBookingsForParent(): Promise<MyBooking[]> {
     const waitlistedDayCount = isDayBased
       ? (row.booking_days ?? []).filter((bd) => bd.partner_decision === "waitlisted").length
       : 0;
+    // FIX (TRAMA FINAL HARDENING §16) — vedi commento su MyBooking sopra:
+    // SOLO i giorni davvero "pending" (né accettati, né rifiutati, né in
+    // lista d'attesa — quella ha già la sua etichetta separata).
+    const stillPendingDayDatesLabel = isDayBased
+      ? (row.booking_days ?? [])
+          .filter((bd) => bd.partner_decision === "pending")
+          .map((bd) => firstOf(bd.activity_days))
+          .filter((d): d is RawDayRef => Boolean(d))
+          .map((d) => d.date)
+          .sort()
+          .map((d) => formatDateShort(d))
+          .join(", ") || null
+      : null;
 
     const weeksLabel =
       weekRows
@@ -323,6 +347,7 @@ export async function getMyBookingsForParent(): Promise<MyBooking[]> {
       totalDayCount,
       stillPendingDayCount,
       waitlistedDayCount,
+      stillPendingDayDatesLabel,
       partnerProposalNote: row.partner_proposal_note,
       readByParent: row.read_by_parent ?? true,
       respondedAt: row.responded_at,

@@ -82,7 +82,13 @@ const STATUS_CLASS: Record<BookingStatus, string> = {
 function effectiveStatusBadge(
   b: Pick<
     MyBooking,
-    "status" | "partnerDecision" | "acceptedDayCount" | "totalDayCount" | "stillPendingDayCount" | "waitlistedDayCount"
+    | "status"
+    | "partnerDecision"
+    | "acceptedDayCount"
+    | "totalDayCount"
+    | "stillPendingDayCount"
+    | "waitlistedDayCount"
+    | "stillPendingDayDatesLabel"
   >
 ): { label: string; className: string; note?: string } {
   if (b.status === "confirmed" && b.partnerDecision === "partial") {
@@ -90,8 +96,23 @@ function effectiveStatusBadge(
     if (b.waitlistedDayCount > 0) {
       notes.push(`${b.waitlistedDayCount} in lista d'attesa (pien${b.waitlistedDayCount === 1 ? "o" : "i"})`);
     }
+    // FIX (TRAMA FINAL HARDENING §16, segnalazione live 04/09/2026) — prima
+    // diceva solo "il centro deve ancora rispondere per gli altri", mostrato
+    // accanto a weeksLabel/daysLabel che elenca SEMPRE tutti i giorni
+    // prenotati (inclusi quelli già accettati/rifiutati/in lista d'attesa):
+    // sembrava che TUTTI i giorni elencati fossero ancora da decidere. Ora la
+    // nota nomina esplicitamente SOLO le date genuinamente pending
+    // (stillPendingDayDatesLabel, calcolato in lib/data/my-bookings.ts con la
+    // stessa classificazione booking_days.partner_decision === "pending" già
+    // usata dalla vista dettaglio/modifica giorno per giorno).
     const trulyPending = b.stillPendingDayCount - b.waitlistedDayCount;
-    if (trulyPending > 0) notes.push("il centro deve ancora rispondere per gli altri");
+    if (trulyPending > 0) {
+      notes.push(
+        b.stillPendingDayDatesLabel
+          ? `il centro deve ancora rispondere per: ${b.stillPendingDayDatesLabel}`
+          : "il centro deve ancora rispondere per gli altri"
+      );
+    }
     return {
       label: `Confermata parzialmente (${b.acceptedDayCount} di ${b.totalDayCount} giorni)`,
       className: "bg-[#F0EEFF] text-[#6F63C5]",
