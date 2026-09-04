@@ -72,10 +72,12 @@ export async function getAttendanceReportForCenter(): Promise<AttendanceReport> 
     return { byDate: [], byActivity: [], topIssues: [], hasPastData: false };
   }
 
+  // FIX (TRAMA FINAL HARDENING §10-12) — groupKey (mai g.weekId, che per un
+  // gruppo "a giorno"/Giorni spot ora è null, vedi lib/data/attendance.ts).
   const attendanceByWeek: Record<string, AttendanceDayStatus[]> = {};
   await Promise.all(
     weekGroups.map(async (g) => {
-      attendanceByWeek[g.weekId] = await getAttendanceForWeek(g.weekId);
+      attendanceByWeek[g.groupKey] = g.weekId ? await getAttendanceForWeek(g.weekId) : [];
     })
   );
 
@@ -97,6 +99,17 @@ export function buildAttendanceReport(
   let hasPastData = false;
 
   for (const group of weekGroups) {
+    // FIX (TRAMA FINAL HARDENING §10-12) — un gruppo "a giorno" (Giorni
+    // spot) non può ancora avere nessun attendance_records reale
+    // (week_id NOT NULL finché migration_35 non è applicata): includerlo
+    // qui produrrebbe un tasso di assenza SISTEMATICAMENTE falso (ogni
+    // bambino atteso oggi via Giorni spot risulterebbe "assente" per
+    // definizione, mai perché lo sia davvero). Il Registro presenze
+    // (getParticipantsForCenter) lo mostra comunque per visibilità
+    // operativa — qui, nelle statistiche quantitative, va escluso finché
+    // non si può misurare correttamente (KNOWN LIMITATION, vedi report).
+    if (group.isDayBased) continue;
+
     // Solo i giorni già trascorsi (oggi incluso): il futuro non ha ancora
     // nessuna presenza reale da poter contare, includerlo gonfierebbe le
     // "assenze" con giorni semplicemente non ancora arrivati.
@@ -104,7 +117,7 @@ export function buildAttendanceReport(
     if (days.length === 0 || group.kids.length === 0) continue;
     hasPastData = true;
 
-    const recordsForWeek = attendanceByWeek[group.weekId] ?? [];
+    const recordsForWeek = attendanceByWeek[group.groupKey] ?? [];
     const recordMap = new Map<string, AttendanceDayStatus>();
     for (const r of recordsForWeek) recordMap.set(`${r.kidId}:${r.date}`, r);
 
@@ -229,6 +242,13 @@ interface ExpectedDay {
 }
 
 interface RawParentBookingRow {
+  // FIX (TRAMA FINAL HARDENING §10-12) — vedi guardia sotto: senza questo
+  // campo, una prenotazione ANCORA "pending" (il centro non ha ancora
+  // risposto) contava comunque come "giorno atteso" in questo report — un
+  // genitore avrebbe visto un finto "assente" per un giorno mai davvero
+  // confermato. Stessa regola canonica di getTodayCheckinsForParent/
+  // getParticipantsForCenter.
+  partner_decision: string;
   activities: { id: string; name: string } | { id: string; name: string }[] | null;
   booking_kids: { kid_id: string; kids: { id: string; name: string } | { id: string; name: string }[] | null }[] | null;
   booking_weeks: {
@@ -248,7 +268,7 @@ export async function getAttendanceReportForParent(): Promise<ParentAttendanceRe
   const { data, error } = await supabase
     .from("bookings")
     .select(
-      "activities ( id, name ), booking_kids ( kid_id, kids ( id, name ) ), booking_weeks ( activity_weeks ( id, start_date, end_date ) )"
+      "partner_decision, activities ( id, name ), booking_kids ( kid_id, kids ( id, name ) ), booking_weeks ( activity_weeks ( id, start_date, end_date ) )"
     )
     .eq("parent_id", user.id)
     .neq("status", "cancelled");
@@ -260,6 +280,8 @@ export async function getAttendanceReportForParent(): Promise<ParentAttendanceRe
   const kidIds = new Set<string>();
 
   for (const booking of data as RawParentBookingRow[]) {
+    // FIX (TRAMA FINAL HARDENING §10-12) — vedi commento su RawParentBookingRow.
+    if (booking.partner_decision !== "accepted") continue;
     const activity = firstOf(booking.activities);
     if (!activity) continue;
 

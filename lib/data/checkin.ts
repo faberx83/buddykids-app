@@ -105,6 +105,11 @@ interface RawDayRef {
 }
 
 interface RawBookingRow {
+  // FIX (TRAMA FINAL HARDENING §10-12) — vedi commento sul ramo booking_weeks
+  // sotto: senza questo campo, una prenotazione a settimana intera ANCORA
+  // "pending" (il centro non ha ancora risposto) produceva comunque una
+  // card di check-in in Home, come se fosse già un impegno confermato.
+  partner_decision: string;
   activities: RawActivityRef | RawActivityRef[] | null;
   booking_kids: { kid_id: string; kids: { id: string; name: string } | { id: string; name: string }[] | null }[] | null;
   booking_weeks: {
@@ -143,7 +148,7 @@ export async function getTodayCheckinsForParent(): Promise<TodayCheckin[]> {
   const { data, error } = await supabase
     .from("bookings")
     .select(
-      "activities ( id, name, slug, emoji, img_gradient, cover_image_url ), booking_kids ( kid_id, kids ( id, name ) ), booking_weeks ( activity_weeks ( id, label, start_date, end_date ) ), booking_days ( partner_decision, activity_days ( id, date ) )"
+      "partner_decision, activities ( id, name, slug, emoji, img_gradient, cover_image_url ), booking_kids ( kid_id, kids ( id, name ) ), booking_weeks ( activity_weeks ( id, label, start_date, end_date ) ), booking_days ( partner_decision, activity_days ( id, date ) )"
     )
     .eq("parent_id", user.id)
     .neq("status", "cancelled");
@@ -156,6 +161,16 @@ export async function getTodayCheckinsForParent(): Promise<TodayCheckin[]> {
     if (!activity) continue;
 
     for (const bw of booking.booking_weeks ?? []) {
+      // FIX (TRAMA FINAL HARDENING §10-12, root cause audit — "must not
+      // assume bookings.status, partnerDecision... are equivalenti"): il
+      // filtro sopra guarda solo status !== 'cancelled', che include anche
+      // una prenotazione ANCORA "pending" (il centro non ha ancora
+      // risposto) — mostrarla come "[Bambino] è arrivato?" oggi sarebbe un
+      // impegno non confermato spacciato per reale. Stessa regola già
+      // corretta per i giorni spot subito sotto (partner_decision ===
+      // "accepted"), qui semplicemente non era mai stata applicata al ramo
+      // a settimana intera.
+      if (booking.partner_decision !== "accepted") continue;
       const week = firstOf(bw.activity_weeks);
       if (!week) continue;
       if (today < week.start_date || today > week.end_date) continue; // non è oggi la settimana di camp

@@ -24,7 +24,32 @@ export interface AttendanceKid {
 export interface AttendanceWeekGroup {
   activityId: string;
   activityName: string;
-  weekId: string;
+  // FIX (TRAMA FINAL HARDENING §10-12, segnalazione Fabrizio 04/09/2026 —
+  // badge "Registro presenze" con un numero ma pagina "Nessun partecipante
+  // trovato"): questa funzione leggeva SOLO booking_weeks — una prenotazione
+  // "Giorni spot" (booking_days) non aveva MAI una riga qui, quindi non
+  // compariva MAI nel roster del gestore, anche con un giorno accettato
+  // proprio oggi (esattamente lo stesso gap già trovato e corretto lato
+  // genitore in lib/data/checkin.ts#getTodayCheckinsForParent). weekId ora
+  // è null per un gruppo "a giorno" — usare SEMPRE groupKey (mai
+  // ricostruire "${activityId}:${weekId}" a mano) per identificare un
+  // gruppo in modo univoco indipendentemente dal tipo.
+  weekId: string | null;
+  // Valorizzato SOLO per un gruppo "a giorno" (Giorni spot) — id della riga
+  // activity_days, MAI insieme a weekId (esattamente come TodayCheckin in
+  // checkin.ts: mai entrambi valorizzati).
+  activityDayId?: string | null;
+  // true per un gruppo "a giorno": la UI deve disabilitare la spunta
+  // presenza (attendance_records richiede week_id NOT NULL finché
+  // supabase/migration_35_attendance_day_based.sql non è applicata — questo
+  // gruppo esiste solo per rendere VISIBILE chi è atteso oggi, non ancora
+  // per registrarne la presenza).
+  isDayBased?: boolean;
+  // Chiave univoca stabile per questo gruppo, indipendente dal tipo
+  // (settimana intera o giorno spot) — SEMPRE usarla per selezione/lookup
+  // lato client invece di ricostruire una chiave da weekId (che per i
+  // gruppi "a giorno" è null).
+  groupKey: string;
   weekLabel: string;
   startDate: string;
   endDate: string;
@@ -34,7 +59,8 @@ export interface AttendanceWeekGroup {
   // ordine alfabetico/data (segnalazione di Fabrizio: il check-in del
   // genitore non si vedeva perché il gestore si trovava di default su una
   // settimana diversa da quella di oggi) e per mostrare un indicatore
-  // "Oggi" nella sidebar.
+  // "Oggi" nella sidebar. Sempre true per un gruppo "a giorno" (esiste solo
+  // per oggi, vedi sopra).
   isCurrentWeek: boolean;
 }
 
@@ -46,6 +72,13 @@ function firstOf<T>(value: T | T[] | null | undefined): T | null {
 interface RawBookingRow {
   id: string;
   status: string;
+  // FIX (TRAMA FINAL HARDENING §10-12) — vedi guardia nel loop
+  // booking_weeks sotto: senza questo campo, una prenotazione a settimana
+  // intera ANCORA "pending" (il centro non ha ancora risposto) compariva
+  // comunque nel Registro presenze, come se fosse già un partecipante
+  // confermato — stesso difetto concettuale già corretto in
+  // lib/data/checkin.ts#getTodayCheckinsForParent.
+  partner_decision: string;
   activity_id: string;
   activities: { id: string; name: string } | { id: string; name: string }[] | null;
   profiles: { id: string; full_name: string | null; email: string | null; phone: string | null } | { id: string; full_name: string | null; email: string | null; phone: string | null }[] | null;
@@ -53,6 +86,13 @@ interface RawBookingRow {
   booking_weeks: {
     week_id: string;
     activity_weeks: { id: string; label: string; start_date: string; end_date: string } | { id: string; label: string; start_date: string; end_date: string }[] | null;
+  }[] | null;
+  // FIX (TRAMA FINAL HARDENING §10-12) — vedi commento su AttendanceWeekGroup
+  // sopra: senza questo campo, una prenotazione "Giorni spot" non produceva
+  // MAI un gruppo, quindi non compariva mai nel roster del gestore.
+  booking_days: {
+    partner_decision: string;
+    activity_days: { id: string; date: string } | { id: string; date: string }[] | null;
   }[] | null;
 }
 
@@ -76,7 +116,7 @@ export async function getParticipantsForCenter(): Promise<AttendanceWeekGroup[]>
   let query = supabase
     .from("bookings")
     .select(
-      "id, status, activity_id, activities ( id, name ), profiles ( id, full_name, email, phone ), booking_kids ( kid_id, kids ( id, name ) ), booking_weeks ( week_id, activity_weeks ( id, label, start_date, end_date ) )"
+      "id, status, partner_decision, activity_id, activities ( id, name ), profiles ( id, full_name, email, phone ), booking_kids ( kid_id, kids ( id, name ) ), booking_weeks ( week_id, activity_weeks ( id, label, start_date, end_date ) ), booking_days ( partner_decision, activity_days ( id, date ) )"
     )
     .neq("status", "cancelled");
 
@@ -127,10 +167,16 @@ export async function getParticipantsForCenter(): Promise<AttendanceWeekGroup[]>
     if (!activity) continue;
 
     for (const bw of booking.booking_weeks ?? []) {
+      // FIX (TRAMA FINAL HARDENING §10-12) — vedi commento su RawBookingRow
+      // sopra: una prenotazione ancora "pending" non è un partecipante
+      // confermato, non deve apparire nel Registro presenze (che invece resta
+      // il posto giusto per le richieste ancora da decidere è l'Inbox
+      // prenotazioni, /center/prenotazioni — non questa vista).
+      if (booking.partner_decision !== "accepted") continue;
       const week = firstOf(bw.activity_weeks);
       if (!week) continue;
 
-      const key = `${activity.id}:${week.id}`;
+      const key = `${activity.id}:week:${week.id}`;
       if (!groupsMap.has(key)) {
         const canonicalWeek = seasonWeeks.find((sw) =>
           overlaps(week.start_date, week.end_date, sw.start.toISOString().slice(0, 10), sw.end.toISOString().slice(0, 10))
@@ -139,6 +185,7 @@ export async function getParticipantsForCenter(): Promise<AttendanceWeekGroup[]>
           activityId: activity.id,
           activityName: activity.name,
           weekId: week.id,
+          groupKey: key,
           weekLabel: canonicalWeek ? `Settimana ${canonicalWeek.index}` : week.label,
           startDate: week.start_date,
           endDate: week.end_date,
@@ -154,6 +201,59 @@ export async function getParticipantsForCenter(): Promise<AttendanceWeekGroup[]>
         if (weekGroup.kids.some((k) => k.kidId === kid.id)) continue; // evita duplicati se più prenotazioni
 
         weekGroup.kids.push({
+          kidId: kid.id,
+          kidName: kid.name,
+          parentName: parent?.full_name || "",
+          parentEmail: parent?.email || "",
+          parentPhone: parent?.phone || "",
+          groupName: groupNameByKidActivity.get(`${kid.id}:${activity.id}`) ?? null,
+        });
+      }
+    }
+
+    // FIX (TRAMA FINAL HARDENING §10-12) — gruppo "a giorno" per una
+    // prenotazione Giorni spot con un giorno che cade OGGI: mostrato SOLO
+    // se il centro lo ha REALMENTE accettato (booking_days.partner_decision
+    // === "accepted", stessa regola canonica già usata da
+    // getTodayCheckinsForParent — un giorno pending/rifiutato/in lista
+    // d'attesa non è un impegno confermato, niente roster per qualcosa che
+    // potrebbe non esserci). Limitato a OGGI (non tutta la stagione, a
+    // differenza dei gruppi a settimana): è il "Registro presenze"
+    // operativo del giorno, coerente con isChildExpectedToday richiesto
+    // dalla spec — il browsing storico/futuro per Giorni spot resta un
+    // gap noto, riportato nel report finale.
+    for (const bd of booking.booking_days ?? []) {
+      if (bd.partner_decision !== "accepted") continue;
+      const day = firstOf(bd.activity_days);
+      if (!day || day.date !== todayIso) continue;
+
+      const key = `${activity.id}:day:${day.id}`;
+      if (!groupsMap.has(key)) {
+        const canonicalWeek = seasonWeeks.find((sw) =>
+          overlaps(day.date, day.date, sw.start.toISOString().slice(0, 10), sw.end.toISOString().slice(0, 10))
+        );
+        groupsMap.set(key, {
+          activityId: activity.id,
+          activityName: activity.name,
+          weekId: null,
+          activityDayId: day.id,
+          isDayBased: true,
+          groupKey: key,
+          weekLabel: canonicalWeek ? `Settimana ${canonicalWeek.index} · Giorno spot` : `Giorno spot`,
+          startDate: day.date,
+          endDate: day.date,
+          kids: [],
+          isCurrentWeek: true, // per costruzione: esiste solo per oggi
+        });
+      }
+      const dayGroup = groupsMap.get(key)!;
+
+      for (const bk of booking.booking_kids ?? []) {
+        const kid = firstOf(bk.kids);
+        if (!kid) continue;
+        if (dayGroup.kids.some((k) => k.kidId === kid.id)) continue;
+
+        dayGroup.kids.push({
           kidId: kid.id,
           kidName: kid.name,
           parentName: parent?.full_name || "",

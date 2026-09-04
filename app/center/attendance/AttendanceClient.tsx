@@ -75,9 +75,10 @@ export default function AttendanceClient({
   // calcolato in lib/data/attendance.ts), con fallback al comportamento
   // precedente se nessuna attività ha una settimana per oggi.
   const defaultGroup = weekGroups.find((g) => g.isCurrentWeek) ?? weekGroups[0] ?? null;
-  const [selectedKey, setSelectedKey] = useState<string | null>(
-    defaultGroup ? `${defaultGroup.activityId}:${defaultGroup.weekId}` : null
-  );
+  // FIX (TRAMA FINAL HARDENING §10-12) — groupKey (mai
+  // "${activityId}:${weekId}" ricostruito a mano): un gruppo "a giorno"
+  // (Giorni spot) ha weekId null, quella chiave sarebbe stata invalida.
+  const [selectedKey, setSelectedKey] = useState<string | null>(defaultGroup ? defaultGroup.groupKey : null);
 
   const { initialAttendance, initialParentReport } = useMemo(() => {
     const map: AttendanceMap = {};
@@ -113,7 +114,7 @@ export default function AttendanceClient({
       .map(([, v]) => v);
   }, [weekGroups]);
 
-  const selectedGroup = weekGroups.find((g) => `${g.activityId}:${g.weekId}` === selectedKey) ?? null;
+  const selectedGroup = weekGroups.find((g) => g.groupKey === selectedKey) ?? null;
   const days = selectedGroup ? daysInWeekClient(selectedGroup.startDate, selectedGroup.endDate) : [];
   // Se oggi rientra nella settimana selezionata, parte da lì di default
   // (altrimenti si rischia di guardare Lunedì e non vedere un check-in del
@@ -143,7 +144,13 @@ export default function AttendanceClient({
   // toggle presente/assente) — copre anche la conferma/correzione di
   // "in_ritardo" segnalato dal check-in del genitore (Home).
   async function setStatus(kidId: string, date: string, next: AttendanceStatus) {
-    if (!selectedGroup) return;
+    if (!selectedGroup || !selectedGroup.weekId) return;
+    // FIX (TRAMA FINAL HARDENING §10-12) — guardia esplicita: un gruppo "a
+    // giorno" (Giorni spot) non ha weekId (attendance_records lo richiede
+    // NOT NULL finché migration_35 non è applicata) — la UI sotto disabilita
+    // già i controlli per questi gruppi, questa è solo la seconda barriera
+    // (mai scrivere un weekId inventato/errato).
+    const weekId = selectedGroup.weekId;
     const key = `${kidId}:${date}`;
     const current = attendance[key] ?? "assente";
     const currentParentReport = parentReport[key] ?? false;
@@ -157,7 +164,7 @@ export default function AttendanceClient({
     setSavingKey(key);
     const result = await setAttendanceAction({
       activityId: selectedGroup.activityId,
-      weekId: selectedGroup.weekId,
+      weekId,
       kidId,
       date,
       status: next,
@@ -202,7 +209,7 @@ export default function AttendanceClient({
                     {bucket.label}
                   </div>
                   {bucket.items.map((g) => {
-                    const key = `${g.activityId}:${g.weekId}`;
+                    const key = g.groupKey;
                     return (
                       <button
                         key={key}
@@ -258,21 +265,36 @@ export default function AttendanceClient({
                   ))}
                 </div>
 
-                {/* Riepilogo arrivati/prenotati del giorno attivo. */}
-                <div className="mb-3 flex items-center justify-between rounded-md bg-bg px-3.5 py-2.5">
-                  <div className="text-sm font-semibold text-ink">
-                    <span className="text-partner">{presentKids.length}</span> presenti su {bookedCount}{" "}
-                    prenotati
-                    {lateKids.length > 0 && (
-                      <span className="ml-2 font-normal text-orange">· {lateKids.length} in ritardo</span>
+                {/* FIX (TRAMA FINAL HARDENING §10-12) — un gruppo "a giorno"
+                    (Giorni spot) non ha ancora presenze registrabili
+                    (attendance_records richiede week_id NOT NULL finché
+                    migration_35 non è applicata): il riepilogo "N presenti
+                    su M prenotati" sarebbe falso (mostrerebbe sempre 0
+                    presenti/tutti assenti, dato che non esiste alcun record
+                    da leggere) — sostituito da una nota esplicita invece di
+                    dichiarare un dato che i dati reali non confermano. */}
+                {selectedGroup.isDayBased ? (
+                  <div className="mb-3 rounded-md bg-sky-light px-3.5 py-2.5 text-sm text-ink">
+                    <span className="font-semibold">{selectedGroup.kids.length} bambini attesi oggi</span> per
+                    questo giorno spot — la spunta presenza per le prenotazioni Giorni spot richiede un
+                    aggiornamento del database non ancora applicato (in arrivo).
+                  </div>
+                ) : (
+                  <div className="mb-3 flex items-center justify-between rounded-md bg-bg px-3.5 py-2.5">
+                    <div className="text-sm font-semibold text-ink">
+                      <span className="text-partner">{presentKids.length}</span> presenti su {bookedCount}{" "}
+                      prenotati
+                      {lateKids.length > 0 && (
+                        <span className="ml-2 font-normal text-orange">· {lateKids.length} in ritardo</span>
+                      )}
+                    </div>
+                    {absentKids.length > 0 && (
+                      <div className="max-w-[60%] truncate text-right text-xs text-ink-2">
+                        Assenti: {absentKids.map((k) => k.kidName).join(", ")}
+                      </div>
                     )}
                   </div>
-                  {absentKids.length > 0 && (
-                    <div className="max-w-[60%] truncate text-right text-xs text-ink-2">
-                      Assenti: {absentKids.map((k) => k.kidName).join(", ")}
-                    </div>
-                  )}
-                </div>
+                )}
 
                 <div className="divide-y divide-[#F0F2F5]">
                   {selectedGroup.kids.map((kid) => {
@@ -305,26 +327,32 @@ export default function AttendanceClient({
                             </div>
                           </div>
                         </div>
-                        <div className="flex gap-1.5">
-                          {(["presente", "in_ritardo", "assente"] as const).map((s) => (
-                            <button
-                              key={s}
-                              onClick={() => setStatus(kid.kidId, activeDay, s)}
-                              disabled={savingKey === key}
-                              className={`flex-1 rounded-md px-3 py-1.5 text-xs font-bold transition-colors disabled:opacity-60 ${
-                                status === s
-                                  ? s === "presente"
-                                    ? "bg-partner text-white"
-                                    : s === "in_ritardo"
-                                      ? "bg-orange text-white"
-                                      : "bg-ink text-white"
-                                  : "border border-[#E8EBF0] text-ink-2"
-                              }`}
-                            >
-                              {STATUS_LABEL[s]}
-                            </button>
-                          ))}
-                        </div>
+                        {selectedGroup.isDayBased ? (
+                          <div className="rounded-md border border-dashed border-[#E8EBF0] px-3 py-1.5 text-center text-[11px] text-ink-3">
+                            Presenza non ancora registrabile per i giorni spot
+                          </div>
+                        ) : (
+                          <div className="flex gap-1.5">
+                            {(["presente", "in_ritardo", "assente"] as const).map((s) => (
+                              <button
+                                key={s}
+                                onClick={() => setStatus(kid.kidId, activeDay, s)}
+                                disabled={savingKey === key}
+                                className={`flex-1 rounded-md px-3 py-1.5 text-xs font-bold transition-colors disabled:opacity-60 ${
+                                  status === s
+                                    ? s === "presente"
+                                      ? "bg-partner text-white"
+                                      : s === "in_ritardo"
+                                        ? "bg-orange text-white"
+                                        : "bg-ink text-white"
+                                    : "border border-[#E8EBF0] text-ink-2"
+                                }`}
+                              >
+                                {STATUS_LABEL[s]}
+                              </button>
+                            ))}
+                          </div>
+                        )}
                       </div>
                     );
                   })}
