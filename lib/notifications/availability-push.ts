@@ -17,20 +17,32 @@ import "server-only";
 //    (spots_left era 0 PRIMA di questa specifica mutazione riuscita) — mai
 //    per ogni aggiornamento di capacità.
 //
-// 2) CANDIDATE FAMILIES — "chi ha messo questa attività tra i Preferiti".
-//    Nessuna soglia di "match %" arbitraria (l'istruzione esplicita è "non
-//    inventare 70%, usa una regola conservativa derivata da ranking/
-//    raccomandazione esistente O favorite+raccomandazione, documenta la
-//    scelta"): i Preferiti sono l'unico segnale di interesse ESPLICITO e
-//    già esistente in questo prodotto per una singola attività (a
-//    differenza del "match %" di lib/matching.ts, che è per-bambino/
-//    per-lista, non un indice "chi è interessato a QUESTA attività" — usarlo
-//    richiederebbe scansionare tutte le famiglie della piattaforma per
-//    ricalcolare un punteggio ad ogni rilascio di capacità, costoso e non
-//    più "conservativo" di così). Filtrato poi per eleggibilità reale
-//    (isAgeEligible, lib/matching.ts — stesso hard cutoff appena introdotto,
-//    nessuna soglia parallela) e per "non già coperto" quella settimana/
-//    giorno (vedi getKidsAlreadyCoveredForPeriod sotto).
+// 2) CANDIDATE FAMILIES — AGGIORNATO in TRAMA FINAL HARDENING CLOSURE §4
+//    (04/09/2026). La wave precedente limitava i candidati a "chi ha questa
+//    attività nei Preferiti", per evitare di scansionare tutte le famiglie
+//    della piattaforma. Requisito esplicito di questa closure wave: un
+//    bambino con un bisogno ancora scoperto per cui questa attività è una
+//    "buona raccomandazione" deve poter ricevere la push ANCHE se la
+//    famiglia non l'ha mai messa nei Preferiti — "NON creare un nuovo
+//    algoritmo di matching, RIUSA la recommendation/smart matching logic
+//    canonica". Candidate kid ora = Preferiti(attività) OR
+//    matchPercentForKid(kid, attività) >= 40 — la STESSA soglia già usata
+//    da lib/nextgen/smart-search.ts per decidere il reason "Piace a
+//    [bambino]" (computeSmartMatches, "if (percent >= 40)
+//    matchingKidNames.push(...)"), non un numero nuovo inventato qui.
+//    matchPercentForKid già incorpora isAgeEligible come hard cutoff (Fix
+//    #133/§20 di questa wave: fuori range => 0, mai un punteggio parziale),
+//    quindi il ramo "recommendation" non può mai proporre un'attività
+//    age-incompatibile — il controllo isAgeEligible esplicito sotto resta
+//    comunque anche per il ramo "favorite" (un preferito non è mai
+//    un'eccezione all'età). "Costoso": la scansione è SOLO sui bambini
+//    (tabella kids, poche centinaia di righe in un pilot), UNA volta per
+//    attività al momento della sua transizione 0→disponibile — mai per
+//    ogni attività della piattaforma, mai per ogni richiesta HTTP — e il
+//    punteggio (lib/matching.ts) è puro/sincrono, nessuna query aggiuntiva
+//    per bambino. Filtrato poi per eleggibilità reale (isAgeEligible) e per
+//    "non già coperto" quella settimana/giorno (vedi
+//    getKidsAlreadyCoveredForPeriod sotto) — invariato.
 //
 // 3) DEDUPLICAZIONE — QUESTO È IL LIMITE DOCUMENTATO PIÙ IMPORTANTE. La
 //    tabella product_events (migration_20, applicata) è stata valutata e
@@ -70,8 +82,14 @@ import "server-only";
 
 import { createServiceClient } from "@/lib/supabase/service";
 import { sendPushToUser } from "@/lib/push/send";
-import { isAgeEligible } from "@/lib/matching";
+import { isAgeEligible, matchPercentForKid } from "@/lib/matching";
 import { overlaps } from "@/lib/season-weeks";
+import type { Activity, Kid } from "@/lib/types";
+
+// Stessa soglia di lib/nextgen/smart-search.ts (computeSmartMatches) — vedi
+// punto 2) nel commento di testa: non un numero nuovo, lo stesso già usato
+// per decidere "Piace a [bambino]" in Cerca/Scopri.
+const RECOMMENDATION_THRESHOLD = 40;
 
 type ServiceClient = NonNullable<ReturnType<typeof createServiceClient>>;
 
@@ -186,13 +204,44 @@ export async function notifyAvailabilityBackInStock(scope: AvailabilityBackInSto
     const service = createServiceClient();
     if (!service) return;
 
-    const { data: activity } = await service
+    // TRAMA FINAL HARDENING CLOSURE §4 — colonne in più (description,
+    // rating, activity_tags) rispetto alla wave precedente: servono per
+    // eseguire il VERO matchPercentForKid (lib/matching.ts), non solo il
+    // taglio età, sul ramo "recommendation" sotto. Stessa forma minima già
+    // usata da mapRow (lib/data/activities.ts), qui senza i campi non
+    // rilevanti per il punteggio (prezzo, orari, ecc.).
+    const { data: activityRow } = await service
       .from("activities")
-      .select("id, name, slug, age_min, age_max")
+      .select(
+        "id, name, slug, age_min, age_max, description, rating, activity_tags ( tags ( label ) )"
+      )
       .eq("id", scope.activityId)
       .maybeSingle();
-    if (!activity || !activity.slug) return;
+    if (!activityRow || !activityRow.slug) return;
+    const activity = activityRow as {
+      id: string;
+      name: string;
+      slug: string;
+      age_min: number | null;
+      age_max: number | null;
+      description: string | null;
+      rating: number | null;
+      activity_tags: { tags: { label: string } | { label: string }[] | null }[] | null;
+    };
     const ageRange = `${activity.age_min ?? 0}-${activity.age_max ?? 99}`;
+    // "Activity"-shaped minimo sufficiente per matchPercentForKid (ageRange,
+    // interessi via tags/description/name, rating) — i campi non usati dal
+    // punteggio (prezzo, indirizzo, ecc.) sono irrilevanti qui e omessi.
+    const activityForMatching = {
+      name: activity.name,
+      description: activity.description ?? "",
+      ageRange,
+      tags: (activity.activity_tags ?? [])
+        .map((t) => (Array.isArray(t.tags) ? t.tags[0] : t.tags))
+        .filter((t): t is { label: string } => Boolean(t))
+        .map((t) => ({ label: t.label })),
+      rating: activity.rating ?? 0,
+    } as unknown as Activity;
 
     let periodStart: string;
     let periodEnd: string;
@@ -229,29 +278,59 @@ export async function notifyAvailabilityBackInStock(scope: AvailabilityBackInSto
     const todayIso = new Date().toISOString().slice(0, 10);
     if (periodEnd < todayIso) return;
 
-    const { data: favRows, error: favError } = await service
+    const { data: favRows } = await service
       .from("favorites")
       .select("parent_id")
       .eq("activity_id", scope.activityId);
-    if (favError || !favRows || favRows.length === 0) return;
-    const parentIds = [...new Set(favRows.map((r) => r.parent_id as string))];
+    const favoriteParentIds = new Set((favRows ?? []).map((r) => r.parent_id as string));
 
+    // TRAMA FINAL HARDENING CLOSURE §4 — TUTTI i bambini della piattaforma
+    // (non solo quelli delle famiglie che hanno già messo l'attività nei
+    // Preferiti), per poter valutare il ramo "recommendation" sotto. Scala
+    // pilot (poche centinaia di righe), una sola query, MAI ripetuta per
+    // bambino — vedi commento di scope in testa al file.
     const { data: kidRows, error: kidError } = await service
       .from("kids")
-      .select("id, name, birth_date, parent_id")
-      .in("parent_id", parentIds);
+      .select("id, name, birth_date, parent_id, interests");
     if (kidError || !kidRows || kidRows.length === 0) return;
 
-    const alreadyCoveredKidIds = await getKidsAlreadyCoveredForPeriod(service, parentIds, periodStart, periodEnd);
+    const allParentIds = [...new Set(kidRows.map((k) => k.parent_id as string))];
+    const alreadyCoveredKidIds = await getKidsAlreadyCoveredForPeriod(service, allParentIds, periodStart, periodEnd);
 
-    for (const parentId of parentIds) {
-      const familyKids = kidRows.filter((k) => k.parent_id === parentId);
-      const eligibleKid = familyKids.find((k) => {
-        if (alreadyCoveredKidIds.has(k.id as string)) return false;
-        const age = ageFromBirthDatePure(k.birth_date as string | null);
-        return isAgeEligible(age, ageRange);
-      });
-      if (!eligibleKid) continue;
+    // Candidati per famiglia: Preferiti(attività) OR raccomandazione valida
+    // (matchPercentForKid >= RECOMMENDATION_THRESHOLD) per almeno un
+    // bambino di quella famiglia — vedi punto 2) in testa al file. Un solo
+    // giro sui bambini invece di due branch separati: per ciascun bambino
+    // calcoliamo comunque il punteggio reale (serve anche per scegliere,
+    // in caso di più fratelli idonei, quello con il match migliore, non
+    // semplicemente il primo).
+    const byParent = new Map<string, { kidId: string; kidName: string; percent: number }[]>();
+    for (const k of kidRows) {
+      const kidId = k.id as string;
+      const parentId = k.parent_id as string;
+      if (alreadyCoveredKidIds.has(kidId)) continue;
+
+      const age = ageFromBirthDatePure(k.birth_date as string | null);
+      if (!isAgeEligible(age, ageRange)) continue;
+
+      const isFavoriteFamily = favoriteParentIds.has(parentId);
+      const kidForMatching = { age, interests: (k.interests as string[] | null) ?? [] } as unknown as Kid;
+      const percent = matchPercentForKid(kidForMatching, activityForMatching);
+      const isRecommended = percent >= RECOMMENDATION_THRESHOLD;
+      if (!isFavoriteFamily && !isRecommended) continue;
+
+      const list = byParent.get(parentId) ?? [];
+      list.push({ kidId, kidName: k.name as string, percent });
+      byParent.set(parentId, list);
+    }
+
+    for (const [parentId, kids] of byParent) {
+      // Bambino con il punteggio migliore fra quelli idonei della famiglia
+      // — una push, non una per figlio (stesso principio "no spam" già
+      // seguito per la push di check-in).
+      kids.sort((a, b) => b.percent - a.percent);
+      const best = kids[0];
+      if (!best) continue;
 
       await sendPushToUser(parentId, {
         title: "È tornato un posto 👀",
