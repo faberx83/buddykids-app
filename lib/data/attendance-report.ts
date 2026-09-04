@@ -11,6 +11,7 @@
 import {
   getParticipantsForCenter,
   getAttendanceForWeek,
+  getAttendanceForDay,
   daysInWeek,
   type AttendanceWeekGroup,
   type AttendanceDayStatus,
@@ -72,12 +73,21 @@ export async function getAttendanceReportForCenter(): Promise<AttendanceReport> 
     return { byDate: [], byActivity: [], topIssues: [], hasPastData: false };
   }
 
-  // FIX (TRAMA FINAL HARDENING §10-12) — groupKey (mai g.weekId, che per un
-  // gruppo "a giorno"/Giorni spot ora è null, vedi lib/data/attendance.ts).
+  // FIX (TRAMA FINAL HARDENING CLOSURE §16, 04/09/2026) — groupKey (mai
+  // g.weekId, che per un gruppo "a giorno"/Giorni spot è null, vedi
+  // lib/data/attendance.ts). Prima di questa wave un gruppo "a giorno"
+  // restava sempre a [] (migration_35 non applicata) — stessa root cause
+  // già trovata e corretta in app/center/attendance/page.tsx: ora la
+  // migrazione risulta applicata (verificato via MCP Supabase read-only),
+  // quindi leggiamo anche i record "a giorno" con getAttendanceForDay.
   const attendanceByWeek: Record<string, AttendanceDayStatus[]> = {};
   await Promise.all(
     weekGroups.map(async (g) => {
-      attendanceByWeek[g.groupKey] = g.weekId ? await getAttendanceForWeek(g.weekId) : [];
+      attendanceByWeek[g.groupKey] = g.weekId
+        ? await getAttendanceForWeek(g.weekId)
+        : g.activityDayId
+        ? await getAttendanceForDay(g.activityDayId)
+        : [];
     })
   );
 
@@ -99,16 +109,19 @@ export function buildAttendanceReport(
   let hasPastData = false;
 
   for (const group of weekGroups) {
-    // FIX (TRAMA FINAL HARDENING §10-12) — un gruppo "a giorno" (Giorni
-    // spot) non può ancora avere nessun attendance_records reale
-    // (week_id NOT NULL finché migration_35 non è applicata): includerlo
-    // qui produrrebbe un tasso di assenza SISTEMATICAMENTE falso (ogni
-    // bambino atteso oggi via Giorni spot risulterebbe "assente" per
-    // definizione, mai perché lo sia davvero). Il Registro presenze
-    // (getParticipantsForCenter) lo mostra comunque per visibilità
-    // operativa — qui, nelle statistiche quantitative, va escluso finché
-    // non si può misurare correttamente (KNOWN LIMITATION, vedi report).
-    if (group.isDayBased) continue;
+    // FIX (TRAMA FINAL HARDENING CLOSURE §16, 04/09/2026) — un gruppo "a
+    // giorno" (Giorni spot) è ora incluso nelle statistiche quantitative:
+    // prima di questa wave veniva escluso qui perché migration_35 non era
+    // applicata (attendance_records non poteva avere week_id NULL, quindi
+    // ogni bambino atteso via Giorni spot sarebbe risultato falsamente
+    // "assente" per definizione). Ora la migrazione risulta APPLICATA
+    // (verificato via MCP Supabase read-only) e attendanceByWeek[groupKey]
+    // per un gruppo a giorno arriva da getAttendanceForDay (dati reali, non
+    // più sempre vuoti) — il gap che produceva "Nessun giorno di camp è
+    // ancora trascorso" per un camp Giorni spot già in corso è quindi
+    // chiuso: un gruppo a giorno con startDate/endDate = oggi (unico giorno
+    // che rappresenta, vedi getParticipantsForCenter) ora contribuisce
+    // correttamente a hasPastData/byDate/byActivity.
 
     // Solo i giorni già trascorsi (oggi incluso): il futuro non ha ancora
     // nessuna presenza reale da poter contare, includerlo gonfierebbe le
@@ -254,6 +267,22 @@ interface RawParentBookingRow {
   booking_weeks: {
     activity_weeks: { id: string; start_date: string; end_date: string } | { id: string; start_date: string; end_date: string }[] | null;
   }[] | null;
+  // FIX (TRAMA FINAL HARDENING CLOSURE §16, 04/09/2026) — questo report
+  // leggeva SOLO booking_weeks: una prenotazione "Giorni spot"
+  // (booking_days) non produceva mai un "giorno atteso", quindi un
+  // genitore con solo prenotazioni a giorno vedeva sempre hasPastData=false
+  // ("Le presenze" vuoto) anche con giorni già passati/in corso — stessa
+  // classe di bug già trovata e corretta lato Gestore
+  // (getAttendanceReportForCenter) e lato Registro (getParticipantsForCenter).
+  booking_days: {
+    // Decisione PER GIORNO, non booking.partner_decision (quello è
+    // legacy/per-prenotazione, vedi Fix #70 "partner_decision non
+    // aggiornato per prenotazioni a giorni" — un giorno può essere accettato
+    // anche se il campo legacy sulla prenotazione non riflette ancora quello
+    // specifico giorno).
+    partner_decision: string;
+    activity_days: { id: string; date: string } | { id: string; date: string }[] | null;
+  }[] | null;
 }
 
 export async function getAttendanceReportForParent(): Promise<ParentAttendanceReport> {
@@ -268,7 +297,7 @@ export async function getAttendanceReportForParent(): Promise<ParentAttendanceRe
   const { data, error } = await supabase
     .from("bookings")
     .select(
-      "partner_decision, activities ( id, name ), booking_kids ( kid_id, kids ( id, name ) ), booking_weeks ( activity_weeks ( id, start_date, end_date ) )"
+      "partner_decision, activities ( id, name ), booking_kids ( kid_id, kids ( id, name ) ), booking_weeks ( activity_weeks ( id, start_date, end_date ) ), booking_days ( partner_decision, activity_days ( id, date ) )"
     )
     .eq("parent_id", user.id)
     .neq("status", "cancelled");
@@ -280,24 +309,47 @@ export async function getAttendanceReportForParent(): Promise<ParentAttendanceRe
   const kidIds = new Set<string>();
 
   for (const booking of data as RawParentBookingRow[]) {
-    // FIX (TRAMA FINAL HARDENING §10-12) — vedi commento su RawParentBookingRow.
-    if (booking.partner_decision !== "accepted") continue;
     const activity = firstOf(booking.activities);
     if (!activity) continue;
 
-    for (const bw of booking.booking_weeks ?? []) {
-      const week = firstOf(bw.activity_weeks);
-      if (!week) continue;
-      // Solo i giorni già trascorsi (oggi incluso), stesso criterio del
-      // report Gestore: il futuro non ha ancora nessuna presenza reale.
-      const days = daysInWeek(week.start_date, week.end_date).filter((d) => d <= todayIso);
-      if (days.length === 0) continue;
+    // FIX (TRAMA FINAL HARDENING §10-12) — vedi commento su RawParentBookingRow:
+    // questa guardia sul campo legacy booking.partner_decision resta corretta
+    // SOLO per il ramo settimana intera (booking_weeks).
+    if (booking.partner_decision === "accepted") {
+      for (const bw of booking.booking_weeks ?? []) {
+        const week = firstOf(bw.activity_weeks);
+        if (!week) continue;
+        // Solo i giorni già trascorsi (oggi incluso), stesso criterio del
+        // report Gestore: il futuro non ha ancora nessuna presenza reale.
+        const days = daysInWeek(week.start_date, week.end_date).filter((d) => d <= todayIso);
+        if (days.length === 0) continue;
+
+        for (const bk of booking.booking_kids ?? []) {
+          const kid = firstOf(bk.kids);
+          if (!kid) continue;
+          kidIds.add(kid.id);
+          for (const day of days) expected.push({ kidId: kid.id, kidName: kid.name, date: day });
+        }
+      }
+    }
+
+    // FIX (TRAMA FINAL HARDENING CLOSURE §16, 04/09/2026) — ramo "a giorno"
+    // (Giorni spot), mancante prima di questa wave: decisione PER GIORNO
+    // (bd.partner_decision), mai il campo legacy booking.partner_decision
+    // (vedi Fix #70) — un giorno accettato con giorno già trascorso/oggi
+    // deve comparire come "atteso" qui, esattamente come già avviene lato
+    // Gestore (getParticipantsForCenter) e lato check-in
+    // (getTodayCheckinsForParent).
+    for (const bd of booking.booking_days ?? []) {
+      if (bd.partner_decision !== "accepted") continue;
+      const day = firstOf(bd.activity_days);
+      if (!day || day.date > todayIso) continue;
 
       for (const bk of booking.booking_kids ?? []) {
         const kid = firstOf(bk.kids);
         if (!kid) continue;
         kidIds.add(kid.id);
-        for (const day of days) expected.push({ kidId: kid.id, kidName: kid.name, date: day });
+        expected.push({ kidId: kid.id, kidName: kid.name, date: day.date });
       }
     }
   }

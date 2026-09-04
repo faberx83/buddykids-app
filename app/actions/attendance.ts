@@ -14,14 +14,31 @@ import { sendEmail, isEmailConfigured } from "@/lib/email";
 // app/actions/checkin.ts): quando il GESTORE scrive qui esplicitamente,
 // checked_in_by torna a "center" — è la "conferma/correzione" richiesta da
 // Fabrizio ("il gestore può confermare 'in ritardo' verso 'Presente'/'Assente'").
+//
+// TRAMA FINAL HARDENING CLOSURE §16 (04/09/2026) — segnalazione live:
+// "Registro presenze"/"Report" vuoti per un gruppo "a giorno" nonostante un
+// vero check-in del genitore già scritto in DB. Root cause parte 2/2 (parte
+// 1: getAttendanceForDay in lib/data/attendance.ts): questa action era
+// hardcoded a weekId (obbligatorio) e all'upsert "kid_id,week_id,date",
+// quindi il gestore non poteva MAI marcare/correggere presenza per un
+// gruppo "a giorno" — nessun modo di scrivere una riga con week_id NULL.
+// Ora supabase/migration_35_attendance_day_based.sql risulta APPLICATA
+// (verificato via MCP Supabase read-only), quindi replichiamo esattamente
+// lo stesso pattern duale già in produzione in
+// app/actions/checkin.ts::parentCheckinAction (weekId XOR activityDayId,
+// mai entrambi; occurrence_id è una colonna GENERATA — mai scritta a mano).
 export async function setAttendanceAction(input: {
   activityId: string;
-  weekId: string;
+  weekId?: string | null;
+  activityDayId?: string | null;
   kidId: string;
   date: string;
   status: "presente" | "assente" | "in_ritardo";
 }): Promise<{ error?: string }> {
   if (!isSupabaseConfigured) return { error: "Supabase non configurato" };
+  if (!input.weekId && !input.activityDayId) {
+    return { error: "Presenza non valida: manca sia la settimana che il giorno di riferimento." };
+  }
 
   const supabase = await createClient();
   const {
@@ -32,7 +49,8 @@ export async function setAttendanceAction(input: {
   const { error } = await supabase.from("attendance_records").upsert(
     {
       activity_id: input.activityId,
-      week_id: input.weekId,
+      week_id: input.weekId ?? null,
+      activity_day_id: input.activityDayId ?? null,
       kid_id: input.kidId,
       date: input.date,
       status: input.status,
@@ -40,7 +58,10 @@ export async function setAttendanceAction(input: {
       checked_in_by: "center",
       updated_at: new Date().toISOString(),
     },
-    { onConflict: "kid_id,week_id,date" }
+    // Stesso target duale di parentCheckinAction — INVARIATO per il caso
+    // "a settimana" (mai una regressione lì), nuovo ramo "a giorno" ora
+    // possibile perché il vincolo unique(kid_id,occurrence_id,date) esiste.
+    { onConflict: input.activityDayId ? "kid_id,occurrence_id,date" : "kid_id,week_id,date" }
   );
 
   if (error) return { error: error.message };

@@ -303,6 +303,33 @@ export async function getAttendanceForWeek(weekId: string): Promise<AttendanceDa
   }));
 }
 
+// TRAMA FINAL HARDENING CLOSURE §16 (04/09/2026) — controparte "a giorno"
+// di getAttendanceForWeek sopra, ora possibile perché
+// supabase/migration_35_attendance_day_based.sql risulta APPLICATA (
+// verificato via MCP Supabase read-only: attendance_records.activity_day_id/
+// occurrence_id esistono, week_id è nullable). Prima di questa wave un
+// gruppo "a giorno" riceveva sempre [] qui (vedi app/center/attendance/
+// page.tsx), quindi anche un vero check-in del genitore già scritto in DB
+// (checked_in_by='parent') non veniva mai mostrato al gestore — root cause
+// della segnalazione live "il pallino c'è ma il Registro è vuoto".
+export async function getAttendanceForDay(activityDayId: string): Promise<AttendanceDayStatus[]> {
+  if (!isSupabaseConfigured) return [];
+
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("attendance_records")
+    .select("kid_id, date, status, checked_in_by")
+    .eq("activity_day_id", activityDayId);
+
+  if (error || !data) return [];
+  return data.map((r) => ({
+    kidId: r.kid_id as string,
+    date: r.date as string,
+    status: r.status as AttendanceStatusValue,
+    checkedInByParent: r.checked_in_by === "parent",
+  }));
+}
+
 // Conteggio dei check-in fatti dal genitore (Home) e non ancora
 // confermati/corretti dal gestore — badge di notifica nel nav "Registro
 // presenze" (Fabrizio: "ci vuole il badge delle notifiche come sulle
