@@ -543,6 +543,32 @@ export default function PrenotazioniClient({
             </span>
           </div>
 
+          {/* FEATURE servizi extra (segnalazione Fabrizio 04/09/2026: "il
+              genitore deve poter scegliere se accedere a tutti i servizi") —
+              cosa ha scelto il genitore per QUESTA prenotazione, utile al
+              centro per organizzarsi (es. sapere per chi preparare il
+              pranzo). Vuoto/assente per ogni prenotazione fatta prima di
+              questa feature o finché migration_37 non è applicata. */}
+          {(b.preServiceIncluded || b.postServiceIncluded || b.mealIncluded) && (
+            <div className="mb-2 flex flex-wrap gap-1.5">
+              {b.preServiceIncluded && (
+                <span className="rounded-full bg-bg px-2 py-0.5 text-[10.5px] font-semibold text-ink-2">
+                  🌅 Ingresso anticipato
+                </span>
+              )}
+              {b.postServiceIncluded && (
+                <span className="rounded-full bg-bg px-2 py-0.5 text-[10.5px] font-semibold text-ink-2">
+                  🌇 Uscita posticipata
+                </span>
+              )}
+              {b.mealIncluded && (
+                <span className="rounded-full bg-bg px-2 py-0.5 text-[10.5px] font-semibold text-ink-2">
+                  🍽️ Mensa
+                </span>
+              )}
+            </div>
+          )}
+
           {b.isDayBased ? (
             <div className="mb-2.5 space-y-1.5">
               {(() => {
