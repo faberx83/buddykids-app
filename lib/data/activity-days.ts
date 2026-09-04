@@ -5,6 +5,8 @@ import { Activity, DayAvailability } from "@/lib/types";
 import { activityDaysByActivity } from "@/lib/mock-data";
 import { createClient } from "@/lib/supabase/server";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
+import { getSeasonWeekRanges, isoDate } from "@/lib/season-weeks";
+import { getSeasonYear } from "@/lib/data/season-year";
 
 interface RawDayRow {
   id: string;
@@ -40,22 +42,46 @@ function mapRow(row: RawDayRow): DayAvailability {
   };
 }
 
+// FIX (TRAMA FINAL HARDENING CLOSURE, segnalazione Fabrizio 04/09/2026 —
+// screenshot: griglia "Giorni spot" mostrava giorni fino al 25 settembre e
+// oltre, ben oltre la fine della griglia stagionale canonica usata OVUNQUE
+// altrove nell'app — settimana 16 = 14-18 settembre, vedi
+// SEASON_TOTAL_WEEKS in lib/season-weeks.ts). Root cause: a differenza di
+// getWeeksForActivity (lib/data/weeks.ts), che è COSTRUITA a partire dalle
+// 16 settimane canoniche (getSeasonWeekRanges) e quindi non può mai
+// restituire una settimana fuori stagione per costruzione, questa funzione
+// restituiva OGNI riga activity_days reale senza alcun limite superiore —
+// se il gestore (o un seed) avesse configurato giorni oltre la stagione,
+// comparivano comunque come prenotabili, un'incoerenza rispetto al resto
+// del prodotto (mai raggiungibili "Continua" senza selezione, ma comunque
+// mostrati come reali). Stesso taglio, stessa fonte di verità (
+// getSeasonYear/getSeasonWeekRanges) già usata per le settimane — nessuna
+// nuova regola stagionale inventata qui, solo estesa ai giorni spot.
+async function seasonEndIsoDate(): Promise<string> {
+  const seasonYear = await getSeasonYear();
+  const ranges = getSeasonWeekRanges(seasonYear);
+  return isoDate(ranges[ranges.length - 1].end);
+}
+
 export async function getActivityDays(activity: Activity): Promise<DayAvailability[]> {
   if (!isSupabaseConfigured || !activity.dbId) {
     return activityDaysByActivity[activity.id] ?? [];
   }
 
   const supabase = await createClient();
-  const { data, error } = await supabase
-    .from("activity_days")
-    .select(
-      "id, date, is_open, capacity, spots_left, single_day_bookable, discount_percent, last_minute, special_label, special_emoji"
-    )
-    .eq("activity_id", activity.dbId)
-    .order("date", { ascending: true });
+  const [{ data, error }, seasonEndIso] = await Promise.all([
+    supabase
+      .from("activity_days")
+      .select(
+        "id, date, is_open, capacity, spots_left, single_day_bookable, discount_percent, last_minute, special_label, special_emoji"
+      )
+      .eq("activity_id", activity.dbId)
+      .order("date", { ascending: true }),
+    seasonEndIsoDate(),
+  ]);
 
   if (error || !data || data.length === 0) return activityDaysByActivity[activity.id] ?? [];
-  return (data as RawDayRow[]).map(mapRow);
+  return (data as RawDayRow[]).filter((row) => row.date <= seasonEndIso).map(mapRow);
 }
 
 // Segnalazione 25/08/2026 (Fabrizio): nella scheda "Giorni spot" i giorni

@@ -35,6 +35,8 @@
 
 import { Activity } from "@/lib/types";
 import { createClient } from "@/lib/supabase/server";
+import { getSeasonWeekRanges, isoDate } from "@/lib/season-weeks";
+import { getSeasonYear } from "@/lib/data/season-year";
 
 export interface CanonicalAvailability {
   available: boolean;
@@ -92,6 +94,21 @@ export async function attachCanonicalAvailability(
   // tolleranza multi-anno del seed demo, solo dati reali con dbId).
   const todayIso = new Date().toISOString().slice(0, 10);
 
+  // FIX (TRAMA FINAL HARDENING CLOSURE, segnalazione Fabrizio 04/09/2026) —
+  // stesso taglio superiore applicato a getActivityDays
+  // (lib/data/activity-days.ts): un giorno activity_days oltre la fine
+  // della griglia stagionale canonica (settimana 16) non è mai davvero
+  // prenotabile (il wizard/Attività Detail lo escludono comunque), quindi
+  // non deve far apparire una card come "disponibile" per un'attività
+  // "day_only"/"mixed" — stessa incoerenza già risolta altrove (banner
+  // disponibile ma flusso che non lo permette). activity_weeks non
+  // necessita dello stesso taglio: è già strutturalmente limitata alle 16
+  // settimane canoniche per costruzione (getWeeksForActivity), non
+  // interrogata qui a righe grezze illimitate come activity_days.
+  const seasonYear = await getSeasonYear();
+  const seasonRanges = getSeasonWeekRanges(seasonYear);
+  const seasonEndIso = isoDate(seasonRanges[seasonRanges.length - 1].end);
+
   const [{ data: weekRows, error: weekError }, { data: dayRows, error: dayError }] = await Promise.all([
     supabase
       .from("activity_weeks")
@@ -104,7 +121,8 @@ export async function attachCanonicalAvailability(
       .in("activity_id", dbIds)
       .eq("is_open", true)
       .eq("single_day_bookable", true)
-      .gte("date", todayIso),
+      .gte("date", todayIso)
+      .lte("date", seasonEndIso),
   ]);
 
   if (weekError && dayError) return activities; // entrambe le query fallite: nessun dato da applicare, meglio l'editoriale di niente
