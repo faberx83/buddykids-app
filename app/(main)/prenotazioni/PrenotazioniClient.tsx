@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { MyBooking, BookingStatus } from "@/lib/data/my-bookings";
 import { PlannerData } from "@/lib/data/planner";
+import { computeHeroWeeksSummary } from "@/lib/nextgen/planner-insights";
 import { Kid } from "@/lib/types";
 import { cancelBookingAction } from "@/app/actions/bookings";
 import PageHeader from "@/components/PageHeader";
@@ -570,6 +571,18 @@ function CoverageStrip({ planner, nextgen }: { planner: PlannerData; nextgen?: b
   const todayIso = new Date().toISOString().slice(0, 10);
   const upcoming = planner.weeks.filter((w) => !w.dismissed && w.endDate >= todayIso);
   const gaps = upcoming.filter((w) => !w.covered).length;
+  // FIX (TRAMA FINAL HARDENING §17, segnalazione live 04/09/2026: "3/16
+  // settimane organizzate" insieme a "Tutte le settimane sono organizzate"
+  // nella STESSA card) — root cause: il numero in alto contava TUTTE le 16
+  // settimane stagionali (incluse quelle passate, mai "da organizzare" per
+  // definizione), mentre "gaps" sopra (e quindi la frase di chiusura)
+  // contava SOLO le settimane future/rilevanti — due sottoinsiemi diversi
+  // per la stessa etichetta "organizzate" nella stessa card. Riuso
+  // computeHeroWeeksSummary (lib/nextgen/planner-insights.ts, già canonico
+  // per l'Hero di Home/Planner NEXTGEN) invece di un secondo calcolo:
+  // stesso identico sottoinsieme "upcoming" usato da gaps sopra, MAI più
+  // due fonti diverse per lo stesso numero in questa card.
+  const heroSummary = computeHeroWeeksSummary(planner.weeks, todayIso);
 
   const body = (
     <>
@@ -584,7 +597,12 @@ function CoverageStrip({ planner, nextgen }: { planner: PlannerData; nextgen?: b
           Copertura dell&apos;estate
         </div>
         <span className="text-[12px] font-semibold text-ink-2">
-          {planner.coveredCount}/{planner.totalCount} settimane organizzate
+          {/* "organizzata" qui significa SOLO "ha un'attività prenotata"
+              (activity coverage) — non implica che i passaggi
+              accompagnamento/ritiro siano già assegnati (coordination gap,
+              gestito separatamente nel Planner "Chi fa cosa"): l'etichetta
+              non deve sovraclaimare oltre quanto i dati confermano. */}
+          {heroSummary.futureCovered}/{heroSummary.futureTotal} prossime settimane con attività
         </span>
       </div>
       <div className="flex gap-1">
@@ -634,7 +652,14 @@ function CoverageStrip({ planner, nextgen }: { planner: PlannerData; nextgen?: b
       ) : (
         <p className="mt-2 text-[12px] text-green">
           <i className="ti ti-circle-check mr-1" />
-          Tutte le settimane sono organizzate
+          {/* FIX (TRAMA FINAL HARDENING §17) — "organizzate" sovraclaimava:
+              questo conteggio riflette solo la copertura attività (almeno
+              un bambino ha una prenotazione), non se accompagnamento/
+              ritiro sono già assegnati. Il Planner NEXTGEN (Chi fa cosa)
+              resta il posto corretto per quel secondo segnale — qui, in
+              questa card legacy, il testo non deve promettere più di
+              quanto verificato. */}
+          Tutte le prossime settimane hanno un&apos;attività
         </p>
       )}
     </>
