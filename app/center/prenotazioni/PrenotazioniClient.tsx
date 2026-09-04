@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { CenterBooking, BookingStatus, DayPartnerDecision } from "@/lib/data/center-bookings";
+import { CenterBooking, DayPartnerDecision } from "@/lib/data/center-bookings";
 import { bookingNeedsAction, PARTNER_DECISION_LABEL } from "@/lib/booking-response/effective-decision";
 import {
   respondToBookingAction,
@@ -29,11 +29,32 @@ import { isSupabaseConfigured } from "@/lib/supabase/env";
 // PARTNER_DECISION_LABEL (03/09/2026) — riusata anche da app/center/page.tsx.
 const DECISION_LABEL = PARTNER_DECISION_LABEL;
 
-const STATUS_LABEL: Record<BookingStatus, string> = {
-  pending: "In attesa",
-  confirmed: "Confermata",
-  cancelled: "Annullata",
-};
+// FIX (TRAMA FINAL HARDENING §15, segnalazione live 04/09/2026: la card
+// mostrava il badge "Confermata parzialmente" (da partnerDecision) e subito
+// sotto la didascalia "Stato prenotazione: In attesa" — STATUS_LABEL[b.
+// status] leggeva bookings.status, l'asse TRANSAZIONALE, mentre il badge
+// leggeva partnerDecision, l'asse OPERATIVO — i due non sono equivalenti
+// (vedi lib/booking-response/effective-decision.ts) e qui divergevano nella
+// STESSA card. Analisi più a fondo: bookings.status !== 'cancelled' non
+// basta nemmeno per far coincidere le due fonti — una prenotazione annullata
+// dal GENITORE (cancelledBy === 'parent', a differenza di un rifiuto del
+// centro) mostrava il badge partnerDecision INVARIATO (es. ancora
+// "Accettata", verde) perché quel campo non viene mai aggiornato da un
+// annullamento del genitore: STATUS_LABEL[b.status] era l'UNICO segnale
+// corretto per quel caso specifico, mai per gli altri. displayDecision() qui
+// sotto sostituisce ENTRAMBE le vecchie letture con un'unica funzione
+// canonica, usata sia dal badge sia dalla didascalia (mai due fonti per la
+// stessa informazione nella stessa card).
+function displayDecision(b: CenterBooking): { label: string; cls: string } {
+  if (b.status === "cancelled" && b.cancelledBy === "parent") {
+    return { label: "Annullata dal genitore", cls: "bg-bg text-ink-3" };
+  }
+  // Per ogni altro caso (incluso un rifiuto del centro, dove partnerDecision
+  // è già "rejected" — impostato dalla stessa azione che scrive status=
+  // 'cancelled'/cancelledBy='center', vedi app/actions/booking-response.ts)
+  // l'asse operativo resta l'unica fonte di verità mostrata al gestore.
+  return DECISION_LABEL[b.partnerDecision];
+}
 
 // Etichetta/colore per lo stato di un singolo "Giorno spot" — a differenza
 // di DECISION_LABEL sopra (livello intera prenotazione, niente "waitlisted"
@@ -520,8 +541,8 @@ export default function PrenotazioniClient({
               {b.activityName}
             </div>
             <div className="flex gap-1.5">
-              <span className={`rounded-full px-2.5 py-1 text-[11px] font-semibold ${DECISION_LABEL[b.partnerDecision].cls}`}>
-                {DECISION_LABEL[b.partnerDecision].label}
+              <span className={`rounded-full px-2.5 py-1 text-[11px] font-semibold ${displayDecision(b).cls}`}>
+                {displayDecision(b).label}
               </span>
             </div>
           </div>
@@ -731,7 +752,7 @@ export default function PrenotazioniClient({
               sotto l'ultimo giorno, senza alcuna separazione — sembrava
               disallineata invece che una riga di riepilogo a sé stante. */}
           <div className="mb-1 mt-2 border-t border-[#F0F2F5] pt-2 text-[11px] text-ink-3">
-            Stato prenotazione: {STATUS_LABEL[b.status]}
+            Stato prenotazione: {displayDecision(b).label}
           </div>
 
           {b.partnerDecision === "proposed" && b.partnerProposalNote && (
