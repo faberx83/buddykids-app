@@ -175,12 +175,29 @@ export default function ActivityCard({
             {activity.rating} ({activity.reviewsCount})
           </div>
         </div>
-        {activity.spotsLeft !== undefined && (
-          <div className="mt-1.5 flex items-center gap-1 rounded-md bg-yellow-light px-2 py-1 text-[10px] font-semibold text-[#9a6b00]">
-            <i className="ti ti-flame text-[13px]" />
-            Solo {activity.spotsLeft} posti disponibili!
-          </div>
-        )}
+        {/* FIX (TRAMA FINAL HARDENING CLOSURE §1-2, 04/09/2026) —
+            activity.spotsLeft ora arriva da attachCanonicalAvailability()
+            (lib/availability/canonical.ts, chiamata da getActivities()),
+            mai più dal campo editoriale del gestore. A capacità esaurita
+            (0) la regola esplicita è NON mostrare "Solo 0 posti
+            disponibili!" (leggibile come "quasi pieno", il contrario del
+            vero) — un badge neutro "Non disponibile" al suo posto. Il
+            click sulla card resta invariato (porta comunque al Dettaglio,
+            che mostra CTA disabilitata e il server rivalida comunque la
+            capacità — vedi app/activity/[id]/page.tsx): la card di lista
+            non ha una propria CTA separata da disabilitare. */}
+        {activity.spotsLeft !== undefined &&
+          (activity.spotsLeft <= 0 ? (
+            <div className="mt-1.5 flex items-center gap-1 rounded-md bg-bg px-2 py-1 text-[10px] font-semibold text-ink-3">
+              <i className="ti ti-calendar-off text-[13px]" />
+              Non disponibile
+            </div>
+          ) : (
+            <div className="mt-1.5 flex items-center gap-1 rounded-md bg-yellow-light px-2 py-1 text-[10px] font-semibold text-[#9a6b00]">
+              <i className="ti ti-flame text-[13px]" />
+              Solo {activity.spotsLeft} posti disponibili!
+            </div>
+          ))}
       </div>
     </Link>
   );

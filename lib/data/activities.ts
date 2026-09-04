@@ -8,6 +8,7 @@ import { activities as mockActivities, promotions as mockPromotions } from "@/li
 import { createClient } from "@/lib/supabase/server";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
 import { getSeasonWeekRanges, isoDate, overlaps } from "@/lib/season-weeks";
+import { attachCanonicalAvailability } from "@/lib/availability/canonical";
 
 const SELECT_COLUMNS_BASE = `
   id, slug, name, emoji, address, latitude, longitude, age_min, age_max,
@@ -203,7 +204,12 @@ export async function getActivities(): Promise<Activity[]> {
     return mockActivities;
   }
 
-  return attachApprovedCertificationBadges(supabase, data.map(mapRow));
+  const withBadges = await attachApprovedCertificationBadges(supabase, data.map(mapRow));
+  // FIX (TRAMA FINAL HARDENING CLOSURE §1-3) — disponibilità canonica per
+  // TUTTE le liste che condividono questa funzione (Home, Scopri, Preferiti,
+  // Planner, Gruppi, Community) — vedi lib/availability/canonical.ts per il
+  // dettaglio della regola e la scelta "una sola query batched, non 6".
+  return attachCanonicalAvailability(supabase, withBadges);
 }
 
 // TRAMA ONE — Addendum Sezione B (Feature Control Center), voce di catalogo
