@@ -144,6 +144,13 @@ export interface Activity {
   preService?: ServiceOption; // ingresso anticipato
   postService?: ServiceOption; // uscita posticipata
   mealOption?: MealOption;
+  // Migration 37 (servizi extra in prenotazione, segnalazione Fabrizio
+  // 04/09/2026) — sovrapprezzo mensa (€/sett.). A differenza di
+  // preService/postService, mealOption è solo testo, non un ServiceOption:
+  // un prezzo > 0 rende la mensa un servizio SELEZIONABILE dal genitore nel
+  // wizard di prenotazione, come pre/post-scuola; a 0/assente resta
+  // un'informazione statica come prima (nessuna scelta da fare).
+  mealPriceExtra?: number;
   // Diete speciali/intolleranze che il servizio pranzo è attrezzato a
   // gestire (capacità dichiarata dal gestore, non un dato del bambino).
   dietaryOptions?: string[];

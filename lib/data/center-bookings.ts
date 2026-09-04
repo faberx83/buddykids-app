@@ -89,6 +89,12 @@ export interface CenterBooking {
   totalAmount: number;
   discountAmount: number;
   shuttleIncluded: boolean;
+  // Migration 37 (servizi extra, segnalazione Fabrizio 04/09/2026: "il
+  // genitore deve poter scegliere se accedere a tutti i servizi") — vedi
+  // nota sotto SELECT: undefined/false finché la migration non è applicata.
+  preServiceIncluded: boolean;
+  postServiceIncluded: boolean;
+  mealIncluded: boolean;
   createdAt: string;
   weeks: CenterBookingWeek[];
   days: CenterBookingDay[];
@@ -116,6 +122,9 @@ interface RawRow {
   total_amount: number;
   discount_amount: number;
   shuttle_included: boolean;
+  pre_service_included?: boolean | null;
+  post_service_included?: boolean | null;
+  meal_included?: boolean | null;
   created_at: string;
   activities: { slug: string; name: string } | { slug: string; name: string }[] | null;
   profiles: { full_name: string | null; email: string } | { full_name: string | null; email: string }[] | null;
@@ -151,7 +160,7 @@ interface RawRow {
 // applica migration_34, aggiungere ", waitlisted_at" dentro
 // "booking_days ( ... )" qui sotto e leggere bd.waitlisted_at in mapRow
 // invece del "null" fisso attuale — RawRow lo ha già in tipo per allora.
-const SELECT = `
+const SELECT_BASE = `
   id, status, partner_decision, partner_proposal_note, partner_proposed_at,
   responded_at, cancelled_by, read_by_center, read_by_parent, total_amount,
   discount_amount, shuttle_included, created_at,
@@ -160,6 +169,18 @@ const SELECT = `
   booking_kids ( kids ( name ) ),
   booking_weeks ( week_id, activity_weeks ( start_date, spots_left, capacity ) ),
   booking_days ( activity_day_id, price, partner_decision, partner_note, activity_days ( date, spots_left, capacity ) )
+`;
+
+// Migration 37 (servizi extra, NON ancora applicata da Fabrizio) — stesso
+// principio già documentato sopra per "waitlisted_at" (migration 34): questa
+// Inbox è usata OGNI GIORNO dai centri, quindi non possiamo referenziare
+// pre_service_included/post_service_included/meal_included in un'unica
+// SELECT senza rischiare di romperla finché la migration non è applicata.
+// SELECT (con i 3 campi) si tenta per prima; getBookingsForCenter/
+// getCenterBookingById ritentano con SELECT_BASE SOLO se falliscono con
+// "colonna inesistente" (42703).
+const SELECT = `${SELECT_BASE.trim()},
+  pre_service_included, post_service_included, meal_included
 `;
 
 function mapRow(row: RawRow): CenterBooking {
@@ -222,6 +243,9 @@ function mapRow(row: RawRow): CenterBooking {
     totalAmount: row.total_amount,
     discountAmount: row.discount_amount,
     shuttleIncluded: row.shuttle_included,
+    preServiceIncluded: Boolean(row.pre_service_included),
+    postServiceIncluded: Boolean(row.post_service_included),
+    mealIncluded: Boolean(row.meal_included),
     createdAt: row.created_at,
     weeks: (row.booking_weeks ?? []).map((bw) => {
       const activityWeek = firstOf(bw.activity_weeks);
@@ -263,7 +287,20 @@ export async function getBookingsForCenter(): Promise<CenterBooking[]> {
   let query = supabase.from("bookings").select(SELECT).order("created_at", { ascending: false });
   if (activityIds) query = query.in("activity_id", activityIds);
 
-  const { data, error } = await query;
+  const attempt = await query;
+  let data = attempt.data;
+  let error = attempt.error;
+
+  if (error?.code === "42703") {
+    // Migration 37 non ancora applicata — vedi nota di cast in
+    // lib/data/activities.ts#getActivities().
+    let fallbackQuery = supabase.from("bookings").select(SELECT_BASE).order("created_at", { ascending: false });
+    if (activityIds) fallbackQuery = fallbackQuery.in("activity_id", activityIds);
+    const fallback = await fallbackQuery;
+    data = fallback.data as unknown as typeof data;
+    error = fallback.error;
+  }
+
   if (error || !data) return [];
 
   return (data as unknown as RawRow[]).map(mapRow);
@@ -282,7 +319,16 @@ export async function getUnreadBookingsCountForCenter(): Promise<number> {
 export async function getCenterBookingById(bookingId: string): Promise<CenterBooking | null> {
   if (!isSupabaseConfigured) return null;
   const supabase = await createClient();
-  const { data, error } = await supabase.from("bookings").select(SELECT).eq("id", bookingId).single();
+  const attempt = await supabase.from("bookings").select(SELECT).eq("id", bookingId).single();
+  let data = attempt.data;
+  let error = attempt.error;
+  if (error?.code === "42703") {
+    // Migration 37 non ancora applicata — vedi nota di cast in
+    // lib/data/activities.ts#getActivities().
+    const fallback = await supabase.from("bookings").select(SELECT_BASE).eq("id", bookingId).single();
+    data = fallback.data as unknown as typeof data;
+    error = fallback.error;
+  }
   if (error || !data) return null;
   return mapRow(data as unknown as RawRow);
 }

@@ -9,7 +9,7 @@ import { createClient } from "@/lib/supabase/server";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
 import { getSeasonWeekRanges, isoDate, overlaps } from "@/lib/season-weeks";
 
-const SELECT_COLUMNS = `
+const SELECT_COLUMNS_BASE = `
   id, slug, name, emoji, address, latitude, longitude, age_min, age_max,
   price_per_week, shuttle_price, description, schedule, meal_option, dietary_options,
   pre_service, post_service, rating, reviews_count, img_gradient, days, hours,
@@ -18,6 +18,20 @@ const SELECT_COLUMNS = `
   centers ( slug, name, emoji, gradient, has_bar, accessible, accessible_note, multiweek_discount_percent, family_discount_tiers, group_discount_tiers ),
   activity_tags ( tag_id, tags ( label, emoji, bg_color ) )
 `;
+
+// Migration 37 (servizi extra in prenotazione, NON ancora applicata da
+// Fabrizio) — "meal_price_extra" è additiva su "activities", tabella letta
+// con questa lista di colonne ESPLICITA da 3 punti diversi (getActivities,
+// getActivitiesForCenter, getActivityBySlug), usati su OGNI pagina attività
+// del sito. Se la aggiungessimo direttamente a una sola SELECT_COLUMNS,
+// finché la migration non è applicata la query fallirebbe con "colonna
+// inesistente" e TUTTE le attività reali sparirebbero (fallback a
+// mock/vuoto) — una regressione su funzionalità già in produzione. Invece: i
+// 3 punti di lettura sotto tentano PRIMA con SELECT_COLUMNS (contiene la
+// colonna in più) e, SOLO se falliscono con "colonna inesistente" (42703),
+// ritentano con SELECT_COLUMNS_BASE — mealPriceExtra resta undefined finché
+// la migration non è applicata, tutto il resto invariato.
+const SELECT_COLUMNS = `${SELECT_COLUMNS_BASE}, meal_price_extra`;
 
 interface RawCenterRef {
   slug: string | null;
@@ -66,6 +80,10 @@ interface RawActivityRow {
   gallery_urls: string[] | null;
   booking_mode: string | null;
   min_days_per_booking: number | null;
+  // Migration 37 — vedi commento sopra SELECT_COLUMNS: assente dalla riga
+  // finché la migration non è applicata (si usa SELECT_COLUMNS_BASE), per
+  // questo opzionale invece che nullable-obbligatorio.
+  meal_price_extra?: number | null;
   centers: RawCenterRef | RawCenterRef[] | null;
   activity_tags:
     | {
@@ -135,6 +153,7 @@ export function mapRow(row: RawActivityRow): Activity {
     preService: (row.pre_service as Activity["preService"]) ?? undefined,
     postService: (row.post_service as Activity["postService"]) ?? undefined,
     mealOption: (row.meal_option as Activity["mealOption"]) ?? undefined,
+    mealPriceExtra: row.meal_price_extra != null ? Number(row.meal_price_extra) : undefined,
     dietaryOptions: row.dietary_options ?? undefined,
     centerHasBar: Boolean(center?.has_bar),
     centerAccessible: Boolean(center?.accessible),
@@ -157,10 +176,26 @@ export async function getActivities(): Promise<Activity[]> {
   if (!isSupabaseConfigured) return mockActivities;
 
   const supabase = await createClient();
-  const { data, error } = await supabase
+  const attempt = await supabase
     .from("activities")
     .select(SELECT_COLUMNS)
     .order("created_at", { ascending: true });
+  let data = attempt.data;
+  let error = attempt.error;
+
+  if (error?.code === "42703") {
+    // Migration 37 non ancora applicata — vedi commento sopra SELECT_COLUMNS.
+    // Cast esplicito: la query di fallback usa una stringa .select() diversa
+    // (senza meal_price_extra), quindi supabase-js le assegna un tipo
+    // strutturale diverso da quello della prima — a runtime è comunque
+    // compatibile (mapRow legge meal_price_extra come opzionale).
+    const fallback = await supabase
+      .from("activities")
+      .select(SELECT_COLUMNS_BASE)
+      .order("created_at", { ascending: true });
+    data = fallback.data as unknown as typeof data;
+    error = fallback.error;
+  }
 
   if (error || !data || data.length === 0) {
     // Nessun dato reale ancora (seed non eseguito) o errore: non rompiamo
@@ -328,11 +363,24 @@ export async function getActivitiesForCenter(
   }
 
   const supabase = await createClient();
-  const { data, error } = await supabase
+  const attempt = await supabase
     .from("activities")
     .select(SELECT_COLUMNS)
     .eq("center_id", centerDbId)
     .order("created_at", { ascending: true });
+  let data = attempt.data;
+  let error = attempt.error;
+
+  if (error?.code === "42703") {
+    // Migration 37 non ancora applicata — vedi nota di cast in getActivities().
+    const fallback = await supabase
+      .from("activities")
+      .select(SELECT_COLUMNS_BASE)
+      .eq("center_id", centerDbId)
+      .order("created_at", { ascending: true });
+    data = fallback.data as unknown as typeof data;
+    error = fallback.error;
+  }
 
   if (error || !data) return [];
   return data.map(mapRow);
@@ -344,11 +392,16 @@ export async function getActivityBySlug(slug: string): Promise<Activity | null> 
   }
 
   const supabase = await createClient();
-  const { data, error } = await supabase
-    .from("activities")
-    .select(SELECT_COLUMNS)
-    .eq("slug", slug)
-    .maybeSingle();
+  const attempt = await supabase.from("activities").select(SELECT_COLUMNS).eq("slug", slug).maybeSingle();
+  let data = attempt.data;
+  let error = attempt.error;
+
+  if (error?.code === "42703") {
+    // Migration 37 non ancora applicata — vedi nota di cast in getActivities().
+    const fallback = await supabase.from("activities").select(SELECT_COLUMNS_BASE).eq("slug", slug).maybeSingle();
+    data = fallback.data as unknown as typeof data;
+    error = fallback.error;
+  }
 
   if (error || !data) {
     // Segnalazione di Fabrizio: creare un'attività ("Crea attività") reindirizza

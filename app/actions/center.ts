@@ -254,6 +254,11 @@ export interface ActivityUpdateInput {
   mealOption: MealOption;
   preService: ServiceOption;
   postService: ServiceOption;
+  // Migration 37 (servizi extra in prenotazione, segnalazione Fabrizio
+  // 04/09/2026) — opzionale come bookingMode/minDaysPerBooking sotto: se
+  // assente la colonna non viene toccata, nessun impatto su chiamanti
+  // esistenti che non la passano ancora.
+  mealPriceExtra?: number;
   schedule: { time: string; label: string; color: string }[];
   coverImageUrl?: string | null;
   galleryUrls?: string[];
@@ -282,31 +287,42 @@ export async function updateActivityAction(input: ActivityUpdateInput): Promise<
     .eq("id", input.activityDbId)
     .single();
 
-  const { error } = await supabase
-    .from("activities")
-    .update({
-      name: input.name,
-      age_min: ageMin,
-      age_max: ageMax,
-      price_per_week: input.pricePerWeek,
-      shuttle_price: input.shuttlePrice,
-      description: input.description,
-      spots_left: input.spotsLeft,
-      show_exact_spots: input.showExactSpots,
-      address: input.address,
-      latitude: input.lat,
-      longitude: input.lng,
-      meal_option: input.mealOption,
-      dietary_options: input.dietaryOptions,
-      pre_service: input.preService,
-      post_service: input.postService,
-      schedule: input.schedule,
-      ...(input.coverImageUrl !== undefined ? { cover_image_url: input.coverImageUrl } : {}),
-      ...(input.galleryUrls !== undefined ? { gallery_urls: input.galleryUrls } : {}),
-      ...(input.bookingMode !== undefined ? { booking_mode: input.bookingMode } : {}),
-      ...(input.minDaysPerBooking !== undefined ? { min_days_per_booking: input.minDaysPerBooking } : {}),
-    })
-    .eq("id", input.activityDbId);
+  const updatePayload: Record<string, unknown> = {
+    name: input.name,
+    age_min: ageMin,
+    age_max: ageMax,
+    price_per_week: input.pricePerWeek,
+    shuttle_price: input.shuttlePrice,
+    description: input.description,
+    spots_left: input.spotsLeft,
+    show_exact_spots: input.showExactSpots,
+    address: input.address,
+    latitude: input.lat,
+    longitude: input.lng,
+    meal_option: input.mealOption,
+    dietary_options: input.dietaryOptions,
+    pre_service: input.preService,
+    post_service: input.postService,
+    schedule: input.schedule,
+    ...(input.coverImageUrl !== undefined ? { cover_image_url: input.coverImageUrl } : {}),
+    ...(input.galleryUrls !== undefined ? { gallery_urls: input.galleryUrls } : {}),
+    ...(input.bookingMode !== undefined ? { booking_mode: input.bookingMode } : {}),
+    ...(input.minDaysPerBooking !== undefined ? { min_days_per_booking: input.minDaysPerBooking } : {}),
+    ...(input.mealPriceExtra !== undefined ? { meal_price_extra: input.mealPriceExtra } : {}),
+  };
+
+  let { error } = await supabase.from("activities").update(updatePayload).eq("id", input.activityDbId);
+
+  // Migration 37 (servizi extra, NON ancora applicata da Fabrizio) —
+  // "meal_price_extra" può mancare ancora nel DB: si ritenta SENZA quel
+  // campo invece di far fallire il salvataggio dell'intera scheda attività
+  // (funzionalità già in produzione, usata ogni giorno dai centri). Il
+  // sovrapprezzo mensa impostato nel form semplicemente non viene ancora
+  // persistito finché la migration non è applicata.
+  if (error?.code === "42703" && "meal_price_extra" in updatePayload) {
+    const { meal_price_extra: _mealPriceExtra, ...payloadWithoutMeal } = updatePayload;
+    ({ error } = await supabase.from("activities").update(payloadWithoutMeal).eq("id", input.activityDbId));
+  }
 
   if (error) return { error: error.message };
 
