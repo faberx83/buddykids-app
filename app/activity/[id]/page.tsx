@@ -3,6 +3,7 @@ import { getActivityBySlug, getPromotionsForActivity } from "@/lib/data/activiti
 import { getFavoriteActivityIds } from "@/lib/data/favorites";
 import { getApprovedCertificationsForActivity } from "@/lib/data/certifications";
 import { getActivityDays, getBookedDayDecisionsForActivity, BookedDayDecision } from "@/lib/data/activity-days";
+import { getWeeksForActivity } from "@/lib/data/weeks";
 import { getMyBookingsForParent } from "@/lib/data/my-bookings";
 import { createClient } from "@/lib/supabase/server";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
@@ -81,7 +82,15 @@ export default async function ActivityDetailPage({
   // storico) saltiamo del tutto la query, invariato per tutte le attività non
   // ancora configurate a Giorni spot lato Gestore.
   const wantsDayAvailability = activity.bookingMode && activity.bookingMode !== "week_only";
-  const [promotions, favoriteIds, certifications, days, bookedDayDecisions] = await Promise.all([
+  // FIX (TRAMA FINAL HARDENING §1/§3) — disponibilità settimanale REALE
+  // (stessa fonte canonica del wizard di prenotazione, getWeeksForActivity),
+  // richiesta per ogni bookingMode diverso da "day_only" puro: è il dato
+  // mancante che causava la divergenza banner/CTA vista nel walkthrough live
+  // (vedi commenti dettagliati in DetailClient.tsx). "day_only" non offre
+  // mai prenotazione a settimana intera, quindi non ha senso interrogare
+  // activity_weeks per quel caso.
+  const wantsWeekAvailability = activity.bookingMode !== "day_only";
+  const [promotions, favoriteIds, certifications, days, bookedDayDecisions, weeksForAvailability] = await Promise.all([
     getPromotionsForActivity(activity),
     getFavoriteActivityIds(),
     getApprovedCertificationsForActivity(activity.dbId),
@@ -95,8 +104,27 @@ export default async function ActivityDetailPage({
     wantsDayAvailability && activity.dbId
       ? getBookedDayDecisionsForActivity(activity.dbId)
       : Promise.resolve(new Map<string, BookedDayDecision>()),
+    wantsWeekAvailability ? getWeeksForActivity(activity) : Promise.resolve([]),
   ]);
   const initialFavorite = Boolean(activity.dbId && favoriteIds.has(activity.dbId));
+
+  // Aggregazione canonica: "offered" = questa attività copre davvero questa
+  // settimana della stagione (le settimane non offerte nella griglia
+  // stagionale condivisa non contano né a favore né contro). Un'attività
+  // "mixed" è disponibile se ALMENO UNO dei due canali (settimana intera O
+  // giorno spot) ha capacità reale — coerente con showDaySelection in
+  // DetailClient.tsx, che per "mixed" mostra comunque entrambi i selettori.
+  const offeredWeeks = weeksForAvailability.filter((w) => w.offered);
+  const hasAvailableWeek = offeredWeeks.some((w) => !w.soldOut);
+  const hasAvailableDay = days.some((d) => d.singleDayBookable && d.spotsLeft > 0);
+  const activityAvailable =
+    activity.bookingMode === "day_only"
+      ? hasAvailableDay
+      : activity.bookingMode === "mixed"
+      ? hasAvailableWeek || hasAvailableDay
+      : hasAvailableWeek; // "week_only" o bookingMode non configurato (comportamento storico)
+  const availableWeekSpots = offeredWeeks.filter((w) => !w.soldOut).map((w) => w.spots);
+  const realSpotsLeft = availableWeekSpots.length ? Math.min(...availableWeekSpots) : undefined;
 
   return (
     <PhoneShell>
@@ -109,6 +137,8 @@ export default async function ActivityDetailPage({
         bookedDayDecisions={Object.fromEntries(bookedDayDecisions)}
         nextgen={nextgen}
         existingBooking={existingBooking}
+        activityAvailable={activityAvailable}
+        realSpotsLeft={realSpotsLeft}
       />
     </PhoneShell>
   );

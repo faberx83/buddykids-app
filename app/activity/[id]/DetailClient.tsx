@@ -28,6 +28,8 @@ export default function DetailClient({
   bookedDayDecisions = {},
   nextgen = false,
   existingBooking = null,
+  activityAvailable = true,
+  realSpotsLeft = undefined,
 }: {
   activity: Activity;
   promotions: Promotion[];
@@ -69,6 +71,25 @@ export default function DetailClient({
   // prenotazione. null = nessuna prenotazione attiva per questa attività
   // (comportamento invariato, CTA acquisitiva "Prenota ora").
   existingBooking?: { id: string; status: "pending" | "confirmed" | "cancelled"; canCancelOrModify: boolean } | null;
+  // FIX (TRAMA FINAL HARDENING §1/§3, segnalazione Fabrizio 04/09/2026 —
+  // walkthrough live: banner "Solo 0 posti!" ma CTA "Prenota ora" ancora
+  // attiva). Root cause: questa scheda usava SOLO il campo editoriale
+  // activity.spotsLeft/showExactSpots (digitato a mano dal gestore in
+  // ActivityEditForm — "Posti rimasti (in evidenza)"), mai collegato alla
+  // disponibilità reale activity_weeks/activity_days che invece governa
+  // DAVVERO se una prenotazione è possibile (stessa fonte del wizard di
+  // prenotazione, vedi getWeeksForActivity in app/activity/[id]/page.tsx).
+  // Ora arriva qui il segnale CANONICO calcolato server-side: nessuna
+  // seconda fonte di verità mantenuta "solo per compatibilità UI".
+  // undefined = non calcolato (non dovrebbe succedere dalla page.tsx reale,
+  // ma teniamo un default sicuro "true" per non introdurre falsi negativi).
+  activityAvailable?: boolean;
+  // Posti liberi REALI (minimo tra le settimane offerte non esaurite) — da
+  // mostrare al posto del vecchio activity.spotsLeft editoriale. undefined
+  // se non calcolabile (es. attività a soli giorni spot, o nessuna
+  // settimana offerta): in quel caso si mostra solo "Posti disponibili"
+  // generico, mai un numero potenzialmente falso.
+  realSpotsLeft?: number;
 }) {
   const accentBg = nextgen ? "bg-trama-violet" : "bg-sky";
   const accentText = nextgen ? "text-trama-violet" : "text-sky";
@@ -570,12 +591,25 @@ export default function DetailClient({
         <InfoRow
           icon="ti-users"
           label="Posti rimasti"
+          // FIX (TRAMA FINAL HARDENING §1/§3) — non più activity.spotsLeft
+          // (editoriale, scollegato dalla realtà): il numero mostrato ora è
+          // sempre quello reale (realSpotsLeft), la scelta del gestore
+          // (showExactSpots) resta solo per decidere SE mostrare il numero
+          // o un generico "Posti disponibili", mai per inventarne uno.
           value={
-            activity.showExactSpots && activity.spotsLeft !== undefined
-              ? `⚠️ Solo ${activity.spotsLeft}!`
+            !activityAvailable
+              ? "Al momento non disponibile"
+              : activity.showExactSpots && realSpotsLeft !== undefined
+              ? `⚠️ Solo ${realSpotsLeft}!`
               : "Posti disponibili"
           }
-          valueColor={activity.showExactSpots && activity.spotsLeft !== undefined ? "text-orange" : undefined}
+          valueColor={
+            !activityAvailable
+              ? "text-ink-3"
+              : activity.showExactSpots && realSpotsLeft !== undefined
+              ? "text-orange"
+              : undefined
+          }
         />
         <div className="my-3 h-px bg-[#F0F2F5]" />
 
@@ -736,6 +770,22 @@ export default function DetailClient({
               <div className="text-[11px] text-ink-2">Per modifiche, usa &quot;Contatta il gestore&quot; sopra</div>
             </div>
           )
+        ) : selectedDayDates.length === 0 && !activityAvailable ? (
+          // FIX (TRAMA FINAL HARDENING §1) — "Se disponibilità <= 0, la CTA
+          // 'Prenota ora' NON deve essere attiva": prima di questo fix la
+          // CTA era SEMPRE attiva qui indipendentemente dalla disponibilità
+          // reale (il banner sopra poteva dire "Solo 0 posti!" mentre questo
+          // link portava comunque al wizard). Nessun giorno spot selezionato
+          // (quel path resta invariato: selezionare un giorno pieno è già
+          // impossibile, vedi toggleDay) e nessuna disponibilità reale per
+          // settimana/giorno → stato esplicito, nessuna navigazione.
+          <button
+            type="button"
+            disabled
+            className="cursor-not-allowed rounded-lg bg-[#C5CDD8] px-7 py-3.5 text-[15px] font-bold text-white"
+          >
+            Al momento non disponibile
+          </button>
         ) : selectedDayDates.length > 0 && !meetsMinDays ? (
           <button
             type="button"
