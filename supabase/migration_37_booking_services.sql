@@ -1,0 +1,105 @@
+-- Migrazione 37 — Servizi extra selezionabili in prenotazione (pre-scuola,
+-- post-scuola, mensa, navetta).
+--
+-- QUESTO FILE NON È STATO APPLICATO AL DATABASE. Va eseguito manualmente da
+-- Fabrizio nello SQL Editor di Supabase quando pronto ad attivare la scelta
+-- reale (oggi, prima di questa migration, la navetta veniva inclusa/addebitata
+-- automaticamente se il centro la offriva, SENZA alcuna scelta del genitore —
+-- pre-scuola/post-scuola/mensa erano solo badge informativi, mai selezionabili
+-- né addebitabili).
+--
+-- ════════════════════════════════════════════════════════════════
+-- CONTESTO (segnalazione Fabrizio 04/09/2026: "nelle prenotazioni, il
+-- genitore deve poter scegliere se accedere a tutti i servizi (es. mensa,
+-- pre-scuola, ecc..)")
+-- ════════════════════════════════════════════════════════════════
+-- Decisioni prese con Fabrizio (AskUserQuestion):
+-- 1. Servizi selezionabili: pre-scuola, post-scuola, mensa, navetta — tutti
+--    e 4 (i primi 3 già avevano i "mattoni" prezzo lato configurazione
+--    attività, la navetta era già a pagamento ma MAI opzionale).
+-- 2. Granularità: per l'INTERA prenotazione (non per settimana/giorno
+--    singolo) — "nessuna eccezione per ora", estendibile in futuro.
+-- 3. UI: nuovo step "Servizi" nel wizard di prenotazione, tra "Settimane" e
+--    "Bambini".
+-- 4. Prezzo: sì, si somma al totale — coerente con come già funzionava la
+--    navetta (ora davvero scelta dal genitore, non più automatica).
+-- 5. Mensa: oggi ha solo uno stato (inclusa/pranzo al sacco/nessuna), senza
+--    un prezzo extra distinto — aggiunto qui "meal_price_extra". Diventa un
+--    servizio SELEZIONABILE dal genitore solo quando il gestore imposta un
+--    prezzo > 0 (altrimenti resta come prima: informazione statica,
+--    "inclusa nel prezzo settimanale" o "pranzo al sacco", nessuna scelta
+--    da fare).
+--
+-- ════════════════════════════════════════════════════════════════
+-- COLONNE
+-- ════════════════════════════════════════════════════════════════
+-- Sovrapprezzo mensa (€/settimana) — stesso concetto di
+-- activities.pre_service->priceExtra / post_service->priceExtra, ma la mensa
+-- non è un ServiceOption jsonb (è già un campo testo separato, meal_option),
+-- quindi una colonna numerica dedicata invece di ristrutturare meal_option.
+alter table public.activities add column if not exists meal_price_extra numeric(10, 2);
+
+-- Scelta del genitore per QUESTA prenotazione (non modificabile in seguito
+-- per singolo giorno, vedi CONTESTO punto 2) — bookings.shuttle_included
+-- esiste già (schema.sql riga ~471) e viene riusata as-is: prima di questa
+-- migration era calcolata automaticamente lato codice
+-- (BookingClient.tsx: "shuttleIncluded: !dayBookingMode &&
+-- activity.shuttlePrice > 0"), ora diventa una vera scelta del genitore
+-- esposta da un toggle — nessuna modifica di schema necessaria per la
+-- navetta, solo di comportamento applicativo.
+alter table public.bookings add column if not exists pre_service_included boolean not null default false;
+alter table public.bookings add column if not exists post_service_included boolean not null default false;
+alter table public.bookings add column if not exists meal_included boolean not null default false;
+
+-- ════════════════════════════════════════════════════════════════
+-- PRE-CHECK (eseguire PRIMA di applicare, per conferma manuale)
+-- ════════════════════════════════════════════════════════════════
+-- select meal_price_extra from public.activities limit 1; -- deve fallire con
+--   "column does not exist" — se invece restituisce una riga, qualcuno ha
+--   già applicato questa migration: FERMARSI e verificare.
+-- select pre_service_included, post_service_included, meal_included from
+--   public.bookings limit 1; -- stessa verifica per le 3 colonne su bookings.
+
+-- ════════════════════════════════════════════════════════════════
+-- POST-CHECK (eseguire DOPO aver applicato)
+-- ════════════════════════════════════════════════════════════════
+-- select meal_price_extra from public.activities limit 1; -- deve restituire
+--   una riga (anche con valore null, va bene)
+-- select pre_service_included, post_service_included, meal_included from
+--   public.bookings limit 1; -- deve restituire una riga con i 3 valori a
+--   false per le prenotazioni già esistenti (default), mai errore
+
+-- ════════════════════════════════════════════════════════════════
+-- ROLLBACK
+-- ════════════════════════════════════════════════════════════════
+-- alter table public.activities drop column if exists meal_price_extra;
+-- alter table public.bookings drop column if exists pre_service_included;
+-- alter table public.bookings drop column if exists post_service_included;
+-- alter table public.bookings drop column if exists meal_included;
+-- Nessuna FK entrante, nessun indice creato da questa migration.
+
+-- ════════════════════════════════════════════════════════════════
+-- BACKWARD COMPATIBILITY
+-- ════════════════════════════════════════════════════════════════
+-- Additiva pura: 4 colonne nuove, nessuna esistente toccata. A differenza
+-- della migration 36 (nuova tabella, isolata), qui le colonne sono su
+-- TABELLE già lette con una lista di colonne ESPLICITA su OGNI pagina
+-- attività/prenotazione del sito (lib/data/activities.ts,
+-- lib/data/my-bookings.ts, lib/data/center-bookings.ts, lib/data/bookings.ts)
+-- — se il codice le referenziasse SEMPRE nella query, finché questa
+-- migration non è applicata l'INTERA query fallirebbe con "colonna
+-- inesistente" e le attività/prenotazioni reali sparirebbero (regressione su
+-- funzionalità già in produzione, MAI accettabile — vedi CLAUDE.md). Per
+-- questo, in ciascuno di quei file, la lettura tenta PRIMA con la colonna in
+-- più e, solo se fallisce con "colonna inesistente" (codice Postgres 42703),
+-- RITENTA senza — stesso principio, applicato sia in lettura che in
+-- scrittura (creazione prenotazione, salvataggio scheda attività). Finché
+-- questa migration non è applicata: i toggle "Pre-scuola"/"Post-scuola"/
+-- "Mensa"/"Navetta" nel wizard di prenotazione restano regolarmente
+-- selezionabili e il loro costo entra comunque nel totale mostrato e
+-- addebitato (totalAmount non dipende da queste colonne), ma la scelta
+-- specifica (quale servizio) non viene persistita — a booking creata, il
+-- genitore ha pagato il prezzo giusto, il centro semplicemente non vede
+-- ancora QUALE servizio è stato scelto finché la migration non è applicata.
+-- Stesso per il sovrapprezzo mensa lato scheda attività: il campo resta
+-- modificabile ma non salvato finché "meal_price_extra" non esiste.
