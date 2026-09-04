@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import Link from "next/link";
 import PageHeader from "@/components/PageHeader";
 import StepIndicator from "@/components/StepIndicator";
 import WeekCard from "@/components/WeekCard";
@@ -207,6 +208,27 @@ export default function BookingClient({
     if (idx === -1) return weeks;
     return weeks.slice(Math.max(0, idx - 1), idx + 2);
   }, [weeks, showAllWeeks, focusWeek]);
+
+  // FIX (TRAMA FINAL HARDENING CLOSURE, segnalazione Fabrizio 04/09/2026 —
+  // limite residuo dopo il fix del "Continua" bloccato senza settimane) —
+  // per un'attività "mista" con settimane esaurite ma giorni spot ancora
+  // disponibili, un genitore che clicca "Prenota ora" SENZA aver prima
+  // scelto un giorno sulla scheda attività (dayBookingMode resta false,
+  // derivato solo da "?days=" nell'URL — vedi requestedDayDates sopra)
+  // atterrava qui sulla griglia settimane con OGNI card disabilitata:
+  // "Continua" restava correttamente bloccato (nessuna prenotazione
+  // sbagliata), ma senza alcun modo di procedere — un vicolo cieco
+  // silenzioso, non un errore di integrità dati. hasBookableWeeks/
+  // hasBookableDays permettono di riconoscere questo stato e offrire
+  // un'uscita esplicita invece di lasciare la griglia bloccata (vedi
+  // render sotto). Stesso identico filtro "reale" già usato da
+  // DetailClient.tsx/app/activity/[id]/page.tsx per calcolare
+  // hasAvailableDay — nessuna nuova regola di disponibilità.
+  const hasBookableWeeks = useMemo(() => weeks.some((w) => bookable(w, bookedWeekIds)), [weeks, bookedWeekIds]);
+  const hasBookableDays = useMemo(() => {
+    const todayIso = new Date().toISOString().slice(0, 10);
+    return days.some((d) => d.isOpen && d.date >= todayIso && d.singleDayBookable && d.spotsLeft > 0);
+  }, [days]);
 
   // FEATURE servizi extra — quali servizi ha senso offrire per QUESTA
   // attività/prenotazione. Niente su Giorni spot (dayBookingMode): stesso
@@ -446,7 +468,30 @@ export default function BookingClient({
           </div>
         )}
 
-        {currentStepKind === "weeks" && !dayBookingMode && (
+        {/* FIX (TRAMA FINAL HARDENING CLOSURE) — vedi commento su
+            hasBookableWeeks/hasBookableDays sopra: invece della griglia
+            settimane con ogni card disabilitata (vicolo cieco silenzioso),
+            un'uscita esplicita verso la scheda attività, dove il genitore
+            può scegliere i giorni spot reali (se presenti) o vedere lo
+            stato aggiornato di disponibilità. */}
+        {currentStepKind === "weeks" && !dayBookingMode && !hasBookableWeeks && (
+          <div>
+            <div className={`mb-1 ${titleCls}`}>Nessuna settimana disponibile</div>
+            <div className="mb-4 text-[13px] text-ink-2">
+              {hasBookableDays
+                ? "Le settimane intere per questa attività sono al momento esaurite, ma sono ancora disponibili singoli giorni spot."
+                : "Al momento questa attività non ha disponibilità reale, né a settimana intera né a giorno singolo."}
+            </div>
+            <Link
+              href={`/activity/${activity.id}`}
+              className={`inline-block rounded-lg ${accentBg} px-5 py-3 text-[13px] font-bold text-white transition-all hover:scale-[0.97] ${accentHoverBg}`}
+            >
+              {hasBookableDays ? "Torna alla scheda per scegliere i giorni" : "Torna alla scheda attività"}
+            </Link>
+          </div>
+        )}
+
+        {currentStepKind === "weeks" && !dayBookingMode && hasBookableWeeks && (
           <div>
             <div className={`mb-1 ${titleCls}`}>Scegli le settimane</div>
             <div className="mb-3 text-[13px] text-ink-2">
