@@ -20,6 +20,21 @@ async function gotoTestActivityBooking(page: import("@playwright/test").Page) {
   await page.getByRole("link", { name: "Prenota ora" }).click();
 }
 
+// FEATURE servizi extra (segnalazione Fabrizio 04/09/2026: "il genitore deve
+// poter scegliere se accedere a tutti i servizi") — lo step "Servizi" ora
+// compare TRA "Settimane" e "Bambini" solo se l'attività offre almeno un
+// servizio selezionabile (pre/post-scuola/mensa/navetta). L'attività di test
+// ([TEST] Attività BuddyKids) ha shuttle_price > 0 (supabase/seed-test-data.sql),
+// quindi lo step compare qui — questo helper lo salta senza selezionare
+// nessun servizio (comportamento equivalente a prima: nessun sovrapprezzo),
+// da chiamare subito dopo il primo "Continua" (step "Settimane").
+async function skipServicesStepIfPresent(page: import("@playwright/test").Page) {
+  const servicesHeading = page.getByText("Servizi extra", { exact: true });
+  if (await servicesHeading.isVisible().catch(() => false)) {
+    await page.getByRole("button", { name: "Continua" }).click();
+  }
+}
+
 test.describe("Genitori - Prenotazione", () => {
   // Serial, non parallelo: molti test qui sotto leggono/scrivono DAVVERO le
   // stesse prenotazioni condivise sull'account genitore di test reale (es.
@@ -161,6 +176,7 @@ test.describe("Genitori - Prenotazione", () => {
     }
     await selectableWeek.click();
     await page.getByRole("button", { name: "Continua" }).click();
+    await skipServicesStepIfPresent(page);
 
     // Step 2 - Chi partecipa: seleziona il primo bambino disponibile.
     await expect(page.getByText("Chi partecipa?")).toBeVisible();
@@ -199,6 +215,7 @@ test.describe("Genitori - Prenotazione", () => {
     }
     await selectableWeek.click();
     await page.getByRole("button", { name: "Continua" }).click();
+    await skipServicesStepIfPresent(page);
     await page.locator("label, button").filter({ hasText: /.+/ }).first().click().catch(() => {});
     await page.getByRole("button", { name: "Continua" }).click();
     await page.getByRole("button", { name: "Conferma e paga" }).click();
@@ -243,9 +260,13 @@ test.describe("Genitori - Prenotazione", () => {
     await selectableWeek.click();
     await page.getByRole("button", { name: "Continua" }).click();
 
-    // Siamo allo step 2 ("Chi partecipa?"): la freccia indietro deve
-    // riportare allo step 1 restando su /booking/[id], non uscire dal flusso.
-    await expect(page.getByText("Chi partecipa?")).toBeVisible();
+    // Siamo allo step 2: con l'attività di test (shuttle_price > 0, vedi
+    // FEATURE servizi extra) è "Servizi extra", non più sempre "Chi
+    // partecipa?" — la freccia indietro deve riportare allo step 1
+    // (qualunque sia lo step 2) restando su /booking/[id], non uscire dal
+    // flusso: verifica generica, non lega il test a QUALE step compare.
+    const step2Heading = page.getByText(/^(Servizi extra|Chi partecipa\?)$/);
+    await expect(step2Heading).toBeVisible();
     await page.getByLabel("Indietro").click();
     await expect(page.getByText("Scegli le settimane")).toBeVisible();
     await expect(page).toHaveURL(/\/booking\//);

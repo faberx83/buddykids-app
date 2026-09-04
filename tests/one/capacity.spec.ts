@@ -75,6 +75,15 @@ async function createRealWeeklyBooking(page: import("@playwright/test").Page) {
   await selectableWeek.click();
   await page.getByRole("button", { name: "Continua" }).click();
 
+  // FEATURE servizi extra (segnalazione Fabrizio 04/09/2026) — l'attività di
+  // test ha shuttle_price > 0, quindi ora compare uno step "Servizi" in più
+  // tra "Settimane" e "Bambini": lo saltiamo senza selezionare nulla (stesso
+  // effetto economico di prima, nessun servizio incluso).
+  const servicesHeading = page.getByText("Servizi extra", { exact: true });
+  if (await servicesHeading.isVisible().catch(() => false)) {
+    await page.getByRole("button", { name: "Continua" }).click();
+  }
+
   await expect(page.getByText("Chi partecipa?")).toBeVisible();
   await page
     .locator("label, button")
