@@ -151,6 +151,11 @@ export default function ActivityEditForm({
     lat: activity.lat ?? 45.4642,
     lng: activity.lng ?? 9.19,
     mealOption: (activity.mealOption ?? "none") as MealOption,
+    // Migration 37 (servizi extra in prenotazione, segnalazione Fabrizio
+    // 04/09/2026) — un prezzo > 0 rende la mensa selezionabile dal genitore
+    // nel wizard di prenotazione (come pre/post-scuola), invece della sola
+    // informazione statica "inclusa"/"pranzo al sacco" di prima.
+    mealPriceExtra: activity.mealPriceExtra ?? 0,
     preService: activity.preService ?? { available: false, time: "07:30", priceExtra: 0 },
     postService: activity.postService ?? { available: false, time: "18:00", priceExtra: 0 },
     schedule: activity.schedule,
@@ -297,6 +302,7 @@ export default function ActivityEditForm({
             lat: form.lat,
             lng: form.lng,
             mealOption: form.mealOption,
+            mealPriceExtra: form.mealOption === "none" ? 0 : form.mealPriceExtra,
             preService: form.preService,
             postService: form.postService,
             schedule: form.schedule,
@@ -597,6 +603,22 @@ export default function ActivityEditForm({
               ))}
             </select>
           </Field>
+
+          {form.mealOption !== "none" && (
+            <Field label="Sovrapprezzo mensa (€/sett., 0 = nessuna scelta da fare per il genitore)">
+              <input
+                type="number"
+                min={0}
+                value={form.mealPriceExtra}
+                onChange={(e) => update("mealPriceExtra", Number(e.target.value))}
+                className="w-full rounded-md border border-[#E8EBF0] bg-bg px-3 py-2 text-sm outline-none focus:border-sky"
+              />
+              <p className="mt-1 text-[11px] text-ink-3">
+                Sopra 0€: il genitore la sceglie esplicitamente in prenotazione (come pre/post-scuola).
+                A 0€: resta solo un&apos;informazione, come oggi.
+              </p>
+            </Field>
+          )}
 
           <label className="flex items-start gap-2.5 rounded-md bg-bg p-3 text-sm text-ink">
             <input
