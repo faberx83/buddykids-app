@@ -769,6 +769,17 @@ export default function BookingClient({
           disabled={
             submitting ||
             (currentStepKind === "weeks" && dayBookingMode && selectedDayRows.length === 0) ||
+            // FIX (TRAMA FINAL HARDENING CLOSURE, segnalazione live
+            // 04/09/2026: "il tasto Prenota ora... e il flusso va avanti"
+            // per un'attività senza nessuna settimana realmente
+            // selezionabile) — il ramo "settimana intera" (!dayBookingMode)
+            // non aveva MAI il proprio controllo equivalente: si poteva
+            // premere "Continua" con zero settimane selezionate (tutte
+            // "Non attiva qui"/esaurite) e proseguire fino al passo
+            // Bambini/Pagamento con una prenotazione che non ha alcuna
+            // settimana da associare. Stesso principio già applicato al
+            // ramo giorni (riga sopra), qui semplicemente mancava.
+            (currentStepKind === "weeks" && !dayBookingMode && selectedWeeks.length === 0) ||
             (currentStepKind === "kids" && selectedKids.length === 0)
           }
           className={`w-full rounded-lg ${accentBg} py-[15px] text-[15px] font-bold text-white transition-colors ${accentHoverBg} disabled:cursor-not-allowed disabled:opacity-60`}
