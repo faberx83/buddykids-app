@@ -18,6 +18,7 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { logTelemetryEvent } from "@/lib/telemetry/correlation";
+import { notifyAvailabilityBackInStock } from "@/lib/notifications/availability-push";
 
 type SupabaseClientLike = Awaited<ReturnType<typeof createClient>>;
 
@@ -26,6 +27,16 @@ export interface CapacityMutationResult {
   applied: boolean;
   /** Valore di spots_left DOPO la mutazione (o quello attuale se applied=false). */
   spotsLeft: number;
+  /**
+   * TRAMA FINAL HARDENING §4-8 — true SOLO per un release il cui
+   * spots_left era ESATTAMENTE 0 nel preciso istante prima di questa
+   * specifica mutazione riuscita (mai per ogni incremento) — il segnale
+   * esatto richiesto per il trigger della push "è tornato un posto",
+   * garantito unico dal CAS: solo la mutazione che vince quella transizione
+   * può vedere row.spots_left===0. undefined per reserveSpot (non
+   * applicabile — una reserve non può mai generare disponibilità).
+   */
+  wasZeroBeforeRelease?: boolean;
 }
 
 /** Invariante pura, senza I/O: mai sotto 0, mai sopra capacity. Esportata per essere testata isolatamente. */
@@ -118,6 +129,7 @@ async function releaseSpot(
     const { data: row } = await supabase.from(table).select("spots_left, capacity").eq("id", id).single();
     if (!row) return { applied: false, spotsLeft: 0 };
 
+    const wasZero = row.spots_left === 0;
     const next = clampSpotsLeft(row.spots_left + 1, row.capacity ?? row.spots_left + 1);
     const { data: updated } = await supabase
       .from(table)
@@ -127,7 +139,7 @@ async function releaseSpot(
       .select("spots_left");
 
     if (updated && updated.length > 0) {
-      return { applied: true, spotsLeft: next };
+      return { applied: true, spotsLeft: next, wasZeroBeforeRelease: wasZero };
     }
   }
 
@@ -199,6 +211,21 @@ export async function releaseWeekCapacity(
       .update({ capacity_decremented: false })
       .eq("booking_id", bookingId)
       .eq("week_id", weekId);
+    // TRAMA FINAL HARDENING §4-8 — trigger event-driven della push
+    // "è tornato un posto" SOLO sulla vera transizione 0→disponibile (vedi
+    // commento su CapacityMutationResult.wasZeroBeforeRelease sopra e la
+    // documentazione di scope in lib/notifications/availability-push.ts).
+    // Fire-and-await (non fire-and-forget): un ambiente serverless può
+    // terminare la funzione non appena la risposta HTTP parte, un
+    // "dimenticato" non awaited rischierebbe di non completare mai l'invio.
+    // Best-effort per costruzione (mai un'eccezione qui): non deve mai far
+    // fallire il release di capacità che l'ha generato.
+    if (result.wasZeroBeforeRelease) {
+      const { data: weekRow } = await supabase.from("activity_weeks").select("activity_id").eq("id", weekId).single();
+      if (weekRow?.activity_id) {
+        await notifyAvailabilityBackInStock({ kind: "week", activityId: weekRow.activity_id, weekId });
+      }
+    }
   }
   return result;
 }
@@ -273,6 +300,18 @@ export async function releaseDayCapacity(
       .update({ capacity_decremented: false })
       .eq("booking_id", bookingId)
       .eq("activity_day_id", activityDayId);
+    // TRAMA FINAL HARDENING §4-8 — stesso trigger di releaseWeekCapacity
+    // sopra, per il ramo "Giorni spot".
+    if (result.wasZeroBeforeRelease) {
+      const { data: dayRow } = await supabase
+        .from("activity_days")
+        .select("activity_id")
+        .eq("id", activityDayId)
+        .single();
+      if (dayRow?.activity_id) {
+        await notifyAvailabilityBackInStock({ kind: "day", activityId: dayRow.activity_id, activityDayId });
+      }
+    }
   }
   return result;
 }
