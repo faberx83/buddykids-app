@@ -9,14 +9,21 @@
 // un'infrastruttura non ancora presente in questo stack, specialmente su
 // iOS/Safari).
 
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/server";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
-import { getSeasonWeekRanges, overlaps } from "@/lib/season-weeks";
+import { getSeasonWeekRanges, overlaps, type SeasonWeekRange } from "@/lib/season-weeks";
 import { getSeasonYear } from "@/lib/data/season-year";
 
 export type CheckinStatus = "presente" | "assente" | "in_ritardo";
 
 export interface TodayCheckin {
+  // TRAMA FINAL HARDENING §13-15 (push check-in, 04/09/2026) — necessario
+  // per il cron cross-famiglia sotto (getPendingCheckinsForPushToday):
+  // getTodayCheckinsForParent() lo scarta subito (già filtrato per un solo
+  // utente), ma la query condivisa lo seleziona comunque per non duplicare
+  // la logica di raggruppamento.
+  parentId: string;
   activityId: string;
   activityName: string;
   activitySlug: string;
@@ -105,6 +112,7 @@ interface RawDayRef {
 }
 
 interface RawBookingRow {
+  parent_id: string;
   // FIX (TRAMA FINAL HARDENING §10-12) — vedi commento sul ramo booking_weeks
   // sotto: senza questo campo, una prenotazione a settimana intera ANCORA
   // "pending" (il centro non ha ancora risposto) produceva comunque una
@@ -122,37 +130,32 @@ interface RawBookingRow {
   }[] | null;
 }
 
-export async function getTodayCheckinsForParent(): Promise<TodayCheckin[]> {
-  if (!isSupabaseConfigured) return [];
+// TRAMA FINAL HARDENING §13-15 (push check-in, 04/09/2026) — estratta da
+// getTodayCheckinsForParent() SENZA modificarne la logica: stesso identico
+// filtro "cosa conta come impegno confermato oggi" (partner_decision
+// accepted, data odierna dentro l'intervallo), ora riusabile sia dal
+// genitore (con client di sessione + filtro sul proprio parent_id) sia dal
+// cron cross-famiglia sotto (con client di servizio, nessun filtro
+// parent_id). Nessuna nuova regola di "finestra actionable" inventata —
+// esattamente la stessa già in produzione per la card Home.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type CheckinQueryClient = SupabaseClient<any, "public", any>;
 
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) return [];
-
-  const today = new Date().toISOString().slice(0, 10);
-
-  // BUG TROVATO+CORRETTO (segnalato da Fabrizio: la card di check-in
-  // mostrava "Settimana 3" mentre il Registro presenze/Planner per la
-  // STESSA settimana mostravano "Settimana 6"): qui si usava il testo
-  // "label" salvato sulla riga activity_weeks, che il gestore può aver
-  // scritto a mano quando ha creato le settimane della sua attività — non è
-  // detto corrisponda al numero "canonico" calcolato da getSeasonWeekRanges
-  // (la stessa griglia lun-ven usata da Planner/Prenotazione/Registro). Ora
-  // ricalcoliamo l'indice dalla data reale, come fa lib/data/planner.ts, così
-  // il numero di settimana è sempre coerente in tutta l'app.
-  const seasonYear = await getSeasonYear();
-  const seasonWeeks = getSeasonWeekRanges(seasonYear);
-
-  const { data, error } = await supabase
+async function computeTodayCheckinsQuery(
+  supabase: CheckinQueryClient,
+  today: string,
+  seasonWeeks: SeasonWeekRange[],
+  parentIdFilter: string | null
+): Promise<TodayCheckin[]> {
+  let query = supabase
     .from("bookings")
     .select(
-      "partner_decision, activities ( id, name, slug, emoji, img_gradient, cover_image_url ), booking_kids ( kid_id, kids ( id, name ) ), booking_weeks ( activity_weeks ( id, label, start_date, end_date ) ), booking_days ( partner_decision, activity_days ( id, date ) )"
+      "parent_id, partner_decision, activities ( id, name, slug, emoji, img_gradient, cover_image_url ), booking_kids ( kid_id, kids ( id, name ) ), booking_weeks ( activity_weeks ( id, label, start_date, end_date ) ), booking_days ( partner_decision, activity_days ( id, date ) )"
     )
-    .eq("parent_id", user.id)
     .neq("status", "cancelled");
+  if (parentIdFilter) query = query.eq("parent_id", parentIdFilter);
 
+  const { data, error } = await query;
   if (error || !data) return [];
 
   const map = new Map<string, TodayCheckin>();
@@ -189,6 +192,7 @@ export async function getTodayCheckinsForParent(): Promise<TodayCheckin[]> {
         const key = `${kid.id}:week:${week.id}`;
         if (map.has(key)) continue;
         map.set(key, {
+          parentId: booking.parent_id,
           activityId: activity.id,
           activityName: activity.name,
           activitySlug: activity.slug ?? activity.id,
@@ -233,6 +237,7 @@ export async function getTodayCheckinsForParent(): Promise<TodayCheckin[]> {
         const key = `${kid.id}:day:${day.id}`;
         if (map.has(key)) continue;
         map.set(key, {
+          parentId: booking.parent_id,
           activityId: activity.id,
           activityName: activity.name,
           activitySlug: activity.slug ?? activity.id,
@@ -285,4 +290,79 @@ export async function getTodayCheckinsForParent(): Promise<TodayCheckin[]> {
   }
 
   return results.filter((r) => isCheckinStillVisible(r));
+}
+
+export async function getTodayCheckinsForParent(): Promise<TodayCheckin[]> {
+  if (!isSupabaseConfigured) return [];
+
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return [];
+
+  const today = new Date().toISOString().slice(0, 10);
+
+  // BUG TROVATO+CORRETTO (segnalato da Fabrizio: la card di check-in
+  // mostrava "Settimana 3" mentre il Registro presenze/Planner per la
+  // STESSA settimana mostravano "Settimana 6"): qui si usava il testo
+  // "label" salvato sulla riga activity_weeks, che il gestore può aver
+  // scritto a mano quando ha creato le settimane della sua attività — non è
+  // detto corrisponda al numero "canonico" calcolato da getSeasonWeekRanges
+  // (la stessa griglia lun-ven usata da Planner/Prenotazione/Registro). Ora
+  // ricalcoliamo l'indice dalla data reale, come fa lib/data/planner.ts, così
+  // il numero di settimana è sempre coerente in tutta l'app.
+  const seasonYear = await getSeasonYear();
+  const seasonWeeks = getSeasonWeekRanges(seasonYear);
+
+  return computeTodayCheckinsQuery(supabase, today, seasonWeeks, user.id);
+}
+
+// TRAMA FINAL HARDENING §13-15 (push check-in, 04/09/2026) — controparte
+// cross-famiglia di getTodayCheckinsForParent(), per il cron
+// app/api/cron/checkin-reminders. STESSA identica query/filtro sopra (mai
+// una nuova regola di "cosa è un impegno confermato oggi"), solo senza il
+// filtro parent_id, con il client di servizio (nessuna sessione utente in
+// un cron) — poi ristretta a status === null, cioè "il genitore non ha
+// ancora risposto", lo stesso identico stato che in Home fa comparire la
+// card grande di CheckinPrompt (non collassata). Non spinge una push a chi
+// ha già risposto (anche se la card resta visibile in forma compatta per
+// le 3 ore successive, vedi CHECKIN_HIDE_AFTER_HOURS/isCheckinStillVisible
+// — quella soglia serve solo alla UI, non è un motivo per notificare).
+//
+// DEDUPLICA — stesso limite documentato già accettato per
+// lib/notifications/availability-push.ts: nessuna nuova persistenza. La
+// garanzia di "una sola push al giorno per genitore" si appoggia
+// interamente sul fatto che questo cron gira al più 1 volta/giorno (limite
+// del piano Vercel Hobby, già verificato con vercel.json/travel-reminders)
+// e che la query è scoperta SOLO per "oggi" (date = today), quindi una
+// nuova esecuzione domani interroga un giorno diverso per costruzione — non
+// serve una tabella di log per evitare un doppio invio nello stesso giorno
+// in condizioni normali. Gap residuo, identico a quello di
+// availability-push: un ipotetico retry di Vercel della STESSA esecuzione
+// cron potrebbe duplicare l'invio — nessun retry automatico esiste oggi su
+// questo endpoint, rischio basso ma non escluso senza persistenza dedicata.
+// Se in futuro servirà una garanzia più forte, lo stesso pattern già
+// proposto per l'altra push (tabella con UNIQUE su parent_id+data) si
+// applica identico qui — non introdotto ora, per la stessa regola
+// "fermarsi prima della migration" già seguita altrove in questa wave.
+//
+// AUDIT PARTNER-SIDE (richiesto esplicitamente prima di aggiungere
+// qualunque push): il centro NON deve mai "agire" dopo un check-in
+// presente/assente — sono puramente informativi per il roster presenze
+// (vedi lib/data/attendance-report.ts). L'unico caso realmente
+// "actionable" per il centro è "in_ritardo", ed è GIÀ notificato via email
+// in app/actions/checkin.ts (parentCheckinAction) da prima di questa wave
+// — aggiungere anche una push Partner qui duplicherebbe un canale già
+// esistente per lo stesso evento, non è un gap reale. Nessuna push
+// Partner aggiunta: non è un'omissione, è una scelta di scope verificata.
+export async function getPendingCheckinsForPushToday(
+  service: CheckinQueryClient
+): Promise<TodayCheckin[]> {
+  const today = new Date().toISOString().slice(0, 10);
+  const seasonYear = await getSeasonYear();
+  const seasonWeeks = getSeasonWeekRanges(seasonYear);
+
+  const all = await computeTodayCheckinsQuery(service, today, seasonWeeks, null);
+  return all.filter((item) => item.status === null);
 }
