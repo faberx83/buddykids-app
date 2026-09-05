@@ -45,7 +45,26 @@ export default async function ActivityDetailPage({
   // (stessa funzione di "Le mie prenotazioni"/Planner, già calcola status e
   // canCancelOrModify) — nessuna nuova query/tabella, nessuna nuova
   // interpretazione dello stato prenotazione.
-  let existingBooking: { id: string; status: "pending" | "confirmed" | "cancelled"; canCancelOrModify: boolean } | null = null;
+  let existingBooking: {
+    id: string;
+    status: "pending" | "confirmed" | "cancelled";
+    canCancelOrModify: boolean;
+    // FIX (TRAMA FINAL HARDENING CLOSURE, segnalazione Fabrizio 04/09/2026 —
+    // "controlla la coerenza tra lo stato delle prenotazioni in tutti i
+    // punti"): questa scheda mostrava SOLO `status` (bookings.status,
+    // transazione/pagamento — quasi sempre "confirmed" col pagamento demo,
+    // indipendentemente da cosa il centro abbia deciso), MAI
+    // partnerDecision (risposta OPERATIVA del centro, la stessa distinzione
+    // già corretta il 01/09 in PrenotazioniClient.tsx — "Le mie
+    // prenotazioni" — ma mai estesa qui). Risultato: la STESSA prenotazione
+    // poteva leggersi "Prenotazione confermata" qui e "Confermata
+    // parzialmente"/"In attesa di conferma del centro" in "Le mie
+    // prenotazioni"/Planner — stesso identico difetto concettuale, mai
+    // stesso punto di codice. getMyBookingsForParent() calcola già
+    // partnerDecision correttamente (effectiveDayBasedDecision per le
+    // prenotazioni a giorni) — qui si legge, non si ricalcola nulla.
+    partnerDecision: "pending" | "accepted" | "rejected" | "proposed" | "partial";
+  } | null = null;
   if (isSupabaseConfigured) {
     const supabase = await createClient();
     const {
@@ -71,7 +90,12 @@ export default async function ActivityDetailPage({
         ? bookings.find((b) => b.activityDbId === activity.dbId && b.status !== "cancelled")
         : undefined;
       if (match) {
-        existingBooking = { id: match.id, status: match.status, canCancelOrModify: match.canCancelOrModify };
+        existingBooking = {
+          id: match.id,
+          status: match.status,
+          canCancelOrModify: match.canCancelOrModify,
+          partnerDecision: match.partnerDecision,
+        };
       }
     }
   }

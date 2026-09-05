@@ -70,7 +70,17 @@ export default function DetailClient({
   // prenotazioni"/Planner, nessuna nuova interpretazione dello stato
   // prenotazione. null = nessuna prenotazione attiva per questa attività
   // (comportamento invariato, CTA acquisitiva "Prenota ora").
-  existingBooking?: { id: string; status: "pending" | "confirmed" | "cancelled"; canCancelOrModify: boolean } | null;
+  existingBooking?: {
+    id: string;
+    status: "pending" | "confirmed" | "cancelled";
+    canCancelOrModify: boolean;
+    // FIX (TRAMA FINAL HARDENING CLOSURE, 04/09/2026) — vedi commento su
+    // app/activity/[id]/page.tsx: la label sotto ora si basa su questo
+    // campo (già calcolato da getMyBookingsForParent(), stesso valore
+    // mostrato in "Le mie prenotazioni"/Planner), non più sul solo status
+    // di pagamento.
+    partnerDecision: "pending" | "accepted" | "rejected" | "proposed" | "partial";
+  } | null;
   // FIX (TRAMA FINAL HARDENING §1/§3, segnalazione Fabrizio 04/09/2026 —
   // walkthrough live: banner "Solo 0 posti!" ma CTA "Prenota ora" ancora
   // attiva). Root cause: questa scheda usava SOLO il campo editoriale
@@ -765,7 +775,24 @@ export default function DetailClient({
           ) : (
             <div className="text-right">
               <div className="text-[13px] font-bold text-ink">
-                {existingBooking.status === "confirmed" ? "Prenotazione confermata" : "Prenotazione in attesa"}
+                {/* FIX (TRAMA FINAL HARDENING CLOSURE, segnalazione Fabrizio
+                    04/09/2026 — "controlla la coerenza tra lo stato delle
+                    prenotazioni in tutti i punti"): prima si leggeva SOLO
+                    existingBooking.status (pagamento, quasi sempre
+                    "confirmed" indipendentemente dalla risposta del centro)
+                    — la stessa prenotazione poteva quindi dire "confermata"
+                    qui e "in attesa"/"confermata parzialmente" in "Le mie
+                    prenotazioni"/Planner. Stessa vocale di
+                    PrenotazioniClient.tsx (la referenza primaria del
+                    genitore per questo stato), stesso campo
+                    partnerDecision — nessuna nuova regola. */}
+                {existingBooking.partnerDecision === "accepted"
+                  ? "Prenotazione confermata"
+                  : existingBooking.partnerDecision === "partial"
+                  ? "Confermata parzialmente"
+                  : existingBooking.partnerDecision === "rejected"
+                  ? "Prenotazione rifiutata"
+                  : "Prenotazione in attesa"}
               </div>
               <div className="text-[11px] text-ink-2">Per modifiche, usa &quot;Contatta il gestore&quot; sopra</div>
             </div>
