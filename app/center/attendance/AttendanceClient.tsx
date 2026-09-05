@@ -103,16 +103,27 @@ export default function AttendanceClient({
   // ordine cronologico, mantenendo l'ordine relativo originale all'interno
   // di ciascun mese.
   const monthBuckets = useMemo(() => {
-    const buckets = new Map<string, { label: string; items: AttendanceWeekGroup[] }>();
+    const buckets = new Map<string, { monthKey: string; label: string; items: AttendanceWeekGroup[] }>();
     for (const g of weekGroups) {
       const monthKey = g.startDate.slice(0, 7); // "YYYY-MM", ordinabile come stringa
-      if (!buckets.has(monthKey)) buckets.set(monthKey, { label: monthLabel(g.startDate), items: [] });
+      if (!buckets.has(monthKey)) buckets.set(monthKey, { monthKey, label: monthLabel(g.startDate), items: [] });
       buckets.get(monthKey)!.items.push(g);
     }
-    return Array.from(buckets.entries())
-      .sort(([a], [b]) => a.localeCompare(b))
-      .map(([, v]) => v);
+    return Array.from(buckets.values()).sort((a, b) => a.monthKey.localeCompare(b.monthKey));
   }, [weekGroups]);
+
+  // FIX (TRAMA FINAL HARDENING CLOSURE, segnalazione Fabrizio 04/09/2026 —
+  // "il mese già espanso deve essere quello in corso, ora si apre sempre
+  // giugno") — ora che le prenotazioni Giorni spot passate sono visibili
+  // (fix precedente in lib/data/attendance.ts), la stagione può avere molti
+  // mesi con gruppi reali: senza un accordion, la sidebar mostrava SEMPRE
+  // tutti i mesi aperti, a partire da Giugno (il primo cronologicamente) —
+  // il gestore doveva scorrere manualmente fino al mese di oggi ogni volta.
+  // Stesso pattern accordion già in uso in
+  // app/nextgen/planner/PlannerClient.tsx (expandedMonths): di default è
+  // aperto SOLO il mese corrente, non il primo della stagione.
+  const currentMonthKey = new Date().toISOString().slice(0, 7);
+  const [expandedMonths, setExpandedMonths] = useState<Set<string>>(() => new Set([currentMonthKey]));
 
   const selectedGroup = weekGroups.find((g) => g.groupKey === selectedKey) ?? null;
   const days = selectedGroup ? daysInWeekClient(selectedGroup.startDate, selectedGroup.endDate) : [];
@@ -207,40 +218,70 @@ export default function AttendanceClient({
         <div className="flex flex-col gap-4 md:flex-row">
           <div className="w-full flex-shrink-0 rounded-lg border border-[#E8EBF0] bg-white md:w-64">
             <div className="divide-y divide-[#F0F2F5]">
-              {monthBuckets.map((bucket) => (
-                <div key={bucket.label}>
-                  <div className="bg-bg px-4 py-1.5 text-[10.5px] font-bold uppercase tracking-wide text-ink-3">
-                    {bucket.label}
+              {monthBuckets.map((bucket) => {
+                const isExpanded = expandedMonths.has(bucket.monthKey);
+                return (
+                  <div key={bucket.monthKey}>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setExpandedMonths((prev) => {
+                          const next = new Set(prev);
+                          if (next.has(bucket.monthKey)) next.delete(bucket.monthKey);
+                          else next.add(bucket.monthKey);
+                          return next;
+                        })
+                      }
+                      className="flex w-full items-center justify-between bg-bg px-4 py-1.5 text-[10.5px] font-bold uppercase tracking-wide text-ink-3"
+                      aria-expanded={isExpanded}
+                    >
+                      {bucket.label}
+                      <i className={`ti ${isExpanded ? "ti-chevron-up" : "ti-chevron-down"} text-[13px]`} />
+                    </button>
+                    {isExpanded &&
+                      bucket.items.map((g) => {
+                        const key = g.groupKey;
+                        return (
+                          <button
+                            key={key}
+                            onClick={() => {
+                              setSelectedKey(key);
+                              setSelectedDay(null);
+                            }}
+                            className={`block w-full px-4 py-3 text-left text-sm transition-colors ${
+                              selectedKey === key ? "bg-partner-light font-semibold text-partner" : "text-ink"
+                            }`}
+                          >
+                            <div className="flex items-center gap-1.5">
+                              {g.activityName}
+                              {g.isCurrentWeek && (
+                                <span className="rounded-full bg-partner-light px-1.5 py-0.5 text-[9px] font-bold uppercase text-partner">
+                                  Oggi
+                                </span>
+                              )}
+                            </div>
+                            {/* FIX (TRAMA FINAL HARDENING CLOSURE, segnalazione
+                                Fabrizio 04/09/2026: "tutte le righe uguali non
+                                aiutano a capire, serve il giorno") — un gruppo
+                                "a giorno" (Giorni spot) mostrava solo
+                                "Settimana N · Giorno spot", identico per ogni
+                                giorno accettato della stessa settimana:
+                                impossibile distinguere QUALE giorno senza
+                                cliccarci sopra uno per uno. Aggiunta la data
+                                reale del giorno (g.startDate === g.endDate per
+                                un gruppo a giorno, vedi lib/data/attendance.ts),
+                                stesso formatDayLabel già usato per le tab
+                                giorno a destra — nessun nuovo formato inventato. */}
+                            <div className="text-xs text-ink-2">
+                              {g.weekLabel}
+                              {g.isDayBased && ` · ${formatDayLabel(g.startDate)}`} · {g.kids.length} bambini
+                            </div>
+                          </button>
+                        );
+                      })}
                   </div>
-                  {bucket.items.map((g) => {
-                    const key = g.groupKey;
-                    return (
-                      <button
-                        key={key}
-                        onClick={() => {
-                          setSelectedKey(key);
-                          setSelectedDay(null);
-                        }}
-                        className={`block w-full px-4 py-3 text-left text-sm transition-colors ${
-                          selectedKey === key ? "bg-partner-light font-semibold text-partner" : "text-ink"
-                        }`}
-                      >
-                        <div className="flex items-center gap-1.5">
-                          {g.activityName}
-                          {g.isCurrentWeek && (
-                            <span className="rounded-full bg-partner-light px-1.5 py-0.5 text-[9px] font-bold uppercase text-partner">
-                              Oggi
-                            </span>
-                          )}
-                        </div>
-                        <div className="text-xs text-ink-2">
-                          {g.weekLabel} · {g.kids.length} bambini
-                        </div>
-                      </button>
-                    );
-                  })}
-                </div>
-              ))}
+                );
+              })}
             </div>
           </div>
 
