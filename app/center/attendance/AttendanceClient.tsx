@@ -198,7 +198,20 @@ export default function AttendanceClient({
     const key = `${kidId}:${date}`;
     const current = attendance[key] ?? "assente";
     const currentParentReport = parentReport[key] ?? false;
-    if (current === next) return;
+    // FIX (segnalazione Fabrizio 05/09/2026, "come si toglie il bollino 2..
+    // con quale flusso?"): questa guardia bloccava anche il caso più comune
+    // — il gestore È D'ACCORDO con quanto segnalato dal genitore e clicca lo
+    // STESSO stato già evidenziato per confermarlo. Prima di questo fix,
+    // "nessun cambiamento di stato" significava "niente da salvare", quindi
+    // checked_in_by restava "parent" per sempre: l'unico modo (non
+    // intuitivo) per far sparire il pallino "da confermare" era cliccare
+    // prima un altro stato e poi tornare su quello giusto. Ora il "nessun
+    // cambiamento" blocca la scrittura SOLO se il record era già confermato
+    // dal centro (currentParentReport === false) — se invece proviene
+    // ancora dal genitore, cliccare lo stesso stato è un vero "confermo",
+    // deve scrivere (setAttendanceAction rimette comunque checked_in_by a
+    // "center").
+    if (current === next && !currentParentReport) return;
 
     setAttendance((prev) => ({ ...prev, [key]: next }));
     setParentReport((prev) => ({ ...prev, [key]: false })); // scrittura del gestore: non più "auto-segnalato"
