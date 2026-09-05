@@ -751,11 +751,33 @@ export default function DetailClient({
             <div className="text-[11px] text-ink-2">per settimana</div>
           </div>
         )}
-        {existingBooking ? (
+        {selectedDayDates.length > 0 && meetsMinDays ? (
+          // FIX (segnalazione Fabrizio 05/09/2026, screenshot "perché non
+          // posso prenotare?"): per un'attività "Giorni spot" già prenotata
+          // parzialmente (es. 6 giorni su una stagione che ne offre molti di
+          // più), il ramo "existingBooking" sotto FACEVA SEMPRE priorità,
+          // nascondendo "Prenota ora" per SEMPRE dopo la prima prenotazione
+          // — anche quando il genitore aveva appena selezionato NUOVI giorni
+          // ancora liberi nella griglia sopra (toggleDay li permette già:
+          // l'unico blocco reale era qui). "Giorni spot" è per natura
+          // incrementale ("Scegli solo i giorni che ti servono"): una
+          // selezione attiva di giorni nuovi deve sempre poter proseguire
+          // verso la prenotazione, indipendentemente da quante richieste
+          // precedenti esistano già per la stessa attività. meetsMinDays
+          // (invariato) continua a bloccare sotto la soglia minima.
+          <Link
+            href={bookingHref}
+            data-spotlight="book_activity"
+            className={`rounded-lg ${accentBg} px-7 py-3.5 text-[15px] font-bold text-white transition-all hover:scale-[0.97] ${accentHoverBg}`}
+          >
+            Prenota ora
+          </Link>
+        ) : existingBooking ? (
           // PLANNER BETA v1.1 (Wave 4) — booking attivo ("pending" o
-          // "confirmed") già esistente per questa attività: "Prenota ora"
-          // non deve MAI comparire (sarebbe una nuova acquisizione, non
-          // un'azione su quanto già prenotato). Mostriamo SOLO l'azione
+          // "confirmed") già esistente per questa attività E nessuna nuova
+          // selezione di giorni in corso (vedi ramo sopra): "Prenota ora"
+          // non deve comparire (sarebbe altrimenti ambiguo se il genitore
+          // non ha scelto nulla di nuovo). Mostriamo SOLO l'azione
           // realmente supportata dal backend oggi — modifica della
           // prenotazione esistente — riusando la STESSA route condivisa
           // già linkata da "Le mie prenotazioni" (PrenotazioniClient.tsx,
