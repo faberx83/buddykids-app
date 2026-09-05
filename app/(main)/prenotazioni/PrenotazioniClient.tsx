@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { MyBooking, BookingStatus } from "@/lib/data/my-bookings";
 import { PlannerData } from "@/lib/data/planner";
-import { computeHeroWeeksSummary } from "@/lib/nextgen/planner-insights";
+import { computeHeroWeeksSummary, computeWeekStatus, WeekStatus } from "@/lib/nextgen/planner-insights";
 import { Kid } from "@/lib/types";
 import { cancelBookingAction } from "@/app/actions/bookings";
 import PageHeader from "@/components/PageHeader";
@@ -677,6 +677,61 @@ function CoverageStrip({ planner, nextgen }: { planner: PlannerData; nextgen?: b
   return <div className="rounded-2xl border border-[#E8EBF0] bg-white p-4">{body}</div>;
 }
 
+// FIX (segnalazione Fabrizio 05/09/2026, screenshot "Prenotazioni" — "lo
+// stato delle prenotazioni non è coerente con lo stato reale e con tutti i
+// punti in cui c'è riferimento alle prenotazioni" + "etichetta 'Da
+// organizzare' non è propriamente corretta"): questa vista derivava
+// l'etichetta da SOLO w.covered/w.dismissed (booleano "ha una prenotazione
+// sì/no"), MAI da cosa il centro ha davvero deciso — una settimana con una
+// prenotazione Giorni spot parzialmente accettata (es. Sett.14 "Prova FP")
+// risultava "Organizzata" (verde, tutto a posto) qui, ma "Confermata
+// parzialmente" nel Planner NEXTGEN per la STESSA identica settimana; una
+// settimana già richiesta ma non ancora risposta dal centro (es. Sett.16
+// "test") sarebbe finita sotto "Da organizzare" come se il genitore non
+// avesse ancora fatto nulla — falso, la richiesta esiste già. computeWeekStatus
+// (lib/nextgen/planner-insights.ts) è già la fonte canonica usata dal
+// Planner per questa stessa identica distinzione (awaitingPartnerConfirmation/
+// dayBookingOnly, entrambi già calcolati su planner.weeks — nessun nuovo
+// dato) — riusata qui invece di re-derivare uno stato diverso a mano.
+function coperturaPill(status: WeekStatus): { label: string; badgeClass: string; cardClass: string } {
+  switch (status) {
+    case "awaiting":
+      // Stessi colori già usati da effectiveStatusBadge poco sopra in questo
+      // stesso file per "In attesa di conferma del centro" — stessa
+      // etichetta, stesso significato, stesso posto (coerenza richiesta).
+      return {
+        label: "In attesa di conferma del centro",
+        badgeClass: "bg-yellow-light text-[#9a6b00]",
+        cardClass: "border-yellow-light bg-yellow-light/40",
+      };
+    case "partial":
+      // Stessi colori già usati da effectiveStatusBadge per "Confermata
+      // parzialmente (X di Y giorni)".
+      return {
+        label: "Confermata parzialmente",
+        badgeClass: "bg-[#F0EEFF] text-[#6F63C5]",
+        cardClass: "border-[#F0EEFF] bg-[#F0EEFF]/40",
+      };
+    case "covered":
+      return { label: "Organizzata", badgeClass: "bg-green text-white", cardClass: "border-green-light bg-green-light/40" };
+    case "dismissed":
+      return {
+        label: "Non ti serve",
+        badgeClass: "bg-[#E8EBF0] text-ink-3",
+        cardClass: "border-[#E8EBF0] bg-bg opacity-70",
+      };
+    default:
+      // "priority" | "uncovered" | "past" | "conflict" (conflict qui non è
+      // mai raggiunto: hasOverlap non è calcolato in questa vista, come
+      // prima di questo fix — nessun nuovo comportamento per quel caso).
+      return {
+        label: "Da organizzare",
+        badgeClass: "bg-orange-mid text-white",
+        cardClass: "border-orange-mid/40 bg-orange-light/40",
+      };
+  }
+}
+
 // Vista "Copertura" estesa: stessa striscia, ma con il dettaglio per
 // bambino sotto ogni settimana scoperta — risponde a "Per quale figlio manca
 // ancora qualcosa?" senza dover aprire il Planner in Home.
@@ -684,16 +739,13 @@ function CoperturaView({ planner, kids }: { planner: PlannerData; kids: Kid[] })
   const kidById = new Map(kids.map((k) => [k.id, k]));
   return (
     <div className="mt-4 flex flex-col gap-2">
-      {planner.weeks.map((w) => (
+      {planner.weeks.map((w) => {
+        const status = computeWeekStatus(w, kids.length, false, false);
+        const pill = coperturaPill(status);
+        return (
         <div
           key={w.index}
-          className={`rounded-xl border p-3.5 ${
-            w.covered
-              ? "border-green-light bg-green-light/40"
-              : w.dismissed
-              ? "border-[#E8EBF0] bg-bg opacity-70"
-              : "border-orange-mid/40 bg-orange-light/40"
-          }`}
+          className={`rounded-xl border p-3.5 ${pill.cardClass}`}
         >
           <div className="flex items-center justify-between">
             <div>
@@ -701,11 +753,9 @@ function CoperturaView({ planner, kids }: { planner: PlannerData; kids: Kid[] })
               <div className="text-[11px] text-ink-2">{w.dateRange}</div>
             </div>
             <span
-              className={`rounded-full px-2.5 py-1 text-[10px] font-bold ${
-                w.covered ? "bg-green text-white" : w.dismissed ? "bg-[#E8EBF0] text-ink-3" : "bg-orange-mid text-white"
-              }`}
+              className={`rounded-full px-2.5 py-1 text-[10px] font-bold ${pill.badgeClass}`}
             >
-              {w.covered ? "Organizzata" : w.dismissed ? "Non serve" : "Da organizzare"}
+              {pill.label}
             </span>
           </div>
           {w.coveredKids.length > 0 && (
@@ -721,7 +771,8 @@ function CoperturaView({ planner, kids }: { planner: PlannerData; kids: Kid[] })
             </div>
           )}
         </div>
-      ))}
+        );
+      })}
     </div>
   );
 }
