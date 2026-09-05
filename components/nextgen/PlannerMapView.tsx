@@ -136,7 +136,10 @@ export default function PlannerMapView({ pins, addresses }: { pins: PlannerMapPi
           {availableAddresses.length > 0 && (
             <div className="mb-3">
               <div className="mb-1.5 text-[10.5px] font-semibold text-ink-3">Parti da</div>
-              <div className="no-scrollbar flex gap-1.5 overflow-x-auto">
+              {/* data-swipe-ignore: vedi PlannerModeTabs.tsx — striscia con
+                  scroll orizzontale proprio, esclusa dallo swipe di
+                  PlannerClient.tsx che cambia modalità. */}
+              <div data-swipe-ignore className="no-scrollbar flex gap-1.5 overflow-x-auto">
                 {availableAddresses.map((a) => (
                   <button
                     key={a.kind}

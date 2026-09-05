@@ -74,7 +74,17 @@ export default function PlannerModeTabs({
           (già esistente, canScrollLeft/Right sotto) resta l'unica soluzione
           possibile su schermi molto stretti, non deve mai sembrare
           "tagliato". */}
-      <div ref={scrollRef} className="no-scrollbar flex gap-1.5 overflow-x-auto px-5 pr-7">
+      {/* data-swipe-ignore: PlannerClient.tsx (04/09/2026, feature swipe
+          sinistra/destra per cambiare modalità) intercetta lo swipe
+          orizzontale su tutta la pagina Planner — questa striscia di chip
+          scrolla anch'essa in orizzontale, quindi va esclusa esplicitamente
+          o un trascinamento per scorrere i chip verrebbe interpretato anche
+          come cambio modalità. */}
+      <div
+        ref={scrollRef}
+        data-swipe-ignore
+        className="no-scrollbar flex gap-1.5 overflow-x-auto px-5 pr-7"
+      >
         {PLANNER_MODES.map((m) => (
           <button
             key={m.key}

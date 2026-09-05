@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import type { PlannerData } from "@/lib/data/planner";
 import {
@@ -165,6 +165,45 @@ export default function PlannerClient({
     ? (initialModeParam as PlannerMode)
     : "organizzazione";
   const [mode, setMode] = useState<PlannerMode>(initialMode);
+  // FEATURE (richiesta Fabrizio 04/09/2026, "swipe vs sinistra o destra... nel
+  // planner cambi visualizzazione"): swipe orizzontale su tutta la pagina
+  // Planner cicla tra le modalità PLANNER_MODES (stesso ordine dei tab:
+  // organizzazione/mappa/budget/gruppi). Decisione presa solo al touchend
+  // (nessun preventDefault/drag live durante il gesto, stesso principio "non
+  // toccare lo scroll verticale nativo" già rispettato altrove in questo
+  // file) — soglia orizzontale minima + dominanza su verticale per non
+  // scattare durante uno scroll normale della pagina. Le strisce con scroll
+  // orizzontale proprio (tab chip, "Parti da" della Mappa) sono escluse via
+  // l'attributo data-swipe-ignore (vedi PlannerModeTabs.tsx/PlannerMapView.tsx),
+  // altrimenti scorrerle trascinerebbe anche la modalità.
+  const swipeTouchStartRef = useRef<{ x: number; y: number } | null>(null);
+  const SWIPE_MIN_DX = 60;
+
+  function handlePlannerTouchStart(e: React.TouchEvent<HTMLDivElement>) {
+    if ((e.target as HTMLElement).closest("[data-swipe-ignore]")) {
+      swipeTouchStartRef.current = null;
+      return;
+    }
+    const t = e.touches[0];
+    swipeTouchStartRef.current = { x: t.clientX, y: t.clientY };
+  }
+
+  function handlePlannerTouchEnd(e: React.TouchEvent<HTMLDivElement>) {
+    const start = swipeTouchStartRef.current;
+    swipeTouchStartRef.current = null;
+    if (!start) return;
+    const t = e.changedTouches[0];
+    const dx = t.clientX - start.x;
+    const dy = t.clientY - start.y;
+    if (Math.abs(dx) < SWIPE_MIN_DX || Math.abs(dx) < Math.abs(dy) * 1.5) return;
+    const currentIndex = PLANNER_MODES.findIndex((m) => m.key === mode);
+    if (currentIndex === -1) return;
+    if (dx < 0 && currentIndex < PLANNER_MODES.length - 1) {
+      setMode(PLANNER_MODES[currentIndex + 1].key);
+    } else if (dx > 0 && currentIndex > 0) {
+      setMode(PLANNER_MODES[currentIndex - 1].key);
+    }
+  }
   // TRAMA BETA v1.1.1 — ORGANIZATION COMPLETENESS (§8): deep-link opzionale
   // verso una settimana specifica dentro Calendario/Chi fa cosa (dalla CTA
   // "N passaggi da assegnare" di Home o dell'alert di coordinamento qui
@@ -391,7 +430,7 @@ export default function PlannerClient({
   return (
     <div className="flex min-h-screen flex-col">
       <PageHeader title="Planner" onBack={() => router.push("/nextgen")} showBrandIcon />
-      <div className="px-5 py-4">
+      <div className="px-5 py-4" onTouchStart={handlePlannerTouchStart} onTouchEnd={handlePlannerTouchEnd}>
         {/* SPRINT 7 — stessa texture decorativa (due cerchi) della hero
             card di Home, vedi DecorativeIntroCard.
             FIX (segnalato da Fabrizio con screenshot, 24/08/2026) — il
