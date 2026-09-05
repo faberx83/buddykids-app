@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useDemoRole } from "@/components/DemoRoleProvider";
@@ -185,6 +185,41 @@ export default function DashboardLayout({
   // esplicitamente in onClick (vedi renderNavItem), che basta ed evita
   // setState sincroni dentro un effect.
   const [drawerOpen, setDrawerOpen] = useState(false);
+  // FEATURE (richiesta Fabrizio 04/09/2026, "lato partner faccia vedere la
+  // barra menu laterale [con lo swipe]"): in aggiunta all'hamburger sopra,
+  // uno swipe verso destra che PARTE dal bordo sinistro dello schermo apre
+  // lo stesso drawer mobile. Solo variant "partner" (richiesta esplicita
+  // "lato partner" — l'Admin non è nello scope, resta invariato). Zona di
+  // partenza ristretta ai primi ~24px (pattern "edge swipe" standard iOS/
+  // Android: un trascinamento che comincia altrove nella pagina — es. per
+  // scorrere una lista — non deve mai aprire il menu per sbaglio). Decisione
+  // presa solo al touchend (nessun drag live), stesso principio già usato
+  // per lo swipe modalità del Planner genitore (PlannerClient.tsx).
+  const edgeSwipeStartRef = useRef<{ x: number; y: number } | null>(null);
+  const EDGE_SWIPE_ZONE = 24;
+  const EDGE_SWIPE_MIN_DX = 50;
+
+  function handleEdgeSwipeStart(e: React.TouchEvent<HTMLDivElement>) {
+    if (variant !== "partner" || drawerOpen) {
+      edgeSwipeStartRef.current = null;
+      return;
+    }
+    const t = e.touches[0];
+    edgeSwipeStartRef.current = t.clientX <= EDGE_SWIPE_ZONE ? { x: t.clientX, y: t.clientY } : null;
+  }
+
+  function handleEdgeSwipeEnd(e: React.TouchEvent<HTMLDivElement>) {
+    const start = edgeSwipeStartRef.current;
+    edgeSwipeStartRef.current = null;
+    if (!start) return;
+    const t = e.changedTouches[0];
+    const dx = t.clientX - start.x;
+    const dy = t.clientY - start.y;
+    if (dx > EDGE_SWIPE_MIN_DX && dx > Math.abs(dy) * 1.5) {
+      setDrawerOpen(true);
+    }
+  }
+
   // L'Admin piattaforma è un ruolo "superset": può entrare anche nelle
   // sezioni riservate al Gestore centro (utile anche per un unico account
   // che gestisce tutto in questa fase). Il Gestore centro resta invece
@@ -242,7 +277,11 @@ export default function DashboardLayout({
   }
 
   return (
-    <div className={isAdmin ? "min-h-screen bg-navy" : "min-h-screen bg-bg"}>
+    <div
+      className={isAdmin ? "min-h-screen bg-navy" : "min-h-screen bg-bg"}
+      onTouchStart={variant === "partner" ? handleEdgeSwipeStart : undefined}
+      onTouchEnd={variant === "partner" ? handleEdgeSwipeEnd : undefined}
+    >
       <PageLoadIndicator color={isAdmin ? "#1A1D2E" : "#1FA88E"} />
       <div className="mx-auto flex max-w-6xl">
         <aside
