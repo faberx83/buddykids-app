@@ -39,11 +39,11 @@ export interface AttendanceWeekGroup {
   // activity_days, MAI insieme a weekId (esattamente come TodayCheckin in
   // checkin.ts: mai entrambi valorizzati).
   activityDayId?: string | null;
-  // true per un gruppo "a giorno": la UI deve disabilitare la spunta
-  // presenza (attendance_records richiede week_id NOT NULL finché
-  // supabase/migration_35_attendance_day_based.sql non è applicata — questo
-  // gruppo esiste solo per rendere VISIBILE chi è atteso oggi, non ancora
-  // per registrarne la presenza).
+  // true per un gruppo "a giorno" (Giorni spot) — distingue il rendering
+  // client (AttendanceClient.tsx) da un gruppo "a settimana". Da quando
+  // supabase/migration_35_attendance_day_based.sql è applicata (verificato
+  // via MCP Supabase read-only), un gruppo "a giorno" supporta la spunta
+  // presenza esattamente come uno "a settimana" — non più solo lettura.
   isDayBased?: boolean;
   // Chiave univoca stabile per questo gruppo, indipendente dal tipo
   // (settimana intera o giorno spot) — SEMPRE usarla per selezione/lookup
@@ -59,8 +59,9 @@ export interface AttendanceWeekGroup {
   // ordine alfabetico/data (segnalazione di Fabrizio: il check-in del
   // genitore non si vedeva perché il gestore si trovava di default su una
   // settimana diversa da quella di oggi) e per mostrare un indicatore
-  // "Oggi" nella sidebar. Sempre true per un gruppo "a giorno" (esiste solo
-  // per oggi, vedi sopra).
+  // "Oggi" nella sidebar. Per un gruppo "a giorno" (Giorni spot): vero solo
+  // se quello specifico giorno è oggi (prima era sempre true perché il
+  // gruppo esisteva solo per oggi — non più, vedi fix 04/09/2026 sotto).
   isCurrentWeek: boolean;
 }
 
@@ -212,20 +213,37 @@ export async function getParticipantsForCenter(): Promise<AttendanceWeekGroup[]>
     }
 
     // FIX (TRAMA FINAL HARDENING §10-12) — gruppo "a giorno" per una
-    // prenotazione Giorni spot con un giorno che cade OGGI: mostrato SOLO
-    // se il centro lo ha REALMENTE accettato (booking_days.partner_decision
-    // === "accepted", stessa regola canonica già usata da
-    // getTodayCheckinsForParent — un giorno pending/rifiutato/in lista
-    // d'attesa non è un impegno confermato, niente roster per qualcosa che
-    // potrebbe non esserci). Limitato a OGGI (non tutta la stagione, a
-    // differenza dei gruppi a settimana): è il "Registro presenze"
-    // operativo del giorno, coerente con isChildExpectedToday richiesto
-    // dalla spec — il browsing storico/futuro per Giorni spot resta un
-    // gap noto, riportato nel report finale.
+    // prenotazione Giorni spot, mostrato SOLO se il centro lo ha REALMENTE
+    // accettato (booking_days.partner_decision === "accepted", stessa
+    // regola canonica già usata da getTodayCheckinsForParent — un giorno
+    // pending/rifiutato/in lista d'attesa non è un impegno confermato,
+    // niente roster per qualcosa che potrebbe non esserci).
+    //
+    // AGGIORNAMENTO (TRAMA FINAL HARDENING CLOSURE §16, 04/09/2026,
+    // segnalazione live Fabrizio: "c'è sempre il pallino ma il Registro è
+    // vuoto e non torna") — root cause trovata via query Supabase
+    // read-only: getUnconfirmedParentCheckinsCount/Signal (sotto in questo
+    // stesso file) contano OGNI attendance_records non confermato, SENZA
+    // filtro di data (qualunque giorno, passato o futuro) — ma questo
+    // ciclo, prima di questa correzione, limitava il gruppo "a giorno" a
+    // `day.date === todayIso` (SOLO oggi): un check-in del genitore per un
+    // giorno ormai passato (es. ieri) spariva per sempre dal Registro non
+    // appena il giorno cambiava, pur continuando a essere contato nel
+    // badge in eterno — un disallineamento strutturale tra "quanti restano
+    // da confermare" (senza limite di tempo) e "cosa è visibile per
+    // confermarli" (solo oggi), mai risolvibile dal gestore. Rimosso il
+    // filtro sulla data: ora un gruppo "a giorno" viene creato per OGNI
+    // giorno con almeno una prenotazione accettata, esattamente come già
+    // avviene per i gruppi "a settimana" sopra (nessun filtro di data lì
+    // nemmeno) — stessa regola, generalizzata, non una nuova.
+    // isCurrentWeek ora riflette la data REALE del giorno (prima era
+    // sempre true "per costruzione", quando il gruppo esisteva solo per
+    // oggi) — usato per il badge "Oggi" e la selezione di default in
+    // AttendanceClient.tsx.
     for (const bd of booking.booking_days ?? []) {
       if (bd.partner_decision !== "accepted") continue;
       const day = firstOf(bd.activity_days);
-      if (!day || day.date !== todayIso) continue;
+      if (!day) continue;
 
       const key = `${activity.id}:day:${day.id}`;
       if (!groupsMap.has(key)) {
@@ -243,7 +261,7 @@ export async function getParticipantsForCenter(): Promise<AttendanceWeekGroup[]>
           startDate: day.date,
           endDate: day.date,
           kids: [],
-          isCurrentWeek: true, // per costruzione: esiste solo per oggi
+          isCurrentWeek: day.date === todayIso,
         });
       }
       const dayGroup = groupsMap.get(key)!;
