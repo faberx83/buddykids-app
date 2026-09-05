@@ -125,6 +125,36 @@ export default function AttendanceClient({
   const currentMonthKey = new Date().toISOString().slice(0, 7);
   const [expandedMonths, setExpandedMonths] = useState<Set<string>>(() => new Set([currentMonthKey]));
 
+  // FIX (TRAMA FINAL HARDENING CLOSURE, segnalazione Fabrizio 04/09/2026 —
+  // "rimane il problema del badge con 2 sul registro presenze..se ci sono
+  // presenze da confermare come lo capisco?"): il badge rosso "2" in
+  // sidebar (DashboardLayout, dato da getUnconfirmedParentCheckinsCount)
+  // diceva QUANTI check-in del genitore restano da confermare, ma niente in
+  // QUESTA pagina indicava DOVE — ogni riga (attività+settimana/giorno) era
+  // visivamente identica, e l'unico segnale ("Segnalato dal genitore",
+  // sotto) appariva solo dopo aver selezionato la riga giusta E il giorno
+  // giusto, costringendo il gestore a cliccare una per una tutte le righe
+  // per trovare quelle 2. Calcolato da `parentReport` (lo stesso stato già
+  // usato per il badge "Segnalato dal genitore" per singolo bambino/giorno,
+  // vedi sopra) — non una nuova fonte dati, solo la stessa aggregata per
+  // gruppo/mese. Reattivo: quando il gestore conferma un bambino
+  // (setStatus azzera parentReport per quella chiave), il conteggio qui si
+  // aggiorna subito, senza ricaricare la pagina.
+  const unconfirmedByGroup = useMemo(() => {
+    const map: Record<string, number> = {};
+    for (const g of weekGroups) {
+      const groupDays = daysInWeekClient(g.startDate, g.endDate);
+      let count = 0;
+      for (const kid of g.kids) {
+        for (const d of groupDays) {
+          if (parentReport[`${kid.kidId}:${d}`]) count++;
+        }
+      }
+      map[g.groupKey] = count;
+    }
+    return map;
+  }, [weekGroups, parentReport]);
+
   const selectedGroup = weekGroups.find((g) => g.groupKey === selectedKey) ?? null;
   const days = selectedGroup ? daysInWeekClient(selectedGroup.startDate, selectedGroup.endDate) : [];
   // Se oggi rientra nella settimana selezionata, parte da lì di default
@@ -220,6 +250,16 @@ export default function AttendanceClient({
             <div className="divide-y divide-[#F0F2F5]">
               {monthBuckets.map((bucket) => {
                 const isExpanded = expandedMonths.has(bucket.monthKey);
+                // Somma delle righe di questo mese ancora da confermare —
+                // visibile anche a mese CHIUSO (di default è aperto solo
+                // quello in corso, vedi expandedMonths sopra), altrimenti un
+                // check-in da confermare in un mese collassato resterebbe
+                // invisibile quanto quello che ha generato la segnalazione
+                // di Fabrizio.
+                const bucketUnconfirmed = bucket.items.reduce(
+                  (sum, g) => sum + (unconfirmedByGroup[g.groupKey] ?? 0),
+                  0
+                );
                 return (
                   <div key={bucket.monthKey}>
                     <button
@@ -235,12 +275,20 @@ export default function AttendanceClient({
                       className="flex w-full items-center justify-between bg-bg px-4 py-1.5 text-[10.5px] font-bold uppercase tracking-wide text-ink-3"
                       aria-expanded={isExpanded}
                     >
-                      {bucket.label}
+                      <span className="flex items-center gap-1.5">
+                        {bucket.label}
+                        {bucketUnconfirmed > 0 && (
+                          <span className="flex h-[15px] min-w-[15px] items-center justify-center rounded-full bg-[#FF6B6B] px-1 text-[9px] font-bold text-white">
+                            {bucketUnconfirmed}
+                          </span>
+                        )}
+                      </span>
                       <i className={`ti ${isExpanded ? "ti-chevron-up" : "ti-chevron-down"} text-[13px]`} />
                     </button>
                     {isExpanded &&
                       bucket.items.map((g) => {
                         const key = g.groupKey;
+                        const rowUnconfirmed = unconfirmedByGroup[key] ?? 0;
                         return (
                           <button
                             key={key}
@@ -257,6 +305,20 @@ export default function AttendanceClient({
                               {g.isCurrentWeek && (
                                 <span className="rounded-full bg-partner-light px-1.5 py-0.5 text-[9px] font-bold uppercase text-partner">
                                   Oggi
+                                </span>
+                              )}
+                              {/* Stessa segnalazione di Fabrizio del commento su
+                                  unconfirmedByGroup più sopra: questo pallino
+                                  rosso è l'unico modo per capire, guardando la
+                                  sola lista, QUALE riga contiene un check-in
+                                  del genitore ancora da confermare — prima
+                                  bisognava aprirle una per una. */}
+                              {rowUnconfirmed > 0 && (
+                                <span
+                                  className="ml-auto flex h-[17px] min-w-[17px] items-center justify-center rounded-full bg-[#FF6B6B] px-1 text-[9.5px] font-bold text-white"
+                                  title="Check-in del genitore da confermare"
+                                >
+                                  {rowUnconfirmed}
                                 </span>
                               )}
                             </div>
@@ -295,19 +357,33 @@ export default function AttendanceClient({
                   {Array.from(new Set(days.map(monthLabel))).join(" – ")}
                 </div>
                 <div className="mb-3 flex flex-wrap gap-2">
-                  {days.map((d) => (
-                    <button
-                      key={d}
-                      onClick={() => setSelectedDay(d)}
-                      className={`rounded-full border px-3 py-1.5 text-xs font-semibold transition-colors ${
-                        activeDay === d
-                          ? "border-partner bg-partner text-white"
-                          : "border-[#E8EBF0] bg-bg text-ink-2"
-                      }`}
-                    >
-                      {formatDayLabel(d)}
-                    </button>
-                  ))}
+                  {days.map((d) => {
+                    // Stessa segnalazione di Fabrizio (vedi unconfirmedByGroup
+                    // sopra): una settimana ha fino a 5 tab giorno, ma solo
+                    // quello attivo mostra "Segnalato dal genitore" — un
+                    // pallino sull'angolo del pillolo giorno indica quale
+                    // giorno ha almeno un check-in ancora da confermare,
+                    // senza dover cliccare ogni giorno per scoprirlo.
+                    const dayHasUnconfirmed = (selectedGroup?.kids ?? []).some(
+                      (k) => parentReport[`${k.kidId}:${d}`]
+                    );
+                    return (
+                      <button
+                        key={d}
+                        onClick={() => setSelectedDay(d)}
+                        className={`relative rounded-full border px-3 py-1.5 text-xs font-semibold transition-colors ${
+                          activeDay === d
+                            ? "border-partner bg-partner text-white"
+                            : "border-[#E8EBF0] bg-bg text-ink-2"
+                        }`}
+                      >
+                        {formatDayLabel(d)}
+                        {dayHasUnconfirmed && (
+                          <span className="absolute -right-0.5 -top-0.5 h-2 w-2 rounded-full bg-[#FF6B6B] ring-2 ring-white" />
+                        )}
+                      </button>
+                    );
+                  })}
                 </div>
 
                 {/* FIX (TRAMA FINAL HARDENING CLOSURE §16, 04/09/2026) — un
