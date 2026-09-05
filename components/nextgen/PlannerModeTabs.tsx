@@ -40,6 +40,19 @@ export default function PlannerModeTabs({
   const scrollRef = useRef<HTMLDivElement>(null);
   const [canScrollLeft, setCanScrollLeft] = useState(false);
   const [canScrollRight, setCanScrollRight] = useState(false);
+  // FIX (segnalazione Fabrizio 05/09/2026, screenshot "Gruppi" tagliato a
+  // destra): lo swipe in PlannerClient.tsx cambia `mode`, ma questa striscia
+  // non si spostava MAI da sola — restava alla posizione di scroll in cui
+  // si trovava, quindi il tab appena attivato poteva restare parzialmente
+  // fuori vista (specialmente l'ultimo, "Gruppi"). Un ref per bottone +
+  // scrollIntoView({inline:"center"}) sul cambio di `mode` centra sempre il
+  // tab attivo nella striscia — vale sia per lo swipe sia per il click
+  // diretto su un chip (stesso identico effetto, nessuna logica duplicata).
+  const buttonRefs = useRef<Partial<Record<PlannerMode, HTMLButtonElement | null>>>({});
+
+  useEffect(() => {
+    buttonRefs.current[mode]?.scrollIntoView({ behavior: "smooth", inline: "center", block: "nearest" });
+  }, [mode]);
 
   useEffect(() => {
     const el = scrollRef.current;
@@ -88,6 +101,9 @@ export default function PlannerModeTabs({
         {PLANNER_MODES.map((m) => (
           <button
             key={m.key}
+            ref={(el) => {
+              buttonRefs.current[m.key] = el;
+            }}
             type="button"
             onClick={() => onChange(m.key)}
             className={`flex flex-shrink-0 items-center gap-1.5 rounded-full px-3.5 py-2 text-[12.5px] font-bold transition-colors active:scale-95 ${
