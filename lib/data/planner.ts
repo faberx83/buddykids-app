@@ -311,14 +311,50 @@ export function firstUncoveredWeekIndex(
   return firstUncovered?.index ?? null;
 }
 
+// TRAMA ONE Build Sprint 4 (DEC-42, Task #345): una settimana "covered" ma
+// dove NESSUNA copertura è stata ancora "accepted" dal centro resta in
+// attesa di conferma — il Planner può segnalarlo senza doverla trattare
+// come scoperta (il genitore ha comunque fatto la richiesta).
+//
+// FIX (TRAMA FINAL HARDENING CLOSURE, segnalazione Fabrizio 04/09/2026 —
+// screenshot Planner: "Sett. 15 · Prova FP · in attesa di conferma del
+// centro" per una prenotazione Giorni spot con 4 giorni su 5 già ACCETTATI
+// dal centro, uno solo rifiutato). Root cause: k.partnerDecision per un kid
+// "a giorni" arriva già correttamente aggregato da effectiveDayBasedDecision
+// (lib/booking-response/effective-decision.ts) e può valere "partial"
+// (almeno un giorno accettato, non tutti) — ma il controllo qui sotto era
+// `!== "accepted"`, che tratta "partial" ESATTAMENTE come "pending" (nessuna
+// risposta): un kid con 4/5 giorni già confermati faceva comunque risultare
+// l'intera settimana "awaitingPartnerConfirmation = true", e
+// computeWeekStatus (lib/nextgen/planner-insights.ts) controlla
+// awaitingPartnerConfirmation PRIMA di dayBookingOnly/"partial" — quindi la
+// settimana non raggiungeva mai lo stato "partial" corretto, mostrando
+// sempre l'etichetta più negativa ("in attesa") invece di "Confermata
+// parzialmente". Fix: "partial" NON è "in attesa" — è già un'informazione
+// positiva reale (esattamente il principio guida di effective-decision.ts:
+// "mai dichiarare più di quanto i dati confermino", ma nemmeno MENO).
+// "awaiting" resta vero solo se NESSUN kid ha una decisione parziale o
+// accettata — comportamento invariato per rejected (fuori scope di questa
+// segnalazione, non toccato).
+//
+// Estratta come funzione pura esportata (invece di restare inline dentro
+// finalize()) per essere testabile senza mock Supabase, stesso pattern già
+// in uso per firstUncoveredWeekIndex sopra e per computeWeekStatus
+// (lib/nextgen/planner-insights.ts).
+export function computeAwaitingPartnerConfirmation(
+  covered: boolean,
+  coveredKids: { partnerDecision?: string }[]
+): boolean {
+  return (
+    covered &&
+    coveredKids.length > 0 &&
+    coveredKids.every((k) => k.partnerDecision !== "accepted" && k.partnerDecision !== "partial")
+  );
+}
+
 function finalize(weeks: SeasonWeek[], todayIso: string): PlannerData {
-  // TRAMA ONE Build Sprint 4 (DEC-42, Task #345): una settimana "covered" ma
-  // dove NESSUNA copertura è stata ancora "accepted" dal centro resta in
-  // attesa di conferma — il Planner può segnalarlo senza doverla trattare
-  // come scoperta (il genitore ha comunque fatto la richiesta).
   for (const w of weeks) {
-    w.awaitingPartnerConfirmation =
-      w.covered && w.coveredKids.length > 0 && w.coveredKids.every((k) => k.partnerDecision !== "accepted");
+    w.awaitingPartnerConfirmation = computeAwaitingPartnerConfirmation(w.covered, w.coveredKids);
   }
 
   const coveredCount = weeks.filter((w) => w.covered).length;

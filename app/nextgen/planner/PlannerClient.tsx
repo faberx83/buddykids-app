@@ -1070,10 +1070,30 @@ export default function PlannerClient({
                                   {/* "awaiting" ha priorità: comunica prima
                                       che il centro non ha ancora risposto,
                                       il conteggio bambini scoperti è un
-                                      dettaglio secondario in quel caso. */}
+                                      dettaglio secondario in quel caso.
+                                      FIX (TRAMA FINAL HARDENING CLOSURE,
+                                      04/09/2026) — "partial" scatta anche
+                                      per w.dayBookingOnly (settimana coperta
+                                      SOLO da Giorni spot, vedi
+                                      lib/data/planner.ts), dove TUTTI i
+                                      bambini possono già essere coperti
+                                      (kids.length - coveredKids.length = 0):
+                                      prima di questo fix il testo diceva
+                                      comunque "manca 0 bambino/i", una frase
+                                      senza senso. Ora mostra il conteggio
+                                      SOLO se davvero manca almeno un
+                                      fratello, altrimenti la stessa
+                                      etichetta generica "Confermata
+                                      parzialmente" già usata altrove
+                                      nell'app per lo stesso stato
+                                      (PARTNER_DECISION_LABEL.partial,
+                                      lib/booking-response/effective-decision.ts). */}
                                   {isAwaiting
                                     ? " · in attesa di conferma del centro"
-                                    : isPartial && ` · manca ${kids.length - w.coveredKids.length} bambino/i`}
+                                    : isPartial &&
+                                      (kids.length - w.coveredKids.length > 0
+                                        ? ` · manca ${kids.length - w.coveredKids.length} bambino/i`
+                                        : " · confermata parzialmente")}
                                 </span>
                               ) : isPastUncovered ? (
                                 <span className="text-[12px] font-medium text-ink-3">Settimana passata</span>
