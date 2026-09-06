@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useState } from "react";
 import { Activity } from "@/lib/types";
 import { pillClasses } from "@/lib/colors";
+import { toggleFavoriteAction } from "@/app/actions/favorites";
 
 export default function ActivityCard({
   activity,
@@ -11,6 +12,7 @@ export default function ActivityCard({
   source,
   correlationId,
   weekStarts,
+  initialFavorite,
 }: {
   activity: Activity;
   matchPercent?: number;
@@ -32,8 +34,18 @@ export default function ActivityCard({
   // filtrare i giorni proposti. Array (non singolo valore) perché Scopri
   // permette la selezione di più settimane.
   weekStarts?: string[];
+  // FIX (segnalazione Fabrizio 06/09/2026, screenshot Scopri: "il preferito
+  // funziona nella scheda ma nella lista Scopri non salva né visualizza se
+  // è stato dato il preferito"): questa card aveva un cuore SOLO visivo —
+  // useState(false) locale, mai letto dal DB né mai scritto — mentre la
+  // scheda attività (DetailClient.tsx) usa da tempo initialFavorite +
+  // toggleFavoriteAction (lib/data/favorites.ts#getFavoriteActivityIds).
+  // Stesso pattern qui: lo stato iniziale arriva dal chiamante (che legge
+  // getFavoriteActivityIds() lato server), il click scrive davvero su
+  // Supabase con aggiornamento ottimistico + rollback in caso di errore.
+  initialFavorite?: boolean;
 }) {
-  const [fav, setFav] = useState(false);
+  const [fav, setFav] = useState(initialFavorite ?? false);
   const params = new URLSearchParams();
   if (source) params.set("source", source);
   if (correlationId) params.set("cid", correlationId);
@@ -83,7 +95,13 @@ export default function ActivityCard({
         <button
           onClick={(e) => {
             e.preventDefault();
-            setFav((f) => !f);
+            const next = !fav;
+            setFav(next); // aggiornamento ottimistico
+            if (activity.dbId) {
+              toggleFavoriteAction(activity.dbId, next).then((result) => {
+                if (result.error) setFav(!next); // rollback se la scrittura fallisce
+              });
+            }
           }}
           className="absolute right-2.5 top-2.5 z-[2] flex h-8 w-8 items-center justify-center rounded-full bg-white/90 text-base transition-transform hover:scale-110"
         >

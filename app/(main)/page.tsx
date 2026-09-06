@@ -13,6 +13,7 @@ import { getBookingsByKid } from "@/lib/data/kid-bookings";
 import { isParentProfileIncomplete } from "@/lib/data/profile";
 import { getTodayCheckinsForParent } from "@/lib/data/checkin";
 import { getSeasonYear } from "@/lib/data/season-year";
+import { getFavoriteActivityIds } from "@/lib/data/favorites";
 import { createClient } from "@/lib/supabase/server";
 
 async function getDisplayIdentity() {
@@ -62,6 +63,7 @@ export default async function HomePage({
     bookingsByKidMap,
     todayCheckins,
     seasonYear,
+    favoriteActivityIds,
   ] = await Promise.all([
     getActivities(),
     getDisplayIdentity(),
@@ -71,6 +73,10 @@ export default async function HomePage({
     getBookingsByKid(),
     getTodayCheckinsForParent(),
     getSeasonYear(),
+    // FIX (segnalazione Fabrizio 06/09/2026, punto 1: preferito non
+    // visibile fuori dalla scheda attività) — vedi
+    // ActivityCard.tsx#initialFavorite.
+    getFavoriteActivityIds(),
   ]);
   // I Server Component possono passare ai Client Component solo dati
   // serializzabili: una Map non lo è, la convertiamo in un oggetto piano.
@@ -153,6 +159,7 @@ export default async function HomePage({
         planner={planner}
         bookingsByKid={bookingsByKid}
         availabilityByWeek={availabilityByWeek}
+        favoriteActivityIds={Array.from(favoriteActivityIds)}
       />
       <div className="h-5" />
     </div>

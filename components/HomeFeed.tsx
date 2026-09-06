@@ -46,6 +46,7 @@ export default function HomeFeed({
   planner,
   bookingsByKid,
   availabilityByWeek,
+  favoriteActivityIds,
 }: {
   activities: Activity[];
   categories: Tag[];
@@ -56,6 +57,9 @@ export default function HomeFeed({
   // posti liberi — passato al Planner per filtrare i suggerimenti "Per
   // riempire la settimana N" a chi ha davvero disponibilità.
   availabilityByWeek: Record<string, string[]>;
+  // FIX (segnalazione Fabrizio 06/09/2026, punto 1: preferito non visibile
+  // fuori dalla scheda attività) — vedi ActivityCard.tsx#initialFavorite.
+  favoriteActivityIds?: string[];
 }) {
   const router = useRouter();
   const [view, setView] = useState<HomeView>(() => readStoredView());
@@ -158,6 +162,7 @@ export default function HomeFeed({
           activities={activities}
           categories={categories}
           bookingsByKid={bookingsByKid}
+          favoriteActivityIds={favoriteActivityIds}
         />
       )}
 

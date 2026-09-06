@@ -7,6 +7,7 @@ import {
 import { getKidsForUser } from "@/lib/data/kids";
 import { getPlannerData } from "@/lib/data/planner";
 import { getSeasonYear } from "@/lib/data/season-year";
+import { getFavoriteActivityIds } from "@/lib/data/favorites";
 import SearchDiscoveryClient from "./SearchDiscoveryClient";
 
 // SPRINT 2 (NEXTGEN) — "Ricerca e scoperta": ordinamento intelligente sopra
@@ -26,13 +27,20 @@ export default async function NextgenSearchPage() {
   }
 
   const seasonYear = await getSeasonYear();
-  const [activities, kids, planner, availabilityByWeek, activitiesWithDaySpots] = await Promise.all([
-    getActivities(),
-    getKidsForUser(),
-    getPlannerData(),
-    getActivityAvailabilityByWeek(seasonYear),
-    getActivitiesWithOpenDaySpots(),
-  ]);
+  const [activities, kids, planner, availabilityByWeek, activitiesWithDaySpots, favoriteActivityIds] =
+    await Promise.all([
+      getActivities(),
+      getKidsForUser(),
+      getPlannerData(),
+      getActivityAvailabilityByWeek(seasonYear),
+      getActivitiesWithOpenDaySpots(),
+      // FIX (segnalazione Fabrizio 06/09/2026: "il preferito non si vede
+      // nella lista Scopri") — stessa fonte già usata dal Dettaglio
+      // attività (lib/data/favorites.ts), qui serve per inizializzare il
+      // cuore delle card della lista con lo stato reale invece che sempre
+      // vuoto.
+      getFavoriteActivityIds(),
+    ]);
 
   const uncoveredWeek = planner.weeks.find((w) => w.index === planner.firstUncoveredIndex) ?? null;
   // BUG CORRETTO 07/08/2026 — stesso pattern di app/nextgen/planner/page.tsx:
@@ -51,6 +59,7 @@ export default async function NextgenSearchPage() {
       availabilityByWeek={availabilityByWeek}
       activitiesWithDaySpots={Array.from(activitiesWithDaySpots)}
       todayIso={todayIso}
+      favoriteActivityIds={Array.from(favoriteActivityIds)}
     />
   );
 }

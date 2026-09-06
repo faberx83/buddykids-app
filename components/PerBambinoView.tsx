@@ -13,12 +13,17 @@ export default function PerBambinoView({
   activities,
   categories,
   bookingsByKid,
+  favoriteActivityIds = [],
 }: {
   kids: Kid[];
   activities: Activity[];
   categories: Tag[];
   bookingsByKid: Record<string, KidBookingEntry[]>;
+  // FIX (segnalazione Fabrizio 06/09/2026, punto 1: preferito non visibile
+  // fuori dalla scheda attività) — vedi ActivityCard.tsx#initialFavorite.
+  favoriteActivityIds?: string[];
 }) {
+  const favoriteIdsSet = useMemo(() => new Set(favoriteActivityIds), [favoriteActivityIds]);
   const [selectedKidId, setSelectedKidId] = useState<string | null>(kids[0]?.id ?? null);
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const selectedKid = kids.find((k) => k.id === selectedKidId) ?? null;
@@ -178,7 +183,12 @@ export default function PerBambinoView({
           Perfetti per {selectedKid?.name ?? "il tuo bambino"}
         </div>
         {matches.slice(0, 4).map((a) => (
-          <ActivityCard key={a.id} activity={a} matchPercent={a.matchPercent} />
+          <ActivityCard
+            key={a.id}
+            activity={a}
+            matchPercent={a.matchPercent}
+            initialFavorite={!!a.dbId && favoriteIdsSet.has(a.dbId)}
+          />
         ))}
         {matches.length === 0 && (
           <p className="text-sm text-ink-2">Nessuna attività trovata in questa categoria.</p>

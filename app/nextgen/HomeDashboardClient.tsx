@@ -125,6 +125,7 @@ export default function HomeDashboardClient({
   activitiesAreMockFallback,
   responsibilities,
   coordinationBookedDays,
+  favoriteActivityIds = [],
 }: {
   firstName: string | null;
   planner: PlannerData;
@@ -146,8 +147,12 @@ export default function HomeDashboardClient({
   // computeHeroWeeksSummary/priorityWeek in PlannerClient.tsx.
   responsibilities: WeekResponsibility[];
   coordinationBookedDays: KidBookedDays[];
+  // FIX (segnalazione Fabrizio 06/09/2026, punto 1: preferito non visibile
+  // fuori dalla scheda attività) — vedi ActivityCard.tsx#initialFavorite.
+  favoriteActivityIds?: string[];
 }) {
   const router = useRouter();
+  const favoriteIdsSet = useMemo(() => new Set(favoriteActivityIds), [favoriteActivityIds]);
   const todayIso = useMemo(() => new Date().toISOString().slice(0, 10), []);
   const active = useMemo(() => bookings.filter((b) => b.status !== "cancelled"), [bookings]);
 
@@ -575,7 +580,11 @@ export default function HomeDashboardClient({
             {recommendations.map((r) => (
               <div key={r.activity.id}>
                 <div className="mb-1 px-1 text-sm font-semibold text-ink-2">Per {r.kidName}</div>
-                <ActivityCard activity={r.activity} matchPercent={r.matchPercent} />
+                <ActivityCard
+                  activity={r.activity}
+                  matchPercent={r.matchPercent}
+                  initialFavorite={!!r.activity.dbId && favoriteIdsSet.has(r.activity.dbId)}
+                />
               </div>
             ))}
           </div>

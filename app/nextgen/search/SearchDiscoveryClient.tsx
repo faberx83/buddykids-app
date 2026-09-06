@@ -147,6 +147,7 @@ function ResultCard({
   match,
   correlationId,
   weekStarts,
+  isFavorite,
 }: {
   match: SmartMatch;
   // TRAMA ONE Build Sprint 3 — "context object" leggero: propagato ad
@@ -158,6 +159,10 @@ function ResultCard({
   // del centro cosi i "giorni spot" mostrati li' restano contestualizzati
   // al filtro invece di andare persi al click sulla card.
   weekStarts?: string[];
+  // FIX (segnalazione Fabrizio 06/09/2026, punto 1: preferito non visibile
+  // in Scopri) — stato reale del cuore per questa card, vedi
+  // favoriteActivityIds in SearchDiscoveryClient.
+  isFavorite?: boolean;
 }) {
   return (
     <div>
@@ -176,6 +181,7 @@ function ResultCard({
         source="nextgen_search"
         correlationId={correlationId}
         weekStarts={weekStarts}
+        initialFavorite={isFavorite}
       />
     </div>
   );
@@ -190,6 +196,7 @@ export default function SearchDiscoveryClient({
   availabilityByWeek,
   activitiesWithDaySpots = [],
   todayIso,
+  favoriteActivityIds = [],
 }: {
   activities: Activity[];
   kids: Kid[];
@@ -201,6 +208,11 @@ export default function SearchDiscoveryClient({
   // LEGACY (app/(main)/search/SearchClient.tsx), lib/data/activities.ts
   // #getActivitiesWithOpenDaySpots.
   activitiesWithDaySpots?: string[];
+  // FIX (segnalazione Fabrizio 06/09/2026, punto 1: "il preferito non si
+  // vede nella lista Scopri") — activity.dbId dei preferiti dell'utente
+  // (lib/data/favorites.ts#getFavoriteActivityIds), per inizializzare il
+  // cuore di ogni card con lo stato reale invece che sempre vuoto.
+  favoriteActivityIds?: string[];
   // BUG CORRETTO 07/08/2026 (segnalato da Fabrizio: "il filtro sulle
   // settimane deve seguire la stessa logica del Planner: se alcune
   // settimane sono passate non devo poterle vedere") — prima il filtro
@@ -279,6 +291,9 @@ export default function SearchDiscoveryClient({
   // disponibili", non una data precisa.
   const [onlyDaySpots, setOnlyDaySpots] = useState(false);
   const daySpotsSet = useMemo(() => new Set(activitiesWithDaySpots), [activitiesWithDaySpots]);
+  // FIX (segnalazione Fabrizio 06/09/2026, punto 1) — Set per lookup rapido,
+  // stesso principio di daySpotsSet appena sopra.
+  const favoriteIdsSet = useMemo(() => new Set(favoriteActivityIds), [favoriteActivityIds]);
   // Fabrizio (2026-07-22): filtro "Copertura" — modalità di prenotazione
   // supportata dall'attività (activities.booking_mode), multi-selezione come
   // "Tipo attività" (vuoto = nessun filtro, cioè tutte le modalità).
@@ -1055,7 +1070,13 @@ export default function SearchDiscoveryClient({
               Nella tua zona (entro {radiusKm} km) — {nearby.length}
             </div>
             {nearby.map((m) => (
-              <ResultCard key={m.activity.id} match={m} correlationId={searchCorrelationId} weekStarts={selectedWeekStarts} />
+              <ResultCard
+                key={m.activity.id}
+                match={m}
+                correlationId={searchCorrelationId}
+                weekStarts={selectedWeekStarts}
+                isFavorite={!!m.activity.dbId && favoriteIdsSet.has(m.activity.dbId)}
+              />
             ))}
             {nearby.length === 0 && <p className="pb-3 text-sm text-ink-2">Nessuna attività entro {radiusKm} km.</p>}
 
@@ -1063,7 +1084,13 @@ export default function SearchDiscoveryClient({
               <>
                 <div className="pb-1.5 pt-4 text-xs font-bold text-ink-2">Fuori dalla tua zona — {far.length}</div>
                 {far.map((m) => (
-                  <ResultCard key={m.activity.id} match={m} correlationId={searchCorrelationId} weekStarts={selectedWeekStarts} />
+                  <ResultCard
+                    key={m.activity.id}
+                    match={m}
+                    correlationId={searchCorrelationId}
+                    weekStarts={selectedWeekStarts}
+                    isFavorite={!!m.activity.dbId && favoriteIdsSet.has(m.activity.dbId)}
+                  />
                 ))}
               </>
             )}
@@ -1071,7 +1098,13 @@ export default function SearchDiscoveryClient({
         ) : (
           <div className="flex flex-col gap-1">
             {matches.map((m) => (
-              <ResultCard key={m.activity.id} match={m} correlationId={searchCorrelationId} weekStarts={selectedWeekStarts} />
+              <ResultCard
+                key={m.activity.id}
+                match={m}
+                correlationId={searchCorrelationId}
+                weekStarts={selectedWeekStarts}
+                isFavorite={!!m.activity.dbId && favoriteIdsSet.has(m.activity.dbId)}
+              />
             ))}
           </div>
         )}

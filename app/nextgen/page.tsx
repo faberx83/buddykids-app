@@ -8,6 +8,7 @@ import { getTodayCheckinsForParent } from "@/lib/data/checkin";
 import { getTodayResponsibilities, getResponsibilitiesForParent, getKidsBookedDaysForWeek } from "@/lib/data/responsibilities";
 import { getCoordinationSignal } from "@/lib/data/coordination-signal";
 import { isParentProfileIncomplete, getParentProfile } from "@/lib/data/profile";
+import { getFavoriteActivityIds } from "@/lib/data/favorites";
 import { computeMatchesForKid } from "@/lib/matching";
 import { WEEKDAYS } from "@/lib/nextgen/responsibility-options";
 import HomeDashboardClient from "./HomeDashboardClient";
@@ -76,6 +77,7 @@ export default async function NextgenHomePage() {
     profile,
     responsibilities,
     coordinationBookedDays,
+    favoriteActivityIds,
   ] = await Promise.all([
     getMyBookingsForParent(),
     getKidsForUser(),
@@ -102,6 +104,11 @@ export default async function NextgenHomePage() {
     // stagionale con lo stesso helper puro (computeCoordinationGap).
     getResponsibilitiesForParent(),
     getKidsBookedDaysForWeek(weekdayDatesUnion),
+    // FIX (segnalazione Fabrizio 06/09/2026, punto 1: preferito non visibile
+    // fuori dalla scheda attività) — stessa fonte già usata dal Dettaglio
+    // (lib/data/favorites.ts), qui serve per le card di "Consigliati per
+    // voi".
+    getFavoriteActivityIds(),
   ]);
 
   let fullName: string | null = null;
@@ -196,6 +203,7 @@ export default async function NextgenHomePage() {
       // isSupabaseConfigured qui e' gia' garantito true (il ramo false
       // ritorna prima, riga ~20).
       activitiesAreMockFallback={isMockActivitiesArray(activities)}
+      favoriteActivityIds={Array.from(favoriteActivityIds)}
     />
   );
 }
