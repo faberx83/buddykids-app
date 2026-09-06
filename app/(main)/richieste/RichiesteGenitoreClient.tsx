@@ -50,6 +50,15 @@ export default function RichiesteGenitoreClient({
   const [inquiries, setInquiries] = useState(initialInquiries);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [busy, setBusy] = useState(false);
+  // FIX (segnalazione Fabrizio 05/09/2026, punto 7: "'Le mie richieste'
+  // devono avere una vista piu sintetica e asciutta") — prima ogni riga
+  // mostrava sempre per intero sia il messaggio inviato sia l'eventuale
+  // risposta del centro, rendendo l'elenco lungo e pesante da scorrere
+  // quando ci sono molte richieste. Ora ogni riga è collassata a una sola
+  // riga di anteprima (nome attività, stato, accenno al testo) e si espande
+  // al tocco per leggere il messaggio e la risposta per intero — stesso
+  // principio "accordion" già usato altrove nell'app (es. Planner Timeline).
+  const [expandedId, setExpandedId] = useState<string | null>(null);
 
   const allSelected = inquiries.length > 0 && selected.size === inquiries.length;
 
@@ -136,37 +145,65 @@ export default function RichiesteGenitoreClient({
             <div className="mb-1.5 px-1 text-[10.5px] font-bold uppercase tracking-wide text-ink-3">
               {bucket.label}
             </div>
-            <div className="flex flex-col gap-2.5">
-              {bucket.items.map((inq) => (
-                <div key={inq.id} className="flex gap-2.5 rounded-lg border border-[#E8EBF0] bg-white p-3.5">
-                  <input
-                    type="checkbox"
-                    checked={selected.has(inq.id)}
-                    onChange={() => toggleOne(inq.id)}
-                    className="mt-0.5 h-4 w-4 flex-shrink-0"
-                  />
-                  <div className="min-w-0 flex-1">
-                    <div className="mb-1.5 flex items-center justify-between gap-2">
-                      <Link href={`/activity/${inq.activityId}`} className="flex items-center gap-1.5 text-[13px] font-bold text-ink">
-                        {!inq.readByParent && (
-                          <span className="h-2 w-2 flex-shrink-0 rounded-full bg-[#FF6B6B]" aria-label="Non letta" />
+            <div className="flex flex-col gap-2">
+              {bucket.items.map((inq) => {
+                const isExpanded = expandedId === inq.id;
+                return (
+                  <div key={inq.id} className="rounded-lg border border-[#E8EBF0] bg-white">
+                    <button
+                      type="button"
+                      onClick={() => setExpandedId(isExpanded ? null : inq.id)}
+                      className="flex w-full items-start gap-2.5 p-3 text-left active:bg-black/[0.02]"
+                      aria-expanded={isExpanded}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={selected.has(inq.id)}
+                        onChange={() => toggleOne(inq.id)}
+                        onClick={(e) => e.stopPropagation()}
+                        className="mt-0.5 h-4 w-4 flex-shrink-0"
+                      />
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="flex min-w-0 items-center gap-1.5 truncate text-[13px] font-bold text-ink">
+                            {!inq.readByParent && (
+                              <span className="h-2 w-2 flex-shrink-0 rounded-full bg-[#FF6B6B]" aria-label="Non letta" />
+                            )}
+                            <span className="truncate">{inq.activityName}</span>
+                          </span>
+                          <span className={`flex-shrink-0 rounded-full px-2 py-0.5 text-[9.5px] font-bold ${STATUS_CLASS[inq.status]}`}>
+                            {STATUS_LABEL[inq.status]}
+                          </span>
+                        </div>
+                        {!isExpanded && (
+                          <p className="mt-0.5 truncate text-[11.5px] text-ink-3">
+                            {inq.reply ? <span className="text-sky">Risposta: </span> : null}
+                            {inq.reply || inq.message}
+                          </p>
                         )}
-                        {inq.activityName}
-                      </Link>
-                      <span className={`flex-shrink-0 rounded-full px-2.5 py-1 text-[10px] font-bold ${STATUS_CLASS[inq.status]}`}>
-                        {STATUS_LABEL[inq.status]}
-                      </span>
-                    </div>
-                    <p className="mb-2 text-xs text-ink-2">{inq.message}</p>
-                    {inq.reply && (
-                      <div className="rounded-md bg-sky-light p-2.5 text-xs text-ink">
-                        <div className="mb-0.5 font-semibold text-sky">Risposta del centro</div>
-                        {inq.reply}
+                      </div>
+                      <i
+                        className={`ti ti-chevron-down mt-0.5 flex-shrink-0 text-[15px] text-ink-3 transition-transform ${isExpanded ? "rotate-180" : ""}`}
+                      />
+                    </button>
+
+                    {isExpanded && (
+                      <div className="px-3 pb-3 pl-[38px]">
+                        <Link href={`/activity/${inq.activityId}`} className="mb-2 inline-block text-[11px] font-semibold text-trama-violet">
+                          Vedi attività
+                        </Link>
+                        <p className="mb-2 text-xs text-ink-2">{inq.message}</p>
+                        {inq.reply && (
+                          <div className="rounded-md bg-sky-light p-2.5 text-xs text-ink">
+                            <div className="mb-0.5 font-semibold text-sky">Risposta del centro</div>
+                            {inq.reply}
+                          </div>
+                        )}
                       </div>
                     )}
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </div>
         ))}
