@@ -729,10 +729,23 @@ function coperturaPill(status: WeekStatus): { label: string; badgeClass: string;
         badgeClass: "bg-[#E8EBF0] text-ink-3",
         cardClass: "border-[#E8EBF0] bg-bg opacity-70",
       };
+    // FIX (segnalazione Fabrizio 06/09/2026: "se la settimana è nel
+    // passato non può logicamente essere da organizzare, che comunque è
+    // già tutto organizzato") — una settimana MAI coperta ma già trascorsa
+    // non è più "da fare" (non si può più prenotare nulla per il passato):
+    // stessa distinzione già usata da PlannerClient.tsx (Timeline, "past"),
+    // qui mancava perché questa vista non calcolava affatto isPast (vedi
+    // sotto in CoperturaView).
+    case "past":
+      return {
+        label: "Settimana passata",
+        badgeClass: "bg-[#E8EBF0] text-ink-3",
+        cardClass: "border-[#E8EBF0] bg-bg opacity-70",
+      };
     default:
-      // "priority" | "uncovered" | "past" | "conflict" (conflict qui non è
-      // mai raggiunto: hasOverlap non è calcolato in questa vista, come
-      // prima di questo fix — nessun nuovo comportamento per quel caso).
+      // "priority" | "uncovered" | "conflict" (conflict qui non è mai
+      // raggiunto: hasOverlap non è calcolato in questa vista, come prima
+      // di questo fix — nessun nuovo comportamento per quel caso).
       return {
         label: "Da organizzare",
         badgeClass: "bg-orange-mid text-white",
@@ -746,10 +759,15 @@ function coperturaPill(status: WeekStatus): { label: string; badgeClass: string;
 // ancora qualcosa?" senza dover aprire il Planner in Home.
 function CoperturaView({ planner, kids }: { planner: PlannerData; kids: Kid[] }) {
   const kidById = new Map(kids.map((k) => [k.id, k]));
+  // FIX (segnalazione Fabrizio 06/09/2026) — mancava il calcolo di isPast
+  // (stesso identico pattern di CoverageStrip poco sopra in questo stesso
+  // file): senza, ogni settimana MAI coperta finiva sempre in "uncovered"
+  // ("Da organizzare"), passata o futura che fosse.
+  const todayIso = new Date().toISOString().slice(0, 10);
   return (
     <div className="mt-4 flex flex-col gap-2">
       {planner.weeks.map((w) => {
-        const status = computeWeekStatus(w, kids.length, false, false);
+        const status = computeWeekStatus({ ...w, isPast: w.endDate < todayIso }, kids.length, false, false);
         const pill = coperturaPill(status);
         return (
         <div
