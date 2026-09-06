@@ -33,6 +33,17 @@ export async function toggleFavoriteAction(
     if (error) return { error: error.message };
   }
 
+  // FIX (segnalazione Fabrizio 05/09/2026, "la selezione di un 'preferito'
+  // non rimane e non viene vista tra i miei preferiti"): esiste una SECONDA
+  // pagina "Preferiti" per NEXTGEN (app/nextgen/preferiti/page.tsx — stesso
+  // identico dato, getFavoriteActivitiesForParent(), stesso componente
+  // PreferitiView), ma solo /preferiti (legacy) veniva invalidata qui —
+  // dopo un toggle, /nextgen/preferiti poteva continuare a mostrare la
+  // cache precedente (senza il preferito appena aggiunto) finché non
+  // scadeva da sola. Stesso principio già applicato altrove in questo
+  // codice quando un dato è letto da più rotte (es. revalidatePath multipli
+  // in app/actions/attendance.ts).
   revalidatePath("/preferiti");
+  revalidatePath("/nextgen/preferiti");
   return {};
 }
