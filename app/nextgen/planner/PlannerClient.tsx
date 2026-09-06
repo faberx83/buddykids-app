@@ -319,10 +319,26 @@ export default function PlannerClient({
   // non esiste ancora nel DOM (mese collassato) e lo scroll fallirebbe in
   // silenzio.
   const monthGroups = useMemo(() => groupWeeksByMonth(weeks), [weeks]);
+  // FIX (segnalazione Fabrizio 05/09/2026, screenshot "perché non si apre
+  // ancora la settimana in cui sono ma vedo ancora esploso giugno?"): il
+  // fallback "prima settimana scoperta" sotto non escludeva le settimane
+  // già passate (a differenza di computePriorityWeekIndex, che le esclude
+  // sempre — vedi lib/nextgen/planner-insights.ts) — quando priorityIndex
+  // risultava null (nessuna settimana futura scoperta da segnalare, es.
+  // stagione già ben organizzata in avanti), il fallback prendeva
+  // semplicemente la PRIMA settimana scoperta in assoluto, quasi sempre a
+  // Giugno (le settimane passate restano "scoperte" per sempre se non sono
+  // mai state prenotate né esplicitamente ignorate). Aggiunto lo stesso
+  // filtro "non passata" già usato da getUpcomingWeeks poco sotto in questo
+  // stesso file; se anche questo non trova nulla (tutto organizzato), si
+  // apre il mese CORRENTE invece di niente — stesso principio già applicato
+  // all'accordion del Registro presenze (AttendanceClient.tsx).
   const [expandedMonths, setExpandedMonths] = useState<Set<string>>(() => {
-    const target = weeks.find((w) => w.index === priorityIndex) ?? weeks.find((w) => !w.covered && !w.dismissed);
-    const key = target?.startDate.slice(0, 7);
-    return new Set(key ? [key] : []);
+    const target =
+      weeks.find((w) => w.index === priorityIndex) ??
+      weeks.find((w) => !w.covered && !w.dismissed && w.endDate >= todayIso);
+    const key = target?.startDate.slice(0, 7) ?? todayIso.slice(0, 7);
+    return new Set([key]);
   });
   function monthKeyForWeek(index: number): string | undefined {
     return weeks.find((w) => w.index === index)?.startDate.slice(0, 7);
