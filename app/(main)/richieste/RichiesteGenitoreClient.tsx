@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import Link from "next/link";
 import { ParentInquiry, InquiryStatus } from "@/lib/data/inquiries";
 import { markInquiriesReadAction } from "@/app/actions/inquiries";
@@ -11,30 +11,25 @@ const STATUS_LABEL: Record<InquiryStatus, string> = {
   chiusa: "Chiusa",
 };
 
-const STATUS_CLASS: Record<InquiryStatus, string> = {
-  aperta: "bg-yellow-light text-[#9a6b00]",
-  risposta: "bg-green-light text-green",
-  chiusa: "bg-bg text-ink-3",
+// Pallino di stato al posto della pill colorata a testo pieno (occupava
+// troppo spazio orizzontale per una riga "semplice") — stessa mappatura
+// colori di prima, ora solo come indicatore puntiforme.
+const STATUS_DOT_CLASS: Record<InquiryStatus, string> = {
+  aperta: "bg-[#F2B84B]",
+  risposta: "bg-green",
+  chiusa: "bg-ink-3",
 };
 
-const MONTH_LABELS_IT = [
-  "Gennaio",
-  "Febbraio",
-  "Marzo",
-  "Aprile",
-  "Maggio",
-  "Giugno",
-  "Luglio",
-  "Agosto",
-  "Settembre",
-  "Ottobre",
-  "Novembre",
-  "Dicembre",
-];
+// FIX (segnalazione Fabrizio 06/09/2026, punto 2: "'le mie richieste'
+// ancora piu compatta, riga semplice, per data?") — il raggruppamento per
+// mese (con relativo header) è stato sostituito da una data breve per
+// riga: più compatto e più letterale rispetto a "per data" di quanto lo
+// fosse il bucket mensile.
+const MONTH_LABELS_SHORT_IT = ["gen", "feb", "mar", "apr", "mag", "giu", "lug", "ago", "set", "ott", "nov", "dic"];
 
-function monthLabel(iso: string): string {
+function shortDateLabel(iso: string): string {
   const d = new Date(iso);
-  return `${MONTH_LABELS_IT[d.getUTCMonth()]} ${d.getUTCFullYear()}`;
+  return `${d.getUTCDate()} ${MONTH_LABELS_SHORT_IT[d.getUTCMonth()]}`;
 }
 
 // Segnalazione di Fabrizio: vuole un pallino/notifica quando arriva una
@@ -86,23 +81,6 @@ export default function RichiesteGenitoreClient({
     setSelected(new Set());
   }
 
-  // Raggruppamento per mese (segnalazione di Fabrizio: "vanno anche quelle
-  // raggruppate con la stessa logica del registro" — stesso principio di
-  // AttendanceClient.tsx, qui sul mese di creazione della richiesta). Le
-  // richieste arrivano già ordinate per data decrescente (più recenti prima):
-  // i bucket restano quindi in ordine cronologico decrescente.
-  const monthBuckets = useMemo(() => {
-    const buckets = new Map<string, { label: string; items: ParentInquiry[] }>();
-    for (const inq of inquiries) {
-      const monthKey = inq.createdAt.slice(0, 7);
-      if (!buckets.has(monthKey)) buckets.set(monthKey, { label: monthLabel(inq.createdAt), items: [] });
-      buckets.get(monthKey)!.items.push(inq);
-    }
-    return Array.from(buckets.entries())
-      .sort(([a], [b]) => b.localeCompare(a))
-      .map(([, v]) => v);
-  }, [inquiries]);
-
   return (
     <div className="px-5 py-4">
       {inquiries.length === 0 && (
@@ -139,74 +117,61 @@ export default function RichiesteGenitoreClient({
         </div>
       )}
 
-      <div className="flex flex-col gap-3">
-        {monthBuckets.map((bucket) => (
-          <div key={bucket.label}>
-            <div className="mb-1.5 px-1 text-[10.5px] font-bold uppercase tracking-wide text-ink-3">
-              {bucket.label}
-            </div>
-            <div className="flex flex-col gap-2">
-              {bucket.items.map((inq) => {
-                const isExpanded = expandedId === inq.id;
-                return (
-                  <div key={inq.id} className="rounded-lg border border-[#E8EBF0] bg-white">
-                    <button
-                      type="button"
-                      onClick={() => setExpandedId(isExpanded ? null : inq.id)}
-                      className="flex w-full items-start gap-2.5 p-3 text-left active:bg-black/[0.02]"
-                      aria-expanded={isExpanded}
-                    >
-                      <input
-                        type="checkbox"
-                        checked={selected.has(inq.id)}
-                        onChange={() => toggleOne(inq.id)}
-                        onClick={(e) => e.stopPropagation()}
-                        className="mt-0.5 h-4 w-4 flex-shrink-0"
-                      />
-                      <div className="min-w-0 flex-1">
-                        <div className="flex items-center justify-between gap-2">
-                          <span className="flex min-w-0 items-center gap-1.5 truncate text-[13px] font-bold text-ink">
-                            {!inq.readByParent && (
-                              <span className="h-2 w-2 flex-shrink-0 rounded-full bg-[#FF6B6B]" aria-label="Non letta" />
-                            )}
-                            <span className="truncate">{inq.activityName}</span>
-                          </span>
-                          <span className={`flex-shrink-0 rounded-full px-2 py-0.5 text-[9.5px] font-bold ${STATUS_CLASS[inq.status]}`}>
-                            {STATUS_LABEL[inq.status]}
-                          </span>
-                        </div>
-                        {!isExpanded && (
-                          <p className="mt-0.5 truncate text-[11.5px] text-ink-3">
-                            {inq.reply ? <span className="text-sky">Risposta: </span> : null}
-                            {inq.reply || inq.message}
-                          </p>
-                        )}
-                      </div>
-                      <i
-                        className={`ti ti-chevron-down mt-0.5 flex-shrink-0 text-[15px] text-ink-3 transition-transform ${isExpanded ? "rotate-180" : ""}`}
-                      />
-                    </button>
+      {/* FIX (segnalazione Fabrizio 06/09/2026, punto 2) — lista piatta,
+          ordinata per data (le richieste arrivano già ordinate per
+          createdAt decrescente), una riga per richiesta con la sua data
+          esplicita invece del bucket mensile: più compatta e più
+          letteralmente "per data". */}
+      <div className="flex flex-col divide-y divide-[#F0F2F5] rounded-lg border border-[#E8EBF0] bg-white">
+        {inquiries.map((inq) => {
+          const isExpanded = expandedId === inq.id;
+          return (
+            <div key={inq.id}>
+              <button
+                type="button"
+                onClick={() => setExpandedId(isExpanded ? null : inq.id)}
+                className="flex w-full items-center gap-2 px-3 py-2.5 text-left active:bg-black/[0.02]"
+                aria-expanded={isExpanded}
+              >
+                <input
+                  type="checkbox"
+                  checked={selected.has(inq.id)}
+                  onChange={() => toggleOne(inq.id)}
+                  onClick={(e) => e.stopPropagation()}
+                  className="h-3.5 w-3.5 flex-shrink-0"
+                />
+                <span className="w-7 flex-shrink-0 text-[11px] text-ink-3">{shortDateLabel(inq.createdAt)}</span>
+                <span
+                  className={`h-1.5 w-1.5 flex-shrink-0 rounded-full ${STATUS_DOT_CLASS[inq.status]}`}
+                  title={STATUS_LABEL[inq.status]}
+                />
+                {!inq.readByParent && (
+                  <span className="h-1.5 w-1.5 flex-shrink-0 rounded-full bg-[#FF6B6B]" aria-label="Non letta" />
+                )}
+                <span className="min-w-0 flex-1 truncate text-[13px] font-semibold text-ink">{inq.activityName}</span>
+                <i
+                  className={`ti ti-chevron-down flex-shrink-0 text-[13px] text-ink-3 transition-transform ${isExpanded ? "rotate-180" : ""}`}
+                />
+              </button>
 
-                    {isExpanded && (
-                      <div className="px-3 pb-3 pl-[38px]">
-                        <Link href={`/activity/${inq.activityId}`} className="mb-2 inline-block text-[11px] font-semibold text-trama-violet">
-                          Vedi attività
-                        </Link>
-                        <p className="mb-2 text-xs text-ink-2">{inq.message}</p>
-                        {inq.reply && (
-                          <div className="rounded-md bg-sky-light p-2.5 text-xs text-ink">
-                            <div className="mb-0.5 font-semibold text-sky">Risposta del centro</div>
-                            {inq.reply}
-                          </div>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
+              {isExpanded && (
+                <div className="px-3 pb-3 pl-[68px]">
+                  <div className="mb-1.5 text-[11px] font-semibold text-ink-3">{STATUS_LABEL[inq.status]}</div>
+                  <Link href={`/activity/${inq.activityId}`} className="mb-2 inline-block text-[11px] font-semibold text-trama-violet">
+                    Vedi attività
+                  </Link>
+                  <p className="mb-2 text-xs text-ink-2">{inq.message}</p>
+                  {inq.reply && (
+                    <div className="rounded-md bg-sky-light p-2.5 text-xs text-ink">
+                      <div className="mb-0.5 font-semibold text-sky">Risposta del centro</div>
+                      {inq.reply}
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
     </div>
   );
