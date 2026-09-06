@@ -1053,6 +1053,29 @@ export default function PlannerClient({
                         );
                         const isPartial = status === "partial";
                         const isAwaiting = status === "awaiting";
+                        // FIX (segnalazione Fabrizio 06/09/2026, screenshot
+                        // Timeline: "perché ancora conferme parziali?") —
+                        // "partial" qui scattava per DUE motivi diversi ma
+                        // mostrava sempre la stessa frase "confermata
+                        // parzialmente": (a) esito misto REALE sui singoli
+                        // giorni (es. Sett.15: 4 giorni accettati + 1
+                        // rifiutato — coveredKids[].partnerDecision
+                        // "partial", vedi effective-decision.ts), oppure (b)
+                        // w.dayBookingOnly semplicemente perché una
+                        // prenotazione a Giorni spot copre solo ALCUNI
+                        // giorni della settimana, anche quando OGNI giorno
+                        // prenotato è stato accettato per intero (Sett.14:
+                        // 4/4 giorni "accepted", nessun rifiuto — eppure
+                        // compariva la stessa dicitura, come se il centro
+                        // avesse risposto in modo misto). Root cause:
+                        // computeWeekStatus (planner-insights.ts) collassa
+                        // apposta entrambi i casi nello stesso stato
+                        // "partial" (la settimana non è comunque coperta per
+                        // intero), ma i due casi comunicano cose diverse al
+                        // genitore — qui distinguiamo guardando
+                        // coveredKids[].partnerDecision (già disponibile,
+                        // nessuna nuova query).
+                        const hasMixedDayDecision = w.coveredKids.some((k) => k.partnerDecision === "partial");
                         // BUG CORRETTO 06/08/2026 (segnalato da Fabrizio): una
                         // settimana scoperta ma già passata non è più
                         // "azionabile" — niente più CTA "Riempi", niente più
@@ -1148,7 +1171,9 @@ export default function PlannerClient({
                                     : isPartial &&
                                       (kids.length - w.coveredKids.length > 0
                                         ? ` · manca ${kids.length - w.coveredKids.length} bambino/i`
-                                        : " · confermata parzialmente")}
+                                        : hasMixedDayDecision
+                                          ? " · confermata parzialmente"
+                                          : " · confermata sui giorni prenotati")}
                                 </span>
                               ) : isPastUncovered ? (
                                 <span className="text-[12px] font-medium text-ink-3">Settimana passata</span>
