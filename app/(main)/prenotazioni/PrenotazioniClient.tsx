@@ -693,20 +693,16 @@ function CoverageStrip({ planner, nextgen }: { planner: PlannerData; nextgen?: b
 // Planner per questa stessa identica distinzione (awaitingPartnerConfirmation/
 // dayBookingOnly, entrambi già calcolati su planner.weeks — nessun nuovo
 // dato) — riusata qui invece di re-derivare uno stato diverso a mano.
-// FIX (segnalazione Fabrizio 06/09/2026, screenshot Timeline: "perché
-// ancora conferme parziali?") — "partial" scattava per due motivi diversi
-// (esito misto REALE sui singoli giorni, oppure semplicemente una
-// prenotazione Giorni spot che copre solo alcuni giorni della settimana pur
-// avendoli tutti accettati) ma condivideva sempre la stessa etichetta
-// "Confermata parzialmente", che lascia intendere un'accettazione parziale
-// anche quando non c'è nulla di parziale nell'accettazione. Stessa
-// distinzione già applicata in PlannerClient.tsx (Timeline) — vedi
-// hasMixedDayDecision lì — riportata qui perché questa vista deriva lo
-// stesso status con la stessa computeWeekStatus e deve restare coerente.
-function coperturaPill(
-  status: WeekStatus,
-  hasMixedDayDecision: boolean
-): { label: string; badgeClass: string; cardClass: string } {
+// FIX (segnalazione Fabrizio 06/09/2026: "dovrebbe essere verde la
+// settimana prenotata anche su giorni singoli") — computeWeekStatus
+// (lib/nextgen/planner-insights.ts) ora torna "covered" (non più "partial")
+// per una prenotazione Giorni spot con OGNI giorno accettato: "partial"
+// arriva qui solo per un esito misto reale sui giorni o un fratello ancora
+// scoperto, quindi "Confermata parzialmente" resta sempre accurata senza
+// bisogno di distinguere ulteriormente (il parametro hasMixedDayDecision
+// introdotto ieri per questa stessa funzione è stato rimosso: con la nuova
+// computeWeekStatus sarebbe sempre true quando si arriva qui).
+function coperturaPill(status: WeekStatus): { label: string; badgeClass: string; cardClass: string } {
   switch (status) {
     case "awaiting":
       // Stessi colori già usati da effectiveStatusBadge poco sopra in questo
@@ -721,7 +717,7 @@ function coperturaPill(
       // Stessi colori già usati da effectiveStatusBadge per "Confermata
       // parzialmente (X di Y giorni)".
       return {
-        label: hasMixedDayDecision ? "Confermata parzialmente" : "Confermata sui giorni prenotati",
+        label: "Confermata parzialmente",
         badgeClass: "bg-[#F0EEFF] text-[#6F63C5]",
         cardClass: "border-[#F0EEFF] bg-[#F0EEFF]/40",
       };
@@ -754,8 +750,7 @@ function CoperturaView({ planner, kids }: { planner: PlannerData; kids: Kid[] })
     <div className="mt-4 flex flex-col gap-2">
       {planner.weeks.map((w) => {
         const status = computeWeekStatus(w, kids.length, false, false);
-        const hasMixedDayDecision = w.coveredKids.some((ck) => ck.partnerDecision === "partial");
-        const pill = coperturaPill(status, hasMixedDayDecision);
+        const pill = coperturaPill(status);
         return (
         <div
           key={w.index}

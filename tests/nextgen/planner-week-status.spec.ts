@@ -24,7 +24,7 @@ test.describe("lib/nextgen/planner-insights — computeWeekStatus (regressione p
   const base = {
     covered: false,
     dismissed: false,
-    coveredKids: [] as { kidId: string }[],
+    coveredKids: [] as { kidId: string; partnerDecision?: string }[],
   };
 
   test("TC-N658 - settimana non coperta e dismissed è sempre 'dismissed', qualunque altro segnale", () => {
@@ -37,12 +37,27 @@ test.describe("lib/nextgen/planner-insights — computeWeekStatus (regressione p
     expect(status).toBe("dismissed");
   });
 
-  test("TC-N659 - copertura SOLO con booking_days (dayBookingOnly) è sempre 'partial', anche con un solo figlio", () => {
-    // BUG CORRETTO 06/08/2026: prima di questo fix una settimana coperta solo
-    // da prenotazioni "Giorni spot" con un solo figlio in famiglia risultava
-    // "covered" (fuorviante: nessuna prenotazione a settimana intera esiste).
+  // FIX (segnalazione Fabrizio 06/09/2026: "dovrebbe essere verde la
+  // settimana prenotata anche su giorni singoli") — SUPERA la decisione
+  // 06/08/2026 sotto: dayBookingOnly non forza più "partial" da solo. Forza
+  // "partial" SOLO se l'esito sui giorni è davvero misto
+  // (coveredKids[].partnerDecision === "partial"). Con tutti i giorni
+  // prenotati accettati (nessun partnerDecision "partial" tra i
+  // coveredKids), la settimana è "covered" — esattamente come una
+  // prenotazione a settimana intera.
+  test("TC-N659 - copertura SOLO con booking_days (dayBookingOnly) con TUTTI i giorni accettati è 'covered', non 'partial'", () => {
     const status = computeWeekStatus(
       { ...base, covered: true, dayBookingOnly: true, coveredKids: [{ kidId: "a" }] },
+      1,
+      false,
+      false
+    );
+    expect(status).toBe("covered");
+  });
+
+  test("TC-N659b - copertura SOLO con booking_days (dayBookingOnly) con esito MISTO sui giorni (partnerDecision 'partial') resta 'partial'", () => {
+    const status = computeWeekStatus(
+      { ...base, covered: true, dayBookingOnly: true, coveredKids: [{ kidId: "a", partnerDecision: "partial" }] },
       1,
       false,
       false

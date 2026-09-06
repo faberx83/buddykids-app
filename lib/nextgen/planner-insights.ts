@@ -242,12 +242,21 @@ export function computeWeekStatus(
   week: {
     covered: boolean;
     dismissed: boolean;
-    coveredKids: { kidId: string }[];
+    coveredKids: { kidId: string; partnerDecision?: string }[];
     awaitingPartnerConfirmation?: boolean;
-    // BUG CORRETTO 06/08/2026 (decisione di Fabrizio): una settimana coperta
-    // SOLO da prenotazioni a giorni singoli (booking_days, "Giorni spot") non
-    // è la settimana intera organizzata — va mostrata "parziale", stesso
-    // trattamento visivo già usato quando solo alcuni fratelli sono coperti.
+    // FIX (segnalazione Fabrizio 06/09/2026: "dovrebbe essere verde la
+    // settimana prenotata anche su giorni singoli no credi?") — SUPERA la
+    // decisione precedente (06/08/2026): una settimana coperta SOLO da
+    // prenotazioni a giorni singoli (booking_days, "Giorni spot") non è più
+    // "parziale" per il solo fatto di essere a giorni — lo è SOLO se
+    // l'esito è davvero misto (coveredKids[].partnerDecision === "partial",
+    // cioè almeno un giorno rifiutato/ancora pending insieme ad altri
+    // accettati — vedi lib/booking-response/effective-decision.ts). Se
+    // TUTTI i giorni prenotati sono stati accettati, la settimana è
+    // organizzata per quanto riguarda quell'attività, esattamente come una
+    // prenotazione a settimana intera — mostrarla "parziale" comunicava
+    // un'incompletezza inesistente (verifica dati reali: Sett.14 "Prova FP",
+    // 4/4 giorni "accepted").
     dayBookingOnly?: boolean;
     // BUG CORRETTO 06/08/2026 (segnalato da Fabrizio: "il motore deve sempre
     // funzionare in relazione al timestamp reale") — true se week.endDate è
@@ -269,7 +278,8 @@ export function computeWeekStatus(
     // davvero (prima di questo sprint bookings.status non usciva mai da
     // pending, quindi questa distinzione non era rappresentabile).
     if (week.awaitingPartnerConfirmation) return "awaiting";
-    if (week.dayBookingOnly) return "partial";
+    const hasMixedDayDecision = week.coveredKids.some((k) => k.partnerDecision === "partial");
+    if (week.dayBookingOnly && hasMixedDayDecision) return "partial";
     if (totalKids > 1 && week.coveredKids.length > 0 && week.coveredKids.length < totalKids) return "partial";
     return "covered";
   }
