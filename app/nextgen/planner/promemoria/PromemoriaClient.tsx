@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import PageHeader from "@/components/PageHeader";
+import { LimitedBadge } from "@/components/StatusBadge";
 import { useNextgenToast } from "@/components/nextgen/NextgenToastProvider";
 import { ADDRESS_KIND_LABELS, ParentAddress } from "@/lib/nextgen/address-kinds";
 import { saveTravelReminderAction, SaveTravelReminderInput } from "@/app/actions/travel-reminders";
@@ -107,6 +108,25 @@ export default function PromemoriaClient({
           </Link>
           .
         </p>
+
+        {/* FIX (segnalazione Fabrizio 05/09/2026: "se promemoria non
+            funziona va messo il badge delle cose ancora non pronte") — il
+            piano Vercel attuale (Hobby) limita il cron di controllo a UNA
+            sola esecuzione al giorno (~16-17, Europe/Rome — vedi
+            app/api/cron/travel-reminders/route.ts, TOLERANCE_MINUTES=20):
+            un orario di partenza lontano da quella fascia non riceve MAI il
+            promemoria, in silenzio (nessun errore, nessuna riga nei log
+            visibile al genitore). Non è un bug risolvibile qui — serve il
+            piano Vercel Pro per un cron ogni 15 minuti — quindi lo
+            segnaliamo onestamente invece di promettere puntualità che oggi
+            non possiamo garantire per ogni orario. */}
+        <div className="flex items-start gap-2 rounded-xl bg-[#FFF9EC] p-3">
+          <LimitedBadge title="Il controllo gira una sola volta al giorno (piano attuale)" />
+          <p className="flex-1 text-[11px] text-[#9a6b00]">
+            Con il piano attuale il controllo gira una sola volta al giorno, verso le 16-17: se il tuo orario di
+            partenza è lontano da quella fascia, il promemoria potrebbe non arrivare.
+          </p>
+        </div>
 
         <div className="rounded-2xl bg-white p-4">
           <button

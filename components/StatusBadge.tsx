@@ -26,3 +26,25 @@ export function ComingSoonBadge({ label = "Presto" }: { label?: string }) {
     </span>
   );
 }
+
+// FIX (segnalazione Fabrizio 05/09/2026: "se promemoria non funziona va
+// messo il badge delle cose ancora non pronte") — DemoBadge/ComingSoonBadge
+// sopra non calzano: i Promemoria SONO salvati davvero su Supabase (non
+// "Demo") e SONO attivi (non "Presto/Coming soon") — il limite reale è
+// diverso e più specifico: il piano Vercel attuale (Hobby) permette al cron
+// di controllare solo UNA volta al giorno (~16-17, Europe/Rome — vedi
+// app/api/cron/travel-reminders/route.ts), quindi un orario configurato
+// lontano da quella fascia può non ricevere mai il promemoria, in
+// silenzio. Serviva quindi un terzo badge con un'etichetta e un tooltip
+// onesti su QUESTO limite specifico, non un generico "non pronto".
+export function LimitedBadge({ label = "Limitato", title }: { label?: string; title?: string }) {
+  return (
+    <span
+      title={title ?? "Funzionalità attiva ma con limiti noti"}
+      className="inline-flex flex-shrink-0 items-center gap-1 rounded-full bg-[#FFF3D6] px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-[#9A6B00]"
+    >
+      <i className="ti ti-alert-triangle text-[11px]" />
+      {label}
+    </span>
+  );
+}
