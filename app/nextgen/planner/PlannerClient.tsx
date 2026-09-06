@@ -1069,7 +1069,26 @@ export default function PlannerClient({
                         // "azionabile" — niente più CTA "Riempi", niente più
                         // sfondo "priorità".
                         const isPastUncovered = status === "past";
-                        const color = w.activityTagColor ?? "sky";
+                        // FIX (segnalazione Fabrizio 06/09/2026, screenshot
+                        // Sett.14 "Prova FP": "perché ancora sto azzurrino
+                        // legacy?") — w.activityTagColor viene da
+                        // activities.pills[0].color (lib/data/planner.ts):
+                        // "Prova FP" è un'attività di test senza nessuna
+                        // categoria assegnata (pills: [] — verificato via
+                        // query diretta), quindi ricadeva SEMPRE sul
+                        // generico "sky" (azzurro), a prescindere dallo
+                        // stato reale della settimana. Prima non si notava
+                        // perché una settimana dayBookingOnly finiva
+                        // comunque nello sfondo arancione "parziale" (vedi
+                        // isPartial sotto); ora che può essere "covered"
+                        // (fix di ieri), il fallback blu — lo stesso
+                        // "azzurrino" già rimosso altrove come residuo
+                        // legacy (vedi audit styling globale) — torna
+                        // visibile. "green" è il fallback coerente con lo
+                        // stato "confermata" (stesso verde di
+                        // WEEK_STATUS_BAR_CLASS.covered/coperturaPill
+                        // "covered"), non un colore di categoria a caso.
+                        const color = w.activityTagColor ?? "green";
                         const rowBg = w.dismissed
                           ? "bg-white"
                           : w.covered
