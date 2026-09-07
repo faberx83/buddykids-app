@@ -3,11 +3,12 @@ import { redirect } from "next/navigation";
 import StatCard from "@/components/dashboard/StatCard";
 import AdminMockDataBanner from "@/components/admin/AdminMockDataBanner";
 import PushNotificationsPrompt from "@/components/PushNotificationsPrompt";
-import { getActivitiesForCenter, getPromotionsForActivities } from "@/lib/data/activities";
+import { getActivitiesForCenter, getPromotionsForActivities, getTodaySpecialDaysForActivities } from "@/lib/data/activities";
 import { getBookingsForCenter } from "@/lib/data/center-bookings";
 import { bookingNeedsAction, acceptedRevenue, pendingRevenue, PARTNER_DECISION_LABEL } from "@/lib/booking-response/effective-decision";
 import { getOpenInquiriesCountForCenter } from "@/lib/data/inquiries";
 import { getGroupRequestsForCenter } from "@/lib/data/group-requests";
+import { getTodayAttendanceSummary, getUnconfirmedParentCheckinsCount } from "@/lib/data/attendance";
 import { getMyCenter } from "@/lib/data/center-admin";
 import { getCenterOnboardingState } from "@/lib/onboarding/data";
 import { createClient } from "@/lib/supabase/server";
@@ -80,6 +81,16 @@ function daysSince(iso: string): number {
   return Math.max(0, Math.floor((Date.now() - new Date(iso).getTime()) / (1000 * 60 * 60 * 24)));
 }
 
+// Stesso motivo/pattern di daysSince sopra (react-hooks/purity) — trend
+// settimanale e promozioni in scadenza (redesign Dashboard 07/09/2026).
+function isoDaysFromNow(days: number): string {
+  return new Date(Date.now() + days * 24 * 60 * 60 * 1000).toISOString();
+}
+
+function todayIsoDate(): string {
+  return new Date().toISOString().slice(0, 10);
+}
+
 const ONBOARDING_STATUS_LABEL: Record<CenterOnboardingStatus, string> = {
   LEAD: "Candidatura non ancora avviata",
   CLAIMED: "Profilo in compilazione",
@@ -113,6 +124,16 @@ export default async function CenterDashboardPage() {
     getCenterOnboardingState(dbId),
   ]);
   const activePromotions = (await getPromotionsForActivities(myActivities)).filter((p) => p.active);
+
+  // Blocco "Oggi al centro" (proposta Fabrizio 07/09/2026) — tre query in
+  // parallelo: le prime due sono NUOVE ma leggere (vedi commenti nei
+  // rispettivi data layer), la terza riusa una funzione già esistente
+  // (stesso conteggio già mostrato come badge nel menu "Registro presenze").
+  const [attendanceSummary, todaySpecialDays, unconfirmedCheckins] = await Promise.all([
+    getTodayAttendanceSummary(),
+    getTodaySpecialDaysForActivities(myActivities),
+    getUnconfirmedParentCheckinsCount(),
+  ]);
 
   const activeBookings = bookings.filter((b) => b.status !== "cancelled");
   // Segnalazione Fabrizio 03/09/2026 ("aggiornare dashboard gestore con dati
@@ -150,6 +171,25 @@ export default async function CenterDashboardPage() {
   //    un'azione da svolgere per il centro (la palla è dal lato del
   //    genitore), ma spiega perché quelle prenotazioni non si muovono.
   const awaitingParentReply = activeBookings.filter((b) => b.partnerDecision === "proposed");
+
+  // Trend settimanale su fatturato confermato e prenotazioni in attesa
+  // (proposta Fabrizio 07/09/2026) — SOLO su queste due KPI, non su tutte:
+  // sono le uniche due dove un raffronto ha senso a colpo d'occhio (cumulate
+  // nel tempo), e sono derivate dagli STESSI bookings già caricati sopra
+  // (nessuna query in più, solo un filtro su createdAt già presente).
+  const sevenDaysAgoIso = isoDaysFromNow(-7);
+  const revenueConfirmedThisWeek = activeBookings
+    .filter((b) => b.createdAt >= sevenDaysAgoIso)
+    .reduce((sum, b) => sum + acceptedRevenue(b), 0);
+  const pendingCreatedThisWeek = pendingBookings.filter((b) => b.createdAt >= sevenDaysAgoIso).length;
+
+  // Promozioni in scadenza entro 7 giorni — stesso array activePromotions
+  // già caricato sopra, nessuna query in più (solo un filtro su validTo).
+  const in7DaysIso = isoDaysFromNow(7).slice(0, 10);
+  const todayIsoForPromo = todayIsoDate();
+  const expiringPromotions = activePromotions.filter(
+    (p) => p.validTo && p.validTo >= todayIsoForPromo && p.validTo <= in7DaysIso
+  );
 
   return (
     <div className="animate-fade-in">
@@ -190,6 +230,55 @@ export default async function CenterDashboardPage() {
             <div className="mt-0.5 text-[11.5px] text-[#9a6b00]">
               Finché il profilo non è Approvato, la tua attività non è visibile alle famiglie.
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Blocco "Oggi al centro" (proposta Fabrizio 07/09/2026) — prima cosa
+          vista dopo i banner di stato account, prima ancora di "cose da
+          guardare oggi": risponde a "cosa succede oggi", non "cosa devo
+          decidere". Niente placeholder vuoti: se oggi non c'è nessuno
+          atteso e nessuna giornata speciale, il blocco non appare. */}
+      {(attendanceSummary.expectedToday > 0 || todaySpecialDays.length > 0) && (
+        <div className="mb-4 rounded-[14px] bg-white p-4 shadow-[0_1px_3px_rgba(0,0,0,0.04)]">
+          <div className="mb-3 flex items-center justify-between">
+            <span className="text-[13.5px] font-bold text-ink">Oggi al centro</span>
+            <Link href="/center/attendance" className="text-xs font-medium text-sky">
+              Registro presenze
+            </Link>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {attendanceSummary.expectedToday > 0 && (
+              <Link
+                href="/center/attendance"
+                className="flex items-center gap-1.5 rounded-lg bg-bg px-3 py-2 text-[12.5px] text-ink-2"
+              >
+                <i className="ti ti-clipboard-check text-sky" />
+                <span className="font-bold text-ink">
+                  {attendanceSummary.recordedToday}/{attendanceSummary.expectedToday}
+                </span>{" "}
+                presenze registrate
+              </Link>
+            )}
+            {unconfirmedCheckins > 0 && (
+              <Link
+                href="/center/attendance"
+                className="flex items-center gap-1.5 rounded-lg bg-orange-light px-3 py-2 text-[12.5px] font-semibold text-trama-orange"
+              >
+                <i className="ti ti-bell-ringing" />
+                {unconfirmedCheckins} da confermare
+              </Link>
+            )}
+            {todaySpecialDays.map((d) => (
+              <Link
+                key={`${d.activityId}-${d.label}`}
+                href={`/center/activities/${d.activityId}`}
+                className="flex items-center gap-1.5 rounded-lg bg-[#FFF3D6] px-3 py-2 text-[12.5px] font-semibold text-[#9A6B00]"
+              >
+                <span>{d.emoji ?? "✨"}</span>
+                {d.label} · {d.activityName}
+              </Link>
+            ))}
           </div>
         </div>
       )}
@@ -272,6 +361,47 @@ export default async function CenterDashboardPage() {
         </div>
       )}
 
+      {/* Collegamenti rapidi (proposta Fabrizio 07/09/2026) — le sezioni
+          utili quasi ogni giorno che oggi restano "nascoste" nel menu
+          laterale. Link reali verso pagine già esistenti, nessuna nuova
+          route. Badge "in scadenza" su Promozioni solo quando pertinente
+          (niente placeholder vuoti, stesso principio dei banner sopra). */}
+      <div className="mb-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
+        <Link
+          href="/center/report-presenze"
+          className="flex flex-col items-start gap-2 rounded-[14px] bg-white p-3.5 shadow-[0_1px_3px_rgba(0,0,0,0.04)] transition-colors hover:bg-bg"
+        >
+          <i className="ti ti-chart-bar text-lg text-sky" />
+          <span className="text-[12.5px] font-bold text-ink">Report presenze</span>
+        </Link>
+        <Link
+          href="/center/promotions"
+          className="flex flex-col items-start gap-2 rounded-[14px] bg-white p-3.5 shadow-[0_1px_3px_rgba(0,0,0,0.04)] transition-colors hover:bg-bg"
+        >
+          <i className="ti ti-discount-2 text-lg text-[#9A6B00]" />
+          <span className="text-[12.5px] font-bold text-ink">Promozioni</span>
+          {expiringPromotions.length > 0 && (
+            <span className="text-[11px] font-semibold text-trama-orange">
+              {expiringPromotions.length} in scadenza
+            </span>
+          )}
+        </Link>
+        <Link
+          href="/center/servizi-consigliati"
+          className="flex flex-col items-start gap-2 rounded-[14px] bg-white p-3.5 shadow-[0_1px_3px_rgba(0,0,0,0.04)] transition-colors hover:bg-bg"
+        >
+          <i className="ti ti-map-2 text-lg text-aqua" />
+          <span className="text-[12.5px] font-bold text-ink">Servizi consigliati</span>
+        </Link>
+        <Link
+          href="/center/invites"
+          className="flex flex-col items-start gap-2 rounded-[14px] bg-white p-3.5 shadow-[0_1px_3px_rgba(0,0,0,0.04)] transition-colors hover:bg-bg"
+        >
+          <i className="ti ti-user-plus text-lg text-partner" />
+          <span className="text-[12.5px] font-bold text-ink">Inviti</span>
+        </Link>
+      </div>
+
       <div className="mb-4 grid grid-cols-2 gap-3 md:grid-cols-4">
         <StatCard
           label="Attività pubblicate"
@@ -288,6 +418,7 @@ export default async function CenterDashboardPage() {
           iconBg="#FFF0EA"
           iconColor="#FF8C5A"
           elevated
+          trend={pendingCreatedThisWeek > 0 ? `+${pendingCreatedThisWeek} questa settimana` : undefined}
         />
         <StatCard
           label="Richieste aperte"
@@ -304,6 +435,7 @@ export default async function CenterDashboardPage() {
           iconBg="#F0EEFF"
           iconColor="#8B7CF8"
           elevated
+          trend={revenueConfirmedThisWeek > 0 ? `+€${revenueConfirmedThisWeek} questa settimana` : undefined}
         />
         {/* KPI aggiuntive (segnalazione Fabrizio 03/09/2026) — vedi commento
             sopra su revenueAwaitingDecision/awaitingParentReply per il
@@ -380,23 +512,10 @@ export default async function CenterDashboardPage() {
         </table>
       </div>
 
-      {activePromotions.length > 0 && (
-        <Link
-          href="/center/promotions"
-          className="mt-4 flex items-center gap-3 rounded-[14px] bg-white px-4 py-3.5 shadow-[0_1px_3px_rgba(0,0,0,0.04)] transition-colors hover:bg-bg"
-        >
-          <span className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full bg-[#FFF3D6] text-lg">
-            <i className="ti ti-discount-2 text-[#9A6B00]" />
-          </span>
-          <div className="min-w-0 flex-1">
-            <div className="text-sm font-bold text-ink">
-              {activePromotions.length} promo attiv{activePromotions.length === 1 ? "a" : "e"}
-            </div>
-            <div className="text-xs text-ink-2">Gestisci le tue promozioni</div>
-          </div>
-          <i className="ti ti-chevron-right text-ink-3" />
-        </Link>
-      )}
+      {/* Il vecchio banner "N promo attive" qui sotto è stato rimosso
+          (redesign Dashboard 07/09/2026): stessa informazione, con in più
+          la scadenza, ora nella card "Promozioni" dei Collegamenti rapidi
+          in cima alla pagina — evitava una duplicazione dello stesso link. */}
     </div>
   );
 }

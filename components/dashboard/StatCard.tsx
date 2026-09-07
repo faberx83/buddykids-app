@@ -5,6 +5,7 @@ export default function StatCard({
   iconBg,
   iconColor,
   elevated,
+  trend,
 }: {
   label: string;
   value: string;
@@ -16,6 +17,10 @@ export default function StatCard({
   // bordo (usato anche da Admin), per non cambiare l'aspetto di sezioni non
   // toccate da quel redesign.
   elevated?: boolean;
+  // Riepilogo settimanale opzionale (Dashboard Gestore, proposta Fabrizio
+  // 07/09/2026: "+3 questa settimana") — additivo, undefined per ogni altro
+  // chiamante esistente (Admin, resto del portale Partner) non cambia nulla.
+  trend?: string;
 }) {
   return (
     <div
@@ -35,6 +40,7 @@ export default function StatCard({
       </div>
       <div className="text-2xl font-bold text-ink">{value}</div>
       <div className="mt-0.5 text-xs text-ink-2">{label}</div>
+      {trend && <div className="mt-1 text-[11px] font-semibold text-trama-green">{trend}</div>}
     </div>
   );
 }

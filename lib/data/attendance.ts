@@ -288,6 +288,59 @@ export async function getParticipantsForCenter(): Promise<AttendanceWeekGroup[]>
   );
 }
 
+// DASHBOARD GESTORE — blocco "Oggi al centro" (proposta Fabrizio 07/09/2026:
+// "riportare come link reali tutte le informazioni utili per una normale
+// giornata di lavoro"). Riusa DELIBERATAMENTE getParticipantsForCenter()
+// (stessa query già pagata da /center/attendance) invece di duplicarne la
+// logica booking_weeks/booking_days — "attesi oggi" sono i bambini di ogni
+// gruppo con isCurrentWeek=true (per un gruppo a settimana: oggi cade nel
+// range; per un gruppo a giorno: quel giorno specifico è oggi), deduplicati
+// per kidId nel caso rarissimo in cui uno stesso bambino compaia in più
+// gruppi lo stesso giorno. "Registrate oggi" è una query leggera in più
+// (stesso pattern/scoping di getUnconfirmedParentCheckinsCount sopra) sulle
+// righe attendance_records di data odierna, qualunque stato/fonte — conta
+// quante presenze il gestore ha già segnato o confermato, non solo quelle
+// ancora da confermare (quel numero resta getUnconfirmedCheckinsSignal).
+export interface TodayAttendanceSummary {
+  expectedToday: number;
+  recordedToday: number;
+}
+
+export async function getTodayAttendanceSummary(): Promise<TodayAttendanceSummary> {
+  if (!isSupabaseConfigured) return { expectedToday: 0, recordedToday: 0 };
+
+  const groups = await getParticipantsForCenter();
+  const expectedKidIds = new Set<string>();
+  for (const g of groups) {
+    if (!g.isCurrentWeek) continue;
+    for (const k of g.kids) expectedKidIds.add(k.kidId);
+  }
+
+  const { centerDbId, isPlatformAdmin } = await getCenterContext();
+  if (!centerDbId && !isPlatformAdmin) {
+    return { expectedToday: expectedKidIds.size, recordedToday: 0 };
+  }
+
+  const supabase = await createClient();
+  const todayIso = new Date().toISOString().slice(0, 10);
+
+  let activityIds: string[] | null = null;
+  if (centerDbId) {
+    const { data: acts } = await supabase.from("activities").select("id").eq("center_id", centerDbId);
+    activityIds = (acts ?? []).map((a) => a.id as string);
+    if (activityIds.length === 0) return { expectedToday: expectedKidIds.size, recordedToday: 0 };
+  }
+
+  let query = supabase.from("attendance_records").select("kid_id").eq("date", todayIso);
+  if (activityIds) query = query.in("activity_id", activityIds);
+
+  const { data, error } = await query;
+  if (error || !data) return { expectedToday: expectedKidIds.size, recordedToday: 0 };
+
+  const recordedKidIds = new Set(data.map((r) => r.kid_id as string));
+  return { expectedToday: expectedKidIds.size, recordedToday: recordedKidIds.size };
+}
+
 export type AttendanceStatusValue = "presente" | "assente" | "in_ritardo";
 
 export interface AttendanceDayStatus {

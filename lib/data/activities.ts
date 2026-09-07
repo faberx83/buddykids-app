@@ -425,6 +425,50 @@ export async function getActivityBySlug(slug: string): Promise<Activity | null> 
   return mapRow(data);
 }
 
+// DASHBOARD GESTORE — blocco "Oggi al centro" (proposta Fabrizio
+// 07/09/2026). Prende in input le attività GIÀ caricate dalla dashboard
+// (myActivities, reuse-first: nessuna query in più per ricavare lo scoping
+// centro, a differenza di lib/data/attendance.ts#getTodayAttendanceSummary
+// che deve rifarla perché non riceve activities in input) e interroga
+// activity_days solo per la data odierna, solo dove esiste una
+// special_label ("Giornata in piscina" ecc., vedi schema.sql) — così una
+// giornata particolare programmata da un centro compare in Dashboard senza
+// dover aprire "Attività" apposta.
+export interface TodaySpecialDay {
+  activityId: string; // slug, non dbId — coerente con Activity.id usato per i link /center/activities/[slug]
+  activityName: string;
+  label: string;
+  emoji: string | null;
+}
+
+export async function getTodaySpecialDaysForActivities(activities: Activity[]): Promise<TodaySpecialDay[]> {
+  const dbIds = activities.filter((a) => a.dbId).map((a) => a.dbId as string);
+  if (!isSupabaseConfigured || dbIds.length === 0) return [];
+
+  const supabase = await createClient();
+  const todayIso = new Date().toISOString().slice(0, 10);
+
+  const { data, error } = await supabase
+    .from("activity_days")
+    .select("activity_id, special_label, special_emoji")
+    .eq("date", todayIso)
+    .in("activity_id", dbIds)
+    .not("special_label", "is", null);
+
+  if (error || !data) return [];
+
+  const nameByDbId = new Map(activities.map((a) => [a.dbId, a.name]));
+
+  return data
+    .filter((row) => row.special_label)
+    .map((row) => ({
+      activityId: activities.find((a) => a.dbId === row.activity_id)?.id ?? (row.activity_id as string),
+      activityName: nameByDbId.get(row.activity_id as string) ?? "",
+      label: row.special_label as string,
+      emoji: (row.special_emoji as string) ?? null,
+    }));
+}
+
 interface RawPromotionRow {
   id: string;
   type: "day_discount" | "last_minute";
