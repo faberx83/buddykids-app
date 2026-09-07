@@ -60,6 +60,21 @@ export const KNOWN_PRODUCT_EVENTS = [
   // modifica di un'offerta/richiesta già esistente).
   "carpool_offer_created",
   "carpool_request_created",
+  // FIX (segnalazione Fabrizio 07/09/2026: "non dovrebbe arrivare una
+  // notifica push per il check-in?") — investigando si è scoperto che
+  // NESSUN cron di questa app (checkin-reminders, travel-reminders) lascia
+  // traccia di essere mai stato eseguito: a differenza dei deploy
+  // (deploy_events, banner Admin), non c'era alcun modo — né per Fabrizio
+  // né per chi lo assiste — di verificare se il cron di Vercel gira
+  // davvero ogni giorno (piano Hobby, un'unica esecuzione/giorno) o quante
+  // push abbia effettivamente inviato, senza accesso alla dashboard Vercel.
+  // Un solo evento aggregato per esecuzione (conteggio, MAI parentId/kidId)
+  // — stesso principio "adozione, non cronologia personale" già seguito
+  // sopra per booking_created/group_created — scritto via client di
+  // servizio (persistProductEvent normale richiede una sessione utente,
+  // assente in un cron) direttamente da app/api/cron/checkin-reminders/
+  // route.ts.
+  "checkin_push_cron_run",
 ] as const;
 
 export type KnownProductEvent = (typeof KNOWN_PRODUCT_EVENTS)[number];

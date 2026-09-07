@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createServiceClient } from "@/lib/supabase/service";
 import { getPendingCheckinsForPushToday } from "@/lib/data/checkin";
 import { sendPushToUser } from "@/lib/push/send";
+import { logTelemetryEvent } from "@/lib/telemetry/correlation";
 
 // TRAMA FINAL HARDENING §13-15 (push check-in, 04/09/2026) — promemoria
 // "conferma l'arrivo di oggi" per i genitori che non hanno ancora risposto
@@ -73,6 +74,29 @@ export async function GET(req: NextRequest) {
       deepLink: "/",
     });
     sent++;
+  }
+
+  // OSSERVABILITÀ CRON (fix segnalazione Fabrizio 07/09/2026 — vedi commento
+  // in lib/telemetry/known-events.ts su "checkin_push_cron_run"). Scrittura
+  // DIRETTA via client di servizio: persistProductEvent() normale richiede
+  // una sessione utente autenticata (auth.getUser()), che qui non esiste —
+  // questo endpoint gira come cron, non come richiesta di un utente loggato.
+  // Solo un conteggio aggregato per esecuzione, MAI parentId/kidId (stesso
+  // vincolo "no PII" di TELEMETRY_FORBIDDEN_FIELDS in
+  // lib/telemetry/correlation.ts) — permette di verificare da Supabase, senza
+  // accesso alla dashboard Vercel, se/quando il cron è girato oggi e quante
+  // push ha inviato. Fallita silenziosamente (solo log) per non far fallire
+  // l'invio delle push reali se questo insert avesse un problema.
+  try {
+    await service.from("product_events").insert({
+      event_name: "checkin_push_cron_run",
+      detail: `pending=${pending.length} parents=${byParent.size} sent=${sent}`,
+    });
+  } catch (err) {
+    logTelemetryEvent({
+      event: "checkin_push_cron_run",
+      detail: `insert fallito: ${err instanceof Error ? err.message : String(err)}`,
+    });
   }
 
   return NextResponse.json({ ok: true, pendingItems: pending.length, parentsNotified: sent });
