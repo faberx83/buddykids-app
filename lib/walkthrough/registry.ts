@@ -272,6 +272,24 @@ export const WALKTHROUGH_REGISTRY: Record<string, WalkthroughDefinition> = {
       },
     ],
   },
+  // FINAL PRE-FREEZE WAVE (sez. 19-22, 08/09/2026) — controparte Partner di
+  // parent_beta_onboarding sopra, stesso identico pattern (un solo step
+  // sentinella "carousel", zero nuova migration, stessa infrastruttura
+  // Server Action/tutorial_progress). Prima di questa wave NON esisteva
+  // alcun carousel di benvenuto lato Partner (solo il tour guidato
+  // activity_creation_partner, che spiega DOVE cliccare, non PERCHÉ TRAMA
+  // serve — distinzione esplicita sez. 18 dello spec).
+  partner_beta_onboarding: {
+    key: "partner_beta_onboarding",
+    title: "Benvenuto in TRAMA (Partner)",
+    steps: [
+      {
+        key: "carousel",
+        title: "Onboarding Partner",
+        description: "Le 4 schermate di benvenuto mostrate alla prima esperienza Partner.",
+      },
+    ],
+  },
 };
 
 export function isKnownTutorial(tutorialKey: string): boolean {

@@ -12,6 +12,7 @@ import { resolveFeatureFlag } from "@/lib/feature-flags/resolve";
 import { generateCorrelationId } from "@/lib/telemetry/correlation";
 import { getWalkthroughProgress, WalkthroughProgressSummary } from "@/lib/walkthrough/data";
 import PartnerSpotlight from "@/components/spotlight/PartnerSpotlight";
+import PartnerOnboardingCarousel from "@/components/center/OnboardingCarousel";
 import BetaFeedbackButton from "@/components/nextgen/BetaFeedbackButton";
 import NotificationCenter from "@/components/nextgen/NotificationCenter";
 import { getPartnerNotifications } from "@/lib/data/notifications-partner";
@@ -30,6 +31,13 @@ export default async function CenterLayout({ children }: { children: React.React
   // additivo (nessun redirect, nessun blocco: se il flag risolve a false,
   // spotlightProgress resta null e PartnerSpotlight non renderizza nulla).
   let spotlightProgress: WalkthroughProgressSummary | null = null;
+  // FINAL PRE-FREEZE WAVE (sez. 19-22, 08/09/2026) — stesso identico gate
+  // di spotlightProgress sopra (stesso enabled, stesso if): il carousel
+  // Partner NUOVO si unisce alla stessa Controlled Beta Cohort già usata dal
+  // tour guidato Partner, non un rollout globale a parte. Se in futuro
+  // TRAMA_ONE_ENABLED verrà aperto oltre la coorte, entrambi si estendono
+  // insieme senza bisogno di un secondo flag dedicato.
+  let onboardingCarouselProgress: WalkthroughProgressSummary | null = null;
 
   if (isSupabaseConfigured) {
     const supabase = await createClient();
@@ -55,6 +63,7 @@ export default async function CenterLayout({ children }: { children: React.React
     });
     if (enabled) {
       spotlightProgress = await getWalkthroughProgress(user.id, "activity_creation_partner");
+      onboardingCarouselProgress = await getWalkthroughProgress(user.id, "partner_beta_onboarding");
     }
   }
 
@@ -193,6 +202,11 @@ export default async function CenterLayout({ children }: { children: React.React
     >
       {children}
       <PartnerSpotlight progress={spotlightProgress} />
+      {/* FINAL PRE-FREEZE WAVE (08/09/2026) — carousel di benvenuto Partner,
+          stesso schema di montaggio dello Spotlight qui sopra (una sola
+          volta, copre ogni pagina /center/*). Il componente stesso decide
+          se mostrarsi (progress?.currentStepKey === "carousel"). */}
+      <PartnerOnboardingCarousel progress={onboardingCarouselProgress} />
       {/* Notification center Partner (31/08/2026) — stesso componente del
           genitore (components/nextgen/NotificationCenter.tsx), scope
           "partner": chiave cursore localStorage separata, nessun hide su

@@ -36,6 +36,12 @@ export default async function GestorePreferenzePage() {
     }
   }
   const tutorial = getTutorialDefinition("activity_creation_partner");
+  // FINAL PRE-FREEZE WAVE (sez. 19/24, 08/09/2026) — "preserva tour
+  // esistente. Aggiungi: 'Rivedi introduzione TRAMA'." Stesso gate/coorte
+  // del bottone tour esistente sopra (showWalkthroughRestart), stesso
+  // componente riusato (WalkthroughRestartButton, generalizzato in questa
+  // wave con prop opzionali invece di un secondo componente).
+  const onboardingCarousel = getTutorialDefinition("partner_beta_onboarding");
 
   return (
     <div className="animate-fade-in">
@@ -48,8 +54,20 @@ export default async function GestorePreferenzePage() {
           initialNotifyPush={profile.notifyPush}
           initialNotifySms={profile.notifySms}
         />
-        {showWalkthroughRestart && tutorial && (
-          <WalkthroughRestartButton tutorialKey={tutorial.key} tutorialTitle={tutorial.title} />
+        {showWalkthroughRestart && (
+          <div className="space-y-3">
+            {onboardingCarousel && (
+              <WalkthroughRestartButton
+                tutorialKey={onboardingCarousel.key}
+                tutorialTitle={onboardingCarousel.title}
+                sectionLabel="Introduzione a TRAMA"
+                description="Le schermate di benvenuto che spiegano perché TRAMA ti serve e come pensarla — utili se vuoi rivederle da capo."
+                actionLabel="Rivedi introduzione TRAMA"
+                restartedMessage="Introduzione riavviata: riparte dalla prima schermata al prossimo accesso a Dashboard."
+              />
+            )}
+            {tutorial && <WalkthroughRestartButton tutorialKey={tutorial.key} tutorialTitle={tutorial.title} />}
+          </div>
         )}
       </div>
     </div>
