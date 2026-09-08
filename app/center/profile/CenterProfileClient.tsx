@@ -57,14 +57,18 @@ export default function CenterProfileClient({ center, dbId }: { center: Center; 
   }
 
   return (
-    <div className="max-w-2xl">
-      <div className="mb-6">
-        <div className="flex items-center gap-2">
-          <h1 className="text-xl font-bold text-ink">Il mio centro</h1>
-          {!dbId && <DemoBadge />}
-        </div>
-        <p className="text-sm text-ink-2">Queste informazioni sono visibili ai genitori nell&apos;app</p>
+    <div>
+      {/* FINAL PRE-FREEZE WAVE (08/09/2026) — il titolo "Il mio centro" e lo
+          stato demo sono ora nell'header di app/center/profile/page.tsx
+          (nome reale del centro + città + stato pubblicazione), che rende
+          questo titolo ridondante subito sopra. Tenuta solo la frase di
+          contesto sul form, spostata come intestazione della sezione
+          "Configurazione" — nessuna modifica al form/schema sotto. */}
+      <div className="mb-4 flex items-center justify-between">
+        <span className="text-sm font-bold text-ink">Configurazione</span>
+        {!dbId && <DemoBadge />}
       </div>
+      <p className="mb-3 text-xs text-ink-2">Queste informazioni sono visibili ai genitori nell&apos;app</p>
 
       <form
         onSubmit={async (e) => {
