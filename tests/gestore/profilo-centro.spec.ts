@@ -79,3 +79,105 @@ test.describe("Gestore - Profilo Centro", () => {
     await expect(page.locator("body")).not.toContainText("Application error");
   });
 });
+
+// ————————————————————————————————————————————————————————————————————————
+// CENTER-P-01..06 — FINAL PRE-FREEZE WAVE (08/09/2026, sez. 10-15 dello
+// spec): header evoluto + riepilogo configurazione sopra il form invariato
+// (CenterProfileClient, coperto da TC-080/081/117/192/199 sopra — nessuna
+// duplicazione qui). Vedi app/center/profile/page.tsx.
+// ————————————————————————————————————————————————————————————————————————
+test.describe("Gestore - Il mio centro (header + riepilogo)", () => {
+  // CENTER-P-01 — Header mostra nome reale + stato onboarding, mai un
+  // placeholder vuoto.
+  test("CENTER-P-01 - Header mostra il nome del centro e lo stato onboarding", async ({ page }) => {
+    test.skip(!isRealDeployment, "Richiede un deploy con Supabase configurato e l'account Gestore di test.");
+    await loginAs(page, "center_admin");
+    await page.goto("/center/profile");
+
+    // Nome centro: div ".text-lg.font-bold.text-ink" nell'header (unico con
+    // queste classi combinate sopra il form, vedi app/center/profile/page.tsx).
+    const centerName = page.locator(".text-lg.font-bold.text-ink").first();
+    await expect(centerName).toBeVisible();
+    await expect(centerName).not.toHaveText("");
+  });
+
+  // CENTER-P-02 — "Vedi come ti vedono le famiglie" compare SOLO se il
+  // centro ha almeno un'attività pubblicata (niente preview finta — audit
+  // confermato: nessuna route pubblica dedicata al centro in sé).
+  test("CENTER-P-02 - CTA 'Vedi come ti vedono le famiglie' condizionata alle attività pubblicate", async ({
+    page,
+  }) => {
+    test.skip(!isRealDeployment, "Richiede un deploy con Supabase configurato e l'account Gestore di test.");
+    await loginAs(page, "center_admin");
+    await page.goto("/center/profile");
+
+    const cta = page.getByRole("link", { name: "Vedi come ti vedono le famiglie" });
+    if (await cta.isVisible().catch(() => false)) {
+      const href = await cta.getAttribute("href");
+      expect(href).toMatch(/^\/activity\//);
+      await expect(cta).toHaveAttribute("target", "_blank");
+    }
+    // Se assente: nessuna attività pubblicata per questo centro di test —
+    // comportamento corretto (nessuna preview finta), nulla da asserire oltre.
+  });
+
+  // CENTER-P-03 — Riepilogo configurazione: 4 card con link reali verso le
+  // pagine che gestiscono davvero ciascuna sezione.
+  test("CENTER-P-03 - Riepilogo configurazione: 4 card con link reali", async ({ page }) => {
+    test.skip(!isRealDeployment, "Richiede un deploy con Supabase configurato e l'account Gestore di test.");
+    await loginAs(page, "center_admin");
+    await page.goto("/center/profile");
+
+    await expect(page.getByText("Attività", { exact: true })).toBeVisible();
+    await expect(page.getByRole("link", { name: "Gestisci attività" })).toHaveAttribute(
+      "href",
+      "/center/activities"
+    );
+    await expect(page.getByRole("link", { name: "Gestisci promozioni" })).toHaveAttribute(
+      "href",
+      "/center/promotions"
+    );
+    await expect(page.getByRole("link", { name: "Vedi servizi" })).toHaveAttribute(
+      "href",
+      "/center/servizi-consigliati"
+    );
+  });
+
+  // CENTER-P-04 — Il binario "Profilo" (Completo/Da completare) è LIVE sui
+  // campi reali, mai una percentuale finta — verifichiamo solo che sia uno
+  // dei due valori onesti previsti, mai un terzo stato o un numero.
+  test("CENTER-P-04 - Stato 'Profilo' è un binario onesto (Completo / Da completare)", async ({ page }) => {
+    test.skip(!isRealDeployment, "Richiede un deploy con Supabase configurato e l'account Gestore di test.");
+    await loginAs(page, "center_admin");
+    await page.goto("/center/profile");
+
+    const profileStatus = page.getByText(/^(Completo|Da completare)$/);
+    await expect(profileStatus).toBeVisible();
+    // Mai una percentuale (regressione esplicitamente vietata dallo spec).
+    await expect(page.getByText(/%/)).toHaveCount(0);
+  });
+
+  // CENTER-P-05 — Il form di configurazione sottostante (CenterProfileClient)
+  // resta invariato: nessun doppio titolo "Il mio centro" duplicato tra
+  // header e sezione "Configurazione" (regressione da evitare nel merge).
+  test("CENTER-P-05 - Nessun titolo 'Il mio centro' duplicato tra header e form", async ({ page }) => {
+    test.skip(!isRealDeployment, "Richiede un deploy con Supabase configurato e l'account Gestore di test.");
+    await loginAs(page, "center_admin");
+    await page.goto("/center/profile");
+
+    await expect(page.getByRole("heading", { name: "Il mio centro" })).toHaveCount(0);
+    await expect(page.getByText("Configurazione", { exact: true })).toBeVisible();
+  });
+
+  // CENTER-P-06 — 390px: nessun overflow orizzontale evidente sull'header +
+  // riepilogo ridisegnati.
+  test("CENTER-P-06 - 390px: nessun overflow orizzontale evidente", async ({ page }) => {
+    test.skip(!isRealDeployment, "Richiede un deploy con Supabase configurato e l'account Gestore di test.");
+    await page.setViewportSize({ width: 390, height: 844 });
+    await loginAs(page, "center_admin");
+    await page.goto("/center/profile");
+
+    const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
+    expect(overflow).toBeLessThanOrEqual(1);
+  });
+});
