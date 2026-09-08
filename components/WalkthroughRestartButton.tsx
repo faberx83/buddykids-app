@@ -20,9 +20,26 @@ import { restartWalkthroughAction } from "@/app/actions/walkthrough";
 export default function WalkthroughRestartButton({
   tutorialKey,
   tutorialTitle,
+  // FINAL PRE-FREEZE WAVE (08/09/2026) — questo componente viene ora riusato
+  // anche per i due carousel di benvenuto (parent_beta_onboarding,
+  // partner_beta_onboarding) e per il tour guidato Parent
+  // (discover_book_parent), non solo per il tour guidato Partner originale.
+  // Il messaggio "riparte dal primo passo appena vai su 'Le tue attività'"
+  // era hardcoded e specifico SOLO al primo step di activity_creation_
+  // partner — sbagliato per qualunque altro percorso. Tre prop opzionali,
+  // tutte con default che preservano ESATTAMENTE il comportamento/testo
+  // originale per l'unico chiamante preesistente (nessuna regressione lì).
+  sectionLabel = "Tour guidato",
+  description,
+  restartedMessage,
+  actionLabel,
 }: {
   tutorialKey: string;
   tutorialTitle: string;
+  sectionLabel?: string;
+  description?: string;
+  restartedMessage?: string;
+  actionLabel?: string;
 }) {
   const [busy, setBusy] = useState(false);
   const [done, setDone] = useState(false);
@@ -42,14 +59,18 @@ export default function WalkthroughRestartButton({
 
   return (
     <div className="rounded-lg bg-white p-3.5">
-      <div className="mb-1 text-xs font-semibold text-ink-2">Tour guidato</div>
+      <div className="mb-1 text-xs font-semibold text-ink-2">{sectionLabel}</div>
       <p className="mb-2.5 text-[13px] text-ink-2">
-        &quot;{tutorialTitle}&quot; ti accompagna passo passo la prossima volta che navighi
-        nell&apos;app — utile se vuoi rivederlo da capo o se lo hai saltato per errore.
+        {description ?? (
+          <>
+            &quot;{tutorialTitle}&quot; ti accompagna passo passo la prossima volta che navighi
+            nell&apos;app — utile se vuoi rivederlo da capo o se lo hai saltato per errore.
+          </>
+        )}
       </p>
       {done ? (
         <p className="text-[13px] font-medium text-trama-violet">
-          Percorso riavviato: riparte dal primo passo appena vai su &quot;Le tue attività&quot;.
+          {restartedMessage ?? 'Percorso riavviato: riparte dal primo passo appena vai su "Le tue attività".'}
         </p>
       ) : (
         <button
@@ -57,7 +78,7 @@ export default function WalkthroughRestartButton({
           disabled={busy}
           className="rounded-md border border-[#E8EBF0] bg-transparent px-3.5 py-2 text-[13px] font-semibold text-ink disabled:opacity-60"
         >
-          {busy ? "Riavvio…" : "Riavvia il tour guidato"}
+          {busy ? "Riavvio…" : (actionLabel ?? "Riavvia il tour guidato")}
         </button>
       )}
       {error && <p className="mt-2 text-xs font-medium text-orange">{error}</p>}

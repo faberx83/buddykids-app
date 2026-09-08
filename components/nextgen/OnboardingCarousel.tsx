@@ -44,8 +44,9 @@ import {
   ONBOARDING_DEMO_CENTER,
   ONBOARDING_DEMO_ACTIVITY_SEARCH,
   ONBOARDING_DEMO_WEEK_LABEL,
-  ONBOARDING_REQUEST_FLOW,
-  ONBOARDING_REQUEST_OUTCOMES,
+  ONBOARDING_DEMO_RESPONSIBILITY,
+  ONBOARDING_FLOW_STAGES,
+  ONBOARDING_SHARE_PEOPLE,
 } from "@/lib/nextgen/onboarding-slides";
 import type { WalkthroughProgressSummary } from "@/lib/walkthrough/data";
 import {
@@ -64,19 +65,6 @@ function getFocusable(container: HTMLElement): HTMLElement[] {
     )
   );
 }
-
-// Slide 2 — mini Planner illustrativo per bambino: copertura fittizia ma
-// realistica (Coperta/Parziale/Da organizzare), MAI solo colore: ogni stato
-// ha anche un'icona + etichetta.
-const PLANNER_DEMO: Record<(typeof ONBOARDING_DEMO_KIDS)[number], ("covered" | "partial" | "open")[]> = {
-  Sofia: ["covered", "covered", "partial", "open", "open", "open"],
-  Luca: ["covered", "open", "open", "covered", "open", "open"],
-};
-const WEEK_STATE_META: Record<"covered" | "partial" | "open", { icon: string; label: string; className: string }> = {
-  covered: { icon: "ti-circle-check-filled", label: "Coperta", className: "bg-trama-green/15 text-trama-green" },
-  partial: { icon: "ti-circle-half-2", label: "Parziale", className: "bg-trama-orange/15 text-trama-orange" },
-  open: { icon: "ti-circle-dashed", label: "Da organizzare", className: "bg-[#F0F2F5] text-ink-3" },
-};
 
 export default function OnboardingCarousel({ progress }: { progress: WalkthroughProgressSummary | null }) {
   const router = useRouter();
@@ -213,10 +201,10 @@ export default function OnboardingCarousel({ progress }: { progress: Walkthrough
         {/* Visual illustrativo, per slide */}
         <div className="mb-5 flex-shrink-0" aria-hidden="true">
           {slide.visual === "chaos" && <ChaosVisual />}
-          {slide.visual === "planner" && <PlannerVisual />}
           {slide.visual === "search" && <SearchVisual />}
-          {slide.visual === "request" && <RequestVisual />}
-          {slide.visual === "final" && <FinalVisual />}
+          {slide.visual === "responsibility" && <ResponsibilityVisual />}
+          {slide.visual === "flow" && <FlowVisual />}
+          {slide.visual === "share" && <ShareVisual />}
         </div>
 
         {/* Copy */}
@@ -318,39 +306,6 @@ function ChaosVisual() {
   );
 }
 
-function PlannerVisual() {
-  return (
-    <div className="rounded-2xl bg-white p-4">
-      {ONBOARDING_DEMO_KIDS.map((kid) => (
-        <div key={kid} className="mb-3 last:mb-0">
-          <div className="mb-1.5">
-            <KidChip name={kid} />
-          </div>
-          <div className="flex flex-wrap gap-1.5">
-            {PLANNER_DEMO[kid].map((state, i) => {
-              const meta = WEEK_STATE_META[state];
-              return (
-                <span
-                  key={i}
-                  // Sprint responsive (S2, richiesto): riduci il numero di
-                  // settimane visibili insieme su mobile — le ultime 2
-                  // chip per bambino restano nascoste sotto 640px.
-                  className={`inline-flex items-center gap-1 rounded-full px-2 py-1 text-[10.5px] font-semibold ${meta.className} ${
-                    i >= 4 ? "hidden sm:inline-flex" : ""
-                  }`}
-                >
-                  <i className={`ti ${meta.icon} text-[12px]`} />
-                  {meta.label}
-                </span>
-              );
-            })}
-          </div>
-        </div>
-      ))}
-    </div>
-  );
-}
-
 function SearchVisual() {
   return (
     <div className="rounded-2xl bg-white p-4">
@@ -376,31 +331,54 @@ function SearchVisual() {
   );
 }
 
-function RequestVisual() {
+// Slide 3 — "Chi fa cosa": Andata/Ritorno per un bambino demo, MAI solo
+// colore (icona + etichetta su ogni riga, stesso principio delle altre
+// slide).
+function ResponsibilityVisual() {
   return (
     <div className="rounded-2xl bg-white p-4">
-      {/* Flow: colonna su mobile (richiesto: "impila le risposte e
-          semplifica il flow"), riga su sm+. BUGFIX (Fabrizio, segnalato da
-          screenshot reale su Android: "sembra tagliato") — su mobile la
-          freccia di collegamento tra i passaggi era `hidden` e basta,
-          rimossa senza alcun sostituto: i 6 passaggi apparivano come un
-          elenco slegato invece che come un flusso leggibile dall'alto in
-          basso. Ogni passaggio ora è a sua volta flex-col su mobile (pila
-          verticale: pillola poi freccia-giù, prima del passaggio
-          successivo) e flex-row su sm+ (pillola poi freccia-destra inline),
-          cosi il collegamento visivo resta sempre presente, solo con
-          orientamento diverso in base al layout. */}
-      <div className="flex flex-col gap-1.5 sm:flex-row sm:flex-wrap sm:items-center sm:gap-1.5">
-        {ONBOARDING_REQUEST_FLOW.map((step, i) => (
-          <div key={step} className="flex flex-col items-start gap-1.5 sm:flex-row sm:items-center">
-            <span
-              className={`whitespace-nowrap rounded-full px-2.5 py-1 text-[11px] font-semibold ${
-                step === "In attesa" ? "bg-trama-orange/15 text-trama-orange" : "bg-trama-card text-ink-2"
-              }`}
-            >
-              {step}
-            </span>
-            {i < ONBOARDING_REQUEST_FLOW.length - 1 && (
+      <div className="mb-2.5">
+        <KidChip name={ONBOARDING_DEMO_RESPONSIBILITY.kid} />
+      </div>
+      <div className="flex flex-col gap-2">
+        <div className="flex items-center justify-between rounded-xl bg-trama-card px-3 py-2">
+          <span className="flex items-center gap-2 text-[12.5px] font-semibold text-ink-2">
+            <i className="ti ti-arrow-up-right text-[15px] text-ink-3" />
+            Andata
+          </span>
+          <span className="text-[12.5px] font-bold text-ink">{ONBOARDING_DEMO_RESPONSIBILITY.andata}</span>
+        </div>
+        <div className="flex items-center justify-between rounded-xl bg-trama-card px-3 py-2">
+          <span className="flex items-center gap-2 text-[12.5px] font-semibold text-ink-2">
+            <i className="ti ti-arrow-down-left text-[15px] text-ink-3" />
+            Ritorno
+          </span>
+          <span className="text-[12.5px] font-bold text-ink">{ONBOARDING_DEMO_RESPONSIBILITY.ritorno}</span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// Slide 4 — "Dal centro alla giornata": stesso linguaggio visivo a
+// pillole+freccia già collaudato nella versione precedente del carousel
+// (colonna su mobile, riga su sm+, per lo stesso motivo di leggibilità
+// documentato nella cronologia di questo componente), applicato alle 4
+// tappe di ONBOARDING_FLOW_STAGES invece dei 6 passaggi della richiesta.
+function FlowVisual() {
+  return (
+    <div className="rounded-2xl bg-white p-4">
+      <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-stretch sm:gap-1.5">
+        {ONBOARDING_FLOW_STAGES.map((stage, i) => (
+          <div key={stage.label} className="flex flex-col items-start gap-1.5 sm:flex-row sm:items-center">
+            <div className="rounded-xl bg-trama-card px-2.5 py-1.5">
+              <div className="flex items-center gap-1.5 text-[11px] font-bold text-trama-violet">
+                <i className={`ti ${stage.icon} text-[13px]`} />
+                {stage.label}
+              </div>
+              <div className="mt-0.5 text-[10.5px] text-ink-2">{stage.items.join(" · ")}</div>
+            </div>
+            {i < ONBOARDING_FLOW_STAGES.length - 1 && (
               <>
                 <i className="ti ti-arrow-narrow-down block pl-3 text-[14px] text-ink-3 sm:hidden" aria-hidden="true" />
                 <i className="ti ti-arrow-narrow-right hidden text-[14px] text-ink-3 sm:inline" aria-hidden="true" />
@@ -409,27 +387,31 @@ function RequestVisual() {
           </div>
         ))}
       </div>
-      <div className="mt-3 flex gap-2">
-        {ONBOARDING_REQUEST_OUTCOMES.map((outcome) => (
-          <span
-            key={outcome}
-            className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-semibold ${
-              outcome === "Confermata" ? "bg-trama-green/15 text-trama-green" : "bg-trama-lilac/25 text-trama-violet"
-            }`}
-          >
-            <i className={`ti ${outcome === "Confermata" ? "ti-circle-check-filled" : "ti-replace"} text-[13px]`} />
-            {outcome}
-          </span>
-        ))}
-      </div>
     </div>
   );
 }
 
-function FinalVisual() {
+// Slide 5 — "Condividi": persone/canali con cui il piano può essere
+// condiviso (Chi fa cosa, Gruppi, Piano condiviso — capability reali, non
+// un elenco di feature inventate).
+function ShareVisual() {
   return (
-    <div className="flex items-center justify-center rounded-2xl bg-trama-violet/10 p-6">
-      <i className="ti ti-compass text-4xl text-trama-violet" />
+    <div className="rounded-2xl bg-white p-4">
+      <div className="flex flex-wrap gap-1.5">
+        {ONBOARDING_SHARE_PEOPLE.map((person) => (
+          <span
+            key={person}
+            className="inline-flex items-center gap-1.5 rounded-full bg-trama-card px-2.5 py-1.5 text-[12px] font-semibold text-ink-2"
+          >
+            <i className="ti ti-user-circle text-[14px] text-ink-3" />
+            {person}
+          </span>
+        ))}
+      </div>
+      <div className="mt-3 inline-flex items-center gap-1.5 rounded-full bg-trama-violet/10 px-2.5 py-1.5 text-[11px] font-semibold text-trama-violet">
+        <i className="ti ti-share text-[13px]" />
+        Piano condiviso
+      </div>
     </div>
   );
 }

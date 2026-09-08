@@ -43,6 +43,18 @@ function revalidateAllWalkthroughPortals() {
   revalidatePath("/one");
   revalidatePath("/center/one");
   revalidatePath("/admin/one");
+  // FINAL PRE-FREEZE WAVE (08/09/2026) — i due carousel di benvenuto
+  // (parent_beta_onboarding, partner_beta_onboarding) e i due tour guidati
+  // (discover_book_parent, activity_creation_partner) vivono ORA anche
+  // fuori da /one* — rispettivamente in app/nextgen/layout.tsx e
+  // app/center/layout.tsx (le vere Dashboard, non solo la shell /one).
+  // Innocuo aggiungerle qui (stesso principio già documentato sopra: una
+  // revalidatePath su una route non renderizzata di recente è un no-op) —
+  // ma senza queste due righe, un "Riavvia" da Preferenze non garantiva la
+  // ripartenza del carousel/tour alla PROSSIMA navigazione su /nextgen o
+  // /center se quella route era già in cache.
+  revalidatePath("/nextgen");
+  revalidatePath("/center");
 }
 
 async function requireUser() {
