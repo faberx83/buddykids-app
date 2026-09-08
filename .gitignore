@@ -34,3 +34,12 @@ next-env.d.ts
 # principio di playwright-report sopra: mai da versionare/deployare.
 sitemap-output
 .env*
+
+# Pacchetti di evidenza per audit esterno (snapshot repo + evidenza UX/UI
+# scritta, 08/09/2026) — materiale da consegnare fuori dal repo, mai da
+# versionare/deployare. Stesso principio di playwright-report-archive sopra:
+# causava "working tree sporco" spurio in deploy.sh (bloccato il 08/09,
+# commit 5d95e62 — vedi logs/deploy-20260908-155647.log).
+external-audit-upload
+external-audit-ux-ui*
+TRAMA_UX_UI_WRITTEN_EVIDENCE_*.zip
