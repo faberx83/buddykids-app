@@ -115,6 +115,28 @@ test.describe("Multi-tenant / PWA", () => {
     // un browser/device reale, non simulabile in Playwright headless.
   });
 
+  // Priorita: Alta | Precondizioni: Nessuna (deliberatamente NON autenticato)
+  // Passi: Richiedi /activity/<slug reale> senza sessione
+  // Risultato atteso: risposta 200 (pagina attività), MAI un redirect a /auth/login
+  //
+  // BUG TROVATO+CORRETTO (FINAL PRE-FREEZE WAVE, 08/09/2026 — segnalato da
+  // Fabrizio: la nuova CTA "Vedi come ti vedono le famiglie" in "Il mio
+  // centro" dava login/404 invece di mostrare l'attività): il gate del
+  // tenant famiglia in proxy.ts non escludeva /activity, nonostante
+  // app/activity/[id]/page.tsx dichiari esplicitamente di permettere la
+  // visione anonima — quella logica non veniva mai raggiunta perché il gate
+  // rimandava a /auth/login PRIMA che la pagina venisse renderizzata.
+  // Stesso pattern di verifica di TC-219 sopra (request diretta,
+  // maxRedirects: 0, nessun browser necessario).
+  test("TC-N520 - Una scheda attività resta raggiungibile senza sessione (visione anonima famiglia)", async ({
+    request,
+  }) => {
+    test.skip(!isRealDeployment, "Richiede un deploy con Supabase configurato (il bug si manifesta solo li').");
+    const res = await request.get("/activity/prova-fp", { maxRedirects: 0 });
+    expect(res.status()).toBe(200);
+    expect(res.headers()["location"]).toBeUndefined();
+  });
+
   // Priorita: Bassa | Precondizioni: Login Gestore o Admin, navigazione tra pagine
   // Passi: Cambia pagina cosi' da attivare la Suspense fallback (loading.tsx)
   // Risultato atteso: lo spinner TRAMA e' navy (non a colori) su Partner,

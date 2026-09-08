@@ -105,6 +105,23 @@ export async function proxy(request: NextRequest) {
     // di condivisione pubblici) sopra. Nessuna di queste route legge/scrive
     // dati utente — mostrano solo il documento legale PUBLISHED corrente
     // (o "Documento in preparazione" se nessuno esiste ancora).
+    //
+    // BUG TROVATO+CORRETTO (FINAL PRE-FREEZE WAVE, 08/09/2026 — segnalato da
+    // Fabrizio: la nuova CTA "Vedi come ti vedono le famiglie" in "Il mio
+    // centro" dava 404/login invece di mostrare l'attività) — /activity
+    // mancava da questa lista di esclusioni, nonostante app/activity/[id]/
+    // page.tsx dichiari esplicitamente (commento in testa al file) di
+    // permettere "la visione anonima (nessun redirect al login)": quella
+    // logica non veniva MAI raggiunta per un visitatore anonimo, perché
+    // QUESTO gate lo rimandava a /auth/login prima ancora che la pagina
+    // venisse renderizzata. Bug preesistente, non introdotto da questa wave
+    // — la nuova CTA lo ha solo reso visibile per la prima volta, essendo il
+    // primo punto del prodotto a linkare direttamente e prominentemente a
+    // un'attività per un visitatore potenzialmente non autenticato (una
+    // famiglia che clicca "Vedi come ti vedono le famiglie" dal punto di
+    // vista del gestore non è detto sia loggata come genitore in quello
+    // stesso browser). Stessa eccezione di /share sopra (pagine pubbliche
+    // già pensate per la visione anonima).
     if (
       isSupabaseConfigured &&
       !pathname.startsWith("/auth") &&
@@ -114,6 +131,7 @@ export async function proxy(request: NextRequest) {
       !pathname.startsWith("/share") &&
       !pathname.startsWith("/privacy") &&
       !pathname.startsWith("/terms") &&
+      !pathname.startsWith("/activity") &&
       pathname !== "/sw.js"
     ) {
       const userId = await getRequestUserId(request);
