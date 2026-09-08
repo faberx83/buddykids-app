@@ -5,6 +5,12 @@
 **As-of commit (AS_OF_COMMIT)**: `24464bf1c48d4aa5a5f93f9e1b12dd7545103ef5`
 **Status**: current
 
+## 2026-09-08 — Current State Addendum (non un nuovo package version)
+
+Aggiunto `TRAMA_CURRENT_STATE_ADDENDUM_2026-09-08.md`: registra via changelog verificabile (non ricalcolo a script) oltre un mese di lavoro tra il 06/08/2026 e l'08/09/2026 — quattro feature nuove complete (Promemoria partenza reali, Servizi extra prenotazione, disponibilità back-in-stock push, check-in push), una serie di fix su prenotazioni/check-in, e una wave finale non ancora deployata in produzione (Dashboard Gestore ridisegnata, nuovo layer "Il mio centro", carousel di onboarding Parent rinnovato + carousel Partner nuovo + punti di replay). Include una mappa esplicita di quali documenti di questo package sono oggi INCOMPLETI (non falsi) di conseguenza, e la verifica sola-lettura (via query SQL dirette) che la produzione resta ferma al commit `a30bcc6`, 6 commit indietro rispetto al repository. Non ricalcola le 4 metriche di copertura né i 3 verdetti del v4 — limite dichiarato esplicitamente nell'addendum stesso, non un aggiornamento silenzioso dei numeri. Nessun file numerico del v4 (Master Requirement Catalog/Traceability Matrix/Coverage Heatmap/SAL/Open Decisions) è stato modificato da questa voce.
+
+**File aggiornati**: `TRAMA_CURRENT_STATE_ADDENDUM_2026-09-08.md` (nuovo), questo file.
+
 ## 2026-08-06 (tardo mattino) — v4 (OD-02 closed — live test PASS)
 
 Fabrizio ha eseguito il deploy (commit `24464bf`) e i 3 test live richiesti da `OD02_LIVE_TEST_PROCEDURE.md`:

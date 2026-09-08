@@ -4,6 +4,8 @@ Questa cartella raccoglie il pacchetto documentale ufficiale di **TRAMA ONE — 
 
 Questo file è puramente descrittivo/organizzativo. Non implementa, non avvia e non anticipa nessuno sprint né la Gap Analysis.
 
+**Per lo stato più recente (08/09/2026)**: `package/TRAMA_CURRENT_STATE_ADDENDUM_2026-09-08.md` — oltre un mese di lavoro successivo al package v4 sotto (`package/`, fermo al 06/08/2026), inclusa una wave finale non ancora deployata in produzione. Leggere insieme al resto di questa cartella, non al suo posto.
+
 ## Verifica completezza pacchetto — tutti e 7 i documenti ufficiali presenti
 
 | # | Documento | Stato |
