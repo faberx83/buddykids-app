@@ -191,6 +191,22 @@ export default async function CenterDashboardPage() {
     (p) => p.validTo && p.validTo >= todayIsoForPromo && p.validTo <= in7DaysIso
   );
 
+  // FINAL PRE-FREEZE WAVE (sez. 8, 07/09/2026): "NO SIGNAL → NO CARD" era
+  // già rispettato (ogni banner sopra si nasconde da solo se vuoto), ma
+  // mancava il rovescio della medaglia — se TUTTO è a zero, la pagina
+  // passava direttamente da "Oggi al centro" (se presente) ai KPI, senza
+  // mai confermare esplicitamente "ho controllato, è tutto a posto". Un solo
+  // stato positivo leggero, non uno per categoria, e non verde (lo spec
+  // chiede esplicitamente di non abusarne — qui grigio neutro come i banner
+  // di stato account sopra, non un festeggiamento).
+  const nothingToShowToday =
+    attendanceSummary.expectedToday === 0 &&
+    todaySpecialDays.length === 0 &&
+    unconfirmedCheckins === 0 &&
+    pendingBookings.length === 0 &&
+    openInquiriesCount === 0 &&
+    pendingGroupRequests.length === 0;
+
   return (
     <div className="animate-fade-in">
       <div className="mb-5 flex items-center justify-between">
@@ -358,6 +374,15 @@ export default async function CenterDashboardPage() {
               </Link>
             </div>
           )}
+        </div>
+      )}
+
+      {nothingToShowToday && !onboardingIncomplete && (
+        <div className="mb-4 flex items-center gap-3 rounded-xl bg-[#F0F2F5] p-3.5">
+          <div className="flex h-[34px] w-[34px] flex-shrink-0 items-center justify-center rounded-[9px] bg-white">
+            <i className="ti ti-check text-base text-ink-2" />
+          </div>
+          <div className="text-[13px] font-semibold text-ink-2">Tutto sotto controllo per oggi.</div>
         </div>
       )}
 
