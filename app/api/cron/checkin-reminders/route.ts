@@ -18,11 +18,16 @@ import { logTelemetryEvent } from "@/lib/telemetry/correlation";
 // sensata, stesso principio già applicato ai promemoria di partenza.
 //
 // ORARIO: una sola esecuzione/giorno (limite piano Vercel Hobby, stesso
-// vincolo già scoperto per travel-reminders — vedi commento lì). "0 8 * * *"
-// UTC = le 10:00 circa in Europe/Rome (ora legale estiva) — dopo il tipico
-// orario di ingresso mattutino dei centri estivi, così la domanda "è
-// arrivato/a?" arriva quando la risposta è già nota, non prima. Come per
-// travel-reminders, Vercel non garantisce il minuto esatto di esecuzione.
+// vincolo già scoperto per travel-reminders — vedi commento lì). "30 5 * * *"
+// UTC = le 7:30 in Europe/Rome (ora legale estiva) — orario richiesto da
+// Fabrizio il 09/09/2026 (in precedenza "0 8 * * *"/le 10:00, dopo il
+// tipico ingresso mattutino: con l'orario più anticipato la domanda "è
+// arrivato/a?" può ora precedere la risposta reale per alcuni bambini,
+// scelta esplicita di Fabrizio, non un difetto). Vercel non garantisce il
+// minuto esatto di esecuzione. Il cron è un orario UTC fisso: NON segue
+// automaticamente il cambio ora legale/solare — a ora solare (CET, UTC+1)
+// "30 5" corrisponde alle 6:30 locali, non alle 7:30 (stesso limite già
+// presente prima di questo cambio, solo con offset diverso).
 //
 // NESSUNA nuova regola di "chi va avvisato oggi": getPendingCheckinsForPushToday
 // (lib/data/checkin.ts) riusa la STESSA query/filtro già in produzione per
