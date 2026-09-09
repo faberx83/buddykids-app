@@ -28,6 +28,23 @@ test.describe("Push notifications: service worker (no browser)", () => {
     // PushPayload) — un parse fallito non deve far crashare il listener.
     expect(content).toContain("event.data.json()");
   });
+
+  // BUG TROVATO+CORRETTO (segnalazione Fabrizio 08/09/2026, "clicco la
+  // notifica di check-in e non mi apre l'app installata ma la pagina web"):
+  // app/api/cron/checkin-reminders/route.ts inviava deepLink: "/" (scope
+  // Legacy), mentre public/manifest-nextgen.json dichiara "scope":
+  // "/nextgen" — un URL fuori da quello scope non viene riconosciuto da
+  // Android/Chrome come "dentro" la PWA NextGen installata al momento del
+  // tap, quindi self.clients.openWindow() (sw.js) apre una scheda browser
+  // invece di rilanciare l'app in modalità standalone. Verifica statica
+  // (no browser, stesso principio di PUSH-P00 sopra): il sorgente deve
+  // contenere il deepLink corretto, non quello sbagliato.
+  test("PUSH-P01 [no browser] - la push di check-in punta a /nextgen, non alla radice Legacy fuori scope", () => {
+    const routePath = path.join(__dirname, "../../app/api/cron/checkin-reminders/route.ts");
+    const content = fs.readFileSync(routePath, "utf-8");
+    expect(content).toContain('deepLink: "/nextgen"');
+    expect(content).not.toMatch(/deepLink:\s*"\/"\s*,/);
+  });
 });
 
 test.describe("Push notifications: UI attiva/disattiva", () => {

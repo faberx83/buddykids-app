@@ -68,10 +68,23 @@ export async function GET(req: NextRequest) {
       items.length === 1
         ? `${items[0].kidName} è arrivato/a a ${items[0].activityName}?`
         : `Conferma l'arrivo di ${items.length} bambini alle attività di oggi.`;
+    // FIX (segnalazione Fabrizio 08/09/2026, "clicco la notifica e non mi
+    // apre l'app installata ma la pagina web"): deepLink era "/" (radice,
+    // scope Legacy), mentre TUTTE le altre push lato genitore in questo
+    // codebase (prenotazioni, gruppi, inviti — vedi app/actions/groups.ts,
+    // app/actions/booking-response.ts, lib/data/notifications.ts) puntano a
+    // "/nextgen/...". public/manifest-nextgen.json dichiara "scope":
+    // "/nextgen": un URL fuori da quello scope non viene riconosciuto da
+    // Android/Chrome come "dentro" la PWA NextGen installata, quindi
+    // self.clients.openWindow() (sw.js) apre una scheda browser normale
+    // invece di rilanciare l'app in modalità standalone. NextgenCheckinCard
+    // (app/nextgen/HomeDashboardClient.tsx) mostra lo stesso identico
+    // prompt di check-in di CheckinPrompt.tsx (Legacy) — "/nextgen" è quindi
+    // una destinazione equivalente, non un cambio di funzionalità.
     await sendPushToUser(parentId, {
       title: "Check-in di oggi",
       body,
-      deepLink: "/",
+      deepLink: "/nextgen",
     });
     sent++;
   }
