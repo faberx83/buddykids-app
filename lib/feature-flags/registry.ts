@@ -69,6 +69,46 @@ export const FEATURE_FLAG_REGISTRY = {
     defaultValue: false,
     allowedScopes: ["global", "environment", "user", "role", "cohort"],
   },
+  // TRAMA — INTERNAL PREVIEW / DARK RELEASE MODEL (approvato 10/09/2026) —
+  // 3 flag PLACEHOLDER, registrati SOLO per dare al Release Catalog
+  // (lib/releases/catalog.ts) e alla sezione "Release" di /admin/feature-flags
+  // qualcosa di reale su cui esercitare l'intero meccanismo promotion/kill
+  // switch (INTERNAL → PILOT → GLOBAL → INTERNAL) end-to-end, incluso lo
+  // stato "RILASCIO PARZIALE" quando le 3 feature non sono tutte allo stesso
+  // stadio. NESSUN codice applicativo (page/layout/Server Action/cron/
+  // route) risolve mai questi 3 flag: sono inerti per costruzione, zero
+  // superficie raggiungibile — coerente con l'istruzione esplicita "NON
+  // creare feature fake raggiungibili". Vedi le 3 voci corrispondenti in
+  // lib/feature-registry/catalog.ts (status INTERNAL_PREVIEW, nota
+  // "PLACEHOLDER") e la release "TRAMA — Planner Intelligence" in
+  // lib/releases/catalog.ts. Da sostituire con i flag reali quando le
+  // relative capability (School Calendar Intelligence, External Planner
+  // Items, Calendar Export) verranno effettivamente costruite — non prima,
+  // per esplicita istruzione di Fabrizio in questa stessa sessione.
+  SCHOOL_CALENDAR_INTELLIGENCE_ENABLED: {
+    name: "SCHOOL_CALENDAR_INTELLIGENCE_ENABLED",
+    description:
+      "PLACEHOLDER (nessun codice applicativo la risolve ancora) — governerà in futuro la visibilità " +
+      "di School Calendar Intelligence. Registrato ora solo per testare l'infrastruttura Release/Promotion.",
+    defaultValue: false,
+    allowedScopes: ["global", "environment", "user", "role", "cohort"],
+  },
+  EXTERNAL_PLANNER_ITEMS_ENABLED: {
+    name: "EXTERNAL_PLANNER_ITEMS_ENABLED",
+    description:
+      "PLACEHOLDER (nessun codice applicativo la risolve ancora) — governerà in futuro la visibilità " +
+      "di External Planner Items. Registrato ora solo per testare l'infrastruttura Release/Promotion.",
+    defaultValue: false,
+    allowedScopes: ["global", "environment", "user", "role", "cohort"],
+  },
+  CALENDAR_EXPORT_ENABLED: {
+    name: "CALENDAR_EXPORT_ENABLED",
+    description:
+      "PLACEHOLDER (nessun codice applicativo la risolve ancora) — governerà in futuro la visibilità " +
+      "dell'export calendario esteso. Registrato ora solo per testare l'infrastruttura Release/Promotion.",
+    defaultValue: false,
+    allowedScopes: ["global", "environment", "user", "role", "cohort"],
+  },
 } as const satisfies Record<string, FeatureFlagDefinition>;
 
 export type KnownFeatureFlagName = keyof typeof FEATURE_FLAG_REGISTRY;

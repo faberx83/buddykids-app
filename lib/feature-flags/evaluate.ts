@@ -130,6 +130,53 @@ function scopeMatchesContext(
 }
 
 /**
+ * TRAMA — INTERNAL PREVIEW / DARK RELEASE MODEL (10/09/2026). Stesso identico
+ * algoritmo di evaluateFlag() sotto (stessa precedenza, stessa normalizzazione,
+ * stesso filtro di scadenza) — evaluateFlag() è ora un thin wrapper su questa
+ * funzione, comportamento invariato bit per bit, zero rischio di regressione
+ * sui 30+ call site esistenti. La differenza è SOLO nel valore di ritorno:
+ * oltre al booleano, riporta QUALE scope/valore ha determinato il risultato
+ * (o null se si è arrivati al defaultValue) — necessario per
+ * InternalPreviewBadge (components/InternalPreviewBadge.tsx): il badge deve
+ * comparire quando una capability è visibile grazie allo scope
+ * cohort:"internal-preview" SPECIFICAMENTE, non ogni volta che un flag
+ * qualunque risolve true (altrimenti un utente Beta/Pilot vedrebbe un badge
+ * "anteprima interna" scorretto).
+ */
+export interface FeatureFlagEvaluationDetail {
+  enabled: boolean;
+  matchedScope: FeatureFlagScope | null;
+  matchedScopeValue: string | null;
+}
+
+export function evaluateFlagDetailed(
+  flagName: string,
+  context: FeatureFlagContext,
+  overrides: FeatureFlagOverrideInput[],
+  now: Date = new Date()
+): FeatureFlagEvaluationDetail {
+  if (!isKnownFlag(flagName)) {
+    // Flag sconosciuto al registry → default sicuro, indipendentemente da
+    // eventuali righe presenti in tabella per quel nome (possono esistere
+    // solo per errore/bypass della validazione applicativa in scrittura).
+    return { enabled: false, matchedScope: null, matchedScopeValue: null };
+  }
+
+  const definition = FEATURE_FLAG_REGISTRY[flagName];
+
+  const applicable = (overrides ?? []).filter(
+    (o) => !isExpired(o.expiresAt, now) && scopeMatchesContext(o.scopeType, o.scopeValue, context)
+  );
+
+  for (const scope of SCOPE_PRECEDENCE) {
+    const match = applicable.find((o) => o.scopeType === scope);
+    if (match) return { enabled: match.enabled, matchedScope: match.scopeType, matchedScopeValue: match.scopeValue };
+  }
+
+  return { enabled: definition.defaultValue, matchedScope: null, matchedScopeValue: null };
+}
+
+/**
  * Risolve un flag in modo puro a partire da un elenco di override già letti
  * dal chiamante (resolve.ts). Comportamento sempre sicuro: flag sconosciuto,
  * input malformato, o nessun override applicabile → mai un'eccezione, mai un
@@ -141,23 +188,5 @@ export function evaluateFlag(
   overrides: FeatureFlagOverrideInput[],
   now: Date = new Date()
 ): boolean {
-  if (!isKnownFlag(flagName)) {
-    // Flag sconosciuto al registry → default sicuro, indipendentemente da
-    // eventuali righe presenti in tabella per quel nome (possono esistere
-    // solo per errore/bypass della validazione applicativa in scrittura).
-    return false;
-  }
-
-  const definition = FEATURE_FLAG_REGISTRY[flagName];
-
-  const applicable = (overrides ?? []).filter(
-    (o) => !isExpired(o.expiresAt, now) && scopeMatchesContext(o.scopeType, o.scopeValue, context)
-  );
-
-  for (const scope of SCOPE_PRECEDENCE) {
-    const match = applicable.find((o) => o.scopeType === scope);
-    if (match) return match.enabled;
-  }
-
-  return definition.defaultValue;
+  return evaluateFlagDetailed(flagName, context, overrides, now).enabled;
 }

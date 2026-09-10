@@ -14,7 +14,13 @@ import "server-only";
 // chiamante (e quindi mai il client).
 
 import { createServiceClient } from "@/lib/supabase/service";
-import { evaluateFlag, findRecentlyExpiredMatchingOverride, FeatureFlagContext, FeatureFlagOverrideInput } from "./evaluate";
+import {
+  evaluateFlagDetailed,
+  findRecentlyExpiredMatchingOverride,
+  FeatureFlagContext,
+  FeatureFlagEvaluationDetail,
+  FeatureFlagOverrideInput,
+} from "./evaluate";
 import { isKnownFlag } from "./registry";
 import { getActiveCohortKeys } from "@/lib/beta-cohorts/membership";
 import { logTelemetryEvent } from "@/lib/telemetry/correlation";
@@ -35,12 +41,21 @@ function currentEnvironment(): string | null {
   return process.env.VERCEL_ENV || process.env.NODE_ENV || null;
 }
 
-export async function resolveFeatureFlag(params: ResolveFeatureFlagParams): Promise<boolean> {
+// TRAMA — INTERNAL PREVIEW / DARK RELEASE MODEL (10/09/2026). Estratto da
+// quello che prima era il corpo di resolveFeatureFlag(): STESSO identico
+// comportamento (stesso ordine di operazioni, stessi eventi di telemetria,
+// stesso fail-safe try/catch) — resolveFeatureFlag() sotto è ora un thin
+// wrapper che scarta il dettaglio, comportamento invariato per tutti i 30+
+// call site esistenti. Aggiunta SOLO per poter offrire, a chi lo chiede
+// esplicitamente (resolveFeatureFlagVisibility), anche QUALE scope ha
+// determinato il risultato — serve a InternalPreviewBadge, non ai call site
+// esistenti (che continuano a ricevere solo un booleano).
+async function resolveFeatureFlagDetail(params: ResolveFeatureFlagParams): Promise<FeatureFlagEvaluationDetail> {
   const { flagName, userId = null, role = null, tenant = null, correlationId = null } = params;
 
   // Flag sconosciuto al registry → false immediato, nessuna query DB.
   if (!isKnownFlag(flagName)) {
-    return false;
+    return { enabled: false, matchedScope: null, matchedScopeValue: null };
   }
 
   try {
@@ -55,7 +70,7 @@ export async function resolveFeatureFlag(params: ResolveFeatureFlagParams): Prom
         role,
         detail: `${flagName}=false (supabase_not_configured)`,
       });
-      return false;
+      return { enabled: false, matchedScope: null, matchedScopeValue: null };
     }
 
     const [overridesResult, cohortKeys] = await Promise.all([
@@ -74,7 +89,7 @@ export async function resolveFeatureFlag(params: ResolveFeatureFlagParams): Prom
         role,
         detail: "db_error_reading_overrides",
       });
-      return false;
+      return { enabled: false, matchedScope: null, matchedScopeValue: null };
     }
 
     const context: FeatureFlagContext = {
@@ -93,14 +108,14 @@ export async function resolveFeatureFlag(params: ResolveFeatureFlagParams): Prom
     }));
 
     const now = new Date();
-    const result = evaluateFlag(flagName, context, overrides, now);
+    const detail = evaluateFlagDetailed(flagName, context, overrides, now);
 
     logTelemetryEvent({
       event: "feature_flag_resolved",
       correlationId,
       tenant,
       role,
-      detail: `${flagName}=${result}`,
+      detail: `${flagName}=${detail.enabled}`,
     });
 
     // TRAMA ONE Build Sprint 6 (backlog vincolante P1, "Feature flag override
@@ -111,7 +126,7 @@ export async function resolveFeatureFlag(params: ResolveFeatureFlagParams): Prom
     // una decisione deliberata: un evento di telemetria DISTINTO da
     // "feature_flag_resolved" rende questo caso visibile senza dover
     // scoprirlo da una suite di test rossa, come accaduto la prima volta.
-    if (!result) {
+    if (!detail.enabled) {
       const recentlyExpired = findRecentlyExpiredMatchingOverride(context, overrides, now);
       if (recentlyExpired) {
         // TRAMA ONE Build Sprint 6 (E11) — persistProductEvent() invece di
@@ -130,7 +145,7 @@ export async function resolveFeatureFlag(params: ResolveFeatureFlagParams): Prom
       }
     }
 
-    return result;
+    return detail;
   } catch {
     // Qualunque eccezione imprevista (timeout, errore di rete, ecc.) →
     // fallback sicuro, mai propagata al chiamante.
@@ -141,6 +156,25 @@ export async function resolveFeatureFlag(params: ResolveFeatureFlagParams): Prom
       role,
       detail: "unexpected_exception",
     });
-    return false;
+    return { enabled: false, matchedScope: null, matchedScopeValue: null };
   }
+}
+
+export async function resolveFeatureFlag(params: ResolveFeatureFlagParams): Promise<boolean> {
+  const detail = await resolveFeatureFlagDetail(params);
+  return detail.enabled;
+}
+
+/**
+ * TRAMA — INTERNAL PREVIEW / DARK RELEASE MODEL (10/09/2026). Come
+ * resolveFeatureFlag(), ma riporta anche QUALE scope ha determinato il
+ * risultato — usato per decidere se mostrare InternalPreviewBadge (deve
+ * comparire solo quando una capability è visibile grazie allo scope
+ * cohort:"internal-preview" specificamente, non per ogni flag risolto true).
+ * Nessun call site esistente deve migrare a questa funzione: resta additiva.
+ */
+export async function resolveFeatureFlagVisibility(
+  params: ResolveFeatureFlagParams
+): Promise<FeatureFlagEvaluationDetail> {
+  return resolveFeatureFlagDetail(params);
 }
