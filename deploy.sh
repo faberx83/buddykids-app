@@ -17,6 +17,9 @@
 #   ALLOW_PROD_FROM_NON_MAIN=1 bash deploy.sh      # override esplicito per deployare da un branch diverso da main
 #   ALLOW_DIRTY_PROD=1 bash deploy.sh              # override esplicito per deployare con working tree sporco
 #   ALLOW_PUSH_FAILURES=1 bash deploy.sh           # override esplicito per proseguire anche se il push fallisce
+#   ALLOW_HEAD_DRIFT=1 bash deploy.sh              # override esplicito per proseguire se HEAD è cambiato tra il
+#                                                   # push e "vercel --prod" (vedi TRAMA_DARK_RELEASE_MODEL_REPORT.md
+#                                                   # §24 — es. un commit fatto in un altro terminale tra i due passi)
 #   DEPLOY_NOTIFY_SECRET=<secret> bash deploy.sh   # abilita la notifica di fine deploy (ok/ko) sul banner
 #                                                   # dell'app Admin (/admin) — stesso secret impostato come
 #                                                   # variabile d'ambiente DEPLOY_NOTIFY_SECRET su Vercel.
@@ -244,6 +247,15 @@ fi
 
 echo ""
 echo "[2/5] 📤 Pubblico su GitHub (origin/main)..."
+# TRAMA — INTERNAL PREVIEW / DARK RELEASE MODEL (10/09/2026), hardening
+# minimo identificato in TRAMA_DARK_RELEASE_MODEL_REPORT.md §24: i 3
+# preflight sopra (branch/dirty-tree/push-failure) NON coprono il caso in
+# cui HEAD cambi TRA il push e "vercel --prod" (es. un commit fatto in un
+# altro terminale nel frattempo) — "vercel --prod" pubblica il working tree
+# letterale al momento in cui gira, non necessariamente ciò che è appena
+# stato confermato su GitHub due righe sopra. PUSHED_SHA cattura qui, subito
+# dopo il push, esattamente l'HEAD che abbiamo appena confermato pubblicato.
+PUSHED_SHA="$(git rev-parse HEAD)"
 if git push origin main; then
   echo "✅ Push completato."
 else
@@ -263,6 +275,31 @@ else
 fi
 
 echo "(deployment precedente, per rollback manuale: npx vercel ls buddykids-app --prod)"
+
+# TRAMA — INTERNAL PREVIEW / DARK RELEASE MODEL (10/09/2026), hardening
+# minimo §24 (continua sopra): ri-verifica HEAD PROPRIO PRIMA di "vercel
+# --prod" — l'ultimo istante utile per accorgersi che il working tree è
+# cambiato dopo il push. Se combacia, non è cambiato nulla di sospetto tra i
+# due passi. Se non combacia, "vercel --prod" pubblicherebbe qualcosa di
+# diverso da ciò che abbiamo appena confermato su GitHub — stesso stile di
+# blocco/override esplicito già usato per branch/dirty-tree/push-failure
+# sopra, nessun indebolimento degli altri guardrail.
+CURRENT_HEAD_BEFORE_DEPLOY="$(git rev-parse HEAD)"
+if [ "$CURRENT_HEAD_BEFORE_DEPLOY" != "$PUSHED_SHA" ]; then
+  if [ -n "$ALLOW_HEAD_DRIFT" ]; then
+    echo ""
+    echo "⚠️  ATTENZIONE: HEAD è cambiato tra il push (${PUSHED_SHA}) e questo punto (${CURRENT_HEAD_BEFORE_DEPLOY})."
+    echo "⚠️  Override ALLOW_HEAD_DRIFT=1 utilizzato — procedo comunque."
+    echo "⚠️  'vercel --prod' pubblicherà il working tree ATTUALE, non necessariamente ciò che è stato appena pushato."
+  else
+    echo ""
+    echo "🛑 Deploy bloccato: HEAD è cambiato tra il push (${PUSHED_SHA}) e questo punto (${CURRENT_HEAD_BEFORE_DEPLOY})."
+    echo "🛑 'vercel --prod' pubblica il working tree letterale, non necessariamente ciò che è stato appena confermato su origin/main."
+    echo "🛑 Per procedere comunque (sconsigliato salvo motivo esplicito): ALLOW_HEAD_DRIFT=1 bash deploy.sh"
+    echo "🛑 Nessun deploy è stato eseguito."
+    exit 1
+  fi
+fi
 
 echo ""
 echo "[3/5] 🚀 Pubblico in produzione su Vercel..."
