@@ -27,6 +27,16 @@ export type FeatureArea = "parent" | "partner" | "admin" | "cross_tenant";
 // docs/trama-one/analysis/FEATURE_CONTROL_CENTER_SPEC.md per il
 // ragionamento completo dietro ogni scelta di mapping.
 export type FeatureStatus =
+  // TRAMA — INTERNAL PREVIEW / DARK RELEASE MODEL (10/09/2026). Codice reale,
+  // live in produzione, ma visibile SOLO alla coorte "internal-preview"
+  // (Fabrizio + eventuali account che aggiunge esplicitamente a
+  // beta_cohort_memberships con quella cohort_key — vedi
+  // lib/releases/visibility.ts). Stadio PRIMA di BETA_ENABLED nel percorso
+  // INTERNAL → PILOT → GLOBAL: una capability nasce qui, non in BETA_ENABLED
+  // direttamente. Aggiunta come valore MINIMO necessario — non sostituisce
+  // BETA_ENABLED (che resta "PILOT" nel linguaggio Admin) né richiede di
+  // rinominare alcun valore esistente.
+  | "INTERNAL_PREVIEW"
   // Raggiungibile e funzionante per QUALSIASI utente reale a cui è
   // destinata, nessun flag/coorte di mezzo.
   | "LIVE"
@@ -108,6 +118,53 @@ export interface FeatureCatalogEntry {
 }
 
 export const FEATURE_CATALOG: FeatureCatalogEntry[] = [
+  // ── TRAMA — INTERNAL PREVIEW / DARK RELEASE MODEL (10/09/2026) — 3 VOCI
+  // PLACEHOLDER, create SOLO per dare al Release Catalog
+  // (lib/releases/catalog.ts, release "TRAMA — Planner Intelligence") e alla
+  // sezione "Release" di /admin/feature-flags qualcosa di reale su cui
+  // esercitare l'intero meccanismo di promotion/kill switch. NESSUN codice
+  // applicativo esiste dietro queste 3 voci: i flag corrispondenti
+  // (lib/feature-flags/registry.ts) non sono risolti da alcuna page/layout/
+  // Server Action/cron — zero superficie raggiungibile, coerente con
+  // l'istruzione esplicita di Fabrizio "NON creare feature fake
+  // raggiungibili". `sourceFiles` punta deliberatamente ai file di
+  // infrastruttura (non a un'implementazione che non esiste) proprio per
+  // rendere questo fatto verificabile leggendo il codice, non solo
+  // dichiarato qui. Da sostituire con la voce reale quando ciascuna
+  // capability verrà effettivamente costruita (fuori scope di questa
+  // sessione, per istruzione esplicita: "NON sviluppare ancora [...]
+  // School Calendar [...]"). ─────────────────────────────────────────
+  {
+    key: "school_calendar_intelligence",
+    label: "School Calendar Intelligence (placeholder infrastruttura)",
+    area: "parent",
+    status: "INTERNAL_PREVIEW",
+    flagName: "SCHOOL_CALENDAR_INTELLIGENCE_ENABLED",
+    description: "PLACEHOLDER — nessuna implementazione applicativa esiste ancora. Voce creata solo per testare Release Catalog/Promotion end-to-end.",
+    sourceFiles: ["lib/feature-flags/registry.ts", "lib/releases/catalog.ts"],
+    note: "Non raggiungibile: nessuna page/Server Action/cron risolve questo flag. Vedi docs/trama-one/analysis/SCHOOL_CALENDAR_INTELLIGENCE_STATUS.md per il design reale della capability futura (non ancora implementata).",
+  },
+  {
+    key: "external_planner_items",
+    label: "External Planner Items (placeholder infrastruttura)",
+    area: "parent",
+    status: "INTERNAL_PREVIEW",
+    flagName: "EXTERNAL_PLANNER_ITEMS_ENABLED",
+    description: "PLACEHOLDER — nessuna implementazione applicativa esiste ancora. Voce creata solo per testare Release Catalog/Promotion end-to-end.",
+    sourceFiles: ["lib/feature-flags/registry.ts", "lib/releases/catalog.ts"],
+    note: "Non raggiungibile: nessuna page/Server Action/cron risolve questo flag.",
+  },
+  {
+    key: "calendar_export",
+    label: "Calendar Export esteso (placeholder infrastruttura)",
+    area: "parent",
+    status: "INTERNAL_PREVIEW",
+    flagName: "CALENDAR_EXPORT_ENABLED",
+    description: "PLACEHOLDER — nessuna implementazione applicativa esiste ancora. Voce creata solo per testare Release Catalog/Promotion end-to-end. lib/ics.ts esiste già (export .ics a evento singolo) ma non è gated da questo flag.",
+    sourceFiles: ["lib/feature-flags/registry.ts", "lib/releases/catalog.ts"],
+    note: "Non raggiungibile: nessuna page/Server Action/cron risolve questo flag.",
+  },
+
   // ── TRAMA ONE (era "beta_gated") — MAPPING: la Controlled Beta Cohort è
   // oggi attivamente abilitata (override globale + coorte, vedi
   // MVP_PRODUCTION_TRUTH_V2.md §6), quindi lo stato corrente per il
@@ -416,6 +473,7 @@ export function getFeatureCatalog(): FeatureCatalogEntry[] {
 
 export function groupCatalogByStatus(): Record<FeatureStatus, FeatureCatalogEntry[]> {
   const groups: Record<FeatureStatus, FeatureCatalogEntry[]> = {
+    INTERNAL_PREVIEW: [],
     LIVE: [],
     BETA_ENABLED: [],
     READY_OFF: [],
