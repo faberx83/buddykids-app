@@ -19,20 +19,13 @@ import { isSupabaseConfigured } from "@/lib/supabase/env";
 import { revalidatePath } from "next/cache";
 import { isKnownFlag, getFlagDefinition } from "@/lib/feature-flags/registry";
 import { getBetaEnabledFlagNames } from "@/lib/feature-registry/catalog";
-
-function friendlyError(error: { code?: string; message: string } | null): string | undefined {
-  if (!error) return undefined;
-  if (error.code === "42501" || error.message.includes("policy")) {
-    return "Non hai i permessi di Admin piattaforma per gestire i feature flag.";
-  }
-  if (error.message.includes("feature_flag_scope_value_consistency")) {
-    return "Scope 'global' non ammette un valore; ogni altro scope richiede un valore non vuoto.";
-  }
-  if (error.message.includes("idx_feature_flag_overrides_unique")) {
-    return "Esiste già un override per questo flag+scope+valore — modifica quello esistente invece di crearne uno nuovo.";
-  }
-  return error.message;
-}
+// TRAMA — INTERNAL PREVIEW / DARK RELEASE MODEL (10/09/2026) — friendlyError()
+// spostata in lib/feature-flags/friendly-errors.ts (era locale a questo
+// file): un file con "use server" in cima tratta ogni export come una
+// Server Action, e Turbopack rifiuta un export sincrono ("Server Actions
+// must be async functions") — riusata qui e da app/actions/releases.ts
+// (Promotion Engine), stessi identici errori Postgres/CHECK-constraint.
+import { friendlyError } from "@/lib/feature-flags/friendly-errors";
 
 export interface CreateFeatureFlagOverrideInput {
   flagName: string;
