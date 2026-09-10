@@ -15,6 +15,8 @@ import {
   batchActivateBetaFeaturesAction,
   batchDeactivateBetaFeaturesAction,
 } from "@/app/actions/feature-flag-overrides";
+import ReleaseAdminSection from "./ReleaseAdminSection";
+import { ReleaseAdminEntry } from "@/lib/data/releases";
 
 // TRAMA ONE Build Sprint 6 (backlog vincolante P1, "Feature flag override
 // expiry") — visibilità e gestione Admin degli override. Prima di questa
@@ -44,6 +46,13 @@ function formatDateTime(iso: string | null): string {
 // risolvibile. Nessuna azione qui modifica il catalogo: è descrittivo,
 // popolato leggendo il codice reale (vedi FEATURE_INVENTORY_COMPLETE.md).
 const CATALOG_STATUS_LABEL: Record<FeatureStatus, { label: string; cls: string }> = {
+  // TRAMA — INTERNAL PREVIEW / DARK RELEASE MODEL (10/09/2026). Nel
+  // linguaggio Admin: BETA_ENABLED = "Pilot", POST_BETA = "Disponibile a
+  // tutti", READY_OFF = "Disattivato" (vedi sezione Release sopra) — questi
+  // 3 valori NON vengono rinominati qui (restano "Beta (attiva per
+  // coorte)"/"Post-Beta (promossa)"/"Pronta, spenta" nella vista tecnica del
+  // Feature Catalog sotto, per compatibilità con quanto già esiste).
+  INTERNAL_PREVIEW: { label: "Anteprima interna", cls: "bg-sky-light text-sky" },
   LIVE: { label: "Live", cls: "bg-green-light text-[#2d8f52]" },
   BETA_ENABLED: { label: "Beta (attiva per coorte)", cls: "bg-sky-light text-sky" },
   READY_OFF: { label: "Pronta, spenta", cls: "bg-[#F0F2F5] text-ink-2" },
@@ -181,6 +190,7 @@ function FeatureCatalogSection() {
   const areas = ["all", "parent", "partner", "admin", "cross_tenant"];
   const visible = areaFilter === "all" ? catalog : catalog.filter((e) => e.area === areaFilter);
   const statusOrder: FeatureStatus[] = [
+    "INTERNAL_PREVIEW",
     "LIVE",
     "BETA_ENABLED",
     "READY_OFF",
@@ -271,7 +281,13 @@ function FeatureCatalogSection() {
   );
 }
 
-export default function FeatureFlagsAdminClient({ initialEntries }: { initialEntries: FeatureFlagAdminEntry[] }) {
+export default function FeatureFlagsAdminClient({
+  initialEntries,
+  initialReleases,
+}: {
+  initialEntries: FeatureFlagAdminEntry[];
+  initialReleases: ReleaseAdminEntry[];
+}) {
   const [entries, setEntries] = useState(initialEntries);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [errorById, setErrorById] = useState<Record<string, string>>({});
@@ -397,6 +413,8 @@ export default function FeatureFlagsAdminClient({ initialEntries }: { initialEnt
           Supabase non è collegato in questo ambiente: qui vedrai gli override reali una volta collegato.
         </div>
       )}
+
+      <ReleaseAdminSection initialReleases={initialReleases} />
 
       <BatchBetaControls />
       <FeatureCatalogSection />
