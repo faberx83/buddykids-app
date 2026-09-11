@@ -184,11 +184,23 @@ function BatchBetaControls() {
   );
 }
 
+// TRAMA — Catalogo funzionalità, linguaggio più semplice + filtri (11/09/2026,
+// richiesta di Fabrizio: "un linguaggio più parlante e qualche filtro in
+// più"). 3 filtri scelti da Fabrizio (oltre a quello per area già esistente):
+// stato, ricerca testuale, "solo rischio alto". Dettagli tecnici (nome file,
+// nome flag) nascosti di default dietro un interruttore unico
+// "Dettagli tecnici", stesso principio già in uso nella sezione Release qui
+// sopra (scope_type/cohort_key mai in vista semplificata) — qui non per
+// singola card ma per l'intera sezione, per non moltiplicare interruttori
+// quando il catalogo cresce.
 function FeatureCatalogSection() {
   const catalog = getFeatureCatalog();
   const [areaFilter, setAreaFilter] = useState<string>("all");
+  const [statusFilter, setStatusFilter] = useState<FeatureStatus | "all">("all");
+  const [searchQuery, setSearchQuery] = useState("");
+  const [highRiskOnly, setHighRiskOnly] = useState(false);
+  const [showTechnicalDetails, setShowTechnicalDetails] = useState(false);
   const areas = ["all", "parent", "partner", "admin", "cross_tenant"];
-  const visible = areaFilter === "all" ? catalog : catalog.filter((e) => e.area === areaFilter);
   const statusOrder: FeatureStatus[] = [
     "INTERNAL_PREVIEW",
     "LIVE",
@@ -201,6 +213,18 @@ function FeatureCatalogSection() {
     "POST_BETA",
     "DEPRECATED",
   ];
+
+  const normalizedQuery = searchQuery.trim().toLowerCase();
+  const visible = catalog.filter((e) => {
+    if (areaFilter !== "all" && e.area !== areaFilter) return false;
+    if (statusFilter !== "all" && e.status !== statusFilter) return false;
+    if (highRiskOnly && e.riskLevel !== "high") return false;
+    if (normalizedQuery) {
+      const haystack = `${e.label} ${e.description} ${e.flagName ?? ""} ${e.sourceFiles.join(" ")}`.toLowerCase();
+      if (!haystack.includes(normalizedQuery)) return false;
+    }
+    return true;
+  });
 
   return (
     <div className="mb-6 rounded-lg border border-[#E8EBF0] bg-white">
@@ -224,6 +248,44 @@ function FeatureCatalogSection() {
             </button>
           ))}
         </div>
+        <div className="mt-2 flex flex-wrap items-center gap-2">
+          <select
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value as FeatureStatus | "all")}
+            className="rounded-md border border-[#E8EBF0] bg-white px-2 py-1.5 text-[11px] font-semibold text-ink-2"
+            aria-label="Filtra per stato"
+          >
+            <option value="all">Tutti gli stati</option>
+            {statusOrder.map((s) => (
+              <option key={s} value={s}>
+                {CATALOG_STATUS_LABEL[s].label}
+              </option>
+            ))}
+          </select>
+          <input
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="Cerca per nome o descrizione…"
+            className="min-w-[180px] flex-1 rounded-md border border-[#E8EBF0] bg-white px-2 py-1.5 text-[11px]"
+            aria-label="Cerca nel catalogo funzionalità"
+          />
+          <button
+            onClick={() => setHighRiskOnly((v) => !v)}
+            className={`whitespace-nowrap rounded-md border px-2.5 py-1 text-[11px] font-semibold ${
+              highRiskOnly ? "border-[#C0392B] bg-[#FBEAEA] text-[#C0392B]" : "border-[#E8EBF0] text-ink-2"
+            }`}
+          >
+            Solo rischio alto
+          </button>
+          <label className="ml-auto flex items-center gap-1.5 whitespace-nowrap text-[11px] font-semibold text-ink-2">
+            <input
+              type="checkbox"
+              checked={showTechnicalDetails}
+              onChange={(e) => setShowTechnicalDetails(e.target.checked)}
+            />
+            Dettagli tecnici
+          </label>
+        </div>
       </div>
 
       <div className="divide-y divide-[#F0F2F5]">
@@ -246,7 +308,7 @@ function FeatureCatalogSection() {
                       <span className="rounded bg-white px-1.5 py-0.5 text-[10px] text-ink-2">
                         {CATALOG_AREA_LABEL[entry.area] ?? entry.area}
                       </span>
-                      {entry.flagName && (
+                      {showTechnicalDetails && entry.flagName && (
                         <span className="rounded bg-white px-1.5 py-0.5 text-[10px] text-ink-2">
                           flag: {entry.flagName}
                         </span>
@@ -263,7 +325,9 @@ function FeatureCatalogSection() {
                       )}
                     </div>
                     <p className="mt-1 text-[11px] text-ink-2">{entry.description}</p>
-                    <p className="mt-0.5 text-[10px] text-ink-3">{entry.sourceFiles.join(" · ")}</p>
+                    {showTechnicalDetails && (
+                      <p className="mt-0.5 text-[10px] text-ink-3">{entry.sourceFiles.join(" · ")}</p>
+                    )}
                     {entry.note && (
                       <p className="mt-1 text-[11px] font-medium text-trama-orange">{entry.note}</p>
                     )}
@@ -274,7 +338,7 @@ function FeatureCatalogSection() {
           );
         })}
         {visible.length === 0 && (
-          <p className="px-4 py-4 text-center text-sm text-ink-2">Nessuna voce per quest&apos;area.</p>
+          <p className="px-4 py-4 text-center text-sm text-ink-2">Nessuna funzionalità corrisponde ai filtri scelti.</p>
         )}
       </div>
     </div>

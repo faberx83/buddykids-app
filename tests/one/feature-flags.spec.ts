@@ -1,3 +1,5 @@
+import fs from "fs";
+import path from "path";
 import { test, expect } from "@playwright/test";
 import { loginAs, isRealDeployment } from "../fixtures/roles";
 import { evaluateFlag, findRecentlyExpiredMatchingOverride } from "../../lib/feature-flags/evaluate";
@@ -383,5 +385,48 @@ test.describe("TRAMA ONE Sprint 6 — Admin /admin/feature-flags [UI]", () => {
 
     await row.getByRole("button", { name: "Elimina" }).click();
     await expect(page.locator("div").filter({ hasText: `user: ${FAKE_TEST_USER_ID}` })).toHaveCount(0);
+  });
+});
+
+// ────────────────────────────────────────────────────────────────
+// TRAMA — Catalogo funzionalità: filtri + dettagli tecnici a scomparsa
+// (11/09/2026, richiesta di Fabrizio: "un linguaggio più parlante e qualche
+// filtro in più"). Verifiche statiche sul sorgente (stesso pattern già usato
+// per InternalPreviewBadge/deploy.sh in questa sessione): niente ambiente
+// Supabase/browser necessario, verificano che i 4 filtri partecipino
+// davvero al calcolo di `visible` e che i dettagli tecnici siano nascosti
+// di default, non solo che esistano da qualche parte nel file.
+// ────────────────────────────────────────────────────────────────
+test.describe("TRAMA — Catalogo funzionalità: filtri e dettagli tecnici [no browser]", () => {
+  const source = fs.readFileSync(
+    path.join(__dirname, "../../app/admin/feature-flags/FeatureFlagsAdminClient.tsx"),
+    "utf-8"
+  );
+
+  test("i 3 filtri nuovi (stato, ricerca testuale, solo rischio alto) esistono e concorrono tutti al filtro 'visible', insieme a quello per area già esistente", () => {
+    expect(source).toContain("statusFilter !== \"all\" && e.status !== statusFilter");
+    expect(source).toContain("highRiskOnly && e.riskLevel !== \"high\"");
+    expect(source).toContain("haystack.includes(normalizedQuery)");
+    expect(source).toContain("areaFilter !== \"all\" && e.area !== areaFilter");
+  });
+
+  test("i dettagli tecnici (nome file, nome flag) sono nascosti di default (showTechnicalDetails parte da false) e gated in entrambi i punti in cui compaiono", () => {
+    expect(source).toContain("useState(false)"); // almeno uno stato booleano inizializzato a false in questo file
+    expect(source).toContain("const [showTechnicalDetails, setShowTechnicalDetails] = useState(false);");
+    expect(source).toContain("showTechnicalDetails && entry.flagName");
+    // sourceFiles va mostrato SOLO dentro il blocco "showTechnicalDetails &&
+    // (" che lo precede immediatamente — non basta che entrambe le stringhe
+    // esistano da qualche parte nel file, deve esserci un solo breve tratto
+    // di sorgente che le contiene entrambe (nessun altro punto del file
+    // mostra sourceFiles.join).
+    const sourceFilesIndex = source.indexOf("entry.sourceFiles.join");
+    expect(sourceFilesIndex).toBeGreaterThan(-1);
+    const precedingChunk = source.slice(Math.max(0, sourceFilesIndex - 150), sourceFilesIndex);
+    expect(precedingChunk).toContain("showTechnicalDetails && (");
+  });
+
+  test("il messaggio 'nessun risultato' riflette tutti i filtri, non solo l'area (era 'Nessuna voce per quest'area', fuorviante da quando esistono altri 3 filtri)", () => {
+    expect(source).toContain("Nessuna funzionalità corrisponde ai filtri scelti.");
+    expect(source).not.toContain("Nessuna voce per quest'area.");
   });
 });
