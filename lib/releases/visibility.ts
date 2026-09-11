@@ -98,3 +98,32 @@ export function deriveReleaseVisibility(flagVisibilities: SimpleFlagVisibility[]
   const first = flagVisibilities[0];
   return flagVisibilities.every((v) => v === first) ? first : "mixed";
 }
+
+export type ReleaseLifecycleAction = "enable_internal_preview" | "promote_to_pilot" | "promote_to_global" | "demote_to_internal";
+
+/**
+ * TRAMA — DARK RELEASE, fix lifecycle (11/09/2026, richiesta Fabrizio).
+ * Prima di questo fix la card Release offriva "Abilita al Pilot" anche da
+ * una release DISATTIVATA, saltando lo stadio Anteprima Interna —
+ * incoerente col modello approvato:
+ *   DISATTIVATO -> ANTEPRIMA INTERNA -> PILOT -> DISPONIBILE A TUTTI
+ * Questa funzione è la SINGOLA fonte di verità su quale azione mostrare per
+ * stato — un solo bottone "avanti" per card, mai due alternative. "mixed"
+ * (feature della release a stadi diversi) offre solo il kill switch: riporta
+ * tutto a un unico stadio noto (Anteprima Interna) prima di scegliere il
+ * prossimo passo, mai un'azione "avanti" ambigua su uno stato che non è
+ * un singolo stadio riconosciuto.
+ */
+export function nextReleaseLifecycleAction(visibility: ReleaseVisibility): ReleaseLifecycleAction {
+  switch (visibility) {
+    case "disabled":
+      return "enable_internal_preview";
+    case "internal_preview":
+      return "promote_to_pilot";
+    case "pilot":
+      return "promote_to_global";
+    case "global":
+    case "mixed":
+      return "demote_to_internal";
+  }
+}

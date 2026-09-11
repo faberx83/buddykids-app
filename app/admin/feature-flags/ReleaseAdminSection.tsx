@@ -18,8 +18,13 @@
 
 import { useState } from "react";
 import { ReleaseAdminEntry } from "@/lib/data/releases";
-import { ReleaseVisibility, RELEASE_VISIBILITY_LABEL, RELEASE_VISIBILITY_BADGE_CLASS } from "@/lib/releases/visibility";
 import {
+  RELEASE_VISIBILITY_LABEL,
+  RELEASE_VISIBILITY_BADGE_CLASS,
+  nextReleaseLifecycleAction,
+} from "@/lib/releases/visibility";
+import {
+  promoteReleaseToInternalPreviewAction,
   promoteReleaseToPilotAction,
   promoteReleaseToGlobalAction,
   demoteReleaseToInternalAction,
@@ -32,21 +37,33 @@ const TARGET_AUDIENCE_LABEL: Record<string, string> = {
   cross_tenant: "Trasversale",
 };
 
-function canPromoteToPilot(visibility: ReleaseVisibility): boolean {
-  return visibility !== "pilot" && visibility !== "global";
-}
-function canPromoteToGlobal(visibility: ReleaseVisibility): boolean {
-  return visibility !== "global";
-}
-function canDemoteToInternal(visibility: ReleaseVisibility): boolean {
-  return visibility === "pilot" || visibility === "global" || visibility === "mixed";
-}
+// TRAMA — DARK RELEASE, fix lifecycle (11/09/2026): UNA sola azione "avanti"
+// per stato, deriva sempre da nextReleaseLifecycleAction (lib/releases/
+// visibility.ts) — mai due bottoni alternativi sulla stessa card. Modello
+// approvato: DISATTIVATO -> ANTEPRIMA INTERNA -> PILOT -> DISPONIBILE A
+// TUTTI, con DISPONIBILE A TUTTI -> SOLO INTERNO come kill switch.
 
 function ReleaseCard({ release }: { release: ReleaseAdminEntry }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [globalConfirmText, setGlobalConfirmText] = useState("");
   const [showGlobalConfirm, setShowGlobalConfirm] = useState(false);
+  // Un'unica azione "avanti" per stato — mai due bottoni alternativi sulla
+  // stessa card (fix 11/09/2026, vedi lib/releases/visibility.ts).
+  const nextAction = nextReleaseLifecycleAction(release.visibility);
+
+  async function handlePromoteToInternalPreview() {
+    if (!window.confirm(`Abilitare "${release.label}" in Anteprima Interna (visibile solo agli account TRAMA autorizzati)?`)) return;
+    setError(null);
+    setBusy(true);
+    const res = await promoteReleaseToInternalPreviewAction(release.id);
+    setBusy(false);
+    if (res.error) {
+      setError(res.error);
+      return;
+    }
+    window.location.reload();
+  }
 
   async function handlePromoteToPilot() {
     if (!window.confirm(`Rendere "${release.label}" visibile alla coorte Pilot?`)) return;
@@ -137,7 +154,16 @@ function ReleaseCard({ release }: { release: ReleaseAdminEntry }) {
       {release.notes && <p className="mt-2 text-[11px] italic text-ink-2">{release.notes}</p>}
 
       <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-[#F0F2F5] pt-3">
-        {canPromoteToPilot(release.visibility) && (
+        {nextAction === "enable_internal_preview" && (
+          <button
+            onClick={handlePromoteToInternalPreview}
+            disabled={busy}
+            className="rounded-md bg-sky px-3 py-1.5 text-xs font-bold text-white disabled:opacity-60"
+          >
+            Abilita anteprima interna
+          </button>
+        )}
+        {nextAction === "promote_to_pilot" && (
           <button
             onClick={handlePromoteToPilot}
             disabled={busy}
@@ -146,7 +172,7 @@ function ReleaseCard({ release }: { release: ReleaseAdminEntry }) {
             Abilita al Pilot
           </button>
         )}
-        {canPromoteToGlobal(release.visibility) && !showGlobalConfirm && (
+        {nextAction === "promote_to_global" && !showGlobalConfirm && (
           <button
             onClick={() => setShowGlobalConfirm(true)}
             disabled={busy}
@@ -155,7 +181,7 @@ function ReleaseCard({ release }: { release: ReleaseAdminEntry }) {
             Rendi disponibile a tutti
           </button>
         )}
-        {canDemoteToInternal(release.visibility) && (
+        {nextAction === "demote_to_internal" && (
           <button
             onClick={handleDemoteToInternal}
             disabled={busy}

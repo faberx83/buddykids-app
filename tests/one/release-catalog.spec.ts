@@ -10,6 +10,7 @@ import {
   RELEASE_VISIBILITY_LABEL,
   INTERNAL_PREVIEW_COHORT_KEY,
   PILOT_COHORT_KEY,
+  nextReleaseLifecycleAction,
 } from "../../lib/releases/visibility";
 import {
   resolveReleaseFlags,
@@ -222,6 +223,51 @@ test.describe("TRAMA — Promotion Engine: fix audit no-op write [no browser]", 
     // ordine di esecuzione reale: if (existing) { if (shouldSkip...) return
     // {}; ... update ... }).
     expect(skipCallIndex).toBeLessThan(updateCallIndex);
+  });
+});
+
+test.describe("TRAMA — Release lifecycle: DISATTIVATO -> ANTEPRIMA INTERNA -> PILOT -> DISPONIBILE A TUTTI [no browser]", () => {
+  test("nextReleaseLifecycleAction: esattamente un'azione 'avanti' per stato, nell'ordine del modello approvato (fix 11/09/2026: prima 'disabled' offriva direttamente promote_to_pilot)", () => {
+    expect(nextReleaseLifecycleAction("disabled")).toBe("enable_internal_preview");
+    expect(nextReleaseLifecycleAction("internal_preview")).toBe("promote_to_pilot");
+    expect(nextReleaseLifecycleAction("pilot")).toBe("promote_to_global");
+    expect(nextReleaseLifecycleAction("global")).toBe("demote_to_internal");
+    // "mixed" (feature della release a stadi diversi) offre solo il kill
+    // switch: mai un'azione "avanti" ambigua su uno stato che non è un
+    // singolo stadio riconosciuto.
+    expect(nextReleaseLifecycleAction("mixed")).toBe("demote_to_internal");
+  });
+
+  test("app/actions/releases.ts::promoteReleaseToInternalPreviewAction abilita SOLO cohort:internal-preview, mai la coorte Pilot o lo scope global (verificato leggendo il sorgente della funzione, non solo il nome)", () => {
+    const source = fs.readFileSync(path.join(__dirname, "../../app/actions/releases.ts"), "utf-8");
+    const fnStart = source.indexOf("export async function promoteReleaseToInternalPreviewAction");
+    expect(fnStart).toBeGreaterThan(-1);
+    const nextFnStart = source.indexOf("\nexport async function", fnStart + 1);
+    const fnBody = source.slice(fnStart, nextFnStart === -1 ? undefined : nextFnStart);
+    expect(fnBody).toContain("INTERNAL_PREVIEW_COHORT_KEY");
+    expect(fnBody).not.toContain("PILOT_COHORT_KEY");
+    expect(fnBody).not.toContain('scopeType: "global"');
+  });
+
+  test("ReleaseAdminSection: da stato 'disabled' la card mostra 'Abilita anteprima interna' (non più 'Abilita al Pilot' diretto), e il rendering di ogni bottone deriva da nextReleaseLifecycleAction — mai due azioni 'avanti' alternative sulla stessa card", () => {
+    const source = fs.readFileSync(
+      path.join(__dirname, "../../app/admin/feature-flags/ReleaseAdminSection.tsx"),
+      "utf-8"
+    );
+    expect(source).toContain("Abilita anteprima interna");
+    expect(source).toContain("promoteReleaseToInternalPreviewAction");
+    expect(source).toContain("nextReleaseLifecycleAction");
+    // Le vecchie funzioni booleane indipendenti (canPromoteToPilot/
+    // canPromoteToGlobal/canDemoteToInternal), che permettevano che più
+    // condizioni fossero vere insieme, non devono più esistere: un'unica
+    // variabile nextAction deve governare quale bottone compare.
+    expect(source).not.toContain("canPromoteToPilot");
+    expect(source).not.toContain("canPromoteToGlobal");
+    expect(source).not.toContain("canDemoteToInternal");
+  });
+
+  test("idempotenza: abilitare due volte l'Anteprima Interna sullo stesso stato (enabled=true -> enabled=true) è un no-op — nessuna nuova scrittura, stessa guardia shouldSkipOverrideWrite già usata da tutte le altre azioni di promozione", () => {
+    expect(shouldSkipOverrideWrite(true, true)).toBe(true);
   });
 });
 

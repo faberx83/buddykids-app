@@ -120,7 +120,47 @@ function assertScopeAllowed(flagName: string, scopeType: "global" | "cohort"): s
 }
 
 /**
- * INTERNAL/qualunque stato → PILOT. Abilita, per ogni flag della release,
+ * DISATTIVATO → ANTEPRIMA INTERNA. Primo gradino del lifecycle approvato
+ * (DISATTIVATO → ANTEPRIMA INTERNA → PILOT → DISPONIBILE A TUTTI — fix
+ * 11/09/2026, richiesta Fabrizio: prima la UI offriva "Abilita al Pilot"
+ * anche da una release DISATTIVATA, saltando questo stadio). Abilita, per
+ * ogni flag della release, SOLO l'override cohort:"internal-preview" — non
+ * tocca in alcun modo gli override cohort:"trama-one-controlled-beta"
+ * (Pilot) o "global": la release resta invisibile a Pilot/tutti finché non
+ * viene esplicitamente promossa oltre con le azioni dedicate.
+ */
+export async function promoteReleaseToInternalPreviewAction(releaseId: string): Promise<ReleasePromotionResult> {
+  if (!isSupabaseConfigured) return { error: "Supabase non configurato" };
+
+  const resolved = resolveReleaseFlags(releaseId);
+  if (isResolvedReleaseFlagsError(resolved)) return { error: resolved.error };
+  if (resolved.flagNames.length === 0) {
+    return { error: "Nessuna feature con flag associato in questa release — niente da abilitare in Anteprima Interna." };
+  }
+
+  const supabase = await createClient();
+  const actor = await getAuthenticatedActor(supabase);
+  if ("error" in actor) return actor;
+
+  for (const flagName of resolved.flagNames) {
+    const scopeError = assertScopeAllowed(flagName, "cohort");
+    if (scopeError) return { error: scopeError };
+    const res = await upsertScopeOverride(
+      supabase,
+      actor.id,
+      flagName,
+      { scopeType: "cohort", scopeValue: INTERNAL_PREVIEW_COHORT_KEY },
+      true
+    );
+    if (res.error) return { error: res.error };
+  }
+
+  revalidatePath("/admin/feature-flags");
+  return { affectedFlags: resolved.flagNames };
+}
+
+/**
+ * ANTEPRIMA INTERNA → PILOT. Abilita, per ogni flag della release,
  * un override cohort:"trama-one-controlled-beta" (la coorte Pilot — stessa
  * già in produzione per la Beta). Non tocca l'eventuale override
  * cohort:"internal-preview": resta acceso, gli account interni continuano a
