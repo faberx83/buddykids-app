@@ -155,14 +155,35 @@ export const FEATURE_CATALOG: FeatureCatalogEntry[] = [
     note: "Non raggiungibile: nessuna page/Server Action/cron risolve questo flag.",
   },
   {
+    // TRAMA — Calendar Export V1 (11/09/2026): implementato per davvero,
+    // voce aggiornata (non più placeholder). Resta "INTERNAL_PREVIEW"
+    // perché è esattamente ciò che è oggi: codice reale, live nel
+    // deployment, ma risolto server-side a "off" per chiunque finché
+    // Fabrizio non attiva l'override cohort:internal-preview da Admin →
+    // Feature Flags → Release (§13 della spec: mai dichiarare qui
+    // GLOBAL/LIVE/PILOT — la visibilità reale resta sempre derivata a
+    // runtime da CALENDAR_EXPORT_ENABLED, mai hardcoded).
     key: "calendar_export",
-    label: "Calendar Export esteso (placeholder infrastruttura)",
+    label: "Calendar Export (V1 — export .ics Planner)",
     area: "parent",
     status: "INTERNAL_PREVIEW",
     flagName: "CALENDAR_EXPORT_ENABLED",
-    description: "PLACEHOLDER — nessuna implementazione applicativa esiste ancora. Voce creata solo per testare Release Catalog/Promotion end-to-end. lib/ics.ts esiste già (export .ics a evento singolo) ma non è gated da questo flag.",
-    sourceFiles: ["lib/feature-flags/registry.ts", "lib/releases/catalog.ts"],
-    note: "Non raggiungibile: nessuna page/Server Action/cron risolve questo flag.",
+    description:
+      "Il genitore esporta gli impegni TRAMA confermati del Planner in un file .ics (settimane intere " +
+      "accettate → un evento per settimana; giorni Giorni Spot → un evento per giorno accettato). " +
+      "Interamente client-side (nessuna Server Action per la generazione del file), nessuna integrazione " +
+      "Google/Outlook/CalDAV in questa V1. CTA 'Esporta calendario' nel Planner (tutte le modalità), " +
+      "visibile solo quando il flag risolve true per l'utente.",
+    sourceFiles: [
+      "lib/feature-flags/registry.ts",
+      "lib/releases/catalog.ts",
+      "lib/planner/calendar-items.ts",
+      "lib/ics.ts",
+      "components/nextgen/PlannerCalendarExportCard.tsx",
+      "app/nextgen/planner/page.tsx",
+      "app/actions/calendar-export.ts",
+    ],
+    note: "Nessun limite noto oltre il V1 scope dichiarato (no sync/OAuth/feed sottoscrivibile — vedi TRAMA_ONE knownLimitations del Release planner-intelligence).",
   },
 
   // ── TRAMA ONE (era "beta_gated") — MAPPING: la Controlled Beta Cohort è

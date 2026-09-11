@@ -23,6 +23,21 @@ import { computeKidOverlaps, computeBudgetSummary, computePriorityWeekIndex } fr
 import { computeMissions } from "@/lib/nextgen/missions";
 import { computeReminders } from "@/lib/nextgen/reminders";
 import PlannerClient from "./PlannerClient";
+// TRAMA — Calendar Export V1 · ANTEPRIMA INTERNA (11/09/2026, richiesta di
+// Fabrizio, §7 della spec "obbligatoria": "La pagina/superficie deve
+// risolvere la visibilità SERVER-SIDE"). Prima vera pagina che chiama
+// resolveFeatureFlagVisibility() (finora usata solo per progettare
+// InternalPreviewBadge, mai montata su una pagina reale — vedi commento in
+// lib/feature-flags/internal-preview.ts). Import diretto di
+// createClient/lib/supabase/server: già importato altrove in questo file
+// indirettamente (getMyBookingsForParent ecc. lo fanno internamente), qui
+// serve esplicitamente per risolvere userId/role prima di chiamare il
+// resolver, stesso pattern di app/one/layout.tsx.
+import { createClient } from "@/lib/supabase/server";
+import { resolveFeatureFlagVisibility } from "@/lib/feature-flags/resolve";
+import { anyResolvedViaInternalPreview } from "@/lib/feature-flags/internal-preview";
+import { generateCorrelationId } from "@/lib/telemetry/correlation";
+import { getPlannerCalendarItemsForParent, type PlannerCalendarItem } from "@/lib/planner/calendar-items";
 
 // TRAMA BETA v1.1.1 — ORGANIZATION COMPLETENESS: stessa tecnica di
 // addDaysIso duplicata altrove nel repo (lib/nextgen/week-roles.ts,
@@ -50,6 +65,51 @@ export default async function NextgenPlannerPage() {
         Modalità demo: collega Supabase per il Planner NEXTGEN con dati reali.
       </div>
     );
+  }
+
+  // TRAMA — Calendar Export V1 · ANTEPRIMA INTERNA (11/09/2026). Risoluzione
+  // server-side di CALENDAR_EXPORT_ENABLED — §7 della spec: "Nessuna CTA,
+  // nessun badge, nessuna rotta/azione alternativa per un utente normale".
+  // userId/role risolti qui con lo STESSO pattern di app/one/layout.tsx
+  // (unica altra pagina che chiama il resolver oggi) — proxy.ts garantisce
+  // già login richiesto sul dominio famiglie, quindi user qui non dovrebbe
+  // mai essere null, ma il fallback "flag disattivato" resta sicuro anche
+  // in quel caso limite.
+  let calendarExportEnabled = false;
+  let calendarExportBadgeVisible = false;
+  let calendarExportItems: PlannerCalendarItem[] = [];
+  if (isSupabaseConfigured) {
+    const supabase = await createClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    let role: string | null = null;
+    if (user) {
+      const { data: profileRow } = await supabase.from("profiles").select("role").eq("id", user.id).single();
+      role = (profileRow?.role as string) ?? "parent";
+    }
+    const calendarExportDetail = await resolveFeatureFlagVisibility({
+      flagName: "CALENDAR_EXPORT_ENABLED",
+      userId: user?.id ?? null,
+      role,
+      tenant: "family",
+      correlationId: generateCorrelationId(),
+    });
+    calendarExportEnabled = calendarExportDetail.enabled;
+    // Il badge "ANTEPRIMA INTERNA" compare SOLO se QUESTA risoluzione è
+    // avvenuta tramite lo scope cohort:"internal-preview" — non per ogni
+    // utente che appartiene alla coorte (§7: "il badge deve comparire
+    // perché QUESTA capability è risolta via internal-preview
+    // specificamente, non semplicemente perché Fabrizio appartiene alla
+    // coorte"). Un domani con override GLOBAL attivo, un utente normale
+    // vedrebbe la CTA ma MAI questo badge (matchedScope sarebbe "global").
+    calendarExportBadgeVisible = anyResolvedViaInternalPreview([calendarExportDetail]);
+    // Fetch dei dati SOLO se il flag è davvero abilitato per questo utente:
+    // un utente normale (flag off) non riceve mai questi dati come prop,
+    // nemmeno nascosti via CSS — §7: "nessuna rotta/azione alternativa".
+    if (calendarExportEnabled) {
+      calendarExportItems = await getPlannerCalendarItemsForParent();
+    }
   }
 
   const seasonYear = await getSeasonYear();
@@ -152,6 +212,14 @@ export default async function NextgenPlannerPage() {
       communities={communities}
       groups={groups}
       addresses={addresses}
+      // TRAMA — Calendar Export V1 · ANTEPRIMA INTERNA (11/09/2026): items
+      // già vuoti/enabled=false per costruzione se il flag è off (vedi
+      // sopra) — PlannerClient non deve fare nessuna ulteriore verifica di
+      // sicurezza, ma resta comunque difensivo (non mostra nulla se enabled
+      // è false, indipendentemente dal contenuto di items).
+      calendarExportEnabled={calendarExportEnabled}
+      calendarExportBadgeVisible={calendarExportBadgeVisible}
+      calendarExportItems={calendarExportItems}
     />
   );
 }

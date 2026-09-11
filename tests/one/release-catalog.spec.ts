@@ -176,15 +176,33 @@ test.describe("TRAMA — Release Catalog: struttura e risoluzione flag [no brows
     }
   });
 
-  test("le 3 feature placeholder sono marcate INTERNAL_PREVIEW e nessun sourceFile punta a codice applicativo reale", () => {
+  // TRAMA — Calendar Export V1 (11/09/2026): "calendar_export" è la PRIMA
+  // delle 3 feature di questa release ad avere implementazione reale — il
+  // test originale ("le 3 feature placeholder... nessun sourceFile punta a
+  // codice applicativo reale") non descrive più la realtà per questa
+  // chiave, quindi è stato aggiornato invece di essere lasciato rosso:
+  // resta comunque INTERNAL_PREVIEW (§13 della spec di Fabrizio — mai
+  // GLOBAL/LIVE/PILOT hardcoded qui, la visibilità reale resta derivata a
+  // runtime), ma NON è più "non raggiungibile" — ha davvero una page/CTA
+  // reale dietro (vedi test dedicati in calendar-export.spec.ts).
+  test("le 2 feature ancora placeholder (school_calendar_intelligence, external_planner_items) sono INTERNAL_PREVIEW e non raggiungibili; calendar_export è INTERNAL_PREVIEW ma implementata", () => {
     const release = getReleaseById("planner-intelligence");
     expect(release).toBeTruthy();
     const catalog = getFeatureCatalog();
-    for (const key of release!.featureKeys) {
+
+    const stillPlaceholder = ["school_calendar_intelligence", "external_planner_items"];
+    for (const key of stillPlaceholder) {
       const entry = catalog.find((e) => e.key === key)!;
       expect(entry.status).toBe("INTERNAL_PREVIEW");
       expect(entry.note ?? "").toContain("Non raggiungibile");
     }
+
+    const calendarExport = catalog.find((e) => e.key === "calendar_export")!;
+    expect(calendarExport.status).toBe("INTERNAL_PREVIEW");
+    expect(calendarExport.note ?? "").not.toContain("Non raggiungibile");
+    expect(calendarExport.sourceFiles).toContain("app/nextgen/planner/page.tsx");
+
+    expect(release!.featureKeys).toEqual(expect.arrayContaining([...stillPlaceholder, "calendar_export"]));
   });
 });
 

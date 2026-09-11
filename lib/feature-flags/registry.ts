@@ -103,9 +103,16 @@ export const FEATURE_FLAG_REGISTRY = {
   },
   CALENDAR_EXPORT_ENABLED: {
     name: "CALENDAR_EXPORT_ENABLED",
+    // TRAMA — Calendar Export V1 (11/09/2026): implementato per davvero —
+    // vedi app/nextgen/planner/page.tsx (risolve questo flag server-side),
+    // components/nextgen/PlannerCalendarExportCard.tsx (CTA "Esporta
+    // calendario"), lib/planner/calendar-items.ts (dati). Descrizione
+    // aggiornata: non più "nessun codice applicativo la risolve ancora".
     description:
-      "PLACEHOLDER (nessun codice applicativo la risolve ancora) — governerà in futuro la visibilità " +
-      "dell'export calendario esteso. Registrato ora solo per testare l'infrastruttura Release/Promotion.",
+      "Export .ics degli impegni TRAMA confermati del Planner (settimane intere accettate + giorni Giorni " +
+      "Spot accettati singolarmente) — V1 client-side, un file per download, nessuna sync/OAuth. Default " +
+      "false: prima del rilascio nessun override GLOBAL/PILOT, solo cohort:internal-preview attivata " +
+      "manualmente da Admin → Feature Flags → Release.",
     defaultValue: false,
     allowedScopes: ["global", "environment", "user", "role", "cohort"],
   },

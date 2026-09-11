@@ -75,6 +75,14 @@ export const KNOWN_PRODUCT_EVENTS = [
   // assente in un cron) direttamente da app/api/cron/checkin-reminders/
   // route.ts.
   "checkin_push_cron_run",
+  // TRAMA — Calendar Export V1 · ANTEPRIMA INTERNA (11/09/2026, §10 della
+  // spec: "valuta se un evento PII-free ha senso, SOLO se coerente con
+  // KNOWN_PRODUCT_EVENTS"). app/actions/calendar-export.ts —
+  // logCalendarExportCreatedAction(), un solo evento aggregato per export
+  // (SOLO il conteggio degli impegni esportati, MAI bambino/centro/data
+  // specifici — stesso principio "adozione, non cronologia personale" di
+  // booking_created/group_created sopra).
+  "calendar_export_created",
 ] as const;
 
 export type KnownProductEvent = (typeof KNOWN_PRODUCT_EVENTS)[number];

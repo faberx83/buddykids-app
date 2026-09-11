@@ -60,6 +60,15 @@ import PlannerMapView from "@/components/nextgen/PlannerMapView";
 import PlannerGroupsView from "@/components/nextgen/PlannerGroupsView";
 import DecorativeIntroCard from "@/components/nextgen/DecorativeIntroCard";
 import Link from "next/link";
+// TRAMA — Calendar Export V1 · ANTEPRIMA INTERNA (11/09/2026). InternalPreviewBadge
+// era già pronto (10/09/2026) ma mai montato su una pagina reale — questa è
+// la sua prima vera destinazione (vedi lib/feature-flags/internal-preview.ts).
+// "import type" per PlannerCalendarItemForIcs: solo un tipo, nessun rischio
+// di trascinare lib/ics.ts nel bundle (che comunque non importa mai
+// lib/supabase/server, ma resta lo stesso principio già seguito sopra).
+import InternalPreviewBadge from "@/components/InternalPreviewBadge";
+import PlannerCalendarExportCard from "@/components/nextgen/PlannerCalendarExportCard";
+import type { PlannerCalendarItemForIcs } from "@/lib/ics";
 
 // Segnalazione 24/08/2026 (Fabrizio): "la descrizione della sezione è
 // sbagliata" — la card introduttiva sotto l'header aveva solo DUE varianti
@@ -118,6 +127,9 @@ export default function PlannerClient({
   communities,
   groups,
   addresses,
+  calendarExportEnabled,
+  calendarExportBadgeVisible,
+  calendarExportItems,
 }: {
   planner: PlannerData;
   kids: Kid[];
@@ -153,6 +165,14 @@ export default function PlannerClient({
   communities: CommunityItem[];
   groups: GroupItem[];
   addresses: ParentAddress[];
+  // TRAMA — Calendar Export V1 · ANTEPRIMA INTERNA (11/09/2026): già
+  // risolti server-side in page.tsx (resolveFeatureFlagVisibility +
+  // anyResolvedViaInternalPreview) — questo componente non fa alcuna
+  // verifica propria, si limita a non renderizzare nulla se enabled è
+  // false (§7 della spec).
+  calendarExportEnabled: boolean;
+  calendarExportBadgeVisible: boolean;
+  calendarExportItems: PlannerCalendarItemForIcs[];
 }) {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -465,6 +485,16 @@ export default function PlannerClient({
             (che restano invariati e continuano a funzionare per tutti gli
             altri usi, es. Home/Admin/Center, mai stati rotti). */}
         <NextgenBadge />
+        {/* TRAMA — Calendar Export V1 · ANTEPRIMA INTERNA (11/09/2026).
+            Stesso "corner ribbon" pattern di NextgenBadge sopra (fratello,
+            non figlio — stesso motivo overflow-hidden spiegato nel
+            commento sopra), angolo opposto (alto a sinistra) per
+            costruzione propria del componente. calendarExportBadgeVisible
+            è già computato server-side (page.tsx) per riflettere
+            SPECIFICAMENTE la risoluzione via cohort:"internal-preview" di
+            CALENDAR_EXPORT_ENABLED — non semplicemente "Fabrizio è nella
+            coorte". */}
+        <InternalPreviewBadge visible={calendarExportBadgeVisible} />
         {/* TRAMA BETA v1.1.1 (UI Refinement, punto 2) — segnalazione: il box
             descrittivo occupava uno spazio hero prima ancora della vera
             informazione utile (copertura reale). Per la modalità
@@ -486,6 +516,14 @@ export default function PlannerClient({
         )}
 
         <PlannerModeTabs mode={mode} onChange={setMode} />
+
+        {/* TRAMA — Calendar Export V1 · ANTEPRIMA INTERNA (11/09/2026, §6
+            della spec: "Inserisci la feature nel Planner, non in Home").
+            Visibile in TUTTE le modalità (non solo Organizzazione) invece
+            di essere legata a un singolo tab — coerente con la sua natura
+            trasversale ("i TUOI impegni", non specifica a una vista.
+            Ritorna null internamente se calendarExportEnabled è false. */}
+        <PlannerCalendarExportCard enabled={calendarExportEnabled} items={calendarExportItems} />
 
         {mode === "mappa" && <PlannerMapView pins={mapPins} addresses={addresses} />}
 
