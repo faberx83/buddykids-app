@@ -3,21 +3,37 @@
 // TRAMA — INTERNAL PREVIEW / DARK RELEASE MODEL (10/09/2026) — Promotion
 // Engine.
 //
-// Riusa INTERAMENTE il meccanismo già in produzione per gli override
-// (public.feature_flag_overrides, RLS is_platform_admin() — vedi
-// app/actions/feature-flag-overrides.ts): nessuna colonna di stato nuova,
-// nessuna tabella nuova. Ogni "promozione" è una insert-or-enable su una
-// riga di override; ogni "kill switch" è un disable (enabled=false), MAI un
-// delete — la storia (chi/quando/quale scope) resta sempre ricostruibile
-// leggendo created_by/updated_by/created_at/updated_at sulle righe
-// accumulate, esattamente come richiesto ("se non è ricostruibile
-// correttamente senza cancellare history, modifica il promotion flow per
-// preservare le righe storiche" — qui non si cancella mai una riga).
+// TRAMA — RELEASE CONTROL HARDENING (11/09/2026, richiesta Fabrizio dopo
+// l'uso reale su Calendar Export). Due cambi strutturali rispetto alla
+// versione precedente di questo file:
 //
-// Validazione pura (quali flag tocca una release, la conferma "GLOBAL")
-// vive in lib/releases/promotion-validation.ts, testabile senza Supabase —
-// questo file è il thin wrapper I/O sopra quella logica, stesso principio
-// già seguito da lib/feature-flags/resolve.ts sopra lib/feature-flags/evaluate.ts.
+// 1) ELIGIBILITY GATE: PRIMA di scrivere qualunque override, ogni azione
+//    verifica isFlagReleaseEligible(flagName) (lib/releases/
+//    promotion-validation.ts, legge FeatureCatalogEntry.releaseEligible).
+//    Un flag placeholder/incompleto non riceve MAI un override tramite
+//    un'azione di release — a NESSUN livello, nemmeno Anteprima Interna
+//    (preferenza esplicita di Fabrizio). Motivazione originale: la release
+//    "TRAMA — Planner Intelligence" contiene sia calendar_export
+//    (implementata) sia school_calendar_intelligence/external_planner_items
+//    (placeholder) — un'azione "Abilita al Pilot" non deve MAI creare in
+//    anticipo un override per una feature il cui codice non esiste ancora,
+//    perché quando quel codice verrà davvero deployato diventerebbe
+//    visibile automaticamente, senza una nuova decisione esplicita.
+//
+// 2) GRANULARITÀ PER-FEATURE: le 4 azioni precedenti (promoteReleaseTo*/
+//    demoteReleaseToInternal, tutte "a intera release", toccavano TUTTI i
+//    flag della release in un solo lockstep) sono sostituite da
+//    setFeatureVisibilityAction (UNA feature alla volta — §A3: "voglio
+//    poter controllare una singola feature senza dover necessariamente
+//    promuovere l'intero bundle") + promoteAllEligibleReleaseFeaturesAction
+//    (bulk di comodo, SOLO sulle feature eligible, SOLO in avanti, mai una
+//    retrocessione — vedi commento sopra
+//    computeScopeOverrideTargetsForVisibility).
+//
+// Meccanismo di scrittura invariato: riusa INTERAMENTE
+// public.feature_flag_overrides (RLS is_platform_admin()), nessuna colonna
+// di stato nuova, nessuna tabella nuova, MAI un delete — stesso principio
+// upsertScopeOverride/shouldSkipOverrideWrite già in produzione.
 
 import { createClient } from "@/lib/supabase/server";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
@@ -29,8 +45,11 @@ import {
   isResolvedReleaseFlagsError,
   validateGlobalConfirmation,
   shouldSkipOverrideWrite,
+  isFlagReleaseEligible,
+  computeScopeOverrideTargetsForVisibility,
+  ScopeOverrideTarget,
 } from "@/lib/releases/promotion-validation";
-import { INTERNAL_PREVIEW_COHORT_KEY, PILOT_COHORT_KEY } from "@/lib/releases/visibility";
+import { SimpleFlagVisibility } from "@/lib/releases/visibility";
 
 // Tipo inferito direttamente da createClient() (lib/supabase/server.ts)
 // invece di importare SupabaseClient da @supabase/supabase-js: evita
@@ -42,28 +61,21 @@ export interface ReleasePromotionResult {
   affectedFlags?: string[];
 }
 
-type ScopeTarget = { scopeType: "global"; scopeValue: null } | { scopeType: "cohort"; scopeValue: string };
-
 /**
  * Trova la riga di override per (flagName, scope) e la abilita/disabilita;
  * se non esiste ancora la crea SOLO quando enabled=true (disabilitare un
  * override mai esistito è già lo stato di fatto, nessuna riga da creare per
- * dirlo — stesso principio di batchDeactivateBetaFeaturesAction in
- * app/actions/feature-flag-overrides.ts). MAI un delete: la riga, una volta
- * creata, resta per sempre come traccia di audit (created_by/created_at =
- * quando questo scope è stato attivato per la prima volta; updated_by/
- * updated_at = ultima volta che è stato acceso/spento DAVVERO — vedi
- * shouldSkipOverrideWrite: se il valore richiesto è già quello attuale non
- * si scrive nulla, altrimenti updated_by/updated_at verrebbero ri-timbrati
- * anche quando nessun valore è davvero cambiato per QUESTA riga, es. il
- * passo "enableInternal" del kill switch quando l'override interno era
- * già enabled=true — fix 11/09/2026, verifica "audit promotion history").
+ * dirlo). MAI un delete: la riga, una volta creata, resta per sempre come
+ * traccia di audit (created_by/created_at = quando questo scope è stato
+ * attivato per la prima volta; updated_by/updated_at = ultima volta che è
+ * stato acceso/spento DAVVERO — vedi shouldSkipOverrideWrite: se il valore
+ * richiesto è già quello attuale non si scrive nulla).
  */
 async function upsertScopeOverride(
   supabase: ServerSupabaseClient,
   actorId: string,
   flagName: string,
-  target: ScopeTarget,
+  target: { scopeType: "global" | "cohort"; scopeValue: string | null },
   enabled: boolean
 ): Promise<{ error?: string }> {
   let existingQuery = supabase
@@ -119,157 +131,104 @@ function assertScopeAllowed(flagName: string, scopeType: "global" | "cohort"): s
   return undefined;
 }
 
+/** Applica una lista di ScopeOverrideTarget a un flag, in ordine. Si ferma al primo errore. */
+async function applyScopeTargets(
+  supabase: ServerSupabaseClient,
+  actorId: string,
+  flagName: string,
+  targets: ScopeOverrideTarget[]
+): Promise<{ error?: string }> {
+  for (const t of targets) {
+    const scopeError = assertScopeAllowed(flagName, t.scopeType);
+    if (scopeError) return { error: scopeError };
+    const res = await upsertScopeOverride(supabase, actorId, flagName, { scopeType: t.scopeType, scopeValue: t.scopeValue }, t.enabled);
+    if (res.error) return { error: res.error };
+  }
+  return {};
+}
+
 /**
- * DISATTIVATO → ANTEPRIMA INTERNA. Primo gradino del lifecycle approvato
- * (DISATTIVATO → ANTEPRIMA INTERNA → PILOT → DISPONIBILE A TUTTI — fix
- * 11/09/2026, richiesta Fabrizio: prima la UI offriva "Abilita al Pilot"
- * anche da una release DISATTIVATA, saltando questo stadio). Abilita, per
- * ogni flag della release, SOLO l'override cohort:"internal-preview" — non
- * tocca in alcun modo gli override cohort:"trama-one-controlled-beta"
- * (Pilot) o "global": la release resta invisibile a Pilot/tutti finché non
- * viene esplicitamente promossa oltre con le azioni dedicate.
+ * TRAMA — RELEASE CONTROL HARDENING (11/09/2026, §A2/§A3). Azione UNICA per
+ * ogni bottone della scaletta reversibile (Abilita anteprima interna /
+ * Estendi al Pilot / Pubblica a tutti / Riporta al Pilot / Riporta a
+ * Anteprima interna / Disattiva) — UNA feature alla volta, MAI un intero
+ * bundle di release. `flagName` è verificato contro isFlagReleaseEligible
+ * PRIMA di qualunque scrittura: una feature placeholder/incompleta non ha
+ * pulsanti nella UI (vedi ReleaseAdminSection.tsx), ma questa Server Action
+ * ri-verifica comunque da sé (è raggiungibile direttamente, stesso principio
+ * CAPABILITY_ISOLATION_STANDARD.md §3) — mai fidarsi solo del fatto che la
+ * pagina Admin non abbia mostrato il bottone.
+ *
+ * Applica TUTTE e 3 le operazioni di computeScopeOverrideTargetsForVisibility
+ * (incluse eventuali disattivazioni) perché è un'azione ESPLICITA, a un
+ * click deliberato di Fabrizio — può retrocedere una feature, questo è
+ * esattamente lo scopo dei bottoni "Riporta a.../Disattiva".
  */
-export async function promoteReleaseToInternalPreviewAction(releaseId: string): Promise<ReleasePromotionResult> {
+export async function setFeatureVisibilityAction(
+  flagName: string,
+  target: SimpleFlagVisibility,
+  confirmText?: string
+): Promise<ReleasePromotionResult> {
+  if (target === "global") {
+    const confirmError = validateGlobalConfirmation(confirmText ?? "");
+    if (confirmError) return { error: confirmError };
+  }
+
   if (!isSupabaseConfigured) return { error: "Supabase non configurato" };
 
-  const resolved = resolveReleaseFlags(releaseId);
-  if (isResolvedReleaseFlagsError(resolved)) return { error: resolved.error };
-  if (resolved.flagNames.length === 0) {
-    return { error: "Nessuna feature con flag associato in questa release — niente da abilitare in Anteprima Interna." };
+  if (!isFlagReleaseEligible(flagName)) {
+    return {
+      error:
+        "Questa funzionalità non è ancora pronta per il rilascio (placeholder o implementazione incompleta) — nessuna promozione possibile finché non ha codice applicativo reale.",
+    };
   }
 
   const supabase = await createClient();
   const actor = await getAuthenticatedActor(supabase);
   if ("error" in actor) return actor;
 
-  for (const flagName of resolved.flagNames) {
-    const scopeError = assertScopeAllowed(flagName, "cohort");
-    if (scopeError) return { error: scopeError };
-    const res = await upsertScopeOverride(
-      supabase,
-      actor.id,
-      flagName,
-      { scopeType: "cohort", scopeValue: INTERNAL_PREVIEW_COHORT_KEY },
-      true
-    );
+  const targets = computeScopeOverrideTargetsForVisibility(target);
+  const res = await applyScopeTargets(supabase, actor.id, flagName, targets);
+  if (res.error) return { error: res.error };
+
+  revalidatePath("/admin/feature-flags");
+  return { affectedFlags: [flagName] };
+}
+
+/**
+ * TRAMA — RELEASE CONTROL HARDENING (11/09/2026, §A3). Azione release-level
+ * di COMODO — "Promuovi tutte le funzionalità pronte": abilita l'override
+ * cohort:internal-preview per OGNI feature eligible della release che non
+ * lo ha già (SOLO enable, mai una disattivazione — vedi commento sopra
+ * computeScopeOverrideTargetsForVisibility: una feature già a Pilot/Global
+ * NON viene mai toccata/retrocessa da questa azione, resta esattamente dove
+ * era). Le feature NON eligible (placeholder) sono escluse per costruzione:
+ * resolveReleaseFlags le esclude già da eligibleFlagNames.
+ */
+export async function promoteAllEligibleReleaseFeaturesAction(releaseId: string): Promise<ReleasePromotionResult> {
+  if (!isSupabaseConfigured) return { error: "Supabase non configurato" };
+
+  const resolved = resolveReleaseFlags(releaseId);
+  if (isResolvedReleaseFlagsError(resolved)) return { error: resolved.error };
+  if (resolved.eligibleFlagNames.length === 0) {
+    return {
+      error: "Nessuna funzionalità di questa release è pronta per il rilascio (implementata) — nessuna azione possibile.",
+    };
+  }
+
+  const supabase = await createClient();
+  const actor = await getAuthenticatedActor(supabase);
+  if ("error" in actor) return actor;
+
+  // Solo l'operazione "enable" di internal_preview — mai global/pilot da
+  // qui, e MAI una disattivazione (vedi doc-comment sopra la funzione).
+  const enableInternalOnly = computeScopeOverrideTargetsForVisibility("internal_preview").filter((t) => t.enabled);
+
+  for (const flagName of resolved.eligibleFlagNames) {
+    const res = await applyScopeTargets(supabase, actor.id, flagName, enableInternalOnly);
     if (res.error) return { error: res.error };
   }
 
   revalidatePath("/admin/feature-flags");
-  return { affectedFlags: resolved.flagNames };
-}
-
-/**
- * ANTEPRIMA INTERNA → PILOT. Abilita, per ogni flag della release,
- * un override cohort:"trama-one-controlled-beta" (la coorte Pilot — stessa
- * già in produzione per la Beta). Non tocca l'eventuale override
- * cohort:"internal-preview": resta acceso, gli account interni continuano a
- * vedere la feature (sono un sottoinsieme naturale del pubblico Pilot),
- * preservando quando è iniziata la visibilità interna.
- */
-export async function promoteReleaseToPilotAction(releaseId: string): Promise<ReleasePromotionResult> {
-  if (!isSupabaseConfigured) return { error: "Supabase non configurato" };
-
-  const resolved = resolveReleaseFlags(releaseId);
-  if (isResolvedReleaseFlagsError(resolved)) return { error: resolved.error };
-  if (resolved.flagNames.length === 0) {
-    return { error: "Nessuna feature con flag associato in questa release — niente da promuovere a Pilot." };
-  }
-
-  const supabase = await createClient();
-  const actor = await getAuthenticatedActor(supabase);
-  if ("error" in actor) return actor;
-
-  for (const flagName of resolved.flagNames) {
-    const scopeError = assertScopeAllowed(flagName, "cohort");
-    if (scopeError) return { error: scopeError };
-    const res = await upsertScopeOverride(supabase, actor.id, flagName, { scopeType: "cohort", scopeValue: PILOT_COHORT_KEY }, true);
-    if (res.error) return { error: res.error };
-  }
-
-  revalidatePath("/admin/feature-flags");
-  return { affectedFlags: resolved.flagNames };
-}
-
-/**
- * qualunque stato → GLOBAL. Richiede la conferma testuale "GLOBAL" (stesso
- * pattern già in produzione in BatchBetaControls) — validata QUI lato
- * server, non solo lato client, perché una Server Action è raggiungibile
- * direttamente. Abilita un override scope "global" per ogni flag della
- * release; non tocca gli override cohort esistenti (internal-preview/pilot
- * restano accesi ma diventano irrilevanti in pratica: global ha la
- * precedenza più bassa nello scope, ma essendo enabled=true per chiunque,
- * "vince" comunque per chi non ha un override più specifico).
- */
-export async function promoteReleaseToGlobalAction(releaseId: string, confirmText: string): Promise<ReleasePromotionResult> {
-  const confirmError = validateGlobalConfirmation(confirmText);
-  if (confirmError) return { error: confirmError };
-
-  if (!isSupabaseConfigured) return { error: "Supabase non configurato" };
-
-  const resolved = resolveReleaseFlags(releaseId);
-  if (isResolvedReleaseFlagsError(resolved)) return { error: resolved.error };
-  if (resolved.flagNames.length === 0) {
-    return { error: "Nessuna feature con flag associato in questa release — niente da rendere disponibile a tutti." };
-  }
-
-  const supabase = await createClient();
-  const actor = await getAuthenticatedActor(supabase);
-  if ("error" in actor) return actor;
-
-  for (const flagName of resolved.flagNames) {
-    const scopeError = assertScopeAllowed(flagName, "global");
-    if (scopeError) return { error: scopeError };
-    const res = await upsertScopeOverride(supabase, actor.id, flagName, { scopeType: "global", scopeValue: null }, true);
-    if (res.error) return { error: res.error };
-  }
-
-  revalidatePath("/admin/feature-flags");
-  return { affectedFlags: resolved.flagNames };
-}
-
-/**
- * KILL SWITCH — GLOBAL (o PILOT) → INTERNAL. Per ogni flag della release:
- * disabilita l'override "global" (se esiste), disabilita l'override
- * cohort:"trama-one-controlled-beta" (se esiste), e si assicura che
- * l'override cohort:"internal-preview" sia acceso — così la capability
- * torna visibile SOLO alla coorte interna, mai cancellando le righe
- * disabilitate (restano come traccia di "questa release è stata resa
- * globale dal {data} al {data}").
- */
-export async function demoteReleaseToInternalAction(releaseId: string): Promise<ReleasePromotionResult> {
-  if (!isSupabaseConfigured) return { error: "Supabase non configurato" };
-
-  const resolved = resolveReleaseFlags(releaseId);
-  if (isResolvedReleaseFlagsError(resolved)) return { error: resolved.error };
-  if (resolved.flagNames.length === 0) {
-    return { error: "Nessuna feature con flag associato in questa release — niente da riportare a solo interno." };
-  }
-
-  const supabase = await createClient();
-  const actor = await getAuthenticatedActor(supabase);
-  if ("error" in actor) return actor;
-
-  for (const flagName of resolved.flagNames) {
-    const cohortScopeError = assertScopeAllowed(flagName, "cohort");
-    if (cohortScopeError) return { error: cohortScopeError };
-
-    const disableGlobal = await upsertScopeOverride(supabase, actor.id, flagName, { scopeType: "global", scopeValue: null }, false);
-    if (disableGlobal.error) return { error: disableGlobal.error };
-
-    const disablePilot = await upsertScopeOverride(supabase, actor.id, flagName, { scopeType: "cohort", scopeValue: PILOT_COHORT_KEY }, false);
-    if (disablePilot.error) return { error: disablePilot.error };
-
-    const enableInternal = await upsertScopeOverride(
-      supabase,
-      actor.id,
-      flagName,
-      { scopeType: "cohort", scopeValue: INTERNAL_PREVIEW_COHORT_KEY },
-      true
-    );
-    if (enableInternal.error) return { error: enableInternal.error };
-  }
-
-  revalidatePath("/admin/feature-flags");
-  return { affectedFlags: resolved.flagNames };
+  return { affectedFlags: resolved.eligibleFlagNames };
 }

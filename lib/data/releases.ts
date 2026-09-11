@@ -8,7 +8,7 @@
 
 import { getReleaseCatalog } from "@/lib/releases/catalog";
 import { resolveReleaseFlags, isResolvedReleaseFlagsError } from "@/lib/releases/promotion-validation";
-import { getFeatureCatalog } from "@/lib/feature-registry/catalog";
+import { getFeatureCatalog, isFeatureReleaseEligible } from "@/lib/feature-registry/catalog";
 import { getFeatureFlagOverridesForAdmin, FeatureFlagOverrideRow } from "./feature-flag-overrides";
 import {
   deriveFlagSimpleVisibility,
@@ -23,6 +23,13 @@ export interface ReleaseFeatureAdminRow {
   flagName: string | null;
   /** "global" per le feature senza flag (già live per chiunque, non gated) — non fa parte del ciclo INTERNAL/PILOT/GLOBAL. */
   visibility: SimpleFlagVisibility;
+  // TRAMA — RELEASE CONTROL HARDENING (11/09/2026). true SOLO se
+  // FeatureCatalogEntry.releaseEligible è true — la card Admin mostra i
+  // controlli di promozione (ladderButtonsForVisibility) SOLO quando true;
+  // altrimenti mostra lo stato in sola lettura ("○ Non ancora disponibile"),
+  // coerente con "NON voglio una console tecnica, ma nemmeno un bottone che
+  // promuove qualcosa che non esiste ancora".
+  releaseEligible: boolean;
 }
 
 export interface ReleaseAdminEntry {
@@ -60,13 +67,19 @@ export async function getReleasesForAdmin(): Promise<ReleaseAdminEntry[]> {
       const entry = catalog.find((e) => e.key === key);
       if (!entry) continue; // già segnalata in unknownFeatureKeys sopra
       if (!entry.flagName) {
-        features.push({ key, label: entry.label, flagName: null, visibility: "global" });
+        features.push({ key, label: entry.label, flagName: null, visibility: "global", releaseEligible: false });
         visibilities.push("global");
         continue;
       }
       const overrides = overridesByFlag.get(entry.flagName) ?? [];
       const visibility = deriveFlagSimpleVisibility(overrides);
-      features.push({ key, label: entry.label, flagName: entry.flagName, visibility });
+      features.push({
+        key,
+        label: entry.label,
+        flagName: entry.flagName,
+        visibility,
+        releaseEligible: isFeatureReleaseEligible(entry),
+      });
       visibilities.push(visibility);
     }
 

@@ -10,16 +10,18 @@ import {
   RELEASE_VISIBILITY_LABEL,
   INTERNAL_PREVIEW_COHORT_KEY,
   PILOT_COHORT_KEY,
-  nextReleaseLifecycleAction,
+  ladderButtonsForVisibility,
 } from "../../lib/releases/visibility";
 import {
   resolveReleaseFlags,
   isResolvedReleaseFlagsError,
   validateGlobalConfirmation,
   shouldSkipOverrideWrite,
+  isFlagReleaseEligible,
+  computeScopeOverrideTargetsForVisibility,
 } from "../../lib/releases/promotion-validation";
 import { getReleaseCatalog, getReleaseById } from "../../lib/releases/catalog";
-import { getFeatureCatalog } from "../../lib/feature-registry/catalog";
+import { getFeatureCatalog, isFeatureReleaseEligible } from "../../lib/feature-registry/catalog";
 
 // TRAMA — INTERNAL PREVIEW / DARK RELEASE MODEL (10/09/2026) — unit test
 // puri, stesso principio "[no browser]" di tests/one/feature-flags.spec.ts:
@@ -244,48 +246,185 @@ test.describe("TRAMA — Promotion Engine: fix audit no-op write [no browser]", 
   });
 });
 
-test.describe("TRAMA — Release lifecycle: DISATTIVATO -> ANTEPRIMA INTERNA -> PILOT -> DISPONIBILE A TUTTI [no browser]", () => {
-  test("nextReleaseLifecycleAction: esattamente un'azione 'avanti' per stato, nell'ordine del modello approvato (fix 11/09/2026: prima 'disabled' offriva direttamente promote_to_pilot)", () => {
-    expect(nextReleaseLifecycleAction("disabled")).toBe("enable_internal_preview");
-    expect(nextReleaseLifecycleAction("internal_preview")).toBe("promote_to_pilot");
-    expect(nextReleaseLifecycleAction("pilot")).toBe("promote_to_global");
-    expect(nextReleaseLifecycleAction("global")).toBe("demote_to_internal");
-    // "mixed" (feature della release a stadi diversi) offre solo il kill
-    // switch: mai un'azione "avanti" ambigua su uno stato che non è un
-    // singolo stadio riconosciuto.
-    expect(nextReleaseLifecycleAction("mixed")).toBe("demote_to_internal");
+test.describe("TRAMA — RELEASE CONTROL HARDENING (11/09/2026): scaletta reversibile per-feature [no browser]", () => {
+  test("A2.1 DISATTIVATO -> primary [Abilita anteprima interna], nessun altro bottone", () => {
+    const buttons = ladderButtonsForVisibility("disabled");
+    expect(buttons).toEqual([{ target: "internal_preview", label: "Abilita anteprima interna", kind: "primary" }]);
   });
 
-  test("app/actions/releases.ts::promoteReleaseToInternalPreviewAction abilita SOLO cohort:internal-preview, mai la coorte Pilot o lo scope global (verificato leggendo il sorgente della funzione, non solo il nome)", () => {
+  test("A2.2 INTERNAL -> primary [Estendi al Pilot] + secondary [Disattiva] — MAI 'Abilita al Pilot' (wording ambiguo, Pilot non significa tutti)", () => {
+    const buttons = ladderButtonsForVisibility("internal_preview");
+    expect(buttons).toEqual([
+      { target: "pilot", label: "Estendi al Pilot", kind: "primary" },
+      { target: "disabled", label: "Disattiva", kind: "secondary" },
+    ]);
+  });
+
+  test("A2.3 PILOT -> primary [Pubblica a tutti] (richiede conferma GLOBAL) + secondary [Riporta a Anteprima interna] + tertiary [Disattiva]", () => {
+    const buttons = ladderButtonsForVisibility("pilot");
+    expect(buttons).toEqual([
+      { target: "global", label: "Pubblica a tutti", kind: "primary", requiresGlobalConfirm: true },
+      { target: "internal_preview", label: "Riporta a Anteprima interna", kind: "secondary" },
+      { target: "disabled", label: "Disattiva", kind: "tertiary" },
+    ]);
+  });
+
+  test("A2.4 GLOBAL -> secondary [Riporta al Pilot] + secondary [Riporta a Anteprima interna] + tertiary [Disattiva] — nessun bottone 'avanti' (Global è il tetto della scaletta)", () => {
+    const buttons = ladderButtonsForVisibility("global");
+    expect(buttons).toEqual([
+      { target: "pilot", label: "Riporta al Pilot", kind: "secondary" },
+      { target: "internal_preview", label: "Riporta a Anteprima interna", kind: "secondary" },
+      { target: "disabled", label: "Disattiva", kind: "tertiary" },
+    ]);
+  });
+
+  // A5.4-9 — le 6 transizioni esplicite richieste da Fabrizio.
+  // computeScopeOverrideTargetsForVisibility è deliberatamente una funzione
+  // PURA DEL SOLO TARGET (non dello stato di partenza): applicare il
+  // risultato porta un flag ESATTAMENTE al target richiesto da QUALUNQUE
+  // stato di partenza, quindi le 6 transizioni con lo stesso target finale
+  // condividono lo stesso risultato atteso — è esattamente la proprietà che
+  // garantisce l'idempotenza e la correttezza "da qualunque stato" richiesta
+  // da §A4 ("ogni transition deve essere idempotente").
+  test("A5.4/A5.6/A5.9 — *** -> DISATTIVATO (INTERNAL->DISABLED, PILOT->DISABLED, GLOBAL->DISABLED): tutti e 3 gli scope disattivati", () => {
+    const targets = computeScopeOverrideTargetsForVisibility("disabled");
+    expect(targets).toEqual([
+      { scopeType: "cohort", scopeValue: INTERNAL_PREVIEW_COHORT_KEY, enabled: false },
+      { scopeType: "cohort", scopeValue: PILOT_COHORT_KEY, enabled: false },
+      { scopeType: "global", scopeValue: null, enabled: false },
+    ]);
+  });
+
+  test("A5.5/A5.8 — PILOT->INTERNAL, GLOBAL->INTERNAL: internal acceso, pilot e global spenti", () => {
+    const targets = computeScopeOverrideTargetsForVisibility("internal_preview");
+    expect(targets).toEqual([
+      { scopeType: "cohort", scopeValue: INTERNAL_PREVIEW_COHORT_KEY, enabled: true },
+      { scopeType: "cohort", scopeValue: PILOT_COHORT_KEY, enabled: false },
+      { scopeType: "global", scopeValue: null, enabled: false },
+    ]);
+  });
+
+  test("A5.7 — GLOBAL->PILOT: internal e pilot accesi, global spento", () => {
+    const targets = computeScopeOverrideTargetsForVisibility("pilot");
+    expect(targets).toEqual([
+      { scopeType: "cohort", scopeValue: INTERNAL_PREVIEW_COHORT_KEY, enabled: true },
+      { scopeType: "cohort", scopeValue: PILOT_COHORT_KEY, enabled: true },
+      { scopeType: "global", scopeValue: null, enabled: false },
+    ]);
+  });
+
+  test("promozione a GLOBAL: tutti e 3 gli scope accesi (global implica anche pilot e internal accesi)", () => {
+    const targets = computeScopeOverrideTargetsForVisibility("global");
+    expect(targets).toEqual([
+      { scopeType: "cohort", scopeValue: INTERNAL_PREVIEW_COHORT_KEY, enabled: true },
+      { scopeType: "cohort", scopeValue: PILOT_COHORT_KEY, enabled: true },
+      { scopeType: "global", scopeValue: null, enabled: true },
+    ]);
+  });
+
+  test("idempotenza: abilitare due volte lo stesso target è un no-op — nessuna nuova scrittura, stessa guardia shouldSkipOverrideWrite già usata da tutte le altre azioni di promozione", () => {
+    expect(shouldSkipOverrideWrite(true, true)).toBe(true);
+  });
+});
+
+test.describe("TRAMA — RELEASE CONTROL HARDENING: eligibility gate (A1, A5.1-3, A5.12) [no browser]", () => {
+  test("A5.1/A5.2 — una feature placeholder (school_calendar_intelligence, external_planner_items) NON è release-eligible: nessuna promozione a Pilot/Global (né a Internal, preferenza esplicita di Fabrizio) possibile", () => {
+    const catalog = getFeatureCatalog();
+    const school = catalog.find((e) => e.key === "school_calendar_intelligence")!;
+    const external = catalog.find((e) => e.key === "external_planner_items")!;
+    expect(isFeatureReleaseEligible(school)).toBe(false);
+    expect(isFeatureReleaseEligible(external)).toBe(false);
+    expect(isFlagReleaseEligible("SCHOOL_CALENDAR_INTELLIGENCE_ENABLED")).toBe(false);
+    expect(isFlagReleaseEligible("EXTERNAL_PLANNER_ITEMS_ENABLED")).toBe(false);
+  });
+
+  test("A5.3 — una feature realmente implementata (calendar_export) È release-eligible: promozione a qualunque livello possibile", () => {
+    const catalog = getFeatureCatalog();
+    const calendarExport = catalog.find((e) => e.key === "calendar_export")!;
+    expect(isFeatureReleaseEligible(calendarExport)).toBe(true);
+    expect(isFlagReleaseEligible("CALENDAR_EXPORT_ENABLED")).toBe(true);
+  });
+
+  test("una voce del catalogo senza releaseEligible dichiarato è trattata come NON eligible (fail-safe di default, mai eligible per omissione)", () => {
+    expect(isFeatureReleaseEligible({ key: "x", label: "x", area: "parent", status: "INCOMPLETE", description: "x", sourceFiles: [] })).toBe(
+      false
+    );
+  });
+
+  test("A5.12 — resolveReleaseFlags espone eligibleFlagNames come sottoinsieme STRETTO di flagNames per una release mista: solo il flag realmente implementato è promuovibile", () => {
+    const resolved = resolveReleaseFlags("planner-intelligence");
+    expect(isResolvedReleaseFlagsError(resolved)).toBe(false);
+    if (!isResolvedReleaseFlagsError(resolved)) {
+      expect(resolved.flagNames.sort()).toEqual(
+        ["SCHOOL_CALENDAR_INTELLIGENCE_ENABLED", "EXTERNAL_PLANNER_ITEMS_ENABLED", "CALENDAR_EXPORT_ENABLED"].sort()
+      );
+      expect(resolved.eligibleFlagNames).toEqual(["CALENDAR_EXPORT_ENABLED"]);
+      expect(resolved.ineligibleFeatureKeys.sort()).toEqual(["school_calendar_intelligence", "external_planner_items"].sort());
+    }
+  });
+
+  test("app/actions/releases.ts::setFeatureVisibilityAction verifica isFlagReleaseEligible PRIMA di qualunque scrittura di override (verificato leggendo il sorgente)", () => {
     const source = fs.readFileSync(path.join(__dirname, "../../app/actions/releases.ts"), "utf-8");
-    const fnStart = source.indexOf("export async function promoteReleaseToInternalPreviewAction");
+    const fnStart = source.indexOf("export async function setFeatureVisibilityAction");
     expect(fnStart).toBeGreaterThan(-1);
     const nextFnStart = source.indexOf("\nexport async function", fnStart + 1);
     const fnBody = source.slice(fnStart, nextFnStart === -1 ? undefined : nextFnStart);
-    expect(fnBody).toContain("INTERNAL_PREVIEW_COHORT_KEY");
-    expect(fnBody).not.toContain("PILOT_COHORT_KEY");
-    expect(fnBody).not.toContain('scopeType: "global"');
+    const eligibilityCheckIndex = fnBody.indexOf("isFlagReleaseEligible(flagName)");
+    const applyIndex = fnBody.indexOf("applyScopeTargets(");
+    expect(eligibilityCheckIndex).toBeGreaterThan(-1);
+    expect(applyIndex).toBeGreaterThan(-1);
+    expect(eligibilityCheckIndex).toBeLessThan(applyIndex);
   });
 
-  test("ReleaseAdminSection: da stato 'disabled' la card mostra 'Abilita anteprima interna' (non più 'Abilita al Pilot' diretto), e il rendering di ogni bottone deriva da nextReleaseLifecycleAction — mai due azioni 'avanti' alternative sulla stessa card", () => {
+  test("app/actions/releases.ts::promoteAllEligibleReleaseFeaturesAction agisce ESCLUSIVAMENTE su resolved.eligibleFlagNames, mai su flagNames (verificato leggendo il sorgente)", () => {
+    const source = fs.readFileSync(path.join(__dirname, "../../app/actions/releases.ts"), "utf-8");
+    const fnStart = source.indexOf("export async function promoteAllEligibleReleaseFeaturesAction");
+    expect(fnStart).toBeGreaterThan(-1);
+    const nextFnStart = source.indexOf("\nexport async function", fnStart + 1);
+    const fnBody = source.slice(fnStart, nextFnStart === -1 ? undefined : nextFnStart);
+    expect(fnBody).toContain("resolved.eligibleFlagNames");
+    // "for (const flagName of resolved.flagNames)" (senza "eligible") non
+    // deve MAI comparire in questa funzione — garantisce che il loop di
+    // scrittura non possa accidentalmente iterare sull'elenco più ampio.
+    expect(fnBody).not.toContain("of resolved.flagNames");
+  });
+
+  test("l'azione bulk usa SOLO operazioni enabled=true (mai una disattivazione) — una promozione di comodo non deve mai retrocedere una feature già più avanti", () => {
+    const source = fs.readFileSync(path.join(__dirname, "../../app/actions/releases.ts"), "utf-8");
+    const fnStart = source.indexOf("export async function promoteAllEligibleReleaseFeaturesAction");
+    const nextFnStart = source.indexOf("\nexport async function", fnStart + 1);
+    const fnBody = source.slice(fnStart, nextFnStart === -1 ? undefined : nextFnStart);
+    expect(fnBody).toContain('.filter((t) => t.enabled)');
+  });
+});
+
+test.describe("TRAMA — RELEASE CONTROL HARDENING: UI per-feature [no browser]", () => {
+  test("ReleaseAdminSection: ogni riga feature usa ladderButtonsForVisibility e mostra i bottoni SOLO se releaseEligible — nessun bottone di promozione release-level residuo", () => {
     const source = fs.readFileSync(
       path.join(__dirname, "../../app/admin/feature-flags/ReleaseAdminSection.tsx"),
       "utf-8"
     );
-    expect(source).toContain("Abilita anteprima interna");
-    expect(source).toContain("promoteReleaseToInternalPreviewAction");
-    expect(source).toContain("nextReleaseLifecycleAction");
-    // Le vecchie funzioni booleane indipendenti (canPromoteToPilot/
-    // canPromoteToGlobal/canDemoteToInternal), che permettevano che più
-    // condizioni fossero vere insieme, non devono più esistere: un'unica
-    // variabile nextAction deve governare quale bottone compare.
-    expect(source).not.toContain("canPromoteToPilot");
-    expect(source).not.toContain("canPromoteToGlobal");
-    expect(source).not.toContain("canDemoteToInternal");
+    expect(source).toContain("ladderButtonsForVisibility(feature.visibility)");
+    expect(source).toContain("feature.releaseEligible");
+    expect(source).toContain("setFeatureVisibilityAction");
+    expect(source).toContain("promoteAllEligibleReleaseFeaturesAction");
+    // Le vecchie azioni release-level "a intera release, tutte le feature in
+    // lockstep" non devono più essere importate qui — sostituite dai
+    // controlli per-feature.
+    expect(source).not.toContain("promoteReleaseToInternalPreviewAction");
+    expect(source).not.toContain("promoteReleaseToPilotAction");
+    expect(source).not.toContain("demoteReleaseToInternalAction");
   });
 
-  test("idempotenza: abilitare due volte l'Anteprima Interna sullo stesso stato (enabled=true -> enabled=true) è un no-op — nessuna nuova scrittura, stessa guardia shouldSkipOverrideWrite già usata da tutte le altre azioni di promozione", () => {
-    expect(shouldSkipOverrideWrite(true, true)).toBe(true);
+  test("ReleaseAdminSection: una feature non eligible mostra 'NON ANCORA DISPONIBILE' e zero bottoni (nessun modo di promuoverla dalla UI)", () => {
+    const source = fs.readFileSync(
+      path.join(__dirname, "../../app/admin/feature-flags/ReleaseAdminSection.tsx"),
+      "utf-8"
+    );
+    expect(source).toContain("NON ANCORA DISPONIBILE");
+    // I bottoni sono calcolati SOLO quando releaseEligible && flagName —
+    // verificato leggendo la condizione, non solo il testo.
+    expect(source).toContain("feature.releaseEligible && feature.flagName ? ladderButtonsForVisibility");
   });
 });
 
@@ -343,7 +482,10 @@ test.describe("TRAMA — Release Admin UI [UI, live]", () => {
     const card = page.getByTestId("release-card-planner-intelligence");
     await expect(card).toBeVisible();
 
-    const globalButton = card.getByRole("button", { name: "Rendi disponibile a tutti" });
+    // Bottone per-feature (RELEASE CONTROL HARDENING 11/09/2026), non più
+    // release-level: visibile solo per la feature eligible attualmente in
+    // stato PILOT (oggi calendar_export, se già promossa a Pilot).
+    const globalButton = card.getByRole("button", { name: "Pubblica a tutti" });
     if (await globalButton.isVisible()) {
       await globalButton.click();
       await card.getByPlaceholder('Scrivi "GLOBAL"').fill("non è la parola giusta");

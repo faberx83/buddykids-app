@@ -99,31 +99,62 @@ export function deriveReleaseVisibility(flagVisibilities: SimpleFlagVisibility[]
   return flagVisibilities.every((v) => v === first) ? first : "mixed";
 }
 
-export type ReleaseLifecycleAction = "enable_internal_preview" | "promote_to_pilot" | "promote_to_global" | "demote_to_internal";
+// TRAMA — RELEASE CONTROL HARDENING (11/09/2026, §A2, sostituisce il
+// precedente "un solo bottone avanti per card" del fix lifecycle
+// dell'11/09 mattina). Fabrizio, dopo l'uso reale su Calendar Export: "la UI
+// semplificata deve diventare reversibile" — ogni stato mostra ora l'intera
+// scaletta di transizioni ammesse (avanti E indietro), non solo "il
+// prossimo gradino". Applicata oggi a livello di SINGOLA FEATURE (§A3: "voglio
+// poter controllare una singola feature senza dover necessariamente
+// promuovere l'intero bundle") — la stessa funzione, stesso identico
+// vocabolario, si applica altrettanto bene a un flag isolato o a un'intera
+// release (nel raro caso in cui tutte le feature condividano esattamente lo
+// stesso SimpleFlagVisibility).
+export type ReleaseLadderButtonKind = "primary" | "secondary" | "tertiary";
+
+export interface ReleaseLadderButton {
+  target: SimpleFlagVisibility;
+  label: string;
+  kind: ReleaseLadderButtonKind;
+  /** true SOLO per il salto a "global" — richiede la conferma testuale "GLOBAL" (stesso pattern già in produzione). */
+  requiresGlobalConfirm?: boolean;
+}
 
 /**
- * TRAMA — DARK RELEASE, fix lifecycle (11/09/2026, richiesta Fabrizio).
- * Prima di questo fix la card Release offriva "Abilita al Pilot" anche da
- * una release DISATTIVATA, saltando lo stadio Anteprima Interna —
- * incoerente col modello approvato:
- *   DISATTIVATO -> ANTEPRIMA INTERNA -> PILOT -> DISPONIBILE A TUTTI
- * Questa funzione è la SINGOLA fonte di verità su quale azione mostrare per
- * stato — un solo bottone "avanti" per card, mai due alternative. "mixed"
- * (feature della release a stadi diversi) offre solo il kill switch: riporta
- * tutto a un unico stadio noto (Anteprima Interna) prima di scegliere il
- * prossimo passo, mai un'azione "avanti" ambigua su uno stato che non è
- * un singolo stadio riconosciuto.
+ * Bottoni ammessi per lo stato corrente di UN flag/feature — mai per
+ * "mixed" (quello resta un concetto di aggregazione a livello di intera
+ * release, non di una singola feature: una feature singola ha sempre uno
+ * dei 4 stati semplici, mai "mixed"). Wording e ordine ESATTI dalla
+ * richiesta di Fabrizio (§A2):
+ *   DISATTIVATO   -> primary [Abilita anteprima interna]
+ *   INTERNAL      -> primary [Estendi al Pilot] · secondary [Disattiva]
+ *   PILOT         -> primary [Pubblica a tutti] · secondary [Riporta a Anteprima interna] · tertiary [Disattiva]
+ *   GLOBAL        -> secondary [Riporta al Pilot] · secondary [Riporta a Anteprima interna] · tertiary [Disattiva]
+ * "Estendi al Pilot" (non "Abilita al Pilot"): Pilot NON significa "tutti" —
+ * Global resta l'unico stato che significa tutti gli utenti (richiesta
+ * esplicita, per evitare l'ambiguità di wording che ha originato questo
+ * hardening).
  */
-export function nextReleaseLifecycleAction(visibility: ReleaseVisibility): ReleaseLifecycleAction {
+export function ladderButtonsForVisibility(visibility: SimpleFlagVisibility): ReleaseLadderButton[] {
   switch (visibility) {
     case "disabled":
-      return "enable_internal_preview";
+      return [{ target: "internal_preview", label: "Abilita anteprima interna", kind: "primary" }];
     case "internal_preview":
-      return "promote_to_pilot";
+      return [
+        { target: "pilot", label: "Estendi al Pilot", kind: "primary" },
+        { target: "disabled", label: "Disattiva", kind: "secondary" },
+      ];
     case "pilot":
-      return "promote_to_global";
+      return [
+        { target: "global", label: "Pubblica a tutti", kind: "primary", requiresGlobalConfirm: true },
+        { target: "internal_preview", label: "Riporta a Anteprima interna", kind: "secondary" },
+        { target: "disabled", label: "Disattiva", kind: "tertiary" },
+      ];
     case "global":
-    case "mixed":
-      return "demote_to_internal";
+      return [
+        { target: "pilot", label: "Riporta al Pilot", kind: "secondary" },
+        { target: "internal_preview", label: "Riporta a Anteprima interna", kind: "secondary" },
+        { target: "disabled", label: "Disattiva", kind: "tertiary" },
+      ];
   }
 }

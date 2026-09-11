@@ -115,6 +115,49 @@ export interface FeatureCatalogEntry {
    * demo, un banner locale sarebbe rumore.
    */
   demoBannerRequired?: boolean;
+  /**
+   * TRAMA — RELEASE CONTROL HARDENING (11/09/2026, richiesta Fabrizio dopo
+   * l'uso reale del Release Control per Calendar Export: "una release
+   * contiene sia feature implementate sia placeholder — un'azione 'Abilita
+   * al Pilot' non deve creare in anticipo override Pilot/Global per feature
+   * ancora placeholder/incomplete").
+   *
+   * PERCHÉ QUI e non una fonte di verità nuova: `status` da solo non basta —
+   * sia "calendar_export" (implementata per davvero) sia
+   * "school_calendar_intelligence"/"external_planner_items" (placeholder,
+   * zero codice applicativo) sono oggi `status: "INTERNAL_PREVIEW"`, perché
+   * quel campo descrive COME la capability è gated a runtime, non SE esiste
+   * davvero codice dietro. Questo campo booleano, additivo sullo STESSO
+   * FeatureCatalogEntry (non una tabella/file separato), colma esattamente
+   * quel gap.
+   *
+   * SEMANTICA: true SOLO per una feature con implementazione applicativa
+   * reale e raggiungibile (page/Server Action/route che risolve davvero il
+   * flag) — MAI per placeholder/MOCK_DEMO/INCOMPLETE/BLOCKED o voci create
+   * solo per testare l'infrastruttura. Default assente = false (fail-safe,
+   * stesso principio "un flag non dichiarato non è mai promuovibile" già
+   * seguito altrove in questo file per i default dei flag).
+   *
+   * USO: lib/releases/promotion-validation.ts#resolveReleaseFlags legge
+   * questo campo per calcolare `eligibleFlagNames` — OGNI azione del
+   * Promotion Engine (app/actions/releases.ts), incluso il primo gradino
+   * "Abilita anteprima interna", scrive SOLO su flag il cui
+   * releaseEligible è true. Una feature senza questo flag a true non riceve
+   * MAI un override tramite un'azione di release — l'unico modo di
+   * toccarla resta l'override tecnico manuale (sezione flag qui sotto),
+   * usato deliberatamente solo per testare l'infrastruttura.
+   */
+  releaseEligible?: boolean;
+}
+
+/**
+ * true SOLO se dichiarato esplicitamente `releaseEligible: true` — assente o
+ * false sono trattati identicamente (non eligible), fail-safe per
+ * costruzione: una nuova voce del catalogo che dimentica di impostare questo
+ * campo non diventa promuovibile per omissione.
+ */
+export function isFeatureReleaseEligible(entry: FeatureCatalogEntry): boolean {
+  return entry.releaseEligible === true;
 }
 
 export const FEATURE_CATALOG: FeatureCatalogEntry[] = [
@@ -143,6 +186,10 @@ export const FEATURE_CATALOG: FeatureCatalogEntry[] = [
     description: "PLACEHOLDER — nessuna implementazione applicativa esiste ancora. Voce creata solo per testare Release Catalog/Promotion end-to-end.",
     sourceFiles: ["lib/feature-flags/registry.ts", "lib/releases/catalog.ts"],
     note: "Non raggiungibile: nessuna page/Server Action/cron risolve questo flag. Vedi docs/trama-one/analysis/SCHOOL_CALENDAR_INTELLIGENCE_STATUS.md per il design reale della capability futura (non ancora implementata).",
+    // RELEASE CONTROL HARDENING (11/09/2026): placeholder, zero codice
+    // applicativo — MAI promuovibile a Internal/Pilot/Global tramite
+    // un'azione di release finché non diventa realmente implementata.
+    releaseEligible: false,
   },
   {
     key: "external_planner_items",
@@ -153,6 +200,7 @@ export const FEATURE_CATALOG: FeatureCatalogEntry[] = [
     description: "PLACEHOLDER — nessuna implementazione applicativa esiste ancora. Voce creata solo per testare Release Catalog/Promotion end-to-end.",
     sourceFiles: ["lib/feature-flags/registry.ts", "lib/releases/catalog.ts"],
     note: "Non raggiungibile: nessuna page/Server Action/cron risolve questo flag.",
+    releaseEligible: false,
   },
   {
     // TRAMA — Calendar Export V1 (11/09/2026): implementato per davvero,
@@ -184,6 +232,10 @@ export const FEATURE_CATALOG: FeatureCatalogEntry[] = [
       "app/actions/calendar-export.ts",
     ],
     note: "Nessun limite noto oltre il V1 scope dichiarato (no sync/OAuth/feed sottoscrivibile — vedi TRAMA_ONE knownLimitations del Release planner-intelligence).",
+    // RELEASE CONTROL HARDENING (11/09/2026): implementazione reale e
+    // raggiungibile (page + gating server-side verificati) — unica feature
+    // di questa release oggi promuovibile tramite un'azione di release.
+    releaseEligible: true,
   },
 
   // ── TRAMA ONE (era "beta_gated") — MAPPING: la Controlled Beta Cohort è
