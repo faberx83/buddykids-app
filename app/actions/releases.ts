@@ -24,7 +24,12 @@ import { isSupabaseConfigured } from "@/lib/supabase/env";
 import { revalidatePath } from "next/cache";
 import { getFlagDefinition } from "@/lib/feature-flags/registry";
 import { friendlyError } from "@/lib/feature-flags/friendly-errors";
-import { resolveReleaseFlags, isResolvedReleaseFlagsError, validateGlobalConfirmation } from "@/lib/releases/promotion-validation";
+import {
+  resolveReleaseFlags,
+  isResolvedReleaseFlagsError,
+  validateGlobalConfirmation,
+  shouldSkipOverrideWrite,
+} from "@/lib/releases/promotion-validation";
 import { INTERNAL_PREVIEW_COHORT_KEY, PILOT_COHORT_KEY } from "@/lib/releases/visibility";
 
 // Tipo inferito direttamente da createClient() (lib/supabase/server.ts)
@@ -47,7 +52,12 @@ type ScopeTarget = { scopeType: "global"; scopeValue: null } | { scopeType: "coh
  * app/actions/feature-flag-overrides.ts). MAI un delete: la riga, una volta
  * creata, resta per sempre come traccia di audit (created_by/created_at =
  * quando questo scope è stato attivato per la prima volta; updated_by/
- * updated_at = ultima volta che è stato acceso/spento).
+ * updated_at = ultima volta che è stato acceso/spento DAVVERO — vedi
+ * shouldSkipOverrideWrite: se il valore richiesto è già quello attuale non
+ * si scrive nulla, altrimenti updated_by/updated_at verrebbero ri-timbrati
+ * anche quando nessun valore è davvero cambiato per QUESTA riga, es. il
+ * passo "enableInternal" del kill switch quando l'override interno era
+ * già enabled=true — fix 11/09/2026, verifica "audit promotion history").
  */
 async function upsertScopeOverride(
   supabase: ServerSupabaseClient,
@@ -58,13 +68,16 @@ async function upsertScopeOverride(
 ): Promise<{ error?: string }> {
   let existingQuery = supabase
     .from("feature_flag_overrides")
-    .select("id")
+    .select("id, enabled")
     .eq("flag_name", flagName)
     .eq("scope_type", target.scopeType);
   existingQuery = target.scopeValue === null ? existingQuery.is("scope_value", null) : existingQuery.eq("scope_value", target.scopeValue);
   const { data: existing } = await existingQuery.maybeSingle();
 
   if (existing) {
+    if (shouldSkipOverrideWrite(existing.enabled, enabled)) {
+      return {};
+    }
     const { error } = await supabase
       .from("feature_flag_overrides")
       .update({ enabled, updated_by: actorId })

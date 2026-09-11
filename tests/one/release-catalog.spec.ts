@@ -11,7 +11,12 @@ import {
   INTERNAL_PREVIEW_COHORT_KEY,
   PILOT_COHORT_KEY,
 } from "../../lib/releases/visibility";
-import { resolveReleaseFlags, isResolvedReleaseFlagsError, validateGlobalConfirmation } from "../../lib/releases/promotion-validation";
+import {
+  resolveReleaseFlags,
+  isResolvedReleaseFlagsError,
+  validateGlobalConfirmation,
+  shouldSkipOverrideWrite,
+} from "../../lib/releases/promotion-validation";
 import { getReleaseCatalog, getReleaseById } from "../../lib/releases/catalog";
 import { getFeatureCatalog } from "../../lib/feature-registry/catalog";
 
@@ -193,6 +198,30 @@ test.describe("TRAMA — Promotion Engine: validazione pura [no browser]", () =>
     expect(validateGlobalConfirmation("GLOBAL")).toBeUndefined();
     expect(validateGlobalConfirmation("  global  ")).toBeUndefined();
     expect(validateGlobalConfirmation("Global")).toBeUndefined();
+  });
+});
+
+test.describe("TRAMA — Promotion Engine: fix audit no-op write [no browser]", () => {
+  test("shouldSkipOverrideWrite: nessuna scrittura quando il valore richiesto e' gia' quello attuale (evita di ri-timbrare updated_by/updated_at su un no-op)", () => {
+    expect(shouldSkipOverrideWrite(true, true)).toBe(true);
+    expect(shouldSkipOverrideWrite(false, false)).toBe(true);
+  });
+
+  test("shouldSkipOverrideWrite: scrive quando il valore richiesto e' effettivamente diverso da quello attuale", () => {
+    expect(shouldSkipOverrideWrite(true, false)).toBe(false);
+    expect(shouldSkipOverrideWrite(false, true)).toBe(false);
+  });
+
+  test("app/actions/releases.ts::upsertScopeOverride usa davvero shouldSkipOverrideWrite prima di ogni UPDATE (verificato leggendo il sorgente, non solo la funzione pura isolata)", () => {
+    const source = fs.readFileSync(path.join(__dirname, "../../app/actions/releases.ts"), "utf-8");
+    const skipCallIndex = source.indexOf("shouldSkipOverrideWrite(existing.enabled, enabled)");
+    const updateCallIndex = source.indexOf('.update({ enabled, updated_by: actorId })');
+    expect(skipCallIndex).toBeGreaterThan(-1);
+    expect(updateCallIndex).toBeGreaterThan(-1);
+    // La guardia deve comparire PRIMA dell'UPDATE nel testo del file (stesso
+    // ordine di esecuzione reale: if (existing) { if (shouldSkip...) return
+    // {}; ... update ... }).
+    expect(skipCallIndex).toBeLessThan(updateCallIndex);
   });
 });
 

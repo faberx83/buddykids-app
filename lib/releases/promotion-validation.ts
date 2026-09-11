@@ -73,3 +73,24 @@ export function validateGlobalConfirmation(confirmText: string): string | undefi
   }
   return undefined;
 }
+
+/**
+ * TRAMA — DARK RELEASE, fix audit (11/09/2026, verifica "audit promotion
+ * history" richiesta da Fabrizio). Trovato leggendo app/actions/releases.ts:
+ * demoteReleaseToInternalAction() riabilita SEMPRE l'override
+ * cohort:internal-preview come ultimo passo del kill switch, anche quando
+ * era GIA' enabled=true (caso comune: l'override interno resta acceso per
+ * tutto il ciclo INTERNAL->PILOT->GLOBAL, non viene mai disattivato dalle
+ * altre due azioni). Senza questo controllo, upsertScopeOverride eseguiva
+ * comunque un UPDATE non necessario che ri-timbrava updated_by/updated_at
+ * su quella riga con l'attore/il momento del kill switch — rendendo
+ * l'audit FUORVIANTE: sembrerebbe che qualcuno abbia "toccato" la
+ * visibilità interna in quel momento, quando in realtà nessun valore e'
+ * cambiato li'. Pura, testabile senza Supabase: un upsert deve scrivere
+ * SOLO quando il valore richiesto e' effettivamente diverso da quello
+ * attuale, altrimenti updated_by/updated_at smettono di significare
+ * "ultima volta che QUESTA riga e' cambiata davvero".
+ */
+export function shouldSkipOverrideWrite(currentEnabled: boolean, targetEnabled: boolean): boolean {
+  return currentEnabled === targetEnabled;
+}
