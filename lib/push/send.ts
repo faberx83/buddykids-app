@@ -15,6 +15,16 @@ export interface PushPayload {
   title: string;
   body: string;
   deepLink: string;
+  // Azioni rapide opzionali (Notification API `actions`, gestite dal service
+  // worker — vedi public/sw.js) — TRAMA — Push check-in (11/09/2026). Solo
+  // alcuni eventi le popolano (oggi: check-in con un solo bambino pendente,
+  // vedi app/api/cron/checkin-reminders/route.ts); `action` è l'id che il
+  // service worker riceve in `event.action`, `actionUrls` associa ogni id al
+  // link firmato (lib/checkin/action-token.ts) da chiamare per eseguirla.
+  // Nessun dato personale nell'etichetta/id, stessa disciplina "privacy-first"
+  // già in vigore per title/body qui sopra.
+  actions?: { action: string; title: string }[];
+  actionUrls?: Record<string, string>;
 }
 
 // createServiceClient() (lib/supabase/service.ts, Wave 1) — STESSO client

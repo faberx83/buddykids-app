@@ -1,8 +1,45 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServiceClient } from "@/lib/supabase/service";
-import { getPendingCheckinsForPushToday } from "@/lib/data/checkin";
-import { sendPushToUser } from "@/lib/push/send";
+import { getPendingCheckinsForPushToday, TodayCheckin } from "@/lib/data/checkin";
+import { sendPushToUser, PushPayload } from "@/lib/push/send";
 import { logTelemetryEvent } from "@/lib/telemetry/correlation";
+import { generateCheckinActionToken } from "@/lib/checkin/action-token";
+
+// TRAMA — Push check-in: azioni rapide (11/09/2026, richiesta di Fabrizio,
+// stesse opzioni già in app — vedi lib/checkin/action-token.ts per il
+// meccanismo di firma). SOLO quando il genitore ha esattamente UN bambino
+// da confermare oggi: con 2+ bambini pendenti la push resta cumulativa
+// (invariata, vedi sotto) e non sa a quale bambino riferire un tap — scelta
+// esplicita di Fabrizio, non un limite tecnico che si può ignorare senza
+// rischiare di scrivere il check-in del bambino sbagliato.
+function buildQuickActionsForSingleItem(item: TodayCheckin): Pick<PushPayload, "actions" | "actionUrls"> {
+  const base = {
+    kidId: item.kidId,
+    activityId: item.activityId,
+    weekId: item.weekId,
+    activityDayId: item.activityDayId,
+    date: item.date,
+  };
+  const statuses: { status: "presente" | "in_ritardo" | "assente"; action: string; title: string }[] = [
+    { status: "presente", action: "checkin_presente", title: "Sì" },
+    { status: "in_ritardo", action: "checkin_in_ritardo", title: "In ritardo" },
+    { status: "assente", action: "checkin_assente", title: "No" },
+  ];
+
+  const actions: { action: string; title: string }[] = [];
+  const actionUrls: Record<string, string> = {};
+  for (const s of statuses) {
+    const token = generateCheckinActionToken({ ...base, status: s.status });
+    // CHECKIN_ACTION_SECRET non configurato (locale/preview): nessuna azione
+    // per nessuno dei 3 stati, mai solo alcune — la notifica resta senza
+    // azioni rapide, comportamento invariato (fail-safe, stesso principio
+    // già seguito da ensureVapidConfigured in lib/push/send.ts).
+    if (!token) return {};
+    actions.push({ action: s.action, title: s.title });
+    actionUrls[s.action] = `/api/checkin/quick-action?token=${token}`;
+  }
+  return { actions, actionUrls };
+}
 
 // TRAMA FINAL HARDENING §13-15 (push check-in, 04/09/2026) — promemoria
 // "conferma l'arrivo di oggi" per i genitori che non hanno ancora risposto
@@ -86,10 +123,16 @@ export async function GET(req: NextRequest) {
     // (app/nextgen/HomeDashboardClient.tsx) mostra lo stesso identico
     // prompt di check-in di CheckinPrompt.tsx (Legacy) — "/nextgen" è quindi
     // una destinazione equivalente, non un cambio di funzionalità.
+    // Azioni rapide SOLO col singolo bambino (vedi commento su
+    // buildQuickActionsForSingleItem sopra) — con 2+ bambini pendenti resta
+    // {} (nessuna azione), stesso comportamento di sempre.
+    const quickActions = items.length === 1 ? buildQuickActionsForSingleItem(items[0]) : {};
+
     await sendPushToUser(parentId, {
       title: "Check-in di oggi",
       body,
       deepLink: "/nextgen",
+      ...quickActions,
     });
     sent++;
   }

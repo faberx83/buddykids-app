@@ -60,8 +60,20 @@ self.addEventListener("push", (event) => {
     // ruoli (stesso principio "un solo service worker per tutti gli scope"
     // già usato sopra, nessuna variante badge per Legacy/Parent/Partner).
     badge: "/push-badge-96.png",
-    data: { url: data.deepLink || "/" },
+    // TRAMA — Push check-in: azioni rapide (11/09/2026). actionUrls (non un
+    // campo standard della Notification API, solo il nostro modo di portare
+    // i link firmati fino a notificationclick) resta dentro `data`, mai
+    // dentro `actions` stesso (che la Notification API mostra letteralmente
+    // come bottoni — deve contenere SOLO {action, title}, vedi
+    // lib/push/send.ts::PushPayload).
+    data: { url: data.deepLink || "/", actionUrls: data.actionUrls || null },
   };
+  // Presente solo per alcuni eventi (oggi: check-in con un solo bambino
+  // pendente) — quando assente, la notifica è identica a prima di questo
+  // cambiamento (nessun bottone, comportamento invariato).
+  if (Array.isArray(data.actions) && data.actions.length > 0) {
+    options.actions = data.actions;
+  }
   event.waitUntil(self.registration.showNotification(title, options));
 });
 
@@ -70,8 +82,45 @@ self.addEventListener("push", (event) => {
 // deepLink già usato dal notification center in-app (SEEN del banner di
 // sistema è quindi indipendente dal cursore in-app — nota nota, vedi doc).
 self.addEventListener("notificationclick", (event) => {
+  const clickedAction = event.action; // "" se il tap è sul corpo, non su un bottone azione
+  const notificationData = event.notification.data || {};
   event.notification.close();
-  const url = event.notification.data?.url || "/";
+
+  // TRAMA — Push check-in: azioni rapide (11/09/2026). Tap su un bottone
+  // azione (es. "Sì"/"In ritardo"/"No") -> chiama SUBITO il link firmato
+  // (lib/checkin/action-token.ts, app/api/checkin/quick-action/route.ts),
+  // SENZA aprire alcuna finestra: vera azione rapida, zero tap in app. Se la
+  // richiesta fallisce (rete assente, token scaduto, ecc.) ripiega
+  // sull'apertura dell'app — il genitore non resta mai senza un modo di
+  // completare il check-in.
+  if (clickedAction && notificationData.actionUrls && notificationData.actionUrls[clickedAction]) {
+    const actionUrl = notificationData.actionUrls[clickedAction];
+    event.waitUntil(
+      fetch(actionUrl, { method: "POST" })
+        .then((res) => {
+          if (!res.ok) throw new Error("azione rapida check-in fallita");
+          return self.registration.showNotification("Check-in registrato", {
+            body: "Grazie, abbiamo salvato la tua risposta.",
+            icon: "/icon-nextgen-192.png",
+            badge: "/push-badge-96.png",
+          });
+        })
+        .catch(() => {
+          const fallbackUrl = notificationData.url || "/";
+          return self.clients.matchAll({ type: "window", includeUncontrolled: true }).then((clientList) => {
+            for (const client of clientList) {
+              if (client.url.includes(fallbackUrl) && "focus" in client) return client.focus();
+            }
+            if (self.clients.openWindow) return self.clients.openWindow(fallbackUrl);
+          });
+        })
+    );
+    return;
+  }
+
+  // Tap sul corpo della notifica (nessun bottone azione): comportamento
+  // invariato rispetto a prima di questo cambiamento.
+  const url = notificationData.url || "/";
   event.waitUntil(
     self.clients.matchAll({ type: "window", includeUncontrolled: true }).then((clientList) => {
       for (const client of clientList) {
