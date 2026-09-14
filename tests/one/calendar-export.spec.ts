@@ -97,9 +97,17 @@ test.describe("TRAMA — Calendar Export V1: gating (1-5) [no browser]", () => {
     expect(source).toContain("calendarExportEnabled = calendarExportDetail.enabled;");
     expect(source).toContain('flagName: "SCHOOL_CALENDAR_INTELLIGENCE_ENABLED"');
     // I due resolveFeatureFlagVisibility restano due chiamate separate, non
-    // un'unica risoluzione condivisa che confonderebbe i due flag.
-    const occurrences = source.split("await resolveFeatureFlagVisibility({").length - 1;
+    // un'unica risoluzione condivisa che confonderebbe i due flag — dal fix
+    // performance del 14/09/2026 (segnalato da Fabrizio: "in generale è
+    // rallentata l'app") sono awaited in parallelo via Promise.all invece
+    // che in sequenza, quindi il testo sorgente non contiene più due volte
+    // "await resolveFeatureFlagVisibility({" letterale: si conta invece la
+    // chiamata alla funzione stessa, indipendentemente da dove sta l'await.
+    const occurrences = source.split("resolveFeatureFlagVisibility({").length - 1;
     expect(occurrences).toBe(2);
+    // Le due Promise restano awaited insieme (nessun round-trip extra in
+    // sequenza reintrodotto per errore).
+    expect(source).toContain("await Promise.all([");
   });
 
   test("gating: PlannerCalendarExportCard non renderizza nulla se enabled è false (nessuna CTA per utente normale)", () => {

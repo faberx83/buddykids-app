@@ -100,34 +100,38 @@ export default async function NextgenPlannerPage() {
       role = (profileRow?.role as string) ?? "parent";
       residenceCity = (profileRow?.city as string) ?? null;
     }
-    const calendarExportDetail = await resolveFeatureFlagVisibility({
-      flagName: "CALENDAR_EXPORT_ENABLED",
-      userId: user?.id ?? null,
-      role,
-      tenant: "family",
-      correlationId: generateCorrelationId(),
-    });
+    // PERF FIX (14/09/2026, segnalato da Fabrizio: "in generale è rallentata
+    // l'app") — le due risoluzioni flag sono INDIPENDENTI (nessuna legge
+    // l'output dell'altra) ma venivano awaited in sequenza, aggiungendo un
+    // intero round-trip extra ad OGNI caricamento del Planner anche per un
+    // utente a cui entrambi i flag risolvono false. Nessun cambio di
+    // comportamento — stesso risultato, calcolato in parallelo invece che
+    // in coda (§B13 resta rispettato: nessuno stato condiviso tra i due,
+    // solo la Promise stessa è parallela).
+    const [calendarExportDetail, schoolCalendarDetail] = await Promise.all([
+      resolveFeatureFlagVisibility({
+        flagName: "CALENDAR_EXPORT_ENABLED",
+        userId: user?.id ?? null,
+        role,
+        tenant: "family",
+        correlationId: generateCorrelationId(),
+      }),
+      resolveFeatureFlagVisibility({
+        flagName: "SCHOOL_CALENDAR_INTELLIGENCE_ENABLED",
+        userId: user?.id ?? null,
+        role,
+        tenant: "family",
+        correlationId: generateCorrelationId(),
+      }),
+    ]);
     calendarExportEnabled = calendarExportDetail.enabled;
+    schoolCalendarEnabled = schoolCalendarDetail.enabled;
     // Fetch dei dati SOLO se il flag è davvero abilitato per questo utente:
     // un utente normale (flag off) non riceve mai questi dati come prop,
     // nemmeno nascosti via CSS — §7: "nessuna rotta/azione alternativa".
     if (calendarExportEnabled) {
       calendarExportItems = await getPlannerCalendarItemsForParent();
     }
-
-    // TRAMA — SCHOOL CALENDAR INTELLIGENCE (§B12, stesso resolver/pattern —
-    // CALENDAR_EXPORT_ENABLED e SCHOOL_CALENDAR_INTELLIGENCE_ENABLED restano
-    // due flag INDIPENDENTI, §B13: "l'implementazione di School Calendar non
-    // deve MAI toccare gli override runtime di Calendar Export" — ognuno è
-    // risolto qui separatamente, nessuna condivisione di stato fra i due).
-    const schoolCalendarDetail = await resolveFeatureFlagVisibility({
-      flagName: "SCHOOL_CALENDAR_INTELLIGENCE_ENABLED",
-      userId: user?.id ?? null,
-      role,
-      tenant: "family",
-      correlationId: generateCorrelationId(),
-    });
-    schoolCalendarEnabled = schoolCalendarDetail.enabled;
 
     // Un solo "corner ribbon" ANTEPRIMA INTERNA per la pagina, calcolato
     // sull'insieme di TUTTE le capability gated risolte qui (oggi 2) — vince
