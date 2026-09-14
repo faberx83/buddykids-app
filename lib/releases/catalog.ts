@@ -50,18 +50,19 @@ export const RELEASE_CATALOG: ReleaseCatalogEntry[] = [
       "Il Planner parte dalle settimane realmente da organizzare, anche quando le attività sono fuori da TRAMA.",
     targetAudience: ["parent"],
     featureKeys: ["school_calendar_intelligence", "external_planner_items", "calendar_export"],
-    // TRAMA — Calendar Export V1 (11/09/2026): "calendar_export" è la PRIMA
-    // delle 3 feature ad avere implementazione reale — le altre 2
-    // (school_calendar_intelligence, external_planner_items) restano
-    // placeholder. Limitazioni riscritte per distinguere le due situazioni
-    // invece di una singola dicitura "nessuna delle 3 è implementata"
-    // (non più vera).
+    // TRAMA — School Calendar Intelligence (14/09/2026): "school_calendar_intelligence"
+    // diventa la SECONDA delle 3 feature ad avere implementazione reale
+    // (dopo calendar_export, 11/09/2026) — SOLO "external_planner_items"
+    // resta placeholder. Limitazioni aggiornate di conseguenza (§B13: questo
+    // cambio non tocca in alcun modo lo stato/gli override di
+    // calendar_export, riga separata sotto, invariata).
     knownLimitations: [
       "calendar_export (V1): export .ics client-side, un file per download. NIENTE integrazione Google Calendar/Outlook/CalDAV, NIENTE feed ICS sottoscrivibile, NIENTE sync bidirezionale — solo impegni con provenienza TRAMA (bookings), external_planner_items non ancora implementato quindi nessuna Attività Esterna nel file esportato.",
-      "school_calendar_intelligence, external_planner_items: PLACEHOLDER — nessuna implementazione applicativa esiste ancora per queste 2 funzionalità.",
+      "school_calendar_intelligence (V1): 0 calendari/eventi reali in produzione — il dataset è vuoto finché Fabrizio non decide quale Regione/Comune popolare per il pilota (Admin → gestione calendari scolastici). Chiusure modellate a livello di REGIONE, non di singolo comune (school_calendar_events non ha una colonna comune). Una settimana con un solo giorno festivo/ponte isolato (1-4 giorni su 5) non genera un segnale 'da organizzare' per l'intera settimana — solo una settimana interamente senza scuola lo fa (decisione V1 documentata in lib/school-calendar/need-core.ts).",
+      "external_planner_items: PLACEHOLDER — nessuna implementazione applicativa esiste ancora per questa funzionalità.",
     ],
     notes:
-      "Creata durante l'implementazione dell'infrastruttura Release/Promotion (10/09/2026) per avere un caso reale, non ipotetico, su cui esercitare l'Admin UI — incluso lo stato \"Rilascio parziale\" quando le 3 feature non sono allo stesso stadio. Calendar Export V1 (11/09/2026) è la prima capability reale di questa release: implementata, gated CALENDAR_EXPORT_ENABLED (default off, nessun override GLOBAL/PILOT), attivabile in ANTEPRIMA INTERNA solo da Fabrizio via Admin → Feature Flags → Release.",
+      "Creata durante l'implementazione dell'infrastruttura Release/Promotion (10/09/2026) per avere un caso reale, non ipotetico, su cui esercitare l'Admin UI — incluso lo stato \"Rilascio parziale\" quando le 3 feature non sono allo stesso stadio. Calendar Export V1 (11/09/2026) e School Calendar Intelligence V1 (14/09/2026) sono le prime 2 capability reali di questa release: entrambe implementate, entrambe gated (default off, nessun override GLOBAL/PILOT), attivabili in ANTEPRIMA INTERNA indipendentemente l'una dall'altra solo da Fabrizio via Admin → Feature Flags → Release.",
   },
 ];
 

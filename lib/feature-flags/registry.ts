@@ -87,9 +87,19 @@ export const FEATURE_FLAG_REGISTRY = {
   // per esplicita istruzione di Fabrizio in questa stessa sessione.
   SCHOOL_CALENDAR_INTELLIGENCE_ENABLED: {
     name: "SCHOOL_CALENDAR_INTELLIGENCE_ENABLED",
+    // TRAMA — School Calendar Intelligence (14/09/2026): implementato per
+    // davvero — vedi app/nextgen/planner/page.tsx (risolve questo flag
+    // server-side, stesso pattern di CALENDAR_EXPORT_ENABLED),
+    // SchoolCalendarOnboardingCallout.tsx/SchoolWeekBadge.tsx (UI Planner),
+    // lib/school-calendar/need-core.ts + lib/data/school-calendar.ts (dati).
+    // Descrizione aggiornata: non più "nessun codice applicativo la risolve
+    // ancora".
     description:
-      "PLACEHOLDER (nessun codice applicativo la risolve ancora) — governerà in futuro la visibilità " +
-      "di School Calendar Intelligence. Registrato ora solo per testare l'infrastruttura Release/Promotion.",
+      "Deriva dal calendario scolastico regionale (school_calendars/school_calendar_events) quali " +
+      "settimane della stagione la scuola dei figli è chiusa, e le incrocia con la copertura Planner " +
+      "esistente per distinguere 'già coperta' da 'da organizzare' (mai una fonte di copertura " +
+      "alternativa). Default false: prima del rilascio nessun override GLOBAL/PILOT, solo " +
+      "cohort:internal-preview attivata manualmente da Admin → Feature Flags → Release.",
     defaultValue: false,
     allowedScopes: ["global", "environment", "user", "role", "cohort"],
   },

@@ -178,18 +178,46 @@ export const FEATURE_CATALOG: FeatureCatalogEntry[] = [
   // sessione, per istruzione esplicita: "NON sviluppare ancora [...]
   // School Calendar [...]"). ─────────────────────────────────────────
   {
+    // TRAMA — School Calendar Intelligence (14/09/2026): implementato per
+    // davvero, voce aggiornata (non più placeholder) — stesso trattamento
+    // di calendar_export sotto: resta "INTERNAL_PREVIEW" perché è
+    // esattamente ciò che è oggi (codice reale, ma risolto a "off" per
+    // chiunque finché Fabrizio non attiva l'override cohort:internal-preview
+    // da Admin). §B13: releaseEligible passa a true SOLO perché il codice
+    // esiste davvero — questo NON crea né implica alcun override; la
+    // visibilità reale resta derivata a runtime, mai hardcoded qui.
     key: "school_calendar_intelligence",
-    label: "School Calendar Intelligence (placeholder infrastruttura)",
+    label: "School Calendar Intelligence (V1 — settimane senza scuola da organizzare)",
     area: "parent",
     status: "INTERNAL_PREVIEW",
     flagName: "SCHOOL_CALENDAR_INTELLIGENCE_ENABLED",
-    description: "PLACEHOLDER — nessuna implementazione applicativa esiste ancora. Voce creata solo per testare Release Catalog/Promotion end-to-end.",
-    sourceFiles: ["lib/feature-flags/registry.ts", "lib/releases/catalog.ts"],
-    note: "Non raggiungibile: nessuna page/Server Action/cron risolve questo flag. Vedi docs/trama-one/analysis/SCHOOL_CALENDAR_INTELLIGENCE_STATUS.md per il design reale della capability futura (non ancora implementata).",
-    // RELEASE CONTROL HARDENING (11/09/2026): placeholder, zero codice
-    // applicativo — MAI promuovibile a Internal/Pilot/Global tramite
-    // un'azione di release finché non diventa realmente implementata.
-    releaseEligible: false,
+    description:
+      "Deriva dal calendario scolastico regionale (school_calendars/school_calendar_events, migration_26) " +
+      "quali settimane della stagione la scuola dei figli è chiusa (incl. l'estate, derivata come gap fra " +
+      "fine e inizio anno scolastico), e le incrocia con covered/dismissed del Planner ESISTENTI (mai " +
+      "sovrascritti) per distinguere 'già coperta' da 'da organizzare'. Badge informativo nel Planner + " +
+      "callout di prima configurazione (Regione/Comune). 0 righe reali in produzione: nessun dato regionale " +
+      "reale è stato inserito, in attesa della decisione di Fabrizio su quale Regione/Comune popolare per " +
+      "il pilota (vedi report).",
+    sourceFiles: [
+      "lib/feature-flags/registry.ts",
+      "lib/releases/catalog.ts",
+      "app/nextgen/planner/page.tsx",
+      "lib/school-calendar/need-core.ts",
+      "lib/data/school-calendar.ts",
+      "app/actions/school-calendar.ts",
+      "components/nextgen/SchoolCalendarOnboardingCallout.tsx",
+      "components/nextgen/SchoolWeekBadge.tsx",
+    ],
+    note:
+      "Raggiungibile SOLO tramite app/nextgen/planner/page.tsx (risolve il flag server-side, stesso pattern " +
+      "di Calendar Export). Dataset calendari/eventi vuoto in produzione: senza calendari pubblicati per la " +
+      "regione di un bambino, il Planner resta silenziosamente invariato (nessun falso segnale).",
+    // RELEASE CONTROL HARDENING (11/09/2026, §A1): true perché ora esiste
+    // codice applicativo reale e raggiungibile — MAI un override creato da
+    // questo cambio, l'unico effetto è che l'Admin ora VEDE i controlli di
+    // promozione (prima "○ Non ancora disponibile" in sola lettura).
+    releaseEligible: true,
   },
   {
     key: "external_planner_items",

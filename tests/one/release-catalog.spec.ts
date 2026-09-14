@@ -178,33 +178,48 @@ test.describe("TRAMA — Release Catalog: struttura e risoluzione flag [no brows
     }
   });
 
-  // TRAMA — Calendar Export V1 (11/09/2026): "calendar_export" è la PRIMA
-  // delle 3 feature di questa release ad avere implementazione reale — il
-  // test originale ("le 3 feature placeholder... nessun sourceFile punta a
-  // codice applicativo reale") non descrive più la realtà per questa
-  // chiave, quindi è stato aggiornato invece di essere lasciato rosso:
-  // resta comunque INTERNAL_PREVIEW (§13 della spec di Fabrizio — mai
+  // TRAMA — School Calendar Intelligence (14/09/2026): "school_calendar_intelligence"
+  // diventa la SECONDA feature di questa release ad avere implementazione
+  // reale (dopo calendar_export, 11/09/2026) — il test è stato aggiornato
+  // di conseguenza invece di essere lasciato rosso: SOLO
+  // "external_planner_items" resta placeholder/non raggiungibile. Entrambe
+  // le feature implementate restano INTERNAL_PREVIEW (§13 — mai
   // GLOBAL/LIVE/PILOT hardcoded qui, la visibilità reale resta derivata a
-  // runtime), ma NON è più "non raggiungibile" — ha davvero una page/CTA
-  // reale dietro (vedi test dedicati in calendar-export.spec.ts).
-  test("le 2 feature ancora placeholder (school_calendar_intelligence, external_planner_items) sono INTERNAL_PREVIEW e non raggiungibili; calendar_export è INTERNAL_PREVIEW ma implementata", () => {
+  // runtime).
+  test("solo external_planner_items resta placeholder/non raggiungibile; calendar_export E school_calendar_intelligence sono INTERNAL_PREVIEW ma implementate", () => {
     const release = getReleaseById("planner-intelligence");
     expect(release).toBeTruthy();
     const catalog = getFeatureCatalog();
 
-    const stillPlaceholder = ["school_calendar_intelligence", "external_planner_items"];
+    const stillPlaceholder = ["external_planner_items"];
     for (const key of stillPlaceholder) {
       const entry = catalog.find((e) => e.key === key)!;
       expect(entry.status).toBe("INTERNAL_PREVIEW");
       expect(entry.note ?? "").toContain("Non raggiungibile");
     }
 
-    const calendarExport = catalog.find((e) => e.key === "calendar_export")!;
-    expect(calendarExport.status).toBe("INTERNAL_PREVIEW");
-    expect(calendarExport.note ?? "").not.toContain("Non raggiungibile");
-    expect(calendarExport.sourceFiles).toContain("app/nextgen/planner/page.tsx");
+    const implementedKeys = ["calendar_export", "school_calendar_intelligence"];
+    for (const key of implementedKeys) {
+      const entry = catalog.find((e) => e.key === key)!;
+      expect(entry.status).toBe("INTERNAL_PREVIEW");
+      expect(entry.note ?? "").not.toContain("Non raggiungibile");
+      expect(entry.sourceFiles).toContain("app/nextgen/planner/page.tsx");
+    }
 
-    expect(release!.featureKeys).toEqual(expect.arrayContaining([...stillPlaceholder, "calendar_export"]));
+    expect(release!.featureKeys).toEqual(expect.arrayContaining([...stillPlaceholder, ...implementedKeys]));
+  });
+
+  // §B13: implementare School Calendar Intelligence NON deve MAI toccare lo
+  // stato/gli override di calendar_export — verificato qui leggendo i due
+  // sourceFiles reali (nessuno dei due elenca l'altro fra i propri
+  // sourceFiles, segno che le implementazioni restano indipendenti pur
+  // condividendo la stessa pagina Planner come punto di gating).
+  test("B13: school_calendar_intelligence e calendar_export restano capability indipendenti (nessun sourceFile incrociato)", () => {
+    const catalog = getFeatureCatalog();
+    const schoolCalendar = catalog.find((e) => e.key === "school_calendar_intelligence")!;
+    const calendarExport = catalog.find((e) => e.key === "calendar_export")!;
+    expect(schoolCalendar.sourceFiles.some((f) => f.includes("calendar-items") || f.includes("ics.ts"))).toBe(false);
+    expect(calendarExport.sourceFiles.some((f) => f.includes("school-calendar"))).toBe(false);
   });
 });
 
@@ -328,21 +343,24 @@ test.describe("TRAMA — RELEASE CONTROL HARDENING (11/09/2026): scaletta revers
 });
 
 test.describe("TRAMA — RELEASE CONTROL HARDENING: eligibility gate (A1, A5.1-3, A5.12) [no browser]", () => {
-  test("A5.1/A5.2 — una feature placeholder (school_calendar_intelligence, external_planner_items) NON è release-eligible: nessuna promozione a Pilot/Global (né a Internal, preferenza esplicita di Fabrizio) possibile", () => {
+  test("A5.1/A5.2 — l'unica feature ancora placeholder (external_planner_items) NON è release-eligible: nessuna promozione a Pilot/Global (né a Internal, preferenza esplicita di Fabrizio) possibile", () => {
     const catalog = getFeatureCatalog();
-    const school = catalog.find((e) => e.key === "school_calendar_intelligence")!;
     const external = catalog.find((e) => e.key === "external_planner_items")!;
-    expect(isFeatureReleaseEligible(school)).toBe(false);
     expect(isFeatureReleaseEligible(external)).toBe(false);
-    expect(isFlagReleaseEligible("SCHOOL_CALENDAR_INTELLIGENCE_ENABLED")).toBe(false);
     expect(isFlagReleaseEligible("EXTERNAL_PLANNER_ITEMS_ENABLED")).toBe(false);
   });
 
-  test("A5.3 — una feature realmente implementata (calendar_export) È release-eligible: promozione a qualunque livello possibile", () => {
+  test("A5.3 — le feature realmente implementate (calendar_export, school_calendar_intelligence) SONO release-eligible: promozione a qualunque livello possibile", () => {
     const catalog = getFeatureCatalog();
     const calendarExport = catalog.find((e) => e.key === "calendar_export")!;
+    const schoolCalendar = catalog.find((e) => e.key === "school_calendar_intelligence")!;
     expect(isFeatureReleaseEligible(calendarExport)).toBe(true);
     expect(isFlagReleaseEligible("CALENDAR_EXPORT_ENABLED")).toBe(true);
+    // §B13: releaseEligible=true SOLO perché il codice esiste — verificato
+    // separatamente (test B13 sopra) che questo non crea né implica alcun
+    // override: nessuna scrittura avviene qui, solo lettura del catalogo.
+    expect(isFeatureReleaseEligible(schoolCalendar)).toBe(true);
+    expect(isFlagReleaseEligible("SCHOOL_CALENDAR_INTELLIGENCE_ENABLED")).toBe(true);
   });
 
   test("una voce del catalogo senza releaseEligible dichiarato è trattata come NON eligible (fail-safe di default, mai eligible per omissione)", () => {
@@ -351,15 +369,15 @@ test.describe("TRAMA — RELEASE CONTROL HARDENING: eligibility gate (A1, A5.1-3
     );
   });
 
-  test("A5.12 — resolveReleaseFlags espone eligibleFlagNames come sottoinsieme STRETTO di flagNames per una release mista: solo il flag realmente implementato è promuovibile", () => {
+  test("A5.12 — resolveReleaseFlags espone eligibleFlagNames come sottoinsieme STRETTO di flagNames per una release mista: solo i flag realmente implementati sono promuovibili", () => {
     const resolved = resolveReleaseFlags("planner-intelligence");
     expect(isResolvedReleaseFlagsError(resolved)).toBe(false);
     if (!isResolvedReleaseFlagsError(resolved)) {
       expect(resolved.flagNames.sort()).toEqual(
         ["SCHOOL_CALENDAR_INTELLIGENCE_ENABLED", "EXTERNAL_PLANNER_ITEMS_ENABLED", "CALENDAR_EXPORT_ENABLED"].sort()
       );
-      expect(resolved.eligibleFlagNames).toEqual(["CALENDAR_EXPORT_ENABLED"]);
-      expect(resolved.ineligibleFeatureKeys.sort()).toEqual(["school_calendar_intelligence", "external_planner_items"].sort());
+      expect(resolved.eligibleFlagNames.sort()).toEqual(["CALENDAR_EXPORT_ENABLED", "SCHOOL_CALENDAR_INTELLIGENCE_ENABLED"].sort());
+      expect(resolved.ineligibleFeatureKeys).toEqual(["external_planner_items"]);
     }
   });
 
