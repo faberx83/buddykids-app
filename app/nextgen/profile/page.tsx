@@ -2,6 +2,15 @@ import ProfileNextgenClient from "./ProfileNextgenClient";
 import { getKidsForUser } from "@/lib/data/kids";
 import { getParentProfile } from "@/lib/data/profile";
 import { getUnreadRepliesCountForParent } from "@/lib/data/inquiries";
+// TRAMA — SCHOOL CALENDAR UX REFINEMENT (§10-11, 14/09/2026): stesso
+// resolver/pattern di app/(main)/profile/page.tsx (LEGACY) — vedi commento
+// lì per il dettaglio, qui è la controparte NEXTGEN dello stesso identico
+// principio.
+import { createClient } from "@/lib/supabase/server";
+import { isSupabaseConfigured } from "@/lib/supabase/env";
+import { resolveFeatureFlag } from "@/lib/feature-flags/resolve";
+import { generateCorrelationId } from "@/lib/telemetry/correlation";
+import { getKidSchoolProfilesForParent } from "@/lib/data/school-calendar";
 
 // SPRINT 6 (NEXTGEN) — stessi data-loader del profilo LEGACY
 // (app/(main)/profile/page.tsx), nessuna nuova query: solo un nuovo punto di
@@ -38,6 +47,32 @@ export default async function NextgenProfilePage({
     getUnreadRepliesCountForParent(),
   ]);
 
+  // §30 "SCHOOL DARK RELEASE": stesso principio di app/(main)/profile/page.tsx
+  // (LEGACY) — mai un default "acceso" lato client.
+  let schoolCalendarEnabled = false;
+  let schoolProfiles: Awaited<ReturnType<typeof getKidSchoolProfilesForParent>> = {};
+  let residenceCity: string | null = null;
+  if (isSupabaseConfigured) {
+    const supabase = await createClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (user) {
+      const { data: profileRow } = await supabase.from("profiles").select("role, city").eq("id", user.id).single();
+      residenceCity = (profileRow?.city as string) ?? null;
+      schoolCalendarEnabled = await resolveFeatureFlag({
+        flagName: "SCHOOL_CALENDAR_INTELLIGENCE_ENABLED",
+        userId: user.id,
+        role: (profileRow?.role as string) ?? "parent",
+        tenant: "family",
+        correlationId: generateCorrelationId(),
+      });
+      if (schoolCalendarEnabled) {
+        schoolProfiles = await getKidSchoolProfilesForParent(kids.map((k) => k.id));
+      }
+    }
+  }
+
   return (
     <ProfileNextgenClient
       fullName={profile.fullName}
@@ -51,6 +86,9 @@ export default async function NextgenProfilePage({
       unreadReplies={unreadReplies}
       autoOpenEdit={params.complete === "1"}
       autoOpenAddKid={params.addKid === "1"}
+      schoolCalendarEnabled={schoolCalendarEnabled}
+      schoolProfiles={schoolProfiles}
+      residenceCity={residenceCity}
     />
   );
 }

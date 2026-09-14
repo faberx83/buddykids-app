@@ -1,11 +1,15 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import AddKidForm from "@/components/AddKidForm";
 import AvatarUploadButton from "@/components/AvatarUploadButton";
 import { Kid, KidGender } from "@/lib/types";
 import { categories as interestOptions } from "@/lib/mock-data";
 import { updateKidInterestsAction, updateKidAvatarAction, updateKidAction } from "@/app/actions/kids";
+import { setSchoolContextForKidAction } from "@/app/actions/school-calendar";
+import { ITALIAN_REGIONS } from "@/lib/school-calendar/regions";
+import type { KidSchoolProfileSummary } from "@/lib/data/school-calendar";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
 
 // Duplicata volutamente da lib/data/kids.ts#ageFromBirthDate (stesso
@@ -29,13 +33,27 @@ export default function ProfileKidsSection({
   initialKids,
   autoOpenAddKid,
   accent = "sky",
+  // TRAMA — SCHOOL CALENDAR UX REFINEMENT (§10-11, 14/09/2026): entrambi già
+  // risolti server-side dal chiamante (pagina Profilo, LEGACY e NEXTGEN) —
+  // stesso principio difensivo del resto della capability, questo
+  // componente non fa alcuna verifica flag propria. schoolProfiles arriva
+  // vuoto {} quando la capability è disattivata o Supabase non è
+  // configurato — mai un errore, solo "nessun figlio ha ancora la scuola
+  // impostata".
+  schoolCalendarEnabled = false,
+  schoolProfiles = {},
+  residenceCity = null,
 }: {
   initialKids: Kid[];
   autoOpenAddKid?: boolean;
   // SPRINT 6 (NEXTGEN) — stesso opt-in di ProfileHeaderClient.tsx: viola
   // trama-violet per il Profilo NEXTGEN, default "sky" invariato per LEGACY.
   accent?: "sky" | "violet";
+  schoolCalendarEnabled?: boolean;
+  schoolProfiles?: Record<string, KidSchoolProfileSummary>;
+  residenceCity?: string | null;
 }) {
+  const router = useRouter();
   const accentText = accent === "violet" ? "text-trama-violet" : "text-sky";
   const accentActive = accent === "violet" ? "border-trama-violet bg-trama-violet text-white" : "border-sky bg-sky text-white";
   const accentBg = accent === "violet" ? "bg-trama-violet" : "bg-sky";
@@ -43,6 +61,47 @@ export default function ProfileKidsSection({
   const [showAddKid, setShowAddKid] = useState(Boolean(autoOpenAddKid));
   const [editingKidId, setEditingKidId] = useState<string | null>(null);
   const [savingInterests, setSavingInterests] = useState(false);
+  // §11 "EDIT CHILD PROFILE" — editing della sezione "Scuola e calendario",
+  // indipendente dal pannello nome/data/genere/interessi sopra (stato
+  // separato, cosi' aprire/chiudere l'uno non tocca l'altro).
+  const [editingSchoolKidId, setEditingSchoolKidId] = useState<string | null>(null);
+  const [schoolRegionDraft, setSchoolRegionDraft] = useState("");
+  const [schoolComuneDraft, setSchoolComuneDraft] = useState("");
+  const [savingSchool, setSavingSchool] = useState(false);
+  const [schoolError, setSchoolError] = useState<string | null>(null);
+
+  function startEditingSchool(kidId: string, current?: KidSchoolProfileSummary) {
+    if (editingSchoolKidId === kidId) {
+      setEditingSchoolKidId(null);
+      return;
+    }
+    setEditingSchoolKidId(kidId);
+    setSchoolRegionDraft(current?.region ?? "");
+    setSchoolComuneDraft(current?.comune ?? "");
+    setSchoolError(null);
+  }
+
+  async function saveSchool(kidId: string) {
+    if (!schoolRegionDraft) {
+      setSchoolError("Seleziona una regione");
+      return;
+    }
+    setSavingSchool(true);
+    setSchoolError(null);
+    const result = await setSchoolContextForKidAction(kidId, schoolRegionDraft, schoolComuneDraft);
+    setSavingSchool(false);
+    if (result.error) {
+      setSchoolError(result.error);
+      return;
+    }
+    setEditingSchoolKidId(null);
+    // §14: la modifica di Regione ri-valuta l'associazione con il
+    // calendario disponibile — schoolProfiles arriva da un Server
+    // Component (pagina Profilo), quindi un refresh (non un redirect)
+    // rilegge kid_school_profiles/school_calendars aggiornati, stesso
+    // pattern già usato dal Planner per "Non mi serve"/toggleDismissed.
+    router.refresh();
+  }
   // FEATURE (01/09/2026, richiesta di Fabrizio: "deve essere possibile
   // modificare caratteristiche figlio, tra cui età perché magari c'è un
   // errore") — bozza locale nome/data di nascita/genere per il bambino in
@@ -274,6 +333,105 @@ export default function ProfileKidsSection({
               >
                 {savingInterests ? "Salvo…" : "Salva"}
               </button>
+
+              {/* TRAMA — SCHOOL CALENDAR UX REFINEMENT (§11 "EDIT CHILD
+                  PROFILE", 14/09/2026): sezione persistente "Scuola e
+                  calendario" — mostra Regione · Comune se già configurata
+                  (source of truth: kid_school_profiles, mai duplicata su
+                  kids) + disponibilità REALE del calendario per l'anno
+                  scolastico corrente (mai inventata, §11). */}
+              {schoolCalendarEnabled && (
+                <div className="mt-3 border-t border-[#F0F2F5] pt-3">
+                  <div className="mb-1.5 flex items-center gap-1.5">
+                    <i className="ti ti-school text-[13px] text-trama-violet" />
+                    <span className="text-[11px] font-bold uppercase tracking-wide text-ink-3">Scuola e calendario</span>
+                  </div>
+                  {editingSchoolKidId === k.id ? (
+                    <div className="flex flex-col gap-2">
+                      <select
+                        value={schoolRegionDraft}
+                        onChange={(e) => setSchoolRegionDraft(e.target.value)}
+                        className="h-10 rounded-md border border-[#E8EBF0] bg-white px-2.5 text-[13px] text-ink"
+                      >
+                        <option value="">Regione…</option>
+                        {ITALIAN_REGIONS.map((r) => (
+                          <option key={r} value={r}>
+                            {r}
+                          </option>
+                        ))}
+                      </select>
+                      <div className="flex gap-1.5">
+                        <input
+                          value={schoolComuneDraft}
+                          onChange={(e) => setSchoolComuneDraft(e.target.value)}
+                          placeholder="Comune della scuola"
+                          className="h-10 min-w-0 flex-1 rounded-md border border-[#E8EBF0] bg-white px-2.5 text-[13px] text-ink"
+                        />
+                        {residenceCity && (
+                          <button
+                            type="button"
+                            onClick={() => setSchoolComuneDraft(residenceCity)}
+                            className="whitespace-nowrap rounded-md border border-[#E8EBF0] px-2 text-[11px] font-semibold text-trama-violet"
+                          >
+                            Usa il mio Comune
+                          </button>
+                        )}
+                      </div>
+                      {schoolError && <p className="text-[11px] text-[#C0392B]">{schoolError}</p>}
+                      <div className="flex gap-2">
+                        <button
+                          type="button"
+                          onClick={() => saveSchool(k.id)}
+                          disabled={savingSchool}
+                          className="rounded-md bg-trama-violet px-3.5 py-1.5 text-[11px] font-bold text-white disabled:opacity-60"
+                        >
+                          {savingSchool ? "Salvo…" : "Salva"}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setEditingSchoolKidId(null)}
+                          disabled={savingSchool}
+                          className="rounded-md border border-[#E8EBF0] px-3 text-[11px] font-semibold text-ink-2"
+                        >
+                          Annulla
+                        </button>
+                      </div>
+                    </div>
+                  ) : schoolProfiles[k.id] ? (
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="min-w-0">
+                        <p className="truncate text-[12.5px] font-medium text-ink">
+                          {schoolProfiles[k.id].region}
+                          {schoolProfiles[k.id].comune ? ` · ${schoolProfiles[k.id].comune}` : ""}
+                        </p>
+                        <p className="text-[11px] text-ink-3">
+                          {schoolProfiles[k.id].calendarAvailable
+                            ? `Calendario ${schoolProfiles[k.id].academicYearShort} disponibile`
+                            : "Calendario non ancora disponibile"}
+                        </p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => startEditingSchool(k.id, schoolProfiles[k.id])}
+                        className="flex-shrink-0 text-[11.5px] font-semibold text-trama-violet"
+                      >
+                        Modifica
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="flex items-center justify-between gap-2">
+                      <p className="text-[11.5px] text-ink-3">Calendario scolastico non impostato</p>
+                      <button
+                        type="button"
+                        onClick={() => startEditingSchool(k.id)}
+                        className="flex-shrink-0 text-[11.5px] font-semibold text-trama-violet"
+                      >
+                        Imposta
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           )}
         </div>
@@ -284,8 +442,16 @@ export default function ProfileKidsSection({
           onAdded={(kid) => {
             setKids((prev) => [...prev, kid]);
             setShowAddKid(false);
+            // La sezione "Scuola e calendario" (schoolProfiles) arriva da
+            // un Server Component: se il genitore ha appena compilato
+            // Regione/Comune per il nuovo bambino, un refresh la mostra
+            // subito qui sotto invece di lasciare "non impostato" finché
+            // non si ricarica la pagina a mano.
+            if (schoolCalendarEnabled) router.refresh();
           }}
           onCancel={() => setShowAddKid(false)}
+          schoolCalendarEnabled={schoolCalendarEnabled}
+          residenceCity={residenceCity}
         />
       )}
     </div>

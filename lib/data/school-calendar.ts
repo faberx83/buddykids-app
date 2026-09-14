@@ -28,6 +28,7 @@ import {
   type SchoolWeekNeed,
   type SeasonWeekNeedInput,
 } from "@/lib/school-calendar/need-core";
+import { deriveCurrentAcademicYear } from "@/lib/school-calendar/academic-year";
 
 // Sottoinsieme di SeasonWeek (lib/data/planner.ts) richiesto qui — stesso
 // principio "solo i campi che servono" di need-core.ts.
@@ -274,4 +275,92 @@ export async function getSchoolCalendarPlannerContext(
     kidsWithoutProfileCount: kidIdsWithoutProfile.length,
     kidsTotalCount: kidIds.length,
   };
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// TRAMA — SCHOOL CALENDAR UX REFINEMENT (§9-11 "CHILD PROFILE — SCHOOL
+// CONTEXT" / "CREATE CHILD" / "EDIT CHILD PROFILE", 14/09/2026).
+//
+// Source of truth resta SEMPRE kid_school_profiles (§9: "NON duplicare
+// region/comune dentro kids", nessuna migration) — questa funzione legge lo
+// stato scolastico per il profilo/modifica bambino, uno per kid_id, più la
+// disponibilità REALE di un calendario pubblicato per l'anno scolastico
+// corrente (§11: "NON inventare availability... deve provenire dai dati
+// reali di school_calendars", §15: anno derivato da deriveCurrentAcademicYear,
+// mai chiesto al genitore).
+// ─────────────────────────────────────────────────────────────────────────
+
+export interface KidSchoolProfileSummary {
+  region: string;
+  comune: string | null;
+  // true SOLO se esiste un school_calendars pubblicato per questa regione E
+  // per l'anno scolastico corrente derivato (deriveCurrentAcademicYear) —
+  // mai un default ottimistico.
+  calendarAvailable: boolean;
+  // "2026/27" — solo metadata (§15), mai un valore che il genitore compila.
+  academicYearShort: string;
+}
+
+interface RawKidSchoolProfileFullRow {
+  kid_id: string;
+  region: string;
+  comune: string | null;
+}
+
+/**
+ * Stato scolastico per il Profilo/Modifica bambino — un `KidSchoolProfileSummary`
+ * per ogni kid_id CHE ha un profilo (§14: "se region non è impostata, nessuna
+ * configurazione scolastica attiva" — un kid_id assente dalla mappa
+ * risultante significa semplicemente "non ancora configurato", non un
+ * errore). Chiamata dalle pagine Profilo (LEGACY e NEXTGEN, stesso
+ * componente condiviso ProfileKidsSection/AddKidForm) — SOLO quando
+ * SCHOOL_CALENDAR_INTELLIGENCE_ENABLED risolve true per l'utente (verificato
+ * dal chiamante, stesso principio difensivo del resto di questo file).
+ */
+export async function getKidSchoolProfilesForParent(kidIds: string[]): Promise<Record<string, KidSchoolProfileSummary>> {
+  if (!isSupabaseConfigured || kidIds.length === 0) return {};
+
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return {};
+
+  const { data: profileRows, error } = await supabase
+    .from("kid_school_profiles")
+    .select("kid_id, region, comune")
+    .eq("parent_id", user.id)
+    .in("kid_id", kidIds);
+
+  if (error || !profileRows || profileRows.length === 0) return {};
+
+  const profiles = profileRows as RawKidSchoolProfileFullRow[];
+  const regions = Array.from(new Set(profiles.map((p) => p.region)));
+  const { stored: academicYearStored, short: academicYearShort } = deriveCurrentAcademicYear(new Date().toISOString().slice(0, 10));
+
+  // Un'unica query per TUTTE le regioni coinvolte (mai un round-trip per
+  // figlio, stesso principio "nessun N+1" già seguito sopra) — match esatto
+  // su school_year: i calendari Admin sono inseriti nello stesso formato
+  // lungo ("2026/2027", vedi placeholder SchoolCalendarAdminClient.tsx), che
+  // è esattamente il formato "stored" derivato qui.
+  const { data: calendarRows } = await supabase
+    .from("school_calendars")
+    .select("region")
+    .eq("country", "IT")
+    .eq("status", "published")
+    .eq("school_year", academicYearStored)
+    .in("region", regions);
+
+  const availableRegions = new Set(((calendarRows ?? []) as { region: string }[]).map((r) => r.region));
+
+  const result: Record<string, KidSchoolProfileSummary> = {};
+  for (const p of profiles) {
+    result[p.kid_id] = {
+      region: p.region,
+      comune: p.comune,
+      calendarAvailable: availableRegions.has(p.region),
+      academicYearShort,
+    };
+  }
+  return result;
 }

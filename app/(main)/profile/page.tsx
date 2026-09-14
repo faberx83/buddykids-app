@@ -8,6 +8,17 @@ import { getParentProfile } from "@/lib/data/profile";
 import { getUnreadRepliesCountForParent } from "@/lib/data/inquiries";
 import { getMyBookingsForParent } from "@/lib/data/my-bookings";
 import { getGroupsForUser } from "@/lib/data/groups";
+// TRAMA — SCHOOL CALENDAR UX REFINEMENT (§10-11, 14/09/2026): stesso
+// resolver/pattern già usato da app/nextgen/planner/page.tsx per
+// SCHOOL_CALENDAR_INTELLIGENCE_ENABLED — qui il Profilo LEGACY (questa
+// pagina) e NEXTGEN (app/nextgen/profile/page.tsx) condividono lo stesso
+// componente ProfileKidsSection/AddKidForm, quindi entrambe le pagine
+// risolvono il flag allo stesso modo prima di passare a valle.
+import { createClient } from "@/lib/supabase/server";
+import { isSupabaseConfigured } from "@/lib/supabase/env";
+import { resolveFeatureFlag } from "@/lib/feature-flags/resolve";
+import { generateCorrelationId } from "@/lib/telemetry/correlation";
+import { getKidSchoolProfilesForParent } from "@/lib/data/school-calendar";
 
 export default async function ProfilePage({
   searchParams,
@@ -32,6 +43,33 @@ export default async function ProfilePage({
   const { fullName, email, parentRole, avatarUrl } = profile;
   const autoOpenEdit = params.complete === "1";
   const autoOpenAddKid = params.addKid === "1";
+
+  // §30 "SCHOOL DARK RELEASE": campi Scuola invisibili per un utente normale
+  // — risolto qui, server-side, PRIMA di passare qualunque prop a
+  // ProfileKidsSection (nessun default "acceso" lato client).
+  let schoolCalendarEnabled = false;
+  let schoolProfiles: Awaited<ReturnType<typeof getKidSchoolProfilesForParent>> = {};
+  let residenceCity: string | null = null;
+  if (isSupabaseConfigured) {
+    const supabase = await createClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (user) {
+      const { data: profileRow } = await supabase.from("profiles").select("role, city").eq("id", user.id).single();
+      residenceCity = (profileRow?.city as string) ?? null;
+      schoolCalendarEnabled = await resolveFeatureFlag({
+        flagName: "SCHOOL_CALENDAR_INTELLIGENCE_ENABLED",
+        userId: user.id,
+        role: (profileRow?.role as string) ?? "parent",
+        tenant: "family",
+        correlationId: generateCorrelationId(),
+      });
+      if (schoolCalendarEnabled) {
+        schoolProfiles = await getKidSchoolProfilesForParent(kids.map((k) => k.id));
+      }
+    }
+  }
 
   // Una prenotazione annullata non è più "una prenotazione attiva" né uno
   // sconto realmente ottenuto — esclusa da entrambi i conteggi (stesso
@@ -66,7 +104,13 @@ export default async function ProfilePage({
         </div>
       </div>
 
-      <ProfileKidsSection initialKids={kids} autoOpenAddKid={autoOpenAddKid} />
+      <ProfileKidsSection
+        initialKids={kids}
+        autoOpenAddKid={autoOpenAddKid}
+        schoolCalendarEnabled={schoolCalendarEnabled}
+        schoolProfiles={schoolProfiles}
+        residenceCity={residenceCity}
+      />
 
       <div className="px-5 pt-2">
         <div className="mb-2 text-[11px] font-bold uppercase tracking-wide text-ink-3">

@@ -9,6 +9,11 @@ import HubCard from "@/components/nextgen/HubCard";
 import DecorativeIntroCard from "@/components/nextgen/DecorativeIntroCard";
 import type { ParentRole, Gender } from "@/lib/data/profile";
 import type { Kid } from "@/lib/types";
+// TRAMA — SCHOOL CALENDAR UX REFINEMENT (§10-11, 14/09/2026): "import type"
+// (stesso motivo di ParentRole/Gender sopra) — lib/data/school-calendar.ts
+// importa lib/supabase/server, un componente "use client" non può
+// attraversare quel confine, solo il TIPO serve qui.
+import type { KidSchoolProfileSummary } from "@/lib/data/school-calendar";
 
 // SPRINT 6 (NEXTGEN) — ultimo dei 6 sprint richiesti da Fabrizio ("redesign
 // Profilo away from legacy"): /profile era rimasto 100% LEGACY (header
@@ -51,6 +56,9 @@ export default function ProfileNextgenClient({
   unreadReplies,
   autoOpenEdit,
   autoOpenAddKid,
+  schoolCalendarEnabled,
+  schoolProfiles,
+  residenceCity,
 }: {
   fullName: string;
   email: string;
@@ -63,6 +71,9 @@ export default function ProfileNextgenClient({
   unreadReplies: number;
   autoOpenEdit: boolean;
   autoOpenAddKid: boolean;
+  schoolCalendarEnabled: boolean;
+  schoolProfiles: Record<string, KidSchoolProfileSummary>;
+  residenceCity: string | null;
 }) {
   const router = useRouter();
 
@@ -97,7 +108,14 @@ export default function ProfileNextgenClient({
         </DecorativeIntroCard>
       </div>
 
-      <ProfileKidsSection initialKids={kids} autoOpenAddKid={autoOpenAddKid} accent="violet" />
+      <ProfileKidsSection
+        initialKids={kids}
+        autoOpenAddKid={autoOpenAddKid}
+        accent="violet"
+        schoolCalendarEnabled={schoolCalendarEnabled}
+        schoolProfiles={schoolProfiles}
+        residenceCity={residenceCity}
+      />
 
       <div className="flex flex-col gap-2.5 px-5 pt-2">
         <div className="text-[11px] font-bold uppercase tracking-wide text-ink-3">Attività</div>
