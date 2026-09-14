@@ -36,6 +36,12 @@ const baseNavItems = [
   // iscritto): stessa lista flat, nessuna sotto-voce.
   { href: "/admin/center-leads", label: "Segnalazioni centri", icon: "ti-map-pin-plus" },
   { href: "/admin/feature-flags", label: "Feature flag", icon: "ti-flag-3" },
+  // TRAMA — SCHOOL CALENDAR INTELLIGENCE (14/09/2026, §B11) — dataset
+  // calendari/eventi scolastici (region/anno scolastico/eventi di
+  // chiusura), usato dal Planner SOLO se SCHOOL_CALENDAR_INTELLIGENCE_ENABLED
+  // risolve true per l'utente e solo per regioni con un calendario
+  // pubblicato.
+  { href: "/admin/school-calendar", label: "Calendari scolastici", icon: "ti-school" },
   // Codici invito Beta (migration_30_beta_invite_codes.sql, 27/08/2026) —
   // auto-iscrizione alla Controlled Beta Cohort via link ?beta=CODICE.
   { href: "/admin/beta-invites", label: "Inviti Beta", icon: "ti-user-plus" },
