@@ -266,6 +266,42 @@ export const FEATURE_CATALOG: FeatureCatalogEntry[] = [
     releaseEligible: true,
   },
 
+  // ── TRAMA — FINAL PRE-DEPLOY FIX (14/09/2026) — Global Action Progress
+  // Bar: capability UX trasversale, NON parte concettualmente della release
+  // "TRAMA — Planner Intelligence" (non deriva/mostra dati scolastici o di
+  // export, è un indicatore di attività puro) — vive nella propria release
+  // separata "ux-foundations" (vedi lib/releases/catalog.ts). Dark Release
+  // reale: codice raggiungibile (app/nextgen/layout.tsx risolve il flag
+  // server-side, stesso pattern di TRAMA_ONE_ENABLED), risolto a "off" per
+  // chiunque finché Fabrizio non attiva cohort:internal-preview. ──────
+  {
+    key: "global_action_progress",
+    label: "Global CTA Progress Bar (indicatore di attività NEXTGEN)",
+    area: "parent",
+    status: "INTERNAL_PREVIEW",
+    flagName: "GLOBAL_ACTION_PROGRESS_ENABLED",
+    description:
+      "Barra sottile brandizzata TRAMA che segnala una navigazione o una Server Action esplicitamente " +
+      "istrumentata in corso, senza mai mostrare una percentuale reale di completamento. Copertura " +
+      "automatica per ogni navigazione interna (Link/router.push, via usePathname); copertura esplicita " +
+      "solo sulle 4 CTA async dirette istrumentate (Salva scuola famiglia, Salva scuola per-bambino, Salva " +
+      "bambino, Riempi/Non-mi-serve nel Planner) — vedi PROGRESS COVERAGE nel report per la matrice completa " +
+      "e le superfici deliberatamente non coperte (booking/admin/promotion).",
+    sourceFiles: [
+      "lib/feature-flags/registry.ts",
+      "lib/releases/catalog.ts",
+      "components/GlobalActionProgress.tsx",
+      "app/nextgen/layout.tsx",
+      "app/nextgen/planner/page.tsx",
+    ],
+    note:
+      "Nessun dato, nessuna scrittura, nessun cambio di flusso: puramente un indicatore visivo. Non ancora " +
+      "verificato visivamente live in questa sessione — per questo resta dietro flag anche se il codice è " +
+      "completo, a differenza di school_calendar_intelligence/calendar_export che sono già stati verificati " +
+      "(staticamente) in una sessione precedente.",
+    releaseEligible: true,
+  },
+
   // ── TRAMA ONE (era "beta_gated") — MAPPING: la Controlled Beta Cohort è
   // oggi attivamente abilitata (override globale + coorte, vedi
   // MVP_PRODUCTION_TRUTH_V2.md §6), quindi lo stato corrente per il

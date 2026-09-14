@@ -64,6 +64,28 @@ export const RELEASE_CATALOG: ReleaseCatalogEntry[] = [
     notes:
       "Creata durante l'implementazione dell'infrastruttura Release/Promotion (10/09/2026) per avere un caso reale, non ipotetico, su cui esercitare l'Admin UI — incluso lo stato \"Rilascio parziale\" quando le 3 feature non sono allo stesso stadio. Calendar Export V1 (11/09/2026) e School Calendar Intelligence V1 (14/09/2026) sono le prime 2 capability reali di questa release: entrambe implementate, entrambe gated (default off, nessun override GLOBAL/PILOT), attivabili in ANTEPRIMA INTERNA indipendentemente l'una dall'altra solo da Fabrizio via Admin → Feature Flags → Release.",
   },
+  // TRAMA — FINAL PRE-DEPLOY FIX (14/09/2026, richiesta esplicita di
+  // Fabrizio: "non inserirla nella release Planner Intelligence se
+  // concettualmente non appartiene lì [...] usa eventualmente una piccola
+  // release/catalog entry: TRAMA — UX Foundations"). Release separata,
+  // dedicata a capability trasversali di esperienza (non dati/dominio Planner
+  // specifici) — oggi una sola voce, pensata per accoglierne altre future
+  // dello stesso tipo (indicatori, feedback, micro-interazioni) senza
+  // continuare a gonfiare "Planner Intelligence" con cose che non ne fanno
+  // concettualmente parte.
+  {
+    id: "ux-foundations",
+    label: "TRAMA — UX Foundations",
+    shortDescription: "Componenti di esperienza trasversali (feedback visivo, indicatori di attività) non legati a una singola area di dominio.",
+    targetAudience: ["parent"],
+    featureKeys: ["global_action_progress"],
+    knownLimitations: [
+      "global_action_progress (V1): copertura automatica solo per la navigazione interna e per le 4 CTA esplicitamente istrumentate in questa sessione (vedi PROGRESS COVERAGE nel report di implementazione) — booking/admin/promotion NON sono ancora coperte, deliberatamente (nessun layer condiviso affidabile individuato per quelle superfici senza modificare manualmente decine di componenti).",
+      "Non ancora verificata visivamente live: resta dietro flag (cohort:internal-preview) finché Fabrizio non la abilita e la controlla di persona su un dispositivo reale.",
+    ],
+    notes:
+      "Creata il 14/09/2026 per ospitare Global CTA Progress Bar separatamente da \"TRAMA — Planner Intelligence\" (che resta scope Planner/School Calendar/Calendar Export). Nessuna nuova tabella, nessun nuovo meccanismo di promotion: stessa infrastruttura Release Catalog/Feature Registry esistente.",
+  },
 ];
 
 export function getReleaseCatalog(): ReleaseCatalogEntry[] {

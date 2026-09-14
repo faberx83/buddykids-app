@@ -111,6 +111,30 @@ export const FEATURE_FLAG_REGISTRY = {
     defaultValue: false,
     allowedScopes: ["global", "environment", "user", "role", "cohort"],
   },
+  // TRAMA — FINAL PRE-DEPLOY FIX (14/09/2026, richiesta esplicita di
+  // Fabrizio dopo il report della sessione precedente: "la Global Action
+  // Progress Bar NON deve andare subito a tutti gli utenti [...] non è
+  // ancora stata verificata visivamente live"). Stesso identico pattern
+  // Dark Release già usato per SCHOOL_CALENDAR_INTELLIGENCE_ENABLED/
+  // CALENDAR_EXPORT_ENABLED: defaultValue false, NESSUN override globale/
+  // pilot scritto da questo programma — visibile SOLO quando Fabrizio
+  // attiva manualmente cohort:internal-preview da Admin → Feature Flags →
+  // Release. A differenza degli altri due flag di questa release, questo
+  // NON governa una capability di prodotto (dati/logica): governa
+  // solo la VISIBILITÀ di un componente puramente di feedback visivo
+  // (nessun dato, nessuna scrittura, nessun cambio di flusso) — vedi
+  // components/GlobalActionProgress.tsx.
+  GLOBAL_ACTION_PROGRESS_ENABLED: {
+    name: "GLOBAL_ACTION_PROGRESS_ENABLED",
+    description:
+      "Mostra la Global CTA Progress Bar (barra sottile brandizzata TRAMA che segnala navigazione/Server " +
+      "Action in corso) nell'area genitore NEXTGEN. Default false: la barra non è mai montata per un utente " +
+      "normale (nessuna differenza di comportamento/rendering rispetto a prima), visibile SOLO per la coorte " +
+      "cohort:internal-preview finché non è stata verificata visivamente live. Non governa alcun dato o " +
+      "flusso applicativo: puramente un indicatore di attività.",
+    defaultValue: false,
+    allowedScopes: ["global", "environment", "user", "role", "cohort"],
+  },
   CALENDAR_EXPORT_ENABLED: {
     name: "CALENDAR_EXPORT_ENABLED",
     // TRAMA — Calendar Export V1 (11/09/2026): implementato per davvero —

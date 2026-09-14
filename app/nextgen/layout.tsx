@@ -26,12 +26,20 @@ import { NotificationItem } from "@/lib/notifications/model";
 import { NextgenScrollActivityProvider, NextgenScrollArea } from "@/components/nextgen/NextgenScrollActivity";
 // TRAMA — SCHOOL CALENDAR UX REFINEMENT §17-29 "GLOBAL CTA PROGRESS
 // FEEDBACK" (14/09/2026): capability UX trasversale, NON legata a
-// School Calendar/Calendar Export/internal-preview (§29) — montata qui,
-// fuori da ogni altro provider, cosi' copre TUTTE le pagine genitore
-// NEXTGEN (incluse quelle dove Fabrizio sta testando le due capability in
-// anteprima interna). Non ancora estesa a LEGACY/Admin/Partner in questa
-// sessione (quei layout hanno già PageLoadIndicator per la sola
-// navigazione — vedi commento in GlobalActionProgress.tsx).
+// School Calendar/Calendar Export (§29) — montata qui, fuori da ogni altro
+// provider, così copre TUTTE le pagine genitore NEXTGEN. Non ancora estesa
+// a LEGACY/Admin/Partner in questa sessione (quei layout hanno già
+// PageLoadIndicator per la sola navigazione — vedi commento in
+// GlobalActionProgress.tsx).
+//
+// TRAMA — FINAL PRE-DEPLOY FIX (14/09/2026, richiesta esplicita di
+// Fabrizio): "montato" NON significa più "sempre attivo per chiunque" — il
+// Provider ora riceve `enabled`, risolto qui sotto via
+// GLOBAL_ACTION_PROGRESS_ENABLED (Dark Release, stesso pattern di
+// TRAMA_ONE_ENABLED poco più sotto in questo stesso file). Per un utente
+// normale (flag=false) il Provider resta montato per costruzione (children
+// devono sempre poter chiamare useGlobalActionProgress() senza errori) ma
+// diventa un no-op totale: nessuna barra, nessun timer.
 import { GlobalActionProgressProvider } from "@/components/GlobalActionProgress";
 
 // SPRINT 0 (NEXTGEN — V2 in parallelo a LEGACY): guscio minimo dell'area
@@ -110,6 +118,12 @@ export default async function NextgenLayout({ children }: { children: React.Reac
   // Senza Supabase configurato (demo) resta true, stesso comportamento
   // "esperienza genitore di default" già usato altrove in questo layout.
   let isParentUser = !isSupabaseConfigured;
+  // TRAMA — FINAL PRE-DEPLOY FIX (14/09/2026): default FALSE (fail-safe) sia
+  // con Supabase configurato sia senza — a differenza di isParentUser sopra,
+  // qui non c'è alcun motivo per cui la modalità demo debba risolvere true:
+  // resolveFeatureFlag() ritornerebbe comunque false senza client Supabase
+  // (vedi lib/feature-flags/resolve.ts), stesso risultato reso esplicito qui.
+  let globalActionProgressEnabled = false;
 
   if (isSupabaseConfigured) {
     const supabase = await createClient();
@@ -140,13 +154,28 @@ export default async function NextgenLayout({ children }: { children: React.Reac
       notifications = await getParentNotifications();
     }
 
-    const enabled = await resolveFeatureFlag({
-      flagName: "TRAMA_ONE_ENABLED",
-      userId: user.id,
-      role: realRole,
-      tenant: "family",
-      correlationId: generateCorrelationId(),
-    });
+    // TRAMA — FINAL PRE-DEPLOY FIX (14/09/2026): risolti IN PARALLELO via
+    // Promise.all, non in sequenza — stesso identico fix di performance già
+    // applicato in app/nextgen/planner/page.tsx (commit a38a49e, "in
+    // generale è rallentata l'app") per evitare di reintrodurre lo stesso
+    // problema aggiungendo qui un secondo flag risolto uno dopo l'altro.
+    const [enabled, globalActionProgressResolved] = await Promise.all([
+      resolveFeatureFlag({
+        flagName: "TRAMA_ONE_ENABLED",
+        userId: user.id,
+        role: realRole,
+        tenant: "family",
+        correlationId: generateCorrelationId(),
+      }),
+      resolveFeatureFlag({
+        flagName: "GLOBAL_ACTION_PROGRESS_ENABLED",
+        userId: user.id,
+        role: realRole,
+        tenant: "family",
+        correlationId: generateCorrelationId(),
+      }),
+    ]);
+    globalActionProgressEnabled = globalActionProgressResolved;
     if (enabled && realRole === "parent") {
       onboardingProgress = await getWalkthroughProgress(user.id, "parent_beta_onboarding");
       // Sequenza richiesta: il carousel di benvenuto precede il tour
@@ -163,7 +192,7 @@ export default async function NextgenLayout({ children }: { children: React.Reac
 
   return (
     <PhoneShell>
-      <GlobalActionProgressProvider>
+      <GlobalActionProgressProvider enabled={globalActionProgressEnabled}>
       <NextgenToastProvider>
         {/* TRAMA BETA v1.1.1 (FINAL FUNCTIONAL + UI CONSISTENCY FIXES,
             punto 7) — Provider condiviso: bell/chat sotto sono FRATELLI del

@@ -115,7 +115,18 @@ export default async function NextgenPlannerPage() {
     // comportamento — stesso risultato, calcolato in parallelo invece che
     // in coda (§B13 resta rispettato: nessuno stato condiviso tra i due,
     // solo la Promise stessa è parallela).
-    const [calendarExportDetail, schoolCalendarDetail] = await Promise.all([
+    // TRAMA — FINAL PRE-DEPLOY FIX (14/09/2026, §PROGRESS VISIBILITY): terza
+    // risoluzione aggiunta allo STESSO Promise.all (nessun round-trip extra
+    // in sequenza — stesso principio del fix performance sopra). Il Planner
+    // non ha bisogno del suo booleano `enabled` (quello governa solo se
+    // <GlobalActionProgressProvider> monta la barra, risolto separatamente
+    // in app/nextgen/layout.tsx) — serve SOLO il `matchedScope` per decidere
+    // se includerlo nel calcolo del badge qui sotto, cosicché Fabrizio non
+    // veda MAI due badge "ANTEPRIMA INTERNA" sulla stessa pagina quando sia
+    // School Calendar/Calendar Export SIA la Progress Bar sono in anteprima
+    // interna insieme: resta un solo <InternalPreviewBadge>, il cui `visible`
+    // ora tiene conto di tutte e 3 le capability gated di questa pagina.
+    const [calendarExportDetail, schoolCalendarDetail, globalActionProgressDetail] = await Promise.all([
       resolveFeatureFlagVisibility({
         flagName: "CALENDAR_EXPORT_ENABLED",
         userId: user?.id ?? null,
@@ -125,6 +136,13 @@ export default async function NextgenPlannerPage() {
       }),
       resolveFeatureFlagVisibility({
         flagName: "SCHOOL_CALENDAR_INTELLIGENCE_ENABLED",
+        userId: user?.id ?? null,
+        role,
+        tenant: "family",
+        correlationId: generateCorrelationId(),
+      }),
+      resolveFeatureFlagVisibility({
+        flagName: "GLOBAL_ACTION_PROGRESS_ENABLED",
         userId: user?.id ?? null,
         role,
         tenant: "family",
@@ -141,12 +159,16 @@ export default async function NextgenPlannerPage() {
     }
 
     // Un solo "corner ribbon" ANTEPRIMA INTERNA per la pagina, calcolato
-    // sull'insieme di TUTTE le capability gated risolte qui (oggi 2) — vince
-    // se ALMENO UNA è stata risolta specificamente via cohort:
+    // sull'insieme di TUTTE le capability gated risolte qui (ora 3, prima 2)
+    // — vince se ALMENO UNA è stata risolta specificamente via cohort:
     // "internal-preview" (mai per il solo fatto che l'utente appartiene alla
     // coorte, §7 — la stessa garanzia di prima si estende naturalmente a un
-    // insieme di detail invece di uno solo).
-    calendarExportBadgeVisible = anyResolvedViaInternalPreview([calendarExportDetail, schoolCalendarDetail]);
+    // insieme di detail invece di uno solo). §PROGRESS VISIBILITY: includere
+    // globalActionProgressDetail qui NON crea un secondo badge — resta lo
+    // stesso identico <InternalPreviewBadge> montato una sola volta più
+    // sotto, solo la condizione che lo rende visibile ora copre anche la
+    // Progress Bar.
+    calendarExportBadgeVisible = anyResolvedViaInternalPreview([calendarExportDetail, schoolCalendarDetail, globalActionProgressDetail]);
   }
 
   const seasonYear = await getSeasonYear();

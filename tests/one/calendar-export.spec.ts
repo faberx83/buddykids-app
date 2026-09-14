@@ -77,11 +77,14 @@ test.describe("TRAMA — Calendar Export V1: gating (1-5) [no browser]", () => {
     expect(source).toContain('flagName: "CALENDAR_EXPORT_ENABLED"');
     expect(source).toContain("resolveFeatureFlagVisibility");
     // TRAMA — SCHOOL CALENDAR INTELLIGENCE (14/09/2026): il badge ANTEPRIMA
-    // INTERNA è ora calcolato su ENTRAMBE le capability gated della pagina
-    // (§B12 — un solo "corner ribbon" condiviso, vince se almeno una delle
-    // due è risolta via internal-preview) — non più solo calendarExportDetail
-    // da solo. Verificato che includa comunque calendarExportDetail.
-    expect(source).toContain("anyResolvedViaInternalPreview([calendarExportDetail, schoolCalendarDetail])");
+    // INTERNA è ora calcolato su TUTTE le capability gated della pagina
+    // (§B12 — un solo "corner ribbon" condiviso, vince se almeno una è
+    // risolta via internal-preview) — non più solo calendarExportDetail da
+    // solo. TRAMA — FINAL PRE-DEPLOY FIX (14/09/2026, §PROGRESS VISIBILITY):
+    // esteso da 2 a 3 capability con globalActionProgressDetail, stesso
+    // principio "un solo badge per surface" — verificato che includa ancora
+    // calendarExportDetail (nessuna regressione sul comportamento originale).
+    expect(source).toContain("anyResolvedViaInternalPreview([calendarExportDetail, schoolCalendarDetail, globalActionProgressDetail])");
     const gateIndex = source.indexOf("if (calendarExportEnabled) {");
     const fetchIndex = source.indexOf("getPlannerCalendarItemsForParent()");
     expect(gateIndex).toBeGreaterThan(-1);
@@ -96,16 +99,19 @@ test.describe("TRAMA — Calendar Export V1: gating (1-5) [no browser]", () => {
     const source = readSource("../../app/nextgen/planner/page.tsx");
     expect(source).toContain("calendarExportEnabled = calendarExportDetail.enabled;");
     expect(source).toContain('flagName: "SCHOOL_CALENDAR_INTELLIGENCE_ENABLED"');
-    // I due resolveFeatureFlagVisibility restano due chiamate separate, non
-    // un'unica risoluzione condivisa che confonderebbe i due flag — dal fix
+    // Le resolveFeatureFlagVisibility restano chiamate separate, non
+    // un'unica risoluzione condivisa che confonderebbe i flag — dal fix
     // performance del 14/09/2026 (segnalato da Fabrizio: "in generale è
     // rallentata l'app") sono awaited in parallelo via Promise.all invece
-    // che in sequenza, quindi il testo sorgente non contiene più due volte
-    // "await resolveFeatureFlagVisibility({" letterale: si conta invece la
-    // chiamata alla funzione stessa, indipendentemente da dove sta l'await.
+    // che in sequenza, quindi il testo sorgente non conta più letteralmente
+    // "await resolveFeatureFlagVisibility({": si conta invece la chiamata
+    // alla funzione stessa, indipendentemente da dove sta l'await. TRAMA —
+    // FINAL PRE-DEPLOY FIX (14/09/2026): salite da 2 a 3 con l'aggiunta di
+    // GLOBAL_ACTION_PROGRESS_ENABLED nello STESSO Promise.all (§PROGRESS
+    // VISIBILITY) — nessun round-trip extra in sequenza reintrodotto.
     const occurrences = source.split("resolveFeatureFlagVisibility({").length - 1;
-    expect(occurrences).toBe(2);
-    // Le due Promise restano awaited insieme (nessun round-trip extra in
+    expect(occurrences).toBe(3);
+    // Le tre Promise restano awaited insieme (nessun round-trip extra in
     // sequenza reintrodotto per errore).
     expect(source).toContain("await Promise.all([");
   });

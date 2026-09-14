@@ -27,27 +27,61 @@ import { usePathname } from "next/navigation";
 // Nessuna nuova dipendenza (NProgress esplicitamente escluso dalla
 // richiesta, §23) — solo React state + CSS (vedi app/globals.css,
 // .trama-progress-fill).
+//
+// TRAMA — FINAL PRE-DEPLOY FIX (14/09/2026, richiesta esplicita di
+// Fabrizio: "la barra NON deve andare subito a tutti gli utenti [...] non è
+// ancora stata verificata visivamente live"). Prop `enabled` aggiunta —
+// risolta SERVER-SIDE da app/nextgen/layout.tsx tramite
+// GLOBAL_ACTION_PROGRESS_ENABLED (stesso pattern Dark Release di
+// SCHOOL_CALENDAR_INTELLIGENCE_ENABLED/CALENDAR_EXPORT_ENABLED), MAI letta
+// qui dentro. Quando `enabled` è false (default per QUALUNQUE utente
+// normale): start()/complete() restano no-op sicuri (stesso identico
+// comportamento del provider "assente" usato da LEGACY — nessuna doppia
+// implementazione, un solo ramo di codice), e <GlobalActionProgressBar>
+// non viene mai montata — zero differenza di rendering/comportamento
+// rispetto a prima di questa capability, per costruzione.
 
 interface GlobalActionProgressContextValue {
   start: () => void;
   complete: () => void;
+  // TRAMA — FINAL PRE-DEPLOY FIX (14/09/2026, §PROGRESS COVERAGE punto B
+  // "submit/Server Action: copertura tramite pattern condiviso quando
+  // possibile"). Questo repository non ha un Button/Link/form-submit
+  // condiviso da cui agganciarsi automaticamente (verificato via grep prima
+  // di scrivere questo helper: zero useTransition, zero componente
+  // components/ui/Button.tsx) — un layer del genere richiederebbe
+  // riscrivere manualmente decine di call site esistenti, esattamente ciò
+  // che questa sessione ha istruzione di NON fare. `run()` è invece un
+  // pattern OPT-IN: una singola riga (`await run(() => someServerAction())`)
+  // che qualunque CTA futura può adottare individualmente al posto del
+  // try/start/finally/complete scritto a mano — riduce il rischio di
+  // dimenticare complete() in un finally, ma non wira nulla da solo.
+  run: <T>(fn: () => Promise<T>) => Promise<T>;
 }
 
-const noop: GlobalActionProgressContextValue = { start: () => {}, complete: () => {} };
+const noopRun = async <T,>(fn: () => Promise<T>): Promise<T> => fn();
+const noop: GlobalActionProgressContextValue = { start: () => {}, complete: () => {}, run: noopRun };
 const GlobalActionProgressContext = createContext<GlobalActionProgressContextValue>(noop);
 
 /**
  * Da chiamare intorno a una CTA che avvia una vera operazione asincrona
- * (Server Action, submit, fetch) — es.:
+ * (Server Action, submit, fetch) — due stili equivalenti:
  *   const { start, complete } = useGlobalActionProgress();
  *   async function handleSave() {
  *     start();
  *     try { await someServerAction(); } finally { complete(); }
  *   }
+ * oppure, più compatto (stesso comportamento, un solo punto in cui
+ * dimenticare start/complete non è possibile):
+ *   const { run } = useGlobalActionProgress();
+ *   async function handleSave() {
+ *     await run(() => someServerAction());
+ *   }
  * Sicuro da chiamare anche FUORI da un GlobalActionProgressProvider (es.
  * pagine LEGACY, dove questo provider non è ancora montato, §29 "questa
- * sessione lo introduce solo sotto /nextgen"): start/complete diventano
- * no-op, mai un errore.
+ * sessione lo introduce solo sotto /nextgen"): start/complete/run diventano
+ * no-op (run esegue comunque la funzione, solo senza segnalare progresso),
+ * mai un errore.
  */
 export function useGlobalActionProgress() {
   return useContext(GlobalActionProgressContext);
@@ -64,7 +98,16 @@ const MIN_VISIBLE_MS = 350;
 // §19: fade-out finale.
 const FADE_MS = 200;
 
-export function GlobalActionProgressProvider({ children }: { children: React.ReactNode }) {
+export function GlobalActionProgressProvider({
+  children,
+  // Default false — MAI true "per errore" se un futuro call site dimentica
+  // di passare la prop: stesso principio fail-safe del resto dell'infra
+  // Dark Release di questo repository (un flag non risolto è sempre "off").
+  enabled = false,
+}: {
+  children: React.ReactNode;
+  enabled?: boolean;
+}) {
   // §26 "CONCURRENT ACTIONS": contatore, non un booleano — la barra si
   // nasconde SOLO quando l'ultima azione pending è completata.
   const pendingCountRef = useRef(0);
@@ -98,6 +141,10 @@ export function GlobalActionProgressProvider({ children }: { children: React.Rea
   }, [clearProgressTimers]);
 
   const start = useCallback(() => {
+    // §PROGRESS FLAG: utente per cui GLOBAL_ACTION_PROGRESS_ENABLED risolve
+    // false — no-op totale, stesso identico comportamento di "provider
+    // assente" (nessun timer creato, nessuno stato aggiornato).
+    if (!enabled) return;
     pendingCountRef.current += 1;
     if (pendingCountRef.current > 1) return; // un'azione è già pending, nessun secondo timer
     if (finishTimerRef.current) {
@@ -109,9 +156,10 @@ export function GlobalActionProgressProvider({ children }: { children: React.Rea
       showTimerRef.current = null;
       if (pendingCountRef.current > 0) beginVisible();
     }, SHOW_DELAY_MS);
-  }, [beginVisible]);
+  }, [beginVisible, enabled]);
 
   const complete = useCallback(() => {
+    if (!enabled) return; // stesso motivo di start() sopra — no-op simmetrico
     pendingCountRef.current = Math.max(0, pendingCountRef.current - 1); // mai negativo
     if (pendingCountRef.current > 0) return; // un'altra azione resta pending (§26)
 
@@ -138,7 +186,23 @@ export function GlobalActionProgressProvider({ children }: { children: React.Rea
         shownAtRef.current = null;
       }, FADE_MS);
     }, wait);
-  }, [clearProgressTimers]);
+  }, [clearProgressTimers, enabled]);
+
+  // §PROGRESS COVERAGE punto B: wrapper opt-in, vedi commento sull'interfaccia
+  // sopra. Nessuna dipendenza da `start`/`complete` diversa da quella già
+  // stabile (entrambe useCallback), quindi `run` è a sua volta stabile fra i
+  // render.
+  const run = useCallback(
+    async <T,>(fn: () => Promise<T>): Promise<T> => {
+      start();
+      try {
+        return await fn();
+      } finally {
+        complete();
+      }
+    },
+    [start, complete]
+  );
 
   // Navigazione (§24): stesso principio "pathname-change" già in
   // produzione in PageLoadIndicator — copre AUTOMATICAMENTE ogni Link/
@@ -171,9 +235,16 @@ export function GlobalActionProgressProvider({ children }: { children: React.Rea
   }, [clearProgressTimers]);
 
   return (
-    <GlobalActionProgressContext.Provider value={{ start, complete }}>
+    <GlobalActionProgressContext.Provider value={{ start, complete, run }}>
       {children}
-      <GlobalActionProgressBar phase={phase} percent={percent} />
+      {/* §PROGRESS FLAG: la barra non viene mai montata per un utente per cui
+          GLOBAL_ACTION_PROGRESS_ENABLED risolve false — non un "display:none"
+          CSS, il componente non emette nulla nel DOM (stesso principio già
+          usato da SchoolCalendarOnboardingCallout/PlannerCalendarExportCard
+          per i loro flag). `phase` resta comunque sempre "idle" in quel caso
+          perché start()/complete() sono no-op quando enabled=false — questa
+          condizione è quindi ridondante ma esplicita per chiarezza. */}
+      {enabled && <GlobalActionProgressBar phase={phase} percent={percent} />}
     </GlobalActionProgressContext.Provider>
   );
 }
