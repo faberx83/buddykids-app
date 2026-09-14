@@ -76,11 +76,30 @@ test.describe("TRAMA — Calendar Export V1: gating (1-5) [no browser]", () => {
     const source = readSource("../../app/nextgen/planner/page.tsx");
     expect(source).toContain('flagName: "CALENDAR_EXPORT_ENABLED"');
     expect(source).toContain("resolveFeatureFlagVisibility");
-    expect(source).toContain("anyResolvedViaInternalPreview([calendarExportDetail])");
+    // TRAMA — SCHOOL CALENDAR INTELLIGENCE (14/09/2026): il badge ANTEPRIMA
+    // INTERNA è ora calcolato su ENTRAMBE le capability gated della pagina
+    // (§B12 — un solo "corner ribbon" condiviso, vince se almeno una delle
+    // due è risolta via internal-preview) — non più solo calendarExportDetail
+    // da solo. Verificato che includa comunque calendarExportDetail.
+    expect(source).toContain("anyResolvedViaInternalPreview([calendarExportDetail, schoolCalendarDetail])");
     const gateIndex = source.indexOf("if (calendarExportEnabled) {");
     const fetchIndex = source.indexOf("getPlannerCalendarItemsForParent()");
     expect(gateIndex).toBeGreaterThan(-1);
     expect(fetchIndex).toBeGreaterThan(gateIndex);
+  });
+
+  // TRAMA — SCHOOL CALENDAR INTELLIGENCE (14/09/2026, §B13): verifica che
+  // l'aggiunta del secondo flag gated sulla stessa pagina non abbia toccato
+  // in alcun modo la risoluzione/i default di Calendar Export — stesso
+  // flagName, stesso resolver, stesso gate "if (calendarExportEnabled)".
+  test("B13: l'aggiunta di SCHOOL_CALENDAR_INTELLIGENCE_ENABLED non modifica la risoluzione di CALENDAR_EXPORT_ENABLED", () => {
+    const source = readSource("../../app/nextgen/planner/page.tsx");
+    expect(source).toContain("calendarExportEnabled = calendarExportDetail.enabled;");
+    expect(source).toContain('flagName: "SCHOOL_CALENDAR_INTELLIGENCE_ENABLED"');
+    // I due resolveFeatureFlagVisibility restano due chiamate separate, non
+    // un'unica risoluzione condivisa che confonderebbe i due flag.
+    const occurrences = source.split("await resolveFeatureFlagVisibility({").length - 1;
+    expect(occurrences).toBe(2);
   });
 
   test("gating: PlannerCalendarExportCard non renderizza nulla se enabled è false (nessuna CTA per utente normale)", () => {

@@ -69,6 +69,15 @@ import Link from "next/link";
 import InternalPreviewBadge from "@/components/InternalPreviewBadge";
 import PlannerCalendarExportCard from "@/components/nextgen/PlannerCalendarExportCard";
 import type { PlannerCalendarItemForIcs } from "@/lib/ics";
+// TRAMA — SCHOOL CALENDAR INTELLIGENCE (14/09/2026, §B9/§B10). Stesso
+// principio "il componente stesso decide se non renderizzare nulla" di
+// PlannerCalendarExportCard — SchoolCalendarOnboardingCallout/SchoolWeekBadge
+// non fanno mai una propria verifica del flag, si fidano di
+// schoolCalendarEnabled già risolto server-side in page.tsx.
+import SchoolCalendarOnboardingCallout from "@/components/nextgen/SchoolCalendarOnboardingCallout";
+import SchoolWeekBadge from "@/components/nextgen/SchoolWeekBadge";
+import { SCHOOL_WEEK_NEED_LABEL } from "@/lib/school-calendar/need-core";
+import type { SchoolCalendarPlannerContext } from "@/lib/data/school-calendar";
 
 // Segnalazione 24/08/2026 (Fabrizio): "la descrizione della sezione è
 // sbagliata" — la card introduttiva sotto l'header aveva solo DUE varianti
@@ -130,6 +139,9 @@ export default function PlannerClient({
   calendarExportEnabled,
   calendarExportBadgeVisible,
   calendarExportItems,
+  schoolCalendarEnabled,
+  schoolCalendarContext,
+  residenceCity,
 }: {
   planner: PlannerData;
   kids: Kid[];
@@ -173,6 +185,14 @@ export default function PlannerClient({
   calendarExportEnabled: boolean;
   calendarExportBadgeVisible: boolean;
   calendarExportItems: PlannerCalendarItemForIcs[];
+  // TRAMA — SCHOOL CALENDAR INTELLIGENCE (14/09/2026): già risolto/fetchato
+  // server-side in page.tsx con lo stesso principio difensivo di Calendar
+  // Export sopra — schoolCalendarBadgeVisible non è un prop separato: usa
+  // lo stesso calendarExportBadgeVisible già combinato in page.tsx (un solo
+  // "corner ribbon" per la pagina, vedi commento lì).
+  schoolCalendarEnabled: boolean;
+  schoolCalendarContext: SchoolCalendarPlannerContext;
+  residenceCity: string | null;
 }) {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -797,6 +817,17 @@ export default function PlannerClient({
             solo nella Timeline completa, consultazione secondaria sotto
             "Vedi tutte le settimane") — l'unica azione diretta è la CTA
             dominante subito sotto, riferita alla settimana prioritaria. */}
+        {/* TRAMA — SCHOOL CALENDAR INTELLIGENCE (14/09/2026, §B10). Callout
+            leggera di prima configurazione — ritorna null internamente se
+            schoolCalendarEnabled è false o se almeno un figlio ha già un
+            profilo scolastico (§B14: zero rumore per chi ha già configurato
+            o per chi non vede affatto la funzionalità). */}
+        <SchoolCalendarOnboardingCallout
+          enabled={schoolCalendarEnabled}
+          hasAnySchoolProfile={schoolCalendarContext.hasAnySchoolProfile}
+          residenceCity={residenceCity}
+        />
+
         {upcomingWeeks.length > 0 ? (
           <div className="mb-3">
             <div className="mb-2.5 font-poppins text-sm font-bold text-ink">Prossime settimane da completare</div>
@@ -813,7 +844,13 @@ export default function PlannerClient({
                     <div className="whitespace-nowrap text-[12.5px] font-bold text-ink">Settimana {w.index}</div>
                     <div className="whitespace-nowrap text-[10.5px] text-ink-2">{w.dateRange}</div>
                   </div>
-                  <div className="min-w-0 flex-1 text-[12px] font-medium text-ink-2">{w.statusLabel}</div>
+                  <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+                    <span className="text-[12px] font-medium text-ink-2">{w.statusLabel}</span>
+                    {/* TRAMA — SCHOOL CALENDAR INTELLIGENCE (§B9): contesto
+                        scuola, mai il posto della riga stessa — la riga apre
+                        sempre lo stesso Dettaglio Settimana di prima. */}
+                    <SchoolWeekBadge need={schoolCalendarContext.needByWeekIndex[w.index]} />
+                  </div>
                   <i className="ti ti-chevron-right flex-shrink-0 text-base text-ink-3" />
                 </Link>
               ))}
@@ -1244,6 +1281,33 @@ export default function PlannerClient({
                                 stessa. Il segnale resta comunque visibile
                                 nel box "Sovrapposizioni da controllare"
                                 sopra. */}
+                            {/* TRAMA — SCHOOL CALENDAR INTELLIGENCE (14/09/2026,
+                                §B9). Riga compatta (48-56px, §5): qui SOLO
+                                un'icona con title, mai l'etichetta completa
+                                (quella vive nella lista "Prossime settimane
+                                da completare" sopra, dove c'è spazio) — cosi'
+                                anche le settimane "closed_covered"/
+                                "closed_not_needed" (escluse per costruzione
+                                da quella lista, che mostra solo
+                                !covered && !dismissed) restano visibili
+                                come contesto qui, senza rompere l'altezza
+                                compatta della riga. */}
+                            {(() => {
+                              const schoolNeed = schoolCalendarContext.needByWeekIndex[w.index];
+                              if (!schoolNeed || schoolNeed === "school_open" || schoolNeed === "no_school_context") return null;
+                              const iconClass =
+                                schoolNeed === "closed_to_organize"
+                                  ? "text-[#9a6b00]"
+                                  : schoolNeed === "closed_covered"
+                                    ? "text-green"
+                                    : "text-ink-3";
+                              return (
+                                <i
+                                  className={`ti ti-school flex-shrink-0 text-base ${iconClass}`}
+                                  title={SCHOOL_WEEK_NEED_LABEL[schoolNeed]}
+                                />
+                              );
+                            })()}
                             {hasOverlap && !w.dismissed && (
                               <i className="ti ti-alert-triangle flex-shrink-0 text-base text-[#9a6b00]" />
                             )}

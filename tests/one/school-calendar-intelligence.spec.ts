@@ -10,6 +10,9 @@ import {
   type SchoolCalendarEventInput,
   type SeasonWeekNeedInput,
 } from "../../lib/school-calendar/need-core";
+import { evaluateFlag, evaluateFlagDetailed } from "../../lib/feature-flags/evaluate";
+import { isResolvedViaInternalPreview } from "../../lib/feature-flags/internal-preview";
+import { INTERNAL_PREVIEW_COHORT_KEY } from "../../lib/releases/visibility";
 
 // TRAMA — SCHOOL CALENDAR INTELLIGENCE (12-14/09/2026, Parte B della richiesta
 // "RELEASE CONTROL HARDENING + NEXT PRODUCT EVOLUTION"). Unit test puri per
@@ -201,5 +204,79 @@ test.describe("School Calendar Intelligence — need-core [no browser]", () => {
     expect(aggregateFamilySchoolWeekNeed(["closed_not_needed", "closed_covered"])).toBe("closed_covered");
     expect(aggregateFamilySchoolWeekNeed(["school_open"])).toBe("school_open");
     expect(aggregateFamilySchoolWeekNeed([])).toBe("no_school_context");
+  });
+});
+
+test.describe("School Calendar Intelligence — gating (§B15 1-5, 17) [no browser]", () => {
+  // 1. flag OFF -> Planner invariato: nessun dato scuola viene mai fetchato
+  // né passato a valle (stesso principio "zero side effect" di Calendar
+  // Export — verificato leggendo il sorgente, l'I/O reale richiede Supabase
+  // live).
+  test("1. flag OFF -> nessun fetch di getSchoolCalendarPlannerContext, contesto vuoto passato a PlannerClient", () => {
+    const source = readSource("../../app/nextgen/planner/page.tsx");
+    const gateIndex = source.indexOf("if (schoolCalendarEnabled) {");
+    const fetchIndex = source.indexOf("getSchoolCalendarPlannerContext(");
+    expect(gateIndex).toBeGreaterThan(-1);
+    // Il fetch compare due volte: import + chiamata reale, entrambe DOPO il
+    // gate — verifichiamo che la chiamata reale (non l'import) sia dentro
+    // l'if, cercando l'occorrenza più vicina dopo il gate.
+    const callIndex = source.indexOf("getSchoolCalendarPlannerContext(", gateIndex);
+    expect(callIndex).toBeGreaterThan(gateIndex);
+    expect(fetchIndex).toBeGreaterThan(-1);
+  });
+
+  // 2/3. internal-preview -> visibile; utente normale -> non visibile —
+  // già coperto in modo esaustivo (evaluateFlag/evaluateFlagDetailed) dai
+  // test generici di release-catalog.spec.ts (la stessa identica logica di
+  // risoluzione governa OGNI flag, incluso questo) — qui verifichiamo SOLO
+  // che SCHOOL_CALENDAR_INTELLIGENCE_ENABLED sia effettivamente registrato
+  // con gli stessi scope consentiti di CALENDAR_EXPORT_ENABLED (stesso
+  // meccanismo, nessuna eccezione).
+  test("2/3. SCHOOL_CALENDAR_INTELLIGENCE_ENABLED ammette lo scope cohort (internal-preview/pilot) e global, stesso meccanismo di ogni altro flag gated", () => {
+    const context = { userId: "internal-1", cohortKeys: [INTERNAL_PREVIEW_COHORT_KEY] };
+    const overrides = [{ scopeType: "cohort" as const, scopeValue: INTERNAL_PREVIEW_COHORT_KEY, enabled: true, expiresAt: null }];
+    const detail = evaluateFlagDetailed("SCHOOL_CALENDAR_INTELLIGENCE_ENABLED", context, overrides);
+    expect(detail.enabled).toBe(true);
+    expect(isResolvedViaInternalPreview(detail)).toBe(true);
+
+    const normalUser = evaluateFlag("SCHOOL_CALENDAR_INTELLIGENCE_ENABLED", { userId: "normal", cohortKeys: [] }, overrides);
+    expect(normalUser).toBe(false);
+  });
+
+  // 4. badge ANTEPRIMA INTERNA corretto — condiviso con Calendar Export
+  // (un solo ribbon per pagina, §B12), verificato che la pagina lo calcoli
+  // includendo ENTRAMBI i detail (già verificato anche in
+  // calendar-export.spec.ts, ripetuto qui dal punto di vista di School
+  // Calendar per completezza dello scenario #4).
+  test("4. badge ANTEPRIMA INTERNA include la risoluzione di SCHOOL_CALENDAR_INTELLIGENCE_ENABLED", () => {
+    const source = readSource("../../app/nextgen/planner/page.tsx");
+    const badgeLine = source.indexOf("calendarExportBadgeVisible = anyResolvedViaInternalPreview(");
+    expect(badgeLine).toBeGreaterThan(-1);
+    expect(source.slice(badgeLine, badgeLine + 120)).toContain("schoolCalendarDetail");
+  });
+
+  // 17. Calendar Export continua a funzionare — verificato che il file
+  // page.tsx contenga ANCORA tutto il gating di Calendar Export invariato
+  // (già ri-testato per intero in calendar-export.spec.ts; qui solo un
+  // controllo di smoke aggiuntivo dal punto di vista School Calendar).
+  test("17. Calendar Export continua a essere risolto/gated correttamente dopo l'aggiunta di School Calendar Intelligence", () => {
+    const source = readSource("../../app/nextgen/planner/page.tsx");
+    expect(source).toContain('flagName: "CALENDAR_EXPORT_ENABLED"');
+    expect(source).toContain("calendarExportItems = await getPlannerCalendarItemsForParent();");
+  });
+
+  // 18/19. eligibility/no promozione automatica — coperti in modo
+  // esaustivo da tests/one/release-catalog.spec.ts (A5.3, A5.12 aggiornati
+  // + il test "B13" dedicato) — non duplicati qui, referenziati per
+  // completezza dell'elenco §B15.
+  test("18/19. releaseEligible=true non implica alcun override: nessuna scrittura avviene leggendo/valutando il catalogo (verifica di tipo, nessun I/O in questo file)", () => {
+    // need-core.ts/school-calendar.ts (I/O) non contengono alcuna funzione
+    // che scrive in feature_flag_overrides — quella responsabilità vive
+    // ESCLUSIVAMENTE in app/actions/releases.ts (già verificato dedicato in
+    // release-catalog.spec.ts).
+    const needCoreSource = readSource("../../lib/school-calendar/need-core.ts");
+    const dataSource = readSource("../../lib/data/school-calendar.ts");
+    expect(needCoreSource).not.toContain("feature_flag_overrides");
+    expect(dataSource).not.toContain("feature_flag_overrides");
   });
 });

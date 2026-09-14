@@ -38,6 +38,11 @@ import { resolveFeatureFlagVisibility } from "@/lib/feature-flags/resolve";
 import { anyResolvedViaInternalPreview } from "@/lib/feature-flags/internal-preview";
 import { generateCorrelationId } from "@/lib/telemetry/correlation";
 import { getPlannerCalendarItemsForParent, type PlannerCalendarItem } from "@/lib/planner/calendar-items";
+// TRAMA — SCHOOL CALENDAR INTELLIGENCE (14/09/2026, §B12 "Dark Release").
+// Stesso identico pattern di CALENDAR_EXPORT_ENABLED appena sopra —
+// risoluzione server-side, badge SOLO se risolto via internal-preview,
+// fetch dei dati SOLO se il flag è davvero abilitato per questo utente.
+import { getSchoolCalendarPlannerContext, type SchoolCalendarPlannerContext } from "@/lib/data/school-calendar";
 
 // TRAMA BETA v1.1.1 — ORGANIZATION COMPLETENESS: stessa tecnica di
 // addDaysIso duplicata altrove nel repo (lib/nextgen/week-roles.ts,
@@ -78,6 +83,12 @@ export default async function NextgenPlannerPage() {
   let calendarExportEnabled = false;
   let calendarExportBadgeVisible = false;
   let calendarExportItems: PlannerCalendarItem[] = [];
+  // TRAMA — SCHOOL CALENDAR INTELLIGENCE (14/09/2026, §B12). Stessi 3
+  // default sicuri di Calendar Export: OFF finché non risolto, nessun dato
+  // fetchato per un utente a cui il flag risolve false.
+  let schoolCalendarEnabled = false;
+  let schoolCalendarContext: SchoolCalendarPlannerContext = { hasAnySchoolProfile: false, needByWeekIndex: {}, kidIdsWithoutProfile: [] };
+  let residenceCity: string | null = null;
   if (isSupabaseConfigured) {
     const supabase = await createClient();
     const {
@@ -85,8 +96,9 @@ export default async function NextgenPlannerPage() {
     } = await supabase.auth.getUser();
     let role: string | null = null;
     if (user) {
-      const { data: profileRow } = await supabase.from("profiles").select("role").eq("id", user.id).single();
+      const { data: profileRow } = await supabase.from("profiles").select("role, city").eq("id", user.id).single();
       role = (profileRow?.role as string) ?? "parent";
+      residenceCity = (profileRow?.city as string) ?? null;
     }
     const calendarExportDetail = await resolveFeatureFlagVisibility({
       flagName: "CALENDAR_EXPORT_ENABLED",
@@ -96,20 +108,34 @@ export default async function NextgenPlannerPage() {
       correlationId: generateCorrelationId(),
     });
     calendarExportEnabled = calendarExportDetail.enabled;
-    // Il badge "ANTEPRIMA INTERNA" compare SOLO se QUESTA risoluzione è
-    // avvenuta tramite lo scope cohort:"internal-preview" — non per ogni
-    // utente che appartiene alla coorte (§7: "il badge deve comparire
-    // perché QUESTA capability è risolta via internal-preview
-    // specificamente, non semplicemente perché Fabrizio appartiene alla
-    // coorte"). Un domani con override GLOBAL attivo, un utente normale
-    // vedrebbe la CTA ma MAI questo badge (matchedScope sarebbe "global").
-    calendarExportBadgeVisible = anyResolvedViaInternalPreview([calendarExportDetail]);
     // Fetch dei dati SOLO se il flag è davvero abilitato per questo utente:
     // un utente normale (flag off) non riceve mai questi dati come prop,
     // nemmeno nascosti via CSS — §7: "nessuna rotta/azione alternativa".
     if (calendarExportEnabled) {
       calendarExportItems = await getPlannerCalendarItemsForParent();
     }
+
+    // TRAMA — SCHOOL CALENDAR INTELLIGENCE (§B12, stesso resolver/pattern —
+    // CALENDAR_EXPORT_ENABLED e SCHOOL_CALENDAR_INTELLIGENCE_ENABLED restano
+    // due flag INDIPENDENTI, §B13: "l'implementazione di School Calendar non
+    // deve MAI toccare gli override runtime di Calendar Export" — ognuno è
+    // risolto qui separatamente, nessuna condivisione di stato fra i due).
+    const schoolCalendarDetail = await resolveFeatureFlagVisibility({
+      flagName: "SCHOOL_CALENDAR_INTELLIGENCE_ENABLED",
+      userId: user?.id ?? null,
+      role,
+      tenant: "family",
+      correlationId: generateCorrelationId(),
+    });
+    schoolCalendarEnabled = schoolCalendarDetail.enabled;
+
+    // Un solo "corner ribbon" ANTEPRIMA INTERNA per la pagina, calcolato
+    // sull'insieme di TUTTE le capability gated risolte qui (oggi 2) — vince
+    // se ALMENO UNA è stata risolta specificamente via cohort:
+    // "internal-preview" (mai per il solo fatto che l'utente appartiene alla
+    // coorte, §7 — la stessa garanzia di prima si estende naturalmente a un
+    // insieme di detail invece di uno solo).
+    calendarExportBadgeVisible = anyResolvedViaInternalPreview([calendarExportDetail, schoolCalendarDetail]);
   }
 
   const seasonYear = await getSeasonYear();
@@ -162,6 +188,19 @@ export default async function NextgenPlannerPage() {
     )
   );
   const coordinationBookedDays = await getKidsBookedDaysForWeek(weekdayDatesUnion);
+
+  // TRAMA — SCHOOL CALENDAR INTELLIGENCE (§B12): fetch SOLO se il flag è
+  // davvero abilitato per questo utente (stesso principio di
+  // calendarExportItems sopra) — planner.weeks/kids sono già disponibili
+  // qui (nessuna query duplicata, §B2/§B11: "non duplicare query
+  // esistenti"). getSchoolCalendarPlannerContext degrada sempre a un
+  // contesto vuoto/sicuro su qualunque errore, non lancia mai un'eccezione.
+  if (schoolCalendarEnabled) {
+    schoolCalendarContext = await getSchoolCalendarPlannerContext(
+      planner.weeks.map((w) => ({ index: w.index, startDate: w.startDate, endDate: w.endDate, covered: w.covered, dismissed: w.dismissed })),
+      kids.map((k) => k.id)
+    );
+  }
 
   const overlaps = computeKidOverlaps(bookings);
   const budget = computeBudgetSummary(bookings, activities);
@@ -220,6 +259,14 @@ export default async function NextgenPlannerPage() {
       calendarExportEnabled={calendarExportEnabled}
       calendarExportBadgeVisible={calendarExportBadgeVisible}
       calendarExportItems={calendarExportItems}
+      // TRAMA — SCHOOL CALENDAR INTELLIGENCE (14/09/2026): stesso principio
+      // difensivo di Calendar Export — schoolCalendarContext è già "vuoto"
+      // per costruzione se il flag è off, PlannerClient/i componenti a
+      // valle non mostrano nulla in quel caso indipendentemente dal
+      // contenuto.
+      schoolCalendarEnabled={schoolCalendarEnabled}
+      schoolCalendarContext={schoolCalendarContext}
+      residenceCity={residenceCity}
     />
   );
 }
