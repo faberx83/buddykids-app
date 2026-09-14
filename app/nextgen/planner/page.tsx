@@ -87,7 +87,14 @@ export default async function NextgenPlannerPage() {
   // default sicuri di Calendar Export: OFF finché non risolto, nessun dato
   // fetchato per un utente a cui il flag risolve false.
   let schoolCalendarEnabled = false;
-  let schoolCalendarContext: SchoolCalendarPlannerContext = { hasAnySchoolProfile: false, needByWeekIndex: {}, kidIdsWithoutProfile: [] };
+  let schoolCalendarContext: SchoolCalendarPlannerContext = {
+    hasAnySchoolProfile: false,
+    needByWeekIndex: {},
+    kidIdsWithoutProfile: [],
+    partialClosureNoteByWeekIndex: {},
+    kidsWithoutProfileCount: 0,
+    kidsTotalCount: 0,
+  };
   let residenceCity: string | null = null;
   if (isSupabaseConfigured) {
     const supabase = await createClient();

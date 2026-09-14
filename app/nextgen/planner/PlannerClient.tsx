@@ -537,14 +537,6 @@ export default function PlannerClient({
 
         <PlannerModeTabs mode={mode} onChange={setMode} />
 
-        {/* TRAMA — Calendar Export V1 · ANTEPRIMA INTERNA (11/09/2026, §6
-            della spec: "Inserisci la feature nel Planner, non in Home").
-            Visibile in TUTTE le modalità (non solo Organizzazione) invece
-            di essere legata a un singolo tab — coerente con la sua natura
-            trasversale ("i TUOI impegni", non specifica a una vista.
-            Ritorna null internamente se calendarExportEnabled è false. */}
-        <PlannerCalendarExportCard enabled={calendarExportEnabled} items={calendarExportItems} />
-
         {mode === "mappa" && <PlannerMapView pins={mapPins} addresses={addresses} />}
 
         {mode === "gruppi" && <PlannerGroupsView communities={communities} groups={groups} />}
@@ -817,17 +809,6 @@ export default function PlannerClient({
             solo nella Timeline completa, consultazione secondaria sotto
             "Vedi tutte le settimane") — l'unica azione diretta è la CTA
             dominante subito sotto, riferita alla settimana prioritaria. */}
-        {/* TRAMA — SCHOOL CALENDAR INTELLIGENCE (14/09/2026, §B10). Callout
-            leggera di prima configurazione — ritorna null internamente se
-            schoolCalendarEnabled è false o se almeno un figlio ha già un
-            profilo scolastico (§B14: zero rumore per chi ha già configurato
-            o per chi non vede affatto la funzionalità). */}
-        <SchoolCalendarOnboardingCallout
-          enabled={schoolCalendarEnabled}
-          hasAnySchoolProfile={schoolCalendarContext.hasAnySchoolProfile}
-          residenceCity={residenceCity}
-        />
-
         {upcomingWeeks.length > 0 ? (
           <div className="mb-3">
             <div className="mb-2.5 font-poppins text-sm font-bold text-ink">Prossime settimane da completare</div>
@@ -849,7 +830,10 @@ export default function PlannerClient({
                     {/* TRAMA — SCHOOL CALENDAR INTELLIGENCE (§B9): contesto
                         scuola, mai il posto della riga stessa — la riga apre
                         sempre lo stesso Dettaglio Settimana di prima. */}
-                    <SchoolWeekBadge need={schoolCalendarContext.needByWeekIndex[w.index]} />
+                    <SchoolWeekBadge
+                      need={schoolCalendarContext.needByWeekIndex[w.index]}
+                      partialClosureNote={schoolCalendarContext.partialClosureNoteByWeekIndex[w.index]}
+                    />
                   </div>
                   <i className="ti ti-chevron-right flex-shrink-0 text-base text-ink-3" />
                 </Link>
@@ -913,6 +897,20 @@ export default function PlannerClient({
           {timelineOpen ? "Nascondi elenco completo" : "Vedi tutte le settimane"}
           <i className={`ti ${timelineOpen ? "ti-chevron-up" : "ti-chevron-down"} ml-1 text-[13px]`} />
         </button>
+
+        {/* TRAMA — SCHOOL CALENDAR UX REFINEMENT (§3.D, 14/09/2026): posizione
+            ESATTA — dopo "Vedi tutte le settimane", prima di "Calendario e
+            Chi fa cosa?" (mai prima delle settimane/della CTA "Riempi
+            settimana"/sopra gli alert). Ritorna null internamente se
+            schoolCalendarEnabled è false o se tutti i figli hanno già un
+            profilo scolastico (§13: zero rumore per chi ha già configurato
+            tutto, o per chi non vede affatto la funzionalità). */}
+        <SchoolCalendarOnboardingCallout
+          enabled={schoolCalendarEnabled}
+          kidsWithoutProfileCount={schoolCalendarContext.kidsWithoutProfileCount}
+          kidsTotalCount={schoolCalendarContext.kidsTotalCount}
+          residenceCity={residenceCity}
+        />
 
         {/* Copertura per bambino — "Sofia 7/8 settimane" (mockup condiviso
             da Fabrizio): solo se c'è più di un bambino, altrimenti è un
@@ -1041,6 +1039,15 @@ export default function PlannerClient({
                 // prop dopo il mount (non solo al valore iniziale).
                 initialWeekStartDate={weekOverride}
               />
+              {/* TRAMA — SCHOOL CALENDAR UX REFINEMENT (§7-8, 14/09/2026):
+                  Calendar Export non è più una card prominente in cima al
+                  Planner ("NON deve avere la stessa importanza visuale di
+                  'Riempi settimana'") — ora è una utility in fondo a questo
+                  blocco, dopo le informazioni operative (Mese/Settimana/Chi
+                  fa cosa/Condivisione piano sopra). §31: gating/analytics/
+                  generatore ICS invariati, solo la posizione/markup UI
+                  cambiano — vedi PlannerCalendarExportCard.tsx. */}
+              <PlannerCalendarExportCard enabled={calendarExportEnabled} items={calendarExportItems} />
             </div>
           )}
         </div>
@@ -1295,11 +1302,16 @@ export default function PlannerClient({
                             {(() => {
                               const schoolNeed = schoolCalendarContext.needByWeekIndex[w.index];
                               if (!schoolNeed || schoolNeed === "school_open" || schoolNeed === "no_school_context") return null;
+                              // TRAMA — SCHOOL CALENDAR UX REFINEMENT (§5,
+                              // 14/09/2026): stessi colori esatti del badge
+                              // "Prossime settimane" (SchoolWeekBadge.tsx) —
+                              // trama-coral per "da organizzare", trama-green
+                              // per "già coperta", neutro per "non serve".
                               const iconClass =
                                 schoolNeed === "closed_to_organize"
-                                  ? "text-[#9a6b00]"
+                                  ? "text-trama-coral"
                                   : schoolNeed === "closed_covered"
-                                    ? "text-green"
+                                    ? "text-trama-green"
                                     : "text-ink-3";
                               return (
                                 <i
