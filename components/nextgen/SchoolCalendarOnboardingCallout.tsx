@@ -85,7 +85,7 @@ export default function SchoolCalendarOnboardingCallout({
         <button
           type="button"
           onClick={() => setOpen(true)}
-          className="flex items-center justify-center gap-1.5 rounded-lg bg-trama-violet py-3 text-xs font-bold text-white transition-opacity active:opacity-80"
+          className="flex w-full items-center justify-center gap-1.5 rounded-lg bg-trama-violet px-4 py-3 text-center text-xs font-bold text-white transition-opacity active:opacity-80"
         >
           <i className="ti ti-school text-sm" />
           Imposta calendario scolastico
