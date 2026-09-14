@@ -11,6 +11,12 @@ import { setSchoolContextForKidAction } from "@/app/actions/school-calendar";
 import { ITALIAN_REGIONS } from "@/lib/school-calendar/regions";
 import type { KidSchoolProfileSummary } from "@/lib/data/school-calendar";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
+// TRAMA — SCHOOL CALENDAR UX REFINEMENT §17-28 "GLOBAL CTA PROGRESS
+// FEEDBACK" (14/09/2026). Sicuro da chiamare anche quando questo
+// componente è montato sotto LEGACY (app/(main)/profile/page.tsx, dove
+// GlobalActionProgressProvider non è ancora montato, §29): start/complete
+// diventano no-op senza errore, vedi GlobalActionProgress.tsx.
+import { useGlobalActionProgress } from "@/components/GlobalActionProgress";
 
 // Duplicata volutamente da lib/data/kids.ts#ageFromBirthDate (stesso
 // principio già usato per KIDS_AVATARS_BUCKET in app/actions/kids.ts):
@@ -54,6 +60,7 @@ export default function ProfileKidsSection({
   residenceCity?: string | null;
 }) {
   const router = useRouter();
+  const { start: startProgress, complete: completeProgress } = useGlobalActionProgress();
   const accentText = accent === "violet" ? "text-trama-violet" : "text-sky";
   const accentActive = accent === "violet" ? "border-trama-violet bg-trama-violet text-white" : "border-sky bg-sky text-white";
   const accentBg = accent === "violet" ? "bg-trama-violet" : "bg-sky";
@@ -88,7 +95,9 @@ export default function ProfileKidsSection({
     }
     setSavingSchool(true);
     setSchoolError(null);
+    startProgress();
     const result = await setSchoolContextForKidAction(kidId, schoolRegionDraft, schoolComuneDraft);
+    completeProgress();
     setSavingSchool(false);
     if (result.error) {
       setSchoolError(result.error);

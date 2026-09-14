@@ -26,6 +26,12 @@
 import { useState } from "react";
 import { setSchoolContextForFamilyAction } from "@/app/actions/school-calendar";
 import { ITALIAN_REGIONS } from "@/lib/school-calendar/regions";
+// TRAMA — SCHOOL CALENDAR UX REFINEMENT §17-28 "GLOBAL CTA PROGRESS
+// FEEDBACK" (14/09/2026): questo "Salva" è esattamente il tipo di CTA che
+// §21 vuole coperta (Server Action reale, non istantanea — è anche la
+// stessa azione che aveva mostrato un timeout percepito a Fabrizio in
+// anteprima interna, §21 "configurazione scuola").
+import { useGlobalActionProgress } from "@/components/GlobalActionProgress";
 
 function missingChildrenCopy(count: number): string {
   return count === 1 ? "Manca il contesto scolastico per 1 bambino." : `Manca il contesto scolastico per ${count} bambini.`;
@@ -56,6 +62,7 @@ export default function SchoolCalendarOnboardingCallout({
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [done, setDone] = useState(false);
+  const { start, complete } = useGlobalActionProgress();
 
   if (!enabled || kidsTotalCount === 0 || kidsWithoutProfileCount === 0) return null;
 
@@ -69,14 +76,19 @@ export default function SchoolCalendarOnboardingCallout({
     }
     setSaving(true);
     setError(null);
-    const res = await setSchoolContextForFamilyAction(region, comune);
-    setSaving(false);
-    if (res.error) {
-      setError(res.error);
-      return;
+    start();
+    try {
+      const res = await setSchoolContextForFamilyAction(region, comune);
+      if (res.error) {
+        setError(res.error);
+        return;
+      }
+      setDone(true);
+      onConfigured?.();
+    } finally {
+      complete();
+      setSaving(false);
     }
-    setDone(true);
-    onConfigured?.();
   }
 
   if (done) {

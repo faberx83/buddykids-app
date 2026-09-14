@@ -78,6 +78,11 @@ import SchoolCalendarOnboardingCallout from "@/components/nextgen/SchoolCalendar
 import SchoolWeekBadge from "@/components/nextgen/SchoolWeekBadge";
 import { SCHOOL_WEEK_NEED_LABEL } from "@/lib/school-calendar/need-core";
 import type { SchoolCalendarPlannerContext } from "@/lib/data/school-calendar";
+// TRAMA — SCHOOL CALENDAR UX REFINEMENT §17-28 "GLOBAL CTA PROGRESS
+// FEEDBACK" (14/09/2026): "Riempi/Non ti serve" (§21 "azioni Planner") —
+// il toggle ha già un aggiornamento ottimistico locale, la barra dà
+// comunque un segnale coerente per il round-trip reale verso il server.
+import { useGlobalActionProgress } from "@/components/GlobalActionProgress";
 
 // Segnalazione 24/08/2026 (Fabrizio): "la descrizione della sezione è
 // sbagliata" — la card introduttiva sotto l'header aveva solo DUE varianti
@@ -196,6 +201,7 @@ export default function PlannerClient({
 }) {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const { start: startProgress, complete: completeProgress } = useGlobalActionProgress();
   // SPRINT CORRETTIVO — deep-link da /nextgen/planner/logistica ("Condivisione
   // piano" apre direttamente la modalita' Calendario, dove quella feature
   // vive davvero, invece di lasciare l'utente in Organizzazione a cercarla).
@@ -290,7 +296,9 @@ export default function PlannerClient({
     const nextDismissed = !week.dismissed;
     setDismissedOverrides((cur) => ({ ...cur, [week.startDate]: nextDismissed }));
     setSavingWeek(week.startDate);
+    startProgress();
     await toggleWeekDismissedAction(week.startDate, nextDismissed);
+    completeProgress();
     setSavingWeek(null);
     // Riallinea priorityIndex/eventuali altri valori calcolati server-side
     // (page.tsx) con la nuova esclusione/ripristino — stesso identificatore

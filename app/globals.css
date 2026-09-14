@@ -124,6 +124,40 @@ body {
   animation: toastIn 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
+/* TRAMA — SCHOOL CALENDAR UX REFINEMENT §19/§27 "GLOBAL CTA PROGRESS
+   FEEDBACK — colori/animazione + reduced motion" (14/09/2026). Vedi
+   components/GlobalActionProgress.tsx per il markup/la logica di
+   start/stop. Gradient SOLO colori TRAMA (violet -> coral -> orange ->
+   green -> violet, §19), in movimento lento mentre l'azione è pending —
+   MAI con prefers-reduced-motion attivo (§27: "niente gradient scrolling
+   continuo... usa un fill semplice"), dove diventa un riempimento viola
+   pieno senza animazione. */
+.trama-progress-fill {
+  background-image: linear-gradient(90deg, #6f63c5, #f6685e, #f6a623, #2dba8c, #6f63c5);
+  background-size: 250% 100%;
+  background-position: 0% 0%;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .trama-progress-fill {
+    animation: tramaProgressGradient 1.6s linear infinite;
+  }
+}
+@keyframes tramaProgressGradient {
+  from {
+    background-position: 0% 0%;
+  }
+  to {
+    background-position: -250% 0%;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .trama-progress-fill {
+    background-image: none;
+    background-color: #6f63c5;
+    animation: none;
+  }
+}
+
 /* REBRAND TRAMA Sprint 2 — intro animata di Login (components/TramaLoginIntro.tsx).
    Timing da "TRAMA - Dev Handoff.dc.html" sez. 9: i fili (trama-logo-mark.png)
    si intrecciano in 0.65s, poi wordmark/tagline/CTA entrano in fade-up

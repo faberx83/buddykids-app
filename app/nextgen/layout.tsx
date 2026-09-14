@@ -24,6 +24,15 @@ import { NotificationItem } from "@/lib/notifications/model";
 // contenitore scrollabile condivisi qui, così ogni pagina genitore NEXTGEN
 // eredita il fix senza bisogno di toccarle una per una.
 import { NextgenScrollActivityProvider, NextgenScrollArea } from "@/components/nextgen/NextgenScrollActivity";
+// TRAMA — SCHOOL CALENDAR UX REFINEMENT §17-29 "GLOBAL CTA PROGRESS
+// FEEDBACK" (14/09/2026): capability UX trasversale, NON legata a
+// School Calendar/Calendar Export/internal-preview (§29) — montata qui,
+// fuori da ogni altro provider, cosi' copre TUTTE le pagine genitore
+// NEXTGEN (incluse quelle dove Fabrizio sta testando le due capability in
+// anteprima interna). Non ancora estesa a LEGACY/Admin/Partner in questa
+// sessione (quei layout hanno già PageLoadIndicator per la sola
+// navigazione — vedi commento in GlobalActionProgress.tsx).
+import { GlobalActionProgressProvider } from "@/components/GlobalActionProgress";
 
 // SPRINT 0 (NEXTGEN — V2 in parallelo a LEGACY): guscio minimo dell'area
 // genitore NEXTGEN. Stesso guard di autenticazione di app/(main)/layout.tsx
@@ -154,6 +163,7 @@ export default async function NextgenLayout({ children }: { children: React.Reac
 
   return (
     <PhoneShell>
+      <GlobalActionProgressProvider>
       <NextgenToastProvider>
         {/* TRAMA BETA v1.1.1 (FINAL FUNCTIONAL + UI CONSISTENCY FIXES,
             punto 7) — Provider condiviso: bell/chat sotto sono FRATELLI del
@@ -207,6 +217,7 @@ export default async function NextgenLayout({ children }: { children: React.Reac
           {isParentUser && <NotificationCenter initialNotifications={notifications} />}
         </NextgenScrollActivityProvider>
       </NextgenToastProvider>
+      </GlobalActionProgressProvider>
       {/* Istanza DEDICATA a NEXTGEN: appName diverso ("TRAMA" vs quello di
           LEGACY, vedi lib/tenant.ts) -> chiave di dismiss separata in
           localStorage, e nessun routeExclude (è già scoped a /nextgen dal

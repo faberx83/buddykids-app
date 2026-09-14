@@ -5,6 +5,10 @@ import { addKidAction } from "@/app/actions/kids";
 import { isParentalDeclarationGateEnabledAction } from "@/app/actions/legal";
 import { setSchoolContextForKidAction } from "@/app/actions/school-calendar";
 import { ITALIAN_REGIONS } from "@/lib/school-calendar/regions";
+// TRAMA — SCHOOL CALENDAR UX REFINEMENT §17-28 "GLOBAL CTA PROGRESS
+// FEEDBACK" (14/09/2026). No-op fuori da un GlobalActionProgressProvider
+// (§29), sicuro anche per l'uso LEGACY di questo form.
+import { useGlobalActionProgress } from "@/components/GlobalActionProgress";
 import { Kid, KidGender } from "@/lib/types";
 import { categories as interestOptions } from "@/lib/mock-data";
 
@@ -36,6 +40,7 @@ export default function AddKidForm({
   // bambino prosegue comunque normalmente (mai un blocco).
   const [schoolRegion, setSchoolRegion] = useState("");
   const [schoolComune, setSchoolComune] = useState("");
+  const { start: startProgress, complete: completeProgress } = useGlobalActionProgress();
 
   // PRE-MICRO-PILOT CLOSURE GATE (task #570, 25/08/2026) — visibile SOLO se
   // LEGAL_TERMS_GATE risolve true per l'utente corrente (mai in produzione
@@ -62,23 +67,27 @@ export default function AddKidForm({
       return;
     }
     setSaving(true);
-    const result = await addKidAction(name, birthDate, gender || undefined, interests, declarationAccepted);
-    if (result.error || !result.kid) {
+    startProgress();
+    try {
+      const result = await addKidAction(name, birthDate, gender || undefined, interests, declarationAccepted);
+      if (result.error || !result.kid) {
+        setError(result.error || "Errore nel salvataggio");
+        return;
+      }
+      // §10/§14: la scuola è opzionale e SEPARATA dalla creazione del
+      // bambino — se Regione non è stata compilata, nessuna seconda
+      // chiamata. Se fallisce (raro: rete/RLS), il bambino resta comunque
+      // creato correttamente (§10: "Save child continua normalmente") —
+      // non blocchiamo né mostriamo un errore che farebbe sembrare
+      // fallita un'operazione in realtà riuscita.
+      if (schoolCalendarEnabled && schoolRegion) {
+        await setSchoolContextForKidAction(result.kid.id, schoolRegion, schoolComune);
+      }
+      onAdded(result.kid);
+    } finally {
+      completeProgress();
       setSaving(false);
-      setError(result.error || "Errore nel salvataggio");
-      return;
     }
-    // §10/§14: la scuola è opzionale e SEPARATA dalla creazione del
-    // bambino — se Regione non è stata compilata, nessuna seconda
-    // chiamata. Se fallisce (raro: rete/RLS), il bambino resta comunque
-    // creato correttamente (§10: "Save child continua normalmente") — non
-    // blocchiamo né mostriamo un errore che farebbe sembrare fallita
-    // un'operazione in realtà riuscita.
-    if (schoolCalendarEnabled && schoolRegion) {
-      await setSchoolContextForKidAction(result.kid.id, schoolRegion, schoolComune);
-    }
-    setSaving(false);
-    onAdded(result.kid);
   }
 
   return (
