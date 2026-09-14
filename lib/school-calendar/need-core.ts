@@ -123,7 +123,7 @@ function addDaysIso(iso: string, days: number): string {
 // qualunque intervallo iso-ordinabile, non solo lun-ven, ma nel Planner è
 // sempre chiamata con week.startDate/week.endDate (già lun-ven per
 // costruzione — getSeasonWeekRanges).
-function datesInRange(startDate: string, endDate: string): string[] {
+export function datesInRange(startDate: string, endDate: string): string[] {
   const out: string[] = [];
   let cur = startDate;
   let guard = 0;
@@ -296,4 +296,79 @@ export function aggregateFamilySchoolWeekNeed(perKidNeeds: SchoolWeekNeed[]): Sc
     if (perKidNeeds.includes(candidate)) return candidate;
   }
   return "no_school_context";
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// TRAMA — SCHOOL CALENDAR UX REFINEMENT (§6 "PARTIAL SCHOOL CLOSURES",
+// 14/09/2026). Estensione PURAMENTE ADDITIVA: isWeekSchoolClosed/
+// computeSchoolWeekNeed sopra restano l'UNICA fonte del segnale principale
+// (closed_to_organize/closed_covered/closed_not_needed/school_open) — 1-4
+// giorni chiusi su 5 NON cambiano quel segnale (resta "school_open" per
+// costruzione, vedi isWeekSchoolClosed). Quello che segue produce SOLO un
+// secondo dato, facoltativo e informativo ("contesto", mai uno stato): un
+// ponte/festività isolata torna visibile invece di sparire silenziosamente,
+// ma senza mai simulare un "da organizzare" che il prodotto ha
+// deliberatamente deciso di non generare per un singolo giorno (vedi
+// commento sopra isWeekSchoolClosed). computeWeekStatus (planner-insights.ts)
+// e Activity/Coordination Coverage non sono mai letti né modificati qui.
+// ─────────────────────────────────────────────────────────────────────────
+
+// Un singolo giorno feriale chiuso, con la chiusura che lo copre (per poter
+// mostrare "mer 2" o, in futuro, il motivo/tipo se utile altrove).
+export interface PartialClosureDay {
+  date: string; // ISO, sempre lun-ven per costruzione (week.startDate/endDate)
+  kind: SchoolClosureKind;
+  label: string;
+}
+
+export interface WeekClosureDetail {
+  closedWeekdaysCount: number;
+  totalWeekdays: number;
+  closedWeekdays: PartialClosureDay[];
+}
+
+/**
+ * Dettaglio giorno-per-giorno delle chiusure che ricadono in una settimana —
+ * stesso identico calcolo "quanti/giorni chiusi" già usato internamente da
+ * isWeekSchoolClosed, qui esposto per intero (non solo il conteggio) cosi'
+ * la UI può mostrare QUALI giorni e con quale etichetta.
+ */
+export function computeWeekClosureDetail(week: SeasonWeekNeedInput, closures: SchoolClosureInterval[]): WeekClosureDetail {
+  const days = datesInRange(week.startDate, week.endDate);
+  const closedWeekdays: PartialClosureDay[] = [];
+  for (const d of days) {
+    const match = closures.find((c) => d >= c.startDate && d <= c.endDate);
+    if (match) closedWeekdays.push({ date: d, kind: match.kind, label: match.label });
+  }
+  return { closedWeekdaysCount: closedWeekdays.length, totalWeekdays: days.length, closedWeekdays };
+}
+
+const WEEKDAY_ABBR_IT = ["dom", "lun", "mar", "mer", "gio", "ven", "sab"]; // Date.getUTCDay(): 0=domenica..6=sabato
+
+function italianWeekdayAbbrev(iso: string): string {
+  const d = new Date(`${iso}T00:00:00Z`);
+  return WEEKDAY_ABBR_IT[d.getUTCDay()];
+}
+
+function dayOfMonth(iso: string): number {
+  return Number(iso.slice(8, 10));
+}
+
+/**
+ * Testo informativo §6: "1 giorno: 'Scuola chiusa mer 2' — 2-4 giorni: '{n}
+ * giorni senza scuola'". Ritorna null quando non c'è nulla da segnalare (0
+ * giorni chiusi) O quando la settimana è GIÀ interamente chiusa (5/5): in
+ * quel caso il segnale primario (SchoolWeekBadge/SCHOOL_WEEK_NEED_LABEL) è
+ * già sufficiente — questo testo non deve mai duplicarlo. Sabato/domenica
+ * non possono mai comparire qui: week.startDate/endDate sono sempre lun-ven
+ * per costruzione (getSeasonWeekRanges), quindi datesInRange non li include.
+ */
+export function describePartialClosure(detail: WeekClosureDetail): string | null {
+  const { closedWeekdaysCount, totalWeekdays, closedWeekdays } = detail;
+  if (closedWeekdaysCount === 0 || closedWeekdaysCount >= totalWeekdays) return null;
+  if (closedWeekdaysCount === 1) {
+    const day = closedWeekdays[0];
+    return `Scuola chiusa ${italianWeekdayAbbrev(day.date)} ${dayOfMonth(day.date)}`;
+  }
+  return `${closedWeekdaysCount} giorni senza scuola`;
 }

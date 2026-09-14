@@ -20,6 +20,8 @@ import {
   buildClosureIntervals,
   computeSchoolWeekNeed,
   aggregateFamilySchoolWeekNeed,
+  computeWeekClosureDetail,
+  describePartialClosure,
   type SchoolCalendarEventInput,
   type SchoolCalendarEventType,
   type SchoolCalendarOverrideInput,
@@ -51,12 +53,30 @@ export interface SchoolCalendarPlannerContext {
   // mirato "Configura anche [nome]" in una fase successiva; oggi usato solo
   // per decidere hasAnySchoolProfile/il callout generico.
   kidIdsWithoutProfile: string[];
+  // TRAMA — SCHOOL CALENDAR UX REFINEMENT (§6 "PARTIAL SCHOOL CLOSURES",
+  // 14/09/2026): testo informativo ("Scuola chiusa mer 2" / "3 giorni senza
+  // scuola") per una settimana che needByWeekIndex[index] già classifica
+  // "school_open" (1-4 giorni su 5 chiusi non bastano a far scattare il
+  // segnale principale, vedi need-core.ts#isWeekSchoolClosed) — MAI presente
+  // insieme a un need diverso da "school_open"/"no_school_context" (il
+  // segnale principale copre già quel caso, nessuna duplicazione).
+  partialClosureNoteByWeekIndex: Record<number, string>;
+  // Numero di figli SENZA profilo scolastico — usato dal callout Planner
+  // (§13 multi-child: "1+ configurati ma non tutti" -> "Completa il
+  // calendario scolastico" con il conteggio, "0 configurati" -> copy
+  // generica). Semplice derivato di kidIdsWithoutProfile.length, esposto qui
+  // per evitare che ogni chiamante debba ricalcolarlo.
+  kidsWithoutProfileCount: number;
+  kidsTotalCount: number;
 }
 
 const EMPTY_CONTEXT: SchoolCalendarPlannerContext = {
   hasAnySchoolProfile: false,
   needByWeekIndex: {},
   kidIdsWithoutProfile: [],
+  partialClosureNoteByWeekIndex: {},
+  kidsWithoutProfileCount: 0,
+  kidsTotalCount: 0,
 };
 
 interface RawKidSchoolProfileRow {
@@ -109,14 +129,14 @@ export async function getSchoolCalendarPlannerContext(
   kidIds: string[]
 ): Promise<SchoolCalendarPlannerContext> {
   if (!isSupabaseConfigured || kidIds.length === 0) {
-    return { ...EMPTY_CONTEXT, kidIdsWithoutProfile: [...kidIds] };
+    return { ...EMPTY_CONTEXT, kidIdsWithoutProfile: [...kidIds], kidsWithoutProfileCount: kidIds.length, kidsTotalCount: kidIds.length };
   }
 
   const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  if (!user) return { ...EMPTY_CONTEXT, kidIdsWithoutProfile: [...kidIds] };
+  if (!user) return { ...EMPTY_CONTEXT, kidIdsWithoutProfile: [...kidIds], kidsWithoutProfileCount: kidIds.length, kidsTotalCount: kidIds.length };
 
   const { data: profileRows, error: profileError } = await supabase
     .from("kid_school_profiles")
@@ -129,7 +149,7 @@ export async function getSchoolCalendarPlannerContext(
     // invariato (fallback identico a "Supabase non configurato"): non è un
     // errore, è lo stato reale di una famiglia che non ha ancora configurato
     // nulla.
-    return { ...EMPTY_CONTEXT, kidIdsWithoutProfile: [...kidIds] };
+    return { ...EMPTY_CONTEXT, kidIdsWithoutProfile: [...kidIds], kidsWithoutProfileCount: kidIds.length, kidsTotalCount: kidIds.length };
   }
 
   const profiles = profileRows as RawKidSchoolProfileRow[];
@@ -153,7 +173,14 @@ export async function getSchoolCalendarPlannerContext(
     // assenza di dati.
     const needByWeekIndex: Record<number, SchoolWeekNeed> = {};
     for (const w of weeks) needByWeekIndex[w.index] = "school_open";
-    return { hasAnySchoolProfile: true, needByWeekIndex, kidIdsWithoutProfile };
+    return {
+      hasAnySchoolProfile: true,
+      needByWeekIndex,
+      kidIdsWithoutProfile,
+      partialClosureNoteByWeekIndex: {},
+      kidsWithoutProfileCount: kidIdsWithoutProfile.length,
+      kidsTotalCount: kidIds.length,
+    };
   }
 
   const calendars = calendarRows as RawSchoolCalendarRow[];
@@ -207,6 +234,15 @@ export async function getSchoolCalendarPlannerContext(
   }
 
   const needByWeekIndex: Record<number, SchoolWeekNeed> = {};
+  // TRAMA — SCHOOL CALENDAR UX REFINEMENT (§6, 14/09/2026): stesso loop,
+  // stesse closures già costruite sopra per il segnale principale — nessuna
+  // query aggiuntiva, nessun N+1. Per ogni settimana che finisce
+  // "school_open" (nessun figlio ha tutti e 5 i giorni chiusi), calcola
+  // anche il dettaglio 1-4 giorni per i figli CON profilo e tiene il
+  // "peggiore" (più giorni chiusi) come nota informativa — mai per una
+  // settimana già "closed_*" (il segnale principale basta, vedi
+  // describePartialClosure).
+  const partialClosureNoteByWeekIndex: Record<number, string> = {};
   for (const week of weeks) {
     const weekInput: SeasonWeekNeedInput = { startDate: week.startDate, endDate: week.endDate, covered: week.covered, dismissed: week.dismissed };
     const perKidNeeds: SchoolWeekNeed[] = kidIds.map((kidId) => {
@@ -215,8 +251,27 @@ export async function getSchoolCalendarPlannerContext(
       const override = hasProfile ? overrideFor(kidId, week.startDate) : undefined;
       return computeSchoolWeekNeed(hasProfile, weekInput, closures, override);
     });
-    needByWeekIndex[week.index] = aggregateFamilySchoolWeekNeed(perKidNeeds);
+    const aggregatedNeed = aggregateFamilySchoolWeekNeed(perKidNeeds);
+    needByWeekIndex[week.index] = aggregatedNeed;
+
+    if (aggregatedNeed === "school_open") {
+      let worstDetail: ReturnType<typeof computeWeekClosureDetail> | null = null;
+      for (const kidId of profileByKidId.keys()) {
+        const closures = closuresByKidId.get(kidId) ?? [];
+        const detail = computeWeekClosureDetail(weekInput, closures);
+        if (!worstDetail || detail.closedWeekdaysCount > worstDetail.closedWeekdaysCount) worstDetail = detail;
+      }
+      const note = worstDetail ? describePartialClosure(worstDetail) : null;
+      if (note) partialClosureNoteByWeekIndex[week.index] = note;
+    }
   }
 
-  return { hasAnySchoolProfile: true, needByWeekIndex, kidIdsWithoutProfile };
+  return {
+    hasAnySchoolProfile: true,
+    needByWeekIndex,
+    kidIdsWithoutProfile,
+    partialClosureNoteByWeekIndex,
+    kidsWithoutProfileCount: kidIdsWithoutProfile.length,
+    kidsTotalCount: kidIds.length,
+  };
 }
