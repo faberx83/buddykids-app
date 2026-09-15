@@ -296,10 +296,19 @@ export default function PlannerClient({
     const nextDismissed = !week.dismissed;
     setDismissedOverrides((cur) => ({ ...cur, [week.startDate]: nextDismissed }));
     setSavingWeek(week.startDate);
+    // TRAMA — GLOBAL ACTION PROGRESS · LIVE FIX (15/09/2026, §7 "SERVER
+    // ACTIONS": complete() deve stare in un finally, non solo dopo l'await
+    // in linea retta — altrimenti un'eccezione inattesa in
+    // toggleWeekDismissedAction lascerebbe pendingCount incrementato per
+    // sempre e la barra visibile senza fine, nessun safety timeout su
+    // questo percorso (a differenza della navigazione).
     startProgress();
-    await toggleWeekDismissedAction(week.startDate, nextDismissed);
-    completeProgress();
-    setSavingWeek(null);
+    try {
+      await toggleWeekDismissedAction(week.startDate, nextDismissed);
+    } finally {
+      completeProgress();
+      setSavingWeek(null);
+    }
     // Riallinea priorityIndex/eventuali altri valori calcolati server-side
     // (page.tsx) con la nuova esclusione/ripristino — stesso identificatore
     // di settimana (startDate), nessun redirect, nessuna perdita di scroll

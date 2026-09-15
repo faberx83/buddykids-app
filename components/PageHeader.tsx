@@ -1,6 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
+import { useGlobalActionProgress } from "@/components/GlobalActionProgress";
 
 export default function PageHeader({
   title,
@@ -27,11 +28,37 @@ export default function PageHeader({
   showBrandIcon?: boolean;
 }) {
   const router = useRouter();
+  // TRAMA — GLOBAL ACTION PROGRESS · LIVE FIX (15/09/2026, §6 "PROGRAMMATIC
+  // ROUTER.PUSH"). Layer condiviso identificato per la navigazione
+  // "indietro": questo componente è montato da OGNI sotto-pagina NEXTGEN con
+  // freccia indietro, quindi un solo runNavigation() qui copre backHref/
+  // router.back() ovunque, senza toccare i singoli call site. Sicuro anche
+  // fuori da /nextgen (LEGACY, Gestore): il hook no-op quando nessun
+  // GlobalActionProgressProvider è montato sopra nell'albero.
+  const { runNavigation } = useGlobalActionProgress();
 
   return (
     <div className="flex flex-shrink-0 items-center gap-3 border-b border-[#F0F2F5] bg-white px-5 py-3.5">
       <button
-        onClick={() => (onBack ? onBack() : backHref ? router.push(backHref) : router.back())}
+        onClick={() => {
+          if (onBack) {
+            // onBack è un override opaco (usato dai flussi multi-step, es.
+            // Prenotazione, per tornare allo STEP precedente): spesso è un
+            // semplice cambio di stato locale, NON una navigazione reale —
+            // segnalarla comunque violerebbe "PURE LOCAL UI → no progress"
+            // (§4) e lascerebbe la barra visibile fino al safety timeout se
+            // il pathname non cambia mai. Nessun runNavigation() qui.
+            onBack();
+            return;
+          }
+          // backHref/router.back() sono invece SEMPRE una navigazione reale
+          // (cambio di rotta) — segnalata esplicitamente perché è un
+          // router.push()/back() programmatico, non un click su <a href>
+          // intercettabile dal listener in capture phase.
+          runNavigation();
+          if (backHref) router.push(backHref);
+          else router.back();
+        }}
         aria-label="Indietro"
         className="flex items-center text-[22px] text-ink"
       >

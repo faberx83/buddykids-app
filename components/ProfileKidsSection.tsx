@@ -95,10 +95,24 @@ export default function ProfileKidsSection({
     }
     setSavingSchool(true);
     setSchoolError(null);
+    // TRAMA — GLOBAL ACTION PROGRESS · LIVE FIX (15/09/2026, §7 "SERVER
+    // ACTIONS": "verifica che complete() avvenga in finally, non solo sul
+    // path di successo"). Era completeProgress() in linea retta dopo
+    // l'await: se setSchoolContextForKidAction lancia (rete/errore
+    // inatteso, non il return { error } gestito sotto), completeProgress()
+    // non veniva mai chiamato — pendingCount restava incrementato per
+    // sempre, barra bloccata visibile senza alcun timeout di sicurezza (a
+    // differenza della navigazione, questo percorso non ne ha uno). Fix:
+    // start() prima della Promise, complete() in un finally che copre
+    // anche il path d'eccezione.
     startProgress();
-    const result = await setSchoolContextForKidAction(kidId, schoolRegionDraft, schoolComuneDraft);
-    completeProgress();
-    setSavingSchool(false);
+    let result: Awaited<ReturnType<typeof setSchoolContextForKidAction>>;
+    try {
+      result = await setSchoolContextForKidAction(kidId, schoolRegionDraft, schoolComuneDraft);
+    } finally {
+      completeProgress();
+      setSavingSchool(false);
+    }
     if (result.error) {
       setSchoolError(result.error);
       return;
