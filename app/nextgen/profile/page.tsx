@@ -52,6 +52,10 @@ export default async function NextgenProfilePage({
   let schoolCalendarEnabled = false;
   let schoolProfiles: Awaited<ReturnType<typeof getKidSchoolProfilesForParent>> = {};
   let residenceCity: string | null = null;
+  // TRAMA — FINAL BETA CHROME CLEANUP (15/09/2026, PART C): stesso default
+  // sicuro "false" di schoolCalendarEnabled — mai un fallback client-side
+  // "acceso".
+  let classicFallbackEnabled = false;
   if (isSupabaseConfigured) {
     const supabase = await createClient();
     const {
@@ -70,6 +74,18 @@ export default async function NextgenProfilePage({
       if (schoolCalendarEnabled) {
         schoolProfiles = await getKidSchoolProfilesForParent(kids.map((k) => k.id));
       }
+      // TRAMA — FINAL BETA CHROME CLEANUP (15/09/2026, PART C): stesso
+      // pattern esatto di schoolCalendarEnabled appena sopra — risoluzione
+      // server-side, default sicuro false, nessun override globale mai
+      // scritto da questo programma. Governa SOLO la visibilità della riga
+      // "Torna alla versione classica" in Profilo, nessun'altra logica.
+      classicFallbackEnabled = await resolveFeatureFlag({
+        flagName: "NEXTGEN_CLASSIC_FALLBACK_ENABLED",
+        userId: user.id,
+        role: (profileRow?.role as string) ?? "parent",
+        tenant: "family",
+        correlationId: generateCorrelationId(),
+      });
     }
   }
 
@@ -89,6 +105,7 @@ export default async function NextgenProfilePage({
       schoolCalendarEnabled={schoolCalendarEnabled}
       schoolProfiles={schoolProfiles}
       residenceCity={residenceCity}
+      classicFallbackEnabled={classicFallbackEnabled}
     />
   );
 }

@@ -97,12 +97,26 @@ test.describe("TRAMA — Feature/Release Catalog: 'TRAMA — UX Foundations' sep
     expect(entry && isFeatureReleaseEligible(entry)).toBe(true);
   });
 
-  test("RELEASE-01: release 'ux-foundations' esiste, contiene SOLO global_action_progress, distinta da 'planner-intelligence'", () => {
+  // TRAMA — FINAL BETA CHROME CLEANUP (15/09/2026, PART C): titolo/assert
+  // aggiornati — "ux-foundations" ora contiene 2 capability trasversali
+  // (global_action_progress + nextgen_classic_fallback), non più una sola.
+  // Resta comunque distinta da "planner-intelligence": nessuna delle due
+  // chiavi appartiene a quella release.
+  test("RELEASE-01: release 'ux-foundations' esiste, contiene global_action_progress e nextgen_classic_fallback, distinta da 'planner-intelligence'", () => {
     const uxFoundations = RELEASE_CATALOG.find((r) => r.id === "ux-foundations");
     const plannerIntelligence = RELEASE_CATALOG.find((r) => r.id === "planner-intelligence");
     expect(uxFoundations).toBeDefined();
     expect(uxFoundations?.featureKeys).toContain("global_action_progress");
+    expect(uxFoundations?.featureKeys).toContain("nextgen_classic_fallback");
     expect(plannerIntelligence?.featureKeys).not.toContain("global_action_progress");
+    expect(plannerIntelligence?.featureKeys).not.toContain("nextgen_classic_fallback");
+  });
+
+  test("RELEASE-02: voce nextgen_classic_fallback esiste, release-eligible, punta al flag corretto (PART C)", () => {
+    const entry = FEATURE_CATALOG.find((e) => e.key === "nextgen_classic_fallback");
+    expect(entry).toBeDefined();
+    expect(entry?.flagName).toBe("NEXTGEN_CLASSIC_FALLBACK_ENABLED");
+    expect(entry && isFeatureReleaseEligible(entry)).toBe(true);
   });
 });
 

@@ -150,6 +150,32 @@ export const FEATURE_FLAG_REGISTRY = {
     defaultValue: false,
     allowedScopes: ["global", "environment", "user", "role", "cohort"],
   },
+  // TRAMA — FINAL BETA CHROME CLEANUP (15/09/2026, PART C — "Torna alla
+  // versione classica" Admin-controlled). Governa SOLO la VISIBILITÀ della
+  // riga di fallback operativo in Profilo → "Esperienza TRAMA" — non
+  // introduce alcun nuovo meccanismo di switch versione: riusa
+  // esattamente lib/version-preference.ts (writeVersionPreference) + router,
+  // lo stesso meccanismo già usato da components/VersionToggle.tsx (che
+  // resta, invariato, il toggle bidirezionale riservato alle utenze di test
+  // di Fabrizio — vedi lib/dev/test-accounts.ts). Stesso pattern Dark
+  // Release delle altre voci di questo registry: defaultValue false,
+  // nessun override GLOBAL/PILOT mai scritto da questo programma — visibile
+  // SOLO quando Fabrizio attiva manualmente uno scope da Admin → Feature
+  // Flags → Release (Anteprima interna → Pilot → Global, stessa scaletta a
+  // 4 stadi). Quando OFF: nessun link/azione compare da nessuna parte
+  // (nessun codice diverso da un semplice `{classicFallbackEnabled && ...}`
+  // in ProfileNextgenClient.tsx).
+  NEXTGEN_CLASSIC_FALLBACK_ENABLED: {
+    name: "NEXTGEN_CLASSIC_FALLBACK_ENABLED",
+    description:
+      "Mostra in Profilo → 'Esperienza TRAMA' una riga utility (non un bottone/badge/CTA persistente) che " +
+      "permette di passare temporaneamente alla precedente esperienza TRAMA (versione Legacy). Riusa il " +
+      "meccanismo GIÀ ESISTENTE di lib/version-preference.ts (stesso cookie bk_version scritto da " +
+      "VersionToggle.tsx), nessuna nuova logica di routing. Default false: la riga non è mai visibile per un " +
+      "utente normale finché Fabrizio non attiva l'override per una coorte/utente/globalmente.",
+    defaultValue: false,
+    allowedScopes: ["global", "environment", "user", "role", "cohort"],
+  },
 } as const satisfies Record<string, FeatureFlagDefinition>;
 
 export type KnownFeatureFlagName = keyof typeof FEATURE_FLAG_REGISTRY;

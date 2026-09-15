@@ -1,11 +1,13 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import PageHeader from "@/components/PageHeader";
 import LogoutButton from "@/components/LogoutButton";
 import ProfileHeaderClient from "@/components/ProfileHeaderClient";
 import ProfileKidsSection from "@/components/ProfileKidsSection";
 import HubCard from "@/components/nextgen/HubCard";
 import DecorativeIntroCard from "@/components/nextgen/DecorativeIntroCard";
+import { writeVersionPreference } from "@/lib/version-preference";
 import type { ParentRole, Gender } from "@/lib/data/profile";
 import type { Kid } from "@/lib/types";
 // TRAMA — SCHOOL CALENDAR UX REFINEMENT (§10-11, 14/09/2026): "import type"
@@ -58,6 +60,7 @@ export default function ProfileNextgenClient({
   schoolCalendarEnabled,
   schoolProfiles,
   residenceCity,
+  classicFallbackEnabled,
 }: {
   fullName: string;
   email: string;
@@ -73,7 +76,24 @@ export default function ProfileNextgenClient({
   schoolCalendarEnabled: boolean;
   schoolProfiles: Record<string, KidSchoolProfileSummary>;
   residenceCity: string | null;
+  // TRAMA — FINAL BETA CHROME CLEANUP (15/09/2026, PART C): risolto
+  // server-side in app/nextgen/profile/page.tsx via NEXTGEN_CLASSIC_FALLBACK_ENABLED
+  // (default false) — governa SOLO se la sezione "Esperienza TRAMA" sotto è
+  // renderizzata. Quando false: zero DOM aggiuntivo, nessuna riga fantasma.
+  classicFallbackEnabled: boolean;
 }) {
+  const router = useRouter();
+
+  // TRAMA — FINAL BETA CHROME CLEANUP (15/09/2026, PART C): riusa
+  // ESATTAMENTE lo stesso meccanismo di components/VersionToggle.tsx
+  // (writeVersionPreference("legacy") + router.push("/")) — nessuna
+  // logica di switch versione duplicata qui, solo un secondo punto di
+  // ingresso per lo stesso meccanismo esistente, condizionato al flag.
+  function switchToClassicVersion() {
+    writeVersionPreference("legacy");
+    router.push("/");
+  }
+
   return (
     <div className="flex min-h-screen flex-col">
       {/* TRAMA — BACK NAVIGATION PROGRESS FIX (15/09/2026, live bug: "Profilo
@@ -231,6 +251,32 @@ export default function ProfileNextgenClient({
           title="Le mie segnalazioni"
           subtitle="Stato dei bug/suggerimenti inviati durante la BETA"
         />
+
+        {/* TRAMA — FINAL BETA CHROME CLEANUP (15/09/2026, PART C): fallback
+            operativo, non uno stato — per questo NON è un badge/CTA
+            persistente in top chrome, ma una riga utility discreta qui in
+            fondo a Profilo, dietro flag (nascosta interamente quando
+            NEXTGEN_CLASSIC_FALLBACK_ENABLED risolve false). Icona
+            "rotate/back" da sola (nessun cerchio colorato come le HubCard
+            sopra — resta visivamente meno prominente, coerente con "azione
+            operativa" e non "destinazione prodotto"), nessun bottone pieno. */}
+        {classicFallbackEnabled && (
+          <>
+            <div className="mt-2 text-[11px] font-bold uppercase tracking-wide text-ink-3">Esperienza TRAMA</div>
+            <button
+              type="button"
+              onClick={switchToClassicVersion}
+              className="flex items-center gap-3 rounded-2xl bg-white p-4 text-left active:bg-black/[0.06]"
+            >
+              <i className="ti ti-history flex-shrink-0 text-[17px] text-ink-3" aria-hidden="true" />
+              <div className="min-w-0 flex-1">
+                <div className="text-[13.5px] font-bold text-ink">Torna alla versione classica</div>
+                <div className="text-[11.5px] text-ink-2">Usa temporaneamente la precedente esperienza TRAMA.</div>
+              </div>
+              <i className="ti ti-chevron-right flex-shrink-0 text-[16px] text-ink-3" aria-hidden="true" />
+            </button>
+          </>
+        )}
       </div>
 
       <LogoutButton />

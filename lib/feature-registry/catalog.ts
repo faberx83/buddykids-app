@@ -301,6 +301,39 @@ export const FEATURE_CATALOG: FeatureCatalogEntry[] = [
       "(staticamente) in una sessione precedente.",
     releaseEligible: true,
   },
+  {
+    // TRAMA — FINAL BETA CHROME CLEANUP (15/09/2026, PART C). Stessa
+    // famiglia concettuale di global_action_progress: capability di
+    // esperienza trasversale (non dati/dominio Planner), vive nella stessa
+    // release "ux-foundations". Codice reale e raggiungibile (riga in
+    // ProfileNextgenClient.tsx, gated server-side in
+    // app/nextgen/profile/page.tsx), risolto a "off" per chiunque finché
+    // Fabrizio non attiva l'override.
+    key: "nextgen_classic_fallback",
+    label: "Torna alla versione classica (fallback operativo, Profilo)",
+    area: "parent",
+    status: "INTERNAL_PREVIEW",
+    flagName: "NEXTGEN_CLASSIC_FALLBACK_ENABLED",
+    description:
+      "Riga utility in Profilo → 'Esperienza TRAMA' che permette di tornare temporaneamente alla versione " +
+      "Legacy riusando il meccanismo esistente di lib/version-preference.ts (stesso cookie bk_version di " +
+      "VersionToggle.tsx). Non è uno status/badge persistente: è un'azione operativa, visibile solo quando " +
+      "il flag è attivo e nascosta interamente quando è off.",
+    sourceFiles: [
+      "lib/feature-flags/registry.ts",
+      "lib/releases/catalog.ts",
+      "lib/version-preference.ts",
+      "app/nextgen/profile/page.tsx",
+      "app/nextgen/profile/ProfileNextgenClient.tsx",
+    ],
+    note:
+      "Ritorno da Legacy a NextGen: oggi l'UNICO meccanismo bidirezionale esistente è VersionToggle.tsx, " +
+      "riservato alle utenze di test di Fabrizio (isVersionToggleTestAccount) — un utente normale reindirizzato " +
+      "a Legacy da questa azione non ha oggi un percorso di ritorno visibile in UI verso NextGen. Comportamento " +
+      "esistente riportato, non modificato in questa sessione (fuori scope PART C, che copre solo il verso " +
+      "NextGen → Legacy).",
+    releaseEligible: true,
+  },
 
   // ── TRAMA ONE (era "beta_gated") — MAPPING: la Controlled Beta Cohort è
   // oggi attivamente abilitata (override globale + coorte, vedi

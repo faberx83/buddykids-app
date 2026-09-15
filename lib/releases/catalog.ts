@@ -78,13 +78,14 @@ export const RELEASE_CATALOG: ReleaseCatalogEntry[] = [
     label: "TRAMA — UX Foundations",
     shortDescription: "Componenti di esperienza trasversali (feedback visivo, indicatori di attività) non legati a una singola area di dominio.",
     targetAudience: ["parent"],
-    featureKeys: ["global_action_progress"],
+    featureKeys: ["global_action_progress", "nextgen_classic_fallback"],
     knownLimitations: [
       "global_action_progress (V1): copertura automatica solo per la navigazione interna e per le 4 CTA esplicitamente istrumentate in questa sessione (vedi PROGRESS COVERAGE nel report di implementazione) — booking/admin/promotion NON sono ancora coperte, deliberatamente (nessun layer condiviso affidabile individuato per quelle superfici senza modificare manualmente decine di componenti).",
       "Non ancora verificata visivamente live: resta dietro flag (cohort:internal-preview) finché Fabrizio non la abilita e la controlla di persona su un dispositivo reale.",
+      "nextgen_classic_fallback (V1): copre solo il verso NextGen → Legacy. Il ritorno da Legacy a NextGen per un utente normale non ha oggi un percorso in UI (VersionToggle.tsx, l'unico meccanismo bidirezionale esistente, resta riservato alle utenze di test di Fabrizio) — limite esistente riportato, non introdotto da questa feature.",
     ],
     notes:
-      "Creata il 14/09/2026 per ospitare Global CTA Progress Bar separatamente da \"TRAMA — Planner Intelligence\" (che resta scope Planner/School Calendar/Calendar Export). Nessuna nuova tabella, nessun nuovo meccanismo di promotion: stessa infrastruttura Release Catalog/Feature Registry esistente.",
+      "Creata il 14/09/2026 per ospitare Global CTA Progress Bar separatamente da \"TRAMA — Planner Intelligence\" (che resta scope Planner/School Calendar/Calendar Export). Nessuna nuova tabella, nessun nuovo meccanismo di promotion: stessa infrastruttura Release Catalog/Feature Registry esistente. Estesa il 15/09/2026 con nextgen_classic_fallback (PART C, TRAMA Beta Chrome Cleanup): stesso principio, stessa release — capability trasversale di esperienza, non specifica del Planner.",
   },
 ];
 
