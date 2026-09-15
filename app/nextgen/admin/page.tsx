@@ -1,4 +1,4 @@
-import NextgenBadge from "@/components/nextgen/NextgenBadge";
+import { ProductStatusChip } from "@/components/ProductStatusChip";
 
 // SPRINT 0 — placeholder Admin. La Control Room vera arriva nello Sprint 5.
 export default function NextgenAdminPage() {
@@ -6,7 +6,10 @@ export default function NextgenAdminPage() {
     <div className="mx-auto max-w-2xl px-6 py-8">
       <div className="mb-4 flex items-center justify-between">
         <h1 className="font-poppins text-xl font-bold text-ink">TRAMA Admin</h1>
-        <NextgenBadge />
+        {/* TRAMA — FINAL BETA CHROME CLEANUP (15/09/2026): ProductStatusChip
+            sostituisce NextgenBadge — vedi HomeDashboardClient.tsx. Nessuna
+            capability internal-preview risolta qui. */}
+        <ProductStatusChip internal={false} />
       </div>
       <div className="rounded-2xl border border-[#E8EBF0] bg-white p-5">
         <p className="text-sm text-ink-2">

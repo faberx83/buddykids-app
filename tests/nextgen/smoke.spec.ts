@@ -9,15 +9,19 @@ import { loginAs, isRealDeployment } from "../fixtures/roles";
 
 test.describe("NEXTGEN - Setup (Sprint 0)", () => {
   // TEST OBSOLETO corretto qui: il pill "NEXTGEN" inline è stato sostituito
-  // da un ribbon diagonale "Beta" (vedi components/nextgen/NextgenBadge.tsx,
-  // sprint correttivo su feedback Fabrizio) — il testo "NextGen" non compare
-  // più da nessuna parte in queste pagine, confermato via error-context.md
-  // del run reale del 28/07 (Gate C). Non è una regressione.
-  test("TC-N01 - /nextgen è raggiungibile da un genitore autenticato e mostra il ribbon Beta", async ({ page }) => {
+  // in origine da un ribbon diagonale "Beta" (NextgenBadge.tsx, sprint
+  // correttivo su feedback Fabrizio) — il testo "NextGen" non compare più
+  // da nessuna parte in queste pagine, confermato via error-context.md del
+  // run reale del 28/07 (Gate C). Non è una regressione.
+  // TRAMA — FINAL BETA CHROME CLEANUP (15/09/2026): NextgenBadge sostituito
+  // da components/ProductStatusChip.tsx — il testo esatto "Beta" da solo
+  // non compare più (il chip mostra sempre "Beta · v1.1", eventualmente
+  // seguito da " · INTERNAL"): match non esatto sul prefisso.
+  test("TC-N01 - /nextgen è raggiungibile da un genitore autenticato e mostra il ProductStatusChip Beta", async ({ page }) => {
     test.skip(!isRealDeployment, "Richiede un deploy con Supabase configurato e l'account genitore di test.");
     await loginAs(page, "parent");
     await page.goto("/nextgen");
-    await expect(page.getByText("Beta", { exact: true })).toBeVisible();
+    await expect(page.getByText("Beta ·")).toBeVisible();
     await expect(page.locator("body")).not.toContainText("Application error");
   });
 
@@ -25,7 +29,8 @@ test.describe("NEXTGEN - Setup (Sprint 0)", () => {
     test.skip(!isRealDeployment, "Richiede un deploy con Supabase configurato e l'account gestore di test.");
     await loginAs(page, "center_admin");
     await page.goto("/nextgen/center");
-    await expect(page.getByText("Beta", { exact: true })).toBeVisible();
+    // ProductStatusChip (v. TC-N01): match non esatto, vedi commento sopra.
+    await expect(page.getByText("Beta ·")).toBeVisible();
     await expect(page.locator("body")).not.toContainText("Application error");
   });
 
@@ -33,7 +38,8 @@ test.describe("NEXTGEN - Setup (Sprint 0)", () => {
     test.skip(!isRealDeployment, "Richiede un deploy con Supabase configurato e l'account admin di test.");
     await loginAs(page, "platform_admin");
     await page.goto("/nextgen/admin");
-    await expect(page.getByText("Beta", { exact: true })).toBeVisible();
+    // ProductStatusChip (v. TC-N01): match non esatto, vedi commento sopra.
+    await expect(page.getByText("Beta ·")).toBeVisible();
   });
 
   test("TC-N04 - Un genitore che apre /nextgen/center viene rediretto (nessun accesso non autorizzato)", async ({ page }) => {

@@ -464,17 +464,19 @@ test.describe("TRAMA — InternalPreviewBadge: visibilità derivata [no browser]
     expect(isResolvedViaInternalPreview(disabledInternal)).toBe(false);
   });
 
-  test("10c. il componente non è dismissable e mostra il testo/wording approvato ('ANTEPRIMA INTERNA' / 'Solo account TRAMA autorizzati'), verificato leggendo il sorgente", () => {
-    const source = fs.readFileSync(
-      path.join(__dirname, "../../components/InternalPreviewBadge.tsx"),
-      "utf-8"
-    );
-    expect(source).toContain("if (!visible) return null");
-    expect(source).toContain("Anteprima interna");
-    expect(source).toContain("Solo account TRAMA autorizzati");
-    // Non dismissable: nessuno stato locale, nessuna X/bottone di chiusura.
-    expect(source).not.toMatch(/useState/);
-    expect(source).not.toMatch(/onClick/);
+  // TRAMA — FINAL BETA CHROME CLEANUP (15/09/2026): components/
+  // InternalPreviewBadge.tsx è stato RIMOSSO — sostituito da
+  // components/ProductStatusChip.tsx (un solo chip unificato invece di due
+  // componenti separati, vedi ProductStatusChip.tsx per la spiegazione
+  // completa). Test 10c riscritto per verificare il nuovo componente.
+  test("10c. ProductStatusChip mostra 'INTERNAL' SOLO quando internal=true, e non rivela mai flag name/cohort/environment nel popover", () => {
+    const source = fs.readFileSync(path.join(__dirname, "../../components/ProductStatusChip.tsx"), "utf-8");
+    expect(source).toContain("internal && (");
+    expect(source).toContain("INTERNAL");
+    expect(source).toContain(`Beta · {TRAMA_BETA_VERSION}`);
+    // §8 "NON: mostrare feature flag name/cohort key/environment/DevOps
+    // metadata" — verificato per assenza nel sorgente del popover.
+    expect(source).not.toMatch(/flagName|cohortKey|COHORT_KEY|process\.env/);
   });
 });
 

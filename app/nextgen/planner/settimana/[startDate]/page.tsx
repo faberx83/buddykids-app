@@ -19,7 +19,7 @@ import { computeRolesToCover } from "@/lib/nextgen/week-roles";
 import { WEEKDAYS, MOMENTS } from "@/lib/nextgen/responsibility-options";
 import PlannerActivityCardCompact from "@/components/nextgen/PlannerActivityCardCompact";
 import PageHeader from "@/components/PageHeader";
-import NextgenBadge from "@/components/nextgen/NextgenBadge";
+import { ProductStatusChip } from "@/components/ProductStatusChip";
 
 // PLANNER BETA v1.1 (Wave 2) — "Dettaglio Settimana": nuova route additiva,
 // l'unica ammessa dalla revisione. Server Component: nessuno stato locale
@@ -102,7 +102,11 @@ export default async function WeekDetailPage({
     <div className="flex min-h-screen flex-col">
       <PageHeader title={`Settimana ${week.index}`} backHref="/nextgen/planner" showBrandIcon />
       <div className="px-5 py-4">
-        <NextgenBadge />
+        {/* TRAMA — FINAL BETA CHROME CLEANUP (15/09/2026): ProductStatusChip
+            sostituisce NextgenBadge — vedi HomeDashboardClient.tsx. Week
+            Detail non risolve capability internal-preview: internal sempre
+            false. */}
+        <ProductStatusChip internal={false} />
 
         {/* 1-2. Date, Stato — punto 8 della revisione. TRAMA BETA v1.1.1
             (UI Refinement, punto 7) — "Settimana N" NON va ripetuta qui:

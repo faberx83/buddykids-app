@@ -133,16 +133,19 @@ test.describe("TRAMA — Gating server-side + dedup badge [no browser, static so
     expect(source).toContain("{enabled && <GlobalActionProgressBar phase={phase} percent={percent} />}");
   });
 
-  test("BADGE-01: il badge ANTEPRIMA INTERNA del Planner ora tiene conto anche di GLOBAL_ACTION_PROGRESS_ENABLED, nello STESSO array (un solo badge, mai un secondo componente)", () => {
+  // TRAMA — FINAL BETA CHROME CLEANUP (15/09/2026): InternalPreviewBadge
+  // rimosso, sostituito da ProductStatusChip — stessa logica di
+  // dedup/aggregazione, solo il componente renderizzato è cambiato.
+  test("BADGE-01: il ProductStatusChip del Planner ora tiene conto anche di GLOBAL_ACTION_PROGRESS_ENABLED, nello STESSO array (un solo chip, mai un secondo componente)", () => {
     const source = readSource("../../app/nextgen/planner/page.tsx");
     expect(source).toContain('flagName: "GLOBAL_ACTION_PROGRESS_ENABLED"');
     expect(source).toContain(
       "anyResolvedViaInternalPreview([calendarExportDetail, schoolCalendarDetail, globalActionProgressDetail])"
     );
-    // Un solo <InternalPreviewBadge> nel Planner — mai una seconda istanza
+    // Un solo <ProductStatusChip> nel Planner — mai una seconda istanza
     // aggiunta per la Progress Bar (dedup "un solo badge per surface").
     const clientSource = readSource("../../app/nextgen/planner/PlannerClient.tsx");
-    const occurrences = clientSource.split("<InternalPreviewBadge").length - 1;
+    const occurrences = clientSource.split("<ProductStatusChip").length - 1;
     expect(occurrences).toBe(1);
   });
 

@@ -10,7 +10,7 @@ import { categories } from "@/lib/mock-data";
 import { getSeasonWeekRanges, isoDate, formatShortRange, SeasonWeekRange } from "@/lib/season-weeks";
 import ActivityCard from "@/components/ActivityCard";
 import PageHeader from "@/components/PageHeader";
-import NextgenBadge from "@/components/nextgen/NextgenBadge";
+import { ProductStatusChip } from "@/components/ProductStatusChip";
 import DecorativeIntroCard from "@/components/nextgen/DecorativeIntroCard";
 import SuggestCenterCard from "@/components/nextgen/SuggestCenterCard";
 import { generateCorrelationId } from "@/lib/telemetry/correlation";
@@ -555,7 +555,11 @@ export default function SearchDiscoveryClient({
             NextgenBadge deve restare FRATELLO di DecorativeIntroCard (mai
             figlio), altrimenti si aggancia al relative+overflow-hidden
             della card invece che a .app-shell e viene tagliato. */}
-        <NextgenBadge />
+        {/* TRAMA — FINAL BETA CHROME CLEANUP (15/09/2026): ProductStatusChip
+            sostituisce NextgenBadge — vedi HomeDashboardClient.tsx per la
+            spiegazione completa. Scopri non risolve capability
+            internal-preview: internal sempre false. */}
+        <ProductStatusChip internal={false} />
         <DecorativeIntroCard className="mb-3">
           {/* Audit font (31/08/2026): stesso pattern di descrizione di
               PlannerClient.tsx (screenshot di Fabrizio), portato da text-xs

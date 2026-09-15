@@ -121,9 +121,13 @@ test.describe("TRAMA — Calendar Export V1: gating (1-5) [no browser]", () => {
     expect(source).toContain("if (!enabled) return null;");
   });
 
-  test("gating: InternalPreviewBadge è montato nel Planner con la prop calcolata server-side", () => {
+  // TRAMA — FINAL BETA CHROME CLEANUP (15/09/2026): InternalPreviewBadge
+  // rimosso, sostituito da ProductStatusChip (vedi components/
+  // ProductStatusChip.tsx) — stessa prop calcolata server-side, rinominata
+  // `internal` invece di `visible`.
+  test("gating: ProductStatusChip è montato nel Planner con la prop calcolata server-side", () => {
     const source = readSource("../../app/nextgen/planner/PlannerClient.tsx");
-    expect(source).toContain("<InternalPreviewBadge visible={calendarExportBadgeVisible} />");
+    expect(source).toContain("<ProductStatusChip internal={calendarExportBadgeVisible} />");
   });
 });
 

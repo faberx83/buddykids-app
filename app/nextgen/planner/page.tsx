@@ -122,10 +122,12 @@ export default async function NextgenPlannerPage() {
     // <GlobalActionProgressProvider> monta la barra, risolto separatamente
     // in app/nextgen/layout.tsx) — serve SOLO il `matchedScope` per decidere
     // se includerlo nel calcolo del badge qui sotto, cosicché Fabrizio non
-    // veda MAI due badge "ANTEPRIMA INTERNA" sulla stessa pagina quando sia
+    // veda MAI due indicatori "INTERNAL" sulla stessa pagina quando sia
     // School Calendar/Calendar Export SIA la Progress Bar sono in anteprima
-    // interna insieme: resta un solo <InternalPreviewBadge>, il cui `visible`
-    // ora tiene conto di tutte e 3 le capability gated di questa pagina.
+    // interna insieme: resta un solo <ProductStatusChip> (TRAMA — FINAL BETA
+    // CHROME CLEANUP, 15/09/2026, sostituisce il precedente
+    // <InternalPreviewBadge>), il cui prop `internal` ora tiene conto di
+    // tutte e 3 le capability gated di questa pagina.
     const [calendarExportDetail, schoolCalendarDetail, globalActionProgressDetail] = await Promise.all([
       resolveFeatureFlagVisibility({
         flagName: "CALENDAR_EXPORT_ENABLED",

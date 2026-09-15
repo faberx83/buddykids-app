@@ -20,7 +20,7 @@ import type { WeekResponsibility } from "@/lib/nextgen/responsibility-options";
 // settimane, nessuna nuova formula (vedi lib/nextgen/week-roles.ts).
 import { computeCoordinationGap, computeOrganizationState } from "@/lib/nextgen/week-roles";
 import ActivityCard from "@/components/ActivityCard";
-import NextgenBadge from "@/components/nextgen/NextgenBadge";
+import { ProductStatusChip } from "@/components/ProductStatusChip";
 import NextgenCheckinCard from "@/components/nextgen/NextgenCheckinCard";
 import TodayResponsibilityReminder from "@/components/nextgen/TodayResponsibilityReminder";
 import BookingVisualCard from "@/components/nextgen/BookingVisualCard";
@@ -290,7 +290,13 @@ export default function HomeDashboardClient({
           <img src="/brand/trama-logo-mark.png" alt="" aria-hidden="true" className="h-6 w-auto flex-shrink-0" />
           Ciao{firstName ? ` ${firstName}` : ""} 👋
         </h1>
-        <NextgenBadge />
+        {/* TRAMA — FINAL BETA CHROME CLEANUP (15/09/2026): ProductStatusChip
+            sostituisce il vecchio ribbon diagonale NextgenBadge (vedi
+            components/ProductStatusChip.tsx). Home non risolve alcuna
+            capability internal-preview server-side: internal sempre false,
+            stesso comportamento di prima (mai stato mostrato "INTERNAL"
+            qui). */}
+        <ProductStatusChip internal={false} />
       </div>
 
       {/* 0) Completa il tuo profilo — gap segnalato da Fabrizio (05/08):

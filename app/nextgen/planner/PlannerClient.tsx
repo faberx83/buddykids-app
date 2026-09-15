@@ -52,7 +52,7 @@ import { lightBgClasses } from "@/lib/colors";
 // toggleWeekDismissedAction. Nessuna nuova azione: solo il bottone mancante.
 import { toggleWeekDismissedAction } from "@/app/actions/profile";
 import PageHeader from "@/components/PageHeader";
-import NextgenBadge from "@/components/nextgen/NextgenBadge";
+import { ProductStatusChip } from "@/components/ProductStatusChip";
 import PlannerModeTabs, { PlannerMode, PLANNER_MODES } from "@/components/nextgen/PlannerModeTabs";
 import PlannerBudgetView from "@/components/nextgen/PlannerBudgetView";
 import PlannerCalendarView from "@/components/nextgen/PlannerCalendarView";
@@ -60,13 +60,9 @@ import PlannerMapView from "@/components/nextgen/PlannerMapView";
 import PlannerGroupsView from "@/components/nextgen/PlannerGroupsView";
 import DecorativeIntroCard from "@/components/nextgen/DecorativeIntroCard";
 import Link from "next/link";
-// TRAMA — Calendar Export V1 · ANTEPRIMA INTERNA (11/09/2026). InternalPreviewBadge
-// era già pronto (10/09/2026) ma mai montato su una pagina reale — questa è
-// la sua prima vera destinazione (vedi lib/feature-flags/internal-preview.ts).
 // "import type" per PlannerCalendarItemForIcs: solo un tipo, nessun rischio
 // di trascinare lib/ics.ts nel bundle (che comunque non importa mai
 // lib/supabase/server, ma resta lo stesso principio già seguito sopra).
-import InternalPreviewBadge from "@/components/InternalPreviewBadge";
 import PlannerCalendarExportCard from "@/components/nextgen/PlannerCalendarExportCard";
 import type { PlannerCalendarItemForIcs } from "@/lib/ics";
 // TRAMA — SCHOOL CALENDAR INTELLIGENCE (14/09/2026, §B9/§B10). Stesso
@@ -507,34 +503,24 @@ export default function PlannerClient({
           completa. */}
       <PageHeader title="Planner" backHref="/nextgen" showBrandIcon />
       <div className="px-5 py-4" onTouchStart={handlePlannerTouchStart} onTouchEnd={handlePlannerTouchEnd}>
-        {/* SPRINT 7 — stessa texture decorativa (due cerchi) della hero
-            card di Home, vedi DecorativeIntroCard.
-            FIX (segnalato da Fabrizio con screenshot, 24/08/2026) — il
-            ribbon "Beta" (NextgenBadge) è tagliato dal bordo arrotondato:
-            NextgenBadge è position:absolute e si aggancia al primo
-            antenato position:relative, che dovrebbe essere sempre
-            .app-shell (vedi il commento in NextgenBadge.tsx) — ma
-            DecorativeIntroCard è ANCH'ESSA relative+overflow-hidden
-            (per i due cerchi decorativi), quindi quando NextgenBadge
-            veniva montato AL SUO INTERNO si agganciava lì invece che
-            allo shell, e overflow-hidden lo tagliava. Stesso bug di
-            fondo di TC-N638 (menu Scatta foto), causa diversa.
-            Fix: NextgenBadge ora è un FRATELLO di DecorativeIntroCard,
-            non un figlio — risale di nuovo fino a .app-shell com'era
-            inteso, senza toccare NextgenBadge.tsx o DecorativeIntroCard.tsx
-            (che restano invariati e continuano a funzionare per tutti gli
-            altri usi, es. Home/Admin/Center, mai stati rotti). */}
-        <NextgenBadge />
-        {/* TRAMA — Calendar Export V1 · ANTEPRIMA INTERNA (11/09/2026).
-            Stesso "corner ribbon" pattern di NextgenBadge sopra (fratello,
-            non figlio — stesso motivo overflow-hidden spiegato nel
-            commento sopra), angolo opposto (alto a sinistra) per
-            costruzione propria del componente. calendarExportBadgeVisible
-            è già computato server-side (page.tsx) per riflettere
-            SPECIFICAMENTE la risoluzione via cohort:"internal-preview" di
-            CALENDAR_EXPORT_ENABLED — non semplicemente "Fabrizio è nella
-            coorte". */}
-        <InternalPreviewBadge visible={calendarExportBadgeVisible} />
+        {/* TRAMA — FINAL BETA CHROME CLEANUP (15/09/2026, richiesta di
+            Fabrizio: "vedo contemporaneamente una pill lunga ANTEPRIMA
+            INTERNA e un ribbon diagonale BETA v1.1 [...] voglio UNA sola
+            superficie compatta"). ProductStatusChip sostituisce QUI i due
+            componenti precedenti (NextgenBadge + InternalPreviewBadge,
+            l'unico punto dell'app dove comparivano insieme — motivo per cui
+            Fabrizio li vedeva "contemporaneamente" proprio sul Planner).
+            Stesso meccanismo di posizionamento (absolute, FRATELLO di
+            DecorativeIntroCard, mai figlio — altrimenti il
+            relative+overflow-hidden della card lo taglia, stesso bug già
+            risolto in passato per NextgenBadge/InternalPreviewBadge, vedi
+            components/ProductStatusChip.tsx). `internal` riusa la STESSA
+            variabile `calendarExportBadgeVisible` già calcolata
+            server-side (page.tsx) da anyResolvedViaInternalPreview() su
+            CALENDAR_EXPORT_ENABLED/SCHOOL_CALENDAR_INTELLIGENCE_ENABLED/
+            GLOBAL_ACTION_PROGRESS_ENABLED — semantica INVARIATA, solo il
+            componente che la visualizza cambia. */}
+        <ProductStatusChip internal={calendarExportBadgeVisible} />
         {/* TRAMA BETA v1.1.1 (UI Refinement, punto 2) — segnalazione: il box
             descrittivo occupava uno spazio hero prima ancora della vera
             informazione utile (copertura reale). Per la modalità
