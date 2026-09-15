@@ -1,6 +1,5 @@
 "use client";
 
-import { useRouter } from "next/navigation";
 import PageHeader from "@/components/PageHeader";
 import LogoutButton from "@/components/LogoutButton";
 import ProfileHeaderClient from "@/components/ProfileHeaderClient";
@@ -75,11 +74,19 @@ export default function ProfileNextgenClient({
   schoolProfiles: Record<string, KidSchoolProfileSummary>;
   residenceCity: string | null;
 }) {
-  const router = useRouter();
-
   return (
     <div className="flex min-h-screen flex-col">
-      <PageHeader title="Profilo" onBack={() => router.push("/nextgen")} showBrandIcon />
+      {/* TRAMA — BACK NAVIGATION PROGRESS FIX (15/09/2026, live bug: "Profilo
+          → indietro" non mostrava la barra). Causa: onBack={() =>
+          router.push(...)} qui era una navigazione REALE con destinazione
+          STATICA nota in anticipo, ma PageHeader chiama runNavigation() SOLO
+          nel ramo backHref/router.back() — mai quando è passato onBack
+          (per costruzione: onBack è spesso un cambio di step locale, non
+          navigazione, vedi commento in PageHeader.tsx). Fix: backHref invece
+          di onBack — stesso identico router.push("/nextgen") (PageHeader fa
+          router.push(backHref) internamente), ma ora coperto da
+          runNavigation() come le altre frecce "indietro" già corrette. */}
+      <PageHeader title="Profilo" backHref="/nextgen" showBrandIcon />
 
       <div className="px-5 pt-4">
         {/* SPRINT 7 — stessa texture decorativa (due cerchi) della hero

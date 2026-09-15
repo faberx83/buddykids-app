@@ -93,7 +93,10 @@ export default function PromemoriaClient({
           vive dietro l'hub "Famiglia e logistica" (vedi
           app/nextgen/profile/famiglia/), "indietro" torna lì invece che
           direttamente al Profilo. */}
-      <PageHeader title="Promemoria" onBack={() => router.push("/nextgen/profile/famiglia")} showBrandIcon />
+      {/* TRAMA — BACK NAVIGATION PROGRESS FIX (15/09/2026): backHref invece
+          di onBack — vedi ProfileNextgenClient.tsx per la spiegazione
+          completa. */}
+      <PageHeader title="Promemoria" backHref="/nextgen/profile/famiglia" showBrandIcon />
 
       <div className="flex flex-col gap-3 px-5 py-4">
         {/* SPRINT CORRETTIVO 3 — rimosso il badge "Anteprima": le

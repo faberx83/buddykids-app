@@ -1,6 +1,5 @@
 "use client";
 
-import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { ParentAddress, ADDRESS_KIND_LABELS } from "@/lib/nextgen/address-kinds";
 import { setAddressAction, deleteAddressAction } from "@/app/actions/addresses";
@@ -151,8 +150,6 @@ function AddressCard({ initial }: { initial: ParentAddress }) {
 }
 
 export default function IndirizziClient({ addresses }: { addresses: ParentAddress[] }) {
-  const router = useRouter();
-
   return (
     <div className="flex min-h-screen flex-col">
       {/* SPRINT 7 — l'hub "Logistica & Famiglia" e' stato eliminato (feedback
@@ -162,7 +159,10 @@ export default function IndirizziClient({ addresses }: { addresses: ParentAddres
           SPRINT CORRETTIVO — da qui Indirizzi vive un livello più in
           profondità, dietro l'hub "Famiglia e logistica"
           (app/nextgen/profile/famiglia/): "indietro" torna lì. */}
-      <PageHeader title="Indirizzi" onBack={() => router.push("/nextgen/profile/famiglia")} showBrandIcon />
+      {/* TRAMA — BACK NAVIGATION PROGRESS FIX (15/09/2026): backHref invece
+          di onBack — vedi ProfileNextgenClient.tsx per la spiegazione
+          completa. */}
+      <PageHeader title="Indirizzi" backHref="/nextgen/profile/famiglia" showBrandIcon />
       <div className="flex flex-col gap-3 px-5 py-4">
         <p className="text-xs text-ink-2">
           Salva gli indirizzi di famiglia per aprirli velocemente in Maps. La distanza e il tempo di percorrenza dai

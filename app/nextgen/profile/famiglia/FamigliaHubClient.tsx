@@ -1,6 +1,5 @@
 "use client";
 
-import { useRouter } from "next/navigation";
 import PageHeader from "@/components/PageHeader";
 import HubCard from "@/components/nextgen/HubCard";
 
@@ -8,11 +7,12 @@ import HubCard from "@/components/nextgen/HubCard";
 // dietro un solo ingresso "Famiglia e logistica" (vedi commento in
 // ProfileNextgenClient.tsx e in page.tsx di questa cartella).
 export default function FamigliaHubClient() {
-  const router = useRouter();
-
   return (
     <div className="flex min-h-screen flex-col">
-      <PageHeader title="Famiglia e logistica" onBack={() => router.push("/nextgen/profile")} showBrandIcon />
+      {/* TRAMA — BACK NAVIGATION PROGRESS FIX (15/09/2026): backHref invece
+          di onBack — vedi ProfileNextgenClient.tsx per la spiegazione
+          completa. */}
+      <PageHeader title="Famiglia e logistica" backHref="/nextgen/profile" showBrandIcon />
 
       <div className="flex flex-col gap-2.5 px-5 pt-4">
         <HubCard

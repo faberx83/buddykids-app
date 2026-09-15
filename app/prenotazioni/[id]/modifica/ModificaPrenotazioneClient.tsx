@@ -321,7 +321,12 @@ export default function ModificaPrenotazioneClient({
   if (!booking.canCancelOrModify) {
     return (
       <div className="flex h-full min-h-screen flex-col sm:min-h-0 sm:flex-1">
-        <PageHeader title="Modifica prenotazione" onBack={() => router.back()} showBrandIcon={nextgen} />
+        {/* TRAMA — BACK NAVIGATION PROGRESS FIX (15/09/2026): onBack
+            rimosso — era solo router.back() senza alcuna logica locale,
+            quindi ricade sul ramo di default di PageHeader (nessun
+            backHref/onBack → router.back()), che ora chiama runNavigation()
+            prima di navigare. Comportamento identico, ora coperto. */}
+        <PageHeader title="Modifica prenotazione" showBrandIcon={nextgen} />
         <div className="px-5 py-6">
           <div className="rounded-lg border border-orange-mid bg-orange-light p-4 text-[13px] text-ink">
             <div className="mb-1 font-bold">Non modificabile da qui</div>
@@ -338,7 +343,10 @@ export default function ModificaPrenotazioneClient({
 
   return (
     <div className="flex h-full min-h-screen flex-col sm:min-h-0 sm:flex-1">
-      <PageHeader title="Modifica prenotazione" onBack={() => router.back()} showBrandIcon={nextgen} />
+      {/* TRAMA — BACK NAVIGATION PROGRESS FIX (15/09/2026): stesso motivo
+          del ramo sopra — onBack rimosso, ricade sul default router.back()
+          di PageHeader, ora coperto da runNavigation(). */}
+      <PageHeader title="Modifica prenotazione" showBrandIcon={nextgen} />
       <div className="flex-1 overflow-y-auto px-5 py-[18px]">
         <div className="mb-1 text-base font-bold text-ink">{booking.activityName}</div>
 

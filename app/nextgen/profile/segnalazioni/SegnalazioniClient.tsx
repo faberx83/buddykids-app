@@ -1,6 +1,5 @@
 "use client";
 
-import { useRouter } from "next/navigation";
 import PageHeader from "@/components/PageHeader";
 // "import type": BetaFeedbackItem è solo un'interfaccia — con "import type"
 // il compilatore la elimina dal bundle client, cosi lib/data/beta-feedback.ts
@@ -19,11 +18,14 @@ function formatDate(iso: string): string {
 }
 
 export default function SegnalazioniClient({ items }: { items: BetaFeedbackItem[] }) {
-  const router = useRouter();
-
   return (
     <div className="flex min-h-screen flex-col">
-      <PageHeader title="Le mie segnalazioni" onBack={() => router.push("/nextgen/profile")} showBrandIcon />
+      {/* TRAMA — BACK NAVIGATION PROGRESS FIX (15/09/2026): backHref invece
+          di onBack — stessa identica destinazione, ma ora runNavigation()
+          viene chiamato da PageHeader (mai nel ramo onBack, vedi
+          PageHeader.tsx). Vedi lo stesso fix in ProfileNextgenClient.tsx per
+          la spiegazione completa. */}
+      <PageHeader title="Le mie segnalazioni" backHref="/nextgen/profile" showBrandIcon />
       <div className="flex flex-col gap-3 px-5 py-4">
         <p className="text-xs text-ink-2">
           Sezione temporanea per la fase BETA: qui trovi lo stato delle segnalazioni inviate dalla CTA

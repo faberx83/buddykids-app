@@ -425,7 +425,6 @@ export default function FamigliaClient({
   acceptToken: string | null;
   invitePreview: FamilyInvitePreview | null;
 }) {
-  const router = useRouter();
   const [createdFamily, setCreatedFamily] = useState<Family | null>(null);
   const [accepted, setAccepted] = useState(false);
   const family = initialFamily ?? createdFamily;
@@ -441,7 +440,10 @@ export default function FamigliaClient({
           (app/nextgen/profile/famiglia/): "indietro" torna lì, anche per chi
           arriva da un link di invito via email (acceptToken) — quella pagina
           esiste comunque, non e' legata alla history di navigazione. */}
-      <PageHeader title="Famiglia" onBack={() => router.push("/nextgen/profile/famiglia")} showBrandIcon />
+      {/* TRAMA — BACK NAVIGATION PROGRESS FIX (15/09/2026): backHref invece
+          di onBack — vedi ProfileNextgenClient.tsx per la spiegazione
+          completa. */}
+      <PageHeader title="Famiglia" backHref="/nextgen/profile/famiglia" showBrandIcon />
       {acceptToken && !accepted && (
         <AcceptInviteBanner token={acceptToken} preview={invitePreview} onAccepted={() => setAccepted(true)} />
       )}

@@ -502,7 +502,10 @@ export default function PlannerClient({
 
   return (
     <div className="flex min-h-screen flex-col">
-      <PageHeader title="Planner" onBack={() => router.push("/nextgen")} showBrandIcon />
+      {/* TRAMA — BACK NAVIGATION PROGRESS FIX (15/09/2026): backHref invece
+          di onBack — vedi ProfileNextgenClient.tsx per la spiegazione
+          completa. */}
+      <PageHeader title="Planner" backHref="/nextgen" showBrandIcon />
       <div className="px-5 py-4" onTouchStart={handlePlannerTouchStart} onTouchEnd={handlePlannerTouchEnd}>
         {/* SPRINT 7 — stessa texture decorativa (due cerchi) della hero
             card di Home, vedi DecorativeIntroCard.

@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import dynamic from "next/dynamic";
 import { Activity, Kid } from "@/lib/types";
 import { computeSmartMatches, SmartMatch } from "@/lib/nextgen/smart-search";
@@ -225,7 +225,6 @@ export default function SearchDiscoveryClient({
   // server-side in page.tsx, stesso pattern di app/nextgen/planner/page.tsx.
   todayIso: string;
 }) {
-  const router = useRouter();
   // TRAMA ONE — Sezione 8 (Chiusura P0 Parent, Context Object): questa
   // pagina riceveva già un deep-link `?kid=<id>` da lib/nextgen/missions.ts
   // (Home → "Riempi settimana scoperta" per un bambino specifico) e dal
@@ -543,7 +542,11 @@ export default function SearchDiscoveryClient({
 
   return (
     <div className="flex min-h-screen flex-col">
-      <PageHeader title="Scopri attività" onBack={() => router.push("/nextgen")} showBrandIcon />
+      {/* TRAMA — BACK NAVIGATION PROGRESS FIX (15/09/2026): backHref invece
+          di onBack — vedi ProfileNextgenClient.tsx per la spiegazione
+          completa. `router` locale (usato solo qui) rimosso perché non più
+          necessario. */}
+      <PageHeader title="Scopri attività" backHref="/nextgen" showBrandIcon />
       <div className="px-5 py-4">
         {/* SPRINT 7 — stessa texture decorativa (due cerchi) della hero
             card di Home, vedi DecorativeIntroCard.
