@@ -13,6 +13,19 @@
 // §B14 "zero sorprese per gli utenti esistenti"): qualunque errore o
 // Supabase non configurato ritorna il fallback "nessun contesto scolastico"
 // — MAI un'eccezione che romperebbe il resto della pagina Planner.
+//
+// TRAMA — SCHOOL CALENDAR MUNICIPAL SCOPE (16/09/2026): school_calendar_events
+// ha ora anche una colonna "comune" (nullable — vedi
+// PART_D2_migration_comune_scope.sql). NULL = evento REGIONALE (baseline,
+// comportamento invariato), valorizzato = evento LOCALE (si applica solo ai
+// bambini con lo stesso comune in kid_school_profiles, match normalizzato
+// via normalizeComuneKey — vedi lib/school-calendar/comune.ts). Composizione
+// per bambino: eventi regionali + eventi locali del proprio comune, unione
+// semplice (buildClosureIntervals già gestisce l'unione degli intervalli,
+// nessun dedup aggiuntivo qui). ATTENZIONE DEPLOY: questo file legge la
+// colonna "comune" — NON deployare prima che la migration sia applicata in
+// produzione (altrimenti la SELECT fallisce, "colonna non trovata"). Ordine
+// esatto nel report di sessione: migration -> post-check -> deploy codice.
 
 import { createClient } from "@/lib/supabase/server";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
@@ -22,13 +35,13 @@ import {
   aggregateFamilySchoolWeekNeed,
   computeWeekClosureDetail,
   describePartialClosure,
-  type SchoolCalendarEventInput,
   type SchoolCalendarEventType,
   type SchoolCalendarOverrideInput,
   type SchoolWeekNeed,
   type SeasonWeekNeedInput,
 } from "@/lib/school-calendar/need-core";
 import { deriveCurrentAcademicYear } from "@/lib/school-calendar/academic-year";
+import { groupEventsByScope, composeKidCalendarEvents, type RegionComuneEvent } from "@/lib/school-calendar/comune";
 
 // Sottoinsieme di SeasonWeek (lib/data/planner.ts) richiesto qui — stesso
 // principio "solo i campi che servono" di need-core.ts.
@@ -83,6 +96,13 @@ const EMPTY_CONTEXT: SchoolCalendarPlannerContext = {
 interface RawKidSchoolProfileRow {
   kid_id: string;
   region: string;
+  // TRAMA — SCHOOL CALENDAR MUNICIPAL SCOPE (16/09/2026): letto ORA (prima
+  // era selezionato solo da getKidSchoolProfilesForParent, mai qui) per
+  // risolvere gli eventi locali (school_calendar_events.comune valorizzato)
+  // oltre alla baseline regionale — vedi eventsByRegion/localEventsByRegionComune
+  // più sotto. Resta nullable: un bambino senza comune impostato riceve
+  // SOLO la baseline regionale, comportamento invariato rispetto a prima.
+  comune: string | null;
 }
 
 interface RawSchoolCalendarRow {
@@ -96,6 +116,12 @@ interface RawSchoolCalendarEventRow {
   end_date: string;
   event_type: string;
   label: string | null;
+  // TRAMA — SCHOOL CALENDAR MUNICIPAL SCOPE (16/09/2026): NULL = evento
+  // regionale (comportamento invariato), valorizzato = evento locale — vedi
+  // PART_D2_migration_comune_scope.sql. ATTENZIONE DEPLOY: questa colonna
+  // deve esistere in produzione PRIMA che questo codice sia deployato —
+  // vedi ordine STEP nel report di sessione, MAI invertire l'ordine.
+  comune: string | null;
 }
 
 interface RawSchoolCalendarOverrideRow {
@@ -141,7 +167,7 @@ export async function getSchoolCalendarPlannerContext(
 
   const { data: profileRows, error: profileError } = await supabase
     .from("kid_school_profiles")
-    .select("kid_id, region")
+    .select("kid_id, region, comune")
     .eq("parent_id", user.id)
     .in("kid_id", kidIds);
 
@@ -188,25 +214,39 @@ export async function getSchoolCalendarPlannerContext(
   const regionByCalendarId = new Map(calendars.map((c) => [c.id, c.region]));
   const calendarIds = calendars.map((c) => c.id);
 
+  // TRAMA — SCHOOL CALENDAR MUNICIPAL SCOPE (16/09/2026): SELECT unica
+  // invariata nel numero di round-trip (nessun N+1 introdotto) — "comune"
+  // viaggia nella stessa riga già letta oggi, non serve una seconda
+  // tabella/join. Vedi PART_D2_migration_comune_scope.sql per la colonna
+  // (NON ancora applicata in produzione al momento di questo commit — MAI
+  // deployare questo file prima che la migration sia live, altrimenti
+  // questa select fallisce con "colonna non trovata").
   const { data: eventRows } = await supabase
     .from("school_calendar_events")
-    .select("calendar_id, start_date, end_date, event_type, label")
+    .select("calendar_id, start_date, end_date, event_type, label, comune")
     .in("calendar_id", calendarIds);
 
-  const eventsByRegion = new Map<string, SchoolCalendarEventInput[]>();
+  // Trasforma le righe grezze in RegionComuneEvent (region già risolta da
+  // school_calendars, comune così come letto dalla riga — MAI normalizzato
+  // qui) e delega il raggruppamento region/comune a groupEventsByScope
+  // (lib/school-calendar/comune.ts, logica pura e testata senza mock).
+  const regionComuneEvents: RegionComuneEvent[] = [];
   for (const row of (eventRows ?? []) as RawSchoolCalendarEventRow[]) {
     if (!KNOWN_EVENT_TYPES.has(row.event_type as SchoolCalendarEventType)) continue; // riga inattesa: ignorata, mai un crash
     const region = regionByCalendarId.get(row.calendar_id);
     if (!region) continue;
-    const list = eventsByRegion.get(region) ?? [];
-    list.push({
-      startDate: row.start_date,
-      endDate: row.end_date,
-      eventType: row.event_type as SchoolCalendarEventType,
-      label: row.label ?? "",
+    regionComuneEvents.push({
+      region,
+      comune: row.comune,
+      event: {
+        startDate: row.start_date,
+        endDate: row.end_date,
+        eventType: row.event_type as SchoolCalendarEventType,
+        label: row.label ?? "",
+      },
     });
-    eventsByRegion.set(region, list);
   }
+  const groupedEvents = groupEventsByScope(regionComuneEvents);
 
   const { data: overrideRows } = await supabase
     .from("school_calendar_overrides")
@@ -230,7 +270,15 @@ export async function getSchoolCalendarPlannerContext(
   const closuresByKidId = new Map<string, ReturnType<typeof buildClosureIntervals>>();
   for (const kidId of profileByKidId.keys()) {
     const profile = profileByKidId.get(kidId)!;
-    const events = eventsByRegion.get(profile.region) ?? [];
+    // composeKidCalendarEvents (lib/school-calendar/comune.ts) risolve
+    // baseline regionale + eventi locali del comune del bambino (se
+    // impostato) — profile.comune === null -> SOLO baseline regionale,
+    // comportamento sicuro e prevedibile. Unione semplice: nessun dedup
+    // necessario qui, buildClosureIntervals + closedWeekdayCount
+    // (need-core.ts) trattano già l'insieme come OR di intervalli, non una
+    // somma — un evento regionale e uno locale sullo stesso giorno non
+    // raddoppiano mai closedWeekdaysCount.
+    const events = composeKidCalendarEvents(groupedEvents, { region: profile.region, comune: profile.comune });
     closuresByKidId.set(kidId, buildClosureIntervals(events));
   }
 
