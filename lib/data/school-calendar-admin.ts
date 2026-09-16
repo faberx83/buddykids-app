@@ -17,6 +17,11 @@ export interface SchoolCalendarAdminEvent {
   label: string;
   sourceLevel: string | null;
   notes: string | null;
+  // TRAMA — SCHOOL CALENDAR MUNICIPAL SCOPE (16/09/2026): NULL = evento
+  // regionale, valorizzato = evento locale (vedi
+  // PART_D2_migration_comune_scope.sql). Letto qui solo per la vista Admin
+  // (badge "Regionale"/"Locale · X" in SchoolCalendarAdminClient.tsx).
+  comune: string | null;
 }
 
 export interface SchoolCalendarAdminRow {
@@ -33,6 +38,11 @@ export interface SchoolCalendarAdminRow {
   events: SchoolCalendarAdminEvent[];
 }
 
+// ATTENZIONE DEPLOY (16/09/2026): questa funzione legge school_calendar_events.comune
+// — colonna aggiunta da PART_D2_migration_comune_scope.sql, NON ancora
+// applicata in produzione al momento di questo commit. NON deployare prima
+// che la migration sia live (altrimenti la SELECT sotto fallisce, "colonna
+// non trovata"). Vedi ordine STEP nel report di sessione.
 export async function getSchoolCalendarsForAdmin(): Promise<SchoolCalendarAdminRow[]> {
   if (!isSupabaseConfigured) return [];
 
@@ -48,7 +58,7 @@ export async function getSchoolCalendarsForAdmin(): Promise<SchoolCalendarAdminR
   const calendarIds = calendarRows.map((c) => c.id as string);
   const { data: eventRows } = await supabase
     .from("school_calendar_events")
-    .select("id, calendar_id, start_date, end_date, event_type, label, source_level, notes")
+    .select("id, calendar_id, start_date, end_date, event_type, label, source_level, notes, comune")
     .in("calendar_id", calendarIds)
     .order("start_date", { ascending: true });
 
@@ -63,6 +73,7 @@ export async function getSchoolCalendarsForAdmin(): Promise<SchoolCalendarAdminR
       label: row.label as string,
       sourceLevel: (row.source_level as string) ?? null,
       notes: (row.notes as string) ?? null,
+      comune: (row.comune as string) ?? null,
     });
     eventsByCalendar.set(row.calendar_id as string, list);
   }

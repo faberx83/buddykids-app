@@ -114,11 +114,19 @@ function NewCalendarForm({ onCreated }: { onCreated: () => void }) {
   );
 }
 
+// TRAMA — SCHOOL CALENDAR MUNICIPAL SCOPE (16/09/2026, §6). "Comune"
+// opzionale: vuoto = evento regionale (comportamento invariato per chi non
+// lo compila), valorizzato = evento locale (si applica solo ai bambini con
+// lo stesso comune, matching normalizzato lato service layer — vedi
+// lib/school-calendar/comune.ts). Nessuna autocomplete/lista Comuni
+// (fuori scope, niente ISTAT/geocoding in questa sessione): un semplice
+// input testo, coerente col resto del form.
 function NewEventForm({ calendarId, onCreated }: { calendarId: string; onCreated: () => void }) {
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
   const [eventType, setEventType] = useState(EVENT_TYPE_OPTIONS[0].value);
   const [label, setLabel] = useState("");
+  const [comune, setComune] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -134,6 +142,7 @@ function NewEventForm({ calendarId, onCreated }: { calendarId: string; onCreated
       label,
       sourceLevel: null,
       notes: "",
+      comune,
     });
     setBusy(false);
     if (res.error) {
@@ -143,6 +152,7 @@ function NewEventForm({ calendarId, onCreated }: { calendarId: string; onCreated
     setStartDate("");
     setEndDate("");
     setLabel("");
+    setComune("");
     onCreated();
   }
 
@@ -163,6 +173,15 @@ function NewEventForm({ calendarId, onCreated }: { calendarId: string; onCreated
         placeholder="Etichetta"
         className="min-w-0 flex-1 rounded-md border border-[#E8EBF0] px-2 py-1 text-[11px]"
       />
+      <div className="flex flex-col gap-0.5">
+        <input
+          value={comune}
+          onChange={(e) => setComune(e.target.value)}
+          placeholder="Comune (opzionale)"
+          className="w-36 rounded-md border border-[#E8EBF0] px-2 py-1 text-[11px]"
+        />
+        <span className="text-[9.5px] leading-tight text-ink-3">Lascia vuoto per applicare l&apos;evento a tutta la Regione.</span>
+      </div>
       <button type="submit" disabled={busy} className="rounded-md bg-trama-violet px-2.5 py-1 text-[11px] font-bold text-white disabled:opacity-60">
         Aggiungi
       </button>
@@ -223,6 +242,12 @@ function CalendarCard({ calendar, onChanged }: { calendar: SchoolCalendarAdminRo
               <li key={e.id} className="flex items-center justify-between gap-2 text-[11px] text-ink-2">
                 <span>
                   {e.startDate} → {e.endDate} · {e.label} ({e.eventType})
+                  {/* TRAMA — SCHOOL CALENDAR MUNICIPAL SCOPE (16/09/2026, §7): badge
+                      discreto, nessun redesign. comune NULL -> "Regionale"
+                      (comportamento di oggi), valorizzato -> "Locale · <Comune>". */}
+                  <span className="ml-1.5 rounded-full bg-[#F0F2F5] px-1.5 py-0.5 text-[9.5px] font-semibold text-ink-3">
+                    {e.comune ? `Locale · ${e.comune}` : "Regionale"}
+                  </span>
                 </span>
                 <button onClick={() => handleDeleteEvent(e.id)} className="text-[10px] font-semibold text-[#C0392B]">
                   Elimina

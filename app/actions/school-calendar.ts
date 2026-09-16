@@ -209,6 +209,13 @@ export async function upsertSchoolCalendarEventAction(input: {
   label: string;
   sourceLevel: "national" | "regional" | "local" | null;
   notes: string;
+  // TRAMA — SCHOOL CALENDAR MUNICIPAL SCOPE (16/09/2026): opzionale, "" o
+  // undefined = evento regionale (comune NULL in DB, comportamento
+  // invariato). Valorizzato = evento locale — salvato con trim ma SENZA
+  // forzare il lowercase (il valore visibile in Admin/DB resta "Milano",
+  // non "milano": la normalizzazione esiste SOLO come chiave di matching
+  // applicativo, vedi lib/school-calendar/comune.ts).
+  comune?: string;
 }): Promise<{ error?: string; id?: string }> {
   if (!isSupabaseConfigured) return { error: "Supabase non configurato" };
   if (!input.calendarId) return { error: "Calendario obbligatorio" };
@@ -221,6 +228,17 @@ export async function upsertSchoolCalendarEventAction(input: {
   } = await supabase.auth.getUser();
   if (!user) return { error: "Non autenticato" };
 
+  const comuneTrimmed = (input.comune ?? "").trim();
+  // §11 (limite V1 documentato, invariato): school_year_start/school_year_end
+  // restano SOLO regionali — coerente con il check constraint opzionale
+  // della migration (chk_boundary_events_region_only). Stessa regola
+  // applicata qui lato applicativo, PRIMA di arrivare al DB: un Admin che
+  // valorizza Comune per un marcatore di confine riceve un errore chiaro
+  // invece di un insert rifiutato dal constraint senza spiegazione.
+  if (comuneTrimmed.length > 0 && (input.eventType === "school_year_start" || input.eventType === "school_year_end")) {
+    return { error: "Inizio/fine anno scolastico restano sempre eventi regionali (senza Comune)" };
+  }
+
   const row = {
     calendar_id: input.calendarId,
     start_date: input.startDate,
@@ -229,6 +247,7 @@ export async function upsertSchoolCalendarEventAction(input: {
     label: input.label.trim(),
     source_level: input.sourceLevel,
     notes: input.notes.trim() || null,
+    comune: comuneTrimmed.length > 0 ? comuneTrimmed : null,
   };
 
   if (input.id) {

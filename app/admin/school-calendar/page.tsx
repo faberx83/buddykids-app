@@ -32,7 +32,8 @@ export default async function AdminSchoolCalendarPage() {
       <h1 className="mb-1 text-xl font-bold text-white">Calendari scolastici</h1>
       <p className="mb-4 text-sm text-white/70">
         Dataset per School Calendar Intelligence (V1) — solo calendari pubblicati sono usati dal Planner dei genitori.
-        Le chiusure sono modellate a livello di Regione (mai comune).
+        Ogni evento è a livello di Regione (Comune vuoto nel form) oppure locale a un singolo Comune (campo Comune
+        valorizzato) — un evento locale si applica solo ai bambini con lo stesso Comune impostato nel profilo scuola.
       </p>
       <SchoolCalendarAdminClient initialCalendars={calendars} />
     </div>
