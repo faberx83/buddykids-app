@@ -87,6 +87,24 @@ export const RELEASE_CATALOG: ReleaseCatalogEntry[] = [
     notes:
       "Creata il 14/09/2026 per ospitare Global CTA Progress Bar separatamente da \"TRAMA — Planner Intelligence\" (che resta scope Planner/School Calendar/Calendar Export). Nessuna nuova tabella, nessun nuovo meccanismo di promotion: stessa infrastruttura Release Catalog/Feature Registry esistente. Estesa il 15/09/2026 con nextgen_classic_fallback (PART C, TRAMA Beta Chrome Cleanup): stesso principio, stessa release — capability trasversale di esperienza, non specifica del Planner.",
   },
+  // TRAMA — REAL DISCOVERY PILOT (16/09/2026). Release separata da "Planner
+  // Intelligence" e da "UX Foundations": dominio Scopri/Ricerca, non
+  // Planner. Dataset code-based (lib/discovery/real-dataset.ts), nessuna
+  // nuova tabella, nessuna riga in "activities"/"centers"/"bookings".
+  {
+    id: "real-discovery-pilot",
+    label: "TRAMA — Real Discovery Pilot",
+    shortDescription: "Sezione 'Scoperte TRAMA' in Scopri: attività estive reali, non Partner, raccolte da fonti pubbliche.",
+    targetAudience: ["parent"],
+    featureKeys: ["real_discovery_dataset"],
+    knownLimitations: [
+      "real_discovery_dataset (V1): 6 record reali verificati manualmente (3 Milano/Milano Ovest, 2 Puglia Conversano/Noicattaro, 1 Milano centro per varietà categoria) — non un motore di ingestion, non copre ancora Rutigliano con un operatore specifico (il Comune regola i centri estivi tramite bando pubblico annuale, nessun operatore con sito stabile trovato in questa sessione).",
+      "Non integrato con i filtri esistenti di Scopri (età/prezzo/zona/tag/servizi) — la sezione mostra tutti i record del dataset compatibili con la settimana eventualmente selezionata, non ancora filtrabili per categoria/età/prezzo come le attività Partner.",
+      "Nessuna immagine: ogni card usa un visual neutro TRAMA (vedi §9 Image/Copyright Audit del report) finché non viene presa una decisione di prodotto/legal sulla gestione immagini.",
+    ],
+    notes:
+      "Creata il 16/09/2026. Non ancora verificata visivamente live: resta dietro flag (cohort:internal-preview) finché Fabrizio non la abilita e la controlla di persona.",
+  },
 ];
 
 export function getReleaseCatalog(): ReleaseCatalogEntry[] {

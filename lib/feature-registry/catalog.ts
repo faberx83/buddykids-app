@@ -266,6 +266,40 @@ export const FEATURE_CATALOG: FeatureCatalogEntry[] = [
     releaseEligible: true,
   },
 
+  // ── TRAMA — REAL DISCOVERY PILOT (16/09/2026). Dataset code-based di
+  // attività estive reali, scoperte sul web ma NON gestite da un Partner
+  // TRAMA (vedi lib/discovery/real-dataset.ts per il Data Model Audit
+  // completo su perché non vive in "activities"). Dark Release reale:
+  // codice raggiungibile (app/nextgen/search/page.tsx risolve il flag
+  // server-side, stesso pattern di Calendar Export/School Calendar
+  // Intelligence), risolto a "off" per chiunque finché Fabrizio non attiva
+  // cohort:internal-preview. ──────
+  {
+    key: "real_discovery_dataset",
+    label: "Real Discovery Pilot (Scoperte TRAMA — attività reali non Partner)",
+    area: "parent",
+    status: "INTERNAL_PREVIEW",
+    flagName: "REAL_DISCOVERY_DATASET_ENABLED",
+    description:
+      "Sezione 'Scoperte TRAMA' in Scopri/Ricerca NEXTGEN: attività estive realmente esistenti (centri " +
+      "estivi comunali/cooperative sociali/scuole di arte), raccolte da fonti pubbliche, MAI presentate " +
+      "come Partner TRAMA. Dataset in lib/discovery/real-dataset.ts (code-based, zero righe in " +
+      "'activities'/'centers'/'bookings'). Card dedicata (DiscoveryLeadCard) senza CTA 'Prenota', con " +
+      "disclaimer di provenienza sempre visibile e link esterno 'Vai al sito'/'Contatta il centro'.",
+    sourceFiles: [
+      "lib/feature-flags/registry.ts",
+      "lib/discovery/real-dataset.ts",
+      "components/nextgen/DiscoveryLeadCard.tsx",
+      "app/nextgen/search/page.tsx",
+      "app/nextgen/search/SearchDiscoveryClient.tsx",
+    ],
+    note:
+      "Pilota con 6 record reali (3 Milano/Milano Ovest, 2 Puglia/Rutigliano-dintorni, 1 bonus categoria " +
+      "artistico) verificati manualmente in questa sessione, non un motore di ingestion automatico. Non " +
+      "ancora integrato con i filtri esistenti (età/prezzo/zona/tag) — vedi report per il dettaglio.",
+    releaseEligible: true,
+  },
+
   // ── TRAMA — FINAL PRE-DEPLOY FIX (14/09/2026) — Global Action Progress
   // Bar: capability UX trasversale, NON parte concettualmente della release
   // "TRAMA — Planner Intelligence" (non deriva/mostra dati scolastici o di

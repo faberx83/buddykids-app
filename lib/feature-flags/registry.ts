@@ -150,6 +150,26 @@ export const FEATURE_FLAG_REGISTRY = {
     defaultValue: false,
     allowedScopes: ["global", "environment", "user", "role", "cohort"],
   },
+  // TRAMA — REAL DISCOVERY PILOT (16/09/2026). Governa la visibilità della
+  // sezione "Scoperte TRAMA" in Scopri/Ricerca NEXTGEN — attività estive
+  // REALI trovate sul web da TRAMA ma NON gestite da un Partner TRAMA (vedi
+  // lib/discovery/real-dataset.ts per il dataset code-based e il
+  // ragionamento completo sul perché non vive in "activities"). Stesso
+  // identico pattern Dark Release delle altre voci di questo registry:
+  // defaultValue false, nessun override GLOBAL/PILOT mai scritto da questo
+  // programma — visibile SOLO per cohort:internal-preview attivata
+  // manualmente da Admin → Feature Flags → Release.
+  REAL_DISCOVERY_DATASET_ENABLED: {
+    name: "REAL_DISCOVERY_DATASET_ENABLED",
+    description:
+      "Mostra in Scopri/Ricerca NEXTGEN una sezione separata 'Scoperte TRAMA' con attività estive reali " +
+      "raccolte da fonti pubbliche (lib/discovery/real-dataset.ts, dataset code-based, zero righe in " +
+      "'activities'/'centers'). Ogni card usa un componente dedicato (DiscoveryLeadCard, mai ActivityCard) " +
+      "senza CTA 'Prenota' e con disclaimer di provenienza sempre visibile. Default false: nessun override " +
+      "GLOBAL/PILOT scritto da questo programma, solo cohort:internal-preview attivata manualmente da Admin.",
+    defaultValue: false,
+    allowedScopes: ["global", "environment", "user", "role", "cohort"],
+  },
   // TRAMA — FINAL BETA CHROME CLEANUP (15/09/2026, PART C — "Torna alla
   // versione classica" Admin-controlled). Governa SOLO la VISIBILITÀ della
   // riga di fallback operativo in Profilo → "Esperienza TRAMA" — non
