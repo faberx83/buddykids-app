@@ -9,6 +9,19 @@ import { getPlannerData } from "@/lib/data/planner";
 import { getSeasonYear } from "@/lib/data/season-year";
 import { getFavoriteActivityIds } from "@/lib/data/favorites";
 import SearchDiscoveryClient from "./SearchDiscoveryClient";
+// TRAMA — REAL DISCOVERY PILOT (16/09/2026) · ANTEPRIMA INTERNA. Stesso
+// identico pattern Dark Release di app/nextgen/planner/page.tsx
+// (CALENDAR_EXPORT_ENABLED/SCHOOL_CALENDAR_INTELLIGENCE_ENABLED): il flag va
+// risolto SERVER-SIDE, il dataset (code-based, zero I/O — vedi
+// lib/discovery/real-dataset.ts) viene passato al client SOLO se il flag
+// risolve true per questo utente, mai altrimenti — un utente a cui il flag
+// risolve false riceve esattamente lo stesso identico prop di prima
+// (array vuoto), nessuna differenza di comportamento.
+import { createClient } from "@/lib/supabase/server";
+import { resolveFeatureFlagVisibility } from "@/lib/feature-flags/resolve";
+import { anyResolvedViaInternalPreview } from "@/lib/feature-flags/internal-preview";
+import { generateCorrelationId } from "@/lib/telemetry/correlation";
+import { REAL_DISCOVERY_LEADS, type DiscoveryLeadRecord } from "@/lib/discovery/real-dataset";
 
 // SPRINT 2 (NEXTGEN) — "Ricerca e scoperta": ordinamento intelligente sopra
 // il contesto del genitore. Nessuna nuova query: riusa getActivities/
@@ -49,6 +62,40 @@ export default async function NextgenSearchPage() {
   // SearchDiscoveryClient.tsx).
   const todayIso = new Date().toISOString().slice(0, 10);
 
+  // TRAMA — REAL DISCOVERY PILOT (16/09/2026). Default sicuro: nessun dato,
+  // nessun badge, finché il flag non risolve true per QUESTO utente — stesso
+  // principio "OFF finché non risolto" degli altri 3 flag Dark Release già
+  // in produzione (Calendar Export, School Calendar Intelligence, Global
+  // Action Progress).
+  let realDiscoveryLeads: DiscoveryLeadRecord[] = [];
+  let realDiscoveryBadgeVisible = false;
+  if (isSupabaseConfigured) {
+    const supabase = await createClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    let role: string | null = null;
+    if (user) {
+      const { data: profileRow } = await supabase.from("profiles").select("role").eq("id", user.id).single();
+      role = (profileRow?.role as string) ?? "parent";
+    }
+    const realDiscoveryDetail = await resolveFeatureFlagVisibility({
+      flagName: "REAL_DISCOVERY_DATASET_ENABLED",
+      userId: user?.id ?? null,
+      role,
+      tenant: "family",
+      correlationId: generateCorrelationId(),
+    });
+    if (realDiscoveryDetail.enabled) {
+      // Dataset code-based (nessuna query, nessun I/O) — vedi
+      // lib/discovery/real-dataset.ts. Il filtro per compatibilità con la
+      // settimana selezionata resta lato client (SearchDiscoveryClient già
+      // legge il query param "week", stesso pattern di §14 del report).
+      realDiscoveryLeads = REAL_DISCOVERY_LEADS;
+    }
+    realDiscoveryBadgeVisible = anyResolvedViaInternalPreview([realDiscoveryDetail]);
+  }
+
   return (
     <SearchDiscoveryClient
       activities={activities}
@@ -60,6 +107,8 @@ export default async function NextgenSearchPage() {
       activitiesWithDaySpots={Array.from(activitiesWithDaySpots)}
       todayIso={todayIso}
       favoriteActivityIds={Array.from(favoriteActivityIds)}
+      realDiscoveryLeads={realDiscoveryLeads}
+      realDiscoveryBadgeVisible={realDiscoveryBadgeVisible}
     />
   );
 }

@@ -14,6 +14,11 @@ import { ProductStatusChip } from "@/components/ProductStatusChip";
 import DecorativeIntroCard from "@/components/nextgen/DecorativeIntroCard";
 import SuggestCenterCard from "@/components/nextgen/SuggestCenterCard";
 import { generateCorrelationId } from "@/lib/telemetry/correlation";
+// TRAMA — REAL DISCOVERY PILOT (16/09/2026). Card e dataset dedicati, mai
+// mescolati con Activity/ActivityCard — vedi lib/discovery/real-dataset.ts
+// per il perché (Data Model Audit).
+import DiscoveryLeadCard from "@/components/nextgen/DiscoveryLeadCard";
+import { isDiscoveryLeadCompatibleWithWeek, type DiscoveryLeadRecord } from "@/lib/discovery/real-dataset";
 
 // Leaflet usa `window`, quindi la mappa va caricata solo lato client — stesso
 // pattern già usato in LEGACY (app/(main)/search/SearchClient.tsx) e nel
@@ -197,6 +202,8 @@ export default function SearchDiscoveryClient({
   activitiesWithDaySpots = [],
   todayIso,
   favoriteActivityIds = [],
+  realDiscoveryLeads = [],
+  realDiscoveryBadgeVisible = false,
 }: {
   activities: Activity[];
   kids: Kid[];
@@ -204,6 +211,14 @@ export default function SearchDiscoveryClient({
   uncoveredWeekStart: string | null;
   uncoveredWeekLabel: string | null;
   availabilityByWeek: Record<string, string[]>;
+  // TRAMA — REAL DISCOVERY PILOT (16/09/2026). Array vuoto per default —
+  // identico al comportamento di prima quando il flag
+  // REAL_DISCOVERY_DATASET_ENABLED risolve false lato server (page.tsx):
+  // nessuna sezione "Scoperte TRAMA" viene mostrata, nessuna differenza per
+  // l'utente. Vedi lib/discovery/real-dataset.ts per il dataset e il
+  // ragionamento di dominio (Partner vs non-Partner).
+  realDiscoveryLeads?: DiscoveryLeadRecord[];
+  realDiscoveryBadgeVisible?: boolean;
   // TRAMA ONE Build Sprint 3 — "Giorni spot": stesso dato/stessa fonte di
   // LEGACY (app/(main)/search/SearchClient.tsx), lib/data/activities.ts
   // #getActivitiesWithOpenDaySpots.
@@ -284,6 +299,29 @@ export default function SearchDiscoveryClient({
     );
     return validStarts.has(weekParam) ? [weekParam] : [];
   });
+
+  // TRAMA — REAL DISCOVERY PILOT (16/09/2026), §14 del report ("School
+  // Calendar → Discovery"). Nessuna settimana selezionata → tutti i record
+  // restano (un record senza data scelta non è mai incompatibile). Con una
+  // o più settimane selezionate, un record resta SOLO se le sue date note si
+  // sovrappongono ad ALMENO UNA delle settimane scelte (stessa semantica
+  // "unione" del filtro Data esistente sopra) — un record senza date note
+  // (molti, onestamente, in questo dataset) non viene MAI escluso solo
+  // perché mancano le date: isDiscoveryLeadCompatibleWithWeek ritorna sempre
+  // true in quel caso.
+  const compatibleRealDiscoveryLeads = useMemo(() => {
+    if (realDiscoveryLeads.length === 0) return [];
+    if (selectedWeekStarts.length === 0) return realDiscoveryLeads;
+    const ranges = getSeasonWeekRanges(seasonYear);
+    const selectedRanges = selectedWeekStarts
+      .map((start) => ranges.find((r) => isoDate(r.start) === start))
+      .filter((r): r is SeasonWeekRange => Boolean(r));
+    if (selectedRanges.length === 0) return realDiscoveryLeads;
+    return realDiscoveryLeads.filter((lead) =>
+      selectedRanges.some((r) => isDiscoveryLeadCompatibleWithWeek(lead, isoDate(r.start), isoDate(r.end)))
+    );
+  }, [realDiscoveryLeads, selectedWeekStarts, seasonYear]);
+
   const [radiusKm, setRadiusKm] = useState(DEFAULT_RADIUS_KM);
   // TRAMA ONE Build Sprint 3 — "Giorni spot": stesso filtro/stesso principio
   // di LEGACY (SearchClient.tsx) — "solo attività con Giorni spot
@@ -557,9 +595,15 @@ export default function SearchDiscoveryClient({
             della card invece che a .app-shell e viene tagliato. */}
         {/* TRAMA — FINAL BETA CHROME CLEANUP (15/09/2026): ProductStatusChip
             sostituisce NextgenBadge — vedi HomeDashboardClient.tsx per la
-            spiegazione completa. Scopri non risolve capability
-            internal-preview: internal sempre false. */}
-        <ProductStatusChip internal={false} />
+            spiegazione completa.
+            TRAMA — REAL DISCOVERY PILOT (16/09/2026): Scopri ora PUÒ
+            risolvere una capability internal-preview (la sezione "Scoperte
+            TRAMA" sotto) — internal riflette realDiscoveryBadgeVisible,
+            calcolato server-side in page.tsx con lo stesso identico pattern
+            di Planner/Calendar Export (anyResolvedViaInternalPreview). Per
+            un utente a cui il flag risolve false (o via override globale/
+            pilot, non cohort:internal-preview) resta false come prima. */}
+        <ProductStatusChip internal={realDiscoveryBadgeVisible} />
         <DecorativeIntroCard className="mb-3">
           {/* Audit font (31/08/2026): stesso pattern di descrizione di
               PlannerClient.tsx (screenshot di Fabrizio), portato da text-xs
@@ -568,6 +612,34 @@ export default function SearchDiscoveryClient({
             Ordinati per voi{uncoveredWeekLabel ? ` — priorità a chi è libero in ${uncoveredWeekLabel}` : ""}.
           </p>
         </DecorativeIntroCard>
+
+        {/* TRAMA — REAL DISCOVERY PILOT (16/09/2026). Sezione ADDITIVA,
+            separata dai risultati Partner sotto: nessun record qui entra mai
+            nei filtri età/prezzo/zona/tag/servizi esistenti (limite noto,
+            documentato nel report — vedi lib/releases/catalog.ts,
+            "real-discovery-pilot"). Compatibilità con la settimana
+            selezionata (se presente) calcolata con
+            isDiscoveryLeadCompatibleWithWeek, stesso criterio di
+            sovrapposizione usato per le attività reali. Un record senza date
+            note non viene mai escluso: solo un record con date note e
+            realmente incompatibili con la settimana scelta sparisce. */}
+        {compatibleRealDiscoveryLeads.length > 0 && (
+          <div className="mb-4">
+            <div className="mb-1.5 flex items-center gap-1.5">
+              <span className="text-sm font-bold text-ink">Scoperte TRAMA</span>
+              <span className="rounded-full bg-[#F3F0FF] px-2 py-0.5 text-[10px] font-semibold text-trama-violet">
+                Anteprima interna
+              </span>
+            </div>
+            <p className="mb-2 text-[11px] text-ink-2">
+              Attività reali trovate da TRAMA sul territorio, non gestite da un Partner TRAMA — vedi il
+              disclaimer su ogni scheda.
+            </p>
+            {compatibleRealDiscoveryLeads.map((lead) => (
+              <DiscoveryLeadCard key={lead.id} lead={lead} />
+            ))}
+          </div>
+        )}
 
         <input
           value={query}
