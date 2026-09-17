@@ -1,4 +1,4 @@
-// TRAMA — REAL DISCOVERY PILOT (16/09/2026)
+// TRAMA — REAL DISCOVERY PILOT (16/09/2026, esteso 17/09/2026 — COMPLETION PASS)
 //
 // Dataset CODE-BASED (nessuna nuova tabella, nessuna riga in "activities"/
 // "centers") di attività estive REALMENTE esistenti, scoperte sul web da
@@ -14,9 +14,16 @@
 // FAKE PARTNERS NO. Ogni riga qui sotto è tracciabile a una fonte reale
 // (sources[]), e ogni campo non verificabile dalla fonte resta `null` —
 // mai inventato per "completare" una card. Vedi il campo `temporalNote` per
-// la trasparenza sulla stagionalità (oggi, 16/09/2026, l'estate 2026 è già
-// conclusa: molte fonti sono quindi "stagione appena conclusa", non ancora
-// riconfermate per il 2027 — la nota lo dichiara sempre esplicitamente).
+// la trasparenza sulla stagionalità.
+//
+// COMPLETION PASS (17/09/2026): il dataset è passato da 6 a 13 record dopo
+// una seconda ricerca più approfondita su entrambi i cluster geografici
+// (vedi report "TRAMA REAL DISCOVERY PILOT — FINAL RESULT" per il dettaglio
+// fonte per fonte). 13 record onesti sono stati preferiti a un numero
+// artificialmente più alto: diversi lead scoperti in questa sessione
+// (Cusago, ASD Sensazioni in Movimento Mola di Bari) sono stati
+// deliberatamente ESCLUSI per verificabilità insufficiente — vedi
+// REJECTED_DISCOVERY_LEADS in fondo a questo file.
 //
 // Gated da REAL_DISCOVERY_DATASET_ENABLED (lib/feature-flags/registry.ts),
 // risolto server-side in app/nextgen/search/page.tsx, di default invisibile
@@ -82,6 +89,7 @@ export interface DiscoveryLeadRecord {
 }
 
 export const REAL_DISCOVERY_LEADS: DiscoveryLeadRecord[] = [
+  // ============ CLUSTER A — MILANO / MILANO OVEST (11 record) ============
   {
     id: "rho-cre-collodi-stripes",
     organizerName: "Comune di Rho (gestione: Stripes Cooperativa Sociale ONLUS)",
@@ -113,7 +121,7 @@ export const REAL_DISCOVERY_LEADS: DiscoveryLeadRecord[] = [
     seasonYear: 2026,
     confidence: "high",
     temporalNote:
-      "Pagina pubblicata dall'organizzatore il 15/04/2026 per la stagione 2026, già conclusa alla data di questa ricerca (16/09/2026). Sede/orari/gestore confermati direttamente dalla fonte primaria — riconfermare data/prezzo per l'estate 2027 prima della pubblicazione al pubblico.",
+      "Pagina pubblicata dall'organizzatore il 15/04/2026 per la stagione 2026, già conclusa alla data di questa ricerca (17/09/2026). Sede/orari/gestore confermati direttamente dalla fonte primaria — riconfermare data/prezzo per l'estate 2027 prima della pubblicazione al pubblico.",
   },
   {
     id: "cornaredo-centri-estivi-comunali",
@@ -146,6 +154,104 @@ export const REAL_DISCOVERY_LEADS: DiscoveryLeadRecord[] = [
     confidence: "high",
     temporalNote:
       "Pagina di servizio permanente (ultimo aggiornamento dichiarato 08/04/2026), non legata a un'unica edizione: date esatte, sede e importo della retta sono pubblicati dal Comune ogni anno in aprile/maggio, non ancora disponibili per il 2027 alla data di questa ricerca.",
+  },
+  {
+    id: "pero-centro-estivo-primaria",
+    organizerName: "Comune di Pero",
+    activityTitle: "Centro Diurno Estivo — Scuola Primaria",
+    shortDescription:
+      "Centro diurno estivo comunale con attività ludico-ricreative, sportive, pedagogiche e di animazione, rivolto ai bambini che hanno frequentato la scuola primaria (residenti e non residenti).",
+    category: "educativo",
+    ageMin: null,
+    ageMax: null,
+    locationName: "Locali e giardini scolastici comunali",
+    address: null,
+    comune: "Pero",
+    region: "Lombardia",
+    startDate: null,
+    endDate: null,
+    weeklyStructure:
+      "Orario 8:00-18:00 (ingresso 8:00-9:00, uscita 16:00-18:00); frequenza e pagamento su base settimanale minima. Iscrizioni scuola primaria dal 13 aprile al 18 maggio 2026.",
+    price: 88.2,
+    priceUnit: "per_settimana",
+    registrationUrl: "https://sportellotelematico.comune.pero.mi.it/action:c_c013:centro.diurno.estivo;clone",
+    officialUrl: "https://sportellotelematico.comune.pero.mi.it/action:c_c013:centro.diurno.estivo;clone",
+    contact: null,
+    image: null,
+    sourceType: "primary_official",
+    sources: [
+      { label: "Comune di Pero — Andare al centro estivo (scuola primaria)", url: "https://sportellotelematico.comune.pero.mi.it/action:c_c013:centro.diurno.estivo;clone" },
+    ],
+    seasonYear: 2026,
+    confidence: "high",
+    temporalNote:
+      "Pagina di servizio aggiornata per la stagione 2026 (iscrizioni 13 aprile–18 maggio 2026), consultata il 17/09/2026 a stagione conclusa. Il prezzo riportato (88,20€/settimana) è la tariffa intera residenti (ISEE ≥30.000€): esistono riduzioni ISEE fino a 27,56€ e una tariffa non residenti di 110,25€, non rappresentabili in un singolo numero — vedi weeklyStructure. Da riconfermare per il 2027.",
+  },
+  {
+    id: "settimo-milanese-centro-diurno-ricreativo",
+    organizerName: "Comune di Settimo Milanese",
+    activityTitle: "Centro Diurno Ricreativo Estivo",
+    shortDescription:
+      "Centro diurno ricreativo comunale per bambini e ragazzi delle scuole dell'infanzia, primaria e secondaria, attivo nel periodo di chiusura estiva delle scuole presso la scuola statale di via Bruno Buozzi.",
+    category: "educativo",
+    ageMin: null,
+    ageMax: null,
+    locationName: "Scuola statale di Settimo Milanese",
+    address: "Via Bruno Buozzi 5, Settimo Milanese (MI)",
+    comune: "Settimo Milanese",
+    region: "Lombardia",
+    startDate: null,
+    endDate: null,
+    weeklyStructure:
+      "Orario 7:30-17:30 (ingresso entro le 9:00, uscita dalle 16:30). Iscrizioni dall'8 aprile al 15 maggio 2026, graduatoria pubblicata entro il 31 maggio.",
+    price: 77,
+    priceUnit: "per_settimana",
+    registrationUrl: "https://comune.settimomilanese.mi.it/servizio/p24-servizio-centro-diurno-ricreativo-estivo/",
+    officialUrl: "https://comune.settimomilanese.mi.it/servizio/p24-servizio-centro-diurno-ricreativo-estivo/",
+    contact: "02.33509216 — istruzione@comune.settimomilanese.mi.it",
+    image: null,
+    sourceType: "primary_official",
+    sources: [
+      { label: "Comune di Settimo Milanese — Servizio centro diurno ricreativo estivo", url: "https://comune.settimomilanese.mi.it/servizio/p24-servizio-centro-diurno-ricreativo-estivo/" },
+    ],
+    seasonYear: 2026,
+    confidence: "high",
+    temporalNote:
+      "Pagina di servizio ufficiale (rev. P24 del 3/4/2026, ultimo aggiornamento dichiarato 30/06/2026) — dati correnti per la stagione 2026, già conclusa alla data di questa ricerca (17/09/2026). Prezzo riportato è la tariffa residenti (non residenti 95,70€, dal secondo figlio 71,50€). Date esatte di apertura non pubblicate su questa pagina (solo periodo di iscrizione) — da riconfermare per il 2027.",
+  },
+  {
+    id: "milano-centri-estivi-scuole-primarie-comunali",
+    organizerName: "Comune di Milano — Direzione Educazione",
+    activityTitle: "Centri Estivi delle Scuole Primarie 2026",
+    shortDescription:
+      "Centri di vacanza diurni organizzati dal Comune di Milano presso sedi scolastiche con spazi all'aperto, con attività ludiche, sportive e di intrattenimento, in 3 periodi prenotabili anche non consecutivi. Include sedi nel Municipio 7 — Milano Ovest (Via Dolci 5, Via Viterbo 31, Via Muggiano 16, Via Forze Armate 65, zona Baggio/San Siro/QT8), oltre a numerose altre sedi cittadine elencate nel comunicato ufficiale.",
+    category: "educativo",
+    ageMin: null,
+    ageMax: null,
+    locationName:
+      "Sedi scolastiche comunali multiple, incluso Municipio 7 (Baggio/San Siro): Via Dolci 5, Via Viterbo 31, Via Muggiano 16, Via Forze Armate 65",
+    address: null,
+    comune: "Milano",
+    region: "Lombardia",
+    startDate: "2026-06-10",
+    endDate: "2026-07-21",
+    weeklyStructure:
+      "3 periodi prenotabili anche non consecutivi: A (10-19 giugno, 8gg), B (22 giugno-3 luglio, 10gg), C (6-21 luglio, 12gg). Orario 8:30-16:30, pre/post centro opzionali 7:30-8:30 / 16:30-18:00.",
+    price: null,
+    priceUnit: null,
+    registrationUrl: "https://www.comune.milano.it/servizi/scuola/scuole-primarie-centri-estivi",
+    officialUrl: "https://www.comune.milano.it/servizi/scuola/scuole-primarie-centri-estivi",
+    contact: null,
+    image: null,
+    sourceType: "primary_official",
+    sources: [
+      { label: "Comune di Milano — Comunicato di servizio Centri Estivi Scuole Primarie 2026 (PDF, incl. elenco sedi per Municipio)", url: "https://www.comune.milano.it/documents/20118/5921271/COMUNICATO_CE_2026.pdf" },
+      { label: "Comune di Milano — pagina servizio Centri Estivi Scuole Primarie", url: "https://www.comune.milano.it/servizi/scuola/scuole-primarie-centri-estivi" },
+    ],
+    seasonYear: 2026,
+    confidence: "high",
+    temporalNote:
+      "Comunicato ufficiale datato 19/02/2026 per la stagione 2026 (già conclusa alla data di questa ricerca, 17/09/2026), comprensivo dell'elenco reale delle sedi per Municipio — usato qui per confermare la copertura specifica del Municipio 7 (Milano Ovest). Il contributo è fortemente dipendente da fascia ISEE e periodo (da 0€ fino a un tetto di circa 254€ per il periodo più lungo, 279,48€ per i non residenti): non riportato come prezzo singolo per non falsare il dato. Sedi e tariffe da riconfermare per la stagione 2027 (nuovo comunicato annuale atteso).",
   },
   {
     id: "milano-milanosport-campus-multisport",
@@ -212,6 +318,136 @@ export const REAL_DISCOVERY_LEADS: DiscoveryLeadRecord[] = [
       "Dati completi, correnti e aggiornati dall'organizzatore il 19/05/2026 per la stagione 2026, in corso di svolgimento al momento della ricerca. NOTA GEOGRAFICA: sede in Municipio 1 (centro città), NON nel cluster Milano Ovest prioritario del pilota — incluso solo per varietà di categoria (artistico/creativo), non conta come copertura Milano Ovest.",
   },
   {
+    id: "milano-notformalcamp-san-siro",
+    organizerName: "L'Orma S.S.D. a r.l. (NotFormalCamp — Piccolo Stadio San Siro)",
+    activityTitle: "NotFormalCamp — Piccolo Stadio San Siro / Lampugnano",
+    shortDescription:
+      "Summer camp multidisciplinare con focus sul movimento: attività sportive, percorsi psicomotori, laboratori artistico-espressivi, un ingresso settimanale in piscina comunale di Lampugnano, Padel in collaborazione con Milano Padel Academy. Sede in zona Lampugnano (Municipio 8, Milano Ovest), a pochi passi dalla fermata M1 Lampugnano.",
+    category: "sportivo",
+    ageMin: 4,
+    ageMax: 12,
+    locationName: "Piccolo Stadio San Siro",
+    address: "Via Carlo Osma 9, Milano (MI)",
+    comune: "Milano",
+    region: "Lombardia",
+    startDate: "2026-07-06",
+    endDate: "2026-07-31",
+    weeklyStructure: "4 turni settimanali (6-10, 13-17, 20-24, 27-31 luglio 2026), lun-ven 8:00-17:15.",
+    price: 195,
+    priceUnit: "per_settimana",
+    registrationUrl: null,
+    officialUrl: "https://notformalcamp.it/piccolo-stadio-san-siro/",
+    contact: null,
+    image: null,
+    sourceType: "secondary_corroborated",
+    sources: [
+      { label: "NotFormalCamp — homepage organizzatore (identità e attività generale confermate)", url: "https://notformalcamp.it/" },
+      { label: "Tutto Campi Estivi — scheda NotFormalCamp Milano Lampugnano (prezzo/età/date/sede, dichiarato verificato dal team il 12/03/2026)", url: "https://www.tuttocampiestivi.com/it/campi-estivi-nord-italia/campi-estivi-lombardia/campi-estivi-milano/notformalcamp-milano-san-siro" },
+    ],
+    seasonYear: 2026,
+    confidence: "medium",
+    temporalNote:
+      "Identità e attività generale dell'organizzatore (L'Orma S.S.D.) confermate sulla sua homepage ufficiale. La pagina organizzatore specifica per la sede San Siro non si è resa leggibile in questa sessione (contenuto reso via JavaScript, fetch diretto vuoto). Prezzo, età e date riportati provengono dall'aggregatore Tutto Campi Estivi, che dichiara di aver verificato questi dati il 12/03/2026 — non da lettura diretta della pagina dell'organizzatore. Quota di iscrizione associativa una tantum di 20€/famiglia non inclusa nel prezzo settimanale indicato.",
+  },
+  {
+    id: "bareggio-usob-campus-multisport",
+    organizerName: "U.S.O.B. 1949 (Unione Sportiva Oratorio Bareggio) A.S.D.",
+    activityTitle: "Campus Multisport USOB",
+    shortDescription:
+      "Camp estivo sportivo in oratorio con rotazione di più discipline (calcio, volley, basket, attività motorie), gruppi per fasce d'età, pranzo in oratorio incluso. Iscrivibile anche a singola settimana o singolo giorno.",
+    category: "multisport",
+    ageMin: null,
+    ageMax: null,
+    locationName: "Oratorio USOB, Bareggio",
+    address: null,
+    comune: "Bareggio",
+    region: "Lombardia",
+    startDate: null,
+    endDate: null,
+    weeklyStructure:
+      "Giornata indicativa 8:00-17:00, pranzo in oratorio e merenda pomeridiana inclusi. Possibile iscrizione a singola settimana o singolo giorno.",
+    price: null,
+    priceUnit: null,
+    registrationUrl: "https://www.cloud32.it/GES/pub/corsisel/180812?tipord=002&rpet=true",
+    officialUrl: "https://usob1949.it/campus-multisport",
+    contact: "asdusob1949@gmail.com — 351 559 2657",
+    image: null,
+    sourceType: "primary_organizer",
+    sources: [
+      { label: "USOB Bareggio — pagina ufficiale Campus Multisport", url: "https://usob1949.it/campus-multisport" },
+    ],
+    seasonYear: 2026,
+    confidence: "medium",
+    temporalNote:
+      "Pagina ufficiale dell'organizzatore, contenuti aggiornati (policy minori/genere datate 15/04/2026) — identità e programma generale confermati direttamente. La pagina non pubblica però prezzo né date specifiche per l'edizione 2026: questi campi restano `null` invece di stimati.",
+  },
+  {
+    id: "milano-baggio-oratorio-san-giovanni-bosco",
+    organizerName: "Parrocchia San Giovanni Bosco — Oratorio di Baggio (Arcidiocesi di Milano)",
+    activityTitle: "Oratorio Estivo — Parrocchia San Giovanni Bosco",
+    shortDescription:
+      "Oratorio estivo della parrocchia più popolosa del quartiere di Baggio (Milano Ovest), circa 600 iscritti nell'edizione 2026, con un educatore specializzato dedicato all'integrazione dei bambini con disabilità e laboratori sportivi (rugby, basket) proposti da società del quartiere.",
+    category: "educativo",
+    ageMin: null,
+    ageMax: null,
+    locationName: "Oratorio San Giovanni Bosco, Baggio",
+    address: null,
+    comune: "Milano",
+    region: "Lombardia",
+    startDate: null,
+    endDate: null,
+    weeklyStructure:
+      "Programma settimanale con laboratori sportivi (rugby, basket) e attività di animazione a tema; presenza di un educatore specializzato per l'integrazione dei bambini con disabilità.",
+    price: null,
+    priceUnit: null,
+    registrationUrl: null,
+    officialUrl: "https://www.chiesadimilano.it/news/chiesa-diocesi/oratorio-estivo-baggio-2874899.html",
+    contact: null,
+    image: null,
+    sourceType: "primary_official",
+    sources: [
+      { label: "Chiesa di Milano (portale ufficiale Arcidiocesi) — \"A Baggio l'oratorio è inclusivo e aperto al dialogo\"", url: "https://www.chiesadimilano.it/news/chiesa-diocesi/oratorio-estivo-baggio-2874899.html" },
+    ],
+    seasonYear: 2026,
+    confidence: "high",
+    temporalNote:
+      "Articolo del portale ufficiale dell'Arcidiocesi di Milano, pubblicato l'8/06/2026 durante lo svolgimento dell'oratorio estivo 2026 — conferma diretta (parroco don Giovanni Salatino citato per nome) dell'esistenza e della scala reale dell'iniziativa (circa 600 iscritti) nel quartiere di Baggio. Non riporta prezzo, età numerica né date esatte di inizio/fine: questi campi restano `null` invece di stimati.",
+  },
+  {
+    id: "bareggio-centro-estivo-comunale-infanzia",
+    organizerName: "Comune di Bareggio",
+    activityTitle: "Centro Estivo Comunale (Scuola dell'Infanzia)",
+    shortDescription:
+      "Centro estivo comunale rivolto ai bambini della scuola dell'infanzia, con iscrizioni gestite direttamente dal Comune di Bareggio.",
+    category: "educativo",
+    ageMin: null,
+    ageMax: null,
+    locationName: null,
+    address: null,
+    comune: "Bareggio",
+    region: "Lombardia",
+    startDate: null,
+    endDate: null,
+    weeklyStructure: "Finestra di iscrizione comunicata annualmente dal Comune (edizione 2026 individuata tramite comunicazione ufficiale a fine aprile).",
+    price: null,
+    priceUnit: null,
+    registrationUrl: "https://www.comune.bareggio.mi.it/carta-dei-servizi/iscrizione-ai-centri-estivi-scuola-dellinfanzia/",
+    officialUrl: "https://www.comune.bareggio.mi.it/carta-dei-servizi/iscrizione-ai-centri-estivi-scuola-dellinfanzia/",
+    contact: null,
+    image: null,
+    sourceType: "secondary_corroborated",
+    sources: [
+      { label: "Comune di Bareggio — pagina servizio \"Iscrizione ai centri estivi (Scuola dell'Infanzia)\" (titolo confermato via indicizzazione, contenuto non renderizzato in questa sessione)", url: "https://www.comune.bareggio.mi.it/carta-dei-servizi/iscrizione-ai-centri-estivi-scuola-dellinfanzia/" },
+      { label: "Comune di Bareggio — canale Facebook ufficiale (annunci iscrizione centro estivo comunale)", url: "https://www.facebook.com/comunedibareggio/" },
+    ],
+    seasonYear: 2026,
+    confidence: "medium",
+    temporalNote:
+      "Il fetch diretto della pagina di servizio non ha restituito contenuto leggibile in questa sessione (probabile rendering lato client). L'esistenza del servizio e la finestra di iscrizione 2026 sono confermate tramite il titolo indicizzato dal motore di ricerca e comunicazioni ufficiali del Comune sui propri canali — non tramite lettura diretta della pagina. Quasi tutti i campi operativi (età esatta, date, prezzo) restano `null` per questo motivo: record incluso solo perché l'esistenza del servizio comunale resta comunque accertata da fonte ufficiale, non da un'unica menzione indiretta.",
+  },
+
+  // ============ CLUSTER B — RUTIGLIANO / SUD-EST BARESE (2 record) ============
+  {
     id: "conversano-beltempo",
     organizerName: "Il Sogno di Don Bosco — Società Cooperativa Sociale",
     activityTitle: 'Centro Estivo "Beltempo" (VII edizione 2026)',
@@ -275,6 +511,48 @@ export const REAL_DISCOVERY_LEADS: DiscoveryLeadRecord[] = [
   },
 ];
 
+// ============ LEAD SCARTATI (documentati, mai inseriti nel dataset) ============
+// §7-8 del report: lead con dati incoerenti/non verificabili restano fuori
+// dal dataset pilota, ma vengono comunque tracciati per trasparenza — mai
+// silenziosamente scartati.
+export interface RejectedDiscoveryLead {
+  id: string;
+  organizerName: string;
+  comune: string;
+  reason: string;
+}
+
+export const REJECTED_DISCOVERY_LEADS: RejectedDiscoveryLead[] = [
+  {
+    id: "mola-di-bari-sensazioni-in-movimento",
+    organizerName: "Asd Sensazioni in Movimento",
+    comune: "Mola di Bari",
+    reason:
+      "Date del City Camp incoerenti tra due ricerche separate (\"14 giugno – 13 settembre 2026\" vs \"8 giugno – 30 settembre 2026\"), nessuna pagina ufficiale raggiungibile per risolvere la contraddizione. Confidence risultante LOW — esclusa dal dataset pilota per istruzione esplicita (i record LOW non entrano).",
+  },
+  {
+    id: "milano-cusago-cre-comunale",
+    organizerName: "Comune di Cusago",
+    comune: "Cusago",
+    reason:
+      "Esistenza del CRE 2026 comunale confermata solo dal titolo indicizzato dal motore di ricerca (\"Iscrizione CRE 2026 e servizi scolastici comunali\"); il fetch diretto della pagina ufficiale non ha restituito alcun contenuto in due tentativi in questa sessione. Nessun dato verificabile oltre al titolo: escluso per evitare un record praticamente vuoto.",
+  },
+  {
+    id: "rutigliano-sport-centre",
+    organizerName: "ASD Sport Centre Rutigliano — Centro Sportivo \"Franceschino\"",
+    comune: "Rutigliano",
+    reason:
+      "Associazione sportiva reale e verificata (riconosciuta CONI, affiliata FIGC/FIPAV, gestisce impianti comunali in concessione), con una scuola calcio annuale per bambini 6-14. Nessuna fonte reperita in questa sessione conferma però un programma di CENTRO ESTIVO/camp multi-settimanale distinto dalla scuola calcio annuale — non incluso per evitare di rappresentare un servizio scolastico-sportivo come se fosse un centro estivo strutturato.",
+  },
+  {
+    id: "noicattaro-pro-gioventu",
+    organizerName: "ASD Pro Gioventù Noicàttaro — Scuola Calcio Giovanile",
+    comune: "Noicattaro",
+    reason:
+      "Scuola calcio reale e attiva da oltre 35 stagioni. Nessuna fonte reperita in questa sessione conferma un centro estivo/camp specifico distinto dall'attività di scuola calcio annuale — stesso motivo di esclusione di ASD Sport Centre Rutigliano.",
+  },
+];
+
 /**
  * true se il periodo dell'attività (startDate/endDate) si sovrappone alla
  * settimana indicata — stesso criterio di sovrapposizione già usato per le
@@ -294,4 +572,137 @@ export function isDiscoveryLeadCompatibleWithWeek(
 ): boolean {
   if (!lead.startDate || !lead.endDate) return true;
   return lead.startDate <= weekEndIso && weekStartIso <= lead.endDate;
+}
+
+// ============ FILTER INTEGRATION ADAPTERS (TRAMA REAL DISCOVERY PILOT — COMPLETION PASS, 17/09/2026) ============
+//
+// §4 del prompt "COMPLETION PASS": questi adapter applicano ai
+// DiscoveryLeadRecord la STESSA semantica dei filtri esistenti di
+// /nextgen/search — dove è semanticamente corretto farlo senza inventare
+// dati — restando puri (nessun I/O) e SEPARATI dalla pipeline di filtro
+// Partner in SearchDiscoveryClient.tsx (nessuna modifica al dominio
+// Activity/filteredActivities). Regola comune a tutti: un campo `null` (dato
+// non dichiarato dalla fonte) non esclude MAI un record da un filtro — solo
+// un dato realmente noto e realmente incompatibile lo esclude. Vedi il
+// report, sezione "FILTER PIPELINE AUDIT", per la tabella filtro-per-filtro
+// con la motivazione di ciascuna scelta.
+
+/**
+ * Filtro ETÀ. Overlap tra [minAge,maxAge] scelto dall'utente e
+ * [ageMin,ageMax] noto del lead. Un bound non dichiarato dalla fonte (null)
+ * non vincola quel lato dell'intervallo — non equivale a "0" o "99" scritti
+ * nel dato, è solo il confronto a trattarlo come "nessun vincolo noto su
+ * questo lato", esattamente come l'default dei filtri Partner (0-18, cioè
+ * "nessun filtro") lascia passare tutto.
+ */
+export function isDiscoveryLeadCompatibleWithAgeRange(
+  lead: Pick<DiscoveryLeadRecord, "ageMin" | "ageMax">,
+  minAge: number,
+  maxAge: number
+): boolean {
+  const effectiveMin = lead.ageMin ?? 0;
+  const effectiveMax = lead.ageMax ?? 99;
+  return effectiveMax >= minAge && effectiveMin <= maxAge;
+}
+
+/**
+ * Filtro PREZZO (tetto massimo €/settimana). Un prezzo non dichiarato dalla
+ * fonte (price: null) non viene MAI trattato come 0 né come "fuori budget":
+ * resta semplicemente compatibile con qualunque tetto, perché TRAMA non ha
+ * l'informazione per affermare il contrario — escluderlo sarebbe
+ * un'inferenza non richiesta dalla fonte, esattamente il tipo di invenzione
+ * vietata da "REAL DATA YES, FAKE PARTNERS NO". Solo priceUnit ===
+ * "per_settimana" è oggi supportato (unico valore non-null nel dataset).
+ */
+export function isDiscoveryLeadCompatibleWithPriceCap(
+  lead: Pick<DiscoveryLeadRecord, "price" | "priceUnit">,
+  maxPricePerWeek: number
+): boolean {
+  if (lead.price === null) return true;
+  if (lead.priceUnit !== "per_settimana") return true;
+  return lead.price <= maxPricePerWeek;
+}
+
+/**
+ * Filtro ZONA (testo libero, stesso campo `zone` del pannello Zona di
+ * SearchDiscoveryClient). Confronta la query con locationName/address/
+ * comune concatenati. NIENT'ALTRO: il filtro geo a raggio (haversineKm) NON
+ * è applicato ai lead perché nessun lead ha lat/lng verificate (§2 Target
+ * Data Contract: "lat/long solo se ottenibili correttamente" — non lo sono
+ * mai stati in questa sessione) — inventare coordinate per farle entrare
+ * nel calcolo di distanza violerebbe la stessa regola. Vedi report,
+ * KNOWN LIMITATIONS.
+ */
+export function isDiscoveryLeadCompatibleWithZoneQuery(
+  lead: Pick<DiscoveryLeadRecord, "locationName" | "address" | "comune">,
+  zoneQuery: string
+): boolean {
+  const q = zoneQuery.trim().toLowerCase();
+  if (!q) return true;
+  const haystack = `${lead.locationName ?? ""} ${lead.address ?? ""} ${lead.comune}`.toLowerCase();
+  return haystack.includes(q);
+}
+
+/**
+ * Filtro ricerca testuale libera (stesso campo `query` della searchbar
+ * principale di Scopri). Confronta su titolo attività, organizzatore e
+ * descrizione breve.
+ */
+export function isDiscoveryLeadCompatibleWithTextQuery(
+  lead: Pick<DiscoveryLeadRecord, "activityTitle" | "organizerName" | "shortDescription">,
+  query: string
+): boolean {
+  const q = query.trim().toLowerCase();
+  if (!q) return true;
+  const haystack = `${lead.activityTitle} ${lead.organizerName} ${lead.shortDescription}`.toLowerCase();
+  return haystack.includes(q);
+}
+
+/**
+ * Filtro CATEGORIA/TAG. Il sistema Partner usa una tassonomia granulare a
+ * 14 tag (lib/mock-data.ts#categories: sport, arte, musica, stem, outdoor,
+ * piscina, teatro, tecnologia, natura, lingue, cucina, danza, + intera/
+ * mezza che sono in realtà copertura, non categoria). Il dataset curato usa
+ * invece 4 macro-categorie. Una mappatura 1:1 non esiste semanticamente:
+ * CATEGORY_TAG_MAP rappresenta quindi un'approssimazione DICHIARATA, non
+ * un'equivalenza esatta — vedi report, FILTER PIPELINE AUDIT.
+ *
+ * "educativo" è un caso speciale: nessun tag Partner esistente rappresenta
+ * correttamente "CRE/centro ricreativo generico" (i 14 tag sono tutti
+ * orientati a una disciplina specifica). Piuttosto che forzare una mappatura
+ * arbitraria e fuorviante (es. verso "outdoor" o "natura", che
+ * escluderebbe erroneamente un CRE che non fa nulla di "natura"), un lead
+ * "educativo" NON viene mai escluso dal filtro tag: è un compromesso
+ * dichiarato, non un bug.
+ */
+export const DISCOVERY_CATEGORY_TAG_MAP: Record<Exclude<DiscoveryLeadCategory, "educativo">, string[]> = {
+  sportivo: ["sport", "piscina"],
+  multisport: ["sport", "piscina", "outdoor"],
+  artistico: ["arte", "musica", "teatro", "danza"],
+};
+
+export function isDiscoveryLeadCompatibleWithCategoryTags(
+  lead: Pick<DiscoveryLeadRecord, "category">,
+  selectedTagIds: string[]
+): boolean {
+  if (selectedTagIds.length === 0) return true;
+  if (lead.category === "educativo") return true;
+  const compatibleTags = DISCOVERY_CATEGORY_TAG_MAP[lead.category];
+  return compatibleTags.some((tag) => selectedTagIds.includes(tag));
+}
+
+/**
+ * RANKING (§6 del prompt "COMPLETION PASS"): nessun rating/popolarità/
+ * disponibilità finti — mai stati presenti nel dataset (§9, `image: null`
+ * è l'unico placeholder previsto) e nessuno viene introdotto qui.
+ * Ordinamento neutro e deterministico: confidence HIGH prima di MEDIUM,
+ * a parità di confidence l'ordine resta quello di dichiarazione nel file
+ * (stabile — Array.prototype.sort di Node/V8 è stable sort). Nessuna
+ * "vicinanza" perché nessun lead ha coordinate verificate (stesso motivo
+ * di isDiscoveryLeadCompatibleWithZoneQuery sopra).
+ */
+const CONFIDENCE_RANK: Record<DiscoveryLeadConfidence, number> = { high: 0, medium: 1 };
+
+export function sortDiscoveryLeadsForDisplay(leads: DiscoveryLeadRecord[]): DiscoveryLeadRecord[] {
+  return [...leads].sort((a, b) => CONFIDENCE_RANK[a.confidence] - CONFIDENCE_RANK[b.confidence]);
 }
