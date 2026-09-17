@@ -18,7 +18,20 @@ import { generateCorrelationId } from "@/lib/telemetry/correlation";
 // mescolati con Activity/ActivityCard — vedi lib/discovery/real-dataset.ts
 // per il perché (Data Model Audit).
 import DiscoveryLeadCard from "@/components/nextgen/DiscoveryLeadCard";
-import { isDiscoveryLeadCompatibleWithWeek, type DiscoveryLeadRecord } from "@/lib/discovery/real-dataset";
+import {
+  isDiscoveryLeadCompatibleWithWeek,
+  isDiscoveryLeadCompatibleWithAgeRange,
+  isDiscoveryLeadCompatibleWithPriceCap,
+  isDiscoveryLeadCompatibleWithZoneQuery,
+  isDiscoveryLeadCompatibleWithTextQuery,
+  isDiscoveryLeadCompatibleWithCategoryTags,
+  sortDiscoveryLeadsForDisplay,
+  type DiscoveryLeadRecord,
+} from "@/lib/discovery/real-dataset";
+// TRAMA — REAL DISCOVERY PILOT · COMPLETION PASS (17/09/2026). Gli eventi
+// curated_listing_viewed / curated_listing_external_clicked sono tracciati
+// DENTRO DiscoveryLeadCard.tsx (dove il "view" e il "click CTA" avvengono
+// realmente), non qui — vedi quel file e app/actions/discovery.ts.
 
 // Leaflet usa `window`, quindi la mappa va caricata solo lato client — stesso
 // pattern già usato in LEGACY (app/(main)/search/SearchClient.tsx) e nel
@@ -309,18 +322,44 @@ export default function SearchDiscoveryClient({
   // (molti, onestamente, in questo dataset) non viene MAI escluso solo
   // perché mancano le date: isDiscoveryLeadCompatibleWithWeek ritorna sempre
   // true in quel caso.
+  // TRAMA — REAL DISCOVERY PILOT · COMPLETION PASS (17/09/2026), §4-6 del
+  // prompt "FILTER INTEGRATION AUDIT" / "UNIFIED DISCOVERY UX" / "RANKING".
+  // Estende il filtro-settimana esistente (invariato) con età/prezzo/zona/
+  // categoria/ricerca testuale — SOLO dove semanticamente corretto senza
+  // inventare dati (vedi gli adapter puri in lib/discovery/real-dataset.ts
+  // e la FILTER PIPELINE AUDIT nel report). "Servizi", "Copertura" e "Giorni
+  // spot" restano deliberatamente NON applicati ai lead curati: quei campi
+  // non esistono nel Target Data Contract e nessuna fonte li dichiara — un
+  // filtro che li applicasse dovrebbe o inventare un "non conforme" o un
+  // "conforme" che TRAMA non può affermare. Il filtro Zona a RAGGIO (geo)
+  // non si applica ai lead per lo stesso motivo (nessuna coordinata
+  // verificata) — solo il filtro Zona testuale è supportato. Ordinamento
+  // finale neutro/deterministico via sortDiscoveryLeadsForDisplay (nessun
+  // rating/popolarità/disponibilità finti).
   const compatibleRealDiscoveryLeads = useMemo(() => {
     if (realDiscoveryLeads.length === 0) return [];
-    if (selectedWeekStarts.length === 0) return realDiscoveryLeads;
     const ranges = getSeasonWeekRanges(seasonYear);
     const selectedRanges = selectedWeekStarts
       .map((start) => ranges.find((r) => isoDate(r.start) === start))
       .filter((r): r is SeasonWeekRange => Boolean(r));
-    if (selectedRanges.length === 0) return realDiscoveryLeads;
-    return realDiscoveryLeads.filter((lead) =>
-      selectedRanges.some((r) => isDiscoveryLeadCompatibleWithWeek(lead, isoDate(r.start), isoDate(r.end)))
-    );
-  }, [realDiscoveryLeads, selectedWeekStarts, seasonYear]);
+
+    const filtered = realDiscoveryLeads.filter((lead) => {
+      if (
+        selectedRanges.length > 0 &&
+        !selectedRanges.some((r) => isDiscoveryLeadCompatibleWithWeek(lead, isoDate(r.start), isoDate(r.end)))
+      ) {
+        return false;
+      }
+      if (!isDiscoveryLeadCompatibleWithAgeRange(lead, minAge, maxAge)) return false;
+      if (!isDiscoveryLeadCompatibleWithPriceCap(lead, maxPrice)) return false;
+      if (!isDiscoveryLeadCompatibleWithZoneQuery(lead, zone)) return false;
+      if (!isDiscoveryLeadCompatibleWithCategoryTags(lead, selectedTagIds)) return false;
+      if (!isDiscoveryLeadCompatibleWithTextQuery(lead, query)) return false;
+      return true;
+    });
+
+    return sortDiscoveryLeadsForDisplay(filtered);
+  }, [realDiscoveryLeads, selectedWeekStarts, seasonYear, minAge, maxAge, maxPrice, zone, selectedTagIds, query]);
 
   const [radiusKm, setRadiusKm] = useState(DEFAULT_RADIUS_KM);
   // TRAMA ONE Build Sprint 3 — "Giorni spot": stesso filtro/stesso principio
