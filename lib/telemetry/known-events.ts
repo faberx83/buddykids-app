@@ -83,6 +83,18 @@ export const KNOWN_PRODUCT_EVENTS = [
   // specifici — stesso principio "adozione, non cronologia personale" di
   // booking_created/group_created sopra).
   "calendar_export_created",
+  // TRAMA — REAL DISCOVERY PILOT · COMPLETION PASS (17/09/2026, §10 del
+  // prompt: "verifica se con l'infrastruttura esistente possiamo
+  // registrare almeno curated_listing_viewed/curated_listing_external_
+  // clicked, PII-free"). Stesso principio "adozione, non cronologia
+  // personale" di booking_created/group_created sopra: detail contiene
+  // SOLO l'id del lead curato (stringa statica del dataset code-based, non
+  // un dato utente) — mai il testo di ricerca dell'utente, mai bambino/
+  // famiglia. Call site: app/actions/discovery.ts (stesso pattern di
+  // app/actions/spotlight.ts) invocato da
+  // components/nextgen/DiscoveryLeadCard.tsx.
+  "curated_listing_viewed",
+  "curated_listing_external_clicked",
 ] as const;
 
 export type KnownProductEvent = (typeof KNOWN_PRODUCT_EVENTS)[number];

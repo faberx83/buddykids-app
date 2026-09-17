@@ -25,7 +25,14 @@
 // assente (nessun placeholder "N/D" invadente, la riga semplicemente non
 // compare), e porta sempre il disclaimer di provenienza.
 
+import { useEffect } from "react";
 import type { DiscoveryLeadRecord } from "@/lib/discovery/real-dataset";
+// TRAMA — REAL DISCOVERY PILOT · COMPLETION PASS (17/09/2026), §10
+// "ANALYTICS MINIMUM". Stesso pattern già in uso da
+// components/spotlight/SpotlightOverlay.tsx (Server Action invocata
+// direttamente dal componente client, best-effort, mai bloccante) — nessuna
+// nuova architettura di analytics introdotta. Vedi app/actions/discovery.ts.
+import { logDiscoveryLeadEventAction } from "@/app/actions/discovery";
 
 const CATEGORY_LABELS: Record<DiscoveryLeadRecord["category"], string> = {
   educativo: "Educativo",
@@ -55,6 +62,19 @@ export default function DiscoveryLeadCard({ lead }: { lead: DiscoveryLeadRecord 
   const age = formatAge(lead.ageMin, lead.ageMax);
   const ctaHref = lead.registrationUrl || lead.officialUrl;
   const ctaLabel = lead.registrationUrl ? "Vai al sito" : "Vai al sito ufficiale";
+
+  // TRAMA — REAL DISCOVERY PILOT · COMPLETION PASS (17/09/2026). Un solo
+  // evento "viewed" per montaggio della card (non per ogni ri-render dovuto
+  // a un filtro che lascia il lead visibile) — dipendenza su lead.id, fire-
+  // and-forget, mai bloccante per il rendering. detail = lead.id (nessun
+  // dato utente).
+  useEffect(() => {
+    void logDiscoveryLeadEventAction("curated_listing_viewed", lead.id);
+  }, [lead.id]);
+
+  function handleCtaClick() {
+    void logDiscoveryLeadEventAction("curated_listing_external_clicked", lead.id);
+  }
 
   return (
     <div className="mb-3 overflow-hidden rounded-lg border border-[#F0F2F5] bg-white">
@@ -124,6 +144,7 @@ export default function DiscoveryLeadCard({ lead }: { lead: DiscoveryLeadRecord 
             href={ctaHref}
             target="_blank"
             rel="noopener noreferrer"
+            onClick={handleCtaClick}
             className="flex-1 rounded-md bg-trama-violet px-3 py-2 text-center text-[12px] font-semibold text-white"
           >
             {ctaLabel}
