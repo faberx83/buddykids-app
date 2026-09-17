@@ -1,15 +1,26 @@
 import fs from "fs";
 import path from "path";
 import { test, expect } from "@playwright/test";
-import { REAL_DISCOVERY_LEADS, isDiscoveryLeadCompatibleWithWeek, type DiscoveryLeadRecord } from "../../lib/discovery/real-dataset";
+import {
+  REAL_DISCOVERY_LEADS,
+  REJECTED_DISCOVERY_LEADS,
+  isDiscoveryLeadCompatibleWithWeek,
+  isDiscoveryLeadCompatibleWithAgeRange,
+  isDiscoveryLeadCompatibleWithPriceCap,
+  isDiscoveryLeadCompatibleWithZoneQuery,
+  isDiscoveryLeadCompatibleWithCategoryTags,
+  type DiscoveryLeadRecord,
+} from "../../lib/discovery/real-dataset";
 import { FEATURE_FLAG_REGISTRY } from "../../lib/feature-flags/registry";
+import { KNOWN_PRODUCT_EVENTS } from "../../lib/telemetry/known-events";
 
-// TRAMA — REAL DISCOVERY PILOT (16/09/2026). Stesso principio "[no browser]"
-// già seguito da school-calendar-municipal-scope.spec.ts: unit test puri su
+// TRAMA — REAL DISCOVERY PILOT (16/09/2026, esteso 17/09/2026 · COMPLETION
+// PASS). Stesso principio "[no browser]" già seguito da
+// school-calendar-municipal-scope.spec.ts: unit test puri su
 // lib/discovery/real-dataset.ts (nessun mock Supabase, nessuna dipendenza da
-// dati live — il dataset è code-based per costruzione) + verifiche
-// semantiche statiche sulla card (grep sul sorgente, non un mock DOM) per
-// il vincolo non negoziabile "REAL DATA YES, FAKE PARTNERS NO".
+// dati live) + verifiche semantiche statiche sulla card/pipeline (grep sul
+// sorgente, non un mock DOM) per il vincolo non negoziabile "REAL DATA YES,
+// FAKE PARTNERS NO".
 //
 // Comando: npx playwright test tests/one/real-discovery-pilot.spec.ts
 
@@ -35,7 +46,6 @@ test.describe("REAL DISCOVERY PILOT — isDiscoveryLeadCompatibleWithWeek (logic
 
   test("RD-04: settimana adiacente ma non sovrapposta → incompatibile (confine esclusivo corretto)", () => {
     const lead: Pick<DiscoveryLeadRecord, "startDate" | "endDate"> = { startDate: "2026-07-13", endDate: "2026-07-19" };
-    // La settimana termina il 12/07, il record inizia il 13/07: nessuna sovrapposizione.
     expect(isDiscoveryLeadCompatibleWithWeek(lead, "2026-07-06", "2026-07-12")).toBe(false);
   });
 
@@ -83,7 +93,7 @@ test.describe("REAL DISCOVERY PILOT — integrità dataset (REAL DATA YES, FAKE 
     }
   });
 
-  test("RD-12: nessun record inventa un prezzo/età senza fonte — se null, resta null (spot-check sui record con dati incompleti)", () => {
+  test("RD-12: nessun record inventa un prezzo senza fonte — se null, resta null (spot-check sui record con dati incompleti)", () => {
     const noPrice = REAL_DISCOVERY_LEADS.filter((l) => l.price === null);
     // Sample gate: almeno un record del dataset deve onestamente avere il
     // prezzo assente (altrimenti sospetteremmo un dataset "troppo perfetto"
@@ -154,5 +164,134 @@ test.describe("REAL DISCOVERY PILOT — gating Dark Release (default OFF)", () =
     const assignIndex = source.indexOf("realDiscoveryLeads = REAL_DISCOVERY_LEADS");
     expect(gateIndex).toBeGreaterThan(-1);
     expect(assignIndex).toBeGreaterThan(gateIndex);
+  });
+});
+
+// ============ COMPLETION PASS (17/09/2026) — nuovi scenari ============
+
+test.describe("REAL DISCOVERY PILOT — filtro ETÀ (adapter puro)", () => {
+  test("RD-22: età nota compatibile con il range scelto dall'utente → compatibile", () => {
+    expect(isDiscoveryLeadCompatibleWithAgeRange({ ageMin: 5, ageMax: 14 }, 6, 10)).toBe(true);
+  });
+
+  test("RD-23: età nota fuori dal range scelto dall'utente → incompatibile", () => {
+    expect(isDiscoveryLeadCompatibleWithAgeRange({ ageMin: 5, ageMax: 14 }, 15, 18)).toBe(false);
+  });
+
+  test("RD-24: età non dichiarata dalla fonte (ageMin/ageMax null) → MAI esclusa per età ignota", () => {
+    expect(isDiscoveryLeadCompatibleWithAgeRange({ ageMin: null, ageMax: null }, 3, 5)).toBe(true);
+    expect(isDiscoveryLeadCompatibleWithAgeRange({ ageMin: null, ageMax: null }, 15, 18)).toBe(true);
+  });
+});
+
+test.describe("REAL DISCOVERY PILOT — filtro PREZZO (adapter puro)", () => {
+  test("RD-25: prezzo noto entro il tetto scelto dall'utente → compatibile", () => {
+    expect(isDiscoveryLeadCompatibleWithPriceCap({ price: 150, priceUnit: "per_settimana" }, 200)).toBe(true);
+  });
+
+  test("RD-26: prezzo noto sopra il tetto scelto dall'utente → incompatibile", () => {
+    expect(isDiscoveryLeadCompatibleWithPriceCap({ price: 250, priceUnit: "per_settimana" }, 200)).toBe(false);
+  });
+
+  test("RD-27: prezzo non dichiarato dalla fonte (price: null) → MAI escluso, MAI trattato come 0€", () => {
+    expect(isDiscoveryLeadCompatibleWithPriceCap({ price: null, priceUnit: null }, 50)).toBe(true);
+  });
+});
+
+test.describe("REAL DISCOVERY PILOT — filtro ZONA testuale (adapter puro)", () => {
+  test("RD-28: query vuota → sempre compatibile", () => {
+    expect(isDiscoveryLeadCompatibleWithZoneQuery({ locationName: null, address: null, comune: "Rho" }, "")).toBe(true);
+  });
+
+  test("RD-29: query che corrisponde al comune → compatibile", () => {
+    expect(isDiscoveryLeadCompatibleWithZoneQuery({ locationName: null, address: null, comune: "Rho" }, "rho")).toBe(true);
+  });
+
+  test("RD-30: query che non corrisponde a nulla → incompatibile", () => {
+    expect(isDiscoveryLeadCompatibleWithZoneQuery({ locationName: null, address: null, comune: "Rho" }, "cornaredo")).toBe(false);
+  });
+});
+
+test.describe("REAL DISCOVERY PILOT — filtro CATEGORIA/TAG (adapter puro, mappatura dichiarata)", () => {
+  test("RD-31: nessun tag selezionato → sempre compatibile", () => {
+    expect(isDiscoveryLeadCompatibleWithCategoryTags({ category: "sportivo" }, [])).toBe(true);
+  });
+
+  test("RD-32: categoria 'educativo' è sempre compatibile (nessun tag Partner la rappresenta correttamente)", () => {
+    expect(isDiscoveryLeadCompatibleWithCategoryTags({ category: "educativo" }, ["danza"])).toBe(true);
+  });
+
+  test("RD-33: categoria 'sportivo' compatibile solo se il tag scelto è nella mappatura dichiarata", () => {
+    expect(isDiscoveryLeadCompatibleWithCategoryTags({ category: "sportivo" }, ["sport"])).toBe(true);
+    expect(isDiscoveryLeadCompatibleWithCategoryTags({ category: "sportivo" }, ["cucina"])).toBe(false);
+  });
+});
+
+test.describe("REAL DISCOVERY PILOT — combinazione filtri e dataset esteso", () => {
+  test("RD-34: una combinazione di filtri che non trova corrispondenze produce un array vuoto, non un errore", () => {
+    const zeroResults = REAL_DISCOVERY_LEADS.filter(
+      (lead) =>
+        isDiscoveryLeadCompatibleWithAgeRange(lead, 0, 18) &&
+        isDiscoveryLeadCompatibleWithZoneQuery(lead, "comune-inesistente-xyz")
+    );
+    expect(Array.isArray(zeroResults)).toBe(true);
+    expect(zeroResults.length).toBe(0);
+  });
+
+  test("RD-35: il dataset esteso (COMPLETION PASS) ha almeno 10 record reali", () => {
+    expect(REAL_DISCOVERY_LEADS.length).toBeGreaterThanOrEqual(10);
+  });
+
+  test("RD-36: i lead scartati restano documentati con una motivazione non vuota (mai silenziosamente omessi)", () => {
+    expect(REJECTED_DISCOVERY_LEADS.length).toBeGreaterThan(0);
+    for (const rejected of REJECTED_DISCOVERY_LEADS) {
+      expect(rejected.reason.length).toBeGreaterThan(20);
+    }
+  });
+});
+
+test.describe("REAL DISCOVERY PILOT — no rating/disponibilità finti, Partner invariato (statico)", () => {
+  // Nota: il file HA deliberatamente "rating"/"recensioni"/"posti disponibili"
+  // nel COMMENTO di testa che spiega perché la card non li mostra mai (vedi
+  // righe 8-22) — i commenti vengono quindi rimossi prima del controllo,
+  // stesso principio già usato da RD-14/RD-15 sopra: qui si verifica il
+  // CODICE renderizzato, non la documentazione che lo spiega.
+  test("RD-37: DiscoveryLeadCard non introduce MAI rating/recensioni/voto finti nel codice renderizzato", () => {
+    const source = readSource("../../components/nextgen/DiscoveryLeadCard.tsx");
+    const codeOnly = source.replace(/\/\/.*$/gm, "").replace(/\/\*[\s\S]*?\*\//g, "").toLowerCase();
+    expect(codeOnly).not.toContain("rating");
+    expect(codeOnly).not.toContain("recensioni");
+    expect(codeOnly).not.toContain("voto");
+  });
+
+  test("RD-38: DiscoveryLeadCard non introduce MAI una disponibilità/posti finti nel codice renderizzato", () => {
+    const source = readSource("../../components/nextgen/DiscoveryLeadCard.tsx");
+    const codeOnly = source.replace(/\/\/.*$/gm, "").replace(/\/\*[\s\S]*?\*\//g, "").toLowerCase();
+    expect(codeOnly).not.toContain("posti disponibili");
+    expect(codeOnly).not.toContain("spotsleft");
+  });
+
+  test("RD-39: la pipeline filtri Partner (filteredActivities) non referenzia i lead curati — nessuna contaminazione del dominio Activity", () => {
+    const source = readSource("../../app/nextgen/search/SearchDiscoveryClient.tsx");
+    const filteredActivitiesMatch = source.match(
+      /const filteredActivities = useMemo\(\(\) => \{[\s\S]*?\}, \[[\s\S]*?\]\);/
+    );
+    expect(filteredActivitiesMatch).not.toBeNull();
+    const filteredActivitiesBlock = filteredActivitiesMatch![0];
+    expect(filteredActivitiesBlock).not.toContain("realDiscoveryLeads");
+    expect(filteredActivitiesBlock).not.toContain("compatibleRealDiscoveryLeads");
+  });
+});
+
+test.describe("REAL DISCOVERY PILOT — analytics minimo (§10, riuso infrastruttura esistente)", () => {
+  test("RD-40: curated_listing_viewed e curated_listing_external_clicked sono eventi noti (whitelist)", () => {
+    expect(KNOWN_PRODUCT_EVENTS).toContain("curated_listing_viewed");
+    expect(KNOWN_PRODUCT_EVENTS).toContain("curated_listing_external_clicked");
+  });
+
+  test("RD-41: app/actions/discovery.ts riusa persistProductEvent esistente, non introduce un nuovo insert diretto su product_events", () => {
+    const source = readSource("../../app/actions/discovery.ts");
+    expect(source).toContain("persistProductEvent");
+    expect(source).not.toContain('.from("product_events")');
   });
 });
