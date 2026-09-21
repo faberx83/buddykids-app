@@ -51,6 +51,17 @@ const CATEGORY_LABELS: Record<DiscoveryLeadRecord["category"], string> = {
   artistico: "Artistico",
 };
 
+// §15 "CARD POLISH": visual neutro per categoria al posto della foto/emoji
+// reale di ActivityCard (activity.emoji) — nessuna attività scoperta ha
+// un'emoji propria dichiarata dalla fonte, quindi una per macro-categoria,
+// mai un'immagine commerciale copiata da terzi (§9 Image/Copyright Audit).
+const CATEGORY_EMOJI: Record<DiscoveryLeadRecord["category"], string> = {
+  educativo: "🎨",
+  sportivo: "⚽",
+  multisport: "🏅",
+  artistico: "🎭",
+};
+
 function formatDateRange(startDate: string | null, endDate: string | null): string | null {
   if (!startDate || !endDate) return null;
   const fmt = (iso: string) => {
@@ -121,16 +132,28 @@ export default function DiscoveryLeadCard({ lead }: { lead: DiscoveryLeadRecord 
 
   return (
     <div className="mb-3 overflow-hidden rounded-lg border border-[#F0F2F5] bg-white">
-      {/* Visual neutro TRAMA al posto di una copertina — image è sempre
-          null in questo dataset V1, vedi §9 del report (nessuna immagine
-          copiata da alcun sito senza verifica di liceità d'uso). */}
-      <div className="flex h-[72px] items-center justify-between bg-[linear-gradient(135deg,#F3F0FF,#EDE9FE)] px-3">
-        <span className="rounded-full bg-white/80 px-2.5 py-1 text-[10px] font-semibold text-trama-violet">
+      {/* TRAMA — DISCOVERY MAP + POLISH (21/09/2026), §15 "CARD POLISH —
+          LIST": hero portata a 140px (stessa altezza esatta dell'hero foto/
+          gradiente di ActivityCard.tsx, non più 72px) con lo stesso schema
+          di badge overlay — categoria in alto a sinistra nella stessa
+          posizione/stile del badge "Match X%" di ActivityCard, "Scoperta
+          TRAMA" in basso come pillola bianca semi-trasparente nella stessa
+          posizione/stile della pillola rating+centro di ActivityCard — così
+          l'"altezza visiva percepita" (richiesta esplicitamente dal prompt)
+          e il ritmo badge-in-alto/pillola-in-basso combaciano tra le due
+          card, pur restando due componenti distinti (nessun Match/rating/
+          favorite qui: solo un visual neutro per categoria, mai
+          un'immagine commerciale). */}
+      <div className="relative flex h-[140px] items-center justify-center bg-[linear-gradient(135deg,#F3F0FF,#EDE9FE)]">
+        <span className="text-6xl opacity-40" aria-hidden>
+          {CATEGORY_EMOJI[lead.category]}
+        </span>
+        <div className="absolute left-2.5 top-2.5 z-[1] rounded-full bg-trama-violet px-2.5 py-1 text-[11px] font-bold text-white">
           {CATEGORY_LABELS[lead.category]}
-        </span>
-        <span className="rounded-full bg-white/80 px-2.5 py-1 text-[10px] font-semibold text-ink-2">
+        </div>
+        <div className="absolute bottom-2 left-1/2 z-[1] -translate-x-1/2 rounded-full bg-white/95 px-2.5 py-1 text-[11px] font-semibold text-ink-2 backdrop-blur-sm">
           Scoperta TRAMA
-        </span>
+        </div>
       </div>
       <div className="p-3">
         <div className="mb-1 text-sm font-bold text-ink">{lead.activityTitle}</div>
@@ -164,7 +187,7 @@ export default function DiscoveryLeadCard({ lead }: { lead: DiscoveryLeadRecord 
         <p className="mb-2 text-[12px] leading-snug text-ink-2">{lead.shortDescription}</p>
 
         <div className="mb-2 flex items-center justify-between">
-          <div className="text-sm font-bold text-ink">
+          <div className="text-base font-bold text-ink">
             {lead.price != null ? (
               <>
                 €{lead.price}
@@ -229,17 +252,25 @@ export default function DiscoveryLeadCard({ lead }: { lead: DiscoveryLeadRecord 
         {/* §14 "SOURCE-ONLY RECORDS": nessuna CTA primaria — solo il link
             alla fonte, con wording onesto ("Vedi la fonte" per un servizio
             comunale, mai "sito dell'organizzatore" quando non esiste un
-            organizzatore nominato). */}
+            organizzatore nominato).
+            §16 del prompt MAP+POLISH "SOURCE-ONLY MICROCOPY": una riga breve
+            che spiega PERCHÉ manca "Proponi invito" — mostrata solo quando è
+            effettivamente vera per questo record (!invitable, per
+            definizione tutti i record source-only), mai un tono
+            allarmistico. */}
         {!invitable && (
-          <a
-            href={ctaHref}
-            target="_blank"
-            rel="noopener noreferrer"
-            onClick={handleExternalClick}
-            className="flex items-center justify-center gap-1 rounded-full border border-[#E8EBF0] px-3 py-2 text-center text-[12px] font-semibold text-ink-2"
-          >
-            {secondaryLabel} ↗
-          </a>
+          <>
+            <p className="mb-1.5 text-[10.5px] text-ink-3">Gestore non ancora identificato da TRAMA.</p>
+            <a
+              href={ctaHref}
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={handleExternalClick}
+              className="flex items-center justify-center gap-1 rounded-full border border-[#E8EBF0] px-3 py-2 text-center text-[12px] font-semibold text-ink-2"
+            >
+              {secondaryLabel} ↗
+            </a>
+          </>
         )}
 
         {/* Flow B — dialog leggero INLINE (§10): "Vuoi trovare questo centro
