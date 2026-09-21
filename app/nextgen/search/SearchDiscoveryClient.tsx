@@ -32,6 +32,13 @@ import {
 // curated_listing_viewed / curated_listing_external_clicked sono tracciati
 // DENTRO DiscoveryLeadCard.tsx (dove il "view" e il "click CTA" avvengono
 // realmente), non qui — vedi quel file e app/actions/discovery.ts.
+//
+// TRAMA — DISCOVERY UNIFICATION (21/09/2026). Vedi lib/discovery/
+// result-model.ts per il ragionamento completo: view-model di sola
+// presentazione, le due pipeline di filtro/scoring sotto restano separate e
+// invariate — questo file sceglie solo come intercalarle e quale card
+// renderizzare per ciascun risultato.
+import { interleaveDiscoveryResults, countDiscoveryResults, type DiscoveryResult } from "@/lib/discovery/result-model";
 
 // Leaflet usa `window`, quindi la mappa va caricata solo lato client — stesso
 // pattern già usato in LEGACY (app/(main)/search/SearchClient.tsx) e nel
@@ -561,6 +568,13 @@ export default function SearchDiscoveryClient({
     return { nearby: nearbyList, far: farList };
   }, [matches, geo, radiusKm]);
 
+  // TRAMA — DISCOVERY UNIFICATION (21/09/2026), §15 "MAP": i lead curati non
+  // hanno MAI coordinate verificate (vedi report ANALYSIS PASS) — mapItems
+  // resta derivato SOLO da `matches` (Partner), esattamente come prima.
+  // Nessun marker inventato per una Scoperta TRAMA: il conteggio "X attività
+  // trovate" sopra la mappa può quindi essere maggiore del numero di marker
+  // visibili — comportamento atteso e comunicato in UI (vedi il testo sotto
+  // la mappa più in basso), non un'inconsistenza silenziosa.
   const mapItems = useMemo(
     () =>
       matches
@@ -568,6 +582,58 @@ export default function SearchDiscoveryClient({
         .map((m) => ({ id: m.activity.id, name: m.activity.name, emoji: m.activity.emoji, lat: m.activity.lat!, lng: m.activity.lng! })),
     [matches]
   );
+
+  // TRAMA — DISCOVERY UNIFICATION (21/09/2026), §2-3-5 del prompt: le due
+  // pipeline di filtro/scoring (filteredActivities→matches per Partner,
+  // compatibleRealDiscoveryLeads per Curated) restano separate e invariate
+  // sopra — qui, SOLO nel layer di presentazione, i loro output già
+  // filtrati vengono intercalati in un unico result set (interleaving
+  // deterministico 2 Partner : 1 Curated, mai un punteggio inventato per il
+  // Curated — vedi lib/discovery/result-model.ts). Il totale
+  // (totalResultsCount) alimenta l'unico "X attività trovate" mostrato in
+  // UI: nessun count separato "Scoperte TRAMA" da nessuna parte.
+  const totalResultsCount = useMemo(
+    () => countDiscoveryResults(matches, compatibleRealDiscoveryLeads),
+    [matches, compatibleRealDiscoveryLeads]
+  );
+
+  // Senza geo attiva: un'unica lista intercalata su TUTTI i risultati.
+  const unifiedResults = useMemo(
+    () => interleaveDiscoveryResults(matches, compatibleRealDiscoveryLeads),
+    [matches, compatibleRealDiscoveryLeads]
+  );
+
+  // Con geo attiva: i lead curati (nessuna coordinata verificata) non
+  // possono mai essere onestamente dichiarati "nella tua zona" — inventare
+  // una prossimità non nota violerebbe la stessa regola "no dati inventati"
+  // di tutto il pilot. Entrano quindi SOLO nel gruppo "Fuori dalla tua
+  // zona", intercalati con i Partner fuori zona — mai nel gruppo "Nella tua
+  // zona", che resta 100% Partner con coordinate verificate entro il
+  // raggio scelto. Comportamento documentato nel report ANALYSIS PASS §15.
+  const nearbyResults = useMemo(() => interleaveDiscoveryResults(nearby, []), [nearby]);
+  const farResults = useMemo(
+    () => interleaveDiscoveryResults(far, compatibleRealDiscoveryLeads),
+    [far, compatibleRealDiscoveryLeads]
+  );
+
+  function resultKey(result: DiscoveryResult): string {
+    return result.kind === "partner" ? result.match.activity.id : `curated-${result.lead.id}`;
+  }
+
+  function renderDiscoveryResult(result: DiscoveryResult) {
+    if (result.kind === "partner") {
+      return (
+        <ResultCard
+          key={resultKey(result)}
+          match={result.match}
+          correlationId={searchCorrelationId}
+          weekStarts={selectedWeekStarts}
+          isFavorite={!!result.match.activity.dbId && favoriteIdsSet.has(result.match.activity.dbId)}
+        />
+      );
+    }
+    return <DiscoveryLeadCard key={resultKey(result)} lead={result.lead} />;
+  }
 
   // SPRINT 3 correttivo (feedback Fabrizio: "il filtro dovrebbe essere
   // 'Bambini' e poi dentro la lista dei bambini, altrimenti se diventano 3?
@@ -652,33 +718,14 @@ export default function SearchDiscoveryClient({
           </p>
         </DecorativeIntroCard>
 
-        {/* TRAMA — REAL DISCOVERY PILOT (16/09/2026). Sezione ADDITIVA,
-            separata dai risultati Partner sotto: nessun record qui entra mai
-            nei filtri età/prezzo/zona/tag/servizi esistenti (limite noto,
-            documentato nel report — vedi lib/releases/catalog.ts,
-            "real-discovery-pilot"). Compatibilità con la settimana
-            selezionata (se presente) calcolata con
-            isDiscoveryLeadCompatibleWithWeek, stesso criterio di
-            sovrapposizione usato per le attività reali. Un record senza date
-            note non viene mai escluso: solo un record con date note e
-            realmente incompatibili con la settimana scelta sparisce. */}
-        {compatibleRealDiscoveryLeads.length > 0 && (
-          <div className="mb-4">
-            <div className="mb-1.5 flex items-center gap-1.5">
-              <span className="text-sm font-bold text-ink">Scoperte TRAMA</span>
-              <span className="rounded-full bg-[#F3F0FF] px-2 py-0.5 text-[10px] font-semibold text-trama-violet">
-                Anteprima interna
-              </span>
-            </div>
-            <p className="mb-2 text-[11px] text-ink-2">
-              Attività reali trovate da TRAMA sul territorio, non gestite da un Partner TRAMA — vedi il
-              disclaimer su ogni scheda.
-            </p>
-            {compatibleRealDiscoveryLeads.map((lead) => (
-              <DiscoveryLeadCard key={lead.id} lead={lead} />
-            ))}
-          </div>
-        )}
+        {/* TRAMA — DISCOVERY UNIFICATION (21/09/2026). La sezione separata
+            "Scoperte TRAMA" (sopra la searchbar) è stata rimossa: i lead
+            curati compatibili ora entrano nel result set unico sotto,
+            intercalati con i risultati Partner (vedi
+            interleaveDiscoveryResults) invece di vivere in un blocco a
+            parte. Il badge "Anteprima interna" resta comunicato da
+            ProductStatusChip qui sopra (internal=realDiscoveryBadgeVisible),
+            non da un secondo badge di sezione ormai inesistente. */}
 
         <input
           value={query}
@@ -1121,7 +1168,10 @@ export default function SearchDiscoveryClient({
         {openPanel !== null && <div data-testid="filter-results-divider" className="mb-3 border-t border-[#E8EBF0]" />}
 
         <div className="mb-3 flex items-center justify-between">
-          <span className="text-[12.5px] text-ink-2">{matches.length} attività trovate</span>
+          {/* TRAMA — DISCOVERY UNIFICATION (21/09/2026), §3 "COUNT UNICO":
+              Partner + Curated, mai un count separato per le Scoperte
+              TRAMA. */}
+          <span className="text-[12.5px] text-ink-2">{totalResultsCount} attività trovate</span>
           <div className="flex items-center gap-2">
             {hasGeo && (
               <div className="flex items-center gap-1.5 text-xs font-medium text-trama-violet">
@@ -1162,8 +1212,19 @@ export default function SearchDiscoveryClient({
                 Nessuna attività con coordinate da mostrare in mappa per i filtri scelti.
               </p>
             )}
+            {/* §15 "MAP" del report ANALYSIS PASS: mai coordinate inventate
+                per una Scoperta TRAMA — quando ce ne sono tra i risultati
+                compatibili, il conteggio sopra la mappa può essere maggiore
+                dei marker visibili. Comportamento dichiarato, non
+                un'inconsistenza silenziosa. */}
+            {compatibleRealDiscoveryLeads.length > 0 && (
+              <p className="pt-2 text-center text-[11px] text-ink-3">
+                {compatibleRealDiscoveryLeads.length} Scoperta/e TRAMA compatibile/i non mostrata/e in mappa (nessuna
+                posizione verificata) — visibili in Lista.
+              </p>
+            )}
           </div>
-        ) : matches.length === 0 ? (
+        ) : totalResultsCount === 0 ? (
           <div className="flex flex-col gap-3">
             <p className="rounded-lg border border-dashed border-[#D8DEE8] bg-white p-5 text-center text-sm text-ink-2">
               Nessuna attività corrisponde ai filtri scelti.
@@ -1187,44 +1248,20 @@ export default function SearchDiscoveryClient({
             <div className="pb-1.5 pt-1 text-xs font-bold text-ink-2">
               Nella tua zona (entro {radiusKm} km) — {nearby.length}
             </div>
-            {nearby.map((m) => (
-              <ResultCard
-                key={m.activity.id}
-                match={m}
-                correlationId={searchCorrelationId}
-                weekStarts={selectedWeekStarts}
-                isFavorite={!!m.activity.dbId && favoriteIdsSet.has(m.activity.dbId)}
-              />
-            ))}
+            {nearbyResults.map(renderDiscoveryResult)}
             {nearby.length === 0 && <p className="pb-3 text-sm text-ink-2">Nessuna attività entro {radiusKm} km.</p>}
 
-            {far.length > 0 && (
+            {farResults.length > 0 && (
               <>
-                <div className="pb-1.5 pt-4 text-xs font-bold text-ink-2">Fuori dalla tua zona — {far.length}</div>
-                {far.map((m) => (
-                  <ResultCard
-                    key={m.activity.id}
-                    match={m}
-                    correlationId={searchCorrelationId}
-                    weekStarts={selectedWeekStarts}
-                    isFavorite={!!m.activity.dbId && favoriteIdsSet.has(m.activity.dbId)}
-                  />
-                ))}
+                <div className="pb-1.5 pt-4 text-xs font-bold text-ink-2">
+                  Fuori dalla tua zona — {far.length + compatibleRealDiscoveryLeads.length}
+                </div>
+                {farResults.map(renderDiscoveryResult)}
               </>
             )}
           </div>
         ) : (
-          <div className="flex flex-col gap-1">
-            {matches.map((m) => (
-              <ResultCard
-                key={m.activity.id}
-                match={m}
-                correlationId={searchCorrelationId}
-                weekStarts={selectedWeekStarts}
-                isFavorite={!!m.activity.dbId && favoriteIdsSet.has(m.activity.dbId)}
-              />
-            ))}
-          </div>
+          <div className="flex flex-col gap-1">{unifiedResults.map(renderDiscoveryResult)}</div>
         )}
       </div>
     </div>
