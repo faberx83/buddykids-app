@@ -1,6 +1,7 @@
 "use client";
 
-// TRAMA — REAL DISCOVERY PILOT (16/09/2026)
+// TRAMA — REAL DISCOVERY PILOT (16/09/2026), esteso da DISCOVERY UNIFICATION
+// + PROPONI INVITO (21/09/2026).
 //
 // Card DELIBERATAMENTE separata da components/ActivityCard.tsx. Non la
 // riusiamo per due motivi, entrambi di dominio, non estetici:
@@ -20,19 +21,28 @@
 //    dalla governance di questo lavoro).
 //
 // Questa card quindi: non mostra MAI rating/recensioni/posti disponibili,
-// non ha MAI un CTA "Prenota" — solo "Vai al sito ufficiale"/"Contatta il
-// centro" (link esterno, nuova scheda), degrada silenziosamente ogni campo
-// assente (nessun placeholder "N/D" invadente, la riga semplicemente non
-// compare), e porta sempre il disclaimer di provenienza.
+// non ha MAI un CTA "Prenota" — solo "Proponi invito" (per i lead
+// invitabili) + un link secondario esterno, degrada silenziosamente ogni
+// campo assente (nessun placeholder "N/D" invadente, la riga semplicemente
+// non compare), e porta sempre il disclaimer di provenienza.
+//
+// DISCOVERY UNIFICATION (21/09/2026), §6 "CARD VISUAL GRAMMAR": padding,
+// radius, gerarchia titolo/metadata e spacing allineati a ActivityCard.tsx
+// (stesso rounded-lg/border/p-3, stessa dimensione titolo text-sm font-bold,
+// stessa riga metadata con icone Tabler text-[13px] text-ink-3) — la card
+// resta un componente React distinto (capability differenti: nessun Match/
+// rating/favorite/disponibilità), ma deve leggersi come lo stesso prodotto.
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import type { DiscoveryLeadRecord } from "@/lib/discovery/real-dataset";
+import { isDiscoveryLeadInvitable, secondaryLinkLabelForLead } from "@/lib/discovery/real-dataset";
 // TRAMA — REAL DISCOVERY PILOT · COMPLETION PASS (17/09/2026), §10
 // "ANALYTICS MINIMUM". Stesso pattern già in uso da
 // components/spotlight/SpotlightOverlay.tsx (Server Action invocata
 // direttamente dal componente client, best-effort, mai bloccante) — nessuna
 // nuova architettura di analytics introdotta. Vedi app/actions/discovery.ts.
-import { logDiscoveryLeadEventAction } from "@/app/actions/discovery";
+import { logDiscoveryLeadEventAction, proposeDiscoveryLeadInviteAction } from "@/app/actions/discovery";
+import { useNextgenToast } from "@/components/nextgen/NextgenToastProvider";
 
 const CATEGORY_LABELS: Record<DiscoveryLeadRecord["category"], string> = {
   educativo: "Educativo",
@@ -58,10 +68,23 @@ function formatAge(ageMin: number | null, ageMax: number | null): string | null 
 }
 
 export default function DiscoveryLeadCard({ lead }: { lead: DiscoveryLeadRecord }) {
+  const showToast = useNextgenToast();
   const dateRange = formatDateRange(lead.startDate, lead.endDate);
   const age = formatAge(lead.ageMin, lead.ageMax);
   const ctaHref = lead.registrationUrl || lead.officialUrl;
-  const ctaLabel = lead.registrationUrl ? "Vai al sito" : "Vai al sito ufficiale";
+  const invitable = isDiscoveryLeadInvitable(lead);
+  // §11 del prompt "CTA SECONDARIA": wording derivato dal dominio del link
+  // (officialUrlIsOrganizerSite), MAI genericamente "sito ufficiale".
+  const secondaryLabel = secondaryLinkLabelForLead(lead);
+
+  // §10 "UX FLOW" — Flow B: tap su "Proponi invito" apre un dialog leggero
+  // INLINE (stesso pattern già in uso da SuggestCenterCard.tsx per lo stato
+  // "aperto", non un portale/modale separato — meno rischio, stessa UX
+  // "leggera" richiesta). "proposeState" copre l'intero ciclo: idle → confirm
+  // (dialog aperto) → submitting → done/already/error.
+  type ProposeState = "idle" | "confirm" | "submitting" | "done" | "already" | "error";
+  const [proposeState, setProposeState] = useState<ProposeState>("idle");
+  const [proposeError, setProposeError] = useState<string | null>(null);
 
   // TRAMA — REAL DISCOVERY PILOT · COMPLETION PASS (17/09/2026). Un solo
   // evento "viewed" per montaggio della card (non per ogni ri-render dovuto
@@ -72,8 +95,28 @@ export default function DiscoveryLeadCard({ lead }: { lead: DiscoveryLeadRecord 
     void logDiscoveryLeadEventAction("curated_listing_viewed", lead.id);
   }, [lead.id]);
 
-  function handleCtaClick() {
+  function handleExternalClick() {
     void logDiscoveryLeadEventAction("curated_listing_external_clicked", lead.id);
+  }
+
+  async function handleConfirmPropose() {
+    setProposeState("submitting");
+    setProposeError(null);
+    const result = await proposeDiscoveryLeadInviteAction(lead.id, lead.organizerName, lead.comune);
+    if (result.error) {
+      setProposeState("error");
+      setProposeError(result.error);
+      return;
+    }
+    if (result.alreadyProposed) {
+      setProposeState("already");
+      return;
+    }
+    setProposeState("done");
+    // §10: "toast equivalente a: Proposta inviata. Abbiamo registrato il tuo
+    // interesse." — mai una promessa che TRAMA contatterà sicuramente il
+    // centro.
+    showToast("Proposta inviata — abbiamo registrato il tuo interesse.");
   }
 
   return (
@@ -90,7 +133,7 @@ export default function DiscoveryLeadCard({ lead }: { lead: DiscoveryLeadRecord 
         </span>
       </div>
       <div className="p-3">
-        <div className="mb-0.5 text-sm font-bold text-ink">{lead.activityTitle}</div>
+        <div className="mb-1 text-sm font-bold text-ink">{lead.activityTitle}</div>
         <div className="mb-2 text-[11px] font-medium text-ink-2">{lead.organizerName}</div>
 
         <div className="mb-2 flex flex-wrap items-center gap-2 text-[11px] text-ink-2">
@@ -102,6 +145,12 @@ export default function DiscoveryLeadCard({ lead }: { lead: DiscoveryLeadRecord 
             <span className="flex items-center gap-1">
               <i className="ti ti-users text-[13px] text-ink-3" />
               {age}
+            </span>
+          )}
+          {lead.contact && (
+            <span className="flex items-center gap-1" title="Contatto dichiarato dall'organizzatore">
+              <i className="ti ti-phone text-[13px] text-ink-3" />
+              {lead.contact}
             </span>
           )}
           {dateRange && (
@@ -139,22 +188,93 @@ export default function DiscoveryLeadCard({ lead }: { lead: DiscoveryLeadRecord 
           sito dell&apos;organizzatore.
         </p>
 
-        <div className="flex items-center gap-2">
+        {/* §7-8-11 del prompt "PROPONI INVITO"/"CTA HIERARCHY": PRIMARY
+            "Proponi invito" SOLO per lead invitabili (isDiscoveryLeadInvitable),
+            SECONDARY sempre presente con wording dipendente dal dominio del
+            link. Nessun "Prenota ora" finto, nessun bottone disabilitato
+            senza spiegazione, nessuna disponibilità finta — nessuno di
+            questi ha un sistema reale dietro (§14). */}
+        {invitable && proposeState !== "confirm" && proposeState !== "submitting" && (
+          <div className="flex items-center gap-2">
+            {proposeState === "done" ? (
+              <span className="flex flex-1 items-center justify-center gap-1.5 rounded-full bg-green-light px-3 py-2 text-center text-[12px] font-semibold text-[#2d8f52]">
+                <i className="ti ti-circle-check-filled text-[14px]" />
+                Proposta inviata
+              </span>
+            ) : proposeState === "already" ? (
+              <span className="flex-1 rounded-full bg-[#F4F6FA] px-3 py-2 text-center text-[12px] font-semibold text-ink-2">
+                Hai già proposto questo centro
+              </span>
+            ) : (
+              <button
+                type="button"
+                onClick={() => setProposeState("confirm")}
+                className="flex-1 rounded-full bg-trama-violet px-3 py-2 text-center text-[12px] font-semibold text-white active:scale-[0.98]"
+              >
+                Proponi invito
+              </button>
+            )}
+            <a
+              href={ctaHref}
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={handleExternalClick}
+              className="whitespace-nowrap text-[11.5px] font-semibold text-trama-violet underline underline-offset-2"
+            >
+              {secondaryLabel} ↗
+            </a>
+          </div>
+        )}
+
+        {/* §14 "SOURCE-ONLY RECORDS": nessuna CTA primaria — solo il link
+            alla fonte, con wording onesto ("Vedi la fonte" per un servizio
+            comunale, mai "sito dell'organizzatore" quando non esiste un
+            organizzatore nominato). */}
+        {!invitable && (
           <a
             href={ctaHref}
             target="_blank"
             rel="noopener noreferrer"
-            onClick={handleCtaClick}
-            className="flex-1 rounded-md bg-trama-violet px-3 py-2 text-center text-[12px] font-semibold text-white"
+            onClick={handleExternalClick}
+            className="flex items-center justify-center gap-1 rounded-full border border-[#E8EBF0] px-3 py-2 text-center text-[12px] font-semibold text-ink-2"
           >
-            {ctaLabel}
+            {secondaryLabel} ↗
           </a>
-          {lead.contact && (
-            <span className="text-[11px] text-ink-2" title="Contatto dichiarato dall'organizzatore">
-              {lead.contact}
-            </span>
-          )}
-        </div>
+        )}
+
+        {/* Flow B — dialog leggero INLINE (§10): "Vuoi trovare questo centro
+            su TRAMA? Segnalaci il tuo interesse..." + Annulla/Sì proponilo.
+            Nessun form, nessuna domanda aggiuntiva. */}
+        {invitable && (proposeState === "confirm" || proposeState === "submitting" || proposeState === "error") && (
+          <div className="rounded-lg border border-[#E8EBF0] bg-bg p-3">
+            <p className="mb-1 text-[12.5px] font-semibold text-ink">Vuoi trovare questo centro su TRAMA?</p>
+            <p className="mb-3 text-[11.5px] text-ink-2">
+              Segnalaci il tuo interesse: ci aiuterà a capire quali centri invitare sulla piattaforma.
+            </p>
+            {proposeError && <p className="mb-2 text-[11.5px] font-medium text-trama-orange">{proposeError}</p>}
+            <div className="flex gap-2">
+              <button
+                type="button"
+                disabled={proposeState === "submitting"}
+                onClick={() => {
+                  setProposeState("idle");
+                  setProposeError(null);
+                }}
+                className="flex-1 rounded-full border border-[#E8EBF0] px-3 py-2 text-[12px] font-semibold text-ink-2 disabled:opacity-60"
+              >
+                Annulla
+              </button>
+              <button
+                type="button"
+                disabled={proposeState === "submitting"}
+                onClick={handleConfirmPropose}
+                className="flex-1 rounded-full bg-trama-violet px-3 py-2 text-[12px] font-semibold text-white active:scale-[0.98] disabled:opacity-60"
+              >
+                {proposeState === "submitting" ? "Invio…" : "Sì, proponilo"}
+              </button>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
