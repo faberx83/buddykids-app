@@ -9,10 +9,14 @@ import {
   isDiscoveryLeadCompatibleWithPriceCap,
   isDiscoveryLeadCompatibleWithZoneQuery,
   isDiscoveryLeadCompatibleWithCategoryTags,
+  isDiscoveryLeadInvitable,
+  secondaryLinkLabelForLead,
   type DiscoveryLeadRecord,
 } from "../../lib/discovery/real-dataset";
+import { interleaveDiscoveryResults, countDiscoveryResults, type DiscoveryResult } from "../../lib/discovery/result-model";
 import { FEATURE_FLAG_REGISTRY } from "../../lib/feature-flags/registry";
 import { KNOWN_PRODUCT_EVENTS } from "../../lib/telemetry/known-events";
+import type { SmartMatch } from "../../lib/nextgen/smart-search";
 
 // TRAMA — REAL DISCOVERY PILOT (16/09/2026, esteso 17/09/2026 · COMPLETION
 // PASS). Stesso principio "[no browser]" già seguito da
@@ -293,5 +297,254 @@ test.describe("REAL DISCOVERY PILOT — analytics minimo (§10, riuso infrastrut
     const source = readSource("../../app/actions/discovery.ts");
     expect(source).toContain("persistProductEvent");
     expect(source).not.toContain('.from("product_events")');
+  });
+});
+
+// ============ DISCOVERY UNIFICATION + PROPONI INVITO (21/09/2026) ============
+// Comando: npx playwright test tests/one/real-discovery-pilot.spec.ts
+
+function makeFakeMatch(id: string): SmartMatch {
+  return { activity: { id } as SmartMatch["activity"], kidName: null, score: 0, reasons: [] };
+}
+
+test.describe("DISCOVERY UNIFICATION — interleaveDiscoveryResults (view-model puro)", () => {
+  test("RD-42: countDiscoveryResults = Partner + Curated, nessun count separato", () => {
+    const partner = [makeFakeMatch("p1"), makeFakeMatch("p2")];
+    const curated = [REAL_DISCOVERY_LEADS[0], REAL_DISCOVERY_LEADS[1]];
+    expect(countDiscoveryResults(partner, curated)).toBe(4);
+  });
+
+  test("RD-43: interleaving 2 Partner : 1 Curated, ordine deterministico", () => {
+    const partner = ["p1", "p2", "p3", "p4", "p5"].map(makeFakeMatch);
+    const curated = [REAL_DISCOVERY_LEADS[0], REAL_DISCOVERY_LEADS[1]];
+    const results = interleaveDiscoveryResults(partner, curated);
+    expect(results.map((r) => r.kind)).toEqual(["partner", "partner", "curated", "partner", "partner", "curated", "partner"]);
+    expect(results.length).toBe(7);
+  });
+
+  test("RD-44: l'ordine interno di ciascun dominio è preservato (mai ririordinato nell'interleaving)", () => {
+    const partner = ["p1", "p2", "p3"].map(makeFakeMatch);
+    const curated = [REAL_DISCOVERY_LEADS[0]];
+    const results = interleaveDiscoveryResults(partner, curated);
+    const partnerIds = results.filter((r) => r.kind === "partner").map((r) => (r as { kind: "partner"; match: SmartMatch }).match.activity.id);
+    expect(partnerIds).toEqual(["p1", "p2", "p3"]);
+    const curatedIds = results.filter((r) => r.kind === "curated").map((r) => (r as { kind: "curated"; lead: DiscoveryLeadRecord }).lead.id);
+    expect(curatedIds).toEqual([REAL_DISCOVERY_LEADS[0].id]);
+  });
+
+  test("RD-45: curated vuoto (flag OFF o zero risultati compatibili) → risultato identico alla sola lista Partner, stesso ordine", () => {
+    const partner = ["p1", "p2", "p3"].map(makeFakeMatch);
+    const results = interleaveDiscoveryResults(partner, []);
+    expect(results.every((r) => r.kind === "partner")).toBe(true);
+    expect(results.map((r) => (r as { kind: "partner"; match: SmartMatch }).match.activity.id)).toEqual(["p1", "p2", "p3"]);
+  });
+
+  test("RD-46: Partner vuoto → risultato identico alla sola lista Curated, stesso ordine", () => {
+    const curated = [REAL_DISCOVERY_LEADS[0], REAL_DISCOVERY_LEADS[1]];
+    const results = interleaveDiscoveryResults([], curated);
+    expect(results.every((r) => r.kind === "curated")).toBe(true);
+    expect(results.map((r) => (r as { kind: "curated"; lead: DiscoveryLeadRecord }).lead.id)).toEqual([
+      REAL_DISCOVERY_LEADS[0].id,
+      REAL_DISCOVERY_LEADS[1].id,
+    ]);
+  });
+
+  test("RD-47: nessun risultato mescola le due forme (un 'partner' non ha mai 'lead', un 'curated' non ha mai 'match')", () => {
+    const results: DiscoveryResult[] = interleaveDiscoveryResults([makeFakeMatch("p1")], [REAL_DISCOVERY_LEADS[0]]);
+    for (const r of results) {
+      if (r.kind === "partner") {
+        expect("lead" in r).toBe(false);
+      } else {
+        expect("match" in r).toBe(false);
+      }
+    }
+  });
+});
+
+test.describe("DISCOVERY UNIFICATION — sezione separata rimossa, Search/Filters in alto, count unico (statico)", () => {
+  test("RD-48: la sezione separata 'Scoperte TRAMA' sopra la searchbar non esiste più", () => {
+    const source = readSource("../../app/nextgen/search/SearchDiscoveryClient.tsx");
+    expect(source).not.toContain('<span className="text-sm font-bold text-ink">Scoperte TRAMA</span>');
+  });
+
+  test("RD-49: SearchDiscoveryClient importa il view-model unificato", () => {
+    const source = readSource("../../app/nextgen/search/SearchDiscoveryClient.tsx");
+    expect(source).toContain("interleaveDiscoveryResults");
+    expect(source).toContain("countDiscoveryResults");
+  });
+
+  test("RD-50: il count mostrato in UI è quello unificato (Partner + Curated), non solo Partner", () => {
+    const source = readSource("../../app/nextgen/search/SearchDiscoveryClient.tsx");
+    expect(source).toContain("{totalResultsCount} attività trovate");
+    expect(source).not.toContain("{matches.length} attività trovate");
+  });
+
+  test("RD-51: la searchbar precede nel sorgente il primo utilizzo dei risultati intercalati (Search/Filters in alto)", () => {
+    const source = readSource("../../app/nextgen/search/SearchDiscoveryClient.tsx");
+    const searchbarIndex = source.indexOf('placeholder="Cerca per nome');
+    const firstRenderIndex = source.indexOf(".map(renderDiscoveryResult)");
+    expect(searchbarIndex).toBeGreaterThan(-1);
+    expect(firstRenderIndex).toBeGreaterThan(searchbarIndex);
+  });
+
+  test("RD-52: la Mappa deriva SOLO da Partner (mapItems) — nessuna coordinata inventata per i lead curati", () => {
+    const source = readSource("../../app/nextgen/search/SearchDiscoveryClient.tsx");
+    const mapItemsMatch = source.match(/const mapItems = useMemo\(\s*\(\)[\s\S]*?\[matches\]\s*\);/);
+    expect(mapItemsMatch).not.toBeNull();
+    expect(mapItemsMatch![0]).not.toContain("compatibleRealDiscoveryLeads");
+  });
+});
+
+test.describe("DISCOVERY UNIFICATION — classificazione invitable (dataset, §8 entity audit)", () => {
+  const INVITABLE_IDS = [
+    "rho-cre-collodi-stripes",
+    "milano-milanosport-campus-multisport",
+    "milano-lyceum-summer-camp",
+    "milano-notformalcamp-san-siro",
+    "bareggio-usob-campus-multisport",
+    "milano-baggio-oratorio-san-giovanni-bosco",
+    "conversano-beltempo",
+  ];
+  const SOURCE_ONLY_IDS = [
+    "cornaredo-centri-estivi-comunali",
+    "pero-centro-estivo-primaria",
+    "settimo-milanese-centro-diurno-ricreativo",
+    "milano-centri-estivi-scuole-primarie-comunali",
+    "bareggio-centro-estivo-comunale-infanzia",
+    "noicattaro-centri-estivi-comunali",
+  ];
+
+  test("RD-53: esattamente 7 record invitabili e 6 source-only su 13 totali", () => {
+    const invitableCount = REAL_DISCOVERY_LEADS.filter((l) => isDiscoveryLeadInvitable(l)).length;
+    expect(invitableCount).toBe(7);
+    expect(REAL_DISCOVERY_LEADS.length - invitableCount).toBe(6);
+    expect(REAL_DISCOVERY_LEADS.length).toBe(13);
+  });
+
+  test("RD-54: i 7 id attesi sono invitabili", () => {
+    for (const id of INVITABLE_IDS) {
+      const lead = REAL_DISCOVERY_LEADS.find((l) => l.id === id);
+      expect(lead, `record ${id} deve esistere nel dataset`).toBeDefined();
+      expect(isDiscoveryLeadInvitable(lead!), `record ${id} deve essere invitable`).toBe(true);
+    }
+  });
+
+  test("RD-55: i 6 id source-only NON sono invitabili", () => {
+    for (const id of SOURCE_ONLY_IDS) {
+      const lead = REAL_DISCOVERY_LEADS.find((l) => l.id === id);
+      expect(lead, `record ${id} deve esistere nel dataset`).toBeDefined();
+      expect(isDiscoveryLeadInvitable(lead!), `record ${id} NON deve essere invitable`).toBe(false);
+    }
+  });
+
+  test("RD-56: secondaryLinkLabelForLead restituisce 'Sito dell'organizzatore' o 'Vedi la fonte' in base al dominio del link, mai un terzo valore", () => {
+    expect(secondaryLinkLabelForLead({ officialUrlIsOrganizerSite: true })).toBe("Sito dell'organizzatore");
+    expect(secondaryLinkLabelForLead({ officialUrlIsOrganizerSite: false })).toBe("Vedi la fonte");
+  });
+
+  test("RD-57: nessun record source-only ha officialUrlIsOrganizerSite=true (nessun 'sito dell'organizzatore' per un Comune)", () => {
+    for (const id of SOURCE_ONLY_IDS) {
+      const lead = REAL_DISCOVERY_LEADS.find((l) => l.id === id)!;
+      expect(lead.officialUrlIsOrganizerSite).toBe(false);
+    }
+  });
+});
+
+test.describe("DISCOVERY UNIFICATION — CTA hierarchy nella card (statico)", () => {
+  test("RD-58: 'Proponi invito' è condizionato a invitable nel sorgente", () => {
+    const source = readSource("../../components/nextgen/DiscoveryLeadCard.tsx");
+    expect(source).toContain("invitable && proposeState");
+    expect(source).toContain("Proponi invito");
+  });
+
+  test("RD-59: la CTA secondaria usa secondaryLinkLabelForLead, mai una stringa 'sito ufficiale' generica", () => {
+    const source = readSource("../../components/nextgen/DiscoveryLeadCard.tsx");
+    const codeOnly = source.replace(/\/\/.*$/gm, "").replace(/\/\*[\s\S]*?\*\//g, "");
+    expect(source).toContain("secondaryLinkLabelForLead");
+    expect(codeOnly).not.toContain("sito ufficiale");
+  });
+
+  test("RD-60: il bottone Annulla del dialog non invoca mai proposeDiscoveryLeadInviteAction", () => {
+    const source = readSource("../../components/nextgen/DiscoveryLeadCard.tsx");
+    const annullaBlockMatch = source.match(/Annulla[\s\S]{0,20}<\/button>/);
+    // Risalgo al blocco onClick immediatamente precedente al testo "Annulla"
+    const onClickBeforeAnnulla = source.slice(0, source.indexOf(">Annulla<")).split("onClick={() => {").pop() ?? "";
+    expect(annullaBlockMatch).not.toBeNull();
+    expect(onClickBeforeAnnulla).not.toContain("proposeDiscoveryLeadInviteAction");
+  });
+
+  test("RD-61: aprire il dialog (tap su 'Proponi invito') non chiama MAI logDiscoveryLeadEventAction — solo la conferma lo fa", () => {
+    const source = readSource("../../components/nextgen/DiscoveryLeadCard.tsx");
+    const openDialogHandler = source.match(/onClick=\{\(\) => setProposeState\("confirm"\)\}/);
+    expect(openDialogHandler).not.toBeNull();
+    // Il pulsante che apre il dialog ha SOLO setProposeState("confirm") come
+    // handler inline — nessuna chiamata ad azione/analytics nello stesso
+    // punto (a differenza di handleConfirmPropose, distinto).
+    expect(openDialogHandler![0]).not.toContain("logDiscoveryLeadEventAction");
+  });
+});
+
+test.describe("DISCOVERY UNIFICATION — center_leads reuse, dedupe, analytics (statico)", () => {
+  test("RD-62: proposeDiscoveryLeadInviteAction riusa suggestCenterLeadAction esistente, non inserisce direttamente", () => {
+    const source = readSource("../../app/actions/discovery.ts");
+    expect(source).toContain("import { suggestCenterLeadAction } from \"@/app/actions/center-leads\"");
+    expect(source).toContain("suggestCenterLeadAction(organizerName, comune, undefined, demandContext)");
+    expect(source).not.toContain('.from("center_leads").insert');
+  });
+
+  test("RD-63: il controllo 'proposto già da questo utente' avviene PRIMA dell'insert (dedupe preventivo)", () => {
+    const source = readSource("../../app/actions/discovery.ts");
+    const checkIndex = source.indexOf("hasParentAlreadySuggestedLead(dedupeKey)");
+    const insertIndex = source.indexOf("suggestCenterLeadAction(organizerName, comune, undefined, demandContext)");
+    expect(checkIndex).toBeGreaterThan(-1);
+    expect(insertIndex).toBeGreaterThan(checkIndex);
+  });
+
+  test("RD-64: l'evento curated_listing_invite_proposed è registrato SOLO dopo aver verificato che l'insert non ha fallito", () => {
+    const source = readSource("../../app/actions/discovery.ts");
+    const errorGuardIndex = source.indexOf("if (result.error) return result;");
+    const eventIndex = source.indexOf('logDiscoveryLeadEventAction("curated_listing_invite_proposed"');
+    expect(errorGuardIndex).toBeGreaterThan(-1);
+    expect(eventIndex).toBeGreaterThan(errorGuardIndex);
+  });
+
+  test("RD-65: curated_listing_invite_proposed è nella whitelist degli eventi noti", () => {
+    expect(KNOWN_PRODUCT_EVENTS).toContain("curated_listing_invite_proposed");
+  });
+
+  test("RD-66: CenterLeadDemandContext supporta discoveryLeadId (nessuna migration — jsonb già flessibile)", () => {
+    const source = readSource("../../lib/types.ts");
+    expect(source).toContain("discoveryLeadId?: string;");
+  });
+
+  test("RD-67: nessuna nuova tabella creata da questa unificazione (governance: zero migration)", () => {
+    for (const file of ["../../lib/discovery/real-dataset.ts", "../../lib/discovery/result-model.ts", "../../app/actions/discovery.ts", "../../lib/data/center-leads.ts"]) {
+      const source = readSource(file).toLowerCase();
+      expect(source).not.toContain("create table");
+    }
+  });
+
+  test("RD-68: normalizeDedupeKey è riusata da center-leads.ts, non duplicata in discovery.ts", () => {
+    const source = readSource("../../app/actions/discovery.ts");
+    expect(source).toContain("import { normalizeDedupeKey, hasParentAlreadySuggestedLead } from \"@/lib/data/center-leads\"");
+    // Nessuna reimplementazione locale della normalizzazione (niente .normalize("NFD") duplicato qui).
+    expect(source).not.toContain('.normalize("NFD")');
+  });
+});
+
+test.describe("DISCOVERY UNIFICATION — documentazione stale corretta", () => {
+  test("RD-69: lib/releases/catalog.ts non dichiara più 'Non integrato con i filtri esistenti di Scopri'", () => {
+    const source = readSource("../../lib/releases/catalog.ts");
+    expect(source).not.toContain("Non integrato con i filtri esistenti di Scopri");
+  });
+});
+
+test.describe("DISCOVERY UNIFICATION — flag OFF invariato (regressione)", () => {
+  test("RD-70: con dataset curato vuoto (flag OFF), il result set unificato coincide esattamente con i soli risultati Partner", () => {
+    const partner = ["a1", "a2", "a3", "a4"].map(makeFakeMatch);
+    const results = interleaveDiscoveryResults(partner, []);
+    expect(countDiscoveryResults(partner, [])).toBe(partner.length);
+    expect(results.length).toBe(partner.length);
+    expect(results.every((r) => r.kind === "partner")).toBe(true);
   });
 });
