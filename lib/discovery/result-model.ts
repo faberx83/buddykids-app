@@ -16,7 +16,7 @@
 // hanno già prodotto il proprio risultato filtrato.
 
 import type { SmartMatch } from "@/lib/nextgen/smart-search";
-import type { DiscoveryLeadRecord } from "@/lib/discovery/real-dataset";
+import { isDiscoveryLeadInvitable, type DiscoveryLeadRecord } from "@/lib/discovery/real-dataset";
 
 export type DiscoveryResult =
   | { kind: "partner"; match: SmartMatch }
@@ -74,4 +74,74 @@ export function interleaveDiscoveryResults(
  */
 export function countDiscoveryResults(partnerMatches: SmartMatch[], curatedLeads: DiscoveryLeadRecord[]): number {
   return partnerMatches.length + curatedLeads.length;
+}
+
+// ============ MAP UNIFICATION (TRAMA — DISCOVERY MAP + POLISH, 21/09/2026) ============
+//
+// §2-3-9 del prompt "TARGET — ONE DISCOVERY, ONE MAP" / "TRE STATI MAPPA" /
+// "MAP RESULT MODEL". Stesso principio di `DiscoveryResult` sopra: un
+// view-model di sola presentazione, PURO (nessun I/O), che riusa i due
+// result set già filtrati (matches Partner, compatibleRealDiscoveryLeads
+// Curated) invece di introdurre una terza pipeline indipendente — la Mappa
+// e la Lista leggono sempre lo STESSO universo di risultati già filtrato,
+// mai una ricerca ricostruita da zero (§10 "FILTER CONSISTENCY").
+//
+// Tre stati, mai più di tre, mai una quarta categoria implicita:
+// - "partner": Partner TRAMA/mock-test già mappabili prima di questo pass —
+//   comportamento INVARIATO (stessa fonte lat/lng di activities.latitude/
+//   longitude, mai toccata da questo file).
+// - "curated_invitable": Scoperta TRAMA con organizzatore identificato
+//   (isDiscoveryLeadInvitable) E una coordinata statica verificata nel
+//   dataset (lead.lat/lead.lng non null) — "Da invitare" in UI.
+// - "curated_source": Scoperta TRAMA reale ma senza organizzatore
+//   identificato, con una coordinata statica verificata — "Fonte pubblica"
+//   in UI.
+//
+// REGOLA NON NEGOZIABILE identica al resto del pilot: un lead SENZA
+// lat/lng verificate (oggi: tutti e 13, vedi CURATED GEO AUDIT nel report)
+// non genera MAI un marker — non entra in questo array, punto. Nessun
+// centroide, nessuna stima, nessuna eccezione "tanto è quasi giusto".
+export interface DiscoveryMapPartnerItem {
+  kind: "partner";
+  id: string;
+  name: string;
+  emoji: string;
+  lat: number;
+  lng: number;
+}
+
+export interface DiscoveryMapCuratedItem {
+  kind: "curated_invitable" | "curated_source";
+  id: string;
+  lead: DiscoveryLeadRecord;
+  lat: number;
+  lng: number;
+}
+
+export type DiscoveryMapItem = DiscoveryMapPartnerItem | DiscoveryMapCuratedItem;
+
+/**
+ * Costruisce l'universo unico di marker Mappa a partire dagli STESSI due
+ * result set già filtrati usati dalla Lista (mai una terza pipeline). I
+ * `partnerMapItems` sono quelli già calcolati da SearchDiscoveryClient
+ * (stessa logica pre-esistente: `matches` con lat/lng note, invariata) — qui
+ * vengono solo ri-taggati "partner" per uniformità di tipo con i marker
+ * Curated. I lead Curated senza lat/lng noti (oggi: sempre, vedi sopra)
+ * vengono semplicemente esclusi, mai approssimati.
+ */
+export function buildDiscoveryMapItems(
+  partnerMapItems: { id: string; name: string; emoji: string; lat: number; lng: number }[],
+  curatedLeads: DiscoveryLeadRecord[]
+): DiscoveryMapItem[] {
+  const partnerItems: DiscoveryMapItem[] = partnerMapItems.map((it) => ({ kind: "partner", ...it }));
+  const curatedItems: DiscoveryMapItem[] = curatedLeads
+    .filter((lead): lead is DiscoveryLeadRecord & { lat: number; lng: number } => lead.lat !== null && lead.lng !== null)
+    .map((lead) => ({
+      kind: isDiscoveryLeadInvitable(lead) ? "curated_invitable" : "curated_source",
+      id: lead.id,
+      lead,
+      lat: lead.lat,
+      lng: lead.lng,
+    }));
+  return [...partnerItems, ...curatedItems];
 }
