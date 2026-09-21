@@ -25,6 +25,34 @@
 // deliberatamente ESCLUSI per verificabilità insufficiente — vedi
 // REJECTED_DISCOVERY_LEADS in fondo a questo file.
 //
+// DISCOVERY UNIFICATION + PROPONI INVITO (21/09/2026): aggiunti due campi
+// derivati SOLO da informazioni già verificate nella sessione precedente
+// (nessuna nuova ricerca, nessun dato inventato):
+// - `invitable`: true per i 7 record dove l'ORGANIZZATORE è un'entità reale,
+//   nominata, distinta dal Comune che eventualmente commissiona il servizio
+//   (Stripes, Milanosport, Lyceum, NotFormalCamp, USOB, Oratorio San
+//   Giovanni Bosco, Il Sogno di Don Bosco). false per i 6 record dove la
+//   fonte descrive un SERVIZIO COMUNALE con gestore non nominato o che
+//   ruota di anno in anno (Cornaredo, Pero, Settimo Milanese, Milano Centri
+//   Estivi Primarie, Bareggio comunale, Noicattaro) — mostrare "Proponi
+//   invito" su questi ultimi genererebbe una manifestazione d'interesse
+//   verso un'entità che TRAMA non può realisticamente contattare (il Comune
+//   non è l'organizzatore commerciale dell'attività). Per rho-cre-collodi-
+//   stripes, `organizerName` è stato corretto da "Comune di Rho (gestione:
+//   Stripes...)" a "Stripes Cooperativa Sociale ONLUS" — il legame con il
+//   Comune (ente commissionante, non gestore) resta comunque descritto in
+//   `shortDescription`, dove era già presente: nessuna informazione persa,
+//   solo il campo ORGANIZER separato dalla fonte/commissione.
+// - `officialUrlIsOrganizerSite`: true SOLO quando `officialUrl` punta al
+//   dominio proprio dell'organizzatore (es. usob1949.it, lyceum.it) — false
+//   quando punta a un portale terzo (Comune, Arcidiocesi, piattaforma di
+//   hosting) anche se il record è comunque `invitable` (es. l'Oratorio di
+//   Baggio è un'entità reale invitabile, ma l'unica fonte raggiunta è un
+//   articolo del portale diocesano, non il sito dell'oratorio). Determina
+//   SOLO il wording della CTA secondaria ("Sito dell'organizzatore" vs
+//   "Vedi la fonte") — mai inventato, sempre derivabile dal dominio già
+//   noto in `officialUrl`.
+//
 // Gated da REAL_DISCOVERY_DATASET_ENABLED (lib/feature-flags/registry.ts),
 // risolto server-side in app/nextgen/search/page.tsx, di default invisibile
 // a chiunque finché Fabrizio non attiva cohort:internal-preview da Admin →
@@ -86,13 +114,21 @@ export interface DiscoveryLeadRecord {
   seasonYear: number;
   confidence: DiscoveryLeadConfidence;
   temporalNote: string;
+  // DISCOVERY UNIFICATION + PROPONI INVITO (21/09/2026) — vedi commento di
+  // testa del file per la definizione completa di entrambi i campi.
+  invitable: boolean;
+  officialUrlIsOrganizerSite: boolean;
 }
 
 export const REAL_DISCOVERY_LEADS: DiscoveryLeadRecord[] = [
   // ============ CLUSTER A — MILANO / MILANO OVEST (11 record) ============
   {
     id: "rho-cre-collodi-stripes",
-    organizerName: "Comune di Rho (gestione: Stripes Cooperativa Sociale ONLUS)",
+    // Corretto 21/09/2026 (DISCOVERY UNIFICATION §8): era "Comune di Rho
+    // (gestione: Stripes...)" — organizzatore ed ente commissionante
+    // separati, nessuna informazione persa (il legame col Comune resta in
+    // shortDescription, dove era già descritto).
+    organizerName: "Stripes Cooperativa Sociale ONLUS",
     activityTitle: 'CRE Estivo Scuola Primaria "C. Collodi"',
     shortDescription:
       "Centro ricreativo estivo comunale per la scuola primaria, gestito dalla cooperativa sociale Stripes su incarico del Comune di Rho.",
@@ -122,6 +158,11 @@ export const REAL_DISCOVERY_LEADS: DiscoveryLeadRecord[] = [
     confidence: "high",
     temporalNote:
       "Pagina pubblicata dall'organizzatore il 15/04/2026 per la stagione 2026, già conclusa alla data di questa ricerca (17/09/2026). Sede/orari/gestore confermati direttamente dalla fonte primaria — riconfermare data/prezzo per l'estate 2027 prima della pubblicazione al pubblico.",
+    invitable: true,
+    // officialUrl è pedagogia.it (piattaforma terza che ospita la pagina
+    // Stripes), non un dominio proprio di Stripes — CTA secondaria "Vedi la
+    // fonte", non "Sito dell'organizzatore".
+    officialUrlIsOrganizerSite: false,
   },
   {
     id: "cornaredo-centri-estivi-comunali",
@@ -154,6 +195,10 @@ export const REAL_DISCOVERY_LEADS: DiscoveryLeadRecord[] = [
     confidence: "high",
     temporalNote:
       "Pagina di servizio permanente (ultimo aggiornamento dichiarato 08/04/2026), non legata a un'unica edizione: date esatte, sede e importo della retta sono pubblicati dal Comune ogni anno in aprile/maggio, non ancora disponibili per il 2027 alla data di questa ricerca.",
+    // Nessun gestore nominato (organizerName = "Comune di Cornaredo",
+    // servizio comunale diretto) — non invitabile come Partner commerciale.
+    invitable: false,
+    officialUrlIsOrganizerSite: false,
   },
   {
     id: "pero-centro-estivo-primaria",
@@ -186,6 +231,8 @@ export const REAL_DISCOVERY_LEADS: DiscoveryLeadRecord[] = [
     confidence: "high",
     temporalNote:
       "Pagina di servizio aggiornata per la stagione 2026 (iscrizioni 13 aprile–18 maggio 2026), consultata il 17/09/2026 a stagione conclusa. Il prezzo riportato (88,20€/settimana) è la tariffa intera residenti (ISEE ≥30.000€): esistono riduzioni ISEE fino a 27,56€ e una tariffa non residenti di 110,25€, non rappresentabili in un singolo numero — vedi weeklyStructure. Da riconfermare per il 2027.",
+    invitable: false,
+    officialUrlIsOrganizerSite: false,
   },
   {
     id: "settimo-milanese-centro-diurno-ricreativo",
@@ -218,6 +265,8 @@ export const REAL_DISCOVERY_LEADS: DiscoveryLeadRecord[] = [
     confidence: "high",
     temporalNote:
       "Pagina di servizio ufficiale (rev. P24 del 3/4/2026, ultimo aggiornamento dichiarato 30/06/2026) — dati correnti per la stagione 2026, già conclusa alla data di questa ricerca (17/09/2026). Prezzo riportato è la tariffa residenti (non residenti 95,70€, dal secondo figlio 71,50€). Date esatte di apertura non pubblicate su questa pagina (solo periodo di iscrizione) — da riconfermare per il 2027.",
+    invitable: false,
+    officialUrlIsOrganizerSite: false,
   },
   {
     id: "milano-centri-estivi-scuole-primarie-comunali",
@@ -252,6 +301,10 @@ export const REAL_DISCOVERY_LEADS: DiscoveryLeadRecord[] = [
     confidence: "high",
     temporalNote:
       "Comunicato ufficiale datato 19/02/2026 per la stagione 2026 (già conclusa alla data di questa ricerca, 17/09/2026), comprensivo dell'elenco reale delle sedi per Municipio — usato qui per confermare la copertura specifica del Municipio 7 (Milano Ovest). Il contributo è fortemente dipendente da fascia ISEE e periodo (da 0€ fino a un tetto di circa 254€ per il periodo più lungo, 279,48€ per i non residenti): non riportato come prezzo singolo per non falsare il dato. Sedi e tariffe da riconfermare per la stagione 2027 (nuovo comunicato annuale atteso).",
+    // "Comune di Milano — Direzione Educazione", nessun gestore operativo
+    // nominato: descrive il SERVIZIO comunale, non un'entità invitabile.
+    invitable: false,
+    officialUrlIsOrganizerSite: false,
   },
   {
     id: "milano-milanosport-campus-multisport",
@@ -284,6 +337,10 @@ export const REAL_DISCOVERY_LEADS: DiscoveryLeadRecord[] = [
     confidence: "medium",
     temporalNote:
       "La stagione 2026 è già conclusa alla data di questa ricerca (16/09/2026): la pagina ufficiale Milanosport mostra ora \"Ci vediamo a giugno 2027!\" senza ancora dettagli pubblicati per la prossima stagione. Età/prezzo/date qui riportati sono per l'edizione 2026 e provengono da una fonte secondaria (facilebimbi.it) coerente con quanto annunciato dall'organizzatore, non da una pagina prezzi Milanosport verificata direttamente — riconfermare su milanosport.it prima della stagione 2027.",
+    // Milanosport SSD S.p.A. è un'entità distinta e reale (anche se
+    // partecipata dal Comune di Milano) — CLEAN, invitabile.
+    invitable: true,
+    officialUrlIsOrganizerSite: true,
   },
   {
     id: "milano-lyceum-summer-camp",
@@ -316,6 +373,8 @@ export const REAL_DISCOVERY_LEADS: DiscoveryLeadRecord[] = [
     confidence: "high",
     temporalNote:
       "Dati completi, correnti e aggiornati dall'organizzatore il 19/05/2026 per la stagione 2026, in corso di svolgimento al momento della ricerca. NOTA GEOGRAFICA: sede in Municipio 1 (centro città), NON nel cluster Milano Ovest prioritario del pilota — incluso solo per varietà di categoria (artistico/creativo), non conta come copertura Milano Ovest.",
+    invitable: true,
+    officialUrlIsOrganizerSite: true,
   },
   {
     id: "milano-notformalcamp-san-siro",
@@ -348,6 +407,8 @@ export const REAL_DISCOVERY_LEADS: DiscoveryLeadRecord[] = [
     confidence: "medium",
     temporalNote:
       "Identità e attività generale dell'organizzatore (L'Orma S.S.D.) confermate sulla sua homepage ufficiale. La pagina organizzatore specifica per la sede San Siro non si è resa leggibile in questa sessione (contenuto reso via JavaScript, fetch diretto vuoto). Prezzo, età e date riportati provengono dall'aggregatore Tutto Campi Estivi, che dichiara di aver verificato questi dati il 12/03/2026 — non da lettura diretta della pagina dell'organizzatore. Quota di iscrizione associativa una tantum di 20€/famiglia non inclusa nel prezzo settimanale indicato.",
+    invitable: true,
+    officialUrlIsOrganizerSite: true,
   },
   {
     id: "bareggio-usob-campus-multisport",
@@ -380,6 +441,8 @@ export const REAL_DISCOVERY_LEADS: DiscoveryLeadRecord[] = [
     confidence: "medium",
     temporalNote:
       "Pagina ufficiale dell'organizzatore, contenuti aggiornati (policy minori/genere datate 15/04/2026) — identità e programma generale confermati direttamente. La pagina non pubblica però prezzo né date specifiche per l'edizione 2026: questi campi restano `null` invece di stimati.",
+    invitable: true,
+    officialUrlIsOrganizerSite: true,
   },
   {
     id: "milano-baggio-oratorio-san-giovanni-bosco",
@@ -412,6 +475,13 @@ export const REAL_DISCOVERY_LEADS: DiscoveryLeadRecord[] = [
     confidence: "high",
     temporalNote:
       "Articolo del portale ufficiale dell'Arcidiocesi di Milano, pubblicato l'8/06/2026 durante lo svolgimento dell'oratorio estivo 2026 — conferma diretta (parroco don Giovanni Salatino citato per nome) dell'esistenza e della scala reale dell'iniziativa (circa 600 iscritti) nel quartiere di Baggio. Non riporta prezzo, età numerica né date esatte di inizio/fine: questi campi restano `null` invece di stimati.",
+    // Entità reale e nominata (parroco citato per nome dalla fonte),
+    // NEEDS NORMALIZATION → normalizzata: invitabile pur senza sito/
+    // contatto diretto (l'outreach resta un processo manuale di TRAMA, non
+    // un limite del modello dati). officialUrl è chiesadimilano.it (portale
+    // diocesano), non un sito proprio dell'oratorio.
+    invitable: true,
+    officialUrlIsOrganizerSite: false,
   },
   {
     id: "bareggio-centro-estivo-comunale-infanzia",
@@ -444,6 +514,8 @@ export const REAL_DISCOVERY_LEADS: DiscoveryLeadRecord[] = [
     confidence: "medium",
     temporalNote:
       "Il fetch diretto della pagina di servizio non ha restituito contenuto leggibile in questa sessione (probabile rendering lato client). L'esistenza del servizio e la finestra di iscrizione 2026 sono confermate tramite il titolo indicizzato dal motore di ricerca e comunicazioni ufficiali del Comune sui propri canali — non tramite lettura diretta della pagina. Quasi tutti i campi operativi (età esatta, date, prezzo) restano `null` per questo motivo: record incluso solo perché l'esistenza del servizio comunale resta comunque accertata da fonte ufficiale, non da un'unica menzione indiretta.",
+    invitable: false,
+    officialUrlIsOrganizerSite: false,
   },
 
   // ============ CLUSTER B — RUTIGLIANO / SUD-EST BARESE (2 record) ============
@@ -477,6 +549,8 @@ export const REAL_DISCOVERY_LEADS: DiscoveryLeadRecord[] = [
     confidence: "medium",
     temporalNote:
       "Organizzatore reale, verificato direttamente sulla pagina ufficiale (sede, P.IVA, telefono). I dettagli della \"VII edizione 2026\" (orari, attività, scadenza iscrizioni 27 febbraio) risultano da una sintesi del motore di ricerca su un articolo dell'organizzatore che non sono riuscito a recuperare e leggere direttamente in questa sessione (pagina non renderizzata) — consigliata riconferma diretta (telefono in sources) prima della pubblicazione.",
+    invitable: true,
+    officialUrlIsOrganizerSite: true,
   },
   {
     id: "noicattaro-centri-estivi-comunali",
@@ -508,6 +582,10 @@ export const REAL_DISCOVERY_LEADS: DiscoveryLeadRecord[] = [
     confidence: "medium",
     temporalNote:
       "La fonte ufficiale più recente reperita in questa sessione riguarda l'edizione 2025 (\"Tornano le attività estive...\", meccanismo esplicitamente ricorrente ogni anno). Non ho trovato un avviso 2026 già pubblicato: utile a dimostrare che Noicattaro adotta un bando pubblico annuale (non un operatore con sito stabile), ma non spendibile come dettaglio 2026/2027 confermato — riconfermare prima della pubblicazione.",
+    // "avviso pubblico annuale" letterale nel titolo — l'esempio citato dal
+    // prompt come caso da non trattare mai come organizzatore invitabile.
+    invitable: false,
+    officialUrlIsOrganizerSite: false,
   },
 ];
 
@@ -705,4 +783,26 @@ const CONFIDENCE_RANK: Record<DiscoveryLeadConfidence, number> = { high: 0, medi
 
 export function sortDiscoveryLeadsForDisplay(leads: DiscoveryLeadRecord[]): DiscoveryLeadRecord[] {
   return [...leads].sort((a, b) => CONFIDENCE_RANK[a.confidence] - CONFIDENCE_RANK[b.confidence]);
+}
+
+// ============ PROPONI INVITO (DISCOVERY UNIFICATION, 21/09/2026) ============
+//
+// §7-8 del prompt "DISCOVERY UNIFICATION + PROPONI INVITO": "Proponi invito"
+// è una CTA primaria mostrata SOLO quando esiste una reale entità
+// invitabile — mai sui 6 record SOURCE-ONLY (vedi campo `invitable` sopra).
+
+export function isDiscoveryLeadInvitable(lead: Pick<DiscoveryLeadRecord, "invitable">): boolean {
+  return lead.invitable;
+}
+
+// §11 del prompt: "se URL dell'organizzatore → 'Sito dell'organizzatore'; se
+// esiste solo fonte pubblica/Comune → 'Vedi la fonte'. Non chiamare
+// genericamente tutto 'sito ufficiale'." Wording derivato SOLO da
+// officialUrlIsOrganizerSite (mai dal flag `invitable`, sono assi diversi —
+// vedi il caso Oratorio Baggio: invitabile ma con un link-fonte, non un
+// sito proprio).
+export function secondaryLinkLabelForLead(
+  lead: Pick<DiscoveryLeadRecord, "officialUrlIsOrganizerSite">
+): "Sito dell'organizzatore" | "Vedi la fonte" {
+  return lead.officialUrlIsOrganizerSite ? "Sito dell'organizzatore" : "Vedi la fonte";
 }
