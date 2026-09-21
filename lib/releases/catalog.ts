@@ -94,16 +94,27 @@ export const RELEASE_CATALOG: ReleaseCatalogEntry[] = [
   {
     id: "real-discovery-pilot",
     label: "TRAMA — Real Discovery Pilot",
-    shortDescription: "Sezione 'Scoperte TRAMA' in Scopri: attività estive reali, non Partner, raccolte da fonti pubbliche.",
+    shortDescription:
+      "Scopri unificato: risultati Partner e Scoperte TRAMA (attività estive reali, non Partner, raccolte da fonti pubbliche) nello stesso result set, stesso count, stessi filtri.",
     targetAudience: ["parent"],
     featureKeys: ["real_discovery_dataset"],
+    // CORRETTO 21/09/2026 (DISCOVERY UNIFICATION + PROPONI INVITO, §4 del
+    // prompt: "Correggi la documentazione stale... che dichiara ancora
+    // erroneamente che Real Discovery non è integrato con i filtri"). Le due
+    // voci sotto erano vere il 16/09 e sono rimaste FALSE dopo il
+    // COMPLETION PASS del 17/09 (adapter filtro) e dopo l'unificazione del
+    // 21/09 (result set unico) — nessuno le aveva più aggiornate: la scheda
+    // Admin → Feature Flags → Release comunicava un limite non più esistente.
     knownLimitations: [
-      "real_discovery_dataset (V1): 6 record reali verificati manualmente (3 Milano/Milano Ovest, 2 Puglia Conversano/Noicattaro, 1 Milano centro per varietà categoria) — non un motore di ingestion, non copre ancora Rutigliano con un operatore specifico (il Comune regola i centri estivi tramite bando pubblico annuale, nessun operatore con sito stabile trovato in questa sessione).",
-      "Non integrato con i filtri esistenti di Scopri (età/prezzo/zona/tag/servizi) — la sezione mostra tutti i record del dataset compatibili con la settimana eventualmente selezionata, non ancora filtrabili per categoria/età/prezzo come le attività Partner.",
+      "real_discovery_dataset (V1): 13 record reali verificati manualmente (11 Milano/Milano Ovest incl. Bareggio, 2 Puglia Conversano/Noicattaro) — non un motore di ingestion. Rutigliano stesso non ha ancora un operatore estivo specifico confermato (il Comune regola i centri estivi tramite bando pubblico annuale, nessun operatore con sito stabile trovato finora) — documentato come RUTIGLIANO SEARCH TRACE nel report, non trattato come fallimento del dataset.",
+      "Filtri (settimana/età/prezzo/zona testuale/categoria/ricerca) SONO applicati ai lead curati con la stessa semantica null-safe dei filtri Partner (un dato mancante non esclude mai un record) — vedi gli adapter puri in lib/discovery/real-dataset.ts. NON applicati: zona a raggio geografico (nessun lead ha coordinate verificate) e Servizi/Copertura (campi che non esistono nel Target Data Contract) — limitazioni deliberate, non un gap di implementazione.",
+      "Result set unificato (21/09/2026): Partner e Scoperte TRAMA convivono nello stesso elenco con un unico count, intercalati con un ordinamento deterministico (2 Partner : 1 Curated, nessun Match/punteggio inventato per il Curated) — nessuna sezione separata 'Scoperte TRAMA' più in cima alla pagina.",
+      "'Proponi invito' (manifestazione d'interesse verso public.center_leads, infrastruttura esistente) mostrato SOLO sui 7/13 record con un'entità organizzatrice reale e nominata — i 6 record che descrivono un servizio comunale con gestore non nominato/rotante restano visibili ma senza questa CTA (mostrano solo il link alla fonte).",
       "Nessuna immagine: ogni card usa un visual neutro TRAMA (vedi §9 Image/Copyright Audit del report) finché non viene presa una decisione di prodotto/legal sulla gestione immagini.",
+      "Favorites non disponibile per i lead curati (richiederebbe uno schema change su public.favorites, oggi legato a un activity_id reale) — valutato e rimandato, non necessario per questo pilot.",
     ],
     notes:
-      "Creata il 16/09/2026. Non ancora verificata visivamente live: resta dietro flag (cohort:internal-preview) finché Fabrizio non la abilita e la controlla di persona.",
+      "Creata il 16/09/2026, estesa il 17/09 (COMPLETION PASS: dataset 6→13, filtri, analytics) e il 21/09/2026 (DISCOVERY UNIFICATION + PROPONI INVITO: result set unico, CTA 'Proponi invito' su riuso di center_leads). Non ancora verificata visivamente live in nessuna delle tre iterazioni (nessun accesso a browser/dev-server nell'ambiente di sviluppo): resta dietro flag (cohort:internal-preview) finché Fabrizio non la abilita e la controlla di persona.",
   },
 ];
 
