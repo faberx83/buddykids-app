@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, type ReactNode } from "react";
 import Link from "next/link";
 import { MapContainer, TileLayer, Marker, Popup, useMap } from "react-leaflet";
 import L from "leaflet";
@@ -36,12 +36,43 @@ const selectedIcon = L.divIcon({
   iconAnchor: [13, 13],
 });
 
+// TRAMA — DISCOVERY MAP + POLISH (21/09/2026), §3-4 del prompt "TRE STATI
+// MAPPA" / "MAP LEGEND". Due nuove icone, entrambe visivamente distinte dal
+// marker TRAMA di default (Leaflet standard, invariato — "NON cambiare
+// arbitrariamente il comportamento dei marker test esistenti") e distinte
+// TRA loro (§3B: "Marker DEVE essere visivamente distinguibile da FULL
+// TRAMA"; §3C: "Marker distinto anche da B"). Stessa forma (divIcon
+// circolare, stesso pattern di userIcon/selectedIcon sopra), solo colore e
+// dimensione diversi — nessun asset immagine nuovo da caricare.
+const curatedInvitableIcon = L.divIcon({
+  className: "",
+  html: '<div style="width:22px;height:22px;border-radius:9999px;background:#F2994A;border:3px solid white;box-shadow:0 2px 6px rgba(0,0,0,0.35)"></div>',
+  iconSize: [22, 22],
+  iconAnchor: [11, 11],
+});
+const curatedSourceIcon = L.divIcon({
+  className: "",
+  html: '<div style="width:18px;height:18px;border-radius:9999px;background:#8B93A3;border:3px solid white;box-shadow:0 1px 5px rgba(0,0,0,0.3)"></div>',
+  iconSize: [18, 18],
+  iconAnchor: [9, 9],
+});
+
 export interface MapItem {
   id: string;
   name: string;
   emoji: string;
   lat: number;
   lng: number;
+  // TRAMA — DISCOVERY MAP + POLISH (21/09/2026), §9 "MAP RESULT MODEL".
+  // Entrambi FACOLTATIVI e RETROCOMPATIBILI: quando assenti (PlannerMapView,
+  // LEGACY Cerca), il comportamento resta ESATTAMENTE quello di prima
+  // (icona di default, popup "nome + Apri scheda"). `markerKind` sceglie
+  // solo l'icona; `popupContent`, quando presente, SOSTITUISCE il contenuto
+  // del popup di default — usato per i marker Curated, il cui popup non può
+  // MAI riusare il link "Apri scheda" (nessuna route /activity/[id] esiste
+  // per un lead curato).
+  markerKind?: "partner" | "curated_invitable" | "curated_source";
+  popupContent?: ReactNode;
 }
 
 const MILAN_FALLBACK: [number, number] = [45.4642, 9.19];
@@ -123,15 +154,25 @@ export default function ActivityMap({
               eventHandlers={{ click: () => onSelect(it.id) }}
             />
           ) : (
-            <Marker key={it.id} position={[it.lat, it.lng]}>
+            <Marker
+              key={it.id}
+              position={[it.lat, it.lng]}
+              {...(it.markerKind === "curated_invitable"
+                ? { icon: curatedInvitableIcon }
+                : it.markerKind === "curated_source"
+                  ? { icon: curatedSourceIcon }
+                  : {})}
+            >
               <Popup>
-                <div style={{ fontSize: 13, lineHeight: 1.5 }}>
-                  <strong>
-                    {it.emoji} {it.name}
-                  </strong>
-                  <br />
-                  <Link href={`/activity/${it.id}`}>Apri scheda →</Link>
-                </div>
+                {it.popupContent ?? (
+                  <div style={{ fontSize: 13, lineHeight: 1.5 }}>
+                    <strong>
+                      {it.emoji} {it.name}
+                    </strong>
+                    <br />
+                    <Link href={`/activity/${it.id}`}>Apri scheda →</Link>
+                  </div>
+                )}
               </Popup>
             </Marker>
           )
