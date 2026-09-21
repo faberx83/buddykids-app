@@ -142,6 +142,35 @@ export async function getAllCenterLeadsForAdmin(): Promise<CenterLeadItem[]> {
   return (data as unknown as RawRow[]).map((r) => mapRow(r, true));
 }
 
+// TRAMA — DISCOVERY UNIFICATION + PROPONI INVITO (21/09/2026, §12 del
+// prompt: "verifica comportamento se lo stesso utente propone due volte").
+// Check additivo, sola lettura: prima di inserire una nuova riga da
+// "Proponi invito", il chiamante (app/actions/discovery.ts) verifica se
+// QUESTO utente ha già una propria segnalazione con lo stesso dedupe_key
+// (stesso organizzatore+località) — se sì, non inserisce una seconda riga
+// duplicata a proprio nome, restituisce solo `alreadyProposed: true`.
+// NON impedisce a UTENTI DIVERSI di segnalare lo stesso centro (comportamento
+// esistente e voluto: più famiglie interessate allo stesso centro sono
+// domanda aggregata via dedupe_key, non un errore — vedi
+// findPossibleDuplicates sopra, usata dall'Admin per lo stesso motivo).
+export async function hasParentAlreadySuggestedLead(dedupeKey: string): Promise<boolean> {
+  if (!isSupabaseConfigured) return false;
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return false;
+
+  const { count, error } = await supabase
+    .from("center_leads")
+    .select("id", { count: "exact", head: true })
+    .eq("suggested_by", user.id)
+    .eq("dedupe_key", dedupeKey);
+
+  if (error) return false;
+  return (count ?? 0) > 0;
+}
+
 // Elenco leggero id+nome di tutti i centri — usato SOLO dal picker "Claim"
 // della coda Admin per collegare un lead al centro reale che ha completato
 // l'onboarding (public.centers è a lettura pubblica, nessun dato sensibile).
