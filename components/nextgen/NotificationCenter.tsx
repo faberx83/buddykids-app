@@ -173,7 +173,25 @@ export default function NotificationCenter({
         aria-haspopup="dialog"
         aria-expanded={open}
         style={{ width: BUTTON_SIZE, height: BUTTON_SIZE }}
-        className={`absolute bottom-24 left-4 z-[70] flex items-center justify-center rounded-full bg-white text-ink shadow-lg transition-all duration-150 active:scale-95 ${floatingControlClassName(
+        // FIX (segnalazione Fabrizio 21/09/2026, screenshot "Il mio centro":
+        // bell/chat "restano fino ad una certa altezza... poi scorrendo
+        // spariscono") — ROOT CAUSE: position:absolute presuppone un
+        // antenato posizionato con un'AREA DI SCROLL CONTENUTA (.app-shell +
+        // NextgenScrollArea in NEXTGEN, dove il bottone resta ancorato alla
+        // cornice "telefono" indipendentemente da quanto scrolla il
+        // contenuto interno). Il portale Partner (/center/*,
+        // DashboardLayout) NON ha questo contenitore: è una pagina reale a
+        // scroll di finestra. Senza un antenato posizionato, absolute
+        // risolve contro l'initial containing block e quindi SCROLLA CON LA
+        // PAGINA come un elemento normale — non resta ancorato al
+        // viewport come un vero floating button. position:fixed risolve
+        // perché rimane ancorato al viewport indipendentemente dallo scroll
+        // del documento, esattamente il comportamento atteso qui. Nessun
+        // impatto sull'istanza NEXTGEN (scope="parent", invariata) né sul
+        // calcolo containerBounds() di BetaFeedbackButton.tsx (offsetParent
+        // è comunque null per un elemento fixed, stesso fallback al
+        // viewport reale già in uso oggi per il Partner).
+        className={`${scope === "partner" ? "fixed" : "absolute"} bottom-24 left-4 z-[70] flex items-center justify-center rounded-full bg-white text-ink shadow-lg transition-all duration-150 active:scale-95 ${floatingControlClassName(
           isScrolling
         )}`}
       >

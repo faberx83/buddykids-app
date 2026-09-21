@@ -220,7 +220,17 @@ export default function BetaFeedbackButton({
         onPointerUp={handlePointerUp}
         aria-label="Segnala un problema"
         style={{ width: BUTTON_SIZE, height: BUTTON_SIZE, touchAction: "none", ...(pos ? { left: pos.x, top: pos.y } : {}) }}
-        className={`absolute z-[70] flex items-center justify-center rounded-full bg-trama-violet text-white shadow-lg transition-all duration-150 active:scale-95 ${floatingControlClassName(
+        // FIX (segnalazione Fabrizio 21/09/2026: bell/chat spariscono
+        // scorrendo su "Il mio centro") — stessa ROOT CAUSE e stessa
+        // correzione di NotificationCenter.tsx: il Partner (/center/*) non
+        // ha un contenitore a scroll interno come .app-shell/NextgenScrollArea
+        // di NEXTGEN, quindi absolute scrolla via con la pagina invece di
+        // restare ancorato al viewport. fixed SOLO per appSource="gestore"
+        // — l'istanza genitore (drag dentro il mockup telefono) resta
+        // invariata. containerBounds()/clamp non cambiano comportamento:
+        // offsetParent è già null oggi per il Partner (nessun antenato
+        // posizionato), stesso fallback al viewport reale con fixed.
+        className={`${appSource === "gestore" ? "fixed" : "absolute"} z-[70] flex items-center justify-center rounded-full bg-trama-violet text-white shadow-lg transition-all duration-150 active:scale-95 ${floatingControlClassName(
           isScrolling
         )} ${pos ? "" : "bottom-24 right-4"}`}
       >
