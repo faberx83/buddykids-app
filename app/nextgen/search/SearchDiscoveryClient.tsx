@@ -38,7 +38,18 @@ import {
 // presentazione, le due pipeline di filtro/scoring sotto restano separate e
 // invariate — questo file sceglie solo come intercalarle e quale card
 // renderizzare per ciascun risultato.
-import { interleaveDiscoveryResults, countDiscoveryResults, type DiscoveryResult } from "@/lib/discovery/result-model";
+import {
+  interleaveDiscoveryResults,
+  countDiscoveryResults,
+  buildDiscoveryMapItems,
+  type DiscoveryResult,
+} from "@/lib/discovery/result-model";
+// TRAMA — DISCOVERY MAP + POLISH (21/09/2026). Popup Mappa per i marker
+// Curated — vedi DiscoveryMapPopupCard.tsx (componente additivo, riusa
+// proposeDiscoveryLeadInviteAction, non tocca il flow FREEZE di
+// DiscoveryLeadCard.tsx).
+import DiscoveryMapPopupCard from "@/components/nextgen/DiscoveryMapPopupCard";
+import type { MapItem } from "@/components/ActivityMap";
 
 // Leaflet usa `window`, quindi la mappa va caricata solo lato client — stesso
 // pattern già usato in LEGACY (app/(main)/search/SearchClient.tsx) e nel
@@ -568,20 +579,58 @@ export default function SearchDiscoveryClient({
     return { nearby: nearbyList, far: farList };
   }, [matches, geo, radiusKm]);
 
-  // TRAMA — DISCOVERY UNIFICATION (21/09/2026), §15 "MAP": i lead curati non
-  // hanno MAI coordinate verificate (vedi report ANALYSIS PASS) — mapItems
-  // resta derivato SOLO da `matches` (Partner), esattamente come prima.
-  // Nessun marker inventato per una Scoperta TRAMA: il conteggio "X attività
-  // trovate" sopra la mappa può quindi essere maggiore del numero di marker
-  // visibili — comportamento atteso e comunicato in UI (vedi il testo sotto
-  // la mappa più in basso), non un'inconsistenza silenziosa.
-  const mapItems = useMemo(
+  // TRAMA — DISCOVERY MAP + POLISH (21/09/2026), §2 "ONE DISCOVERY, ONE MAP".
+  // `partnerMapItems` è ESATTAMENTE la stessa logica di prima (nessuna
+  // regressione — vedi MAP REGRESSION ROOT CAUSE nel report: la pipeline
+  // Partner→Mappa non è mai stata toccata dall'Unificazione del 21/09). Da
+  // qui in poi, `buildDiscoveryMapItems` (lib/discovery/result-model.ts)
+  // unisce Partner + Curated-con-coordinate-verificate nello STESSO universo
+  // di marker, usando gli STESSI due result set già filtrati della Lista
+  // (`matches`, `compatibleRealDiscoveryLeads`) — mai una terza pipeline,
+  // mai una ricerca ricostruita (§10 "FILTER CONSISTENCY").
+  const partnerMapItems = useMemo(
     () =>
       matches
         .filter((m) => m.activity.lat !== undefined && m.activity.lng !== undefined)
         .map((m) => ({ id: m.activity.id, name: m.activity.name, emoji: m.activity.emoji, lat: m.activity.lat!, lng: m.activity.lng! })),
     [matches]
   );
+
+  const discoveryMapItems = useMemo(
+    () => buildDiscoveryMapItems(partnerMapItems, compatibleRealDiscoveryLeads),
+    [partnerMapItems, compatibleRealDiscoveryLeads]
+  );
+
+  // Conversione nel formato che ActivityMap si aspetta — SOLO qui vive la
+  // scelta di COSA mostrare nel popup di ciascun tipo di marker (§12 "MAP
+  // CARD / POPUP"): i marker "partner" non passano `popupContent`, quindi
+  // ActivityMap.tsx usa il suo popup di default INVARIATO (nome + "Apri
+  // scheda →", stesso comportamento di sempre); i marker Curated portano
+  // sempre un popup dedicato (DiscoveryMapPopupCard) perché "Apri scheda"
+  // non ha senso per loro (nessuna route /activity/[id]).
+  const mapMarkerItems: MapItem[] = useMemo(
+    () =>
+      discoveryMapItems.map((item) =>
+        item.kind === "partner"
+          ? { id: item.id, name: item.name, emoji: item.emoji, lat: item.lat, lng: item.lng, markerKind: "partner" }
+          : {
+              id: `curated-${item.id}`,
+              name: item.lead.activityTitle,
+              emoji: "📍",
+              lat: item.lat,
+              lng: item.lng,
+              markerKind: item.kind,
+              popupContent: <DiscoveryMapPopupCard lead={item.lead} />,
+            }
+      ),
+    [discoveryMapItems]
+  );
+
+  // §13 "MAP COUNT / MISSING GEO": il count generale (totalResultsCount,
+  // sotto) NON cambia mai in base a quanti risultati sono mappabili — la
+  // Mappa comunica la differenza con una microcopy dedicata, mai
+  // silenziosamente.
+  const mappableResultsCount = mapMarkerItems.length;
 
   // TRAMA — DISCOVERY UNIFICATION (21/09/2026), §2-3-5 del prompt: le due
   // pipeline di filtro/scoring (filteredActivities→matches per Partner,
@@ -1206,22 +1255,52 @@ export default function SearchDiscoveryClient({
 
         {viewMode === "mappa" ? (
           <div>
-            <ActivityMap items={mapItems} userPosition={geo ?? undefined} onUserPositionChange={updateUserPosition} />
-            {mapItems.length === 0 && (
-              <p className="pt-3 text-center text-sm text-ink-2">
-                Nessuna attività con coordinate da mostrare in mappa per i filtri scelti.
-              </p>
-            )}
-            {/* §15 "MAP" del report ANALYSIS PASS: mai coordinate inventate
-                per una Scoperta TRAMA — quando ce ne sono tra i risultati
-                compatibili, il conteggio sopra la mappa può essere maggiore
-                dei marker visibili. Comportamento dichiarato, non
-                un'inconsistenza silenziosa. */}
-            {compatibleRealDiscoveryLeads.length > 0 && (
-              <p className="pt-2 text-center text-[11px] text-ink-3">
-                {compatibleRealDiscoveryLeads.length} Scoperta/e TRAMA compatibile/i non mostrata/e in mappa (nessuna
-                posizione verificata) — visibili in Lista.
-              </p>
+            {/* TRAMA — DISCOVERY MAP + POLISH (21/09/2026), §14 "EMPTY MAP":
+                se ci sono risultati totali ma NESSUNO è mappabile, un vero
+                empty state al posto di una cartografia vuota senza
+                spiegazione — mai più "1 attività trovata" + mappa muta. */}
+            {totalResultsCount > 0 && mappableResultsCount === 0 ? (
+              <div className="flex flex-col items-center gap-3 rounded-lg border border-dashed border-[#D8DEE8] bg-white p-6 text-center">
+                <i className="ti ti-map-off text-2xl text-ink-3" />
+                <p className="text-sm text-ink-2">Nessuna di queste attività ha ancora una sede precisa sulla mappa.</p>
+                <button
+                  type="button"
+                  onClick={() => setViewMode("lista")}
+                  className="rounded-full bg-trama-violet px-4 py-2 text-xs font-semibold text-white active:scale-95"
+                >
+                  Torna alla lista
+                </button>
+              </div>
+            ) : (
+              <>
+                <ActivityMap items={mapMarkerItems} userPosition={geo ?? undefined} onUserPositionChange={updateUserPosition} />
+                {/* §4 "MAP LEGEND": discreta, mobile-first, solo quando sulla
+                    mappa può comparire più di un tipo di marker — nessun
+                    tutorial, wording parent-friendly (mai "curated"/
+                    "source-only"/"lead"). */}
+                {mapMarkerItems.some((it) => it.markerKind === "curated_invitable" || it.markerKind === "curated_source") && (
+                  <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 rounded-md bg-[#F8F9FC] px-2.5 py-1.5 text-[10.5px] text-ink-2">
+                    <span className="flex items-center gap-1">
+                      <span className="inline-block h-2 w-2 rounded-full bg-[#6F63C5]" /> TRAMA
+                    </span>
+                    <span className="flex items-center gap-1">
+                      <span className="inline-block h-2 w-2 rounded-full bg-[#F2994A]" /> Da invitare
+                    </span>
+                    <span className="flex items-center gap-1">
+                      <span className="inline-block h-2 w-2 rounded-full bg-[#8B93A3]" /> Fonte pubblica
+                    </span>
+                  </div>
+                )}
+                {/* §13 "MAP COUNT / MISSING GEO": microcopy esplicita invece
+                    di un conteggio generico silenzioso quando Lista e Mappa
+                    divergono. */}
+                {totalResultsCount > 0 && mappableResultsCount < totalResultsCount && (
+                  <p className="pt-2 text-center text-[11px] text-ink-3">
+                    {mappableResultsCount} di {totalResultsCount} attività visibili sulla mappa — {totalResultsCount - mappableResultsCount}{" "}
+                    non {totalResultsCount - mappableResultsCount === 1 ? "ha" : "hanno"} ancora una sede precisa (visibili in Lista).
+                  </p>
+                )}
+              </>
             )}
           </div>
         ) : totalResultsCount === 0 ? (
