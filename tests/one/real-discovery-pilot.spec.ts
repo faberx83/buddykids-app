@@ -13,7 +13,13 @@ import {
   secondaryLinkLabelForLead,
   type DiscoveryLeadRecord,
 } from "../../lib/discovery/real-dataset";
-import { interleaveDiscoveryResults, countDiscoveryResults, type DiscoveryResult } from "../../lib/discovery/result-model";
+import {
+  interleaveDiscoveryResults,
+  countDiscoveryResults,
+  buildDiscoveryMapItems,
+  type DiscoveryResult,
+  type DiscoveryMapItem,
+} from "../../lib/discovery/result-model";
 import { FEATURE_FLAG_REGISTRY } from "../../lib/feature-flags/registry";
 import { KNOWN_PRODUCT_EVENTS } from "../../lib/telemetry/known-events";
 import type { SmartMatch } from "../../lib/nextgen/smart-search";
@@ -387,11 +393,11 @@ test.describe("DISCOVERY UNIFICATION — sezione separata rimossa, Search/Filter
     expect(firstRenderIndex).toBeGreaterThan(searchbarIndex);
   });
 
-  test("RD-52: la Mappa deriva SOLO da Partner (mapItems) — nessuna coordinata inventata per i lead curati", () => {
+  test("RD-52: partnerMapItems (Partner) deriva SOLO da `matches`, mai da compatibleRealDiscoveryLeads — nessuna coordinata inventata (aggiornato da DISCOVERY MAP + POLISH: la Mappa unificata riusa questo array invariato, vedi MAP-01..MAP-10)", () => {
     const source = readSource("../../app/nextgen/search/SearchDiscoveryClient.tsx");
-    const mapItemsMatch = source.match(/const mapItems = useMemo\(\s*\(\)[\s\S]*?\[matches\]\s*\);/);
-    expect(mapItemsMatch).not.toBeNull();
-    expect(mapItemsMatch![0]).not.toContain("compatibleRealDiscoveryLeads");
+    const partnerMapItemsMatch = source.match(/const partnerMapItems = useMemo\(\s*\(\)[\s\S]*?\[matches\]\s*\);/);
+    expect(partnerMapItemsMatch).not.toBeNull();
+    expect(partnerMapItemsMatch![0]).not.toContain("compatibleRealDiscoveryLeads");
   });
 });
 
@@ -546,5 +552,293 @@ test.describe("DISCOVERY UNIFICATION — flag OFF invariato (regressione)", () =
     expect(countDiscoveryResults(partner, [])).toBe(partner.length);
     expect(results.length).toBe(partner.length);
     expect(results.every((r) => r.kind === "partner")).toBe(true);
+  });
+});
+
+// ============ TRAMA — DISCOVERY MAP + POLISH (21/09/2026) ============
+//
+// §20 del prompt "TEST REQUIRED" — 20 scenari minimi. Stesso principio
+// "[no browser]" di sopra: unit test puri su buildDiscoveryMapItems
+// (lib/discovery/result-model.ts) + verifiche statiche sul sorgente per
+// tutto ciò che è UI/popup/copy (nessun mock DOM/Leaflet in questo runner).
+
+function makeFakePartnerMapItem(id: string, lat = 45.46, lng = 9.19) {
+  return { id, name: `Attività ${id}`, emoji: "🏊", lat, lng };
+}
+
+// Clona un record reale del dataset con override mirati — mai un record
+// "inventato da zero": parte sempre da un DiscoveryLeadRecord reale e
+// tracciabile, cambia solo i campi che il test deve controllare (stesso
+// principio già in uso per makeFakeMatch sopra, applicato ai lead).
+function makeFakeLead(overrides: Partial<DiscoveryLeadRecord>): DiscoveryLeadRecord {
+  return { ...REAL_DISCOVERY_LEADS[0], ...overrides };
+}
+
+test.describe("DISCOVERY MAP + POLISH — buildDiscoveryMapItems (view-model puro)", () => {
+  test("MAP-01: i marker Partner/mock passati in ingresso sono TUTTI presenti in uscita, stessi id (nessun marker perso)", () => {
+    const partnerItems = [makeFakePartnerMapItem("a1"), makeFakePartnerMapItem("a2"), makeFakePartnerMapItem("707bc5da")];
+    const result = buildDiscoveryMapItems(partnerItems, []);
+    const partnerIdsOut = result.filter((r) => r.kind === "partner").map((r) => r.id);
+    expect(partnerIdsOut).toEqual(["a1", "a2", "707bc5da"]);
+  });
+
+  test("MAP-02: con zero lead curati (flag OFF o nessun risultato compatibile), l'output coincide esattamente con l'input Partner (regressione)", () => {
+    const partnerItems = [makeFakePartnerMapItem("a1"), makeFakePartnerMapItem("a2")];
+    const result = buildDiscoveryMapItems(partnerItems, []);
+    expect(result.length).toBe(partnerItems.length);
+    expect(result.every((r) => r.kind === "partner")).toBe(true);
+  });
+
+  test("MAP-03: lead curato INVITABILE con lat/lng noti → marker 'curated_invitable' ('Da invitare')", () => {
+    const lead = makeFakeLead({ id: "test-invitabile", invitable: true, lat: 45.5, lng: 9.2 });
+    const result = buildDiscoveryMapItems([], [lead]);
+    expect(result.length).toBe(1);
+    expect(result[0].kind).toBe("curated_invitable");
+  });
+
+  test("MAP-04: lead curato SOURCE-ONLY con lat/lng noti → marker 'curated_source' ('Fonte pubblica')", () => {
+    const lead = makeFakeLead({ id: "test-source", invitable: false, lat: 45.5, lng: 9.2 });
+    const result = buildDiscoveryMapItems([], [lead]);
+    expect(result.length).toBe(1);
+    expect(result[0].kind).toBe("curated_source");
+  });
+
+  test("MAP-05: lead curato SENZA lat/lng (null) → nessun marker generato, qualunque sia invitable", () => {
+    const invitableNoGeo = makeFakeLead({ id: "test-no-geo-1", invitable: true, lat: null, lng: null });
+    const sourceNoGeo = makeFakeLead({ id: "test-no-geo-2", invitable: false, lat: null, lng: null });
+    const result = buildDiscoveryMapItems([], [invitableNoGeo, sourceNoGeo]);
+    expect(result.length).toBe(0);
+  });
+
+  test("MAP-06: nessuna coordinata fake — un lead con lat noto ma lng null resta escluso (mai metà coordinata)", () => {
+    const halfGeo = makeFakeLead({ id: "test-half-geo", invitable: true, lat: 45.5, lng: null });
+    expect(buildDiscoveryMapItems([], [halfGeo]).length).toBe(0);
+  });
+
+  test("MAP-07: il dataset reale REAL_DISCOVERY_LEADS non contiene MAI una coordinata parziale o stimata senza fonte (invariante lat/lng)", () => {
+    for (const lead of REAL_DISCOVERY_LEADS) {
+      // O entrambi noti, o entrambi null — mai uno solo.
+      expect(lead.lat === null).toBe(lead.lng === null);
+      if (lead.geoPrecision !== null) {
+        expect(["exact", "venue"]).toContain(lead.geoPrecision);
+      }
+    }
+  });
+
+  test("MAP-08: mappableResultsCount (lunghezza dell'output) può essere INFERIORE al count totale Partner+Curated, mai superiore", () => {
+    const partnerItems = [makeFakePartnerMapItem("a1")];
+    const curated = [
+      makeFakeLead({ id: "geo-1", invitable: true, lat: 45.5, lng: 9.2 }),
+      makeFakeLead({ id: "no-geo-1", invitable: true, lat: null, lng: null }),
+      makeFakeLead({ id: "no-geo-2", invitable: false, lat: null, lng: null }),
+    ];
+    const mapItems = buildDiscoveryMapItems(partnerItems, curated);
+    const totalCount = countDiscoveryResults(
+      partnerItems.map(makeFakeMatch as unknown as (id: string) => SmartMatch),
+      curated
+    );
+    expect(mapItems.length).toBeLessThanOrEqual(totalCount);
+    expect(mapItems.length).toBe(2); // 1 partner + 1 curato con geo, i 2 senza geo restano fuori
+  });
+
+  test("MAP-09: la Mappa riusa GLI STESSI due result set filtrati della Lista, mai una terza pipeline (statico)", () => {
+    const source = readSource("../../app/nextgen/search/SearchDiscoveryClient.tsx");
+    expect(source).toContain("buildDiscoveryMapItems(partnerMapItems, compatibleRealDiscoveryLeads)");
+    // partnerMapItems deriva da `matches` — lo stesso array filtrato usato dalla Lista, non una ricerca nuova.
+    const partnerMapItemsBlock = source.slice(
+      source.indexOf("const partnerMapItems = useMemo"),
+      source.indexOf("const discoveryMapItems = useMemo")
+    );
+    expect(partnerMapItemsBlock).toContain("matches\n");
+  });
+
+  test("MAP-10: 'kind' dei marker è sempre uno dei 3 valori ammessi, mai una quarta categoria implicita", () => {
+    const partnerItems = [makeFakePartnerMapItem("a1")];
+    const curated = [
+      makeFakeLead({ id: "geo-inv", invitable: true, lat: 45.5, lng: 9.2 }),
+      makeFakeLead({ id: "geo-src", invitable: false, lat: 45.5, lng: 9.2 }),
+    ];
+    const result: DiscoveryMapItem[] = buildDiscoveryMapItems(partnerItems, curated);
+    for (const item of result) {
+      expect(["partner", "curated_invitable", "curated_source"]).toContain(item.kind);
+    }
+  });
+});
+
+test.describe("DISCOVERY MAP + POLISH — popup (statico sul sorgente)", () => {
+  test("MAP-11: i marker 'partner' NON ricevono popupContent custom → ActivityMap usa il popup di default INVARIATO ('Apri scheda')", () => {
+    const source = readSource("../../app/nextgen/search/SearchDiscoveryClient.tsx");
+    const block = source.slice(source.indexOf("const mapMarkerItems: MapItem[]"), source.indexOf("const mappableResultsCount"));
+    expect(block).toContain('markerKind: "partner"');
+    // Il ramo "partner" del map() non include mai popupContent.
+    const partnerBranch = block.slice(block.indexOf('item.kind === "partner"'), block.indexOf(": {"));
+    expect(partnerBranch).not.toContain("popupContent");
+  });
+
+  test("MAP-12: i marker Curated ricevono SEMPRE un popupContent dedicato (mai il fallback 'Apri scheda', che non esiste per un lead)", () => {
+    const source = readSource("../../app/nextgen/search/SearchDiscoveryClient.tsx");
+    expect(source).toContain("popupContent: <DiscoveryMapPopupCard lead={item.lead} />");
+  });
+
+  test("MAP-13: il popup invitabile (DiscoveryMapPopupCard) mostra 'Proponi invito' e riusa proposeDiscoveryLeadInviteAction", () => {
+    const source = readSource("../../components/nextgen/DiscoveryMapPopupCard.tsx");
+    expect(source).toContain("Proponi invito");
+    expect(source).toContain("proposeDiscoveryLeadInviteAction(lead.id, lead.organizerName, lead.comune)");
+  });
+
+  test("MAP-14: il popup source-only NON mostra mai il bottone 'Proponi invito' (solo dentro il ramo invitable)", () => {
+    const source = readSource("../../components/nextgen/DiscoveryMapPopupCard.tsx");
+    const codeOnly = source.replace(/\/\/.*$/gm, "").replace(/\/\*[\s\S]*?\*\//g, "");
+    // Ogni occorrenza del testo "Proponi invito" vive dentro un blocco `invitable && ...`.
+    const idx = codeOnly.indexOf("Proponi invito");
+    expect(idx).toBeGreaterThan(-1);
+    const before = codeOnly.slice(0, idx);
+    expect(before.lastIndexOf("invitable &&")).toBeGreaterThan(before.lastIndexOf("</a>"));
+  });
+
+  test("MAP-15: il popup mostra la microcopy 'Gestore non ancora identificato da TRAMA' solo per i lead non invitabili", () => {
+    const source = readSource("../../components/nextgen/DiscoveryMapPopupCard.tsx");
+    expect(source).toContain("Gestore non ancora identificato da TRAMA");
+    expect(source).toContain("{!invitable && (");
+  });
+
+  test("MAP-16: nessun popup Curated mostra Match/rating/availability/posti finti (fuori dai commenti)", () => {
+    const source = readSource("../../components/nextgen/DiscoveryMapPopupCard.tsx");
+    const codeOnly = source.replace(/\/\/.*$/gm, "").replace(/\/\*[\s\S]*?\*\//g, "").toLowerCase();
+    for (const forbidden of ["match%", "rating", "posti disponibili", "spotsleft"]) {
+      expect(codeOnly).not.toContain(forbidden);
+    }
+  });
+});
+
+test.describe("DISCOVERY MAP + POLISH — legend, empty state, count (statico sul sorgente)", () => {
+  test("MAP-17: la legenda mostra i 3 wording parent-friendly richiesti, mai terminologia tecnica", () => {
+    const source = readSource("../../app/nextgen/search/SearchDiscoveryClient.tsx");
+    const legendStart = source.indexOf("MAP LEGEND");
+    const legendBlock = source.slice(legendStart, source.indexOf("MAP COUNT / MISSING GEO", legendStart));
+    expect(legendBlock).toContain("TRAMA");
+    expect(legendBlock).toContain("Da invitare");
+    expect(legendBlock).toContain("Fonte pubblica");
+    // Il testo VISIBILE della legenda (dentro il div renderizzato, esclusa
+    // la condizione `it.markerKind === "curated_..."` che la mostra/nasconde
+    // — quella è codice, non copy) non deve mai contenere terminologia
+    // tecnica: isoliamo il <div> della legenda dalla guardia che lo precede.
+    const legendVisibleText = legendBlock.slice(legendBlock.indexOf('<div className="mt-2'));
+    for (const technical of ["source-only", "curated_", "lead.id", "DiscoveryLeadRecord"]) {
+      expect(legendVisibleText).not.toContain(technical);
+    }
+  });
+
+  test("MAP-18: empty map state — quando totalResultsCount>0 e mappableResultsCount===0, mostra il messaggio esplicito + 'Torna alla lista'", () => {
+    const source = readSource("../../app/nextgen/search/SearchDiscoveryClient.tsx");
+    expect(source).toContain("totalResultsCount > 0 && mappableResultsCount === 0");
+    expect(source).toContain("Nessuna di queste attività ha ancora una sede precisa sulla mappa.");
+    expect(source).toContain("Torna alla lista");
+  });
+
+  test("MAP-19: 'Torna alla lista' riporta davvero alla vista Lista (setViewMode(\"lista\"))", () => {
+    const source = readSource("../../app/nextgen/search/SearchDiscoveryClient.tsx");
+    const block = source.slice(source.indexOf("Nessuna di queste attività"), source.indexOf("Torna alla lista") + 30);
+    expect(block).toContain('setViewMode("lista")');
+  });
+
+  test("MAP-20: la microcopy 'N di M attività visibili sulla mappa' compare solo quando Lista e Mappa divergono (mappableResultsCount < totalResultsCount)", () => {
+    const source = readSource("../../app/nextgen/search/SearchDiscoveryClient.tsx");
+    expect(source).toContain("mappableResultsCount < totalResultsCount");
+    expect(source).toContain("attività visibili sulla mappa");
+    expect(source).toContain("non ");
+    expect(source).toContain("ancora una sede precisa (visibili in Lista)");
+  });
+
+  test("MAP-21: il count generale ('X attività trovate') non cambia MAI in base a quante sono mappabili — resta totalResultsCount ovunque", () => {
+    const source = readSource("../../app/nextgen/search/SearchDiscoveryClient.tsx");
+    expect(source).toContain("{totalResultsCount} attività trovate");
+    expect(source).not.toContain("{mappableResultsCount} attività trovate");
+  });
+});
+
+test.describe("DISCOVERY MAP + POLISH — coverage filter semantics per Curated (statico)", () => {
+  test("MAP-22: non esiste una funzione isDiscoveryLeadCompatibleWithCoverage — il filtro Copertura non è mai applicato ai lead curati", () => {
+    const source = readSource("../../lib/discovery/real-dataset.ts");
+    // Il NOME può comparire in un commento che ne spiega l'assenza
+    // deliberata, ma non deve mai esistere una vera dichiarazione
+    // `export function isDiscoveryLeadCompatibleWithCoverage`.
+    expect(source).not.toContain("export function isDiscoveryLeadCompatibleWithCoverage");
+    expect(source).toContain("SEMANTICA PER CURATED");
+  });
+
+  test("MAP-23: nessuna card/popup Curated dichiara mai 'Giorni spot disponibili' o disponibilità spot (UNKNOWN non diventa mai TRUE)", () => {
+    for (const file of ["../../components/nextgen/DiscoveryLeadCard.tsx", "../../components/nextgen/DiscoveryMapPopupCard.tsx"]) {
+      const source = readSource(file);
+      expect(source).not.toContain("Giorni spot disponibili");
+    }
+  });
+});
+
+test.describe("DISCOVERY MAP + POLISH — card polish + regressioni cross-cutting (statico)", () => {
+  test("MAP-24: DiscoveryLeadCard hero è alto 140px, stessa altezza esatta dell'hero di ActivityCard (allineamento visivo §15)", () => {
+    const cardSource = readSource("../../components/nextgen/DiscoveryLeadCard.tsx");
+    const activityCardSource = readSource("../../components/ActivityCard.tsx");
+    expect(cardSource).toContain("h-[140px]");
+    expect(activityCardSource).toContain("h-[140px]");
+  });
+
+  test("MAP-25: DiscoveryLeadCard continua a non contenere MAI 'Prenota'/Match%/rating (nessuna capability inventata dal polish)", () => {
+    const source = readSource("../../components/nextgen/DiscoveryLeadCard.tsx");
+    const codeOnly = source.replace(/\/\/.*$/gm, "").replace(/\/\*[\s\S]*?\*\//g, "");
+    expect(codeOnly.toLowerCase()).not.toContain("prenota");
+    expect(codeOnly).not.toMatch(/Match\s*\{/);
+  });
+
+  test("MAP-26: School Calendar resta non toccato da questo pass (nessun file school-calendar modificato)", () => {
+    for (const file of [
+      "../../lib/discovery/real-dataset.ts",
+      "../../lib/discovery/result-model.ts",
+      "../../components/ActivityMap.tsx",
+      "../../components/nextgen/DiscoveryLeadCard.tsx",
+      "../../components/nextgen/DiscoveryMapPopupCard.tsx",
+      "../../app/nextgen/search/SearchDiscoveryClient.tsx",
+    ]) {
+      const source = readSource(file).toLowerCase();
+      expect(source).not.toContain("school_calendar");
+      expect(source).not.toContain("schoolcalendar");
+    }
+  });
+
+  test("MAP-27: il flow 'Proponi invito' verificato live resta invariato — DiscoveryLeadCard e DiscoveryMapPopupCard chiamano la STESSA Server Action, nessuna nuova scrittura", () => {
+    const cardSource = readSource("../../components/nextgen/DiscoveryLeadCard.tsx");
+    const popupSource = readSource("../../components/nextgen/DiscoveryMapPopupCard.tsx");
+    expect(cardSource).toContain("proposeDiscoveryLeadInviteAction(lead.id, lead.organizerName, lead.comune)");
+    expect(popupSource).toContain("proposeDiscoveryLeadInviteAction(lead.id, lead.organizerName, lead.comune)");
+    const discoveryActionSource = readSource("../../app/actions/discovery.ts");
+    expect(discoveryActionSource).toContain("suggestCenterLeadAction(organizerName, comune, undefined, demandContext)");
+  });
+
+  test("MAP-28: ActivityMap resta retrocompatibile — markerKind/popupContent sono facoltativi, PlannerMapView non li passa e non è impattato", () => {
+    const mapSource = readSource("../../components/ActivityMap.tsx");
+    expect(mapSource).toContain("markerKind?:");
+    expect(mapSource).toContain("popupContent?:");
+    const plannerSource = readSource("../../components/nextgen/PlannerMapView.tsx");
+    expect(plannerSource).not.toContain("markerKind");
+    expect(plannerSource).not.toContain("popupContent");
+  });
+
+  test("MAP-29: 'approximate' non è un valore ammesso per geoPrecision (marker potenzialmente fuorviante, escluso deliberatamente — §7)", () => {
+    const source = readSource("../../lib/discovery/real-dataset.ts");
+    // Il TIPO ammette solo exact/venue/null — "approximate" può comparire
+    // solo nella prosa dei commenti (per spiegare PERCHÉ è stato escluso),
+    // mai nell'unione di tipo effettiva.
+    expect(source).toContain('geoPrecision: "exact" | "venue" | null;');
+    const typeLine = source.split("\n").find((l) => l.includes('geoPrecision: "exact" | "venue" | null;'));
+    expect(typeLine).toBeDefined();
+    expect(typeLine).not.toContain("approximate");
+  });
+
+  test("MAP-30: nessuna migration introdotta da questo pass (governance: zero migration salvo impossibilità tecnica dimostrata — nessuna qui)", () => {
+    for (const file of ["../../lib/discovery/real-dataset.ts", "../../lib/discovery/result-model.ts"]) {
+      const source = readSource(file).toLowerCase();
+      expect(source).not.toContain("create table");
+      expect(source).not.toContain("alter table");
+    }
   });
 });
