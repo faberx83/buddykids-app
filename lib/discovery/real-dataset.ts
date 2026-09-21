@@ -118,6 +118,35 @@ export interface DiscoveryLeadRecord {
   // testa del file per la definizione completa di entrambi i campi.
   invitable: boolean;
   officialUrlIsOrganizerSite: boolean;
+  // TRAMA — DISCOVERY MAP + POLISH (21/09/2026), §5-7 del prompt "CURATED
+  // GEO DATA" / "DATA MODEL". Coordinate STATICHE curate a mano (mai
+  // geocoding a runtime, mai una dipendenza da API esterna durante l'uso
+  // dell'app — vedi lib/discovery/result-model.ts#buildDiscoveryMapItems).
+  // REGOLA NON NEGOZIABILE, identica a quella del resto del dataset: se la
+  // sede non è determinabile con una fonte verificabile, lat/lng restano
+  // `null` — MAI un centroide del Comune, MAI una stima "a memoria". In
+  // questa sessione nessuna delle due fonti di geocodifica statica
+  // disponibili (OpenStreetMap Nominatim, ricerca OSM) ha restituito un
+  // risultato utilizzabile per i 5 record con un indirizzo civico noto
+  // (rho-cre-collodi-stripes, settimo-milanese, milano-lyceum,
+  // milano-notformalcamp, conversano-beltempo) — vedi CURATED GEO AUDIT nel
+  // report "TRAMA DISCOVERY MAP + POLISH — RESULT" per il dettaglio record
+  // per record. Tutti e 13 restano quindi `lat: null, lng: null` oggi: lo
+  // schema è pronto, nessuna migration necessaria, pronto ad accogliere
+  // coordinate verificate in un passaggio futuro (da Fabrizio via Google
+  // Maps, o da una sessione con accesso a un geocoder funzionante).
+  lat: number | null;
+  lng: number | null;
+  // "approximate" DELIBERATAMENTE ESCLUSO dai valori possibili (§7 del
+  // prompt: "Valuta se approximate abbia davvero senso... se implica un
+  // marker potenzialmente fuorviante, NON usarlo") — un marker sulla mappa è
+  // per natura un punto preciso: un marker "approssimativo" comunicherebbe
+  // comunque una sede esatta e fuorviante a colpo d'occhio, indipendentemente
+  // dall'etichetta. Solo due valori onesti: "exact" (indirizzo civico
+  // verificato) o "venue" (sede/struttura nota ma non un civico puntuale,
+  // es. un impianto sportivo con più ingressi) — mai usati oggi (nessuna
+  // coordinata popolata), pronti per quando lo saranno.
+  geoPrecision: "exact" | "venue" | null;
 }
 
 export const REAL_DISCOVERY_LEADS: DiscoveryLeadRecord[] = [
@@ -163,6 +192,9 @@ export const REAL_DISCOVERY_LEADS: DiscoveryLeadRecord[] = [
     // Stripes), non un dominio proprio di Stripes — CTA secondaria "Vedi la
     // fonte", non "Sito dell'organizzatore".
     officialUrlIsOrganizerSite: false,
+    lat: null,
+    lng: null,
+    geoPrecision: null,
   },
   {
     id: "cornaredo-centri-estivi-comunali",
@@ -199,6 +231,9 @@ export const REAL_DISCOVERY_LEADS: DiscoveryLeadRecord[] = [
     // servizio comunale diretto) — non invitabile come Partner commerciale.
     invitable: false,
     officialUrlIsOrganizerSite: false,
+    lat: null,
+    lng: null,
+    geoPrecision: null,
   },
   {
     id: "pero-centro-estivo-primaria",
@@ -233,6 +268,9 @@ export const REAL_DISCOVERY_LEADS: DiscoveryLeadRecord[] = [
       "Pagina di servizio aggiornata per la stagione 2026 (iscrizioni 13 aprile–18 maggio 2026), consultata il 17/09/2026 a stagione conclusa. Il prezzo riportato (88,20€/settimana) è la tariffa intera residenti (ISEE ≥30.000€): esistono riduzioni ISEE fino a 27,56€ e una tariffa non residenti di 110,25€, non rappresentabili in un singolo numero — vedi weeklyStructure. Da riconfermare per il 2027.",
     invitable: false,
     officialUrlIsOrganizerSite: false,
+    lat: null,
+    lng: null,
+    geoPrecision: null,
   },
   {
     id: "settimo-milanese-centro-diurno-ricreativo",
@@ -267,6 +305,9 @@ export const REAL_DISCOVERY_LEADS: DiscoveryLeadRecord[] = [
       "Pagina di servizio ufficiale (rev. P24 del 3/4/2026, ultimo aggiornamento dichiarato 30/06/2026) — dati correnti per la stagione 2026, già conclusa alla data di questa ricerca (17/09/2026). Prezzo riportato è la tariffa residenti (non residenti 95,70€, dal secondo figlio 71,50€). Date esatte di apertura non pubblicate su questa pagina (solo periodo di iscrizione) — da riconfermare per il 2027.",
     invitable: false,
     officialUrlIsOrganizerSite: false,
+    lat: null,
+    lng: null,
+    geoPrecision: null,
   },
   {
     id: "milano-centri-estivi-scuole-primarie-comunali",
@@ -305,6 +346,9 @@ export const REAL_DISCOVERY_LEADS: DiscoveryLeadRecord[] = [
     // nominato: descrive il SERVIZIO comunale, non un'entità invitabile.
     invitable: false,
     officialUrlIsOrganizerSite: false,
+    lat: null,
+    lng: null,
+    geoPrecision: null,
   },
   {
     id: "milano-milanosport-campus-multisport",
@@ -341,6 +385,9 @@ export const REAL_DISCOVERY_LEADS: DiscoveryLeadRecord[] = [
     // partecipata dal Comune di Milano) — CLEAN, invitabile.
     invitable: true,
     officialUrlIsOrganizerSite: true,
+    lat: null,
+    lng: null,
+    geoPrecision: null,
   },
   {
     id: "milano-lyceum-summer-camp",
@@ -375,6 +422,9 @@ export const REAL_DISCOVERY_LEADS: DiscoveryLeadRecord[] = [
       "Dati completi, correnti e aggiornati dall'organizzatore il 19/05/2026 per la stagione 2026, in corso di svolgimento al momento della ricerca. NOTA GEOGRAFICA: sede in Municipio 1 (centro città), NON nel cluster Milano Ovest prioritario del pilota — incluso solo per varietà di categoria (artistico/creativo), non conta come copertura Milano Ovest.",
     invitable: true,
     officialUrlIsOrganizerSite: true,
+    lat: null,
+    lng: null,
+    geoPrecision: null,
   },
   {
     id: "milano-notformalcamp-san-siro",
@@ -409,6 +459,9 @@ export const REAL_DISCOVERY_LEADS: DiscoveryLeadRecord[] = [
       "Identità e attività generale dell'organizzatore (L'Orma S.S.D.) confermate sulla sua homepage ufficiale. La pagina organizzatore specifica per la sede San Siro non si è resa leggibile in questa sessione (contenuto reso via JavaScript, fetch diretto vuoto). Prezzo, età e date riportati provengono dall'aggregatore Tutto Campi Estivi, che dichiara di aver verificato questi dati il 12/03/2026 — non da lettura diretta della pagina dell'organizzatore. Quota di iscrizione associativa una tantum di 20€/famiglia non inclusa nel prezzo settimanale indicato.",
     invitable: true,
     officialUrlIsOrganizerSite: true,
+    lat: null,
+    lng: null,
+    geoPrecision: null,
   },
   {
     id: "bareggio-usob-campus-multisport",
@@ -443,6 +496,9 @@ export const REAL_DISCOVERY_LEADS: DiscoveryLeadRecord[] = [
       "Pagina ufficiale dell'organizzatore, contenuti aggiornati (policy minori/genere datate 15/04/2026) — identità e programma generale confermati direttamente. La pagina non pubblica però prezzo né date specifiche per l'edizione 2026: questi campi restano `null` invece di stimati.",
     invitable: true,
     officialUrlIsOrganizerSite: true,
+    lat: null,
+    lng: null,
+    geoPrecision: null,
   },
   {
     id: "milano-baggio-oratorio-san-giovanni-bosco",
@@ -482,6 +538,9 @@ export const REAL_DISCOVERY_LEADS: DiscoveryLeadRecord[] = [
     // diocesano), non un sito proprio dell'oratorio.
     invitable: true,
     officialUrlIsOrganizerSite: false,
+    lat: null,
+    lng: null,
+    geoPrecision: null,
   },
   {
     id: "bareggio-centro-estivo-comunale-infanzia",
@@ -516,6 +575,9 @@ export const REAL_DISCOVERY_LEADS: DiscoveryLeadRecord[] = [
       "Il fetch diretto della pagina di servizio non ha restituito contenuto leggibile in questa sessione (probabile rendering lato client). L'esistenza del servizio e la finestra di iscrizione 2026 sono confermate tramite il titolo indicizzato dal motore di ricerca e comunicazioni ufficiali del Comune sui propri canali — non tramite lettura diretta della pagina. Quasi tutti i campi operativi (età esatta, date, prezzo) restano `null` per questo motivo: record incluso solo perché l'esistenza del servizio comunale resta comunque accertata da fonte ufficiale, non da un'unica menzione indiretta.",
     invitable: false,
     officialUrlIsOrganizerSite: false,
+    lat: null,
+    lng: null,
+    geoPrecision: null,
   },
 
   // ============ CLUSTER B — RUTIGLIANO / SUD-EST BARESE (2 record) ============
@@ -551,6 +613,9 @@ export const REAL_DISCOVERY_LEADS: DiscoveryLeadRecord[] = [
       "Organizzatore reale, verificato direttamente sulla pagina ufficiale (sede, P.IVA, telefono). I dettagli della \"VII edizione 2026\" (orari, attività, scadenza iscrizioni 27 febbraio) risultano da una sintesi del motore di ricerca su un articolo dell'organizzatore che non sono riuscito a recuperare e leggere direttamente in questa sessione (pagina non renderizzata) — consigliata riconferma diretta (telefono in sources) prima della pubblicazione.",
     invitable: true,
     officialUrlIsOrganizerSite: true,
+    lat: null,
+    lng: null,
+    geoPrecision: null,
   },
   {
     id: "noicattaro-centri-estivi-comunali",
@@ -586,6 +651,9 @@ export const REAL_DISCOVERY_LEADS: DiscoveryLeadRecord[] = [
     // prompt come caso da non trattare mai come organizzatore invitabile.
     invitable: false,
     officialUrlIsOrganizerSite: false,
+    lat: null,
+    lng: null,
+    geoPrecision: null,
   },
 ];
 
@@ -759,6 +827,29 @@ export const DISCOVERY_CATEGORY_TAG_MAP: Record<Exclude<DiscoveryLeadCategory, "
   artistico: ["arte", "musica", "teatro", "danza"],
 };
 
+// ============ COVERAGE FILTER — SEMANTICA PER CURATED (TRAMA — DISCOVERY MAP + POLISH, 21/09/2026) ============
+//
+// §11 del prompt "IMPORTANT — COVERAGE FILTER". Deliberatamente NESSUNA
+// funzione `isDiscoveryLeadCompatibleWithCoverage` esiste in questo file: il
+// filtro Copertura (settimana intera/giorni singoli/entrambe,
+// `selectedCoverageModes`/`onlyDaySpots` in SearchDiscoveryClient.tsx) non
+// viene MAI applicato ai lead curati — stessa scelta già dichiarata per
+// "Servizi" (vedi FILTER INTEGRATION ADAPTERS sopra: "campi che non esistono
+// nel Target Data Contract").
+//
+// Semantica esplicita, per evitare l'ambiguità segnalata dal test live
+// (Copertura → "Giorni singoli", count 20→13): un lead curato con modalità
+// di prenotazione SCONOSCIUTA non viene MAI escluso da questo filtro — resta
+// sempre compatibile, esattamente come un'età o un prezzo non dichiarati non
+// escludono mai (stesso principio null-safe di tutto il pilot). Questo NON
+// equivale a dichiarare che il lead supporta la prenotazione a giorno
+// singolo (UNKNOWN non diventa MAI TRUE nel senso di "disponibilità spot
+// confermata") — è un'esclusione-soltanto-se-certa-dell'incompatibilità,
+// non un'affermazione positiva di capacità. Coerente con questo,
+// DiscoveryLeadCard.tsx e DiscoveryMapPopupCard.tsx non mostrano MAI
+// "Giorni spot disponibili"/disponibilità/posti per un lead curato — la
+// UI non fa mai la promessa che questo filtro, da solo, potrebbe far
+// pensare stia facendo.
 export function isDiscoveryLeadCompatibleWithCategoryTags(
   lead: Pick<DiscoveryLeadRecord, "category">,
   selectedTagIds: string[]
