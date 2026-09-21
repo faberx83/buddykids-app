@@ -95,6 +95,15 @@ export const KNOWN_PRODUCT_EVENTS = [
   // components/nextgen/DiscoveryLeadCard.tsx.
   "curated_listing_viewed",
   "curated_listing_external_clicked",
+  // TRAMA — DISCOVERY UNIFICATION + PROPONI INVITO (21/09/2026, §13 del
+  // prompt: "Aggiungi curated_listing_invite_proposed solo alla conferma
+  // riuscita. NON aggiungere evento per apertura dialog."). Stesso
+  // principio "adozione, non cronologia personale" degli altri eventi qui
+  // sopra: detail = SOLO l'id del lead curato, mai testo libero. Call site:
+  // app/actions/discovery.ts#proposeDiscoveryLeadInviteAction, invocata da
+  // DiscoveryLeadCard.tsx SOLO dopo che suggestCenterLeadAction ha inserito
+  // con successo la riga in center_leads (mai su annulla, mai su errore).
+  "curated_listing_invite_proposed",
 ] as const;
 
 export type KnownProductEvent = (typeof KNOWN_PRODUCT_EVENTS)[number];
