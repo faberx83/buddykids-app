@@ -976,6 +976,11 @@ test.describe("DISCOVERY MAP + POLISH — card polish + regressioni cross-cuttin
       "../../components/nextgen/DiscoveryLeadCard.tsx",
       "../../components/nextgen/DiscoveryMapPopupCard.tsx",
       "../../app/nextgen/search/SearchDiscoveryClient.tsx",
+      // TRAMA — DISCOVERY FINAL UX PASS (22/09/2026): file toccati da questo
+      // pass, stesso controllo esteso.
+      "../../components/nextgen/NotificationCenter.tsx",
+      "../../components/nextgen/BetaFeedbackButton.tsx",
+      "../../components/nextgen/NextgenScrollActivity.tsx",
     ]) {
       const source = readSource(file).toLowerCase();
       expect(source).not.toContain("school_calendar");
@@ -1017,6 +1022,173 @@ test.describe("DISCOVERY MAP + POLISH — card polish + regressioni cross-cuttin
       const source = readSource(file).toLowerCase();
       expect(source).not.toContain("create table");
       expect(source).not.toContain("alter table");
+    }
+  });
+});
+
+// ============ DISCOVERY FINAL UX PASS (22/09/2026) ============
+//
+// Bugfix pass dopo il deploy: tile layer CARTO rotto ("API KEY REQUIRED"),
+// marker FULL TRAMA blu invece di viola, floating controls (bell/chat) che
+// possono sovrapporsi alla Mappa, mancanza di una X per svuotare la
+// ricerca. Nessuna migration, nessun tocco a School Calendar/Center
+// Leads/Proponi invito/dataset-coordinate.
+
+test.describe("DISCOVERY FINAL UX PASS — tile layer (statico sul sorgente)", () => {
+  test("UX-01: il tile layer NON punta più a basemaps.cartocdn.com (CARTO, ora richiede una API key — root cause di 'API KEY REQUIRED')", () => {
+    const source = readSource("../../components/ActivityMap.tsx");
+    // Il dominio vecchio può comparire nel COMMENTO che spiega la root
+    // cause/la migrazione, ma non deve mai comparire nella prop `url=` reale
+    // di un TileLayer.
+    const urlLine = source.split("\n").find((l) => l.trim().startsWith("url="));
+    expect(urlLine).toBeDefined();
+    expect(urlLine).not.toContain("basemaps.cartocdn.com");
+  });
+
+  test("UX-02: il tile layer usa un provider senza API key (Wikimedia Maps osm-intl), nessuna chiave hardcoded nel client", () => {
+    const source = readSource("../../components/ActivityMap.tsx");
+    expect(source).toContain("maps.wikimedia.org/osm-intl/{z}/{x}/{y}{r}.png");
+    // Nessun parametro `key=`/`apikey=` in nessuna TileLayer url — se in
+    // futuro si tornasse a un provider con chiave, deve arrivare da env var
+    // via config server-side, mai come stringa letterale qui.
+    expect(source.toLowerCase()).not.toMatch(/[?&](api_?key|token)=/);
+  });
+
+  test("UX-03: l'attribution del tile layer resta presente e corretta (OpenStreetMap + Wikimedia)", () => {
+    const source = readSource("../../components/ActivityMap.tsx");
+    expect(source).toContain("Wikimedia maps beta");
+    expect(source).toContain("openstreetmap.org/copyright");
+  });
+});
+
+test.describe("DISCOVERY FINAL UX PASS — colore marker FULL TRAMA (statico sul sorgente)", () => {
+  test("UX-04: esiste un'icona dedicata viola per i marker 'partner', stesso colore della legenda (#6F63C5)", () => {
+    const source = readSource("../../components/ActivityMap.tsx");
+    expect(source).toContain("tramaPartnerIcon");
+    const iconBlock = source.slice(source.indexOf("const tramaPartnerIcon"), source.indexOf("const tramaPartnerIcon") + 300);
+    expect(iconBlock).toContain("#6F63C5");
+  });
+
+  test("UX-05: il ramo markerKind === 'partner' usa tramaPartnerIcon (non più il default Leaflet blu)", () => {
+    const source = readSource("../../components/ActivityMap.tsx");
+    const iconTernaryStart = source.indexOf('it.markerKind === "curated_invitable"');
+    const block = source.slice(iconTernaryStart, source.indexOf("<Popup>", iconTernaryStart));
+    expect(block).toContain('it.markerKind === "partner"');
+    expect(block).toContain("{ icon: tramaPartnerIcon }");
+  });
+
+  test("UX-06: il ramo SENZA markerKind (PlannerMapView/LEGACY, undefined) resta sul default Leaflet invariato — la ricolorazione riguarda SOLO i marker 'partner' di Discovery", () => {
+    const source = readSource("../../components/ActivityMap.tsx");
+    const iconTernaryStart = source.indexOf('it.markerKind === "curated_invitable"');
+    const block = source.slice(iconTernaryStart, source.indexOf("<Popup>", iconTernaryStart));
+    // L'ultimo ramo del ternario (else finale) deve restare un oggetto vuoto,
+    // mai tramaPartnerIcon: altrimenti PlannerMapView (che non passa mai
+    // markerKind) cambierebbe colore per un pass che non lo riguarda.
+    const lastElse = block.slice(block.lastIndexOf(": {}"));
+    expect(lastElse.startsWith(": {}")).toBe(true);
+  });
+
+  test("UX-07: le icone Curated (arancione/grigio) restano invariate da questo pass", () => {
+    const source = readSource("../../components/ActivityMap.tsx");
+    expect(source).toContain("#F2994A"); // Da invitare
+    expect(source).toContain("#8B93A3"); // Fonte pubblica
+  });
+});
+
+test.describe("DISCOVERY FINAL UX PASS — floating controls in Map view (statico sul sorgente)", () => {
+  test("UX-08: NextgenScrollActivity espone hideFloatingControls di default false (nessun impatto su pagine che non lo impostano mai)", () => {
+    const source = readSource("../../components/nextgen/NextgenScrollActivity.tsx");
+    expect(source).toContain("hideFloatingControls: false");
+    expect(source).toContain("export function useNextgenHideFloatingControls");
+    expect(source).toContain("export function useSetNextgenHideFloatingControls");
+  });
+
+  test("UX-09: BetaFeedbackButton e NotificationCenter si nascondono quando hideFloating è attivo, MA mai mentre il proprio dialog è già aperto", () => {
+    for (const file of ["../../components/nextgen/BetaFeedbackButton.tsx", "../../components/nextgen/NotificationCenter.tsx"]) {
+      const source = readSource(file);
+      expect(source).toContain("useNextgenHideFloatingControls");
+      expect(source).toContain("if (hideFloating && !open) return null;");
+    }
+  });
+
+  test("UX-10: SearchDiscoveryClient imposta hideFloatingControls SOLO quando viewMode è 'mappa', e lo ripristina in cleanup", () => {
+    const source = readSource("../../app/nextgen/search/SearchDiscoveryClient.tsx");
+    const block = source.slice(source.indexOf("const setHideFloatingControls"), source.indexOf("const setHideFloatingControls") + 400);
+    expect(block).toContain('setHideFloatingControls(viewMode === "mappa")');
+    expect(block).toContain("return () => setHideFloatingControls(false)");
+  });
+});
+
+test.describe("DISCOVERY FINAL UX PASS — search clear button (statico sul sorgente)", () => {
+  test("UX-11: la X compare SOLO quando query è valorizzata (render condizionato su `query`, mai sempre visibile)", () => {
+    const source = readSource("../../app/nextgen/search/SearchDiscoveryClient.tsx");
+    const block = source.slice(source.indexOf('placeholder="Cerca per nome'), source.indexOf('placeholder="Cerca per nome') + 900);
+    expect(block).toContain("{query && (");
+    expect(block).toContain('aria-label="Cancella ricerca"');
+  });
+
+  test("UX-12: il tap sulla X resetta SOLO `query` (setQuery(\"\")), mai un altro filtro", () => {
+    const source = readSource("../../app/nextgen/search/SearchDiscoveryClient.tsx");
+    const block = source.slice(source.indexOf('placeholder="Cerca per nome'), source.indexOf('placeholder="Cerca per nome') + 900);
+    const clearButtonBlock = block.slice(block.indexOf("{query && ("));
+    expect(clearButtonBlock).toContain('onClick={() => setQuery("")}');
+    // Nessun'altra chiamata setXxx dentro il bottone di clear.
+    const onClickLine = clearButtonBlock.slice(clearButtonBlock.indexOf("onClick="), clearButtonBlock.indexOf("aria-label"));
+    expect(onClickLine).not.toMatch(/set(MinAge|MaxAge|MaxPrice|Zone|SelectedTagIds|SelectedWeekStarts|SelectedCoverageModes|OnlyDaySpots|SelectedKid)/);
+  });
+
+  test("UX-13: lo stesso input `query` alimenta sia la Lista sia la Mappa (un solo campo, sopra il toggle Lista/Mappa — non duplicato per vista)", () => {
+    const source = readSource("../../app/nextgen/search/SearchDiscoveryClient.tsx");
+    const occurrences = source.split('placeholder="Cerca per nome…"').length - 1;
+    expect(occurrences).toBe(1);
+    // Il campo precede nel sorgente sia compatibleRealDiscoveryLeads (Curated)
+    // sia il primo uso di viewMode nella JSX del toggle Lista/Mappa —
+    // un'unica fonte di query per entrambe le viste.
+    const inputIdx = source.indexOf('placeholder="Cerca per nome…"');
+    const toggleIdx = source.indexOf('onClick={() => setViewMode("mappa")}');
+    expect(inputIdx).toBeGreaterThan(-1);
+    expect(toggleIdx).toBeGreaterThan(inputIdx);
+  });
+});
+
+test.describe("DISCOVERY FINAL UX PASS — map fit / initial view (statico sul sorgente, audit)", () => {
+  test("UX-14: FitBounds include SEMPRE tutti i punti passati in `items` (partner + curated_invitable + curated_source indistintamente) — nessun filtro per tipo nel calcolo dei bounds", () => {
+    const source = readSource("../../components/ActivityMap.tsx");
+    const block = source.slice(source.indexOf("function FitBounds"), source.indexOf("export default function ActivityMap"));
+    expect(block).not.toMatch(/markerKind/);
+    expect(source).toContain("<FitBounds points={points} />");
+    expect(source).toContain("items.map((it) => [it.lat, it.lng])");
+  });
+
+  test("UX-15: un solo marker → zoom fisso ragionevole (13), non uno zoom massimo/eccessivo", () => {
+    const source = readSource("../../components/ActivityMap.tsx");
+    const block = source.slice(source.indexOf("function FitBounds"), source.indexOf("export default function ActivityMap"));
+    expect(block).toContain("map.setView(points[0], 13)");
+  });
+
+  test("UX-16: fitBounds ricalcola SOLO quando l'insieme dei punti cambia (dep su JSON.stringify(points), mai su un pan/zoom manuale dell'utente)", () => {
+    const source = readSource("../../components/ActivityMap.tsx");
+    const block = source.slice(source.indexOf("function FitBounds"), source.indexOf("export default function ActivityMap"));
+    expect(block).toContain("[map, JSON.stringify(points)]");
+  });
+
+  test("UX-17: fitBounds ha un maxZoom di sicurezza (nessuno zoom eccessivo su un cluster molto stretto, es. multi-sede Municipio 7)", () => {
+    const source = readSource("../../components/ActivityMap.tsx");
+    const block = source.slice(source.indexOf("function FitBounds"), source.indexOf("export default function ActivityMap"));
+    expect(block).toContain("maxZoom: 15");
+  });
+});
+
+test.describe("DISCOVERY FINAL UX PASS — popup consistency (regressione statica)", () => {
+  test("UX-18: i tre casi popup restano quelli verificati live — partner (Apri scheda), invitabile (Proponi invito), source-only (Vedi la fonte) — nessuna nuova voce introdotta", () => {
+    const mapSource = readSource("../../components/ActivityMap.tsx");
+    expect(mapSource).toContain("Apri scheda");
+    const popupSource = readSource("../../components/nextgen/DiscoveryMapPopupCard.tsx");
+    expect(popupSource).toContain("Proponi invito");
+    expect(popupSource).toContain("secondaryLinkLabelForLead");
+    const codeOnly = popupSource.replace(/\/\/.*$/gm, "").replace(/\/\*[\s\S]*?\*\//g, "").toLowerCase();
+    for (const forbidden of ["match%", "rating", "posti disponibili", "spotsleft"]) {
+      expect(codeOnly).not.toContain(forbidden);
     }
   });
 });
