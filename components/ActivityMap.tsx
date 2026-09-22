@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useMemo, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, type ReactNode } from "react";
 import Link from "next/link";
-import { MapContainer, TileLayer, Marker, Popup, useMap } from "react-leaflet";
+import { MapContainer, TileLayer, Marker, Popup, useMap, useMapEvents } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 
@@ -114,9 +114,24 @@ const MILAN_FALLBACK: [number, number] = [45.4642, 9.19];
 // Municipio 7, poche centinaia di metri) non zooma MAI oltre un livello
 // leggibile, coerente con "zoom ragionevole, non eccessivo" richiesto anche
 // per il caso a un solo marker qui sotto.
-function FitBounds({ points }: { points: [number, number][] }) {
+// TRAMA — DISCOVERY LIVE UX BUGFIX (22/09/2026), §3 "RETURN FROM ACTIVITY
+// DETAIL — RESTORE MAP STATE". Nuovo prop opzionale `skip`, additivo:
+// quando true, il PRIMO run dell'effect non chiama fitBounds/setView — serve
+// a non sovrascrivere subito un pan/zoom ripristinato da
+// SearchDiscoveryClient (`initialViewState`, sotto) con il fit automatico
+// sui bounds dei risultati. Il ref garantisce che questo valga SOLO per il
+// primo run: un cambio filtri successivo (che cambia `points`) fa scattare
+// di nuovo fitBounds normalmente, comportamento invariato per ogni caso che
+// non parte da uno stato ripristinato (skip assente/false → identico a
+// prima, nessuna regressione per PlannerMapView/LEGACY Cerca che non passano
+// questo prop).
+function FitBounds({ points, skip }: { points: [number, number][]; skip?: boolean }) {
   const map = useMap();
+  const isFirstRun = useRef(true);
   useEffect(() => {
+    const wasFirstRun = isFirstRun.current;
+    isFirstRun.current = false;
+    if (wasFirstRun && skip) return;
     if (points.length === 0) return;
     if (points.length === 1) {
       map.setView(points[0], 13);
@@ -128,6 +143,28 @@ function FitBounds({ points }: { points: [number, number][] }) {
   return null;
 }
 
+// TRAMA — DISCOVERY LIVE UX BUGFIX (22/09/2026), §3. Riporta al genitore il
+// centro/zoom SCELTO MANUALMENTE dall'utente (pan/zoom), cosi
+// SearchDiscoveryClient può persisterlo nell'URL (`router.replace`, mai una
+// nuova riga DB/localStorage) e ripassarlo come `initialViewState` al
+// prossimo mount di questo componente (es. dopo un Back dal dettaglio
+// attività). Solo `moveend`/`zoomend` (fine gesto), mai eventi continui
+// (`move`/`zoom`) — evita di rigenerare l'URL decine di volte durante un
+// singolo trascinamento.
+function ViewStateReporter({ onChange }: { onChange: (center: [number, number], zoom: number) => void }) {
+  const map = useMapEvents({
+    moveend: () => {
+      const c = map.getCenter();
+      onChange([c.lat, c.lng], map.getZoom());
+    },
+    zoomend: () => {
+      const c = map.getCenter();
+      onChange([c.lat, c.lng], map.getZoom());
+    },
+  });
+  return null;
+}
+
 export default function ActivityMap({
   items,
   userPosition,
@@ -135,6 +172,9 @@ export default function ActivityMap({
   height = 440,
   selectedId,
   onSelect,
+  initialViewState,
+  skipInitialFit,
+  onViewStateChange,
 }: {
   items: MapItem[];
   userPosition?: { lat: number; lng: number };
@@ -147,6 +187,15 @@ export default function ActivityMap({
   height?: number;
   selectedId?: string;
   onSelect?: (id: string) => void;
+  // TRAMA — DISCOVERY LIVE UX BUGFIX (22/09/2026), §3 "RETURN FROM ACTIVITY
+  // DETAIL — RESTORE MAP STATE". Tutti e tre opt-in/additivi, nessun default
+  // cambiato per PlannerMapView/LEGACY Cerca (che non li passano): quando
+  // `initialViewState` è assente, `MapContainer` usa lo stesso center/zoom
+  // di sempre (primo punto/fallback Milano, zoom 12) e FitBounds si
+  // comporta esattamente come prima.
+  initialViewState?: { center: [number, number]; zoom: number };
+  skipInitialFit?: boolean;
+  onViewStateChange?: (center: [number, number], zoom: number) => void;
 }) {
   const points = useMemo(() => {
     const p: [number, number][] = items.map((it) => [it.lat, it.lng]);
@@ -154,37 +203,53 @@ export default function ActivityMap({
     return p;
   }, [items, userPosition]);
 
-  const center = points[0] || MILAN_FALLBACK;
+  const center = initialViewState?.center ?? points[0] ?? MILAN_FALLBACK;
+  const zoom = initialViewState?.zoom ?? 12;
 
   return (
     <div className="w-full overflow-hidden rounded-lg border border-[#E8EBF0]" style={{ height }}>
-      <MapContainer center={center} zoom={12} scrollWheelZoom style={{ height: "100%", width: "100%" }}>
-        {/* TRAMA — DISCOVERY FINAL UX PASS (22/09/2026), §1 "API KEY
-            REQUIRED — FIX OBBLIGATORIO". ROOT CAUSE: CARTO ha cambiato
-            policy ad agosto 2026 — basemaps.cartocdn.com (il tile
-            "light_all" usato qui) non è più anonimo/gratuito senza
-            registrazione: senza una API key ogni tile torna un watermark
-            "API KEY REQUIRED" invece della mappa reale (confermato via
-            ricerca: CARTO Basemaps FAQ + numerosi issue pubblici di altri
-            progetti Leaflet colpiti dallo stesso cambiamento). Impossibile
-            "fixare" restando su questo host senza una key.
-            FIX: sostituito con i tile Wikimedia Maps (stile "osm-intl",
-            stessa fonte dati OpenStreetMap, stile chiaro/desaturato
-            equivalente a Positron) — servizio pubblico, documentato, senza
-            API key, stesso pattern raster XYZ già in uso (nessuna nuova
-            dipendenza, nessun secret nel client, nessuna riapertura
-            dell'architettura). Attribution aggiornata secondo le linee guida
-            ufficiali Wikimedia Maps (nome del servizio + credito OSM). Se in
-            futuro serve tornare a CARTO, serve una API key CARTO Basemaps
-            (gratuita fino a 5M richieste/mese, ma da configurare come env
-            var — es. NEXT_PUBLIC_CARTO_API_KEY — MAI hardcoded nel client):
-            non implementato qui, restiamo sul provider senza key. */}
+      <MapContainer center={center} zoom={zoom} scrollWheelZoom style={{ height: "100%", width: "100%" }}>
+        {/* TRAMA — DISCOVERY LIVE UX BUGFIX (22/09/2026), §1 "MAP TILE LAYER
+            — BLOCKER". Cronologia di questo layer, entrambe le cause
+            verificate LIVE in browser (non solo da documentazione):
+            (1) basemaps.cartocdn.com (CARTO) — da agosto 2026 richiede una
+                API key: senza, ogni tile tornava il watermark "API KEY
+                REQUIRED" (fix del FINAL UX PASS precedente).
+            (2) maps.wikimedia.org/osm-intl — la documentazione pubblica lo
+                descrive come "nessuna API key richiesta", ma la verifica
+                LIVE in browser (navigazione diretta a un tile reale) ha
+                restituito HTTP 403 con corpo "Forbidden: Map tiles are
+                restricted to Wikimedia and affiliated sites only" — un
+                sito esterno come TRAMA non è autorizzato, a prescindere da
+                referrer/config: root cause del "basemap grigio" (Leaflet
+                riceve 403 invece del PNG, mostra il grigio di sfondo del
+                tile pane senza errore bloccante). Non risolvibile restando
+                su questo host.
+            FIX: OpenStreetMap standard (tile.openstreetmap.org) — VERIFICATO
+            LIVE (navigazione diretta a un tile reale → HTTP 200, PNG
+            renderizzato correttamente). Host CANONICO SINGOLO (non più il
+            pattern {s}.tile.openstreetmap.org con sub-domain sharding,
+            deprecato — la Tile Usage Policy ufficiale, letta in questa
+            sessione, indica esplicitamente l'host singolo come quello
+            attuale: "altri sottodomini possono essere più lenti o
+            ritirati"). Nessuna API key. La stessa policy richiede un Referer
+            identificabile (mai "no-referrer"): next.config.mjs di questo
+            progetto non imposta alcun Referrer-Policy custom, quindi il
+            browser usa il default moderno (strict-origin-when-cross-origin)
+            — esplicitamente tra i valori accettati dalla policy — reso
+            comunque esplicito qui con `referrerPolicy="origin"` sul
+            TileLayer invece di affidarsi solo al default silenzioso.
+            Uso moderato (pilota interno, non scraping bulk) è in linea con
+            l'uso "compatibile con l'utilizzo occasionale" previsto dalla
+            policy per applicazioni di terze parti. */}
         <TileLayer
-          attribution='Wikimedia maps beta | Map data &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-          url="https://maps.wikimedia.org/osm-intl/{z}/{x}/{y}{r}.png"
+          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+          url="https://tile.openstreetmap.org/{z}/{x}/{y}.png"
+          referrerPolicy="origin"
           maxZoom={19}
         />
-        <FitBounds points={points} />
+        <FitBounds points={points} skip={skipInitialFit} />
+        {onViewStateChange && <ViewStateReporter onChange={onViewStateChange} />}
         {items.map((it) =>
           onSelect ? (
             // BUGFIX (segnalato da Fabrizio: la Mappa crasha sempre, sia web
