@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { useSearchParams } from "next/navigation";
+import { useSearchParams, usePathname, useRouter } from "next/navigation";
 import dynamic from "next/dynamic";
 import { Activity, Kid } from "@/lib/types";
 import { computeSmartMatches, SmartMatch } from "@/lib/nextgen/smart-search";
@@ -26,6 +26,7 @@ import {
   isDiscoveryLeadCompatibleWithTextQuery,
   isDiscoveryLeadCompatibleWithCategoryTags,
   isDiscoveryLeadCompatibleWithCoverage,
+  isCoverageModeCompatibleWithFilter,
   sortDiscoveryLeadsForDisplay,
   type DiscoveryLeadRecord,
 } from "@/lib/discovery/real-dataset";
@@ -51,6 +52,11 @@ import {
 // proposeDiscoveryLeadInviteAction, non tocca il flow FREEZE di
 // DiscoveryLeadCard.tsx).
 import DiscoveryMapPopupCard from "@/components/nextgen/DiscoveryMapPopupCard";
+// TRAMA — DISCOVERY LIVE UX BUGFIX (22/09/2026), §6. Dialog di conferma
+// "Proponi invito" ESTRATTO dal popup Leaflet — vive qui, fuori dal ciclo di
+// vita del <Popup> (vedi commento in DiscoveryMapPopupCard.tsx e nel file
+// stesso per il root cause del bug "doppio tap").
+import DiscoveryProposeInviteDialog from "@/components/nextgen/DiscoveryProposeInviteDialog";
 import type { MapItem } from "@/components/ActivityMap";
 import { useSetNextgenHideFloatingControls } from "@/components/nextgen/NextgenScrollActivity";
 
@@ -283,7 +289,15 @@ export default function SearchDiscoveryClient({
   // bambino preciso. Seed additivo dal query param esistente: se assente,
   // comportamento identico a prima (null = tutti i bambini).
   const searchParams = useSearchParams();
-  const [query, setQuery] = useState("");
+  // TRAMA — DISCOVERY LIVE UX BUGFIX (22/09/2026), §3 "RETURN FROM ACTIVITY
+  // DETAIL — RESTORE MAP STATE". `router.replace` (MAI `push`) per
+  // sincronizzare viewMode/filtri/viewport mappa nell'URL — stesso principio
+  // già in uso per `?kid=`/`?week=` sopra, esteso a TUTTO lo stato che deve
+  // sopravvivere a un Back dal dettaglio attività. Mai una nuova riga DB, mai
+  // localStorage come datastore applicativo (richiesta esplicita).
+  const router = useRouter();
+  const pathname = usePathname();
+  const [query, setQuery] = useState(() => searchParams.get("q") ?? "");
   const [selectedKidId, setSelectedKidId] = useState<string | null>(() => {
     const kidParam = searchParams.get("kid");
     // Ignora un id che non corrisponde a nessun bambino reale dell'utente
@@ -293,7 +307,10 @@ export default function SearchDiscoveryClient({
   });
 
   const [openPanel, setOpenPanel] = useState<FilterPanel>(null);
-  const [viewMode, setViewMode] = useState<ViewMode>("lista");
+  // TRAMA — DISCOVERY LIVE UX BUGFIX (22/09/2026), §3. Seed da `?view=mappa`
+  // se presente (Back dal dettaglio attività) — comportamento invariato
+  // (default "lista") per ogni altro ingresso in pagina, identico a prima.
+  const [viewMode, setViewMode] = useState<ViewMode>(() => (searchParams.get("view") === "mappa" ? "mappa" : "lista"));
   // TRAMA — DISCOVERY FINAL UX PASS (22/09/2026), §3 "MAP + FLOATING BUTTON
   // OVERLAY": bell/chat non devono coprire marker/popup/attribution/zoom
   // controls mentre l'utente interagisce con la Mappa — nascosti SOLO in
@@ -306,12 +323,41 @@ export default function SearchDiscoveryClient({
     setHideFloatingControls(viewMode === "mappa");
     return () => setHideFloatingControls(false);
   }, [viewMode, setHideFloatingControls]);
-  const [minAge, setMinAge] = useState(0);
-  const [maxAge, setMaxAge] = useState(18);
-  const [maxPrice, setMaxPrice] = useState(500);
-  const [zone, setZone] = useState("");
-  const [services, setServices] = useState<ServiceFilters>(EMPTY_SERVICES);
-  const [selectedTagIds, setSelectedTagIds] = useState<string[]>([]);
+  // TRAMA — DISCOVERY LIVE UX BUGFIX (22/09/2026), §3. Seed da URL con
+  // fallback ai default originali se il param manca/non è valido —
+  // comportamento identico a prima per ogni link che non porta questi
+  // parametri (es. un vecchio bookmark).
+  const [minAge, setMinAge] = useState(() => {
+    const v = Number(searchParams.get("minAge"));
+    return Number.isFinite(v) && v >= 0 && v <= 18 ? v : 0;
+  });
+  const [maxAge, setMaxAge] = useState(() => {
+    const v = Number(searchParams.get("maxAge"));
+    return Number.isFinite(v) && v >= 0 && v <= 18 ? v : 18;
+  });
+  const [maxPrice, setMaxPrice] = useState(() => {
+    const v = Number(searchParams.get("price"));
+    return Number.isFinite(v) && v > 0 ? v : 500;
+  });
+  const [zone, setZone] = useState(() => searchParams.get("zona") ?? "");
+  const [services, setServices] = useState<ServiceFilters>(() => {
+    const svcParam = searchParams.get("svc");
+    if (!svcParam) return EMPTY_SERVICES;
+    const enabled = new Set(svcParam.split(","));
+    return {
+      preScuola: enabled.has("preScuola"),
+      postScuola: enabled.has("postScuola"),
+      pranzo: enabled.has("pranzo"),
+      bar: enabled.has("bar"),
+      attivitaExtra: enabled.has("attivitaExtra"),
+      accessoDisabili: enabled.has("accessoDisabili"),
+      dieteGestite: enabled.has("dieteGestite"),
+    };
+  });
+  const [selectedTagIds, setSelectedTagIds] = useState<string[]>(() => {
+    const tagsParam = searchParams.get("tags");
+    return tagsParam ? tagsParam.split(",").filter(Boolean) : [];
+  });
   // SPRINT 3 (feedback Fabrizio: "il filtro settimana dovrebbe permettere di
   // selezionare più settimane, non solo una") — da singolo valore ad array;
   // un'attività passa il filtro se disponibile in ALMENO UNA delle settimane
@@ -331,8 +377,14 @@ export default function SearchDiscoveryClient({
   // sempre), altrimenti nessuna settimana preselezionata (comportamento
   // identico a prima).
   const [selectedWeekStarts, setSelectedWeekStarts] = useState<string[]>(() => {
+    // TRAMA — DISCOVERY LIVE UX BUGFIX (22/09/2026), §3. Nuovo param plurale
+    // "weeks" (comma-joined) per la persistenza COMPLETA multi-selezione
+    // (restore da Back) — ha priorità quando presente; "week" singolare
+    // resta invariato per i deep-link esistenti (Home/Planner "Riempi").
+    const weeksParam = searchParams.get("weeks");
     const weekParam = searchParams.get("week");
-    if (!weekParam) return [];
+    const candidates = weeksParam ? weeksParam.split(",").filter(Boolean) : weekParam ? [weekParam] : [];
+    if (candidates.length === 0) return [];
     // Valida anche contro le settimane passate: un link "Riempi" non
     // dovrebbe mai puntare a una settimana già chiusa nel Planner (vedi
     // lib/nextgen/planner-insights.ts — il bottone "Riempi" li' non compare
@@ -343,7 +395,7 @@ export default function SearchDiscoveryClient({
         .filter((r) => isoDate(r.end) >= todayIso)
         .map((r) => isoDate(r.start))
     );
-    return validStarts.has(weekParam) ? [weekParam] : [];
+    return candidates.filter((c) => validStarts.has(c));
   });
 
   // TRAMA — REAL DISCOVERY PILOT (16/09/2026), §14 del report ("School
@@ -374,11 +426,101 @@ export default function SearchDiscoveryClient({
   // sotto (dopo `radiusKm`), ma ora servono anche al filtro Curated qui
   // sotto — nessun cambio di comportamento per il filtro Partner esistente,
   // solo un riposizionamento delle dichiarazioni React state.
-  const [onlyDaySpots, setOnlyDaySpots] = useState(false);
+  const [onlyDaySpots, setOnlyDaySpots] = useState(() => searchParams.get("spot") === "1");
   // Fabrizio (2026-07-22): filtro "Copertura" — modalità di prenotazione
   // supportata dall'attività (activities.booking_mode), multi-selezione come
   // "Tipo attività" (vuoto = nessun filtro, cioè tutte le modalità).
-  const [selectedCoverageModes, setSelectedCoverageModes] = useState<CoverageMode[]>([]);
+  // TRAMA — DISCOVERY LIVE UX BUGFIX (22/09/2026), §5 "SINGLE SELECT": il
+  // controllo è ora single-select (vedi toggleCoverageMode più sotto), ma il
+  // tipo resta un array per compatibilità con isCoverageModeCompatibleWithFilter
+  // — seed da URL valida comunque contro i soli 3 valori noti.
+  const [selectedCoverageModes, setSelectedCoverageModes] = useState<CoverageMode[]>(() => {
+    const covParam = searchParams.get("cov");
+    return covParam && ["week_only", "day_only", "mixed"].includes(covParam) ? [covParam as CoverageMode] : [];
+  });
+
+  // TRAMA — DISCOVERY LIVE UX BUGFIX (22/09/2026), §6 "PROPONI INVITO FROM
+  // MAP — BUG". Stato del dialog di conferma "Proponi invito", ESTRATTO dal
+  // popup Leaflet (vedi DiscoveryMapPopupCard.tsx/DiscoveryProposeInviteDialog.tsx
+  // per il root cause): `proposeDialogLead` è il lead attualmente in dialog
+  // (null = chiuso), `proposedLeadIds` traccia i lead già proposti in questa
+  // sessione così il popup mostra subito "Hai già proposto" senza richiamare
+  // il server — nessuna nuova Server Action, nessuna persistenza extra.
+  const [proposeDialogLead, setProposeDialogLead] = useState<DiscoveryLeadRecord | null>(null);
+  const [proposedLeadIds, setProposedLeadIds] = useState<Set<string>>(() => new Set());
+
+  // TRAMA — DISCOVERY LIVE UX BUGFIX (22/09/2026), §3 "RETURN FROM ACTIVITY
+  // DETAIL — RESTORE MAP STATE". `mapViewState` è il centro/zoom CORRENTE
+  // della mappa (aggiornato ad ogni pan/zoom manuale via
+  // ActivityMap#onViewStateChange), sincronizzato nell'URL (`mc`/`mz`,
+  // effect più sotto) — MAI localStorage, MAI una riga DB. Seed da URL se
+  // presenti (Back dal dettaglio attività), altrimenti null (comportamento
+  // di sempre: fitBounds automatico sui risultati). `hadRestoredMapView` è
+  // calcolato UNA sola volta al mount (non risegue mapViewState dopo) — dice
+  // ad ActivityMap di saltare il fitBounds automatico SOLO al primo ingresso
+  // in Mappa di questo caricamento pagina, cosi il pan/zoom ripristinato non
+  // viene subito sovrascritto; un cambio filtri successivo continua a
+  // ricalcolare i bounds normalmente (invariato).
+  const [mapViewState, setMapViewState] = useState<{ center: [number, number]; zoom: number } | null>(() => {
+    const mc = searchParams.get("mc");
+    const mz = searchParams.get("mz");
+    if (!mc || !mz) return null;
+    const [latStr, lngStr] = mc.split(",");
+    const lat = Number(latStr);
+    const lng = Number(lngStr);
+    const zoom = Number(mz);
+    if (!Number.isFinite(lat) || !Number.isFinite(lng) || !Number.isFinite(zoom)) return null;
+    return { center: [lat, lng], zoom };
+  });
+  const [hadRestoredMapView] = useState(() => Boolean(searchParams.get("mc") && searchParams.get("mz")));
+
+  // TRAMA — DISCOVERY LIVE UX BUGFIX (22/09/2026), §3. Un solo effect
+  // sincronizza TUTTO lo stato rilevante nell'URL via `router.replace`
+  // (MAI `push`): ogni cambio filtro/vista/pan-zoom sostituisce la entry di
+  // history corrente invece di impilarne una nuova — un pan/zoom quindi non
+  // genera mai "decine di history entries" (requisito esplicito). Nessun
+  // parametro scritto quando è al suo valore di default, cosi un link senza
+  // filtri resta un URL pulito "/nextgen/search" come sempre.
+  useEffect(() => {
+    const params = new URLSearchParams();
+    if (viewMode === "mappa") params.set("view", "mappa");
+    if (query) params.set("q", query);
+    if (selectedKidId) params.set("kid", selectedKidId);
+    if (selectedWeekStarts.length > 0) params.set("weeks", selectedWeekStarts.join(","));
+    if (minAge !== 0) params.set("minAge", String(minAge));
+    if (maxAge !== 18) params.set("maxAge", String(maxAge));
+    if (maxPrice !== 500) params.set("price", String(maxPrice));
+    if (zone) params.set("zona", zone);
+    if (selectedTagIds.length > 0) params.set("tags", selectedTagIds.join(","));
+    if (selectedCoverageModes.length > 0) params.set("cov", selectedCoverageModes[0]);
+    if (onlyDaySpots) params.set("spot", "1");
+    const enabledServices = (Object.keys(services) as (keyof ServiceFilters)[]).filter((k) => services[k]);
+    if (enabledServices.length > 0) params.set("svc", enabledServices.join(","));
+    // Il viewport mappa ha senso solo mentre si è in vista Mappa — evita di
+    // persistere un centro/zoom "vecchio" quando l'utente è tornato in
+    // Lista senza più toccare la mappa.
+    if (viewMode === "mappa" && mapViewState) {
+      params.set("mc", `${mapViewState.center[0]},${mapViewState.center[1]}`);
+      params.set("mz", String(mapViewState.zoom));
+    }
+    const qs = params.toString();
+    router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    viewMode,
+    query,
+    selectedKidId,
+    selectedWeekStarts,
+    minAge,
+    maxAge,
+    maxPrice,
+    zone,
+    selectedTagIds,
+    selectedCoverageModes,
+    onlyDaySpots,
+    services,
+    mapViewState,
+  ]);
 
   const compatibleRealDiscoveryLeads = useMemo(() => {
     if (realDiscoveryLeads.length === 0) return [];
@@ -488,8 +630,17 @@ export default function SearchDiscoveryClient({
     setSelectedWeekStarts((prev) => (prev.includes(start) ? prev.filter((s) => s !== start) : [...prev, start]));
   }
 
+  // TRAMA — DISCOVERY LIVE UX BUGFIX (22/09/2026), §5 "COVERAGE CONTROL —
+  // SINGLE SELECT": "Settimana intera"/"Giorni singoli"/"Entrambe" sono tre
+  // alternative dello stesso filtro, non selezioni indipendenti — prima si
+  // comportavano come chip multi-selezione (come "Tipo attività"), ora come
+  // radio: un tap su un'altra modalità sostituisce SEMPRE la selezione
+  // precedente, mai un accumulo. Un tap sulla modalità già attiva la
+  // deseleziona (torna a "nessun filtro Copertura"). Il checkbox "Solo
+  // Giorni spot disponibili ora" (onlyDaySpots) resta un refinement
+  // separato e indipendente — non toccato da questa funzione.
   function toggleCoverageMode(mode: CoverageMode) {
-    setSelectedCoverageModes((prev) => (prev.includes(mode) ? prev.filter((m) => m !== mode) : [...prev, mode]));
+    setSelectedCoverageModes((prev) => (prev.length === 1 && prev[0] === mode ? [] : [mode]));
   }
 
   // SPRINT 3 (feedback Fabrizio: "il filtro bambino potrebbe stare nella
@@ -580,7 +731,16 @@ export default function SearchDiscoveryClient({
       if (availableIdsForWeeks && a.dbId && !availableIdsForWeeks.has(a.dbId)) return false;
       if (selectedTagIds.length > 0 && !a.tagIds.some((id) => selectedTagIds.includes(id))) return false;
       if (onlyDaySpots && (!a.dbId || !daySpotsSet.has(a.dbId))) return false;
-      if (selectedCoverageModes.length > 0 && !selectedCoverageModes.includes((a.bookingMode ?? "mixed") as CoverageMode))
+      // TRAMA — DISCOVERY LIVE UX BUGFIX (22/09/2026), §4 "COVERAGE FILTER —
+      // FIX SEMANTICS": prima era un confronto di uguaglianza esclusiva
+      // (un'attività "mixed" passava SOLO il filtro "Entrambe"). Ora
+      // "mixed" soddisfa anche "Settimana intera" e "Giorni singoli" presi
+      // singolarmente — stessa funzione pura riusata dal filtro Curated
+      // (lib/discovery/real-dataset.ts#isCoverageModeCompatibleWithFilter).
+      if (
+        selectedCoverageModes.length > 0 &&
+        !selectedCoverageModes.some((m) => isCoverageModeCompatibleWithFilter((a.bookingMode ?? "mixed") as CoverageMode, m))
+      )
         return false;
       return true;
     });
@@ -663,10 +823,17 @@ export default function SearchDiscoveryClient({
               lat: item.lat,
               lng: item.lng,
               markerKind: item.kind,
-              popupContent: <DiscoveryMapPopupCard lead={item.lead} locationLabel={item.locationLabel} />,
+              popupContent: (
+                <DiscoveryMapPopupCard
+                  lead={item.lead}
+                  locationLabel={item.locationLabel}
+                  alreadyProposed={proposedLeadIds.has(item.lead.id)}
+                  onProposeClick={() => setProposeDialogLead(item.lead)}
+                />
+              ),
             }
       ),
-    [discoveryMapItems]
+    [discoveryMapItems, proposedLeadIds]
   );
 
   // §13 "MAP COUNT / MISSING GEO": il count generale (totalResultsCount,
@@ -1355,12 +1522,31 @@ export default function SearchDiscoveryClient({
               </div>
             ) : (
               <>
-                <ActivityMap items={mapMarkerItems} userPosition={geo ?? undefined} onUserPositionChange={updateUserPosition} />
-                {/* §4 "MAP LEGEND": discreta, mobile-first, solo quando sulla
-                    mappa può comparire più di un tipo di marker — nessun
+                <ActivityMap
+                  items={mapMarkerItems}
+                  userPosition={geo ?? undefined}
+                  onUserPositionChange={updateUserPosition}
+                  // TRAMA — DISCOVERY LIVE UX BUGFIX (22/09/2026), §3. Ripristina
+                  // il pan/zoom salvato (se questo caricamento pagina arriva da
+                  // un Back con `?mc=&mz=`), altrimenti comportamento invariato
+                  // (fitBounds automatico sui risultati).
+                  initialViewState={mapViewState ?? undefined}
+                  skipInitialFit={hadRestoredMapView}
+                  onViewStateChange={(center, zoom) => setMapViewState({ center, zoom })}
+                />
+                {/* TRAMA — DISCOVERY LIVE UX BUGFIX (22/09/2026), §2 "LEGEND
+                    — STABLE". PRIMA: condizionata alla presenza di almeno un
+                    marker Curated — con soli marker FULL TRAMA la legenda
+                    non compariva mai, lasciando il pallino viola senza
+                    spiegazione. ORA: mostrata sempre quando ci sono marker
+                    sulla mappa (qualunque tipo), mobile-first, nessun
                     tutorial, wording parent-friendly (mai "curated"/
-                    "source-only"/"lead"). */}
-                {mapMarkerItems.some((it) => it.markerKind === "curated_invitable" || it.markerKind === "curated_source") && (
+                    "source-only"/"lead"). Dipende solo da `mapMarkerItems`
+                    (già lo stesso result set filtrato di Lista/Mappa — §10
+                    FILTER CONSISTENCY, invariato): si aggiorna con
+                    filtro/fitBounds/apertura popup esattamente come il resto
+                    della vista Mappa, perché non ha uno stato proprio. */}
+                {mapMarkerItems.length > 0 && (
                   <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 rounded-md bg-[#F8F9FC] px-2.5 py-1.5 text-[10.5px] text-ink-2">
                     <span className="flex items-center gap-1">
                       <span className="inline-block h-2 w-2 rounded-full bg-[#6F63C5]" /> TRAMA
@@ -1438,6 +1624,19 @@ export default function SearchDiscoveryClient({
           <div className="flex flex-col gap-1">{unifiedResults.map(renderDiscoveryResult)}</div>
         )}
       </div>
+      {/* TRAMA — DISCOVERY LIVE UX BUGFIX (22/09/2026), §6. Montato UNA sola
+          volta a livello pagina, fratello della mappa — mai dentro il
+          <Popup> di Leaflet (root cause del bug "doppio tap", vedi
+          DiscoveryProposeInviteDialog.tsx). Visibile solo quando
+          `proposeDialogLead` è valorizzato (tap su "Proponi invito" in un
+          popup Mappa). */}
+      {proposeDialogLead && (
+        <DiscoveryProposeInviteDialog
+          lead={proposeDialogLead}
+          onClose={() => setProposeDialogLead(null)}
+          onProposed={(leadId) => setProposedLeadIds((prev) => new Set(prev).add(leadId))}
+        />
+      )}
     </div>
   );
 }
