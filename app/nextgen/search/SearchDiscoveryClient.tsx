@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import dynamic from "next/dynamic";
 import { Activity, Kid } from "@/lib/types";
@@ -52,6 +52,7 @@ import {
 // DiscoveryLeadCard.tsx).
 import DiscoveryMapPopupCard from "@/components/nextgen/DiscoveryMapPopupCard";
 import type { MapItem } from "@/components/ActivityMap";
+import { useSetNextgenHideFloatingControls } from "@/components/nextgen/NextgenScrollActivity";
 
 // Leaflet usa `window`, quindi la mappa va caricata solo lato client — stesso
 // pattern già usato in LEGACY (app/(main)/search/SearchClient.tsx) e nel
@@ -293,6 +294,18 @@ export default function SearchDiscoveryClient({
 
   const [openPanel, setOpenPanel] = useState<FilterPanel>(null);
   const [viewMode, setViewMode] = useState<ViewMode>("lista");
+  // TRAMA — DISCOVERY FINAL UX PASS (22/09/2026), §3 "MAP + FLOATING BUTTON
+  // OVERLAY": bell/chat non devono coprire marker/popup/attribution/zoom
+  // controls mentre l'utente interagisce con la Mappa — nascosti SOLO in
+  // quella vista (mai in Lista), ripristinati appena si lascia la vista
+  // Mappa o si lascia la pagina (cleanup dell'effect). Nessun redesign dei
+  // floating controls: si nascondono e basta, stesso pattern già usato per
+  // isScrolling.
+  const setHideFloatingControls = useSetNextgenHideFloatingControls();
+  useEffect(() => {
+    setHideFloatingControls(viewMode === "mappa");
+    return () => setHideFloatingControls(false);
+  }, [viewMode, setHideFloatingControls]);
   const [minAge, setMinAge] = useState(0);
   const [maxAge, setMaxAge] = useState(18);
   const [maxPrice, setMaxPrice] = useState(500);
@@ -825,16 +838,36 @@ export default function SearchDiscoveryClient({
             ProductStatusChip qui sopra (internal=realDiscoveryBadgeVisible),
             non da un secondo badge di sezione ormai inesistente. */}
 
-        <input
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          placeholder="Cerca per nome…"
-          // TRAMA ONE Parent Spotlight sprint (24/08/2026) — target reale
-          // dello step "search_activity" (discover_book_parent, vedi
-          // lib/walkthrough/registry.ts).
-          data-spotlight="search_bar"
-          className="mb-3 w-full rounded-xl border border-[#E8EBF0] bg-white px-3.5 py-2.5 text-sm outline-none focus:border-trama-violet"
-        />
+        {/* TRAMA — DISCOVERY FINAL UX PASS (22/09/2026), §4 "SEARCH CLEAR
+            BUTTON": contenitore relative SOLO per posizionare la X — nessun
+            altro cambiamento all'input (stessi value/onChange/placeholder/
+            data-spotlight/className di prima). La X tocca SOLO `query`:
+            nessun altro filtro (Date/Copertura/Età/Zona/Tipo attività) viene
+            mai toccato da questo bottone. */}
+        <div className="relative mb-3">
+          <input
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Cerca per nome…"
+            // TRAMA ONE Parent Spotlight sprint (24/08/2026) — target reale
+            // dello step "search_activity" (discover_book_parent, vedi
+            // lib/walkthrough/registry.ts).
+            data-spotlight="search_bar"
+            className={`w-full rounded-xl border border-[#E8EBF0] bg-white px-3.5 py-2.5 text-sm outline-none focus:border-trama-violet ${
+              query ? "pr-9" : ""
+            }`}
+          />
+          {query && (
+            <button
+              type="button"
+              onClick={() => setQuery("")}
+              aria-label="Cancella ricerca"
+              className="absolute right-2 top-1/2 flex h-6 w-6 -translate-y-1/2 items-center justify-center rounded-full text-ink-3 active:scale-90"
+            >
+              <i className="ti ti-x text-[16px]" aria-hidden="true" />
+            </button>
+          )}
+        </div>
 
         {/* SPRINT 5.7 — 6 pannelli filtro ripristinati da LEGACY (età, prezzo,
             zona+raggio, tipo attività, servizi, data), applicati come filtro
