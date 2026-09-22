@@ -14,11 +14,9 @@
 // rating; availability; posti") — nessuno di questi campi esiste qui, come
 // nella card di lista.
 
-import { useState } from "react";
 import type { DiscoveryLeadRecord } from "@/lib/discovery/real-dataset";
 import { isDiscoveryLeadInvitable, secondaryLinkLabelForLead } from "@/lib/discovery/real-dataset";
-import { logDiscoveryLeadEventAction, proposeDiscoveryLeadInviteAction } from "@/app/actions/discovery";
-import { useNextgenToast } from "@/components/nextgen/NextgenToastProvider";
+import { logDiscoveryLeadEventAction } from "@/app/actions/discovery";
 
 const CATEGORY_LABELS: Record<DiscoveryLeadRecord["category"], string> = {
   educativo: "Educativo",
@@ -43,6 +41,8 @@ function formatDateRange(startDate: string | null, endDate: string | null): stri
 export default function DiscoveryMapPopupCard({
   lead,
   locationLabel,
+  alreadyProposed,
+  onProposeClick,
 }: {
   lead: DiscoveryLeadRecord;
   // TRAMA — DISCOVERY MAP FINALIZATION (22/09/2026), §4-5 "MULTI-SEDE".
@@ -53,40 +53,33 @@ export default function DiscoveryMapPopupCard({
   // comportamento del componente invariato in quel caso (unico caso
   // esistente prima di questo pass).
   locationLabel?: string;
+  // TRAMA — DISCOVERY LIVE UX BUGFIX (22/09/2026), §6 "PROPONI INVITO FROM
+  // MAP — BUG". ROOT CAUSE del bug live ("tap Proponi invito → il popup
+  // sparisce → bisogna cliccare di nuovo il pin per vedere il dialog di
+  // conferma"): la macchina a stati "confirm/submitting/error" viveva
+  // PRIMA dentro questo componente, cioè dentro il ciclo di vita del
+  // <Popup> di Leaflet — cambiare `proposeState` a "confirm" faceva
+  // ridimensionare il contenuto del popup, e Leaflet lo richiudeva prima
+  // che l'utente potesse vedere il nuovo contenuto (il DOM del popup non è
+  // pensato per contenuti che cambiano altezza in risposta a un tap
+  // interno). FIX: il dialog di conferma ora vive a livello
+  // SearchDiscoveryClient (DiscoveryProposeInviteDialog.tsx), fuori dal
+  // <Popup> — questo componente si riduce a un semplice trigger
+  // (`onProposeClick`, fornito dal genitore) più due stati di sola LETTURA
+  // (`alreadyProposed`, anch'esso dal genitore) per la spunta "Proposta
+  // inviata"/"Hai già proposto" — nessuno stato locale che possa far
+  // ridimensionare il popup dopo un tap.
+  alreadyProposed?: boolean;
+  onProposeClick?: () => void;
 }) {
-  const showToast = useNextgenToast();
   const invitable = isDiscoveryLeadInvitable(lead);
   const secondaryLabel = secondaryLinkLabelForLead(lead);
   const ctaHref = lead.registrationUrl || lead.officialUrl;
   const age = formatAge(lead.ageMin, lead.ageMax);
   const dateRange = formatDateRange(lead.startDate, lead.endDate);
 
-  // Stessa macchina a stati (ridotta) di DiscoveryLeadCard — stessa Server
-  // Action, stesso toast, stessa copy Flow B (§14 test "Proponi invito da
-  // popup funziona se previsto").
-  type ProposeState = "idle" | "confirm" | "submitting" | "done" | "already" | "error";
-  const [proposeState, setProposeState] = useState<ProposeState>("idle");
-  const [proposeError, setProposeError] = useState<string | null>(null);
-
   function handleExternalClick() {
     void logDiscoveryLeadEventAction("curated_listing_external_clicked", lead.id);
-  }
-
-  async function handleConfirmPropose() {
-    setProposeState("submitting");
-    setProposeError(null);
-    const result = await proposeDiscoveryLeadInviteAction(lead.id, lead.organizerName, lead.comune);
-    if (result.error) {
-      setProposeState("error");
-      setProposeError(result.error);
-      return;
-    }
-    if (result.alreadyProposed) {
-      setProposeState("already");
-      return;
-    }
-    setProposeState("done");
-    showToast("Proposta inviata — abbiamo registrato il tuo interesse.");
   }
 
   return (
@@ -116,53 +109,26 @@ export default function DiscoveryMapPopupCard({
       )}
 
       <div className="mt-2 flex flex-col gap-1.5">
-        {invitable && proposeState !== "confirm" && proposeState !== "submitting" && (
+        {invitable && (
           <>
-            {proposeState === "done" ? (
-              <span className="rounded-full bg-green-light px-2.5 py-1.5 text-center text-[11px] font-semibold text-[#2d8f52]">
-                Proposta inviata
-              </span>
-            ) : proposeState === "already" ? (
+            {alreadyProposed ? (
               <span className="rounded-full bg-[#F4F6FA] px-2.5 py-1.5 text-center text-[11px] font-semibold text-ink-2">
                 Hai già proposto questo centro
               </span>
             ) : (
+              // Un solo tap: apre IMMEDIATAMENTE il dialog di conferma a
+              // livello SearchDiscoveryClient (mai uno stato "confirm"
+              // locale che richiuderebbe questo popup — vedi commento sopra
+              // su `onProposeClick`).
               <button
                 type="button"
-                onClick={() => setProposeState("confirm")}
+                onClick={onProposeClick}
                 className="rounded-full bg-trama-violet px-2.5 py-1.5 text-center text-[11px] font-semibold text-white active:scale-[0.98]"
               >
                 Proponi invito
               </button>
             )}
           </>
-        )}
-        {invitable && (proposeState === "confirm" || proposeState === "submitting" || proposeState === "error") && (
-          <div className="rounded-lg border border-[#E8EBF0] bg-bg p-2">
-            <p className="mb-1 text-[11px] font-semibold text-ink">Vuoi trovare questo centro su TRAMA?</p>
-            {proposeError && <p className="mb-1 text-[10px] font-medium text-trama-orange">{proposeError}</p>}
-            <div className="flex gap-1.5">
-              <button
-                type="button"
-                disabled={proposeState === "submitting"}
-                onClick={() => {
-                  setProposeState("idle");
-                  setProposeError(null);
-                }}
-                className="flex-1 rounded-full border border-[#E8EBF0] px-2 py-1 text-[10.5px] font-semibold text-ink-2 disabled:opacity-60"
-              >
-                Annulla
-              </button>
-              <button
-                type="button"
-                disabled={proposeState === "submitting"}
-                onClick={handleConfirmPropose}
-                className="flex-1 rounded-full bg-trama-violet px-2 py-1 text-[10.5px] font-semibold text-white disabled:opacity-60"
-              >
-                {proposeState === "submitting" ? "Invio…" : "Sì, proponilo"}
-              </button>
-            </div>
-          </div>
         )}
         <a
           href={ctaHref}
