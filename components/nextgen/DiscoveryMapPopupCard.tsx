@@ -40,7 +40,20 @@ function formatDateRange(startDate: string | null, endDate: string | null): stri
   return `${fmt(startDate)} – ${fmt(endDate)}`;
 }
 
-export default function DiscoveryMapPopupCard({ lead }: { lead: DiscoveryLeadRecord }) {
+export default function DiscoveryMapPopupCard({
+  lead,
+  locationLabel,
+}: {
+  lead: DiscoveryLeadRecord;
+  // TRAMA — DISCOVERY MAP FINALIZATION (22/09/2026), §4-5 "MULTI-SEDE".
+  // Opzionale, additivo, MAI un refactor della card (§1 FREEZE): quando un
+  // singolo lead genera più marker (vedi buildDiscoveryMapItems), ogni
+  // marker passa la propria etichetta di sede per evitare popup identici e
+  // indistinguibili su pin diversi. Assente per ogni lead a sede singola —
+  // comportamento del componente invariato in quel caso (unico caso
+  // esistente prima di questo pass).
+  locationLabel?: string;
+}) {
   const showToast = useNextgenToast();
   const invitable = isDiscoveryLeadInvitable(lead);
   const secondaryLabel = secondaryLinkLabelForLead(lead);
@@ -87,6 +100,7 @@ export default function DiscoveryMapPopupCard({ lead }: { lead: DiscoveryLeadRec
         </span>
       </div>
       <strong className="block text-[13px] text-ink">{lead.activityTitle}</strong>
+      {locationLabel && <div className="mt-0.5 text-[10.5px] font-semibold text-ink-3">📍 {locationLabel}</div>}
       {invitable && <div className="mt-0.5 text-[11px] text-ink-2">{lead.organizerName}</div>}
       {!invitable && (
         <div className="mt-0.5 text-[11px] text-ink-2">
