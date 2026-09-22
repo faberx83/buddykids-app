@@ -57,6 +57,27 @@ const curatedSourceIcon = L.divIcon({
   iconAnchor: [9, 9],
 });
 
+// TRAMA — DISCOVERY FINAL UX PASS (22/09/2026), §2 "FULL TRAMA MARKER COLOR
+// — AUDIT". ROOT CAUSE del disallineamento legend/marker: la legenda
+// (SearchDiscoveryClient.tsx) mostra un pallino viola (#6F63C5, stesso
+// colore di `selectedIcon` sopra) per "TRAMA", ma il ramo `markerKind ===
+// "partner"` qui sotto non aveva MAI un'icona dedicata — cadeva nel
+// fallback `{}` che lascia Leaflet usare la sua icona di default
+// (marker-icon.png, il classico pin BLU di Leaflet), mai stata cambiata
+// perché quell'icona di default serve ANCHE a PlannerMapView/LEGACY Cerca
+// (che non passano mai `markerKind` — vedi MapItem sopra), dove deve
+// restare esattamente com'era. Fix mirato: una nuova icona SOLO per
+// `markerKind === "partner"` (stesso viola brand della legenda e di
+// `selectedIcon`, dimensione intermedia tra le due icone Curated per
+// restare il marker "principale") — il ramo undefined/PlannerMapView
+// continua a usare il default Leaflet blu, invariato.
+const tramaPartnerIcon = L.divIcon({
+  className: "",
+  html: '<div style="width:20px;height:20px;border-radius:9999px;background:#6F63C5;border:3px solid white;box-shadow:0 2px 6px rgba(0,0,0,0.35)"></div>',
+  iconSize: [20, 20],
+  iconAnchor: [10, 10],
+});
+
 export interface MapItem {
   id: string;
   name: string;
@@ -77,6 +98,22 @@ export interface MapItem {
 
 const MILAN_FALLBACK: [number, number] = [45.4642, 9.19];
 
+// TRAMA — DISCOVERY FINAL UX PASS (22/09/2026), §6 "MAP FIT / INITIAL VIEW"
+// — AUDIT: questo componente già riceveva TUTTI i punti passati in `items`
+// (FULL TRAMA + Da invitare + Fonte pubblica indistintamente, nessun filtro
+// per tipo qui) e già ricalcolava SOLO quando l'array `points` cambia
+// valore (`JSON.stringify(points)` nelle dep — un pan/zoom manuale
+// dell'utente non tocca mai `points`, quindi non fa mai ripartire
+// `fitBounds`). L'aspetto "marker molto concentrati" negli screenshot era
+// riconducibile al layer cartografico rotto (§1, watermark "API KEY
+// REQUIRED" sopra ai tile) combinato con la reale distribuzione geografica
+// del dataset (cluster Milano + 2 lead Puglia a ~800km, che allargano
+// legittimamente i bounds quando compaiono insieme in un risultato non
+// filtrato) — non un bug di fitBounds. Unica modifica: un `maxZoom` di
+// sicurezza, cosi un cluster molto stretto (es. le 2 sedi del multi-sede
+// Municipio 7, poche centinaia di metri) non zooma MAI oltre un livello
+// leggibile, coerente con "zoom ragionevole, non eccessivo" richiesto anche
+// per il caso a un solo marker qui sotto.
 function FitBounds({ points }: { points: [number, number][] }) {
   const map = useMap();
   useEffect(() => {
@@ -85,7 +122,7 @@ function FitBounds({ points }: { points: [number, number][] }) {
       map.setView(points[0], 13);
       return;
     }
-    map.fitBounds(points, { padding: [32, 32] });
+    map.fitBounds(points, { padding: [32, 32], maxZoom: 15 });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [map, JSON.stringify(points)]);
   return null;
@@ -122,15 +159,29 @@ export default function ActivityMap({
   return (
     <div className="w-full overflow-hidden rounded-lg border border-[#E8EBF0]" style={{ height }}>
       <MapContainer center={center} zoom={12} scrollWheelZoom style={{ height: "100%", width: "100%" }}>
-        {/* Stile "light" (richiesto da Fabrizio: "le mappe si possono
-            mettere in versione light... per alleggerire la vista") — tile
-            CartoDB Positron invece dello standard OpenStreetMap: stessa
-            fonte dati, molto meno saturo/colorato, nessuna chiave API
-            richiesta (gratuito, come OSM). */}
+        {/* TRAMA — DISCOVERY FINAL UX PASS (22/09/2026), §1 "API KEY
+            REQUIRED — FIX OBBLIGATORIO". ROOT CAUSE: CARTO ha cambiato
+            policy ad agosto 2026 — basemaps.cartocdn.com (il tile
+            "light_all" usato qui) non è più anonimo/gratuito senza
+            registrazione: senza una API key ogni tile torna un watermark
+            "API KEY REQUIRED" invece della mappa reale (confermato via
+            ricerca: CARTO Basemaps FAQ + numerosi issue pubblici di altri
+            progetti Leaflet colpiti dallo stesso cambiamento). Impossibile
+            "fixare" restando su questo host senza una key.
+            FIX: sostituito con i tile Wikimedia Maps (stile "osm-intl",
+            stessa fonte dati OpenStreetMap, stile chiaro/desaturato
+            equivalente a Positron) — servizio pubblico, documentato, senza
+            API key, stesso pattern raster XYZ già in uso (nessuna nuova
+            dipendenza, nessun secret nel client, nessuna riapertura
+            dell'architettura). Attribution aggiornata secondo le linee guida
+            ufficiali Wikimedia Maps (nome del servizio + credito OSM). Se in
+            futuro serve tornare a CARTO, serve una API key CARTO Basemaps
+            (gratuita fino a 5M richieste/mese, ma da configurare come env
+            var — es. NEXT_PUBLIC_CARTO_API_KEY — MAI hardcoded nel client):
+            non implementato qui, restiamo sul provider senza key. */}
         <TileLayer
-          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
-          url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png"
-          subdomains="abcd"
+          attribution='Wikimedia maps beta | Map data &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+          url="https://maps.wikimedia.org/osm-intl/{z}/{x}/{y}{r}.png"
           maxZoom={19}
         />
         <FitBounds points={points} />
@@ -161,7 +212,9 @@ export default function ActivityMap({
                 ? { icon: curatedInvitableIcon }
                 : it.markerKind === "curated_source"
                   ? { icon: curatedSourceIcon }
-                  : {})}
+                  : it.markerKind === "partner"
+                    ? { icon: tramaPartnerIcon }
+                    : {})}
             >
               <Popup>
                 {it.popupContent ?? (
