@@ -679,13 +679,38 @@ test.describe("DISCOVERY MAP + POLISH — popup (statico sul sorgente)", () => {
 
   test("MAP-12: i marker Curated ricevono SEMPRE un popupContent dedicato (mai il fallback 'Apri scheda', che non esiste per un lead)", () => {
     const source = readSource("../../app/nextgen/search/SearchDiscoveryClient.tsx");
-    expect(source).toContain("popupContent: <DiscoveryMapPopupCard lead={item.lead} locationLabel={item.locationLabel} />");
+    expect(source).toContain("<DiscoveryMapPopupCard");
+    const block = source.slice(source.indexOf("popupContent: ("), source.indexOf("popupContent: (") + 300);
+    expect(block).toContain("lead={item.lead}");
+    expect(block).toContain("locationLabel={item.locationLabel}");
   });
 
-  test("MAP-13: il popup invitabile (DiscoveryMapPopupCard) mostra 'Proponi invito' e riusa proposeDiscoveryLeadInviteAction", () => {
+  // TRAMA — DISCOVERY LIVE UX BUGFIX (22/09/2026), §6 "PROPONI INVITO FROM
+  // MAP — BUG". MAP-13 riscritto: la chiamata alla Server Action NON vive
+  // più in DiscoveryMapPopupCard.tsx (root cause del bug "doppio tap" — vedi
+  // DiscoveryProposeInviteDialog.tsx) — il popup ora si limita a un trigger
+  // stateless (`onProposeClick`), e la Server Action vive nel nuovo dialog a
+  // livello pagina. Il vecchio asserto (call diretta nel popup) è quindi
+  // sostituito da due controlli distinti: il popup NON contiene più la
+  // action e resta un trigger puro; il dialog la contiene, riusando la
+  // STESSA firma già verificata live (nessuna duplicazione — vedi anche
+  // MAP-27 più sotto).
+  test("MAP-13: il popup invitabile (DiscoveryMapPopupCard) mostra 'Proponi invito' come trigger stateless (onProposeClick), MAI una CHIAMATA alla Server Action (il commento che la documenta è ammesso)", () => {
     const source = readSource("../../components/nextgen/DiscoveryMapPopupCard.tsx");
     expect(source).toContain("Proponi invito");
+    expect(source).toContain("onClick={onProposeClick}");
+    const codeOnly = source.replace(/\/\/.*$/gm, "").replace(/\/\*[\s\S]*?\*\//g, "");
+    // Il nome della funzione può comparire nei commenti (documentazione del
+    // fix), ma MAI come chiamata reale nel codice — solo `import`/`useState`
+    // fuori dai commenti contano come regressione.
+    expect(codeOnly).not.toContain("proposeDiscoveryLeadInviteAction");
+    expect(codeOnly).not.toContain("useState");
+  });
+
+  test("MAP-13b: il dialog di conferma (DiscoveryProposeInviteDialog) riusa la STESSA proposeDiscoveryLeadInviteAction del popup pre-fix/della card di lista", () => {
+    const source = readSource("../../components/nextgen/DiscoveryProposeInviteDialog.tsx");
     expect(source).toContain("proposeDiscoveryLeadInviteAction(lead.id, lead.organizerName, lead.comune)");
+    expect(source).toContain("Vuoi trovare questo centro su TRAMA?");
   });
 
   test("MAP-14: il popup source-only NON mostra mai il bottone 'Proponi invito' (solo dentro il ramo invitable)", () => {
@@ -714,9 +739,15 @@ test.describe("DISCOVERY MAP + POLISH — popup (statico sul sorgente)", () => {
 });
 
 test.describe("DISCOVERY MAP + POLISH — legend, empty state, count (statico sul sorgente)", () => {
+  // TRAMA — DISCOVERY LIVE UX BUGFIX (22/09/2026): il marker di commento
+  // "MAP LEGEND" (§4 del prompt originale) non esiste più nel sorgente da
+  // quando la guardia della legenda è stata riscritta (§2 "LEGEND — STABLE",
+  // pass precedente a questo) — ancorata ora alla guardia reale del blocco
+  // legenda (`{mapMarkerItems.length > 0 && (`, stessa usata da LB-01/LB-02
+  // sopra), più robusta di un commento che può essere riformulato.
   test("MAP-17: la legenda mostra i 3 wording parent-friendly richiesti, mai terminologia tecnica", () => {
     const source = readSource("../../app/nextgen/search/SearchDiscoveryClient.tsx");
-    const legendStart = source.indexOf("MAP LEGEND");
+    const legendStart = source.indexOf("{mapMarkerItems.length > 0 && (");
     const legendBlock = source.slice(legendStart, source.indexOf("MAP COUNT / MISSING GEO", legendStart));
     expect(legendBlock).toContain("TRAMA");
     expect(legendBlock).toContain("Da invitare");
@@ -820,10 +851,28 @@ test.describe("DISCOVERY MAP FINALIZATION — coverage filter semantics per Cura
     expect(isDiscoveryLeadCompatibleWithCoverage(dailyLead, { selectedCoverageModes: ["week_only"], onlyDaySpots: false })).toBe(false);
   });
 
-  test("MAP-37: bookingMode 'mixed' compatibile SOLO quando 'mixed' è esplicitamente selezionato (stessa semantica di appartenenza già usata per i Partner, mai un sottoinsieme implicito)", () => {
+  // TRAMA — DISCOVERY LIVE UX BUGFIX (22/09/2026), §4 "COVERAGE FILTER — FIX
+  // SEMANTICA". MAP-37 (versione precedente) affermava che 'mixed' fosse
+  // compatibile SOLO col filtro 'mixed' — quella era la semantica ESCLUSIVA
+  // del pass immediatamente precedente, ora corretta su richiesta esplicita
+  // di Fabrizio: 'mixed' significa "supporta sia settimana intera sia giorni
+  // singoli", quindi un'attività 'mixed' deve soddisfare ANCHE i filtri
+  // 'week_only' e 'day_only' presi singolarmente — solo il filtro 'mixed'
+  // ("Entrambe") resta esclusivo alle sole attività realmente 'mixed' (mai
+  // soddisfatto da 'week_only' o 'day_only' da soli). Sostituisce il vecchio
+  // asserto (ora sbagliato), non solo lo estende.
+  test("MAP-37: bookingMode 'mixed' è compatibile SIA col filtro 'Settimana intera' SIA col filtro 'Giorni singoli' (mixed = supporta entrambe), oltre che con 'Entrambe'", () => {
     const mixedLead = makeFakeLead({ bookingMode: "mixed" });
+    expect(isDiscoveryLeadCompatibleWithCoverage(mixedLead, { selectedCoverageModes: ["week_only"], onlyDaySpots: false })).toBe(true);
+    expect(isDiscoveryLeadCompatibleWithCoverage(mixedLead, { selectedCoverageModes: ["day_only"], onlyDaySpots: false })).toBe(true);
     expect(isDiscoveryLeadCompatibleWithCoverage(mixedLead, { selectedCoverageModes: ["mixed"], onlyDaySpots: false })).toBe(true);
-    expect(isDiscoveryLeadCompatibleWithCoverage(mixedLead, { selectedCoverageModes: ["week_only"], onlyDaySpots: false })).toBe(false);
+  });
+
+  test("MAP-37b: il filtro 'Entrambe' (mixed) è compatibile SOLO con bookingMode 'mixed' — 'weekly' e 'daily' da soli restano esclusi", () => {
+    const weeklyLead = makeFakeLead({ bookingMode: "weekly" });
+    const dailyLead = makeFakeLead({ bookingMode: "daily" });
+    expect(isDiscoveryLeadCompatibleWithCoverage(weeklyLead, { selectedCoverageModes: ["mixed"], onlyDaySpots: false })).toBe(false);
+    expect(isDiscoveryLeadCompatibleWithCoverage(dailyLead, { selectedCoverageModes: ["mixed"], onlyDaySpots: false })).toBe(false);
   });
 
   test("MAP-38: 'Solo Giorni spot disponibili ora' esclude SEMPRE ogni lead curato, qualunque sia il bookingMode (nessuna disponibilità live nota per nessun Curated)", () => {
@@ -981,6 +1030,9 @@ test.describe("DISCOVERY MAP + POLISH — card polish + regressioni cross-cuttin
       "../../components/nextgen/NotificationCenter.tsx",
       "../../components/nextgen/BetaFeedbackButton.tsx",
       "../../components/nextgen/NextgenScrollActivity.tsx",
+      // TRAMA — DISCOVERY LIVE UX BUGFIX (22/09/2026): nuovi file di questo
+      // pass, stesso controllo esteso.
+      "../../components/nextgen/DiscoveryProposeInviteDialog.tsx",
     ]) {
       const source = readSource(file).toLowerCase();
       expect(source).not.toContain("school_calendar");
@@ -988,13 +1040,21 @@ test.describe("DISCOVERY MAP + POLISH — card polish + regressioni cross-cuttin
     }
   });
 
-  test("MAP-27: il flow 'Proponi invito' verificato live resta invariato — DiscoveryLeadCard e DiscoveryMapPopupCard chiamano la STESSA Server Action, nessuna nuova scrittura", () => {
+  // TRAMA — DISCOVERY LIVE UX BUGFIX (22/09/2026), §6: dopo l'estrazione del
+  // dialog dal popup Leaflet (vedi MAP-13/MAP-13b sopra), la chiamata dal
+  // percorso Mappa vive in DiscoveryProposeInviteDialog.tsx invece che in
+  // DiscoveryMapPopupCard.tsx — stessa Server Action, stessa firma, nessuna
+  // duplicazione: solo il file che la contiene è cambiato.
+  test("MAP-27: il flow 'Proponi invito' resta lo stesso da Lista e da Mappa — DiscoveryLeadCard e DiscoveryProposeInviteDialog chiamano la STESSA Server Action, nessuna nuova scrittura", () => {
     const cardSource = readSource("../../components/nextgen/DiscoveryLeadCard.tsx");
-    const popupSource = readSource("../../components/nextgen/DiscoveryMapPopupCard.tsx");
+    const dialogSource = readSource("../../components/nextgen/DiscoveryProposeInviteDialog.tsx");
     expect(cardSource).toContain("proposeDiscoveryLeadInviteAction(lead.id, lead.organizerName, lead.comune)");
-    expect(popupSource).toContain("proposeDiscoveryLeadInviteAction(lead.id, lead.organizerName, lead.comune)");
+    expect(dialogSource).toContain("proposeDiscoveryLeadInviteAction(lead.id, lead.organizerName, lead.comune)");
     const discoveryActionSource = readSource("../../app/actions/discovery.ts");
     expect(discoveryActionSource).toContain("suggestCenterLeadAction(organizerName, comune, undefined, demandContext)");
+    // Un'unica funzione esportata `proposeDiscoveryLeadInviteAction` in tutto
+    // il file — nessuna seconda azione duplicata introdotta per la Mappa.
+    expect(discoveryActionSource.match(/export async function proposeDiscoveryLeadInviteAction/g)?.length).toBe(1);
   });
 
   test("MAP-28: ActivityMap resta retrocompatibile — markerKind/popupContent sono facoltativi, PlannerMapView non li passa e non è impattato", () => {
@@ -1034,30 +1094,41 @@ test.describe("DISCOVERY MAP + POLISH — card polish + regressioni cross-cuttin
 // ricerca. Nessuna migration, nessun tocco a School Calendar/Center
 // Leads/Proponi invito/dataset-coordinate.
 
-test.describe("DISCOVERY FINAL UX PASS — tile layer (statico sul sorgente)", () => {
-  test("UX-01: il tile layer NON punta più a basemaps.cartocdn.com (CARTO, ora richiede una API key — root cause di 'API KEY REQUIRED')", () => {
+// TRAMA — DISCOVERY LIVE UX BUGFIX (22/09/2026), §1 "MAP TILE LAYER —
+// BLOCKER". UX-01/02/03 (FINAL UX PASS precedente) asserivano Wikimedia
+// Maps (maps.wikimedia.org/osm-intl) — quel provider è stato adottato in
+// base a documentazione pubblica che si è rivelata SBAGLIATA per l'uso
+// reale: la verifica LIVE in browser (non solo statica) ha mostrato HTTP 403
+// ("Forbidden: Map tiles are restricted to Wikimedia and affiliated sites
+// only") per un sito esterno come TRAMA — root cause del basemap grigio.
+// Riscritti per il nuovo provider (tile.openstreetmap.org), VERIFICATO LIVE
+// (navigazione diretta a un tile reale → HTTP 200, PNG). Vedi il commento
+// esteso sul TileLayer in ActivityMap.tsx per la cronologia completa.
+test.describe("DISCOVERY LIVE UX BUGFIX — tile layer (statico sul sorgente + verificato live)", () => {
+  test("UX-01: il tile layer NON punta più a basemaps.cartocdn.com (CARTO, richiede una API key) né a maps.wikimedia.org (403 per siti esterni, verificato live)", () => {
     const source = readSource("../../components/ActivityMap.tsx");
-    // Il dominio vecchio può comparire nel COMMENTO che spiega la root
-    // cause/la migrazione, ma non deve mai comparire nella prop `url=` reale
-    // di un TileLayer.
     const urlLine = source.split("\n").find((l) => l.trim().startsWith("url="));
     expect(urlLine).toBeDefined();
     expect(urlLine).not.toContain("basemaps.cartocdn.com");
+    expect(urlLine).not.toContain("maps.wikimedia.org");
   });
 
-  test("UX-02: il tile layer usa un provider senza API key (Wikimedia Maps osm-intl), nessuna chiave hardcoded nel client", () => {
+  test("UX-02: il tile layer usa OpenStreetMap standard (tile.openstreetmap.org), host canonico singolo, nessuna API key/token hardcoded nel client", () => {
     const source = readSource("../../components/ActivityMap.tsx");
-    expect(source).toContain("maps.wikimedia.org/osm-intl/{z}/{x}/{y}{r}.png");
-    // Nessun parametro `key=`/`apikey=` in nessuna TileLayer url — se in
-    // futuro si tornasse a un provider con chiave, deve arrivare da env var
-    // via config server-side, mai come stringa letterale qui.
+    expect(source).toContain("https://tile.openstreetmap.org/{z}/{x}/{y}.png");
+    // Nessun parametro `key=`/`apikey=`/`token=` in nessuna TileLayer url —
+    // se in futuro si tornasse a un provider con chiave, deve arrivare da
+    // env var via config server-side, mai come stringa letterale qui.
     expect(source.toLowerCase()).not.toMatch(/[?&](api_?key|token)=/);
   });
 
-  test("UX-03: l'attribution del tile layer resta presente e corretta (OpenStreetMap + Wikimedia)", () => {
+  test("UX-03: l'attribution del tile layer resta presente e corretta (OpenStreetMap), e la Tile Usage Policy sul Referer è rispettata esplicitamente", () => {
     const source = readSource("../../components/ActivityMap.tsx");
-    expect(source).toContain("Wikimedia maps beta");
     expect(source).toContain("openstreetmap.org/copyright");
+    // La policy OSM richiede un Referer identificabile (mai "no-referrer") —
+    // reso esplicito sul TileLayer invece di affidarsi solo al default
+    // silenzioso del browser.
+    expect(source).toContain('referrerPolicy="origin"');
   });
 });
 
@@ -1156,7 +1227,7 @@ test.describe("DISCOVERY FINAL UX PASS — map fit / initial view (statico sul s
     const source = readSource("../../components/ActivityMap.tsx");
     const block = source.slice(source.indexOf("function FitBounds"), source.indexOf("export default function ActivityMap"));
     expect(block).not.toMatch(/markerKind/);
-    expect(source).toContain("<FitBounds points={points} />");
+    expect(source).toContain("<FitBounds points={points} skip={skipInitialFit} />");
     expect(source).toContain("items.map((it) => [it.lat, it.lng])");
   });
 
@@ -1190,5 +1261,184 @@ test.describe("DISCOVERY FINAL UX PASS — popup consistency (regressione static
     for (const forbidden of ["match%", "rating", "posti disponibili", "spotsleft"]) {
       expect(codeOnly).not.toContain(forbidden);
     }
+  });
+});
+
+// ============ DISCOVERY LIVE UX BUGFIX (22/09/2026) ============
+//
+// Test live dopo il FINAL UX PASS: basemap grigio (nessun tile CARTO/
+// Wikimedia visibile), legenda instabile, ritorno da dettaglio attività che
+// rompeva la Mappa (Back → Lista invece di Mappa), semantica Copertura
+// invertita per "mixed", pannello Copertura non davvero single-select,
+// "Proponi invito" da Mappa che richiedeva un doppio tap. Nessuna migration,
+// nessuna riapertura dell'architettura Discovery, nessun tocco a School
+// Calendar/External Planner Items/Center Leads, Favorites non iniziato.
+
+test.describe("DISCOVERY LIVE UX BUGFIX — legenda sempre visibile (statico sul sorgente)", () => {
+  test("LB-01: la legenda dipende SOLO da mapMarkerItems.length > 0 — mai condizionata alla presenza di marker Curated", () => {
+    const source = readSource("../../app/nextgen/search/SearchDiscoveryClient.tsx");
+    // La guardia che precede il blocco `<div className="mt-2 flex flex-wrap...">`
+    // della legenda deve essere esattamente questa — non un `.some(...)` su
+    // curated_invitable/curated_source come nel FINAL UX PASS precedente.
+    const guardIdx = source.indexOf("{mapMarkerItems.length > 0 && (");
+    expect(guardIdx).toBeGreaterThan(-1);
+    expect(source).not.toContain('mapMarkerItems.some((it) => it.markerKind === "curated_invitable" || it.markerKind === "curated_source")');
+    // La legenda deve trovarsi SUBITO dopo questa guardia (stesso blocco),
+    // non altrove nel file.
+    const afterGuard = source.slice(guardIdx, guardIdx + 400);
+    expect(afterGuard).toContain("rounded-md bg-[#F8F9FC]");
+  });
+
+  test("LB-02: la legenda vive dentro la vista Mappa, come sibling di ActivityMap — mai renderizzata anche in Lista", () => {
+    const source = readSource("../../app/nextgen/search/SearchDiscoveryClient.tsx");
+    const mapBlockStart = source.indexOf('viewMode === "mappa" ?');
+    const mapBlockEnd = source.indexOf(": totalResultsCount === 0 ?", mapBlockStart);
+    const legendGuardIdx = source.indexOf("{mapMarkerItems.length > 0 && (", mapBlockStart);
+    expect(mapBlockStart).toBeGreaterThan(-1);
+    expect(mapBlockEnd).toBeGreaterThan(mapBlockStart);
+    expect(legendGuardIdx).toBeGreaterThan(mapBlockStart);
+    expect(legendGuardIdx).toBeLessThan(mapBlockEnd);
+  });
+});
+
+test.describe("DISCOVERY LIVE UX BUGFIX — restore stato Mappa al ritorno da dettaglio (statico sul sorgente)", () => {
+  test("NAV-01: ActivityMap espone initialViewState/skipInitialFit/onViewStateChange, tutti opt-in (nessun default cambiato per PlannerMapView/LEGACY Cerca)", () => {
+    const source = readSource("../../components/ActivityMap.tsx");
+    expect(source).toContain("initialViewState?: { center: [number, number]; zoom: number }");
+    expect(source).toContain("skipInitialFit?: boolean");
+    expect(source).toContain("onViewStateChange?: (center: [number, number], zoom: number) => void");
+    const plannerSource = readSource("../../components/nextgen/PlannerMapView.tsx");
+    expect(plannerSource).not.toContain("initialViewState");
+    expect(plannerSource).not.toContain("skipInitialFit");
+  });
+
+  test("NAV-02: FitBounds salta il PRIMO fit automatico quando skip=true (ref dedicato), ma torna al comportamento normale su ogni cambio filtri successivo", () => {
+    const source = readSource("../../components/ActivityMap.tsx");
+    const block = source.slice(source.indexOf("function FitBounds"), source.indexOf("function ViewStateReporter"));
+    expect(block).toContain("const isFirstRun = useRef(true)");
+    expect(block).toContain("if (wasFirstRun && skip) return;");
+  });
+
+  test("NAV-03: ViewStateReporter riporta il centro/zoom SOLO a fine gesto (moveend/zoomend), mai su eventi continui (move/zoom)", () => {
+    const source = readSource("../../components/ActivityMap.tsx");
+    const reporterStart = source.indexOf("function ViewStateReporter");
+    const block = source.slice(reporterStart, source.indexOf("export default function ActivityMap", reporterStart));
+    expect(block).toContain("moveend:");
+    expect(block).toContain("zoomend:");
+    expect(block).not.toMatch(/\bmove:\s*\(/);
+    expect(block).not.toMatch(/\bzoom:\s*\(/);
+  });
+
+  test("NAV-04: SearchDiscoveryClient sincronizza viewMode/filtri/viewport nell'URL con router.replace (MAI router.push) — un pan/zoom non impila mai una nuova history entry", () => {
+    const source = readSource("../../app/nextgen/search/SearchDiscoveryClient.tsx");
+    expect(source).toContain("router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false })");
+    expect(source).not.toMatch(/router\.push\(/);
+  });
+
+  test("NAV-05: la sincronizzazione URL copre viewMode, query, settimane, età, zona, tag, copertura, giorni spot, servizi e viewport mappa — non solo un sottoinsieme", () => {
+    const source = readSource("../../app/nextgen/search/SearchDiscoveryClient.tsx");
+    const effectStart = source.indexOf("const params = new URLSearchParams();");
+    const effectBlock = source.slice(effectStart, source.indexOf("const qs = params.toString();"));
+    for (const setCall of [
+      'params.set("view", "mappa")',
+      'params.set("q", query)',
+      'params.set("weeks",',
+      'params.set("minAge",',
+      'params.set("maxAge",',
+      'params.set("zona", zone)',
+      'params.set("tags",',
+      'params.set("cov",',
+      'params.set("spot", "1")',
+      'params.set("svc",',
+      'params.set("mc",',
+      'params.set("mz",',
+    ]) {
+      expect(effectBlock).toContain(setCall);
+    }
+  });
+
+  test("NAV-06: viewMode/query/età/zona/settimane/copertura/giorni-spot/servizi/viewport mappa sono TUTTI seedati da searchParams al mount (lazy useState initializer) — non solo kid/week come prima di questo pass", () => {
+    const source = readSource("../../app/nextgen/search/SearchDiscoveryClient.tsx");
+    expect(source).toContain('searchParams.get("view") === "mappa"');
+    expect(source).toContain('searchParams.get("q") ?? ""');
+    expect(source).toContain('searchParams.get("minAge")');
+    expect(source).toContain('searchParams.get("maxAge")');
+    expect(source).toContain('searchParams.get("zona") ?? ""');
+    expect(source).toContain('searchParams.get("weeks")');
+    expect(source).toContain('searchParams.get("cov")');
+    expect(source).toContain('searchParams.get("spot") === "1"');
+    expect(source).toContain('searchParams.get("svc")');
+    expect(source).toContain('searchParams.get("mc")');
+    expect(source).toContain('searchParams.get("mz")');
+  });
+
+  test("NAV-07: ActivityMap in vista Mappa riceve initialViewState/skipInitialFit/onViewStateChange collegati allo stato mapViewState/hadRestoredMapView", () => {
+    const source = readSource("../../app/nextgen/search/SearchDiscoveryClient.tsx");
+    const block = source.slice(source.indexOf("<ActivityMap"), source.indexOf("<ActivityMap") + 700);
+    expect(block).toContain("initialViewState={mapViewState ?? undefined}");
+    expect(block).toContain("skipInitialFit={hadRestoredMapView}");
+    expect(block).toContain("onViewStateChange={(center, zoom) => setMapViewState({ center, zoom })}");
+  });
+
+  test("NAV-08: nessuna nuova riga DB e nessun uso REALE (fuori dai commenti) di localStorage come datastore per il restore mappa — solo URL/history state", () => {
+    const stripComments = (s: string) => s.replace(/\/\/.*$/gm, "").replace(/\/\*[\s\S]*?\*\//g, "");
+    const clientSource = stripComments(readSource("../../app/nextgen/search/SearchDiscoveryClient.tsx"));
+    const mapSource = stripComments(readSource("../../components/ActivityMap.tsx"));
+    expect(clientSource).not.toContain("localStorage");
+    expect(mapSource).not.toContain("localStorage");
+  });
+});
+
+test.describe("DISCOVERY LIVE UX BUGFIX — pannello Copertura single-select (statico sul sorgente)", () => {
+  test("COV-01: toggleCoverageMode è single-select (radio-style) — selezionare una modalità deseleziona sempre le altre, mai un multi-toggle additivo", () => {
+    const source = readSource("../../app/nextgen/search/SearchDiscoveryClient.tsx");
+    const fnStart = source.indexOf("function toggleCoverageMode");
+    expect(fnStart).toBeGreaterThan(-1);
+    const block = source.slice(fnStart, source.indexOf("}", source.indexOf("setSelectedCoverageModes", fnStart)) + 1);
+    expect(block).toContain("prev.length === 1 && prev[0] === mode ? [] : [mode]");
+    // Mai il vecchio pattern additivo (`prev.includes(mode) ? ... : [...prev, mode]`).
+    expect(block).not.toContain("...prev, mode");
+  });
+
+  test("COV-02: la checkbox indipendente 'Solo Giorni spot disponibili ora' resta separata dal gruppo radio Copertura (stato/handler distinti)", () => {
+    const source = readSource("../../app/nextgen/search/SearchDiscoveryClient.tsx");
+    expect(source).toContain("onlyDaySpots");
+    expect(source).toContain("setOnlyDaySpots");
+    // onlyDaySpots non è mai letto/scritto dentro toggleCoverageMode.
+    const fnStart = source.indexOf("function toggleCoverageMode");
+    const fnBlock = source.slice(fnStart, source.indexOf("}", source.indexOf("setSelectedCoverageModes", fnStart)) + 1);
+    expect(fnBlock).not.toContain("onlyDaySpots");
+    expect(fnBlock).not.toContain("setOnlyDaySpots");
+  });
+});
+
+test.describe("DISCOVERY LIVE UX BUGFIX — Proponi invito da Mappa, primo tap (statico sul sorgente)", () => {
+  test("PI-01: DiscoveryMapPopupCard non ha stato locale che possa far ridimensionare/richiudere il popup Leaflet dopo un tap (nessun useState, nessuna macchina a stati confirm/submitting)", () => {
+    const source = readSource("../../components/nextgen/DiscoveryMapPopupCard.tsx");
+    expect(source).not.toContain('import { useState } from "react"');
+    expect(source).not.toContain("ProposeState");
+    expect(source).not.toContain('useState<"confirm"');
+  });
+
+  test("PI-02: il dialog di conferma è montato UNA sola volta a livello SearchDiscoveryClient (fratello della mappa), non dentro il <Popup> di Leaflet", () => {
+    const source = readSource("../../app/nextgen/search/SearchDiscoveryClient.tsx");
+    expect(source).toContain("{proposeDialogLead && (");
+    const block = source.slice(source.indexOf("{proposeDialogLead && ("), source.indexOf("{proposeDialogLead && (") + 300);
+    expect(block).toContain("<DiscoveryProposeInviteDialog");
+    // Il rendering del dialog NON deve trovarsi dentro il blocco `<Popup>` di
+    // ActivityMap.tsx (verificato sul file separato, mai importato lì).
+    const mapSource = readSource("../../components/ActivityMap.tsx");
+    expect(mapSource).not.toContain("DiscoveryProposeInviteDialog");
+  });
+
+  test("PI-03: il tap su 'Proponi invito' nel marker apre il dialog IMMEDIATAMENTE (stesso evento sincrono setProposeDialogLead, nessun secondo giro di render/click)", () => {
+    const source = readSource("../../app/nextgen/search/SearchDiscoveryClient.tsx");
+    expect(source).toContain("onProposeClick={() => setProposeDialogLead(item.lead)}");
+  });
+
+  test("PI-04: alreadyProposed è derivato da proposedLeadIds (Set) e passato al popup — un lead già proposto mostra subito lo stato 'già proposto', senza richiamare il server", () => {
+    const source = readSource("../../app/nextgen/search/SearchDiscoveryClient.tsx");
+    expect(source).toContain("alreadyProposed={proposedLeadIds.has(item.lead.id)}");
+    expect(source).toContain("setProposedLeadIds((prev) => new Set(prev).add(leadId))");
   });
 });
