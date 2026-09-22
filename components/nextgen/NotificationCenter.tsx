@@ -59,7 +59,7 @@ import { readLastSeenAt, writeLastSeenAt } from "@/lib/notifications/seen-cursor
 // ricade sul default del context (isScrolling sempre false) — nessun
 // crash, nessuna regressione, semplicemente il fix non si applica lì (non
 // segnalato per quella superficie).
-import { useNextgenIsScrolling } from "@/components/nextgen/NextgenScrollActivity";
+import { useNextgenIsScrolling, useNextgenHideFloatingControls } from "@/components/nextgen/NextgenScrollActivity";
 import { floatingControlClassName } from "@/lib/nextgen/floating-controls";
 
 const BUTTON_SIZE = 52;
@@ -85,6 +85,10 @@ export default function NotificationCenter({
   const router = useRouter();
   const pathname = usePathname();
   const isScrolling = useNextgenIsScrolling();
+  // TRAMA — DISCOVERY FINAL UX PASS (22/09/2026), §3 "MAP + FLOATING BUTTON
+  // OVERLAY" — stesso principio di BetaFeedbackButton.tsx: nascosto quando
+  // la pagina lo richiede, MA mai mentre il dialog notifiche è già aperto.
+  const hideFloating = useNextgenHideFloatingControls();
   const bellRef = useRef<HTMLButtonElement>(null);
   const closeRef = useRef<HTMLButtonElement>(null);
   const [open, setOpen] = useState(false);
@@ -141,6 +145,7 @@ export default function NotificationCenter({
   // pathname non inizia mai per "/nextgen".
   if (scope === "parent" && (pathname?.startsWith("/nextgen/admin") || pathname?.startsWith("/nextgen/center")))
     return null;
+  if (hideFloating && !open) return null;
 
   async function handleItemClick(item: NotificationItem) {
     // entityId è deterministico dall'id (`${type}:${entityId}`, vedi

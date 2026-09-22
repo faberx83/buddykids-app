@@ -5,7 +5,7 @@ import { usePathname } from "next/navigation";
 import { areaLabelFromPath, centerAreaLabelFromPath } from "@/lib/nextgen/beta-feedback-areas";
 import { submitBetaFeedbackAction } from "@/app/actions/beta-feedback";
 import { useNextgenToast } from "@/components/nextgen/NextgenToastProvider";
-import { useNextgenIsScrolling } from "@/components/nextgen/NextgenScrollActivity";
+import { useNextgenIsScrolling, useNextgenHideFloatingControls } from "@/components/nextgen/NextgenScrollActivity";
 import { floatingControlClassName } from "@/lib/nextgen/floating-controls";
 
 // SPRINT 5 (NEXTGEN) — "Segnala un problema" (feedback Fabrizio: floating CTA
@@ -95,6 +95,13 @@ export default function BetaFeedbackButton({
   // tocco diretto a una riga del Planner che transita momentaneamente sotto
   // di lui — torna pienamente interattivo non appena lo scroll si ferma.
   const isScrolling = useNextgenIsScrolling();
+  // TRAMA — DISCOVERY FINAL UX PASS (22/09/2026), §3 "MAP + FLOATING BUTTON
+  // OVERLAY": nascosto quando la pagina lo richiede (oggi: solo la vista
+  // Mappa di Scopri — vedi SearchDiscoveryClient.tsx). Se un dialog era già
+  // aperto quando il flag scatta, resta visibile finché l'utente non lo
+  // chiude (`open` ha priorità) — mai un dialog che sparisce a metà
+  // interazione.
+  const hideFloating = useNextgenHideFloatingControls();
   const buttonRef = useRef<HTMLButtonElement>(null);
   const STORAGE_KEY = appSource === "gestore" ? "trama-beta-feedback-pos-gestore" : "trama-beta-feedback-pos";
   const areaLabel = appSource === "gestore" ? centerAreaLabelFromPath : areaLabelFromPath;
@@ -141,6 +148,7 @@ export default function BetaFeedbackButton({
   // condizionato esplicitamente per chiarezza a chi legge in futuro.
   if (appSource === "genitori" && (pathname?.startsWith("/nextgen/admin") || pathname?.startsWith("/nextgen/center")))
     return null;
+  if (hideFloating && !open) return null;
 
   function persist(next: Pos) {
     setPos(next);
