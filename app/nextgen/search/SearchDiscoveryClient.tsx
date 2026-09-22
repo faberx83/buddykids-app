@@ -25,6 +25,7 @@ import {
   isDiscoveryLeadCompatibleWithZoneQuery,
   isDiscoveryLeadCompatibleWithTextQuery,
   isDiscoveryLeadCompatibleWithCategoryTags,
+  isDiscoveryLeadCompatibleWithCoverage,
   sortDiscoveryLeadsForDisplay,
   type DiscoveryLeadRecord,
 } from "@/lib/discovery/real-dataset";
@@ -42,6 +43,7 @@ import {
   interleaveDiscoveryResults,
   countDiscoveryResults,
   buildDiscoveryMapItems,
+  countMappedCuratedActivities,
   type DiscoveryResult,
 } from "@/lib/discovery/result-model";
 // TRAMA — DISCOVERY MAP + POLISH (21/09/2026). Popup Mappa per i marker
@@ -354,6 +356,17 @@ export default function SearchDiscoveryClient({
   // verificata) — solo il filtro Zona testuale è supportato. Ordinamento
   // finale neutro/deterministico via sortDiscoveryLeadsForDisplay (nessun
   // rating/popolarità/disponibilità finti).
+  // Spostati sopra `compatibleRealDiscoveryLeads` (22/09/2026, §9 "COVERAGE
+  // FILTER — CORREZIONE SEMANTICA"): questi due stati erano dichiarati più
+  // sotto (dopo `radiusKm`), ma ora servono anche al filtro Curated qui
+  // sotto — nessun cambio di comportamento per il filtro Partner esistente,
+  // solo un riposizionamento delle dichiarazioni React state.
+  const [onlyDaySpots, setOnlyDaySpots] = useState(false);
+  // Fabrizio (2026-07-22): filtro "Copertura" — modalità di prenotazione
+  // supportata dall'attività (activities.booking_mode), multi-selezione come
+  // "Tipo attività" (vuoto = nessun filtro, cioè tutte le modalità).
+  const [selectedCoverageModes, setSelectedCoverageModes] = useState<CoverageMode[]>([]);
+
   const compatibleRealDiscoveryLeads = useMemo(() => {
     if (realDiscoveryLeads.length === 0) return [];
     const ranges = getSeasonWeekRanges(seasonYear);
@@ -373,25 +386,42 @@ export default function SearchDiscoveryClient({
       if (!isDiscoveryLeadCompatibleWithZoneQuery(lead, zone)) return false;
       if (!isDiscoveryLeadCompatibleWithCategoryTags(lead, selectedTagIds)) return false;
       if (!isDiscoveryLeadCompatibleWithTextQuery(lead, query)) return false;
+      // TRAMA — DISCOVERY MAP FINALIZATION (22/09/2026), §9 "COVERAGE
+      // FILTER — CORREZIONE SEMANTICA": a differenza degli altri filtri
+      // sopra, questo ORA può escludere un lead con bookingMode sconosciuto
+      // — ma SOLO quando l'utente ha attivato esplicitamente un filtro
+      // Copertura (selectedCoverageModes non vuoto o onlyDaySpots attivo).
+      // Senza filtro esplicito il comportamento resta quello di sempre
+      // (UNKNOWN passa sempre) — vedi commento sulla funzione in
+      // lib/discovery/real-dataset.ts per la motivazione completa.
+      if (!isDiscoveryLeadCompatibleWithCoverage(lead, { selectedCoverageModes, onlyDaySpots })) return false;
       return true;
     });
 
     return sortDiscoveryLeadsForDisplay(filtered);
-  }, [realDiscoveryLeads, selectedWeekStarts, seasonYear, minAge, maxAge, maxPrice, zone, selectedTagIds, query]);
+  }, [
+    realDiscoveryLeads,
+    selectedWeekStarts,
+    seasonYear,
+    minAge,
+    maxAge,
+    maxPrice,
+    zone,
+    selectedTagIds,
+    query,
+    selectedCoverageModes,
+    onlyDaySpots,
+  ]);
 
   const [radiusKm, setRadiusKm] = useState(DEFAULT_RADIUS_KM);
   // TRAMA ONE Build Sprint 3 — "Giorni spot": stesso filtro/stesso principio
   // di LEGACY (SearchClient.tsx) — "solo attività con Giorni spot
-  // disponibili", non una data precisa.
-  const [onlyDaySpots, setOnlyDaySpots] = useState(false);
+  // disponibili", non una data precisa. (onlyDaySpots/selectedCoverageModes
+  // dichiarati più sopra, vedi commento 22/09/2026 su compatibleRealDiscoveryLeads.)
   const daySpotsSet = useMemo(() => new Set(activitiesWithDaySpots), [activitiesWithDaySpots]);
   // FIX (segnalazione Fabrizio 06/09/2026, punto 1) — Set per lookup rapido,
   // stesso principio di daySpotsSet appena sopra.
   const favoriteIdsSet = useMemo(() => new Set(favoriteActivityIds), [favoriteActivityIds]);
-  // Fabrizio (2026-07-22): filtro "Copertura" — modalità di prenotazione
-  // supportata dall'attività (activities.booking_mode), multi-selezione come
-  // "Tipo attività" (vuoto = nessun filtro, cioè tutte le modalità).
-  const [selectedCoverageModes, setSelectedCoverageModes] = useState<CoverageMode[]>([]);
 
   // TRAMA ONE Build Sprint 3 — "context object" leggero: un correlationId
   // generato una volta per sessione di ricerca (stesso principio di
@@ -620,7 +650,7 @@ export default function SearchDiscoveryClient({
               lat: item.lat,
               lng: item.lng,
               markerKind: item.kind,
-              popupContent: <DiscoveryMapPopupCard lead={item.lead} />,
+              popupContent: <DiscoveryMapPopupCard lead={item.lead} locationLabel={item.locationLabel} />,
             }
       ),
     [discoveryMapItems]
@@ -630,7 +660,22 @@ export default function SearchDiscoveryClient({
   // sotto) NON cambia mai in base a quanti risultati sono mappabili — la
   // Mappa comunica la differenza con una microcopy dedicata, mai
   // silenziosamente.
-  const mappableResultsCount = mapMarkerItems.length;
+  //
+  // TRAMA — DISCOVERY MAP FINALIZATION (22/09/2026), §5 "MULTI-SEDE — TRE
+  // COUNT DISTINTI": con il multi-sede, "quanti marker ci sono" e "quante
+  // attività sono mappabili" possono differire (un'attività con 2 sedi
+  // mappate genera 2 marker ma resta 1 attività) — un unico
+  // `mappableResultsCount` confonderebbe i due concetti. Tre count distinti:
+  // - `mapMarkersCount`: numero di PIN sulla mappa (può superare il numero
+  //   di attività quando esiste multi-sede).
+  // - `mappedActivitiesCount`: numero di ATTIVITÀ (Partner + Curated) con
+  //   almeno un marker — mai il numero di marker.
+  // Il nome preesistente `mappableResultsCount` è stato sostituito ovunque
+  // da `mappedActivitiesCount` (stesso significato, nome più corretto ora
+  // che esiste anche `mapMarkersCount` — vedi uso più sotto nella
+  // microcopy Mappa e nell'empty state).
+  const mapMarkersCount = mapMarkerItems.length;
+  const mappedActivitiesCount = partnerMapItems.length + countMappedCuratedActivities(compatibleRealDiscoveryLeads);
 
   // TRAMA — DISCOVERY UNIFICATION (21/09/2026), §2-3-5 del prompt: le due
   // pipeline di filtro/scoring (filteredActivities→matches per Partner,
@@ -645,6 +690,10 @@ export default function SearchDiscoveryClient({
     () => countDiscoveryResults(matches, compatibleRealDiscoveryLeads),
     [matches, compatibleRealDiscoveryLeads]
   );
+  // §5 "MULTI-SEDE — TRE COUNT DISTINTI": alias di sola leggibilità, stesso
+  // valore di `totalResultsCount` — il numero di ATTIVITÀ trovate (Partner +
+  // Curated), mai il numero di marker. Nessun nuovo calcolo.
+  const activityResultsCount = totalResultsCount;
 
   // Senza geo attiva: un'unica lista intercalata su TUTTI i risultati.
   const unifiedResults = useMemo(
@@ -1259,7 +1308,7 @@ export default function SearchDiscoveryClient({
                 se ci sono risultati totali ma NESSUNO è mappabile, un vero
                 empty state al posto di una cartografia vuota senza
                 spiegazione — mai più "1 attività trovata" + mappa muta. */}
-            {totalResultsCount > 0 && mappableResultsCount === 0 ? (
+            {activityResultsCount > 0 && mappedActivitiesCount === 0 ? (
               <div className="flex flex-col items-center gap-3 rounded-lg border border-dashed border-[#D8DEE8] bg-white p-6 text-center">
                 <i className="ti ti-map-off text-2xl text-ink-3" />
                 <p className="text-sm text-ink-2">Nessuna di queste attività ha ancora una sede precisa sulla mappa.</p>
@@ -1294,10 +1343,23 @@ export default function SearchDiscoveryClient({
                 {/* §13 "MAP COUNT / MISSING GEO": microcopy esplicita invece
                     di un conteggio generico silenzioso quando Lista e Mappa
                     divergono. */}
-                {totalResultsCount > 0 && mappableResultsCount < totalResultsCount && (
+                {activityResultsCount > 0 && mappedActivitiesCount < activityResultsCount && (
                   <p className="pt-2 text-center text-[11px] text-ink-3">
-                    {mappableResultsCount} di {totalResultsCount} attività visibili sulla mappa — {totalResultsCount - mappableResultsCount}{" "}
-                    non {totalResultsCount - mappableResultsCount === 1 ? "ha" : "hanno"} ancora una sede precisa (visibili in Lista).
+                    {mappedActivitiesCount} di {activityResultsCount} attività visibili sulla mappa —{" "}
+                    {activityResultsCount - mappedActivitiesCount}{" "}
+                    non {activityResultsCount - mappedActivitiesCount === 1 ? "ha" : "hanno"} ancora una sede precisa (visibili in Lista).
+                  </p>
+                )}
+                {/* TRAMA — DISCOVERY MAP FINALIZATION (22/09/2026), §5
+                    "MULTI-SEDE": nota separata SOLO quando il numero di
+                    marker supera il numero di attività mappate — cioè
+                    quando almeno un'attività genera più di un pin (oggi:
+                    solo il caso Municipio 7). Mai confusa con il count
+                    principale sopra: quello parla di ATTIVITÀ, questo di
+                    SEDI/marker. */}
+                {mapMarkersCount > mappedActivitiesCount && (
+                  <p className="pt-1 text-center text-[10.5px] text-ink-3">
+                    {mapMarkersCount} sedi sulla mappa — alcune attività hanno più di un punto.
                   </p>
                 )}
               </>
