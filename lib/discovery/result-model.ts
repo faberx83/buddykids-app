@@ -116,6 +116,13 @@ export interface DiscoveryMapCuratedItem {
   lead: DiscoveryLeadRecord;
   lat: number;
   lng: number;
+  // TRAMA — DISCOVERY MAP FINALIZATION (22/09/2026), §4-5 "MULTI-SEDE".
+  // Presente SOLO quando questo marker proviene da una voce di
+  // `lead.locations[]` invece che da `lead.lat/lead.lng` direttamente —
+  // usato per distinguere in popup/legenda quale sede specifica rappresenta
+  // il marker, quando un singolo lead genera più marker. `null`/assente per
+  // ogni marker "a sede singola" (tutti gli altri record del dataset).
+  locationLabel?: string;
 }
 
 export type DiscoveryMapItem = DiscoveryMapPartnerItem | DiscoveryMapCuratedItem;
@@ -126,22 +133,56 @@ export type DiscoveryMapItem = DiscoveryMapPartnerItem | DiscoveryMapCuratedItem
  * `partnerMapItems` sono quelli già calcolati da SearchDiscoveryClient
  * (stessa logica pre-esistente: `matches` con lat/lng note, invariata) — qui
  * vengono solo ri-taggati "partner" per uniformità di tipo con i marker
- * Curated. I lead Curated senza lat/lng noti (oggi: sempre, vedi sopra)
- * vengono semplicemente esclusi, mai approssimati.
+ * Curated. I lead Curated senza lat/lng noti e senza `locations[]` con
+ * almeno una voce geocodificata vengono semplicemente esclusi, mai
+ * approssimati.
+ *
+ * MULTI-SEDE (22/09/2026): quando un lead ha `locations[]` (oggi: solo
+ * milano-centri-estivi-scuole-primarie-comunali), genera UN marker per ogni
+ * voce con lat/lng non null — mai un marker per `lead.lat/lead.lng` diretto
+ * in quel caso (evita un marker "riassuntivo" fuorviante in aggiunta alle
+ * sedi reali). Un lead SENZA `locations[]` continua a generare al massimo un
+ * marker da `lead.lat/lead.lng`, come prima. La Lista (renderDiscoveryResult
+ * in SearchDiscoveryClient.tsx) non legge mai questo array — continua a
+ * mostrare una sola card per lead, qualunque sia il numero di marker
+ * generati qui: la moltiplicazione è SOLO di presentazione-Mappa.
  */
 export function buildDiscoveryMapItems(
   partnerMapItems: { id: string; name: string; emoji: string; lat: number; lng: number }[],
   curatedLeads: DiscoveryLeadRecord[]
 ): DiscoveryMapItem[] {
   const partnerItems: DiscoveryMapItem[] = partnerMapItems.map((it) => ({ kind: "partner", ...it }));
-  const curatedItems: DiscoveryMapItem[] = curatedLeads
-    .filter((lead): lead is DiscoveryLeadRecord & { lat: number; lng: number } => lead.lat !== null && lead.lng !== null)
-    .map((lead) => ({
-      kind: isDiscoveryLeadInvitable(lead) ? "curated_invitable" : "curated_source",
-      id: lead.id,
-      lead,
-      lat: lead.lat,
-      lng: lead.lng,
-    }));
+  const curatedItems: DiscoveryMapItem[] = curatedLeads.flatMap((lead): DiscoveryMapCuratedItem[] => {
+    const kind = isDiscoveryLeadInvitable(lead) ? "curated_invitable" : "curated_source";
+    if (lead.locations && lead.locations.length > 0) {
+      return lead.locations
+        .filter((loc): loc is (typeof lead.locations)[number] & { lat: number; lng: number } => loc.lat !== null && loc.lng !== null)
+        .map((loc, index) => ({
+          kind,
+          id: `${lead.id}__${index}`,
+          lead,
+          lat: loc.lat,
+          lng: loc.lng,
+          locationLabel: loc.label,
+        }));
+    }
+    if (lead.lat === null || lead.lng === null) return [];
+    return [{ kind, id: lead.id, lead, lat: lead.lat, lng: lead.lng }];
+  });
   return [...partnerItems, ...curatedItems];
+}
+
+/**
+ * §5 del prompt "MULTI-SEDE": numero di ATTIVITÀ curate distinte con almeno
+ * un marker (mai il numero di marker — un'attività multi-sede con 2 sedi
+ * mappate conta 1, non 2). Usato per distinguere `mappedActivitiesCount` da
+ * `mapMarkersCount` in SearchDiscoveryClient.tsx.
+ */
+export function countMappedCuratedActivities(curatedLeads: DiscoveryLeadRecord[]): number {
+  return curatedLeads.filter((lead) => {
+    if (lead.locations && lead.locations.length > 0) {
+      return lead.locations.some((loc) => loc.lat !== null && loc.lng !== null);
+    }
+    return lead.lat !== null && lead.lng !== null;
+  }).length;
 }
