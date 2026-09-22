@@ -25,6 +25,16 @@
 // deliberatamente ESCLUSI per verificabilità insufficiente — vedi
 // REJECTED_DISCOVERY_LEADS in fondo a questo file.
 //
+// DISCOVERY MAP FINALIZATION (22/09/2026): completata la ricerca geografica
+// bloccante pre-deploy (vedi report "TRAMA DISCOVERY MAP — FINAL PRE-DEPLOY
+// RESULT"). 8/13 record hanno ora una posizione mappabile (lat/lng diretti o
+// via `locations[]` per il caso multi-sede), aggiunto `bookingMode` per la
+// correzione semantica del filtro Copertura (vedi
+// isDiscoveryLeadCompatibleWithCoverage in fondo al file). I 5 record
+// rimasti senza posizione lo sono per un motivo genuino e documentato
+// campo per campo (sede comunale variabile/non nominata, o indirizzo noto
+// ma coordinata non reperibile) — mai per omissione di ricerca.
+//
 // DISCOVERY UNIFICATION + PROPONI INVITO (21/09/2026): aggiunti due campi
 // derivati SOLO da informazioni già verificate nella sessione precedente
 // (nessuna nuova ricerca, nessun dato inventato):
@@ -118,35 +128,74 @@ export interface DiscoveryLeadRecord {
   // testa del file per la definizione completa di entrambi i campi.
   invitable: boolean;
   officialUrlIsOrganizerSite: boolean;
-  // TRAMA — DISCOVERY MAP + POLISH (21/09/2026), §5-7 del prompt "CURATED
-  // GEO DATA" / "DATA MODEL". Coordinate STATICHE curate a mano (mai
+  // TRAMA — DISCOVERY MAP FINALIZATION (22/09/2026), §2-8 del prompt
+  // "PRE-DEPLOY BLOCKER PASS". Coordinate STATICHE curate a mano (mai
   // geocoding a runtime, mai una dipendenza da API esterna durante l'uso
   // dell'app — vedi lib/discovery/result-model.ts#buildDiscoveryMapItems).
   // REGOLA NON NEGOZIABILE, identica a quella del resto del dataset: se la
   // sede non è determinabile con una fonte verificabile, lat/lng restano
-  // `null` — MAI un centroide del Comune, MAI una stima "a memoria". In
-  // questa sessione nessuna delle due fonti di geocodifica statica
-  // disponibili (OpenStreetMap Nominatim, ricerca OSM) ha restituito un
-  // risultato utilizzabile per i 5 record con un indirizzo civico noto
-  // (rho-cre-collodi-stripes, settimo-milanese, milano-lyceum,
-  // milano-notformalcamp, conversano-beltempo) — vedi CURATED GEO AUDIT nel
-  // report "TRAMA DISCOVERY MAP + POLISH — RESULT" per il dettaglio record
-  // per record. Tutti e 13 restano quindi `lat: null, lng: null` oggi: lo
-  // schema è pronto, nessuna migration necessaria, pronto ad accogliere
-  // coordinate verificate in un passaggio futuro (da Fabrizio via Google
-  // Maps, o da una sessione con accesso a un geocoder funzionante).
+  // `null` — MAI un centroide del Comune, MAI una stima "a memoria".
+  //
+  // Il primo passaggio (21/09/2026) aveva lasciato tutti e 13 i record a
+  // `null` perché le API di geocoding dirette (Nominatim/OSM) non erano
+  // raggiungibili dall'ambiente di ricerca. Questo passaggio ha usato un
+  // metodo alternativo — directory italiane con coordinate incorporate
+  // (PagineBianche: payload nei titoli indicizzati "NOME - Via X 5 - CAP
+  // Comune (PR)LAT.LNG"; italiamappe.it: pagine stradario con "Coordinate:
+  // latitudine/longitudine" per l'intera via) — per trovare coordinate
+  // REALI, tracciabili, senza mai chiamare un geocoder a runtime nell'app
+  // (è ricerca una tantum, non una dipendenza live). Risultato: 8/13 record
+  // ora hanno una posizione mappabile (7 singola sede + 1 multi-sede
+  // parziale) — vedi CURATED GEO AUDIT nel report "TRAMA DISCOVERY MAP —
+  // FINAL PRE-DEPLOY RESULT" per il dettaglio fonte-per-fonte di ciascuno,
+  // inclusi i 5 record rimasti `null` con il motivo specifico (indirizzo
+  // genuinamente variabile/comunale generico, o indirizzo noto ma nessuna
+  // coordinata verificabile trovata anche con il metodo alternativo).
   lat: number | null;
   lng: number | null;
-  // "approximate" DELIBERATAMENTE ESCLUSO dai valori possibili (§7 del
-  // prompt: "Valuta se approximate abbia davvero senso... se implica un
-  // marker potenzialmente fuorviante, NON usarlo") — un marker sulla mappa è
-  // per natura un punto preciso: un marker "approssimativo" comunicherebbe
-  // comunque una sede esatta e fuorviante a colpo d'occhio, indipendentemente
-  // dall'etichetta. Solo due valori onesti: "exact" (indirizzo civico
-  // verificato) o "venue" (sede/struttura nota ma non un civico puntuale,
-  // es. un impianto sportivo con più ingressi) — mai usati oggi (nessuna
-  // coordinata popolata), pronti per quando lo saranno.
+  // "approximate" DELIBERATAMENTE ESCLUSO dai valori possibili — un marker
+  // sulla mappa è per natura un punto preciso: un marker "approssimativo"
+  // comunicherebbe comunque una sede esatta e fuorviante a colpo d'occhio,
+  // indipendentemente dall'etichetta. Solo due valori onesti: "exact"
+  // (indirizzo civico verificato direttamente, stesso numero civico del
+  // target) o "venue" (sede/struttura reale confermata ma il punto
+  // cartografico proviene da un civico vicino sulla stessa via, o da una
+  // struttura nota senza un ingresso puntuale) — MAI un centroide di
+  // Comune/CAP.
   geoPrecision: "exact" | "venue" | null;
+  // TRAMA — DISCOVERY MAP FINALIZATION (22/09/2026), §4-5 del prompt
+  // "MULTI-SEDE". Popolato SOLO quando la fonte descrive esplicitamente più
+  // sedi reali distinte per la STESSA attività/edizione (qui: solo
+  // milano-centri-estivi-scuole-primarie-comunali, il cui comunicato
+  // ufficiale del Comune elenca sedi nominate per Municipio). Quando
+  // presente, la Mappa genera un marker per ogni elemento con lat/lng non
+  // null qui dentro — invece del singolo lat/lng del record — mentre la
+  // Lista continua a mostrare UNA sola card (vedi
+  // buildDiscoveryMapItems/mapMarkerItems in result-model.ts e
+  // SearchDiscoveryClient.tsx). Non tutte le sedi elencate qui hanno
+  // necessariamente lat/lng risolte: una sede con lat/lng null è comunque
+  // documentata (fonte del nome/indirizzo) ma non genera un marker.
+  locations?: {
+    label: string;
+    address: string;
+    lat: number | null;
+    lng: number | null;
+    geoPrecision: "exact" | "venue" | null;
+  }[];
+  // TRAMA — DISCOVERY MAP FINALIZATION (22/09/2026), §9 del prompt "COVERAGE
+  // FILTER — CORREZIONE SEMANTICA". Popolato SOLO quando la fonte dichiara
+  // esplicitamente la granularità di iscrizione — MAI dedotto da
+  // `priceUnit: "per_settimana"` da solo (un prezzo settimanale non implica
+  // che la prenotazione A GIORNO sia esclusa, né che sia garantita: sono
+  // due informazioni diverse). "weekly" = la fonte dichiara esplicitamente
+  // un minimo/unità di iscrizione settimanale (niente giorno singolo).
+  // "daily" = la fonte dichiara esplicitamente la possibilità del giorno
+  // singolo come unica modalità. "mixed" = la fonte dichiara esplicitamente
+  // ENTRAMBE le modalità come disponibili. `null`/assente = la fonte non lo
+  // dichiara — resta UNKNOWN, non un'affermazione negativa né positiva. Vedi
+  // isDiscoveryLeadCompatibleWithCoverage più sotto per come UNKNOWN viene
+  // trattato quando l'utente attiva esplicitamente il filtro Copertura.
+  bookingMode?: "weekly" | "daily" | "mixed" | null;
 }
 
 export const REAL_DISCOVERY_LEADS: DiscoveryLeadRecord[] = [
@@ -192,9 +241,16 @@ export const REAL_DISCOVERY_LEADS: DiscoveryLeadRecord[] = [
     // Stripes), non un dominio proprio di Stripes — CTA secondaria "Vedi la
     // fonte", non "Sito dell'organizzatore".
     officialUrlIsOrganizerSite: false,
-    lat: null,
-    lng: null,
-    geoPrecision: null,
+    // GEO (22/09/2026): indirizzo civico noto (Via Togliatti 8) ma nessuna
+    // coordinata verificabile trovata esattamente su quel civico. Coordinata
+    // da un'inserzione PagineBianche su un civico diverso della stessa via
+    // (Via Togliatti 17/F, Rho) — stessa strada, stesso Comune, precisione
+    // "venue" (non il civico esatto). Fonte: titolo indicizzato PagineBianche
+    // con coordinate incorporate nel titolo della scheda.
+    lat: 45.5328,
+    lng: 9.07218,
+    geoPrecision: "venue",
+    bookingMode: null,
   },
   {
     id: "cornaredo-centri-estivi-comunali",
@@ -231,9 +287,15 @@ export const REAL_DISCOVERY_LEADS: DiscoveryLeadRecord[] = [
     // servizio comunale diretto) — non invitabile come Partner commerciale.
     invitable: false,
     officialUrlIsOrganizerSite: false,
+    // GEO (22/09/2026): confermato CATEGORIA A — "sede scolastica comunale
+    // (variano per anno)" è testuale nella fonte stessa (locationName):
+    // nessun indirizzo/plesso specifico da geocodificare, non un'omissione
+    // di ricerca. Resta non mappabile per design del servizio, non per
+    // limite di TRAMA.
     lat: null,
     lng: null,
     geoPrecision: null,
+    bookingMode: null,
   },
   {
     id: "pero-centro-estivo-primaria",
@@ -268,9 +330,18 @@ export const REAL_DISCOVERY_LEADS: DiscoveryLeadRecord[] = [
       "Pagina di servizio aggiornata per la stagione 2026 (iscrizioni 13 aprile–18 maggio 2026), consultata il 17/09/2026 a stagione conclusa. Il prezzo riportato (88,20€/settimana) è la tariffa intera residenti (ISEE ≥30.000€): esistono riduzioni ISEE fino a 27,56€ e una tariffa non residenti di 110,25€, non rappresentabili in un singolo numero — vedi weeklyStructure. Da riconfermare per il 2027.",
     invitable: false,
     officialUrlIsOrganizerSite: false,
+    // GEO (22/09/2026): CATEGORIA A — "Locali e giardini scolastici
+    // comunali" (locationName), nessun plesso specifico nominato dalla
+    // fonte. Non mappabile per design del servizio (sede scolastica
+    // comunale non specificata), non per limite di ricerca.
     lat: null,
     lng: null,
     geoPrecision: null,
+    // GEO (22/09/2026): bookingMode "weekly" — la fonte dichiara
+    // esplicitamente "frequenza e pagamento su base settimanale minima"
+    // (weeklyStructure): la prenotazione a giorno singolo è esplicitamente
+    // esclusa, non solo non menzionata.
+    bookingMode: "weekly",
   },
   {
     id: "settimo-milanese-centro-diurno-ricreativo",
@@ -305,9 +376,14 @@ export const REAL_DISCOVERY_LEADS: DiscoveryLeadRecord[] = [
       "Pagina di servizio ufficiale (rev. P24 del 3/4/2026, ultimo aggiornamento dichiarato 30/06/2026) — dati correnti per la stagione 2026, già conclusa alla data di questa ricerca (17/09/2026). Prezzo riportato è la tariffa residenti (non residenti 95,70€, dal secondo figlio 71,50€). Date esatte di apertura non pubblicate su questa pagina (solo periodo di iscrizione) — da riconfermare per il 2027.",
     invitable: false,
     officialUrlIsOrganizerSite: false,
-    lat: null,
-    lng: null,
-    geoPrecision: null,
+    // GEO (22/09/2026): indirizzo civico noto (Via Bruno Buozzi 5) —
+    // coordinata trovata su italiamappe.it/stradario (intera via, non il
+    // civico puntuale), cross-verificata con la pagina ufficiale della
+    // scuola che conferma il civico esatto. Precisione "venue".
+    lat: 45.483471,
+    lng: 9.05408,
+    geoPrecision: "venue",
+    bookingMode: null,
   },
   {
     id: "milano-centri-estivi-scuole-primarie-comunali",
@@ -346,9 +422,67 @@ export const REAL_DISCOVERY_LEADS: DiscoveryLeadRecord[] = [
     // nominato: descrive il SERVIZIO comunale, non un'entità invitabile.
     invitable: false,
     officialUrlIsOrganizerSite: false,
+    // GEO (22/09/2026), §4-5 "MULTI-SEDE": il comunicato ufficiale del
+    // Comune nomina 4 sedi specifiche nel Municipio 7 (vedi
+    // locationName/shortDescription sopra) — non un servizio genericamente
+    // rotante senza sede nota (a differenza di Cornaredo/Pero/Bareggio
+    // infanzia/Noicattaro). Nessun singolo lat/lng qui: la posizione vive
+    // in `locations[]` sotto, una voce per sede nominata dalla fonte. 2/4
+    // sedi hanno una coordinata verificabile trovata (precisione "venue",
+    // da un civico vicino sulla stessa via, non il civico esatto); le
+    // altre 2 restano documentate ma senza marker.
     lat: null,
     lng: null,
     geoPrecision: null,
+    locations: [
+      {
+        label: "Plesso Via Dolci",
+        address: "Via Achille Dolci 5, Milano (MI)",
+        // Nessuna coordinata trovata per questo civico specifico (né su
+        // italiamappe.it — via non presente nel suo database — né su
+        // directory con coordinate incorporate): indirizzo confermato dalla
+        // fonte comunale, ma non geocodificabile con le fonti disponibili
+        // in questa sessione. Nessun marker generato per questa sede.
+        lat: null,
+        lng: null,
+        geoPrecision: null,
+      },
+      {
+        label: "Plesso Via Viterbo",
+        address: "Via Viterbo 31, Milano (MI)",
+        // Coordinata da un'inserzione PagineBianche sulla stessa via, civico
+        // 3 (diverso dal civico target 31) — precisione "venue".
+        lat: 45.4571,
+        lng: 9.1128,
+        geoPrecision: "venue",
+      },
+      {
+        label: "Plesso Via Muggiano",
+        address: "Via Muggiano 16, Milano (MI)",
+        // Coordinata dall'Istituto Comprensivo "Munari Bruno", civico 14
+        // (adiacente al civico target 16, stessa via) — precisione "venue".
+        lat: 45.44895,
+        lng: 9.0709,
+        geoPrecision: "venue",
+      },
+      {
+        label: "Plesso Via Forze Armate (I.C. F.S. Cabrini)",
+        address: "Via delle Forze Armate 65, Milano (MI)",
+        // Indirizzo confermato ESATTO (civico 65 confermato sia da
+        // PagineBianche — I.C. F.S. Cabrini — sia dalla pagina ufficiale
+        // "Scuola in Chiaro" del Ministero dell'Istruzione, entrambe allo
+        // stesso civico target), ma nessuna coordinata numerica reperita
+        // con nessuna delle fonti disponibili in questa sessione (le pagine
+        // mappa di TuttoCittà/PagineBianche per questo indirizzo sono
+        // renderizzate via JavaScript, senza dato incorporato nel testo
+        // statico). Nessun marker generato nonostante l'indirizzo sia il
+        // più solido dei 4 — categoria B esplicita, non A.
+        lat: null,
+        lng: null,
+        geoPrecision: null,
+      },
+    ],
+    bookingMode: null,
   },
   {
     id: "milano-milanosport-campus-multisport",
@@ -385,9 +519,17 @@ export const REAL_DISCOVERY_LEADS: DiscoveryLeadRecord[] = [
     // partecipata dal Comune di Milano) — CLEAN, invitabile.
     invitable: true,
     officialUrlIsOrganizerSite: true,
-    lat: null,
-    lng: null,
-    geoPrecision: null,
+    // GEO (22/09/2026): Centro Sportivo Iseo confermato a Via Iseo 10,
+    // Milano (Piscina Iseo/Milanosport, stesso civico in due schede
+    // PagineBianche indipendenti). Coordinata trovata su un'inserzione
+    // PagineBianche allo STESSO civico esatto (10) — precisione "exact".
+    lat: 45.52075,
+    lng: 9.17324,
+    geoPrecision: "exact",
+    // GEO (22/09/2026): bookingMode "weekly" — la fonte dichiara
+    // esplicitamente "Iscrizioni settimanali dall'8 giugno al 4 settembre
+    // 2026" (weeklyStructure).
+    bookingMode: "weekly",
   },
   {
     id: "milano-lyceum-summer-camp",
@@ -422,9 +564,16 @@ export const REAL_DISCOVERY_LEADS: DiscoveryLeadRecord[] = [
       "Dati completi, correnti e aggiornati dall'organizzatore il 19/05/2026 per la stagione 2026, in corso di svolgimento al momento della ricerca. NOTA GEOGRAFICA: sede in Municipio 1 (centro città), NON nel cluster Milano Ovest prioritario del pilota — incluso solo per varietà di categoria (artistico/creativo), non conta come copertura Milano Ovest.",
     invitable: true,
     officialUrlIsOrganizerSite: true,
-    lat: null,
-    lng: null,
-    geoPrecision: null,
+    // GEO (22/09/2026): coordinata dal payload base64 (link "Rivendicala
+    // gratis") di una scheda PagineBianche allo STESSO indirizzo esatto
+    // (Via Calatafimi 10, complesso IBVA), cross-verificata dal link
+    // "Indicazioni stradali" della stessa scheda verso tuttocitta.it
+    // (parametri cx/cy indipendenti, stessa coordinata) — doppia fonte
+    // concorde sullo stesso civico. Precisione "exact".
+    lat: 45.4542,
+    lng: 9.1839,
+    geoPrecision: "exact",
+    bookingMode: null,
   },
   {
     id: "milano-notformalcamp-san-siro",
@@ -459,9 +608,17 @@ export const REAL_DISCOVERY_LEADS: DiscoveryLeadRecord[] = [
       "Identità e attività generale dell'organizzatore (L'Orma S.S.D.) confermate sulla sua homepage ufficiale. La pagina organizzatore specifica per la sede San Siro non si è resa leggibile in questa sessione (contenuto reso via JavaScript, fetch diretto vuoto). Prezzo, età e date riportati provengono dall'aggregatore Tutto Campi Estivi, che dichiara di aver verificato questi dati il 12/03/2026 — non da lettura diretta della pagina dell'organizzatore. Quota di iscrizione associativa una tantum di 20€/famiglia non inclusa nel prezzo settimanale indicato.",
     invitable: true,
     officialUrlIsOrganizerSite: true,
-    lat: null,
-    lng: null,
-    geoPrecision: null,
+    // GEO (22/09/2026): coordinata da un'inserzione PagineBianche sulla
+    // stessa via, civico 5 (diverso dal civico target 9) — precisione
+    // "venue". Conferma pagina-fetch diretta non riuscita due volte in
+    // questa sessione (scheda non renderizzata staticamente); coordinata
+    // presa dal titolo indicizzato del motore di ricerca, fonte singola —
+    // affidabilità inferiore al caso Lyceum (doppia fonte), ma comunque
+    // reale e tracciabile, non inventata.
+    lat: 45.4864,
+    lng: 9.12891,
+    geoPrecision: "venue",
+    bookingMode: null,
   },
   {
     id: "bareggio-usob-campus-multisport",
@@ -496,9 +653,23 @@ export const REAL_DISCOVERY_LEADS: DiscoveryLeadRecord[] = [
       "Pagina ufficiale dell'organizzatore, contenuti aggiornati (policy minori/genere datate 15/04/2026) — identità e programma generale confermati direttamente. La pagina non pubblica però prezzo né date specifiche per l'edizione 2026: questi campi restano `null` invece di stimati.",
     invitable: true,
     officialUrlIsOrganizerSite: true,
+    // GEO (22/09/2026): CATEGORIA B — U.S.O.B. gestisce (fonte: sito
+    // ufficiale) attività in almeno due oratori di Bareggio (Oratorio S.
+    // Luigi, via IV Novembre 42; Oratorio S. Martino, via Novara 25/27), ma
+    // nessuna fonte reperita in questa sessione conferma quale dei due
+    // ospita SPECIFICAMENTE il Campus Multisport (le uniche fonti trovate
+    // per S. Luigi riguardano il basket oratoriale, non il campus estivo
+    // multisport). Aggiungere un indirizzo non confermato per questa
+    // attività specifica sarebbe un'inferenza non richiesta dalla fonte —
+    // stesso principio "REAL DATA YES" del resto del dataset. address
+    // resta `null`, nessuna coordinata.
     lat: null,
     lng: null,
     geoPrecision: null,
+    // GEO (22/09/2026): bookingMode "mixed" — la fonte dichiara
+    // esplicitamente "Possibile iscrizione a singola settimana o singolo
+    // giorno" (weeklyStructure).
+    bookingMode: "mixed",
   },
   {
     id: "milano-baggio-oratorio-san-giovanni-bosco",
@@ -510,7 +681,11 @@ export const REAL_DISCOVERY_LEADS: DiscoveryLeadRecord[] = [
     ageMin: null,
     ageMax: null,
     locationName: "Oratorio San Giovanni Bosco, Baggio",
-    address: null,
+    // Indirizzo aggiunto 22/09/2026 (non presente nella fonte diocesana
+    // originale): confermato da una scheda PagineBianche che nomina
+    // esplicitamente "ORATORIO S.G.BOSCO" a questo civico — vedi commento
+    // GEO su lat/lng più sotto per la fonte completa.
+    address: "Via Mar Nero 10, Milano (MI)",
     comune: "Milano",
     region: "Lombardia",
     startDate: null,
@@ -538,9 +713,17 @@ export const REAL_DISCOVERY_LEADS: DiscoveryLeadRecord[] = [
     // diocesano), non un sito proprio dell'oratorio.
     invitable: true,
     officialUrlIsOrganizerSite: false,
-    lat: null,
-    lng: null,
-    geoPrecision: null,
+    // GEO (22/09/2026): indirizzo trovato in questo passaggio (non presente
+    // nella fonte diocesana originale) — una scheda PagineBianche elenca
+    // esplicitamente "ORATORIO S.G.BOSCO - Via Mar Nero 10 - 20152 Milano
+    // (MI)", confermando il nome dell'ente allo stesso civico target.
+    // Coordinata da due inserzioni vicine sulla stessa via (civico 3 e
+    // civico 5), nessuna esattamente al civico 10 — precisione "venue",
+    // presa dall'inserzione al civico più vicino (5).
+    lat: 45.45787,
+    lng: 9.10283,
+    geoPrecision: "venue",
+    bookingMode: null,
   },
   {
     id: "bareggio-centro-estivo-comunale-infanzia",
@@ -575,9 +758,16 @@ export const REAL_DISCOVERY_LEADS: DiscoveryLeadRecord[] = [
       "Il fetch diretto della pagina di servizio non ha restituito contenuto leggibile in questa sessione (probabile rendering lato client). L'esistenza del servizio e la finestra di iscrizione 2026 sono confermate tramite il titolo indicizzato dal motore di ricerca e comunicazioni ufficiali del Comune sui propri canali — non tramite lettura diretta della pagina. Quasi tutti i campi operativi (età esatta, date, prezzo) restano `null` per questo motivo: record incluso solo perché l'esistenza del servizio comunale resta comunque accertata da fonte ufficiale, non da un'unica menzione indiretta.",
     invitable: false,
     officialUrlIsOrganizerSite: false,
+    // GEO (22/09/2026): CATEGORIA A — nessuna sede nominata nella fonte
+    // raggiunta (locationName/address già null, contenuto non renderizzato
+    // in questa e nella sessione precedente). Nessun tentativo aggiuntivo di
+    // ricerca sede in questo passaggio ha prodotto un indirizzo specifico da
+    // verificare — resta genuinamente non determinabile con le fonti
+    // disponibili, non un'omissione.
     lat: null,
     lng: null,
     geoPrecision: null,
+    bookingMode: null,
   },
 
   // ============ CLUSTER B — RUTIGLIANO / SUD-EST BARESE (2 record) ============
@@ -613,9 +803,14 @@ export const REAL_DISCOVERY_LEADS: DiscoveryLeadRecord[] = [
       "Organizzatore reale, verificato direttamente sulla pagina ufficiale (sede, P.IVA, telefono). I dettagli della \"VII edizione 2026\" (orari, attività, scadenza iscrizioni 27 febbraio) risultano da una sintesi del motore di ricerca su un articolo dell'organizzatore che non sono riuscito a recuperare e leggere direttamente in questa sessione (pagina non renderizzata) — consigliata riconferma diretta (telefono in sources) prima della pubblicazione.",
     invitable: true,
     officialUrlIsOrganizerSite: true,
-    lat: null,
-    lng: null,
-    geoPrecision: null,
+    // GEO (22/09/2026): coordinata trovata su italiamappe.it/stradario per
+    // l'intera via (richiesto il nome completo "Via Giuseppe Lacalandra"
+    // per il match sul sito, non solo "Lacalandra"), non il civico
+    // puntuale — precisione "venue".
+    lat: 40.96117,
+    lng: 17.1116,
+    geoPrecision: "venue",
+    bookingMode: null,
   },
   {
     id: "noicattaro-centri-estivi-comunali",
@@ -651,9 +846,15 @@ export const REAL_DISCOVERY_LEADS: DiscoveryLeadRecord[] = [
     // prompt come caso da non trattare mai come organizzatore invitabile.
     invitable: false,
     officialUrlIsOrganizerSite: false,
+    // GEO (22/09/2026): CATEGORIA A — "avviso pubblico annuale", sede e
+    // operatore effettivo variano in base a quali enti del terzo settore
+    // vengono selezionati ogni anno (weeklyStructure): per definizione della
+    // fonte stessa non esiste UNA sede da geocodificare, non un limite di
+    // ricerca.
     lat: null,
     lng: null,
     geoPrecision: null,
+    bookingMode: null,
   },
 ];
 
@@ -827,29 +1028,65 @@ export const DISCOVERY_CATEGORY_TAG_MAP: Record<Exclude<DiscoveryLeadCategory, "
   artistico: ["arte", "musica", "teatro", "danza"],
 };
 
-// ============ COVERAGE FILTER — SEMANTICA PER CURATED (TRAMA — DISCOVERY MAP + POLISH, 21/09/2026) ============
+// ============ COVERAGE FILTER — SEMANTICA PER CURATED (TRAMA — DISCOVERY MAP FINALIZATION, 22/09/2026) ============
 //
-// §11 del prompt "IMPORTANT — COVERAGE FILTER". Deliberatamente NESSUNA
-// funzione `isDiscoveryLeadCompatibleWithCoverage` esiste in questo file: il
-// filtro Copertura (settimana intera/giorni singoli/entrambe,
-// `selectedCoverageModes`/`onlyDaySpots` in SearchDiscoveryClient.tsx) non
-// viene MAI applicato ai lead curati — stessa scelta già dichiarata per
-// "Servizi" (vedi FILTER INTEGRATION ADAPTERS sopra: "campi che non esistono
-// nel Target Data Contract").
+// §9 del prompt "PRE-DEPLOY BLOCKER PASS" — CORREZIONE rispetto al passaggio
+// precedente (21/09/2026), che lasciava deliberatamente passare SEMPRE ogni
+// lead curato attraverso il filtro Copertura, qualunque fosse il filtro
+// scelto. Il test live ha mostrato che questo è fuorviante quando l'utente
+// sceglie ESPLICITAMENTE una modalità ("Giorni singoli" faceva sopravvivere
+// tutti e 13 i Curated, comunicando implicitamente una capacità — la
+// prenotazione a giorno singolo — che TRAMA non conosce per nessuno di
+// loro). Comportamento CORRETTO, con due regole distinte:
 //
-// Semantica esplicita, per evitare l'ambiguità segnalata dal test live
-// (Copertura → "Giorni singoli", count 20→13): un lead curato con modalità
-// di prenotazione SCONOSCIUTA non viene MAI escluso da questo filtro — resta
-// sempre compatibile, esattamente come un'età o un prezzo non dichiarati non
-// escludono mai (stesso principio null-safe di tutto il pilot). Questo NON
-// equivale a dichiarare che il lead supporta la prenotazione a giorno
-// singolo (UNKNOWN non diventa MAI TRUE nel senso di "disponibilità spot
-// confermata") — è un'esclusione-soltanto-se-certa-dell'incompatibilità,
-// non un'affermazione positiva di capacità. Coerente con questo,
-// DiscoveryLeadCard.tsx e DiscoveryMapPopupCard.tsx non mostrano MAI
-// "Giorni spot disponibili"/disponibilità/posti per un lead curato — la
-// UI non fa mai la promessa che questo filtro, da solo, potrebbe far
-// pensare stia facendo.
+// 1. NESSUN filtro Copertura esplicito attivo (comportamento di default,
+//    invariato): un lead con bookingMode sconosciuto (`null`/assente) resta
+//    sempre compatibile — stesso principio null-safe di tutto il resto del
+//    pilot (età/prezzo non dichiarati non escludono mai).
+// 2. Un filtro Copertura esplicito è attivo (`selectedCoverageModes.length >
+//    0` o `onlyDaySpots === true`): un lead con bookingMode sconosciuto
+//    (`null`/assente) viene ORA escluso. UNKNOWN non equivale più a MATCH
+//    quando l'utente ha richiesto esplicitamente una capacità — solo un
+//    lead con bookingMode dichiarato e compatibile sopravvive.
+//
+// Questo NON introduce mai un'affermazione positiva di disponibilità spot:
+// DiscoveryLeadCard.tsx e DiscoveryMapPopupCard.tsx continuano a non
+// mostrare mai "Giorni spot disponibili"/disponibilità/posti per un lead
+// curato — la UI non promette nulla che questo filtro, da solo, potrebbe far
+// pensare stia facendo. "Solo Giorni spot disponibili ora" resta il caso più
+// severo: nessun lead curato ha oggi una disponibilità LIVE nota, quindi
+// nessuno lo supera mai (bookingMode "daily"/"mixed" confermano che la
+// modalità a giorno esiste in generale, non che ci sia un posto libero
+// adesso — informazione che TRAMA non ha per nessun lead curato).
+// Mappatura verso il dominio CoverageMode già usato per i Partner
+// (SearchDiscoveryClient.tsx: "week_only" | "day_only" | "mixed") — stessi
+// tre valori, nomi diversi solo perché il dataset curato usa una
+// terminologia propria (weekly/daily/mixed) dichiarata dalla fonte.
+const BOOKING_MODE_TO_COVERAGE_MODE: Record<"weekly" | "daily" | "mixed", "week_only" | "day_only" | "mixed"> = {
+  weekly: "week_only",
+  daily: "day_only",
+  mixed: "mixed",
+};
+
+export function isDiscoveryLeadCompatibleWithCoverage(
+  lead: Pick<DiscoveryLeadRecord, "bookingMode">,
+  options: { selectedCoverageModes: ("week_only" | "day_only" | "mixed")[]; onlyDaySpots: boolean }
+): boolean {
+  const explicitFilterActive = options.selectedCoverageModes.length > 0 || options.onlyDaySpots;
+  if (!explicitFilterActive) return true;
+  // "Solo Giorni spot disponibili ora": nessun lead curato ha oggi una
+  // disponibilità live nota — sempre escluso quando questo toggle è attivo,
+  // qualunque sia il bookingMode dichiarato (vedi commento sopra).
+  if (options.onlyDaySpots) return false;
+  const mode = lead.bookingMode ?? null;
+  if (mode === null) return false;
+  // Stessa semantica di appartenenza già usata per i Partner
+  // (`selectedCoverageModes.includes((a.bookingMode ?? "mixed") as
+  // CoverageMode)`): il valore dichiarato deve comparire esplicitamente tra
+  // le modalità selezionate dall'utente, senza una logica di
+  // "sottoinsieme" inventata qui.
+  return options.selectedCoverageModes.includes(BOOKING_MODE_TO_COVERAGE_MODE[mode]);
+}
 export function isDiscoveryLeadCompatibleWithCategoryTags(
   lead: Pick<DiscoveryLeadRecord, "category">,
   selectedTagIds: string[]
