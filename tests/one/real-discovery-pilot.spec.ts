@@ -9,6 +9,7 @@ import {
   isDiscoveryLeadCompatibleWithPriceCap,
   isDiscoveryLeadCompatibleWithZoneQuery,
   isDiscoveryLeadCompatibleWithCategoryTags,
+  isDiscoveryLeadCompatibleWithCoverage,
   isDiscoveryLeadInvitable,
   secondaryLinkLabelForLead,
   type DiscoveryLeadRecord,
@@ -17,6 +18,7 @@ import {
   interleaveDiscoveryResults,
   countDiscoveryResults,
   buildDiscoveryMapItems,
+  countMappedCuratedActivities,
   type DiscoveryResult,
   type DiscoveryMapItem,
 } from "../../lib/discovery/result-model";
@@ -668,7 +670,7 @@ test.describe("DISCOVERY MAP + POLISH — buildDiscoveryMapItems (view-model pur
 test.describe("DISCOVERY MAP + POLISH — popup (statico sul sorgente)", () => {
   test("MAP-11: i marker 'partner' NON ricevono popupContent custom → ActivityMap usa il popup di default INVARIATO ('Apri scheda')", () => {
     const source = readSource("../../app/nextgen/search/SearchDiscoveryClient.tsx");
-    const block = source.slice(source.indexOf("const mapMarkerItems: MapItem[]"), source.indexOf("const mappableResultsCount"));
+    const block = source.slice(source.indexOf("const mapMarkerItems: MapItem[]"), source.indexOf("const mapMarkersCount"));
     expect(block).toContain('markerKind: "partner"');
     // Il ramo "partner" del map() non include mai popupContent.
     const partnerBranch = block.slice(block.indexOf('item.kind === "partner"'), block.indexOf(": {"));
@@ -677,7 +679,7 @@ test.describe("DISCOVERY MAP + POLISH — popup (statico sul sorgente)", () => {
 
   test("MAP-12: i marker Curated ricevono SEMPRE un popupContent dedicato (mai il fallback 'Apri scheda', che non esiste per un lead)", () => {
     const source = readSource("../../app/nextgen/search/SearchDiscoveryClient.tsx");
-    expect(source).toContain("popupContent: <DiscoveryMapPopupCard lead={item.lead} />");
+    expect(source).toContain("popupContent: <DiscoveryMapPopupCard lead={item.lead} locationLabel={item.locationLabel} />");
   });
 
   test("MAP-13: il popup invitabile (DiscoveryMapPopupCard) mostra 'Proponi invito' e riusa proposeDiscoveryLeadInviteAction", () => {
@@ -729,9 +731,9 @@ test.describe("DISCOVERY MAP + POLISH — legend, empty state, count (statico su
     }
   });
 
-  test("MAP-18: empty map state — quando totalResultsCount>0 e mappableResultsCount===0, mostra il messaggio esplicito + 'Torna alla lista'", () => {
+  test("MAP-18: empty map state — quando activityResultsCount>0 e mappedActivitiesCount===0, mostra il messaggio esplicito + 'Torna alla lista'", () => {
     const source = readSource("../../app/nextgen/search/SearchDiscoveryClient.tsx");
-    expect(source).toContain("totalResultsCount > 0 && mappableResultsCount === 0");
+    expect(source).toContain("activityResultsCount > 0 && mappedActivitiesCount === 0");
     expect(source).toContain("Nessuna di queste attività ha ancora una sede precisa sulla mappa.");
     expect(source).toContain("Torna alla lista");
   });
@@ -742,9 +744,9 @@ test.describe("DISCOVERY MAP + POLISH — legend, empty state, count (statico su
     expect(block).toContain('setViewMode("lista")');
   });
 
-  test("MAP-20: la microcopy 'N di M attività visibili sulla mappa' compare solo quando Lista e Mappa divergono (mappableResultsCount < totalResultsCount)", () => {
+  test("MAP-20: la microcopy 'N di M attività visibili sulla mappa' compare solo quando Lista e Mappa divergono (mappedActivitiesCount < activityResultsCount)", () => {
     const source = readSource("../../app/nextgen/search/SearchDiscoveryClient.tsx");
-    expect(source).toContain("mappableResultsCount < totalResultsCount");
+    expect(source).toContain("mappedActivitiesCount < activityResultsCount");
     expect(source).toContain("attività visibili sulla mappa");
     expect(source).toContain("non ");
     expect(source).toContain("ancora una sede precisa (visibili in Lista)");
@@ -754,23 +756,199 @@ test.describe("DISCOVERY MAP + POLISH — legend, empty state, count (statico su
     const source = readSource("../../app/nextgen/search/SearchDiscoveryClient.tsx");
     expect(source).toContain("{totalResultsCount} attività trovate");
     expect(source).not.toContain("{mappableResultsCount} attività trovate");
+    expect(source).not.toContain("{mappedActivitiesCount} attività trovate");
+  });
+
+  // TRAMA — DISCOVERY MAP FINALIZATION (22/09/2026), §5 "MULTI-SEDE — TRE
+  // COUNT DISTINTI".
+  test("MAP-31: mapMarkersCount e mappedActivitiesCount sono due variabili distinte nel sorgente (mai collassate in una sola)", () => {
+    const source = readSource("../../app/nextgen/search/SearchDiscoveryClient.tsx");
+    expect(source).toContain("const mapMarkersCount = mapMarkerItems.length");
+    expect(source).toContain("const mappedActivitiesCount = partnerMapItems.length + countMappedCuratedActivities(compatibleRealDiscoveryLeads)");
+  });
+
+  test("MAP-32: quando mapMarkersCount supera mappedActivitiesCount, la UI mostra una nota separata sul numero di sedi (mai confusa col count attività)", () => {
+    const source = readSource("../../app/nextgen/search/SearchDiscoveryClient.tsx");
+    expect(source).toContain("mapMarkersCount > mappedActivitiesCount");
+    expect(source).toContain("sedi sulla mappa — alcune attività hanno più di un punto");
   });
 });
 
-test.describe("DISCOVERY MAP + POLISH — coverage filter semantics per Curated (statico)", () => {
-  test("MAP-22: non esiste una funzione isDiscoveryLeadCompatibleWithCoverage — il filtro Copertura non è mai applicato ai lead curati", () => {
+// TRAMA — DISCOVERY MAP FINALIZATION (22/09/2026), §9 "COVERAGE FILTER —
+// CORREZIONE SEMANTICA". MAP-22 (versione precedente) asseriva che
+// `isDiscoveryLeadCompatibleWithCoverage` NON dovesse esistere — quella era
+// la scelta deliberata del pass 21/09/2026, corretta ORA su richiesta
+// esplicita di Fabrizio dopo il test live "Giorni singoli" → 0 marker (tutti
+// i 13 Curated UNKNOWN sopravvivevano). La funzione ora esiste ed è
+// verificata sotto, non più la sua assenza.
+test.describe("DISCOVERY MAP FINALIZATION — coverage filter semantics per Curated (logica pura + statico)", () => {
+  test("MAP-22: isDiscoveryLeadCompatibleWithCoverage esiste ed è esportata da real-dataset.ts", () => {
     const source = readSource("../../lib/discovery/real-dataset.ts");
-    // Il NOME può comparire in un commento che ne spiega l'assenza
-    // deliberata, ma non deve mai esistere una vera dichiarazione
-    // `export function isDiscoveryLeadCompatibleWithCoverage`.
-    expect(source).not.toContain("export function isDiscoveryLeadCompatibleWithCoverage");
-    expect(source).toContain("SEMANTICA PER CURATED");
+    expect(source).toContain("export function isDiscoveryLeadCompatibleWithCoverage");
   });
 
   test("MAP-23: nessuna card/popup Curated dichiara mai 'Giorni spot disponibili' o disponibilità spot (UNKNOWN non diventa mai TRUE)", () => {
     for (const file of ["../../components/nextgen/DiscoveryLeadCard.tsx", "../../components/nextgen/DiscoveryMapPopupCard.tsx"]) {
       const source = readSource(file);
       expect(source).not.toContain("Giorni spot disponibili");
+    }
+  });
+
+  test("MAP-33: NESSUN filtro Copertura esplicito attivo → un lead con bookingMode sconosciuto (null) resta compatibile (comportamento invariato)", () => {
+    const unknownLead = makeFakeLead({ bookingMode: null });
+    expect(
+      isDiscoveryLeadCompatibleWithCoverage(unknownLead, { selectedCoverageModes: [], onlyDaySpots: false })
+    ).toBe(true);
+  });
+
+  test("MAP-34: filtro Copertura ESPLICITO attivo (selectedCoverageModes non vuoto) → un lead con bookingMode sconosciuto (null) viene escluso", () => {
+    const unknownLead = makeFakeLead({ bookingMode: null });
+    expect(
+      isDiscoveryLeadCompatibleWithCoverage(unknownLead, { selectedCoverageModes: ["week_only"], onlyDaySpots: false })
+    ).toBe(false);
+  });
+
+  test("MAP-35: bookingMode 'weekly' compatibile SOLO quando 'week_only' è tra le modalità selezionate", () => {
+    const weeklyLead = makeFakeLead({ bookingMode: "weekly" });
+    expect(isDiscoveryLeadCompatibleWithCoverage(weeklyLead, { selectedCoverageModes: ["week_only"], onlyDaySpots: false })).toBe(true);
+    expect(isDiscoveryLeadCompatibleWithCoverage(weeklyLead, { selectedCoverageModes: ["day_only"], onlyDaySpots: false })).toBe(false);
+  });
+
+  test("MAP-36: bookingMode 'daily' compatibile SOLO quando 'day_only' è tra le modalità selezionate — un lead senza bookingMode 'daily'/'mixed' viene escluso da 'Giorni singoli'", () => {
+    const dailyLead = makeFakeLead({ bookingMode: "daily" });
+    expect(isDiscoveryLeadCompatibleWithCoverage(dailyLead, { selectedCoverageModes: ["day_only"], onlyDaySpots: false })).toBe(true);
+    expect(isDiscoveryLeadCompatibleWithCoverage(dailyLead, { selectedCoverageModes: ["week_only"], onlyDaySpots: false })).toBe(false);
+  });
+
+  test("MAP-37: bookingMode 'mixed' compatibile SOLO quando 'mixed' è esplicitamente selezionato (stessa semantica di appartenenza già usata per i Partner, mai un sottoinsieme implicito)", () => {
+    const mixedLead = makeFakeLead({ bookingMode: "mixed" });
+    expect(isDiscoveryLeadCompatibleWithCoverage(mixedLead, { selectedCoverageModes: ["mixed"], onlyDaySpots: false })).toBe(true);
+    expect(isDiscoveryLeadCompatibleWithCoverage(mixedLead, { selectedCoverageModes: ["week_only"], onlyDaySpots: false })).toBe(false);
+  });
+
+  test("MAP-38: 'Solo Giorni spot disponibili ora' esclude SEMPRE ogni lead curato, qualunque sia il bookingMode (nessuna disponibilità live nota per nessun Curated)", () => {
+    for (const mode of ["weekly", "daily", "mixed", null] as const) {
+      const lead = makeFakeLead({ bookingMode: mode });
+      expect(isDiscoveryLeadCompatibleWithCoverage(lead, { selectedCoverageModes: [], onlyDaySpots: true })).toBe(false);
+    }
+  });
+
+  test("MAP-39: il test live regressivo 'Copertura → Giorni singoli' non produce più 0 marker per il solo fatto che tutti i Curated sono UNKNOWN — un dataset interamente UNKNOWN produce ora 0 Curated compatibili con un filtro esplicito, non 13", () => {
+    const allUnknown = REAL_DISCOVERY_LEADS.filter((l) => (l.bookingMode ?? null) === null);
+    const compatible = allUnknown.filter((l) =>
+      isDiscoveryLeadCompatibleWithCoverage(l, { selectedCoverageModes: ["day_only"], onlyDaySpots: false })
+    );
+    expect(compatible.length).toBe(0);
+  });
+
+  test("MAP-40: SearchDiscoveryClient applica isDiscoveryLeadCompatibleWithCoverage a compatibleRealDiscoveryLeads (wiring reale, non solo la funzione pura isolata)", () => {
+    const source = readSource("../../app/nextgen/search/SearchDiscoveryClient.tsx");
+    const block = source.slice(source.indexOf("const compatibleRealDiscoveryLeads = useMemo"), source.indexOf("const [radiusKm"));
+    expect(block).toContain("isDiscoveryLeadCompatibleWithCoverage(lead, { selectedCoverageModes, onlyDaySpots })");
+  });
+});
+
+test.describe("DISCOVERY MAP FINALIZATION — multi-sede (§4-5, logica pura)", () => {
+  test("MAP-41: un lead con locations[] genera UN marker per ogni sede con lat/lng noti, mai un marker riassuntivo aggiuntivo da lead.lat/lead.lng", () => {
+    const multiLead = makeFakeLead({
+      id: "test-multi",
+      invitable: false,
+      lat: null,
+      lng: null,
+      locations: [
+        { label: "Sede A", address: "Via A 1", lat: 45.1, lng: 9.1, geoPrecision: "venue" },
+        { label: "Sede B", address: "Via B 2", lat: 45.2, lng: 9.2, geoPrecision: "venue" },
+      ],
+    });
+    const result = buildDiscoveryMapItems([], [multiLead]);
+    expect(result.length).toBe(2);
+    expect(result.every((r) => r.kind === "curated_source")).toBe(true);
+    expect(result.map((r) => (r as { locationLabel?: string }).locationLabel)).toEqual(["Sede A", "Sede B"]);
+  });
+
+  test("MAP-42: dentro locations[], una sede con lat/lng null non genera marker (le altre sedi valide continuano a generarne)", () => {
+    const multiLead = makeFakeLead({
+      id: "test-multi-partial",
+      invitable: true,
+      lat: null,
+      lng: null,
+      locations: [
+        { label: "Sede nota", address: "Via A 1", lat: 45.1, lng: 9.1, geoPrecision: "venue" },
+        { label: "Sede ignota", address: "Via B 2", lat: null, lng: null, geoPrecision: null },
+      ],
+    });
+    const result = buildDiscoveryMapItems([], [multiLead]);
+    expect(result.length).toBe(1);
+    expect((result[0] as { locationLabel?: string }).locationLabel).toBe("Sede nota");
+  });
+
+  test("MAP-43: countMappedCuratedActivities conta un'attività multi-sede come 1, mai come il numero di marker", () => {
+    const multiLead = makeFakeLead({
+      id: "test-multi-count",
+      lat: null,
+      lng: null,
+      locations: [
+        { label: "Sede A", address: "Via A 1", lat: 45.1, lng: 9.1, geoPrecision: "venue" },
+        { label: "Sede B", address: "Via B 2", lat: 45.2, lng: 9.2, geoPrecision: "venue" },
+      ],
+    });
+    const singleLead = makeFakeLead({ id: "test-single", lat: 45.5, lng: 9.5, geoPrecision: "exact" });
+    const noGeoLead = makeFakeLead({ id: "test-none", lat: null, lng: null });
+    const count = countMappedCuratedActivities([multiLead, singleLead, noGeoLead]);
+    expect(count).toBe(2); // multiLead (1 attività, 2 marker) + singleLead — noGeoLead esclusa
+  });
+
+  test("MAP-44: il dataset reale ha esattamente un record con locations[] (milano-centri-estivi-scuole-primarie-comunali), coerente con l'audit — nessun altro record introduce multi-sede senza fonte", () => {
+    const withLocations = REAL_DISCOVERY_LEADS.filter((l) => l.locations && l.locations.length > 0);
+    expect(withLocations.map((l) => l.id)).toEqual(["milano-centri-estivi-scuole-primarie-comunali"]);
+  });
+
+  test("MAP-45: mapMarkersCount può superare mappedActivitiesCount nel dataset reale filtrato senza filtri attivi (multi-sede reale produce più marker della singola attività)", () => {
+    const multi = REAL_DISCOVERY_LEADS.find((l) => l.id === "milano-centri-estivi-scuole-primarie-comunali")!;
+    const mapped = countMappedCuratedActivities([multi]);
+    const markers = buildDiscoveryMapItems([], [multi]).length;
+    expect(mapped).toBe(1);
+    expect(markers).toBeGreaterThan(mapped);
+  });
+});
+
+test.describe("DISCOVERY MAP FINALIZATION — invariante geo estesa a locations[] (nessuna coordinata inventata, nessun centroide)", () => {
+  test("MAP-46: ogni voce di locations[] nel dataset reale ha lat/lng entrambi noti o entrambi null (mai una coordinata parziale)", () => {
+    for (const lead of REAL_DISCOVERY_LEADS) {
+      for (const loc of lead.locations ?? []) {
+        expect(loc.lat === null).toBe(loc.lng === null);
+        if (loc.geoPrecision !== null) expect(["exact", "venue"]).toContain(loc.geoPrecision);
+      }
+    }
+  });
+
+  test("MAP-47: nessun record del dataset reale usa una coordinata duplicata tra Comuni diversi (proxy anti-centroide: un centroide di Comune sarebbe condiviso da più record dello stesso Comune, qui ogni coordinata nota è unica)", () => {
+    const seen = new Map<string, string>();
+    for (const lead of REAL_DISCOVERY_LEADS) {
+      const points: { lat: number; lng: number }[] = [];
+      if (lead.lat !== null && lead.lng !== null) points.push({ lat: lead.lat, lng: lead.lng });
+      for (const loc of lead.locations ?? []) {
+        if (loc.lat !== null && loc.lng !== null) points.push({ lat: loc.lat, lng: loc.lng });
+      }
+      for (const p of points) {
+        const key = `${p.lat},${p.lng}`;
+        expect(seen.has(key)).toBe(false);
+        seen.set(key, lead.id);
+      }
+    }
+  });
+
+  test("MAP-48: un'attività genuinamente municipale/rotante senza sede nominata dalla fonte resta non mappabile (cornaredo, pero, bareggio-infanzia, noicattaro) — mai un marker inventato per 'coprire' il Comune", () => {
+    for (const id of [
+      "cornaredo-centri-estivi-comunali",
+      "pero-centro-estivo-primaria",
+      "bareggio-centro-estivo-comunale-infanzia",
+      "noicattaro-centri-estivi-comunali",
+    ]) {
+      const lead = REAL_DISCOVERY_LEADS.find((l) => l.id === id)!;
+      expect(lead.lat).toBeNull();
+      expect(lead.lng).toBeNull();
+      expect(lead.locations ?? []).toEqual([]);
     }
   });
 });
