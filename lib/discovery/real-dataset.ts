@@ -1068,9 +1068,29 @@ const BOOKING_MODE_TO_COVERAGE_MODE: Record<"weekly" | "daily" | "mixed", "week_
   mixed: "mixed",
 };
 
+export type CoverageMode = "week_only" | "day_only" | "mixed";
+
+// TRAMA — DISCOVERY LIVE UX BUGFIX (22/09/2026), §4 "COVERAGE FILTER — FIX
+// SEMANTICS". CORREZIONE rispetto al passaggio precedente (22/09/2026,
+// stessa giornata): quella versione trattava le tre modalità come categorie
+// ESCLUSIVE (un'attività "mixed" passava SOLO il filtro "Entrambe", mai
+// "Settimana intera" o "Giorni singoli" da soli) — semanticamente sbagliato,
+// segnalato da Fabrizio: "mixed" significa "supporta ENTRAMBE le
+// granularità", quindi un'attività mixed deve soddisfare CHIUNQUE dei due
+// filtri singoli la richieda, non solo il filtro "Entrambe" esplicito.
+// Funzione PURA condivisa: usata sia per i lead Curated qui sotto sia per i
+// Partner in SearchDiscoveryClient.tsx (stessa semantica, un solo posto che
+// la definisce — vedi isCoverageModeCompatibleWithFilter più sotto).
+export function isCoverageModeCompatibleWithFilter(actualMode: CoverageMode, filterMode: CoverageMode): boolean {
+  if (filterMode === "mixed") return actualMode === "mixed";
+  if (filterMode === "week_only") return actualMode === "week_only" || actualMode === "mixed";
+  if (filterMode === "day_only") return actualMode === "day_only" || actualMode === "mixed";
+  return false;
+}
+
 export function isDiscoveryLeadCompatibleWithCoverage(
   lead: Pick<DiscoveryLeadRecord, "bookingMode">,
-  options: { selectedCoverageModes: ("week_only" | "day_only" | "mixed")[]; onlyDaySpots: boolean }
+  options: { selectedCoverageModes: CoverageMode[]; onlyDaySpots: boolean }
 ): boolean {
   const explicitFilterActive = options.selectedCoverageModes.length > 0 || options.onlyDaySpots;
   if (!explicitFilterActive) return true;
@@ -1080,12 +1100,12 @@ export function isDiscoveryLeadCompatibleWithCoverage(
   if (options.onlyDaySpots) return false;
   const mode = lead.bookingMode ?? null;
   if (mode === null) return false;
-  // Stessa semantica di appartenenza già usata per i Partner
-  // (`selectedCoverageModes.includes((a.bookingMode ?? "mixed") as
-  // CoverageMode)`): il valore dichiarato deve comparire esplicitamente tra
-  // le modalità selezionate dall'utente, senza una logica di
-  // "sottoinsieme" inventata qui.
-  return options.selectedCoverageModes.includes(BOOKING_MODE_TO_COVERAGE_MODE[mode]);
+  const actualCoverageMode = BOOKING_MODE_TO_COVERAGE_MODE[mode];
+  // Il pannello Copertura è ora single-select (§5 del prompt "COVERAGE
+  // CONTROL — SINGLE SELECT"): `selectedCoverageModes` ha al massimo un
+  // elemento nell'uso reale, ma `.some(...)` resta corretto anche se in
+  // futuro tornasse multi-selezione.
+  return options.selectedCoverageModes.some((filterMode) => isCoverageModeCompatibleWithFilter(actualCoverageMode, filterMode));
 }
 export function isDiscoveryLeadCompatibleWithCategoryTags(
   lead: Pick<DiscoveryLeadRecord, "category">,
