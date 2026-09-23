@@ -1520,3 +1520,35 @@ test.describe("DISCOVERY LIVE UX BUGFIX — filtro Bambini NON auto-persistito (
     expect(depsBlock).not.toContain("selectedKidId");
   });
 });
+
+// TRAMA — DISCOVERY LIVE UX BUGFIX, fix post-live-test (23/09/2026). BUG
+// SEGNALATO DA FABRIZIO: "filtro fantasma" — 20 attività attese, 10 mostrate,
+// "Azzera (1)" attivo, ma NESSUN chip indicava visibilmente quale filtro
+// fosse attivo. Causa: a differenza di Data/Copertura/Zona/Tipo attività
+// (che mostrano già un'etichetta dinamica quando attivi), i chip Età/Servizi/
+// Prezzo restavano SEMPRE sull'etichetta statica anche con un filtro attivo
+// (es. un'Età non ai valori di default, persistita nell'URL come richiesto
+// da §3 — comportamento corretto, ma invisibile sul chip). Fix: stessa
+// etichetta dinamica degli altri chip.
+test.describe("DISCOVERY LIVE UX BUGFIX — chip filtro Età/Servizi/Prezzo mostrano stato attivo (filtro 'fantasma' invisibile)", () => {
+  test("GHOST-01: il chip Età mostra il range quando minAge/maxAge non sono ai valori di default", () => {
+    const source = readSource("../../app/nextgen/search/SearchDiscoveryClient.tsx");
+    const block = source.slice(source.indexOf('key: "eta"') - 20, source.indexOf('key: "eta"') + 150);
+    expect(block).toContain("minAge > 0 || maxAge < 18");
+    expect(block).toContain("`Età (${minAge}-${maxAge})`");
+  });
+
+  test("GHOST-02: il chip Servizi mostra il conteggio quando almeno un servizio è attivo", () => {
+    const source = readSource("../../app/nextgen/search/SearchDiscoveryClient.tsx");
+    const block = source.slice(source.indexOf('key: "servizi"') - 20, source.indexOf('key: "servizi"') + 250);
+    expect(block).toContain("Object.values(services).filter(Boolean).length");
+    expect(block).toContain("`Servizi (${n})`");
+  });
+
+  test("GHOST-03: il chip Prezzo mostra il tetto quando maxPrice è sotto il default (500)", () => {
+    const source = readSource("../../app/nextgen/search/SearchDiscoveryClient.tsx");
+    const block = source.slice(source.indexOf('key: "prezzo"') - 20, source.indexOf('key: "prezzo"') + 150);
+    expect(block).toContain("maxPrice < 500");
+    expect(block).toContain("`Prezzo (≤${maxPrice}€)`");
+  });
+});

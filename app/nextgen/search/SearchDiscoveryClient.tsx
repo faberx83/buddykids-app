@@ -985,15 +985,35 @@ export default function SearchDiscoveryClient({
           ? `Copertura (${selectedCoverageModes.length + (onlyDaySpots ? 1 : 0)})`
           : "Copertura",
     },
-    { key: "eta", icon: "ti-users", label: "Età" },
+    // TRAMA — DISCOVERY LIVE UX BUGFIX, fix post-live-test (23/09/2026). BUG
+    // SEGNALATO DA FABRIZIO: "filtro fantasma" — con 20 attività attese ne
+    // comparivano 10 e "Azzera (1)", ma NESSUN chip mostrava visibilmente
+    // quale filtro fosse attivo. Causa: a differenza di Data/Copertura/Zona/
+    // Tipo attività (che mostrano già un conteggio/etichetta dinamica quando
+    // attivi), il chip "Età" era SEMPRE l'etichetta statica "Età", anche con
+    // minAge/maxAge non ai valori di default — un filtro Età rimasto attivo
+    // da un test precedente (ora persistito nell'URL, §3, come richiesto)
+    // restava quindi invisibile. Fix: stessa etichetta dinamica degli altri
+    // chip, cosi un filtro Età attivo è sempre visibile a colpo d'occhio.
+    { key: "eta", icon: "ti-users", label: minAge > 0 || maxAge < 18 ? `Età (${minAge}-${maxAge})` : "Età" },
     { key: "zona", icon: "ti-map-pin", label: hasGeo ? "Zona (vicino a te)" : "Zona" },
     {
       key: "tag",
       icon: "ti-category-2",
       label: selectedTagIds.length > 0 ? `Tipo attività (${selectedTagIds.length})` : "Tipo attività",
     },
-    { key: "servizi", icon: "ti-adjustments-horizontal", label: "Servizi" },
-    { key: "prezzo", icon: "ti-coin-euro", label: "Prezzo" },
+    // Stesso fix di "Età" sopra: Servizi e Prezzo erano gli altri due chip
+    // con etichetta sempre statica, quindi capaci di restare "filtri
+    // fantasma" invisibili allo stesso modo.
+    {
+      key: "servizi",
+      icon: "ti-adjustments-horizontal",
+      label: (() => {
+        const n = Object.values(services).filter(Boolean).length;
+        return n > 0 ? `Servizi (${n})` : "Servizi";
+      })(),
+    },
+    { key: "prezzo", icon: "ti-coin-euro", label: maxPrice < 500 ? `Prezzo (≤${maxPrice}€)` : "Prezzo" },
   ];
 
   return (
