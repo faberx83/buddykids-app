@@ -1490,3 +1490,33 @@ test.describe("DISCOVERY LIVE UX BUGFIX — altezza mappa per legenda visibile (
     expect(source).toContain("height={200}");
   });
 });
+
+// TRAMA — DISCOVERY LIVE UX BUGFIX, fix post-live-test (23/09/2026). BUG
+// SEGNALATO DA FABRIZIO: dopo "Apri scheda" → Back, tutti i marker FULL
+// TRAMA (viola) sparivano dalla Mappa (i Curated restavano). ROOT CAUSE:
+// `selectedKidId` era incluso nella sincronizzazione URL (§3) — un filtro
+// "Bambini" impostato in un test precedente nella stessa sessione restava
+// nell'URL e veniva ri-applicato al ritorno, e computeSmartMatches esclude
+// le attività Partner incompatibili con l'età del bambino selezionato (i
+// lead Curated non passano da computeSmartMatches — da qui l'asimmetria
+// "solo i viola spariscono"). Il filtro Bambini non era nella lista esplicita
+// di stati da ripristinare — rimosso dalla sincronizzazione.
+test.describe("DISCOVERY LIVE UX BUGFIX — filtro Bambini NON auto-persistito (regressione marker viola spariti dopo Back)", () => {
+  test("KID-01: selectedKidId NON viene scritto nell'URL dalla sincronizzazione di stato — resta seedabile SOLO da un link esterno in ingresso (?kid=)", () => {
+    const source = readSource("../../app/nextgen/search/SearchDiscoveryClient.tsx");
+    const effectStart = source.indexOf("const params = new URLSearchParams();");
+    const effectEnd = source.indexOf("const qs = params.toString();");
+    const effectBlock = source.slice(effectStart, effectEnd);
+    expect(effectBlock).not.toContain('params.set("kid"');
+    // Il seed in ingresso (comportamento preesistente a questo pass, MAI
+    // toccato) resta invariato.
+    expect(source).toContain('searchParams.get("kid")');
+  });
+
+  test("KID-02: selectedKidId non è tra le dipendenze dell'effect di sincronizzazione URL (nessun replace quando cambia SOLO il bambino selezionato)", () => {
+    const source = readSource("../../app/nextgen/search/SearchDiscoveryClient.tsx");
+    const depsStart = source.indexOf("}, [", source.indexOf("const params = new URLSearchParams();"));
+    const depsBlock = source.slice(depsStart, source.indexOf("]);", depsStart));
+    expect(depsBlock).not.toContain("selectedKidId");
+  });
+});

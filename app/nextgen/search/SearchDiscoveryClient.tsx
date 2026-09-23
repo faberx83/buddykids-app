@@ -485,7 +485,23 @@ export default function SearchDiscoveryClient({
     const params = new URLSearchParams();
     if (viewMode === "mappa") params.set("view", "mappa");
     if (query) params.set("q", query);
-    if (selectedKidId) params.set("kid", selectedKidId);
+    // TRAMA — DISCOVERY LIVE UX BUGFIX, fix post-live-test (23/09/2026). BUG
+    // SEGNALATO DA FABRIZIO: dopo un "Apri scheda" → Back, i marker FULL
+    // TRAMA (viola) sparivano tutti dalla Mappa. ROOT CAUSE: `selectedKidId`
+    // era incluso in questa sincronizzazione URL — un filtro "Bambini"
+    // impostato durante un test precedente nella stessa sessione restava
+    // quindi nell'URL anche per navigazioni successive mai intenzionalmente
+    // filtrate per quel bambino; al ritorno da /activity/[id] il filtro
+    // veniva ri-applicato, e computeSmartMatches esclude le attività Partner
+    // incompatibili con l'età del bambino selezionato (i lead Curated non
+    // passano per computeSmartMatches, quindi restavano visibili — da qui
+    // "sparivano solo i viola"). Il filtro "Bambini" NON era nella lista
+    // esplicita di stati da ripristinare (§3: viewMode/query/Date/Copertura/
+    // Età/Zona/Tipo attività/viewport) — rimosso dalla sincronizzazione:
+    // `selectedKidId` resta seedabile SOLO da un link esterno in ingresso
+    // (?kid=, es. Home "Riempi settimana"), come da comportamento originale
+    // preesistente a questo pass, mai più auto-persistito dalla pagina
+    // stessa.
     if (selectedWeekStarts.length > 0) params.set("weeks", selectedWeekStarts.join(","));
     if (minAge !== 0) params.set("minAge", String(minAge));
     if (maxAge !== 18) params.set("maxAge", String(maxAge));
@@ -529,7 +545,6 @@ export default function SearchDiscoveryClient({
   }, [
     viewMode,
     query,
-    selectedKidId,
     selectedWeekStarts,
     minAge,
     maxAge,
