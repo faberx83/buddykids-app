@@ -327,12 +327,27 @@ export default function SearchDiscoveryClient({
   // fallback ai default originali se il param manca/non è valido —
   // comportamento identico a prima per ogni link che non porta questi
   // parametri (es. un vecchio bookmark).
+  // TRAMA — DISCOVERY LIVE UX BUGFIX, fix post-live-test (23/09/2026). BUG
+  // SEGNALATO DA FABRIZIO: chip "Età (0-0)" sempre attivo appena si passava
+  // in Mappa, con "Azzera (1)" fantasma. ROOT CAUSE: `Number(null)` vale `0`
+  // (non NaN) — quando il parametro "maxAge" non è presente nell'URL,
+  // `searchParams.get("maxAge")` restituisce null, `Number(null)` è 0, e il
+  // controllo `Number.isFinite(0) && 0>=0 && 0<=18` è TRUE: il fallback al
+  // default 18 non scattava mai, maxAge restava a 0 ogni volta che l'utente
+  // apriva /nextgen/search senza quel parametro esplicito (praticamente
+  // sempre, essendo un filtro opzionale). Fix: distinguere esplicitamente
+  // "parametro assente" da "parametro presente e valido" PRIMA di convertire
+  // a numero.
   const [minAge, setMinAge] = useState(() => {
-    const v = Number(searchParams.get("minAge"));
+    const raw = searchParams.get("minAge");
+    if (raw === null) return 0;
+    const v = Number(raw);
     return Number.isFinite(v) && v >= 0 && v <= 18 ? v : 0;
   });
   const [maxAge, setMaxAge] = useState(() => {
-    const v = Number(searchParams.get("maxAge"));
+    const raw = searchParams.get("maxAge");
+    if (raw === null) return 18;
+    const v = Number(raw);
     return Number.isFinite(v) && v >= 0 && v <= 18 ? v : 18;
   });
   const [maxPrice, setMaxPrice] = useState(() => {
