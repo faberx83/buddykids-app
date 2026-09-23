@@ -1,10 +1,11 @@
 -- Migrazione 38 — Curated Favorites + Novità TRAMA / Feature Announcements.
 --
--- QUESTO FILE NON È STATO APPLICATO AL DATABASE. Va eseguito manualmente da
--- Fabrizio (o dall'agente orchestratore, dopo revisione) nello SQL Editor di
--- Supabase. Nessuna riga esistente viene toccata: entrambe le tabelle sono
--- nuove, additive, isolate l'una dall'altra (possono essere applicate
--- separatamente, in ordine qualsiasi).
+-- APPLICATA in produzione il 23/09/2026 (project_id eagsgfxunwyyxwwilldy),
+-- dopo revisione: schema/RLS verificati contro favorites (stesso pattern),
+-- assenza di collisioni di nome confermata, post-check eseguito (0 righe
+-- nelle due tabelle nuove, favorites invariata a 5 righe, 2 policy per
+-- tabella). Nessuna riga esistente toccata: entrambe le tabelle sono nuove,
+-- additive, isolate l'una dall'altra.
 --
 -- ════════════════════════════════════════════════════════════════
 -- CONTESTO
