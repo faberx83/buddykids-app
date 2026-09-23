@@ -104,6 +104,19 @@ export const KNOWN_PRODUCT_EVENTS = [
   // DiscoveryLeadCard.tsx SOLO dopo che suggestCenterLeadAction ha inserito
   // con successo la riga in center_leads (mai su annulla, mai su errore).
   "curated_listing_invite_proposed",
+  // TRAMA — POST-DISCOVERY CONSOLIDATION (23/09/2026), CURATED FAVORITES
+  // (§7 del task "FAVORITES ANALYTICS": "Riusa eventi esistenti se possibile
+  // ... favorite_added/favorite_removed con entityType: partner|curated ...
+  // NON creare due analytics funnel diversi"). UN SOLO evento per
+  // add/remove, usato sia dal cuore Partner (app/actions/favorites.ts,
+  // esistente ma mai istrumentato finora) sia dal cuore Curated
+  // (app/actions/curated-favorites.ts, nuovo) — `detail` codifica
+  // `${entityType}:${id}` (es. "partner:<activityDbId>" /
+  // "curated:<curatedLeadId>"), stesso principio "adozione, non cronologia
+  // personale" già in uso per booking_created/curated_listing_viewed sopra:
+  // nessun bambino/famiglia, solo l'id dell'entità marcata preferita.
+  "favorite_added",
+  "favorite_removed",
 ] as const;
 
 export type KnownProductEvent = (typeof KNOWN_PRODUCT_EVENTS)[number];
