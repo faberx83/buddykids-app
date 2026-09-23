@@ -15,6 +15,7 @@ Ciò che è realmente disponibile oggi, verificato contro codice e DB live (`STA
 - Assistenza diretta TRAMA per: notifiche (email non ancora attive in modo verificabile — vedi blocker sotto), spegnimento di un'attività, cancellazione account.
 - **Discovery Map**: ciclo di bugfix live completo e deployato con successo (commit `fa121ca` → `1f0e0ea`, confermato su `deploy_events`), verificato dal vivo da Fabrizio: basemap OpenStreetMap stabile, legenda sempre visibile senza scroll, 3 tipologie di marker con popup dedicati (TRAMA/Da invitare/Fonte pubblica), filtro Copertura con semantica corretta, chip Età/Servizi/Prezzo con stato attivo visibile, bell/chat mai sopra i marker, X per svuotare la ricerca.
 - **Non ancora deployato in produzione**: fix del chip Età che mostrava fantasma `(0-0)` all'apertura della Mappa (commit `6f44ef7`, root cause: `Number(null)` coercizzato a `0` invece di `NaN`). Il branch locale è avanti di 3 commit rispetto a `origin/main` (`e3d5451`, `d75db9c`, `6f44ef7`) — questo fix è pronto ma **in attesa di push/deploy**, non ancora verificabile live.
+- **Curated Favorites + Novità TRAMA (23/09/2026, POST-DISCOVERY CONSOLIDATION)**: implementate — cuore anche su Scoperta TRAMA (non solo Partner), Preferiti ora un'unica lista Partner+Curated con transizione automatica Curated→Partner senza duplicati; annunci prodotto (Notification Center + callout contestuale su Scopri + pagina storico `/nextgen/novita`), gated per audience/feature flag, mai un annuncio anticipato su una capability ancora internal-preview. **Migration `supabase/migration_38_curated_favorites_and_announcements.sql` preparata ma NON ANCORA APPLICATA in produzione** — capability inerte finché non viene applicata, coerentemente col resto della sezione Dark Release (`cohort:internal-preview`).
 
 ---
 
@@ -64,6 +65,14 @@ Capability strutturali per quando il prodotto cresce oltre la scala del Micro Pi
 | Famiglia multi-tenant (più tutori non conviventi) | Supportare situazioni familiari più complesse | Modello famiglia attuale è a singolo nucleo (nota: `families`/`family_members`=0 righe in produzione, probabile percorso legacy; il percorso reale oggi è "Famiglia condivisa" su `family_people`) | Evoluzione dello schema dati Famiglia | LOW |
 
 Nessuna data d'arrivo viene indicata per le voci "Scale/Future": non ancora sostenibile.
+
+---
+
+## PROSSIMO BLOCCO PRODOTTO PRINCIPALE
+
+Discovery V1 e School Calendar V1 restano **FREEZE** (Curated Favorites/Novità TRAMA sono lavoro additivo su Preferiti/Notifiche, non una riapertura di quelle architetture). Il prossimo blocco di prodotto importante, **non ancora iniziato**, è:
+
+**EXTERNAL PLANNER ITEMS** — permettere al Planner di tenere conto anche di impegni fuori da TRAMA (oggi solo placeholder: flag `EXTERNAL_PLANNER_ITEMS_ENABLED` registrato ma nessun codice applicativo lo risolve, `lib/feature-registry/catalog.ts` lo marca esplicitamente PLACEHOLDER). A seguire, nello stesso filone Planner/coordinamento: Accompagnamento/Ritiro, Deleghe, Carpooling (evoluzione di quanto già esiste per i Gruppi), integrazione Gruppi più profonda, orchestrazione Notifiche, sync Calendario personale.
 
 ---
 

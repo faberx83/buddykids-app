@@ -55,6 +55,8 @@ Rispetto all'Addendum dell'8/09 (che riportava scadenza cohort al 02/10/2026), l
 
 **Verificato via query DB**: `families`=0 righe, `family_members`=0 righe (tabelle presenti nello schema ma vuote — probabilmente legacy/non più il percorso primario), `family_people`=2 righe (probabile percorso reale di "Famiglia condivisa"), `week_responsibilities`=50 righe, `plan_shares`=8 righe, `groups`=1, `group_members`=1, `favorites`=5, `beta_feedback`=7, `travel_reminders`=1.
 
+**AGGIORNAMENTO 23/09/2026 (POST-DISCOVERY CONSOLIDATION)**: implementati Curated Favorites (cuore anche su Scoperta TRAMA, non solo Partner — `lib/data/curated-favorites.ts`, `lib/discovery/unified-favorites.ts`, Preferiti ora un'unica lista Partner+Curated) e Novità TRAMA/Feature Announcements (bell del Notification Center esistente + callout contestuale su `/nextgen/search` + pagina storico `/nextgen/novita`, catalogo editoriale code-based `lib/announcements/catalog.ts`). Entrambe le capability poggiano su due tabelle nuove (`curated_favorites`, `announcement_receipts`, `supabase/migration_38_curated_favorites_and_announcements.sql`) **PREPARATE MA NON ANCORA APPLICATE** in produzione as-of questa sessione — codice pronto, query su quelle tabelle falliranno finché Fabrizio (o l'agente orchestratore, dopo revisione) non applica la migration. Nessuna riga esistente di `favorites`/`activities`/`centers`/`bookings` toccata.
+
 **Dichiarato negli Handbook TO-BE ma non (ancora) verificato in questa sessione**: dettagli specifici degli Handbook Parent 1.1/1.2 su incentivi/referral non sono stati confrontati riga per riga col codice in questa sessione — richiederebbe un audit dedicato.
 
 **Gap noto**: nessuna route pubblica dedicata a un profilo "centro" navigabile dal genitore fuori da una singola attività pubblicata (vedi sezione Admin/Partner sotto — gap confermato via audit ancora oggi, nessun codice trovato per `/centro/[slug]`).
@@ -93,7 +95,7 @@ Unico dominio con un ciclo di bugfix live recentissimo (23/09/2026, commit `ae46
 - Bell/chat nascosti in Map view, mai sopra marker/popup (`9e198f6`).
 - X per svuotare la ricerca (`5688aee`).
 
-**Verificato via query DB**: 8/13 record curated risultavano mappabili secondo `f8aff5f` (dato del momento di quel commit, non ricontrollato con query dedicata in questa sessione — il dataset curato è statico in `lib/releases/catalog.ts`/dataset geo, non in una tabella DB separata interrogabile qui).
+**Verificato via query DB**: 8/13 record curated risultavano mappabili secondo `f8aff5f` (dato del momento di quel commit, non ricontrollato con query dedicata in questa sessione — CORREZIONE 23/09/2026: il dataset curato è statico in `lib/discovery/real-dataset.ts`, non in `lib/releases/catalog.ts` — quest'ultimo è il catalogo editoriale delle release, mai il dataset stesso — e non in una tabella DB separata interrogabile qui).
 
 **Gap noto**: 3 idee evolutive aggiunte alla roadmap POST-BETA (`1f0e0ea`) — non implementate, per costruzione (fuori perimetro di questo ciclo).
 
