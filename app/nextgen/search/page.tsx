@@ -8,6 +8,7 @@ import { getKidsForUser } from "@/lib/data/kids";
 import { getPlannerData } from "@/lib/data/planner";
 import { getSeasonYear } from "@/lib/data/season-year";
 import { getFavoriteActivityIds } from "@/lib/data/favorites";
+import { getCuratedFavoriteLeadIds } from "@/lib/data/curated-favorites";
 import SearchDiscoveryClient from "./SearchDiscoveryClient";
 // TRAMA — REAL DISCOVERY PILOT (16/09/2026) · ANTEPRIMA INTERNA. Stesso
 // identico pattern Dark Release di app/nextgen/planner/page.tsx
@@ -40,7 +41,7 @@ export default async function NextgenSearchPage() {
   }
 
   const seasonYear = await getSeasonYear();
-  const [activities, kids, planner, availabilityByWeek, activitiesWithDaySpots, favoriteActivityIds] =
+  const [activities, kids, planner, availabilityByWeek, activitiesWithDaySpots, favoriteActivityIds, curatedFavoriteLeadIds] =
     await Promise.all([
       getActivities(),
       getKidsForUser(),
@@ -53,6 +54,9 @@ export default async function NextgenSearchPage() {
       // cuore delle card della lista con lo stato reale invece che sempre
       // vuoto.
       getFavoriteActivityIds(),
+      // TRAMA — POST-DISCOVERY CONSOLIDATION (23/09/2026), CURATED
+      // FAVORITES — stesso principio, sulla tabella curated_favorites.
+      getCuratedFavoriteLeadIds(),
     ]);
 
   const uncoveredWeek = planner.weeks.find((w) => w.index === planner.firstUncoveredIndex) ?? null;
@@ -109,6 +113,7 @@ export default async function NextgenSearchPage() {
       favoriteActivityIds={Array.from(favoriteActivityIds)}
       realDiscoveryLeads={realDiscoveryLeads}
       realDiscoveryBadgeVisible={realDiscoveryBadgeVisible}
+      curatedFavoriteLeadIds={Array.from(curatedFavoriteLeadIds)}
     />
   );
 }

@@ -14,9 +14,17 @@
 // rating; availability; posti") — nessuno di questi campi esiste qui, come
 // nella card di lista.
 
+import { useState } from "react";
 import type { DiscoveryLeadRecord } from "@/lib/discovery/real-dataset";
 import { isDiscoveryLeadInvitable, secondaryLinkLabelForLead } from "@/lib/discovery/real-dataset";
 import { logDiscoveryLeadEventAction } from "@/app/actions/discovery";
+// TRAMA — POST-DISCOVERY CONSOLIDATION (23/09/2026), CURATED FAVORITES.
+// A differenza del dialog "Proponi invito" (che ridimensiona il popup, per
+// questo vive fuori — vedi commento sopra su onProposeClick), il cuore
+// scambia solo un'emoji: nessun cambio di ALTEZZA del contenuto del
+// <Popup>, quindi qui lo stato locale optimistic è sicuro (nessun rischio
+// di richiusura Leaflet, root cause del bug "doppio tap" — diverso caso).
+import { toggleCuratedFavoriteAction } from "@/app/actions/curated-favorites";
 
 const CATEGORY_LABELS: Record<DiscoveryLeadRecord["category"], string> = {
   educativo: "Educativo",
@@ -43,6 +51,7 @@ export default function DiscoveryMapPopupCard({
   locationLabel,
   alreadyProposed,
   onProposeClick,
+  initialFavorite,
 }: {
   lead: DiscoveryLeadRecord;
   // TRAMA — DISCOVERY MAP FINALIZATION (22/09/2026), §4-5 "MULTI-SEDE".
@@ -71,26 +80,50 @@ export default function DiscoveryMapPopupCard({
   // ridimensionare il popup dopo un tap.
   alreadyProposed?: boolean;
   onProposeClick?: () => void;
+  // §6 del task "MAP FAVORITE" — preferibilmente su DiscoveryMapPopupCard
+  // "se coerente e semplice": lo è (nessun dialog, solo un'emoji che
+  // cambia) — stato iniziale dal chiamante (getCuratedFavoriteLeadIds()
+  // lato server, stesso principio di initialFavorite in DiscoveryLeadCard).
+  initialFavorite?: boolean;
 }) {
   const invitable = isDiscoveryLeadInvitable(lead);
   const secondaryLabel = secondaryLinkLabelForLead(lead);
   const ctaHref = lead.registrationUrl || lead.officialUrl;
   const age = formatAge(lead.ageMin, lead.ageMax);
   const dateRange = formatDateRange(lead.startDate, lead.endDate);
+  const [fav, setFav] = useState(initialFavorite ?? false);
 
   function handleExternalClick() {
     void logDiscoveryLeadEventAction("curated_listing_external_clicked", lead.id);
   }
 
+  function handleToggleFavorite() {
+    const next = !fav;
+    setFav(next);
+    toggleCuratedFavoriteAction(lead.id, next).then((result) => {
+      if (result.error) setFav(!next);
+    });
+  }
+
   return (
     <div style={{ fontSize: 13, lineHeight: 1.5, minWidth: 200, maxWidth: 240 }}>
-      <div className="mb-1 flex items-center gap-1.5">
-        <span className="rounded-full bg-[#F3F0FF] px-2 py-0.5 text-[9.5px] font-semibold text-trama-violet">
-          Scoperta TRAMA
-        </span>
-        <span className="rounded-full bg-[#F4F6FA] px-2 py-0.5 text-[9.5px] font-semibold text-ink-2">
-          {CATEGORY_LABELS[lead.category]}
-        </span>
+      <div className="mb-1 flex items-center justify-between gap-1.5">
+        <div className="flex items-center gap-1.5">
+          <span className="rounded-full bg-[#F3F0FF] px-2 py-0.5 text-[9.5px] font-semibold text-trama-violet">
+            Scoperta TRAMA
+          </span>
+          <span className="rounded-full bg-[#F4F6FA] px-2 py-0.5 text-[9.5px] font-semibold text-ink-2">
+            {CATEGORY_LABELS[lead.category]}
+          </span>
+        </div>
+        <button
+          type="button"
+          onClick={handleToggleFavorite}
+          aria-label={fav ? "Rimuovi dai preferiti" : "Aggiungi ai preferiti"}
+          className="flex h-5 w-5 flex-shrink-0 items-center justify-center text-[13px]"
+        >
+          {fav ? "❤️" : "🤍"}
+        </button>
       </div>
       <strong className="block text-[13px] text-ink">{lead.activityTitle}</strong>
       {locationLabel && <div className="mt-0.5 text-[10.5px] font-semibold text-ink-3">📍 {locationLabel}</div>}

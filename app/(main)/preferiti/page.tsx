@@ -1,5 +1,5 @@
 import PreferitiView from "@/components/PreferitiView";
-import { getFavoriteActivitiesForParent } from "@/lib/data/favorites";
+import { getUnifiedFavoritesForParent } from "@/lib/data/favorites";
 
 // "Preferiti" (richiesta da Fabrizio per la v1): prima il cuore nella scheda
 // attività non persisteva mai (vedi FUNCTIONAL-TC-026) — ora salva davvero
@@ -10,6 +10,6 @@ import { getFavoriteActivitiesForParent } from "@/lib/data/favorites";
 // stesso pattern di "Le mie prenotazioni" (task #524): nessun comportamento
 // cambiato qui, solo spostato in un componente condiviso.
 export default async function PreferitiPage() {
-  const favorites = await getFavoriteActivitiesForParent();
+  const favorites = await getUnifiedFavoritesForParent();
   return <PreferitiView favorites={favorites} />;
 }

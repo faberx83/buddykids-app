@@ -43,6 +43,11 @@ import { isDiscoveryLeadInvitable, secondaryLinkLabelForLead } from "@/lib/disco
 // nuova architettura di analytics introdotta. Vedi app/actions/discovery.ts.
 import { logDiscoveryLeadEventAction, proposeDiscoveryLeadInviteAction } from "@/app/actions/discovery";
 import { useNextgenToast } from "@/components/nextgen/NextgenToastProvider";
+// TRAMA — POST-DISCOVERY CONSOLIDATION (23/09/2026), CURATED FAVORITES.
+// Stesso pattern optimistic-UI + rollback di ActivityCard.tsx — "Preferito"
+// qui significa "questa Scoperta mi interessa e voglio ritrovarla" (mai
+// "è già Partner TRAMA", vedi OBIETTIVO PRODOTTO §A del task).
+import { toggleCuratedFavoriteAction } from "@/app/actions/curated-favorites";
 
 const CATEGORY_LABELS: Record<DiscoveryLeadRecord["category"], string> = {
   educativo: "Educativo",
@@ -78,8 +83,19 @@ function formatAge(ageMin: number | null, ageMax: number | null): string | null 
   return null;
 }
 
-export default function DiscoveryLeadCard({ lead }: { lead: DiscoveryLeadRecord }) {
+export default function DiscoveryLeadCard({
+  lead,
+  initialFavorite,
+}: {
+  lead: DiscoveryLeadRecord;
+  // FIX (§6 "FAVORITE BUTTON UX" del task) — stesso pattern di
+  // ActivityCard.tsx#initialFavorite: lo stato iniziale arriva dal
+  // chiamante (che legge getCuratedFavoriteLeadIds() lato server), mai un
+  // useState locale sempre "vuoto" al primo render.
+  initialFavorite?: boolean;
+}) {
   const showToast = useNextgenToast();
+  const [fav, setFav] = useState(initialFavorite ?? false);
   const dateRange = formatDateRange(lead.startDate, lead.endDate);
   const age = formatAge(lead.ageMin, lead.ageMax);
   const ctaHref = lead.registrationUrl || lead.officialUrl;
@@ -108,6 +124,14 @@ export default function DiscoveryLeadCard({ lead }: { lead: DiscoveryLeadRecord 
 
   function handleExternalClick() {
     void logDiscoveryLeadEventAction("curated_listing_external_clicked", lead.id);
+  }
+
+  function handleToggleFavorite() {
+    const next = !fav;
+    setFav(next); // aggiornamento ottimistico
+    toggleCuratedFavoriteAction(lead.id, next).then((result) => {
+      if (result.error) setFav(!next); // rollback se la scrittura fallisce
+    });
   }
 
   async function handleConfirmPropose() {
@@ -154,6 +178,18 @@ export default function DiscoveryLeadCard({ lead }: { lead: DiscoveryLeadRecord 
         <div className="absolute bottom-2 left-1/2 z-[1] -translate-x-1/2 rounded-full bg-white/95 px-2.5 py-1 text-[11px] font-semibold text-ink-2 backdrop-blur-sm">
           Scoperta TRAMA
         </div>
+        {/* §6 "FAVORITE BUTTON UX" — stessa posizione/stile del cuore in
+            ActivityCard.tsx (angolo in alto a destra dell'hero), cosi il
+            cuore "si legge come lo stesso prodotto" senza far sembrare la
+            Scoperta un Partner (nessun badge Match/rating accanto). */}
+        <button
+          type="button"
+          onClick={handleToggleFavorite}
+          aria-label={fav ? "Rimuovi dai preferiti" : "Aggiungi ai preferiti"}
+          className="absolute right-2.5 top-2.5 z-[2] flex h-8 w-8 items-center justify-center rounded-full bg-white/90 text-base transition-transform hover:scale-110"
+        >
+          {fav ? "❤️" : "🤍"}
+        </button>
       </div>
       <div className="p-3">
         <div className="mb-1 text-sm font-bold text-ink">{lead.activityTitle}</div>

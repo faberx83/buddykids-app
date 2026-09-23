@@ -244,6 +244,7 @@ export default function SearchDiscoveryClient({
   favoriteActivityIds = [],
   realDiscoveryLeads = [],
   realDiscoveryBadgeVisible = false,
+  curatedFavoriteLeadIds = [],
 }: {
   activities: Activity[];
   kids: Kid[];
@@ -268,6 +269,11 @@ export default function SearchDiscoveryClient({
   // (lib/data/favorites.ts#getFavoriteActivityIds), per inizializzare il
   // cuore di ogni card con lo stato reale invece che sempre vuoto.
   favoriteActivityIds?: string[];
+  // TRAMA — POST-DISCOVERY CONSOLIDATION (23/09/2026), CURATED FAVORITES.
+  // Stesso principio di favoriteActivityIds sopra, ma sulla tabella
+  // curated_favorites (lib/data/curated-favorites.ts#getCuratedFavoriteLeadIds)
+  // — id stringa del lead, mai un dbId uuid.
+  curatedFavoriteLeadIds?: string[];
   // BUG CORRETTO 07/08/2026 (segnalato da Fabrizio: "il filtro sulle
   // settimane deve seguire la stessa logica del Planner: se alcune
   // settimane sono passate non devo poterle vedere") — prima il filtro
@@ -627,6 +633,7 @@ export default function SearchDiscoveryClient({
   // FIX (segnalazione Fabrizio 06/09/2026, punto 1) — Set per lookup rapido,
   // stesso principio di daySpotsSet appena sopra.
   const favoriteIdsSet = useMemo(() => new Set(favoriteActivityIds), [favoriteActivityIds]);
+  const curatedFavoriteIdsSet = useMemo(() => new Set(curatedFavoriteLeadIds), [curatedFavoriteLeadIds]);
 
   // TRAMA ONE Build Sprint 3 — "context object" leggero: un correlationId
   // generato una volta per sessione di ricerca (stesso principio di
@@ -879,11 +886,12 @@ export default function SearchDiscoveryClient({
                   locationLabel={item.locationLabel}
                   alreadyProposed={proposedLeadIds.has(item.lead.id)}
                   onProposeClick={() => setProposeDialogLead(item.lead)}
+                  initialFavorite={curatedFavoriteIdsSet.has(item.lead.id)}
                 />
               ),
             }
       ),
-    [discoveryMapItems, proposedLeadIds]
+    [discoveryMapItems, proposedLeadIds, curatedFavoriteIdsSet]
   );
 
   // §13 "MAP COUNT / MISSING GEO": il count generale (totalResultsCount,
@@ -960,7 +968,13 @@ export default function SearchDiscoveryClient({
         />
       );
     }
-    return <DiscoveryLeadCard key={resultKey(result)} lead={result.lead} />;
+    return (
+      <DiscoveryLeadCard
+        key={resultKey(result)}
+        lead={result.lead}
+        initialFavorite={curatedFavoriteIdsSet.has(result.lead.id)}
+      />
+    );
   }
 
   // SPRINT 3 correttivo (feedback Fabrizio: "il filtro dovrebbe essere
