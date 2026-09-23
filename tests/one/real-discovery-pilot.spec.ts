@@ -1387,7 +1387,7 @@ test.describe("DISCOVERY LIVE UX BUGFIX — restore stato Mappa al ritorno da de
 
   test("NAV-07: ActivityMap in vista Mappa riceve initialViewState/skipInitialFit/onViewStateChange collegati allo stato mapViewState/hadRestoredMapView", () => {
     const source = readSource("../../app/nextgen/search/SearchDiscoveryClient.tsx");
-    const block = source.slice(source.indexOf("<ActivityMap"), source.indexOf("<ActivityMap") + 700);
+    const block = source.slice(source.indexOf("<ActivityMap"), source.indexOf("<ActivityMap") + 1300);
     expect(block).toContain("initialViewState={mapViewState ?? undefined}");
     expect(block).toContain("skipInitialFit={hadRestoredMapView}");
     expect(block).toContain("onViewStateChange={(center, zoom) => setMapViewState({ center, zoom })}");
@@ -1453,5 +1453,40 @@ test.describe("DISCOVERY LIVE UX BUGFIX — Proponi invito da Mappa, primo tap (
     const source = readSource("../../app/nextgen/search/SearchDiscoveryClient.tsx");
     expect(source).toContain("alreadyProposed={proposedLeadIds.has(item.lead.id)}");
     expect(source).toContain("setProposedLeadIds((prev) => new Set(prev).add(leadId))");
+  });
+
+  // TRAMA — DISCOVERY LIVE UX BUGFIX, fix post-live-test (23/09/2026). BUG
+  // SEGNALATO DA FABRIZIO: dopo il fix del doppio-tap, il tap su "Proponi
+  // invito" mostrava lo sfondo scurito ma NESSUN dialog visibile — il popup
+  // Leaflet restava sopra. Root cause: z-[80] è inferiore allo z-index nativo
+  // dei pannelli Leaflet (.leaflet-popup-pane = 700, il più alto in
+  // leaflet/dist/leaflet.css), quindi il dialog finiva impilato SOTTO il
+  // popup ancora aperto.
+  test("PI-05: il dialog di conferma ha uno z-index ben sopra il massimo nativo di Leaflet (700, popupPane) — mai coperto da un popup ancora aperto", () => {
+    const source = readSource("../../components/nextgen/DiscoveryProposeInviteDialog.tsx");
+    // Il numero "80" può comparire nel COMMENTO che spiega la root cause
+    // (il vecchio valore sbagliato) — isoliamo la riga `className=` reale.
+    const classNameLine = source.split("\n").find((l) => l.includes('className="fixed inset-0'));
+    expect(classNameLine).toBeDefined();
+    const match = classNameLine!.match(/z-\[(\d+)\]/);
+    expect(match).not.toBeNull();
+    expect(Number(match![1])).toBeGreaterThan(700);
+  });
+});
+
+test.describe("DISCOVERY LIVE UX BUGFIX — altezza mappa per legenda visibile (statico sul sorgente)", () => {
+  // TRAMA — DISCOVERY LIVE UX BUGFIX, fix post-live-test (23/09/2026).
+  // Segnalato da Fabrizio: la legenda esiste (guardia corretta, verificato
+  // live) ma con l'altezza di default (440) finiva sotto il bordo dello
+  // schermo su mobile, visibile solo scorrendo sotto la mappa.
+  test("MH-01: ActivityMap in Discovery riceve un'altezza ridotta (opt-in, prop già esistente) per lasciare più spazio verticale alla legenda senza scroll aggiuntivo", () => {
+    const source = readSource("../../app/nextgen/search/SearchDiscoveryClient.tsx");
+    const block = source.slice(source.indexOf("<ActivityMap"), source.indexOf("<ActivityMap") + 1300);
+    expect(block).toContain("height={360}");
+  });
+
+  test("MH-02: PlannerMapView resta sulla propria altezza (200), invariata — il cambio riguarda SOLO Discovery", () => {
+    const source = readSource("../../components/nextgen/PlannerMapView.tsx");
+    expect(source).toContain("height={200}");
   });
 });

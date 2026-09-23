@@ -1546,6 +1546,15 @@ export default function SearchDiscoveryClient({
                   items={mapMarkerItems}
                   userPosition={geo ?? undefined}
                   onUserPositionChange={updateUserPosition}
+                  // TRAMA — DISCOVERY LIVE UX BUGFIX, fix post-live-test
+                  // (23/09/2026). Segnalato da Fabrizio: la legenda esiste
+                  // (guardia corretta) ma con l'altezza di default (440,
+                  // invariata da sempre) finiva sotto il bordo dello schermo
+                  // su mobile, visibile solo scorrendo. Altezza ridotta SOLO
+                  // qui (prop già esistente/opt-in, PlannerMapView usa 200 e
+                  // resta invariato) per lasciare più spazio verticale alla
+                  // legenda senza scroll aggiuntivo.
+                  height={360}
                   // TRAMA — DISCOVERY LIVE UX BUGFIX (22/09/2026), §3. Ripristina
                   // il pan/zoom salvato (se questo caricamento pagina arriva da
                   // un Back con `?mc=&mz=`), altrimenti comportamento invariato
