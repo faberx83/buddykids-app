@@ -60,7 +60,17 @@ export default function DiscoveryProposeInviteDialog({
       role="dialog"
       aria-modal="true"
       aria-label="Proponi invito"
-      className="fixed inset-0 z-[80] flex items-end justify-center bg-black/40 px-4 pb-6 sm:items-center"
+      // TRAMA — DISCOVERY LIVE UX BUGFIX, fix post-live-test (23/09/2026).
+      // BUG SEGNALATO DA FABRIZIO: dopo il fix del doppio-tap, il tap su
+      // "Proponi invito" mostrava lo sfondo scurito ma NESSUN dialog visibile
+      // sopra — il popup Leaflet restava a schermo, invariato. ROOT CAUSE:
+      // z-[80] è INFERIORE allo z-index nativo dei pannelli Leaflet
+      // (.leaflet-popup-pane è 700, vedi leaflet/dist/leaflet.css) — questo
+      // overlay (sfondo + card) veniva impilato SOTTO il popup ancora aperto,
+      // quindi lo sfondo scuro si vedeva (dietro/attorno al popup) ma la card
+      // del dialog era coperta dal popup stesso. FIX: z-index ben sopra il
+      // massimo di Leaflet (700 = popupPane, il più alto).
+      className="fixed inset-0 z-[1000] flex items-end justify-center bg-black/40 px-4 pb-6 sm:items-center"
       onClick={(e) => {
         if (e.target === e.currentTarget && !submitting) onClose();
       }}
