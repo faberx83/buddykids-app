@@ -34,7 +34,16 @@ export type NotificationType =
   | "center_group_request_new"
   | "center_inquiry_new"
   | "center_booking_new"
-  | "center_checkins_unconfirmed";
+  | "center_checkins_unconfirmed"
+  // TRAMA — POST-DISCOVERY CONSOLIDATION (23/09/2026), NOVITÀ TRAMA /
+  // FEATURE ANNOUNCEMENTS — LEVEL 1 "NOTIFICATION CENTER" (§10 del task).
+  // A differenza di tutti i tipi sopra (stato di dominio già esistente,
+  // MAI persistito), questo tipo ha una vera colonna DB dedicata
+  // (public.announcement_receipts.seen_at, vedi lib/data/announcements.ts)
+  // — stesso principio "isSeen dal server, mai un cursore client" già in
+  // uso per inquiry_reply/booking_response (NON aggiunto a
+  // CLIENT_CURSOR_TYPES sotto).
+  | "trama_announcement";
 
 export interface NotificationItem {
   /** Deterministico: `${type}:${entityId}` — mai un uuid random generato qui. */

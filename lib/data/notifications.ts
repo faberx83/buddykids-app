@@ -27,6 +27,11 @@ import { getMyBookingsForParent } from "@/lib/data/my-bookings";
 import { getRecentAcceptedGroupRequests } from "@/lib/data/coordination-signal";
 import { getCarpoolMatchSignals } from "@/lib/data/carpool-signals";
 import { NotificationItem, makeNotificationId, sortNotifications } from "@/lib/notifications/model";
+// TRAMA — POST-DISCOVERY CONSOLIDATION (23/09/2026), NOVITÀ TRAMA — LEVEL 1
+// "NOTIFICATION CENTER" (§10). Stesso principio REUSE del resto di questo
+// file: nessuna nuova infrastruttura di notifica, solo un quinto call site
+// aggregato in getParentNotifications().
+import { getVisibleAnnouncementsForCurrentParent } from "@/lib/data/announcements";
 
 async function isCurrentUserParent(
   supabase: Awaited<ReturnType<typeof createClient>>
@@ -56,12 +61,13 @@ export async function getParentNotifications(): Promise<NotificationItem[]> {
   if (!current) return [];
   const { userId } = current;
 
-  const [invites, inquiries, bookings, acceptedGroupRequests, carpool] = await Promise.all([
+  const [invites, inquiries, bookings, acceptedGroupRequests, carpool, announcements] = await Promise.all([
     getMyGroupInvites(),
     getInquiriesForParent(),
     getMyBookingsForParent(),
     getRecentAcceptedGroupRequests(supabase, userId, MAX_ACCEPTED_GROUP_REQUESTS),
     getCarpoolMatchSignals(userId),
+    getVisibleAnnouncementsForCurrentParent(),
   ]);
 
   const items: NotificationItem[] = [];
@@ -185,6 +191,27 @@ export async function getParentNotifications(): Promise<NotificationItem[]> {
       isSeen: false,
       requiresAction: true,
       deepLink: `/nextgen/groups/${m.groupId}`,
+    });
+  }
+
+  // ── INFO — Novità TRAMA / Feature Announcements (Level 1) ──────────────
+  // §9-10-14 del task: solo annunci realmente visibili per QUESTO utente
+  // (flag risolto, audience parent, announceToUsers=true — vedi
+  // getVisibleAnnouncementsForCurrentParent) e non ancora "visti" dal bell.
+  // priority "info" (mai action/important): un annuncio prodotto non
+  // richiede mai un'azione dell'utente, a differenza di un invito/proposta.
+  for (const a of announcements) {
+    if (a.isSeen) continue;
+    items.push({
+      id: makeNotificationId("trama_announcement", a.id),
+      type: "trama_announcement",
+      priority: "info",
+      title: a.userTitle,
+      body: a.userBody,
+      relevantAt: `${a.releasedAt}T00:00:00.000Z`,
+      isSeen: false,
+      requiresAction: false,
+      deepLink: a.deepLink,
     });
   }
 
