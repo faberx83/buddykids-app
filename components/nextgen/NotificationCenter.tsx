@@ -48,6 +48,8 @@ import {
 } from "@/lib/notifications/model";
 import { markInquiriesReadAction } from "@/app/actions/inquiries";
 import { markBookingsReadAction } from "@/app/actions/booking-response";
+// TRAMA — POST-DISCOVERY CONSOLIDATION (23/09/2026), NOVITÀ TRAMA — LEVEL 1.
+import { markAnnouncementSeenAction } from "@/app/actions/announcements";
 // Estratto in un file dedicato (31/08/2026): NextgenBottomNav.tsx ora usa la
 // STESSA logica per i pallini "Prenotazioni"/"Profilo" — vedi
 // lib/notifications/seen-cursor.ts per il motivo dell'estrazione.
@@ -163,6 +165,8 @@ export default function NotificationCenter({
       await markInquiriesReadAction({ ids: [entityId], side: "center", read: true });
     } else if (item.type === "center_booking_new") {
       await markBookingsReadAction({ ids: [entityId], side: "center", read: true });
+    } else if (item.type === "trama_announcement") {
+      await markAnnouncementSeenAction(entityId);
     }
     setOpen(false);
     router.push(item.deepLink);
@@ -272,6 +276,24 @@ export default function NotificationCenter({
                   </li>
                 ))}
               </ul>
+            )}
+            {/* TRAMA — POST-DISCOVERY CONSOLIDATION (23/09/2026), NOVITÀ
+                TRAMA — LEVEL 3 "history". Solo scope "parent" (la pagina
+                /nextgen/novita non ha un equivalente Partner in questo
+                ciclo) — link discreto, mai un badge/contatore aggiuntivo. */}
+            {scope === "parent" && (
+              <div className="mt-1 flex-shrink-0 border-t border-[#F0F2F5] pt-2 text-center">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setOpen(false);
+                    router.push("/nextgen/novita");
+                  }}
+                  className="text-[11.5px] font-semibold text-trama-violet"
+                >
+                  Vedi tutte le novità
+                </button>
+              </div>
             )}
           </div>
         </div>

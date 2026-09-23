@@ -9,6 +9,10 @@ import { getPlannerData } from "@/lib/data/planner";
 import { getSeasonYear } from "@/lib/data/season-year";
 import { getFavoriteActivityIds } from "@/lib/data/favorites";
 import { getCuratedFavoriteLeadIds } from "@/lib/data/curated-favorites";
+// TRAMA — POST-DISCOVERY CONSOLIDATION (23/09/2026), NOVITÀ TRAMA — LEVEL 2.
+// Caso reale scelto per il MVP (§15 del task: "preferenza: Scoperte TRAMA
+// in /nextgen/search").
+import { getContextualAnnouncementForSurface } from "@/lib/data/announcements";
 import SearchDiscoveryClient from "./SearchDiscoveryClient";
 // TRAMA — REAL DISCOVERY PILOT (16/09/2026) · ANTEPRIMA INTERNA. Stesso
 // identico pattern Dark Release di app/nextgen/planner/page.tsx
@@ -58,6 +62,7 @@ export default async function NextgenSearchPage() {
       // FAVORITES — stesso principio, sulla tabella curated_favorites.
       getCuratedFavoriteLeadIds(),
     ]);
+  const contextualAnnouncement = await getContextualAnnouncementForSurface("/nextgen/search");
 
   const uncoveredWeek = planner.weeks.find((w) => w.index === planner.firstUncoveredIndex) ?? null;
   // BUG CORRETTO 07/08/2026 — stesso pattern di app/nextgen/planner/page.tsx:
@@ -114,6 +119,16 @@ export default async function NextgenSearchPage() {
       realDiscoveryLeads={realDiscoveryLeads}
       realDiscoveryBadgeVisible={realDiscoveryBadgeVisible}
       curatedFavoriteLeadIds={Array.from(curatedFavoriteLeadIds)}
+      contextualAnnouncement={
+        contextualAnnouncement
+          ? {
+              id: contextualAnnouncement.id,
+              userTitle: contextualAnnouncement.userTitle,
+              userBody: contextualAnnouncement.userBody,
+              deepLink: contextualAnnouncement.deepLink,
+            }
+          : null
+      }
     />
   );
 }

@@ -57,6 +57,8 @@ import DiscoveryMapPopupCard from "@/components/nextgen/DiscoveryMapPopupCard";
 // vita del <Popup> (vedi commento in DiscoveryMapPopupCard.tsx e nel file
 // stesso per il root cause del bug "doppio tap").
 import DiscoveryProposeInviteDialog from "@/components/nextgen/DiscoveryProposeInviteDialog";
+// TRAMA — POST-DISCOVERY CONSOLIDATION (23/09/2026), NOVITÀ TRAMA — LEVEL 2.
+import AnnouncementCallout from "@/components/nextgen/AnnouncementCallout";
 import type { MapItem } from "@/components/ActivityMap";
 import { useSetNextgenHideFloatingControls } from "@/components/nextgen/NextgenScrollActivity";
 
@@ -245,6 +247,7 @@ export default function SearchDiscoveryClient({
   realDiscoveryLeads = [],
   realDiscoveryBadgeVisible = false,
   curatedFavoriteLeadIds = [],
+  contextualAnnouncement = null,
 }: {
   activities: Activity[];
   kids: Kid[];
@@ -274,6 +277,12 @@ export default function SearchDiscoveryClient({
   // curated_favorites (lib/data/curated-favorites.ts#getCuratedFavoriteLeadIds)
   // — id stringa del lead, mai un dbId uuid.
   curatedFavoriteLeadIds?: string[];
+  // TRAMA — POST-DISCOVERY CONSOLIDATION (23/09/2026), NOVITÀ TRAMA — LEVEL
+  // 2 "CONTEXTUAL NEW" (§10/§15). Risolto server-side in page.tsx (già
+  // !isDismissed per questo utente/versione) — null quando non c'è alcun
+  // annuncio contestuale attivo per /nextgen/search (comportamento identico
+  // a prima per qualunque utente senza annunci pendenti).
+  contextualAnnouncement?: { id: string; userTitle: string; userBody: string; deepLink: string } | null;
   // BUG CORRETTO 07/08/2026 (segnalato da Fabrizio: "il filtro sulle
   // settimane deve seguire la stessa logica del Planner: se alcune
   // settimane sono passate non devo poterle vedere") — prima il filtro
@@ -1079,6 +1088,16 @@ export default function SearchDiscoveryClient({
             Ordinati per voi{uncoveredWeekLabel ? ` — priorità a chi è libero in ${uncoveredWeekLabel}` : ""}.
           </p>
         </DecorativeIntroCard>
+
+        {contextualAnnouncement && (
+          <AnnouncementCallout
+            announcementId={contextualAnnouncement.id}
+            title={contextualAnnouncement.userTitle}
+            body={contextualAnnouncement.userBody}
+            deepLink={contextualAnnouncement.deepLink}
+            className=""
+          />
+        )}
 
         {/* TRAMA — DISCOVERY UNIFICATION (21/09/2026). La sezione separata
             "Scoperte TRAMA" (sopra la searchbar) è stata rimossa: i lead

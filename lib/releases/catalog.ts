@@ -111,10 +111,16 @@ export const RELEASE_CATALOG: ReleaseCatalogEntry[] = [
       "Result set unificato (21/09/2026): Partner e Scoperte TRAMA convivono nello stesso elenco con un unico count, intercalati con un ordinamento deterministico (2 Partner : 1 Curated, nessun Match/punteggio inventato per il Curated) — nessuna sezione separata 'Scoperte TRAMA' più in cima alla pagina.",
       "'Proponi invito' (manifestazione d'interesse verso public.center_leads, infrastruttura esistente) mostrato SOLO sui 7/13 record con un'entità organizzatrice reale e nominata — i 6 record che descrivono un servizio comunale con gestore non nominato/rotante restano visibili ma senza questa CTA (mostrano solo il link alla fonte).",
       "Nessuna immagine: ogni card usa un visual neutro TRAMA (vedi §9 Image/Copyright Audit del report) finché non viene presa una decisione di prodotto/legal sulla gestione immagini.",
-      "Favorites non disponibile per i lead curati (richiederebbe uno schema change su public.favorites, oggi legato a un activity_id reale) — valutato e rimandato, non necessario per questo pilot.",
+      // AGGIORNATO 23/09/2026 (POST-DISCOVERY CONSOLIDATION): non più un gap
+      // — Favorites ora disponibile anche per i lead curati, su una
+      // tabella NUOVA e separata (public.curated_favorites, migration 38 —
+      // NON ANCORA APPLICATA), senza alcuno schema change su
+      // public.favorites/activities. Vedi lib/data/curated-favorites.ts +
+      // lib/discovery/unified-favorites.ts (meccanismo di merge/promotion
+      // Curated → Partner nei Preferiti unificati).
     ],
     notes:
-      "Creata il 16/09/2026, estesa il 17/09 (COMPLETION PASS: dataset 6→13, filtri, analytics) e il 21/09/2026 (DISCOVERY UNIFICATION + PROPONI INVITO: result set unico, CTA 'Proponi invito' su riuso di center_leads). Non ancora verificata visivamente live in nessuna delle tre iterazioni (nessun accesso a browser/dev-server nell'ambiente di sviluppo): resta dietro flag (cohort:internal-preview) finché Fabrizio non la abilita e la controlla di persona.",
+      "Creata il 16/09/2026, estesa il 17/09 (COMPLETION PASS: dataset 6→13, filtri, analytics), il 21/09/2026 (DISCOVERY UNIFICATION + PROPONI INVITO: result set unico, CTA 'Proponi invito' su riuso di center_leads) e il 23/09/2026 (POST-DISCOVERY CONSOLIDATION: Curated Favorites, tabella curated_favorites NON ANCORA APPLICATA — migration 38). Non ancora verificata visivamente live in nessuna delle iterazioni (nessun accesso a browser/dev-server nell'ambiente di sviluppo): resta dietro flag (cohort:internal-preview) finché Fabrizio non la abilita e la controlla di persona.",
   },
 ];
 
