@@ -23,6 +23,9 @@ Capability già motivate dai primi use case reali della Beta, con dipendenze e c
 | Dashboard analytics per Partner | Dare visibilità sulle proprie performance | Non esiste (solo lato Admin, e solo parzialmente) | Costruzione ex-novo | MEDIUM |
 | Calendario scolastico integrato al Planner | Aiutare le famiglie a pianificare attorno alle chiusure scolastiche | Solo struttura dati di base predisposta, nessuna logica applicativa | Fonte dati chiusure scolastiche regionali/nazionali + logica Planner | MEDIUM |
 | Cancellazione account con esportazione dati | Dare alle famiglie un controllo reale e conforme sui propri dati | Oggi solo disattivazione manuale | Pipeline di cancellazione/export dedicata | MEDIUM |
+| Filtro per tipo marker sulla Mappa Discovery (Centri TRAMA / Da invitare / Fonte pubblica) | Lasciare al genitore la scelta di quali categorie vedere, riducendo il rumore visivo su mappe affollate | Legenda statica esistente (sempre visibile), nessun filtro interattivo per tipo | Nuovo chip filtro + stato dedicato, integrato con la persistenza URL/restore della Mappa già esistente | MEDIUM |
+| Scelta della modalità/stile di visualizzazione della mappa | Dare controllo visivo/preferenza estetica sulla cartografia | Un solo stile (OpenStreetMap standard), nessuna opzione | Valutazione di provider tile aggiuntivi compatibili con una usage policy verificata (vedi cronologia provider in ActivityMap.tsx) | LOW |
+| Zoom automatico sulla propria posizione con "Usa la mia posizione" | Centrare rapidamente la mappa sulla propria zona senza pan/zoom manuale | La posizione viene mostrata come marker, ma la mappa non si ricentra automaticamente su di essa | Piccola estensione del comportamento di fit esistente in ActivityMap.tsx | MEDIUM |
 
 ## SCALE / FUTURE
 
