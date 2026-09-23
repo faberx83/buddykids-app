@@ -504,7 +504,27 @@ export default function SearchDiscoveryClient({
       params.set("mz", String(mapViewState.zoom));
     }
     const qs = params.toString();
-    router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
+    const nextUrl = qs ? `${pathname}?${qs}` : pathname;
+    // TRAMA — DISCOVERY LIVE UX BUGFIX, fix post-live-test (23/09/2026).
+    // BUG SEGNALATO DA FABRIZIO: da Mappa, aprire un popup (che Leaflet
+    // sposta leggermente in vista con autoPan → spara moveend) e poi toccare
+    // subito "Apri scheda" faceva partire la barra di caricamento ma non
+    // navigava mai. ROOT CAUSE: il moveend di autoPan aggiornava
+    // `mapViewState` → questo effect schedulava un `router.replace`
+    // SINCRONO nello stesso istante in cui il <Link>\"Apri scheda\" chiamava
+    // `router.push` verso /activity/[id] — una race in cui il nostro
+    // `replace` (stessa pagina) vinceva e cancellava/sovrascriveva la
+    // navigazione in corso, lasciando l'utente bloccato sulla pagina di
+    // ricerca con la progress bar attiva. FIX: `router.replace` è ora
+    // debounced (300ms) — un tap su un link di navigazione arriva SEMPRE
+    // prima che il replace schedulato scatti, e se il componente si smonta
+    // per la navigazione il cleanup annulla il timeout senza mai chiamarlo.
+    // Nessun impatto sul comportamento "niente decine di history entries"
+    // (il debounce le riduce ulteriormente, non le aumenta).
+    const timeoutId = setTimeout(() => {
+      router.replace(nextUrl, { scroll: false });
+    }, 300);
+    return () => clearTimeout(timeoutId);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     viewMode,

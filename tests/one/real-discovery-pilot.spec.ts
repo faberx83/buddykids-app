@@ -1329,9 +1329,22 @@ test.describe("DISCOVERY LIVE UX BUGFIX — restore stato Mappa al ritorno da de
     expect(block).not.toMatch(/\bzoom:\s*\(/);
   });
 
-  test("NAV-04: SearchDiscoveryClient sincronizza viewMode/filtri/viewport nell'URL con router.replace (MAI router.push) — un pan/zoom non impila mai una nuova history entry", () => {
+  // TRAMA — DISCOVERY LIVE UX BUGFIX, fix post-live-test (23/09/2026):
+  // router.replace ora è DEBOUNCED (300ms, con cleanup via clearTimeout) —
+  // root cause di un bug segnalato da Fabrizio (aprire un popup con autoPan
+  // → moveend → replace sincrono in race con la navigazione "Apri scheda",
+  // che restava bloccata). Il debounce garantisce che un tap su un link di
+  // navigazione arrivi sempre prima del replace schedulato, e il cleanup lo
+  // annulla del tutto se il componente si smonta per la navigazione.
+  test("NAV-04: SearchDiscoveryClient sincronizza viewMode/filtri/viewport nell'URL con router.replace DEBOUNCED (MAI router.push, MAI sincrono) — un pan/zoom non impila mai una nuova history entry e non blocca una navigazione in corso", () => {
     const source = readSource("../../app/nextgen/search/SearchDiscoveryClient.tsx");
-    expect(source).toContain("router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false })");
+    const effectStart = source.indexOf("const params = new URLSearchParams();");
+    const effectEnd = source.indexOf("}, [", effectStart);
+    const effectBlock = source.slice(effectStart, effectEnd);
+    expect(effectBlock).toContain("const timeoutId = setTimeout(() => {");
+    expect(effectBlock).toContain("router.replace(nextUrl, { scroll: false });");
+    expect(effectBlock).toContain("}, 300);");
+    expect(effectBlock).toContain("return () => clearTimeout(timeoutId);");
     expect(source).not.toMatch(/router\.push\(/);
   });
 
