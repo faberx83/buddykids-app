@@ -11,7 +11,6 @@ import { getSeasonWeekRanges, isoDate, formatShortRange, SeasonWeekRange } from 
 import ActivityCard from "@/components/ActivityCard";
 import PageHeader from "@/components/PageHeader";
 import { ProductStatusChip } from "@/components/ProductStatusChip";
-import DecorativeIntroCard from "@/components/nextgen/DecorativeIntroCard";
 import SuggestCenterCard from "@/components/nextgen/SuggestCenterCard";
 import { generateCorrelationId } from "@/lib/telemetry/correlation";
 // TRAMA — REAL DISCOVERY PILOT (16/09/2026). Card e dataset dedicati, mai
@@ -1062,13 +1061,6 @@ export default function SearchDiscoveryClient({
           necessario. */}
       <PageHeader title="Scopri attività" backHref="/nextgen" showBrandIcon />
       <div className="px-5 py-4">
-        {/* SPRINT 7 — stessa texture decorativa (due cerchi) della hero
-            card di Home, vedi DecorativeIntroCard.
-            FIX (segnalato da Fabrizio con screenshot, 24/08/2026) — stesso
-            bug del ribbon "Beta" tagliato risolto in PlannerClient.tsx:
-            NextgenBadge deve restare FRATELLO di DecorativeIntroCard (mai
-            figlio), altrimenti si aggancia al relative+overflow-hidden
-            della card invece che a .app-shell e viene tagliato. */}
         {/* TRAMA — FINAL BETA CHROME CLEANUP (15/09/2026): ProductStatusChip
             sostituisce NextgenBadge — vedi HomeDashboardClient.tsx per la
             spiegazione completa.
@@ -1080,14 +1072,22 @@ export default function SearchDiscoveryClient({
             un utente a cui il flag risolve false (o via override globale/
             pilot, non cohort:internal-preview) resta false come prima. */}
         <ProductStatusChip internal={realDiscoveryBadgeVisible} />
-        <DecorativeIntroCard className="mb-3">
-          {/* Audit font (31/08/2026): stesso pattern di descrizione di
-              PlannerClient.tsx (screenshot di Fabrizio), portato da text-xs
-              a text-sm per coerenza — stessa card, stesso ruolo testuale. */}
-          <p className="text-sm text-ink-2">
-            Ordinati per voi{uncoveredWeekLabel ? ` — priorità a chi è libero in ${uncoveredWeekLabel}` : ""}.
-          </p>
-        </DecorativeIntroCard>
+        {/* RESTYLE INTRO HEADER — "PILL COMPATTA" (Opzione B, scelta da
+            Fabrizio su 3 mockup: Attuale / Opzione A lineare / Opzione B
+            pill). La DecorativeIntroCard (card grande, due cerchi
+            decorativi) per un semplice testo introduttivo one-liner era
+            "scarna" (font sottile, grigio) e occupava troppo spazio
+            verticale — sostituita qui da un badge pill inline (icona +
+            testo breve), stesso identico markup/stile riusato su
+            Planner/Community (vedi PlannerClient.tsx). Nessun wrapper
+            DecorativeIntroCard: la pill non ha bisogno dei cerchi
+            decorativi. */}
+        <div className="mb-3 inline-flex items-center gap-1.5 rounded-full bg-trama-violet/10 px-3 py-1.5">
+          <i className="ti ti-sparkles text-[14px] text-trama-violet" />
+          <span className="text-[12.5px] font-medium text-[#3C3489]">
+            Selezionate per voi{uncoveredWeekLabel ? ` — priorità a chi è libero in ${uncoveredWeekLabel}` : ""}
+          </span>
+        </div>
 
         {contextualAnnouncement && (
           <AnnouncementCallout
