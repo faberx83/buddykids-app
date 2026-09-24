@@ -1248,6 +1248,35 @@ test.describe("DISCOVERY FINAL UX PASS — map fit / initial view (statico sul s
     const block = source.slice(source.indexOf("function FitBounds"), source.indexOf("export default function ActivityMap"));
     expect(block).toContain("maxZoom: 15");
   });
+
+  // FIX (24/09/2026, segnalato da Fabrizio: "Usa la mia posizione" fa
+  // tornare la mappa alla vista Italia invece di zoomare). ROOT CAUSE: prima
+  // di questo fix `points` includeva anche `userPosition`, quindi attivare
+  // la geolocalizzazione cambiava l'array passato a FitBounds e faceva
+  // ripartire `fitBounds` su TUTTI i marker (comportamento di UX-16,
+  // intenzionale per i cambi filtro, ma sbagliato per l'attivazione della
+  // posizione). Questi due test NON toccano UX-14/UX-16/UX-17/NAV-02 sopra
+  // (il refit su cambio filtri resta comportamento invariato e voluto) —
+  // coprono solo il fix mirato: `points` non include più `userPosition`, e
+  // un componente dedicato centra esplicitamente la mappa sulla posizione.
+  test("UX-19: `points` (passato a FitBounds) è costruito SOLO da `items`, MAI da `userPosition` — attivare/aggiornare la posizione utente non deve far ripartire fitBounds su tutti i marker", () => {
+    const source = readSource("../../components/ActivityMap.tsx");
+    const pointsIdx = source.indexOf("const points = useMemo");
+    const centerIdx = source.indexOf("const center =", pointsIdx);
+    const block = source.slice(pointsIdx, centerIdx);
+    expect(block).toContain("items.map((it) => [it.lat, it.lng])");
+    expect(block).not.toMatch(/userPosition/);
+  });
+
+  test("UX-20: UserPositionFocus centra esplicitamente la mappa (setView, zoom 13) quando `userPosition` cambia — non un fitBounds su tutti i punti", () => {
+    const source = readSource("../../components/ActivityMap.tsx");
+    const fnStart = source.indexOf("function UserPositionFocus");
+    expect(fnStart).toBeGreaterThan(-1);
+    const block = source.slice(fnStart, source.indexOf("export default function ActivityMap"));
+    expect(block).toContain("map.setView(position, 13)");
+    expect(block).not.toContain("fitBounds");
+    expect(source).toContain('{userPosition && <UserPositionFocus position={[userPosition.lat, userPosition.lng]} />}');
+  });
 });
 
 test.describe("DISCOVERY FINAL UX PASS — popup consistency (regressione statica)", () => {
@@ -1550,5 +1579,24 @@ test.describe("DISCOVERY LIVE UX BUGFIX — chip filtro Età/Servizi/Prezzo most
     const block = source.slice(source.indexOf('key: "prezzo"') - 20, source.indexOf('key: "prezzo"') + 150);
     expect(block).toContain("maxPrice < 500");
     expect(block).toContain("`Prezzo (≤${maxPrice}€)`");
+  });
+});
+
+// FIX (24/09/2026, segnalato da Fabrizio via live-test telefono, poi
+// confermato NON essere un bug di configurazione: a stagione conclusa
+// (oggi 24/09) tutte le settimane sono passate e nascoste per design). Solo
+// UX: il pannello "Settimane di camp" non deve restare visivamente vuoto
+// senza spiegazione quando weekRangeGroups è [].
+test.describe("DISCOVERY LIVE UX BUGFIX — pannello Settimane di camp vuoto a fine stagione (statico sul sorgente)", () => {
+  test("WEEK-EMPTY-01: quando weekRangeGroups è vuoto, il pannello mostra un messaggio breve invece di restare vuoto", () => {
+    const source = readSource("../../app/nextgen/search/SearchDiscoveryClient.tsx");
+    const panelIdx = source.indexOf('openPanel === "data" && (');
+    const panelEnd = source.indexOf("Copertura sostituisce il vecchio filtro", panelIdx);
+    const block = source.slice(panelIdx, panelEnd);
+    expect(block).toContain("weekRangeGroups.length === 0");
+    expect(block).toContain("Nessuna settimana disponibile per questa stagione.");
+    // il ramo non-vuoto deve restare quello esistente (stesso raggruppamento
+    // per mese, nessuna regressione sul comportamento con settimane).
+    expect(block).toContain("weekRangeGroups.map((group) =>");
   });
 });

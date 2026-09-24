@@ -165,6 +165,31 @@ function ViewStateReporter({ onChange }: { onChange: (center: [number, number], 
   return null;
 }
 
+// FIX segnalato da Fabrizio (24/09/2026, test live su telefono): "Usa la mia
+// posizione" faceva tornare la mappa alla vista Italia invece di zoomare
+// sulla posizione. ROOT CAUSE: `points` (sotto) includeva anche
+// `userPosition`, quindi attivare la geolocalizzazione cambiava l'array
+// passato a FitBounds, che ricalcolava `fitBounds` su TUTTI i punti
+// (marker sparsi su più regioni + il nuovo pin utente) invece di limitarsi
+// a centrare sulla posizione. `points` ora contiene SOLO i marker
+// (`items`), MAI la posizione utente — FitBounds continua a ricalcolare
+// quando cambia l'insieme dei marker (comportamento intenzionale invariato,
+// vedi UX-14/UX-16/NAV-02 nei test), ma attivare/aggiornare la posizione
+// non lo tocca più. Al suo posto, questo componente centra ESPLICITAMENTE
+// sulla posizione (stesso zoom fisso 13 già usato per un singolo marker in
+// FitBounds sopra) ogni volta che `userPosition` cambia (attivazione
+// iniziale o correzione via drag del pin) — mai un fitBounds su tutti i
+// punti.
+function UserPositionFocus({ position }: { position?: [number, number] }) {
+  const map = useMap();
+  useEffect(() => {
+    if (!position) return;
+    map.setView(position, 13);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [map, position?.[0], position?.[1]]);
+  return null;
+}
+
 export default function ActivityMap({
   items,
   userPosition,
@@ -197,11 +222,12 @@ export default function ActivityMap({
   skipInitialFit?: boolean;
   onViewStateChange?: (center: [number, number], zoom: number) => void;
 }) {
-  const points = useMemo(() => {
-    const p: [number, number][] = items.map((it) => [it.lat, it.lng]);
-    if (userPosition) p.push([userPosition.lat, userPosition.lng]);
-    return p;
-  }, [items, userPosition]);
+  // FIX (24/09/2026, vedi commento su UserPositionFocus sopra): `points`
+  // alimenta SOLO FitBounds/il centro iniziale — la posizione utente non fa
+  // più parte di questo array, cosi attivarla/aggiornarla non ricalcola più
+  // i bounds su tutti i marker. Lo zoom sulla posizione utente è gestito a
+  // parte da <UserPositionFocus /> qui sotto.
+  const points = useMemo<[number, number][]>(() => items.map((it) => [it.lat, it.lng]), [items]);
 
   const center = initialViewState?.center ?? points[0] ?? MILAN_FALLBACK;
   const zoom = initialViewState?.zoom ?? 12;
@@ -249,6 +275,7 @@ export default function ActivityMap({
           maxZoom={19}
         />
         <FitBounds points={points} skip={skipInitialFit} />
+        {userPosition && <UserPositionFocus position={[userPosition.lat, userPosition.lng]} />}
         {onViewStateChange && <ViewStateReporter onChange={onViewStateChange} />}
         {items.map((it) =>
           onSelect ? (
