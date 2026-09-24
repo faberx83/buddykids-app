@@ -58,7 +58,6 @@ import PlannerBudgetView from "@/components/nextgen/PlannerBudgetView";
 import PlannerCalendarView from "@/components/nextgen/PlannerCalendarView";
 import PlannerMapView from "@/components/nextgen/PlannerMapView";
 import PlannerGroupsView from "@/components/nextgen/PlannerGroupsView";
-import DecorativeIntroCard from "@/components/nextgen/DecorativeIntroCard";
 import Link from "next/link";
 // "import type" per PlannerCalendarItemForIcs: solo un tipo, nessun rischio
 // di trascinare lib/ics.ts nel bundle (che comunque non importa mai
@@ -531,14 +530,18 @@ export default function PlannerClient({
             "NON tornare a ridisegnare l'architettura" — la card resta
             invariata. */}
         {mode !== "organizzazione" && (
-          <DecorativeIntroCard className="mb-4">
-            {/* Audit font (31/08/2026, screenshot di Fabrizio su questa esatta
-                riga): text-xs (12px) era piccolo per una descrizione
-                introduttiva di sezione — portato a text-sm (14px), stessa
-                dimensione applicata alla gemella identica in
-                SearchDiscoveryClient.tsx per restare consistenti. */}
-            <p className="text-sm text-ink-2">{PLANNER_MODE_DESCRIPTIONS[mode]}</p>
-          </DecorativeIntroCard>
+          // RESTYLE INTRO HEADER — "PILL COMPATTA" (Opzione B, scelta da
+          // Fabrizio su 3 mockup: Attuale / Opzione A lineare / Opzione B
+          // pill). Stessa card grande "scarna" (font sottile, grigio, due
+          // cerchi decorativi) sostituita qui per la descrizione one-liner
+          // di modalità — stesso identico markup/stile riusato su
+          // Scopri/Community (vedi SearchDiscoveryClient.tsx). Nessun
+          // wrapper DecorativeIntroCard: la pill non ha bisogno dei cerchi
+          // decorativi.
+          <div className="mb-4 inline-flex items-center gap-1.5 rounded-full bg-trama-violet/10 px-3 py-1.5">
+            <i className="ti ti-info-circle text-[14px] text-trama-violet" />
+            <span className="text-[12.5px] font-medium text-[#3C3489]">{PLANNER_MODE_DESCRIPTIONS[mode]}</span>
+          </div>
         )}
 
         <PlannerModeTabs mode={mode} onChange={setMode} />
