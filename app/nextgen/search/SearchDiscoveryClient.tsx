@@ -1481,36 +1481,46 @@ export default function SearchDiscoveryClient({
                 </button>
               )}
             </div>
-            <div className="space-y-3">
-              {weekRangeGroups.map((group) => (
-                <div key={group.monthLabel}>
-                  <div className="mb-1 text-[10.5px] font-bold uppercase tracking-wide text-ink-3">
-                    {group.monthLabel}
+            {/* FIX (24/09/2026, segnalato da Fabrizio, verificato: a
+                stagione conclusa (oggi 24/09) tutte le settimane sono
+                passate e nascoste per design — non un bug di
+                configurazione, vedi seasonWeekRanges sopra). Prima: pannello
+                vuoto senza spiegazione quando weekRangeGroups è []. Ora: un
+                messaggio breve al posto del nulla. */}
+            {weekRangeGroups.length === 0 ? (
+              <p className="py-4 text-center text-xs text-ink-3">Nessuna settimana disponibile per questa stagione.</p>
+            ) : (
+              <div className="space-y-3">
+                {weekRangeGroups.map((group) => (
+                  <div key={group.monthLabel}>
+                    <div className="mb-1 text-[10.5px] font-bold uppercase tracking-wide text-ink-3">
+                      {group.monthLabel}
+                    </div>
+                    <div className="space-y-1.5">
+                      {group.ranges.map((r) => {
+                        const start = isoDate(r.start);
+                        const active = selectedWeekStarts.includes(start);
+                        return (
+                          <button
+                            key={start}
+                            type="button"
+                            onClick={() => toggleWeek(start)}
+                            className={`flex w-full items-center justify-between rounded-md px-3 py-2 text-left text-xs font-semibold transition-colors active:scale-[0.99] ${
+                              active ? "bg-trama-violet text-white" : "bg-white text-ink-2"
+                            }`}
+                          >
+                            <span>
+                              Settimana {r.index} · {formatShortRange(r.start, r.end)}
+                            </span>
+                            {active && <i className="ti ti-check text-sm" />}
+                          </button>
+                        );
+                      })}
+                    </div>
                   </div>
-                  <div className="space-y-1.5">
-                    {group.ranges.map((r) => {
-                      const start = isoDate(r.start);
-                      const active = selectedWeekStarts.includes(start);
-                      return (
-                        <button
-                          key={start}
-                          type="button"
-                          onClick={() => toggleWeek(start)}
-                          className={`flex w-full items-center justify-between rounded-md px-3 py-2 text-left text-xs font-semibold transition-colors active:scale-[0.99] ${
-                            active ? "bg-trama-violet text-white" : "bg-white text-ink-2"
-                          }`}
-                        >
-                          <span>
-                            Settimana {r.index} · {formatShortRange(r.start, r.end)}
-                          </span>
-                          {active && <i className="ti ti-check text-sm" />}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            )}
           </div>
         )}
 
