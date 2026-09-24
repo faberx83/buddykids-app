@@ -37,9 +37,19 @@ body {
      contenitore flex faceva "sparire"/sfarfallare la bottom nav (segnalato
      su Android). svh resta fissa alla viewport più piccola possibile (barra
      indirizzi sempre visibile), quindi il layout non si ricalcola mai
-     durante lo scroll. */
+     durante lo scroll.
+     24/09/2026: svh (viewport PIÙ PICCOLA) causava il problema opposto —
+     quando la barra indirizzi si nasconde durante lo scroll, il viewport
+     reale diventa più alto di 100svh, e .app-shell (quindi anche la bottom
+     nav ancorata al suo fondo) si fermava prima della fine reale dello
+     schermo, lasciando uno spazio bianco vuoto sotto ("la barra scorre
+     via"). Passato a dvh (si adatta in tempo reale): il contenuto interno
+     scrolla nel proprio contenitore con overflow-y-auto, non nel body,
+     quindi il resize di .app-shell non produce lo sfarfallio originale.
+     100vh resta come fallback per browser senza supporto dvh/svh. */
   height: 100vh;
-  height: 100svh;
+  height: 100dvh;
+  overflow: hidden;
   background: #ffffff;
   display: flex;
   flex-direction: column;
@@ -49,7 +59,7 @@ body {
 @media (min-width: 640px) {
   .app-shell {
     height: calc(100vh - 64px);
-    height: calc(100svh - 64px);
+    height: calc(100dvh - 64px);
     margin: 32px 0;
     border-radius: 32px;
     overflow: hidden;
