@@ -254,10 +254,48 @@ export default function ExternalPlannerItemsSection({ items, kids }: { items: Ex
   const showToast = useNextgenToast();
   const [mode, setMode] = useState<"idle" | "creating" | { editing: string }>("idle");
   const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
+  // TRAMA — DELETE UX · OPTIMISTIC REMOVAL (28/09/2026, live UX fix).
+  //
+  // PROBLEMA LIVE (segnalato da Fabrizio): tap "Rimuovi" → alcuni secondi di
+  // attesa → poi la card sparisce.
+  //
+  // ROOT CAUSE (verificata leggendo per intero questo componente prima del
+  // fix): `sorted` era derivato DIRETTAMENTE dalla prop `items`, senza alcuno
+  // stato locale — nessun aggiornamento ottimistico esisteva. handleDelete
+  // chiamava `await deleteExternalPlannerItemAction(itemId)` (soft-delete +
+  // `revalidatePath("/nextgen/planner")`, vedi app/actions/
+  // external-planner-items.ts) e SOLO dopo quel round-trip completo il
+  // Server Action risolveva — a quel punto Next.js App Router rifà il fetch
+  // del payload RSC della route (perché il path è stato invalidato) e
+  // ri-renderizza PlannerClient.tsx con la nuova lista `externalPlannerItems`
+  // da cui questo componente riceve `items` da capo. La card quindi restava
+  // visibile per l'intera durata del round-trip (rete + query Supabase +
+  // rifetch RSC), percepita come "delay di alcuni secondi" — non un bug di
+  // rete lento, ma la totale assenza di un aggiornamento locale immediato.
+  //
+  // FIX: `removedIds` è un override locale puramente ottimistico (stesso
+  // pattern già in uso da dismissedOverrides in PlannerClient.tsx) — al tap
+  // su "Rimuovi" l'id entra SUBITO in questo set (la card sparisce
+  // all'istante, prima di qualunque chiamata di rete), poi il soft-delete
+  // reale parte in background. Se il server restituisce un errore, l'id
+  // esce dal set (rollback: la card ricompare) e un toast spiega l'errore —
+  // mai un "flash"/ricomparsa incoerente durante una revalidation riuscita,
+  // perché in quel caso l'item non è più nemmeno nella prop `items` quando
+  // arriva il nuovo render (resta comunque anche in removedIds, innocuo).
+  const [removedIds, setRemovedIds] = useState<Set<string>>(new Set());
+  // Doppio tap protetto: un id "in volo" (già inviato al server, risposta
+  // non ancora arrivata) non può essere reinviato — mostreremmo comunque la
+  // card sparita (removedIds la nasconde già), ma senza questa guardia un
+  // secondo tap veloce prima della prima risposta lancerebbe una seconda
+  // softDelete concorrente sullo stesso id (innocua lato DB — idempotente —
+  // ma uno spreco di rete evitabile).
+  const [inFlightIds, setInFlightIds] = useState<Set<string>>(new Set());
 
   if (kids.length === 0) return null;
 
-  const sorted = [...items].sort((a, b) => a.startDate.localeCompare(b.startDate));
+  const sorted = [...items]
+    .filter((item) => !removedIds.has(item.id))
+    .sort((a, b) => a.startDate.localeCompare(b.startDate));
 
   async function handleCreate(input: ExternalPlannerItemInput) {
     const result = await createExternalPlannerItemAction(input);
@@ -278,9 +316,31 @@ export default function ExternalPlannerItemsSection({ items, kids }: { items: Ex
   }
 
   async function handleDelete(itemId: string) {
-    const result = await deleteExternalPlannerItemAction(itemId);
+    // Doppio tap protetto — vedi commento su inFlightIds sopra.
+    if (inFlightIds.has(itemId)) return;
+    // Optimistic removal: la card sparisce ORA, non dopo il round-trip.
+    setRemovedIds((cur) => new Set(cur).add(itemId));
+    setInFlightIds((cur) => new Set(cur).add(itemId));
     setPendingDeleteId(null);
-    if (!result.error) showToast("Impegno rimosso dal Planner.");
+    const result = await deleteExternalPlannerItemAction(itemId);
+    setInFlightIds((cur) => {
+      const next = new Set(cur);
+      next.delete(itemId);
+      return next;
+    });
+    if (result.error) {
+      // Rollback visuale: il soft-delete server è fallito, la card
+      // ricompare — l'errore reale (rete, RLS, ecc.) resta comunque
+      // visibile solo via toast, mai un fallimento silenzioso.
+      setRemovedIds((cur) => {
+        const next = new Set(cur);
+        next.delete(itemId);
+        return next;
+      });
+      showToast(result.error);
+      return;
+    }
+    showToast("Impegno rimosso dal Planner.");
   }
 
   return (
