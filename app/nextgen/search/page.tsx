@@ -27,6 +27,12 @@ import { resolveFeatureFlagVisibility } from "@/lib/feature-flags/resolve";
 import { anyResolvedViaInternalPreview } from "@/lib/feature-flags/internal-preview";
 import { generateCorrelationId } from "@/lib/telemetry/correlation";
 import { REAL_DISCOVERY_LEADS, type DiscoveryLeadRecord } from "@/lib/discovery/real-dataset";
+// TRAMA — EXTERNAL PLANNER ITEMS (sezioni 7/15/16 del task): "Aggiungi al
+// Planner" da una Scoperta TRAMA. Stesso pattern Dark Release delle altre
+// capability gated di questa pagina — flag risolto server-side, dataset
+// (qui: solo il set di curated_lead_id già nel Planner, per il badge "✓ Nel
+// Planner") fetchato SOLO se abilitato.
+import { getCuratedLeadIdsInPlanner } from "@/lib/data/external-planner-items";
 
 // SPRINT 2 (NEXTGEN) — "Ricerca e scoperta": ordinamento intelligente sopra
 // il contesto del genitore. Nessuna nuova query: riusa getActivities/
@@ -78,6 +84,10 @@ export default async function NextgenSearchPage() {
   // Action Progress).
   let realDiscoveryLeads: DiscoveryLeadRecord[] = [];
   let realDiscoveryBadgeVisible = false;
+  // TRAMA — EXTERNAL PLANNER ITEMS: stessi 2 default sicuri delle altre
+  // capability gated di questa pagina.
+  let externalPlannerItemsEnabled = false;
+  let curatedLeadIdsInPlanner: string[] = [];
   if (isSupabaseConfigured) {
     const supabase = await createClient();
     const {
@@ -88,13 +98,22 @@ export default async function NextgenSearchPage() {
       const { data: profileRow } = await supabase.from("profiles").select("role").eq("id", user.id).single();
       role = (profileRow?.role as string) ?? "parent";
     }
-    const realDiscoveryDetail = await resolveFeatureFlagVisibility({
-      flagName: "REAL_DISCOVERY_DATASET_ENABLED",
-      userId: user?.id ?? null,
-      role,
-      tenant: "family",
-      correlationId: generateCorrelationId(),
-    });
+    const [realDiscoveryDetail, externalPlannerItemsDetail] = await Promise.all([
+      resolveFeatureFlagVisibility({
+        flagName: "REAL_DISCOVERY_DATASET_ENABLED",
+        userId: user?.id ?? null,
+        role,
+        tenant: "family",
+        correlationId: generateCorrelationId(),
+      }),
+      resolveFeatureFlagVisibility({
+        flagName: "EXTERNAL_PLANNER_ITEMS_ENABLED",
+        userId: user?.id ?? null,
+        role,
+        tenant: "family",
+        correlationId: generateCorrelationId(),
+      }),
+    ]);
     if (realDiscoveryDetail.enabled) {
       // Dataset code-based (nessuna query, nessun I/O) — vedi
       // lib/discovery/real-dataset.ts. Il filtro per compatibilità con la
@@ -102,7 +121,11 @@ export default async function NextgenSearchPage() {
       // legge il query param "week", stesso pattern di §14 del report).
       realDiscoveryLeads = REAL_DISCOVERY_LEADS;
     }
-    realDiscoveryBadgeVisible = anyResolvedViaInternalPreview([realDiscoveryDetail]);
+    externalPlannerItemsEnabled = externalPlannerItemsDetail.enabled;
+    if (externalPlannerItemsEnabled) {
+      curatedLeadIdsInPlanner = Array.from(await getCuratedLeadIdsInPlanner());
+    }
+    realDiscoveryBadgeVisible = anyResolvedViaInternalPreview([realDiscoveryDetail, externalPlannerItemsDetail]);
   }
 
   return (
@@ -119,6 +142,8 @@ export default async function NextgenSearchPage() {
       realDiscoveryLeads={realDiscoveryLeads}
       realDiscoveryBadgeVisible={realDiscoveryBadgeVisible}
       curatedFavoriteLeadIds={Array.from(curatedFavoriteLeadIds)}
+      externalPlannerItemsEnabled={externalPlannerItemsEnabled}
+      curatedLeadIdsInPlanner={curatedLeadIdsInPlanner}
       contextualAnnouncement={
         contextualAnnouncement
           ? {

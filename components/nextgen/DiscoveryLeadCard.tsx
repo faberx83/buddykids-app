@@ -48,6 +48,12 @@ import { useNextgenToast } from "@/components/nextgen/NextgenToastProvider";
 // qui significa "questa Scoperta mi interessa e voglio ritrovarla" (mai
 // "è già Partner TRAMA", vedi OBIETTIVO PRODOTTO §A del task).
 import { toggleCuratedFavoriteAction } from "@/app/actions/curated-favorites";
+// TRAMA — EXTERNAL PLANNER ITEMS (sezioni 7/16 del task, "Aggiungi al
+// Planner" da una Scoperta TRAMA + CTA HIERARCHY). Stesso pattern
+// "Server Action invocata direttamente dal componente client" di
+// proposeDiscoveryLeadInviteAction sopra.
+import { addCuratedLeadToPlannerAction } from "@/app/actions/external-planner-items";
+import type { Kid } from "@/lib/types";
 
 const CATEGORY_LABELS: Record<DiscoveryLeadRecord["category"], string> = {
   educativo: "Educativo",
@@ -86,6 +92,9 @@ function formatAge(ageMin: number | null, ageMax: number | null): string | null 
 export default function DiscoveryLeadCard({
   lead,
   initialFavorite,
+  kids = [],
+  plannerEnabled = false,
+  initialInPlanner = false,
 }: {
   lead: DiscoveryLeadRecord;
   // FIX (§6 "FAVORITE BUTTON UX" del task) — stesso pattern di
@@ -93,6 +102,16 @@ export default function DiscoveryLeadCard({
   // chiamante (che legge getCuratedFavoriteLeadIds() lato server), mai un
   // useState locale sempre "vuoto" al primo render.
   initialFavorite?: boolean;
+  // TRAMA — EXTERNAL PLANNER ITEMS (sezioni 7/16 del task). kids sempre
+  // passato dal chiamante (SearchDiscoveryClient già li ha) — default []
+  // solo per non rompere altri eventuali call site/test che non li passano
+  // ancora. plannerEnabled=false per default: nessuna CTA "Aggiungi al
+  // Planner" finché il flag EXTERNAL_PLANNER_ITEMS_ENABLED non risolve true
+  // per questo utente (stesso principio "nessuna rotta/azione alternativa
+  // per un utente normale" delle altre capability gated del repo).
+  kids?: Kid[];
+  plannerEnabled?: boolean;
+  initialInPlanner?: boolean;
 }) {
   const showToast = useNextgenToast();
   const [fav, setFav] = useState(initialFavorite ?? false);
@@ -112,6 +131,38 @@ export default function DiscoveryLeadCard({
   type ProposeState = "idle" | "confirm" | "submitting" | "done" | "already" | "error";
   const [proposeState, setProposeState] = useState<ProposeState>("idle");
   const [proposeError, setProposeError] = useState<string | null>(null);
+
+  // TRAMA — EXTERNAL PLANNER ITEMS (sezione 7/16 del task) — stesso
+  // ciclo di stati inline di "Proponi invito" sopra, ciclo indipendente
+  // (una Scoperta invitabile può avere entrambi i dialog, mai aperti
+  // insieme — vedi guardie booleane più sotto). "confirm" mostra il
+  // selettore bambini (sezione 3: campo obbligatorio anche per questo
+  // flow, sezione 4: multi-bambino supportato).
+  type PlanState = "idle" | "confirm" | "submitting" | "done" | "error";
+  const [planState, setPlanState] = useState<PlanState>(initialInPlanner ? "done" : "idle");
+  const [planError, setPlanError] = useState<string | null>(null);
+  const [planKidIds, setPlanKidIds] = useState<string[]>([]);
+
+  function togglePlanKid(kidId: string) {
+    setPlanKidIds((ids) => (ids.includes(kidId) ? ids.filter((id) => id !== kidId) : [...ids, kidId]));
+  }
+
+  async function handleConfirmAddToPlanner() {
+    if (planKidIds.length === 0) {
+      setPlanError("Seleziona almeno un bambino.");
+      return;
+    }
+    setPlanState("submitting");
+    setPlanError(null);
+    const result = await addCuratedLeadToPlannerAction(lead.id, planKidIds);
+    if (result.error) {
+      setPlanState("error");
+      setPlanError(result.error);
+      return;
+    }
+    setPlanState("done");
+    showToast("Aggiunto al Planner.");
+  }
 
   // TRAMA — REAL DISCOVERY PILOT · COMPLETION PASS (17/09/2026). Un solo
   // evento "viewed" per montaggio della card (non per ogni ri-render dovuto
@@ -247,13 +298,29 @@ export default function DiscoveryLeadCard({
           sito dell&apos;organizzatore.
         </p>
 
+        {/* TRAMA — EXTERNAL PLANNER ITEMS (sezione 16 del task "CTA
+            HIERARCHY IN DISCOVERY"): con l'arrivo di "Aggiungi al Planner"
+            la card avrebbe fino a 4 CTA (cuore + Proponi invito + Sito/Fonte
+            + Planner) — riga compatta scelta: 1 PRIMARY grande (Proponi
+            invito quando invitabile, altrimenti Aggiungi al Planner se
+            abilitato) + icon-button compatti per le azioni secondarie
+            (Planner quando non primaria, link esterno sempre). Nessuna
+            action sheet/nuova pagina Detail introdotta — restano bottoni
+            inline, stesso principio "leggero" del resto della card. */}
+        {planState === "done" && (
+          <div className="mb-2 flex items-center gap-1.5 text-[11px] font-semibold text-[#2d8f52]">
+            <i className="ti ti-circle-check-filled text-[13px]" />
+            Nel Planner
+          </div>
+        )}
+
         {/* §7-8-11 del prompt "PROPONI INVITO"/"CTA HIERARCHY": PRIMARY
             "Proponi invito" SOLO per lead invitabili (isDiscoveryLeadInvitable),
             SECONDARY sempre presente con wording dipendente dal dominio del
             link. Nessun "Prenota ora" finto, nessun bottone disabilitato
             senza spiegazione, nessuna disponibilità finta — nessuno di
             questi ha un sistema reale dietro (§14). */}
-        {invitable && proposeState !== "confirm" && proposeState !== "submitting" && (
+        {invitable && proposeState !== "confirm" && proposeState !== "submitting" && planState !== "confirm" && planState !== "submitting" && (
           <div className="flex items-center gap-2">
             {proposeState === "done" ? (
               <span className="flex flex-1 items-center justify-center gap-1.5 rounded-full bg-green-light px-3 py-2 text-center text-[12px] font-semibold text-[#2d8f52]">
@@ -273,40 +340,125 @@ export default function DiscoveryLeadCard({
                 Proponi invito
               </button>
             )}
+            {plannerEnabled && planState !== "done" && kids.length > 0 && (
+              <button
+                type="button"
+                aria-label="Aggiungi al Planner"
+                title="Aggiungi al Planner"
+                onClick={() => setPlanState("confirm")}
+                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-[#E8EBF0] text-ink-2"
+              >
+                <i className="ti ti-calendar-plus text-[15px]" />
+              </button>
+            )}
             <a
               href={ctaHref}
               target="_blank"
               rel="noopener noreferrer"
               onClick={handleExternalClick}
-              className="whitespace-nowrap text-[11.5px] font-semibold text-trama-violet underline underline-offset-2"
+              aria-label={secondaryLabel}
+              title={secondaryLabel}
+              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-[#E8EBF0] text-ink-2"
             >
-              {secondaryLabel} ↗
+              <i className="ti ti-external-link text-[15px]" />
             </a>
           </div>
         )}
 
-        {/* §14 "SOURCE-ONLY RECORDS": nessuna CTA primaria — solo il link
-            alla fonte, con wording onesto ("Vedi la fonte" per un servizio
-            comunale, mai "sito dell'organizzatore" quando non esiste un
-            organizzatore nominato).
+        {/* §14 "SOURCE-ONLY RECORDS": nessuna CTA primaria "Proponi invito"
+            — quando il Planner è abilitato, "Aggiungi al Planner" diventa
+            la PRIMARY per questi record (l'unica azione reale disponibile
+            oltre al link esterno), altrimenti resta solo il link secondario
+            come prima.
             §16 del prompt MAP+POLISH "SOURCE-ONLY MICROCOPY": una riga breve
             che spiega PERCHÉ manca "Proponi invito" — mostrata solo quando è
             effettivamente vera per questo record (!invitable, per
             definizione tutti i record source-only), mai un tono
             allarmistico. */}
-        {!invitable && (
+        {!invitable && planState !== "confirm" && planState !== "submitting" && (
           <>
             <p className="mb-1.5 text-[10.5px] text-ink-3">Gestore non ancora identificato da TRAMA.</p>
-            <a
-              href={ctaHref}
-              target="_blank"
-              rel="noopener noreferrer"
-              onClick={handleExternalClick}
-              className="flex items-center justify-center gap-1 rounded-full border border-[#E8EBF0] px-3 py-2 text-center text-[12px] font-semibold text-ink-2"
-            >
-              {secondaryLabel} ↗
-            </a>
+            <div className="flex items-center gap-2">
+              {plannerEnabled && planState !== "done" && kids.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => setPlanState("confirm")}
+                  className="flex-1 rounded-full bg-trama-violet px-3 py-2 text-center text-[12px] font-semibold text-white active:scale-[0.98]"
+                >
+                  Aggiungi al Planner
+                </button>
+              )}
+              <a
+                href={ctaHref}
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={handleExternalClick}
+                className={
+                  plannerEnabled && planState !== "done" && kids.length > 0
+                    ? "flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-[#E8EBF0] text-ink-2"
+                    : "flex flex-1 items-center justify-center gap-1 rounded-full border border-[#E8EBF0] px-3 py-2 text-center text-[12px] font-semibold text-ink-2"
+                }
+                aria-label={secondaryLabel}
+                title={secondaryLabel}
+              >
+                {plannerEnabled && planState !== "done" && kids.length > 0 ? (
+                  <i className="ti ti-external-link text-[15px]" />
+                ) : (
+                  <>{secondaryLabel} ↗</>
+                )}
+              </a>
+            </div>
           </>
+        )}
+
+        {/* TRAMA — EXTERNAL PLANNER ITEMS (sezione 7 del task) — dialog
+            leggero INLINE, stesso pattern di "Proponi invito" sotto: scelta
+            bambini (obbligatoria, sezione 3/4) prima della conferma. */}
+        {plannerEnabled && (planState === "confirm" || planState === "submitting" || planState === "error") && (
+          <div className="rounded-lg border border-[#E8EBF0] bg-bg p-3">
+            <p className="mb-1.5 text-[12.5px] font-semibold text-ink">Aggiungi al Planner</p>
+            <p className="mb-2 text-[11.5px] text-ink-2">
+              Salviamo i dati di questa Scoperta nel tuo Planner (titolo, data, luogo) — resteranno anche se
+              cambia il catalogo TRAMA.
+            </p>
+            <div className="mb-2.5 flex flex-wrap gap-1.5">
+              {kids.map((kid) => (
+                <button
+                  key={kid.id}
+                  type="button"
+                  onClick={() => togglePlanKid(kid.id)}
+                  className={`rounded-full px-3 py-1.5 text-[12px] font-semibold ${
+                    planKidIds.includes(kid.id) ? "bg-trama-violet text-white" : "border border-[#E8EBF0] text-ink-2"
+                  }`}
+                >
+                  {kid.emoji} {kid.name}
+                </button>
+              ))}
+            </div>
+            {planError && <p className="mb-2 text-[11.5px] font-medium text-trama-orange">{planError}</p>}
+            <div className="flex gap-2">
+              <button
+                type="button"
+                disabled={planState === "submitting"}
+                onClick={() => {
+                  setPlanState("idle");
+                  setPlanError(null);
+                  setPlanKidIds([]);
+                }}
+                className="flex-1 rounded-full border border-[#E8EBF0] px-3 py-2 text-[12px] font-semibold text-ink-2 disabled:opacity-60"
+              >
+                Annulla
+              </button>
+              <button
+                type="button"
+                disabled={planState === "submitting"}
+                onClick={handleConfirmAddToPlanner}
+                className="flex-1 rounded-full bg-trama-violet px-3 py-2 text-[12px] font-semibold text-white active:scale-[0.98] disabled:opacity-60"
+              >
+                {planState === "submitting" ? "Aggiungo…" : "Aggiungi"}
+              </button>
+            </div>
+          </div>
         )}
 
         {/* Flow B — dialog leggero INLINE (§10): "Vuoi trovare questo centro

@@ -247,6 +247,8 @@ export default function SearchDiscoveryClient({
   realDiscoveryBadgeVisible = false,
   curatedFavoriteLeadIds = [],
   contextualAnnouncement = null,
+  externalPlannerItemsEnabled = false,
+  curatedLeadIdsInPlanner = [],
 }: {
   activities: Activity[];
   kids: Kid[];
@@ -282,6 +284,12 @@ export default function SearchDiscoveryClient({
   // annuncio contestuale attivo per /nextgen/search (comportamento identico
   // a prima per qualunque utente senza annunci pendenti).
   contextualAnnouncement?: { id: string; userTitle: string; userBody: string; deepLink: string } | null;
+  // TRAMA — EXTERNAL PLANNER ITEMS (sezioni 7/15/16 del task). Stesso
+  // principio difensivo di realDiscoveryLeads: default sicuro (disabilitato,
+  // nessun dato) se il flag risolve false lato server — nessuna CTA
+  // "Aggiungi al Planner" mostrata in quel caso.
+  externalPlannerItemsEnabled?: boolean;
+  curatedLeadIdsInPlanner?: string[];
   // BUG CORRETTO 07/08/2026 (segnalato da Fabrizio: "il filtro sulle
   // settimane deve seguire la stessa logica del Planner: se alcune
   // settimane sono passate non devo poterle vedere") — prima il filtro
@@ -642,6 +650,11 @@ export default function SearchDiscoveryClient({
   // stesso principio di daySpotsSet appena sopra.
   const favoriteIdsSet = useMemo(() => new Set(favoriteActivityIds), [favoriteActivityIds]);
   const curatedFavoriteIdsSet = useMemo(() => new Set(curatedFavoriteLeadIds), [curatedFavoriteLeadIds]);
+  // TRAMA — EXTERNAL PLANNER ITEMS (sezione 15 del task): badge "✓ Nel
+  // Planner" — stato iniziale letto server-side (page.tsx), mai un
+  // useState locale sempre vuoto al primo render (stesso principio di
+  // curatedFavoriteIdsSet sopra).
+  const curatedLeadIdsInPlannerSet = useMemo(() => new Set(curatedLeadIdsInPlanner), [curatedLeadIdsInPlanner]);
 
   // TRAMA ONE Build Sprint 3 — "context object" leggero: un correlationId
   // generato una volta per sessione di ricerca (stesso principio di
@@ -981,6 +994,9 @@ export default function SearchDiscoveryClient({
         key={resultKey(result)}
         lead={result.lead}
         initialFavorite={curatedFavoriteIdsSet.has(result.lead.id)}
+        kids={kids}
+        plannerEnabled={externalPlannerItemsEnabled}
+        initialInPlanner={curatedLeadIdsInPlannerSet.has(result.lead.id)}
       />
     );
   }
