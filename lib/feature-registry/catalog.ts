@@ -220,15 +220,44 @@ export const FEATURE_CATALOG: FeatureCatalogEntry[] = [
     releaseEligible: true,
   },
   {
+    // TRAMA — EXTERNAL PLANNER ITEMS: implementato per davvero (voce
+    // aggiornata, non più placeholder). "IMPLEMENTED / INTERNAL PREVIEW":
+    // codice applicativo reale, raggiungibile, ma ASSUME
+    // supabase/migration_39_external_planner_items.sql già applicata
+    // (PREPARATA, NON ANCORA APPLICATA as-of questa sessione — vedi il
+    // commento BACKWARD COMPATIBILITY nella migration stessa). Finché non è
+    // applicata, ogni query di questo modulo fallisce con 42P01 anche per
+    // un utente a cui il flag risolve true — stesso comportamento "atteso"
+    // già osservato per Curated Favorites/Novità TRAMA prima di
+    // migration_38. Non dichiarare qui GLOBAL/LIVE/PILOT: la visibilità
+    // reale resta sempre derivata a runtime da EXTERNAL_PLANNER_ITEMS_ENABLED.
     key: "external_planner_items",
-    label: "External Planner Items (placeholder infrastruttura)",
+    label: "External Planner Items (impegni familiari fuori da TRAMA)",
     area: "parent",
     status: "INTERNAL_PREVIEW",
     flagName: "EXTERNAL_PLANNER_ITEMS_ENABLED",
-    description: "PLACEHOLDER — nessuna implementazione applicativa esiste ancora. Voce creata solo per testare Release Catalog/Promotion end-to-end.",
-    sourceFiles: ["lib/feature-flags/registry.ts", "lib/releases/catalog.ts"],
-    note: "Non raggiungibile: nessuna page/Server Action/cron risolve questo flag.",
-    releaseEligible: false,
+    description:
+      "Il Planner rappresenta anche impegni che non dipendono da una prenotazione TRAMA: creati " +
+      "manualmente ('+ Aggiungi impegno', one-off, multi-day, single/multi-bambino) o aggiunti da una " +
+      "Scoperta TRAMA in Scopri ('Aggiungi al Planner', snapshot al momento dell'aggiunta — sopravvive a " +
+      "modifiche/rimozione/promozione a Partner del dataset Discovery). Mai un fake booking/Partner/" +
+      "availability: tabella dedicata (external_planner_items + external_planner_item_kids), mai una riga " +
+      "in activities/bookings. Non contribuisce MAI ad Activity/Coordination Coverage/WeekStatus/School " +
+      "Calendar need in questo rilascio (regola conservativa deliberata, vedi lib/data/external-planner-items.ts).",
+    sourceFiles: [
+      "lib/feature-flags/registry.ts",
+      "lib/releases/catalog.ts",
+      "supabase/migration_39_external_planner_items.sql",
+      "lib/data/external-planner-items.ts",
+      "app/actions/external-planner-items.ts",
+      "app/nextgen/planner/page.tsx",
+      "components/nextgen/ExternalPlannerItemsSection.tsx",
+      "components/nextgen/DiscoveryLeadCard.tsx",
+    ],
+    note:
+      "Raggiungibile SOLO tramite app/nextgen/planner/page.tsx (risolve il flag server-side, stesso pattern " +
+      "di Calendar Export/School Calendar Intelligence). ASSUME migration_39 già applicata — vedi sopra.",
+    releaseEligible: true,
   },
   {
     // TRAMA — Calendar Export V1 (11/09/2026): implementato per davvero,

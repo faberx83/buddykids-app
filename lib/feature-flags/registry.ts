@@ -105,9 +105,23 @@ export const FEATURE_FLAG_REGISTRY = {
   },
   EXTERNAL_PLANNER_ITEMS_ENABLED: {
     name: "EXTERNAL_PLANNER_ITEMS_ENABLED",
+    // TRAMA — EXTERNAL PLANNER ITEMS (implementato per davvero — vedi
+    // app/nextgen/planner/page.tsx, risolve questo flag server-side, stesso
+    // pattern di CALENDAR_EXPORT_ENABLED/SCHOOL_CALENDAR_INTELLIGENCE_ENABLED
+    // — components/nextgen/ExternalPlannerItemsSection.tsx (UI Planner),
+    // lib/data/external-planner-items.ts + app/actions/external-planner-items.ts
+    // (dati/scritture), components/nextgen/DiscoveryLeadCard.tsx (CTA
+    // "Aggiungi al Planner" da una Scoperta TRAMA). Descrizione aggiornata:
+    // non più "nessun codice applicativo la risolve ancora". ASSUME che
+    // supabase/migration_39_external_planner_items.sql sia già applicata —
+    // finché non lo è, ogni query fallisce con 42P01 anche a flag attivo
+    // (stesso comportamento "atteso" già documentato per Curated Favorites/
+    // Novità TRAMA prima dell'applicazione di migration_38).
     description:
-      "PLACEHOLDER (nessun codice applicativo la risolve ancora) — governerà in futuro la visibilità " +
-      "di External Planner Items. Registrato ora solo per testare l'infrastruttura Release/Promotion.",
+      "Governa la visibilità della sezione 'I tuoi impegni' nel Planner: impegni familiari creati " +
+      "manualmente o aggiunti da una Scoperta TRAMA (snapshot, mai un fake booking/Partner). Default " +
+      "false: prima del rilascio nessun override GLOBAL/PILOT, solo cohort:internal-preview attivata " +
+      "manualmente da Admin → Feature Flags → Release, dopo l'applicazione della migration 39.",
     defaultValue: false,
     allowedScopes: ["global", "environment", "user", "role", "cohort"],
   },

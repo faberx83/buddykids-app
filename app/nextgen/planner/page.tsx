@@ -43,6 +43,10 @@ import { getPlannerCalendarItemsForParent, type PlannerCalendarItem } from "@/li
 // risoluzione server-side, badge SOLO se risolto via internal-preview,
 // fetch dei dati SOLO se il flag è davvero abilitato per questo utente.
 import { getSchoolCalendarPlannerContext, type SchoolCalendarPlannerContext } from "@/lib/data/school-calendar";
+// TRAMA — EXTERNAL PLANNER ITEMS (internal-preview): stesso pattern di
+// Calendar Export/School Calendar Intelligence sopra — risoluzione
+// server-side del flag, fetch dei dati SOLO se abilitato per questo utente.
+import { getExternalPlannerItemsForParent } from "@/lib/data/external-planner-items";
 
 // TRAMA BETA v1.1.1 — ORGANIZATION COMPLETENESS: stessa tecnica di
 // addDaysIso duplicata altrove nel repo (lib/nextgen/week-roles.ts,
@@ -96,6 +100,11 @@ export default async function NextgenPlannerPage() {
     kidsTotalCount: 0,
   };
   let residenceCity: string | null = null;
+  // TRAMA — EXTERNAL PLANNER ITEMS (internal-preview): stessi 2 default
+  // sicuri di Calendar Export/School Calendar — OFF finché non risolto,
+  // nessun dato fetchato per un utente a cui il flag risolve false.
+  let externalPlannerItemsEnabled = false;
+  let externalPlannerItems: Awaited<ReturnType<typeof getExternalPlannerItemsForParent>> = [];
   if (isSupabaseConfigured) {
     const supabase = await createClient();
     const {
@@ -128,7 +137,7 @@ export default async function NextgenPlannerPage() {
     // CHROME CLEANUP, 15/09/2026, sostituisce il precedente
     // <InternalPreviewBadge>), il cui prop `internal` ora tiene conto di
     // tutte e 3 le capability gated di questa pagina.
-    const [calendarExportDetail, schoolCalendarDetail, globalActionProgressDetail] = await Promise.all([
+    const [calendarExportDetail, schoolCalendarDetail, globalActionProgressDetail, externalPlannerItemsDetail] = await Promise.all([
       resolveFeatureFlagVisibility({
         flagName: "CALENDAR_EXPORT_ENABLED",
         userId: user?.id ?? null,
@@ -150,9 +159,22 @@ export default async function NextgenPlannerPage() {
         tenant: "family",
         correlationId: generateCorrelationId(),
       }),
+      // TRAMA — EXTERNAL PLANNER ITEMS (internal-preview): stesso
+      // Promise.all (nessun round-trip extra in sequenza).
+      resolveFeatureFlagVisibility({
+        flagName: "EXTERNAL_PLANNER_ITEMS_ENABLED",
+        userId: user?.id ?? null,
+        role,
+        tenant: "family",
+        correlationId: generateCorrelationId(),
+      }),
     ]);
     calendarExportEnabled = calendarExportDetail.enabled;
     schoolCalendarEnabled = schoolCalendarDetail.enabled;
+    externalPlannerItemsEnabled = externalPlannerItemsDetail.enabled;
+    if (externalPlannerItemsEnabled) {
+      externalPlannerItems = await getExternalPlannerItemsForParent();
+    }
     // Fetch dei dati SOLO se il flag è davvero abilitato per questo utente:
     // un utente normale (flag off) non riceve mai questi dati come prop,
     // nemmeno nascosti via CSS — §7: "nessuna rotta/azione alternativa".
@@ -170,7 +192,12 @@ export default async function NextgenPlannerPage() {
     // stesso identico <InternalPreviewBadge> montato una sola volta più
     // sotto, solo la condizione che lo rende visibile ora copre anche la
     // Progress Bar.
-    calendarExportBadgeVisible = anyResolvedViaInternalPreview([calendarExportDetail, schoolCalendarDetail, globalActionProgressDetail]);
+    calendarExportBadgeVisible = anyResolvedViaInternalPreview([
+      calendarExportDetail,
+      schoolCalendarDetail,
+      globalActionProgressDetail,
+      externalPlannerItemsDetail,
+    ]);
   }
 
   const seasonYear = await getSeasonYear();
@@ -302,6 +329,8 @@ export default async function NextgenPlannerPage() {
       schoolCalendarEnabled={schoolCalendarEnabled}
       schoolCalendarContext={schoolCalendarContext}
       residenceCity={residenceCity}
+      externalPlannerItemsEnabled={externalPlannerItemsEnabled}
+      externalPlannerItems={externalPlannerItems}
     />
   );
 }

@@ -73,6 +73,11 @@ import SchoolCalendarOnboardingCallout from "@/components/nextgen/SchoolCalendar
 import SchoolWeekBadge from "@/components/nextgen/SchoolWeekBadge";
 import { SCHOOL_WEEK_NEED_LABEL } from "@/lib/school-calendar/need-core";
 import type { SchoolCalendarPlannerContext } from "@/lib/data/school-calendar";
+// TRAMA — EXTERNAL PLANNER ITEMS (internal-preview): sezione additiva
+// autonoma, vedi commento di testa del componente per il perimetro esatto
+// (mai Coverage/WeekStatus/School Calendar).
+import ExternalPlannerItemsSection from "@/components/nextgen/ExternalPlannerItemsSection";
+import type { ExternalPlannerItem } from "@/lib/data/external-planner-items";
 // TRAMA — SCHOOL CALENDAR UX REFINEMENT §17-28 "GLOBAL CTA PROGRESS
 // FEEDBACK" (14/09/2026): "Riempi/Non ti serve" (§21 "azioni Planner") —
 // il toggle ha già un aggiornamento ottimistico locale, la barra dà
@@ -142,6 +147,15 @@ export default function PlannerClient({
   schoolCalendarEnabled,
   schoolCalendarContext,
   residenceCity,
+  // TRAMA — EXTERNAL PLANNER ITEMS (internal-preview): stesso pattern
+  // difensivo di calendarExportItems/schoolCalendarContext — externalItems è
+  // già [] per costruzione se il flag risolve false lato server
+  // (page.tsx), ExternalPlannerItemsSection non viene nemmeno montata in
+  // quel caso (vedi sotto), coerente col principio "nessuna rotta/azione
+  // alternativa per un utente normale" già seguito dalle altre capability
+  // gated di questa pagina.
+  externalPlannerItemsEnabled,
+  externalPlannerItems,
 }: {
   planner: PlannerData;
   kids: Kid[];
@@ -193,6 +207,8 @@ export default function PlannerClient({
   schoolCalendarEnabled: boolean;
   schoolCalendarContext: SchoolCalendarPlannerContext;
   residenceCity: string | null;
+  externalPlannerItemsEnabled: boolean;
+  externalPlannerItems: ExternalPlannerItem[];
 }) {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -1070,6 +1086,16 @@ export default function PlannerClient({
             era la ridondanza esplicitamente da eliminare (punto 3 della
             revisione: "le sovrapposizioni devono entrare nello stesso
             sistema [alert], NON creare nuovi box alert indipendenti"). */}
+
+        {/* TRAMA — EXTERNAL PLANNER ITEMS (internal-preview, sezioni 3/17/18
+            del task): montata SOLO se il flag risolve true per questo
+            utente — stesso principio "nessuna rotta/azione alternativa per
+            un utente normale" delle altre capability gated di questa
+            pagina (Calendar Export, School Calendar Intelligence). Prima
+            della Timeline: gli impegni della famiglia (TRAMA + esterni)
+            devono leggersi come un'unica area di organizzazione, non una
+            sezione nascosta in fondo alla pagina. */}
+        {externalPlannerItemsEnabled && <ExternalPlannerItemsSection items={externalPlannerItems} kids={kids} />}
 
         {/* 3. Timeline familiare — tutte le settimane della stagione.
             SPRINT 2 (feedback Fabrizio: "13 righe piatte sono tante da
