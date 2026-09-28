@@ -21,6 +21,11 @@ import {
   type ExternalPlannerItemInput,
   type MutationResult,
 } from "@/lib/data/external-planner-items";
+// TRAMA — DATELESS DISCOVERY (sezione 5 del task, 28/09/2026): tipo puro,
+// vedi lib/planner/external-planner-items-core.ts per la ROOT CAUSE ANALYSIS
+// completa del problema live e per il motivo per cui dateOverride ha sempre
+// la precedenza sulle date del lead quando fornito dal client.
+import type { CuratedLeadDateOverride } from "@/lib/planner/external-planner-items-core";
 import { REAL_DISCOVERY_LEADS } from "@/lib/discovery/real-dataset";
 
 async function logItemEvent(event: "external_planner_item_created" | "external_planner_item_updated" | "external_planner_item_deleted", itemId: string, sourceType: string) {
@@ -75,11 +80,22 @@ export async function deleteExternalPlannerItemAction(itemId: string): Promise<M
 // correzione date) avviene lato client PRIMA di chiamare questa azione
 // (dialog inline, stesso pattern di DiscoveryProposeInviteDialog) — questa
 // azione riceve già kidIds scelti, non fa alcuna UI.
-export async function addCuratedLeadToPlannerAction(curatedLeadId: string, kidIds: string[]): Promise<MutationResult> {
+export async function addCuratedLeadToPlannerAction(
+  curatedLeadId: string,
+  kidIds: string[],
+  // TRAMA — DATELESS DISCOVERY (sezione 5 del task): date scelte/confermate
+  // dall'utente nel dialog "Aggiungi al Planner" (DiscoveryLeadCard.tsx) —
+  // precompilate quando il lead le conosce (CASE A), richieste quando non
+  // le conosce (CASE B). Facoltativo per compatibilità con eventuali altri
+  // call site: se assente, si ricade sul vecchio comportamento
+  // (buildExternalPlannerItemInputFromCuratedLead usa le date del lead o,
+  // se assenti, "oggi" — vedi quel file per il dettaglio).
+  dateOverride?: CuratedLeadDateOverride
+): Promise<MutationResult> {
   const lead = REAL_DISCOVERY_LEADS.find((l) => l.id === curatedLeadId);
   if (!lead) return { error: "Scoperta non trovata." };
 
-  const input = buildExternalPlannerItemInputFromCuratedLead(lead, kidIds);
+  const input = buildExternalPlannerItemInputFromCuratedLead(lead, kidIds, dateOverride);
   const result = await createExternalPlannerItem(input, {
     sourceType: "curated_discovery",
     sourceRef: curatedLeadId,

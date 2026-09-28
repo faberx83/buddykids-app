@@ -142,6 +142,20 @@ export default function DiscoveryLeadCard({
   const [planState, setPlanState] = useState<PlanState>(initialInPlanner ? "done" : "idle");
   const [planError, setPlanError] = useState<string | null>(null);
   const [planKidIds, setPlanKidIds] = useState<string[]>([]);
+  // TRAMA — DATELESS DISCOVERY (sezione 5/6 del task, 28/09/2026, live UX
+  // fix). ROOT CAUSE ANALYSIS completa in
+  // lib/planner/external-planner-items-core.ts: la CTA "Aggiungi al
+  // Planner" NON era mai gated dalla presenza di date (verificato in questo
+  // stesso file — nessuna condizione su lead.startDate ovunque sotto), il
+  // problema reale era che il form non chiedeva MAI le date quando il lead
+  // non le conosceva (fallback silenzioso a "oggi" lato server). Precompilate
+  // con le date del lead quando note (CASE A — l'utente può correggerle),
+  // vuote quando il lead non le conosce (CASE B — l'utente deve
+  // compilarle): stesso principio "non inventare mai una data/durata più
+  // specifica della fonte" già rispettato dal resto della card.
+  const [planStartDate, setPlanStartDate] = useState(lead.startDate ?? "");
+  const [planEndDate, setPlanEndDate] = useState(lead.endDate ?? lead.startDate ?? "");
+  const hasKnownDates = Boolean(lead.startDate && lead.endDate);
 
   function togglePlanKid(kidId: string) {
     setPlanKidIds((ids) => (ids.includes(kidId) ? ids.filter((id) => id !== kidId) : [...ids, kidId]));
@@ -152,9 +166,26 @@ export default function DiscoveryLeadCard({
       setPlanError("Seleziona almeno un bambino.");
       return;
     }
+    // CASE B "DATE RICHIESTE": senza questo controllo lato client il form
+    // manderebbe comunque una richiesta valida (validateExternalPlannerItemInput
+    // richiede solo che le date NON siano vuote, non che siano state
+    // "confermate dall'utente") — il messaggio esplicito qui evita un
+    // errore generico dal server per un campo che l'utente vede benissimo
+    // sullo schermo.
+    if (!planStartDate || !planEndDate) {
+      setPlanError("Indica quando si svolge questo impegno.");
+      return;
+    }
+    if (planEndDate < planStartDate) {
+      setPlanError("La data di fine non può precedere quella di inizio.");
+      return;
+    }
     setPlanState("submitting");
     setPlanError(null);
-    const result = await addCuratedLeadToPlannerAction(lead.id, planKidIds);
+    const result = await addCuratedLeadToPlannerAction(lead.id, planKidIds, {
+      startDate: planStartDate,
+      endDate: planEndDate,
+    });
     if (result.error) {
       setPlanState("error");
       setPlanError(result.error);
@@ -421,6 +452,47 @@ export default function DiscoveryLeadCard({
               Salviamo i dati di questa Scoperta nel tuo Planner (titolo, data, luogo) — resteranno anche se
               cambia il catalogo TRAMA.
             </p>
+            {/* CASE A/B/C (sezione 5 del task) — campi data SEMPRE
+                modificabili: precompilati quando la fonte li conosce
+                (hasKnownDates), vuoti altrimenti. Nessuna data/durata
+                inventata: se il lead non le conosce, il genitore le
+                inserisce lui, stesso principio del resto della card
+                ("Prezzo non indicato dalla fonte" sopra). */}
+            <div className="mb-2.5">
+              <p className="mb-1.5 text-[11px] font-semibold text-ink-2">
+                {hasKnownDates ? "Quando si svolge" : "Quando si svolge? Non indicato dalla fonte."}
+              </p>
+              <div className="grid grid-cols-2 gap-2">
+                <label className="block">
+                  <span className="mb-1 block text-[10.5px] text-ink-3">Dal</span>
+                  <input
+                    type="date"
+                    value={planStartDate}
+                    onChange={(e) => {
+                      const next = e.target.value;
+                      setPlanStartDate(next);
+                      // Stessa convenzione già in uso nel form manuale
+                      // (ExternalPlannerItemsSection.tsx#ItemForm): se "Al"
+                      // precede la nuova "Dal", lo si allinea automaticamente
+                      // invece di lasciare un range invertito da correggere
+                      // a mano.
+                      if (planEndDate && planEndDate < next) setPlanEndDate(next);
+                    }}
+                    className="w-full rounded-lg border border-[#E8EBF0] px-2.5 py-1.5 text-[12.5px]"
+                  />
+                </label>
+                <label className="block">
+                  <span className="mb-1 block text-[10.5px] text-ink-3">Al</span>
+                  <input
+                    type="date"
+                    value={planEndDate}
+                    min={planStartDate || undefined}
+                    onChange={(e) => setPlanEndDate(e.target.value)}
+                    className="w-full rounded-lg border border-[#E8EBF0] px-2.5 py-1.5 text-[12.5px]"
+                  />
+                </label>
+              </div>
+            </div>
             <div className="mb-2.5 flex flex-wrap gap-1.5">
               {kids.map((kid) => (
                 <button

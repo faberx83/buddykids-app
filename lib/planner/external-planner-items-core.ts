@@ -49,6 +49,44 @@ export function validateExternalPlannerItemInput(input: ExternalPlannerItemInput
   return { valid: true };
 }
 
+// TRAMA — DATELESS DISCOVERY · CASE A/B/C (28/09/2026, live UX fix, sezione
+// 5 del task "DISCOVERY → ADD TO PLANNER WITHOUT DATES").
+//
+// ROOT CAUSE ANALYSIS del problema live segnalato da Fabrizio ("'Aggiungi al
+// Planner' sembra apparire solo sulle Scoperte con date") — verificata
+// leggendo per intero DiscoveryLeadCard.tsx e SearchDiscoveryClient.tsx
+// PRIMA di scrivere questo fix: la CTA "Aggiungi al Planner" NON è mai stata
+// gated da lead.startDate/endDate in nessuno dei due file — è condizionata
+// SOLO da `plannerEnabled && kids.length > 0` (stesso gate sia per lead
+// invitable che source-only, sia con che senza date). La percezione "solo
+// con date" non è quindi un bug di visibilità della CTA. Il problema REALE
+// trovato: questa funzione (chiamata da addCuratedLeadToPlannerAction)
+// faceva SEMPRE un fallback silenzioso a "oggi" quando il lead non aveva
+// date — mai un prompt "Quando si svolge?", mai un campo lasciato vuoto da
+// completare (comportamento diverso da quello richiesto ora dalla sezione 5:
+// CASE B "le date sono vuote e vanno richieste all'utente"). Un genitore che
+// aggiungeva una Scoperta source-only otteneva quindi silenziosamente un
+// impegno datato "oggi", con una nota nelle Note a spiegarlo — funzionale ma
+// non conforme al target CASE A/B/C.
+//
+// FIX: `dateOverride` opzionale, sempre fornito ora dal form lato client
+// (DiscoveryLeadCard.tsx — sezione 5/6 del task) con le date scelte
+// dall'utente nel dialog "Aggiungi al Planner": precompilate con
+// lead.startDate/endDate quando note (CASE A, l'utente può modificarle),
+// vuote quando il lead non le ha (CASE B, l'utente deve compilarle — il
+// bottone "Aggiungi" del dialog resta disabilitato finché non lo fa, vedi
+// DiscoveryLeadCard.tsx). Quando fornito, dateOverride ha SEMPRE la
+// precedenza sulle date del lead: sia perché l'utente potrebbe averle
+// corrette (CASE A "può... modificare"), sia perché per un lead senza date
+// è l'unica fonte possibile (CASE B). Il vecchio fallback "oggi" resta INVARIATO
+// come rete di sicurezza per qualunque altro chiamante che non passi ancora
+// un override (retrocompatibilità piena con EPI-11, che verifica esattamente
+// questo comportamità di fallback con la chiamata a due argomenti).
+export interface CuratedLeadDateOverride {
+  startDate: string;
+  endDate: string;
+}
+
 // SNAPSHOT PRINCIPLE (sezione 8 del task) — costruisce l'input "Aggiungi al
 // Planner" a partire da un DiscoveryLeadRecord code-based, SENZA mai
 // mantenere un riferimento runtime al dataset: da questo punto in poi
@@ -56,26 +94,35 @@ export function validateExternalPlannerItemInput(input: ExternalPlannerItemInput
 // del lead.
 export function buildExternalPlannerItemInputFromCuratedLead(
   lead: DiscoveryLeadRecord,
-  kidIds: string[]
+  kidIds: string[],
+  dateOverride?: CuratedLeadDateOverride
 ): ExternalPlannerItemInput {
   const hasDateRange = Boolean(lead.startDate && lead.endDate);
   const today = new Date().toISOString().slice(0, 10);
+  // CASE C "PARTIAL/AMBIGUOUS": in questo dataset startDate/endDate sono
+  // sempre entrambe note o entrambe assenti (mai una sola) — se in futuro
+  // comparisse un lead parziale, dateOverride resta comunque l'unica fonte
+  // per il campo mancante (mai un'invenzione più specifica di quanto
+  // fornito dall'utente).
+  const resolvedStartDate = dateOverride?.startDate || lead.startDate || today;
+  const resolvedEndDate = dateOverride?.endDate || lead.endDate || lead.startDate || today;
   return {
     kind: "activity",
     title: lead.activityTitle,
-    // Una Scoperta TRAMA senza date note (frequente per i record
-    // "source-only", sezione 7 del task: "deve funzionare sia per
-    // INVITABLE sia per SOURCE-ONLY") non deve bloccare l'aggiunta al
-    // Planner: fallback a "oggi", il genitore può poi correggerlo in
-    // modifica (sezione 10) — mai un dato inventato più specifico di
-    // "oggi", mai un blocco silenzioso dell'azione.
-    startDate: lead.startDate ?? today,
-    endDate: lead.endDate ?? lead.startDate ?? today,
+    startDate: resolvedStartDate,
+    endDate: resolvedEndDate,
     allDay: true,
     startTime: null,
     endTime: null,
     location: lead.locationName ? `${lead.locationName}, ${lead.comune}` : lead.comune,
-    notes: hasDateRange ? null : "Date non indicate dalla fonte al momento dell'aggiunta — verifica sul sito dell'organizzatore.",
+    // La nota "date non indicate dalla fonte" ha senso solo quando NESSUNA
+    // data certa esiste (né dal lead né da un override utente) — se
+    // l'utente ha compilato il form (CASE B) le date sono ormai certe (sono
+    // sue), non serve più avvisarlo che mancavano alla fonte.
+    notes:
+      hasDateRange || dateOverride
+        ? null
+        : "Date non indicate dalla fonte al momento dell'aggiunta — verifica sul sito dell'organizzatore.",
     externalUrl: lead.registrationUrl || lead.officialUrl || null,
     kidIds,
   };
