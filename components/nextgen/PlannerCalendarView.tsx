@@ -57,6 +57,19 @@ import {
   externalOccurrencesInRange,
   type ExternalCalendarOccurrence,
 } from "@/lib/planner/external-calendar-items-core";
+// TRAMA — CALENDARIO PLANNER · AGENDA COME SUPERFICIE PRINCIPALE
+// (28/09/2026): logica pura del day strip/agenda cronologica estratta in
+// lib/nextgen/agenda-view.ts — vedi quel file per la ROOT CAUSE del perché
+// (testabilità "[no browser]", stessa convenzione di bulk-assign.ts/
+// responsibility-tone.ts/calendar-weeks.ts).
+import {
+  WEEKDAY_SHORT3_IT,
+  AGENDA_BORDER_BG,
+  AGENDA_EXTERNAL_BORDER_BG,
+  mondayOfIso,
+  formatMonthYearIt,
+  buildAgendaRows,
+} from "@/lib/nextgen/agenda-view";
 
 // SPRINT 5.2 (NEXTGEN) — Planner, modalità Calendario: "Giorno, settimana e
 // mese, con colori per figlio e conflitti evidenziati" (PRD Family Planner).
@@ -72,7 +85,21 @@ import {
 // quale settimana", il passo naturale è aggiungere "chi lo accompagna".
 // Versione leggera (etichetta libera, non il sistema multi-genitore vero).
 
-type ViewMode = "mese" | "settimana";
+// TRAMA — CALENDARIO PLANNER · AGENDA COME SUPERFICIE PRINCIPALE
+// (28/09/2026, richiesta di Fabrizio dopo aver mostrato uno screenshot di
+// riferimento — un mockup "Calendario prenotazioni" NON di TRAMA, solo
+// ispirazione per il pattern visivo "day strip + agenda cronologica"). "mese"
+// e "settimana" restano IDENTICHE (nessuna logica toccata, solo rese
+// raggiungibili via il toggle + la CTA "Apri calendario completo" sotto);
+// "agenda" è il nuovo default all'apertura del pannello Calendario.
+// TRAMA — CALENDARIO PLANNER · AGENDA COME SUPERFICIE PRINCIPALE
+// (28/09/2026, richiesta di Fabrizio dopo aver mostrato uno screenshot di
+// riferimento — un mockup "Calendario prenotazioni" NON di TRAMA, solo
+// ispirazione per il pattern visivo "day strip + agenda cronologica"). "mese"
+// e "settimana" restano IDENTICHE (nessuna logica toccata, solo rese
+// raggiungibili via il toggle + la CTA "Apri calendario completo" sotto);
+// "agenda" è il nuovo default all'apertura del pannello Calendario.
+type ViewMode = "agenda" | "mese" | "settimana";
 
 const WEEKDAY_SHORT_IT = ["L", "M", "M", "G", "V", "S", "D"];
 
@@ -131,6 +158,7 @@ function formatOccurrenceTime(occ: ExternalCalendarOccurrence): string {
   return "Orario da confermare";
 }
 
+
 export default function PlannerCalendarView({
   weeks,
   kids,
@@ -179,7 +207,11 @@ export default function PlannerCalendarView({
     () => resolveResponsibleOptions(parentRole, familyPeople),
     [parentRole, familyPeople]
   );
-  const [viewMode, setViewMode] = useState<ViewMode>("mese");
+  // TRAMA — CALENDARIO PLANNER · AGENDA COME SUPERFICIE PRINCIPALE: default
+  // "agenda" (era "mese") — richiesta esplicita di Fabrizio, la griglia mese
+  // resta a un tap di distanza (toggle qui sotto + CTA "Apri calendario
+  // completo" in fondo alla vista Agenda).
+  const [viewMode, setViewMode] = useState<ViewMode>("agenda");
   // TRAMA — EXTERNAL PLANNER ITEMS · CALENDAR VISIBILITY (28/09/2026): unica
   // espansione range→occorrenze-per-giorno per tutto il componente, riusata
   // sia da buildCalendarMonths (vista Mese) sia da dayFromWeek/dal ramo
@@ -194,6 +226,41 @@ export default function PlannerCalendarView({
     [weeks, kids, overlaps, externalByDate]
   );
   const todayIso = useMemo(() => new Date().toISOString().slice(0, 10), []);
+  // Vista Agenda — lookup O(1) dateIso→CalendarDay su tutti i mesi stagionali
+  // già costruiti da buildCalendarMonths (months sopra): nessun ricalcolo,
+  // stessa fonte di dati già usata dalla vista Mese (griglia) e dal ramo
+  // "Settimana" (via dayFromWeek). Ogni giorno della stagione (Lun-Dom, non
+  // solo i giorni feriali coperti) ha già una cella qui, vedi
+  // lib/nextgen/calendar-weeks.ts.
+  const cellsByDate = useMemo(() => {
+    const map = new Map<string, CalendarDay>();
+    for (const m of months) for (const c of m.cells) if (c) map.set(c.dateIso, c);
+    return map;
+  }, [months]);
+  // Un giorno fuori dal range dei mesi stagionali costruiti sopra (es. molto
+  // prima/dopo la stagione, dove la famiglia può comunque avere impegni
+  // esterni — VISIBILE ≠ COVERED) non ha una cella in cellsByDate: fallback
+  // sintetico "giorno vuoto" con solo gli impegni esterni di quella data
+  // esatta (stessa fonte externalByDate già usata sopra), covered/dismissed
+  // sempre false (nessun booking TRAMA possibile fuori da weeks).
+  function agendaCellFor(dateIso: string): CalendarDay {
+    return (
+      cellsByDate.get(dateIso) ?? {
+        dateIso,
+        dayOfMonth: Number(dateIso.slice(-2)),
+        weekIndex: null,
+        weekLabel: null,
+        weekStartDate: null,
+        weekEndDate: null,
+        inSeason: false,
+        covered: false,
+        dismissed: false,
+        kids: [],
+        hasConflict: false,
+        externalItems: externalByDate.get(dateIso) ?? [],
+      }
+    );
+  }
   // BUGFIX (segnalato da Fabrizio: click sull'alert di coordinamento del
   // Coverage Hero "non fa accadere nulla") — conflictIdx e la costruzione di
   // un CalendarDay da una SeasonWeek erano scritti SOLO dentro l'initializer
@@ -275,6 +342,28 @@ export default function PlannerCalendarView({
     return candidate ? dayFromWeek(candidate) : null;
   });
 
+  // Vista Agenda — data selezionata nel day strip. STATO INDIPENDENTE da
+  // selectedDay sopra (che guida "Mese"/"Settimana" e il relativo pannello
+  // di riepilogo "Chi fa cosa?"): tenerli separati evita qualunque rischio
+  // di alterare l'inizializzazione/il comportamento già esistenti di
+  // selectedDay (usato altrove per bulk-assign/condivisione/deep-link) solo
+  // per far posto al nuovo day strip. Preferisce il giorno REALE di oggi se
+  // ha contenuto (in stagione o con impegni esterni — VISIBILE ≠ COVERED),
+  // altrimenti ricade sullo stesso deep-link/prima-settimana-coperta già
+  // usato sopra per selectedDay, cosi le due viste si aprono comunque sulla
+  // stessa settimana "di interesse" alla primissima apertura del pannello.
+  const [agendaDate, setAgendaDate] = useState<string>(() => {
+    if (weeks.length === 0) return todayIso;
+    const todayCell = cellsByDate.get(todayIso);
+    if (todayCell && (todayCell.inSeason || todayCell.externalItems.length > 0)) return todayIso;
+    const candidate =
+      (initialWeekStartDate ? weeks.find((w) => w.startDate === initialWeekStartDate) : undefined) ??
+      weeks.find((w) => !w.dismissed && todayIso >= w.startDate && todayIso <= w.endDate) ??
+      weeks.find((w) => !w.dismissed && w.coveredKids.length > 0) ??
+      null;
+    return candidate?.startDate ?? todayIso;
+  });
+
   // BUGFIX (segnalato da Fabrizio: click sull'alert di coordinamento "non fa
   // accadere nulla") — reagisce ai cambi di initialWeekStartDate DOPO il
   // mount (il click aggiorna lo stato del genitore, PlannerClient.tsx, senza
@@ -294,6 +383,14 @@ export default function PlannerCalendarView({
       if (candidate) {
         setMonthKey(candidate.startDate.slice(0, 7));
         setSelectedDay(dayFromWeek(candidate));
+        // TRAMA — AGENDA COME DEFAULT: un deep-link (es. click sull'alert di
+        // coordinamento del Coverage Hero) punta a una settimana precisa —
+        // porta l'utente sulla vista Mese (dove il riepilogo/bulk-assign
+        // sono raggiungibili), stesso comportamento di quando "mese" era il
+        // default. agendaDate resta comunque allineato, cosi se l'utente
+        // torna in Agenda vede lo stesso periodo.
+        setAgendaDate(candidate.startDate);
+        setViewMode("mese");
       }
     }
   }
@@ -602,10 +699,14 @@ export default function PlannerCalendarView({
     // ridotto da 3 (12px) a 2.5 (10px): stesso contenuto, meno "aria" prima
     // che la parte operativa (riepilogo giorno/settimana) sia raggiungibile.
     <div className="flex flex-col gap-2.5">
-      {/* Selettore Mese/Settimana */}
-      <div className="flex gap-2">
+      {/* Selettore Agenda/Mese/Settimana — "Agenda" aggiunta come nuova
+          prima opzione (default all'apertura, vedi useState viewMode
+          sopra): "Mese" e "Settimana" restano IDENTICHE e raggiungibili qui
+          esattamente come prima. */}
+      <div className="flex gap-2" data-testid="planner-view-mode-selector">
         {(
           [
+            { key: "agenda", label: "Agenda" },
             { key: "mese", label: "Mese" },
             { key: "settimana", label: "Settimana" },
           ] as { key: ViewMode; label: string }[]
@@ -613,6 +714,7 @@ export default function PlannerCalendarView({
           <button
             key={opt.key}
             type="button"
+            data-testid={`view-mode-${opt.key}`}
             onClick={() => {
               setViewMode(opt.key);
               setSelectedDay(null);
@@ -626,6 +728,203 @@ export default function PlannerCalendarView({
         ))}
       </div>
 
+      {viewMode === "agenda" && (
+        <div className="flex flex-col gap-2.5" data-testid="planner-agenda-view">
+          {/* Day strip — navigazione per settimana (frecce ±7 giorni) +
+              striscia orizzontale scrollabile dei 7 giorni della settimana
+              che contiene agendaDate. Lo scroll è confinato al div sotto
+              (overflow-x-auto), MAI alla pagina intera (nessun overflow-x su
+              elementi genitori qui) — requisito mobile-first (~360-390px). */}
+          <div className="rounded-2xl bg-white p-3.5">
+            <div className="mb-2.5 flex items-center justify-between">
+              <button
+                type="button"
+                onClick={() => setAgendaDate((d) => addDaysIso(d, -7))}
+                className="flex h-8 w-8 items-center justify-center rounded-full bg-bg text-ink-2 active:scale-95"
+                aria-label="Settimana precedente"
+              >
+                <i className="ti ti-chevron-left text-[15px]" />
+              </button>
+              <div className="flex flex-col items-center">
+                <div className="font-poppins text-sm font-bold text-ink">{formatMonthYearIt(agendaDate)}</div>
+                {agendaDate !== todayIso && (
+                  <button
+                    type="button"
+                    onClick={() => setAgendaDate(todayIso)}
+                    className="text-[10.5px] font-semibold text-trama-violet active:opacity-70"
+                  >
+                    Vai a oggi
+                  </button>
+                )}
+              </div>
+              <button
+                type="button"
+                onClick={() => setAgendaDate((d) => addDaysIso(d, 7))}
+                className="flex h-8 w-8 items-center justify-center rounded-full bg-bg text-ink-2 active:scale-95"
+                aria-label="Settimana successiva"
+              >
+                <i className="ti ti-chevron-right text-[15px]" />
+              </button>
+            </div>
+
+            <div
+              className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1"
+              data-testid="agenda-day-strip"
+              style={{ scrollbarWidth: "none" }}
+            >
+              {Array.from({ length: 7 }, (_, i) => addDaysIso(mondayOfIso(agendaDate), i)).map((dateIso) => {
+                const cell = agendaCellFor(dateIso);
+                const isSelected = dateIso === agendaDate;
+                const isToday = dateIso === todayIso;
+                const hasContent =
+                  (cell.covered && !cell.dismissed && cell.kids.length > 0) || cell.externalItems.length > 0;
+                const d = new Date(dateIso + "T00:00:00Z");
+                const weekdayIdx = (d.getUTCDay() + 6) % 7;
+                return (
+                  <button
+                    key={dateIso}
+                    type="button"
+                    data-testid={`agenda-day-${dateIso}`}
+                    onClick={() => setAgendaDate(dateIso)}
+                    className={`flex flex-shrink-0 flex-col items-center gap-1 rounded-2xl px-3 py-2 text-[11px] active:scale-95 ${
+                      isSelected
+                        ? "bg-trama-violet text-white"
+                        : isToday
+                          ? "border border-trama-violet text-ink"
+                          : "text-ink-2"
+                    }`}
+                  >
+                    <span className="text-[9.5px] font-bold uppercase tracking-wide">
+                      {WEEKDAY_SHORT3_IT[weekdayIdx]}
+                    </span>
+                    <span className="font-poppins text-[13px] font-bold">{Number(dateIso.slice(-2))}</span>
+                    <span
+                      className={`h-1 w-1 rounded-full ${
+                        hasContent ? (isSelected ? "bg-white" : "bg-trama-violet") : "bg-transparent"
+                      }`}
+                    />
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Agenda cronologica del giorno selezionato — TRAMA + Esterno
+              nella STESSA lista (stesso principio "domini separati,
+              presentation layer unificato" di buildAgendaRows sopra), righe
+              ordinate per orario, distinte solo da bordo/badge. */}
+          <div className="rounded-2xl border border-[#E8EBF0] bg-white p-4" data-testid="agenda-day-list">
+            <div className="mb-2.5 font-poppins text-[13px] font-bold text-ink">{formatFullDayIt(agendaDate)}</div>
+            {(() => {
+              const cell = agendaCellFor(agendaDate);
+              const rows = buildAgendaRows(cell);
+              if (cell.dismissed) {
+                return <p className="text-[12.5px] text-ink-2">Segnata come &quot;non ti serve&quot;.</p>;
+              }
+              if (rows.length === 0) {
+                return <p className="text-[12.5px] text-ink-2">Nessun impegno per questo giorno.</p>;
+              }
+              return (
+                <div className="flex flex-col gap-2">
+                  {rows.map((row, idx) => {
+                    if (row.kind === "trama") {
+                      return (
+                        <button
+                          key={`trama-${row.kidId}-${idx}`}
+                          type="button"
+                          data-testid="agenda-row-trama"
+                          onClick={() => {
+                            // "Gestisci" — apre la vista Mese con questo
+                            // giorno selezionato: stesso pannello di
+                            // riepilogo/bulk-assign/condivisione già
+                            // esistente, nessuna logica duplicata qui (vista
+                            // Agenda resta un pass di presentazione, non di
+                            // dati/azioni — punto 3 del task).
+                            setViewMode("mese");
+                            setMonthKey(agendaDate.slice(0, 7));
+                            setSelectedDay(cell);
+                          }}
+                          className={`flex items-start gap-3 rounded-xl border-l-4 p-2.5 text-left active:scale-[0.99] ${
+                            AGENDA_BORDER_BG[row.accentColor] ?? AGENDA_BORDER_BG.sky
+                          }`}
+                        >
+                          <div className="w-16 flex-shrink-0 text-[10px] font-bold text-ink-3">Tutto il giorno</div>
+                          <div className="min-w-0 flex-1">
+                            <div className="text-[12.5px] font-bold text-ink">{row.title}</div>
+                            <div className="flex items-center gap-1 text-[11px] text-ink-2">
+                              <span className={`h-2 w-2 flex-shrink-0 rounded-full ${DOT_BG[row.accentColor]}`} />
+                              {row.kidName}
+                            </div>
+                            {cell.hasConflict && (
+                              <div className="mt-0.5 flex items-center gap-1 text-[10.5px] text-[#9a6b00]">
+                                <i className="ti ti-alert-triangle text-[11px]" />
+                                Sovrapposizione
+                              </div>
+                            )}
+                          </div>
+                          <i className="ti ti-chevron-right mt-0.5 flex-shrink-0 text-[13px] text-ink-3" />
+                        </button>
+                      );
+                    }
+                    const occ = row.occ;
+                    return (
+                      <div
+                        key={`ext-${occ.itemId}-${idx}`}
+                        data-testid="agenda-row-external"
+                        className={`flex items-start gap-3 rounded-xl border-l-4 p-2.5 ${AGENDA_EXTERNAL_BORDER_BG}`}
+                      >
+                        <div className="w-16 flex-shrink-0 text-[10px] font-bold text-ink-3">
+                          {formatOccurrenceTime(occ)}
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <div className="flex flex-wrap items-center gap-1.5">
+                            <span className="rounded-full bg-white px-1.5 py-0.5 text-[9.5px] font-bold uppercase tracking-wide text-ink-3">
+                              Esterno
+                            </span>
+                            {occ.sourceType === "curated_discovery" && (
+                              <span className="text-[10px] font-medium text-ink-3">Da Scoperta TRAMA</span>
+                            )}
+                          </div>
+                          <div className="text-[12.5px] font-bold text-ink">{occ.title}</div>
+                          {occ.kidNames.length > 0 && (
+                            <div className="text-[11px] text-ink-2">{occ.kidNames.join(", ")}</div>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              );
+            })()}
+
+            {/* CTA — porta alla griglia mese esistente, MAI eliminata: resta
+                la vista secondaria/estesa raggiungibile da qui e dal
+                selettore sopra (punto 2 del task). */}
+            <button
+              type="button"
+              data-testid="open-full-calendar-cta"
+              onClick={() => {
+                setViewMode("mese");
+                setMonthKey(agendaDate.slice(0, 7));
+              }}
+              className="mt-3 flex w-full items-center justify-center gap-1.5 rounded-full bg-bg px-4 py-2.5 text-[12px] font-bold text-trama-violet active:scale-[0.97]"
+            >
+              Apri calendario completo
+              <i className="ti ti-chevron-right text-[13px]" />
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* TRAMA — AGENDA COME SUPERFICIE PRINCIPALE: legenda, griglia
+          Mese/Settimana e pannello di riepilogo "Chi fa cosa?" restano
+          IDENTICI (nessuna riga toccata sotto), solo nascosti mentre
+          viewMode è "agenda" — la vista Agenda ha la propria legenda
+          cromatica implicita nel bordo di ogni card, e il riepilogo
+          dettagliato resta raggiungibile passando da "Mese"/"Settimana"
+          (toggle sopra) o dalla CTA/riga "Gestisci" della vista Agenda. */}
+      {viewMode !== "agenda" && (
+      <>
       {/* Legenda per bambino
           TRAMA BETA v1.1.1 (UI Refinement, punto 10) — legenda più
           compatta (meno padding/gap): stessa informazione, meno spazio
@@ -1457,6 +1756,8 @@ export default function PlannerCalendarView({
             <p className="text-[12.5px] text-ink-2">Nessuna prenotazione per questa settimana.</p>
           )}
         </div>
+      )}
+      </>
       )}
 
       {/* SPRINT 5.3 — Condivisione Piano: pannello di creazione link, aperto
