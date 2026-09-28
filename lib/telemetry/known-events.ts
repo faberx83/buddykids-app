@@ -117,6 +117,22 @@ export const KNOWN_PRODUCT_EVENTS = [
   // nessun bambino/famiglia, solo l'id dell'entità marcata preferita.
   "favorite_added",
   "favorite_removed",
+  // TRAMA — EXTERNAL PLANNER ITEMS (sezione 25 del task "ANALYTICS":
+  // "Minimo necessario: external_planner_item_created/updated/deleted,
+  // curated_added_to_planner. No note/title/location nei payload. Solo
+  // IDs/type/source se necessari."). Stesso principio "adozione, non
+  // cronologia personale" di tutti gli eventi sopra: `detail` codifica SOLO
+  // `${source_type}:${item_id}` (mai title/location/notes/orari). Call
+  // site: app/actions/external-planner-items.ts.
+  "external_planner_item_created",
+  "external_planner_item_updated",
+  "external_planner_item_deleted",
+  // Evento distinto da external_planner_item_created (anche se ogni "Add to
+  // Planner" da una Scoperta TRAMA genera anche quell'evento): permette di
+  // isolare il funnel Discovery → Planner senza dover dedurlo da
+  // detail/source_type dell'evento generico. `detail` = SOLO il
+  // curated_lead_id (stringa statica del dataset code-based).
+  "curated_added_to_planner",
 ] as const;
 
 export type KnownProductEvent = (typeof KNOWN_PRODUCT_EVENTS)[number];
