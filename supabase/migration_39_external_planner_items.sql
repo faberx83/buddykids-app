@@ -1,10 +1,11 @@
 -- Migrazione 39 — External Planner Items.
 --
--- PREPARATA, NON APPLICATA — in attesa di revisione ed esecuzione manuale
--- (project_id eagsgfxunwyyxwwilldy). Audit propedeutico read-only eseguito
--- in questa sessione (list_tables + query di verifica riportate nel
--- PRE-CHECK sotto): nessuna collisione di nome, nessuna tabella
--- "external_planner_items"/"external_planner_item_kids" esistente.
+-- APPLICATA in produzione il 28/09/2026 (project_id eagsgfxunwyyxwwilldy),
+-- dopo revisione: schema/RLS verificati contro kids/favorites/
+-- curated_favorites (stesso pattern), assenza di collisioni confermata,
+-- post-check eseguito (0 righe nelle 2 tabelle nuove, bookings=20/
+-- activities=8/kids=15 invariati, 2 policy per tabella). Nessuna riga
+-- esistente toccata: entrambe le tabelle sono nuove, additive, isolate.
 --
 -- ════════════════════════════════════════════════════════════════
 -- CONTESTO
