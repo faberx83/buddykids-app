@@ -629,8 +629,12 @@ export default function PlannerCalendarView({
       {/* Legenda per bambino
           TRAMA BETA v1.1.1 (UI Refinement, punto 10) — legenda più
           compatta (meno padding/gap): stessa informazione, meno spazio
-          verticale prima del calendario vero e proprio. */}
-      {kids.length > 0 && (
+          verticale prima del calendario vero e proprio.
+          TRAMA — CALENDAR LAYOUT POLISH (28/09/2026, sezione 3/7 del task):
+          aggiunta la voce "Esterno" — stesso marker (trattino violetto)
+          disegnato sulle celle del mese sotto, cosi la legenda spiega
+          SUBITO cosa significa senza dover prima aprire un giorno. */}
+      {(kids.length > 0 || externalPlannerItems.length > 0) && (
         <div className="flex flex-wrap items-center gap-2.5 rounded-2xl bg-white px-3 py-2">
           {kidLegend.map((k) => (
             <div key={k.kidId} className="flex items-center gap-1.5">
@@ -638,6 +642,12 @@ export default function PlannerCalendarView({
               <span className="text-[11.5px] font-semibold text-ink-2">{k.kidName}</span>
             </div>
           ))}
+          {externalPlannerItems.length > 0 && (
+            <div className="flex items-center gap-1.5">
+              <span className="h-[3px] w-3 rounded-full bg-trama-violet/60" />
+              <span className="text-[11.5px] font-semibold text-ink-2">Esterno</span>
+            </div>
+          )}
           <div className="ml-auto flex items-center gap-1.5">
             <i className="ti ti-alert-triangle text-[13px] text-[#9a6b00]" />
             <span className="text-[11px] text-ink-3">Sovrapposizione</span>
@@ -657,7 +667,28 @@ export default function PlannerCalendarView({
             >
               <i className="ti ti-chevron-left text-[15px]" />
             </button>
-            <div className="font-poppins text-sm font-bold text-ink">{activeMonth.label}</div>
+            {/* TRAMA — CALENDAR LAYOUT POLISH (28/09/2026, sezione 3
+                "DAY STRIP/DATE NAVIGATION" del task) — "Oggi" mostrato solo
+                quando il mese visualizzato NON è già quello di oggi (nessun
+                bottone inutile quando si sta già guardando il mese
+                corrente): un salto rapido, senza dover premere ripetutamente
+                le frecce mese per mese per tornare al presente. */}
+            <div className="flex flex-col items-center">
+              <div className="font-poppins text-sm font-bold text-ink">{activeMonth.label}</div>
+              {/* Mostrato solo se il mese di oggi esiste davvero tra i mesi
+                  stagionali disponibili (months) — altrimenti sarebbe un
+                  bottone che non porta da nessuna parte (es. oggi è fuori
+                  stagione). */}
+              {activeMonth.key !== todayIso.slice(0, 7) && months.some((m) => m.key === todayIso.slice(0, 7)) && (
+                <button
+                  type="button"
+                  onClick={() => setMonthKey(todayIso.slice(0, 7))}
+                  className="text-[10.5px] font-semibold text-trama-violet active:opacity-70"
+                >
+                  Vai a oggi
+                </button>
+              )}
+            </div>
             <button
               type="button"
               disabled={monthIndex >= months.length - 1}
