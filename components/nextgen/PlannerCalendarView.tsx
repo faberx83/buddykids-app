@@ -43,6 +43,20 @@ import type { PlanShare } from "@/lib/data/plan-shares";
 import { createPlanShareAction, revokePlanShareAction } from "@/app/actions/plan-shares";
 import { useNextgenToast } from "@/components/nextgen/NextgenToastProvider";
 import type { Kid } from "@/lib/types";
+// TRAMA — EXTERNAL PLANNER ITEMS · CALENDAR VISIBILITY (28/09/2026): vedi
+// lib/planner/external-calendar-items-core.ts per la ROOT CAUSE ANALYSIS
+// completa (questo componente non riceveva mai externalPlannerItems da
+// PlannerClient.tsx, mentre buildCalendarMonths già sapeva riceverle da
+// questo stesso fix — vedi lib/nextgen/calendar-weeks.ts). "import type"
+// per ExternalPlannerItem: solo un tipo, non trascina lib/supabase/server
+// (import "server-only" del modulo che lo dichiara) nel bundle client —
+// stesso motivo già documentato per SeasonWeek/KidOverlap/ParentRole sopra.
+import type { ExternalPlannerItem } from "@/lib/data/external-planner-items";
+import {
+  buildExternalOccurrencesByDate,
+  externalOccurrencesInRange,
+  type ExternalCalendarOccurrence,
+} from "@/lib/planner/external-calendar-items-core";
 
 // SPRINT 5.2 (NEXTGEN) — Planner, modalità Calendario: "Giorno, settimana e
 // mese, con colori per figlio e conflitti evidenziati" (PRD Family Planner).
@@ -92,6 +106,31 @@ function formatDayMonth(iso: string): string {
   return `${d.getUTCDate()}/${d.getUTCMonth() + 1}`;
 }
 
+// TRAMA — CALENDAR LAYOUT POLISH (28/09/2026, sezione 3 del task): il
+// riepilogo giorno/settimana mostrava sempre e solo l'etichetta della
+// SeasonWeek ("Settimana N"), anche quando l'utente ha selezionato un
+// singolo giorno preciso nella vista Mese — poco leggibile per un'agenda
+// giornaliera, e nullo per un giorno fuori stagione (weekLabel null). Data
+// completa in italiano ("Lun 28 settembre") per il caso "giorno preciso",
+// usata solo dall'header del riepilogo sotto.
+function formatFullDayIt(iso: string): string {
+  const d = new Date(iso + "T00:00:00Z");
+  const label = d.toLocaleDateString("it-IT", { weekday: "short", day: "numeric", month: "long" });
+  return label.charAt(0).toUpperCase() + label.slice(1);
+}
+
+// TRAMA — EXTERNAL PLANNER ITEMS · CALENDAR/AGENDA VISUAL SEMANTICS
+// (sezione 7 del task): orario leggibile per un'occorrenza — "Tutto il
+// giorno" se all_day, altrimenti "HH:MM" o "HH:MM–HH:MM" se sono note
+// entrambe le estremità. Nessun'altra euristica: un orario mancante non
+// viene mai inventato.
+function formatOccurrenceTime(occ: ExternalCalendarOccurrence): string {
+  if (occ.allDay) return "Tutto il giorno";
+  if (occ.startTime && occ.endTime) return `${occ.startTime}–${occ.endTime}`;
+  if (occ.startTime) return occ.startTime;
+  return "Orario da confermare";
+}
+
 export default function PlannerCalendarView({
   weeks,
   kids,
@@ -101,6 +140,7 @@ export default function PlannerCalendarView({
   parentRole,
   familyPeople,
   initialWeekStartDate,
+  externalPlannerItems,
 }: {
   weeks: SeasonWeek[];
   kids: Kid[];
@@ -121,6 +161,13 @@ export default function PlannerCalendarView({
   // "settimana corrente" sotto, SOLO se corrisponde a una settimana reale
   // (nessuna settimana inventata da una stringa arbitraria in query string).
   initialWeekStartDate?: string | null;
+  // TRAMA — EXTERNAL PLANNER ITEMS · CALENDAR VISIBILITY (28/09/2026): già
+  // letti server-side (getExternalPlannerItemsForParent, page.tsx) — stesso
+  // dato già passato a <ExternalPlannerItemsSection>, ora anche qui. []
+  // finché il flag EXTERNAL_PLANNER_ITEMS_ENABLED non risolve true per
+  // questo utente (stesso principio difensivo delle altre capability gated
+  // di questa pagina, vedi commento in PlannerClient.tsx).
+  externalPlannerItems: ExternalPlannerItem[];
 }) {
   const showToast = useNextgenToast();
   // ADAPT: stessa funzione già introdotta per il punto 15 di v1.1.1, ora
@@ -133,7 +180,19 @@ export default function PlannerCalendarView({
     [parentRole, familyPeople]
   );
   const [viewMode, setViewMode] = useState<ViewMode>("mese");
-  const months = useMemo(() => buildCalendarMonths(weeks, kids, overlaps), [weeks, kids, overlaps]);
+  // TRAMA — EXTERNAL PLANNER ITEMS · CALENDAR VISIBILITY (28/09/2026): unica
+  // espansione range→occorrenze-per-giorno per tutto il componente, riusata
+  // sia da buildCalendarMonths (vista Mese) sia da dayFromWeek/dal ramo
+  // "Settimana" sotto (via externalOccurrencesInRange) — nessun doppio
+  // calcolo divergente.
+  const externalByDate = useMemo(
+    () => buildExternalOccurrencesByDate(externalPlannerItems, kids),
+    [externalPlannerItems, kids]
+  );
+  const months = useMemo(
+    () => buildCalendarMonths(weeks, kids, overlaps, externalByDate),
+    [weeks, kids, overlaps, externalByDate]
+  );
   const todayIso = useMemo(() => new Date().toISOString().slice(0, 10), []);
   // BUGFIX (segnalato da Fabrizio: click sull'alert di coordinamento del
   // Coverage Hero "non fa accadere nulla") — conflictIdx e la costruzione di
@@ -169,6 +228,16 @@ export default function PlannerCalendarView({
         .filter((k): k is Kid => Boolean(k))
         .map((k) => ({ kidId: k.id, kidName: k.name, accentColor: k.accentColor ?? "sky" })),
       hasConflict: conflictIdx.has(candidate.index),
+      // TRAMA — EXTERNAL PLANNER ITEMS · CALENDAR VISIBILITY (28/09/2026):
+      // la vista "Settimana" seleziona un'intera SeasonWeek (non un singolo
+      // giorno) — aggreghiamo tutte le occorrenze che cadono nel range
+      // [startDate, endDate] di quella settimana, cosi restano visibili
+      // anche qui (sezione 1 del task: "DAY DETAIL/AGENDA... gli External
+      // Items devono comparire tra gli elementi di quel giorno", qui esteso
+      // al riepilogo settimana perché questo componente non ha un vero
+      // dettaglio per singolo giorno in questa vista, vedi limite dati
+      // dichiarato in lib/nextgen/calendar-weeks.ts).
+      externalItems: externalOccurrencesInRange(externalByDate, candidate.startDate, candidate.endDate),
     };
   }
   const [monthKey, setMonthKey] = useState<string>(() => {
@@ -613,11 +682,21 @@ export default function PlannerCalendarView({
               if (!cell) return <div key={i} className="aspect-square" />;
               const isToday = cell.dateIso === todayIso;
               const isSelected = selectedDay?.dateIso === cell.dateIso;
+              // TRAMA — EXTERNAL PLANNER ITEMS · CALENDAR VISIBILITY
+              // (28/09/2026): un impegno esterno è indipendente dalla
+              // stagione TRAMA (sezione 1 del task — VISIBILE ≠ COVERED, e
+              // una famiglia può avere un impegno anche fuori stagione/in un
+              // weekend, giorni normalmente non cliccabili perché
+              // !inSeason). La cella resta cliccabile se ha almeno un
+              // impegno esterno, anche quando cell.inSeason è false — questo
+              // NON tocca in alcun modo cell.covered/dismissed.
+              const hasExternal = cell.externalItems.length > 0;
+              const clickable = cell.inSeason || hasExternal;
               return (
                 <button
                   key={cell.dateIso}
                   type="button"
-                  disabled={!cell.inSeason}
+                  disabled={!clickable}
                   onClick={() => setSelectedDay(isSelected ? null : cell)}
                   className={`relative flex aspect-square flex-col items-center justify-center rounded-lg text-[11px] active:scale-95 ${
                     isSelected
@@ -626,7 +705,9 @@ export default function PlannerCalendarView({
                         ? "border border-trama-violet font-semibold text-ink"
                         : cell.inSeason
                           ? "text-ink"
-                          : "text-ink-3/50"
+                          : hasExternal
+                            ? "text-ink-2"
+                            : "text-ink-3/50"
                   }`}
                 >
                   <span>{cell.dayOfMonth}</span>
@@ -636,6 +717,18 @@ export default function PlannerCalendarView({
                         <span key={k.kidId} className={`h-1.5 w-1.5 rounded-full ${DOT_BG[k.accentColor]}`} />
                       ))}
                     </span>
+                  )}
+                  {/* Indicatore "Esterno" (sezione 1/7 del task) — marker
+                      SECONDARIO e visivamente distinto dai pallini colorati
+                      per bambino sopra (mai lo stesso linguaggio visivo di
+                      un booking TRAMA): un piccolo trattino violetto sotto i
+                      pallini, non un pallino colorato aggiuntivo che si
+                      confonderebbe con la copertura bambino. */}
+                  {hasExternal && (
+                    <span
+                      className="mt-0.5 h-[3px] w-3 rounded-full bg-trama-violet/60"
+                      aria-label="Impegno esterno"
+                    />
                   )}
                   {cell.hasConflict && (
                     <i className="ti ti-alert-triangle absolute -right-0.5 -top-0.5 text-[10px] text-[#9a6b00]" />
@@ -681,31 +774,14 @@ export default function PlannerCalendarView({
                 key={w.index}
                 type="button"
                 onClick={() =>
-                  setSelectedDay(
-                    isSelected
-                      ? null
-                      : {
-                          dateIso: w.startDate,
-                          dayOfMonth: 0,
-                          weekIndex: w.index,
-                          weekLabel: w.label,
-                          weekStartDate: w.startDate,
-                          weekEndDate: w.endDate,
-                          inSeason: true,
-                          covered: w.covered,
-                          dismissed: w.dismissed,
-                          activityName: w.activityName,
-                          kids: w.coveredKids
-                            .map((ck) => kids.find((k) => k.id === ck.kidId))
-                            .filter((k): k is Kid => Boolean(k))
-                            .map((k) => ({
-                              kidId: k.id,
-                              kidName: k.name,
-                              accentColor: k.accentColor ?? "sky",
-                            })),
-                          hasConflict,
-                        }
-                  )
+                  // TRAMA — EXTERNAL PLANNER ITEMS · CALENDAR VISIBILITY
+                  // (28/09/2026): questo oggetto letterale duplicava
+                  // esattamente dayFromWeek(w) (stessa SeasonWeek, stesso
+                  // conflictIdx/conflictWeekIndexes) — sostituito da una
+                  // chiamata diretta cosi il ramo "Settimana" ottiene
+                  // externalItems senza duplicare la logica di
+                  // aggregazione in due punti divergenti.
+                  setSelectedDay(isSelected ? null : dayFromWeek(w))
                 }
                 className={`flex items-center gap-3 rounded-xl p-3 text-left active:bg-black/[0.06] ${
                   isSelected ? "bg-trama-lilac/20" : w.dismissed ? "bg-bg" : "bg-white"
@@ -754,8 +830,20 @@ export default function PlannerCalendarView({
       {selectedDay && (
         <div className="rounded-2xl border border-[#E8EBF0] bg-white p-4">
           <div className="mb-2 flex items-center justify-between gap-2">
-            <div className="font-poppins text-[13px] font-bold text-ink">
-              {selectedDay.weekLabel ?? "Settimana"}
+            {/* TRAMA — CALENDAR LAYOUT POLISH (28/09/2026): quando la
+                selezione è un giorno preciso della vista Mese
+                (dayOfMonth>0), il titolo mostra la data reale — "Lun 28
+                settembre" — non più solo "Settimana N", più leggibile come
+                intestazione di un'agenda giornaliera. La vista Settimana
+                (dayOfMonth===0) resta invariata: mostra l'etichetta della
+                SeasonWeek come sempre. */}
+            <div>
+              <div className="font-poppins text-[13px] font-bold text-ink">
+                {selectedDay.dayOfMonth > 0 ? formatFullDayIt(selectedDay.dateIso) : (selectedDay.weekLabel ?? "Settimana")}
+              </div>
+              {selectedDay.dayOfMonth > 0 && selectedDay.weekLabel && (
+                <div className="text-[10.5px] text-ink-3">{selectedDay.weekLabel}</div>
+              )}
             </div>
             <div className="flex items-center gap-2">
               {selectedDay.hasConflict && (
@@ -787,6 +875,87 @@ export default function PlannerCalendarView({
               )}
             </div>
           </div>
+
+          {/* TRAMA — EXTERNAL PLANNER ITEMS · CALENDAR/DAY AGENDA (sezione 1
+              del task, "DAY DETAIL/AGENDA... gli External Items devono
+              comparire tra gli elementi di quel giorno") — blocco
+              INDIPENDENTE dal ramo dismissed/kids sotto (che riguarda SOLO
+              la copertura TRAMA): un impegno esterno resta visibile qui
+              anche in una settimana "non ti serve" o senza alcun bambino
+              coperto da booking TRAMA — coerente con VISIBILE ≠ COVERED
+              (questo blocco non legge/scrive mai covered/dismissed).
+              Ordinati per data poi per orario (gli "tutto il giorno" prima,
+              stessa convenzione leggibile di un'agenda reale), cosi anche la
+              vista Settimana (che aggrega più giorni in un'unica lista) resta
+              coerente con l'ordine cronologico reale. */}
+          {selectedDay.externalItems.length > 0 && (
+            <div className="mb-3 flex flex-col gap-1.5 rounded-xl bg-bg p-2.5">
+              <div className="mb-0.5 flex items-center gap-1.5 text-[10.5px] font-extrabold uppercase tracking-wide text-ink-3">
+                <i className="ti ti-calendar-event text-[12px]" />
+                Impegni esterni
+              </div>
+              {[...selectedDay.externalItems]
+                .sort((a, b) => {
+                  if (a.dateIso !== b.dateIso) return a.dateIso.localeCompare(b.dateIso);
+                  if (a.allDay !== b.allDay) return a.allDay ? -1 : 1;
+                  return (a.startTime ?? "").localeCompare(b.startTime ?? "");
+                })
+                .map((occ, idx) => (
+                  <div
+                    key={`${occ.itemId}__${occ.dateIso}__${idx}`}
+                    className="flex flex-col gap-0.5 rounded-lg bg-white px-2.5 py-2"
+                  >
+                    <div className="flex flex-wrap items-center gap-1.5">
+                      {/* Vista Settimana: più giorni aggregati nella stessa
+                          lista, la data della singola occorrenza evita
+                          ambiguità su "quale giorno" (vista Mese: sempre lo
+                          stesso giorno del selettore, la data è ridondante
+                          e viene omessa per restare compatta). */}
+                      {selectedDay.dayOfMonth === 0 && (
+                        <span className="rounded-full bg-[#F4F6FA] px-1.5 py-0.5 text-[10px] font-bold text-ink-3">
+                          {formatDayMonth(occ.dateIso)}
+                        </span>
+                      )}
+                      {/* Grammatica visuale "Esterno" — MAI lo stesso badge
+                          di un'attività TRAMA (sezione 7/11 del task): stesso
+                          trattamento già in uso in
+                          ExternalPlannerItemsSection.tsx (lista "I tuoi
+                          impegni"), riusato qui identico per coerenza. */}
+                      <span className="rounded-full bg-[#F4F6FA] px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-ink-3">
+                        Esterno
+                      </span>
+                      {occ.sourceType === "curated_discovery" && (
+                        <span className="text-[10px] font-medium text-ink-3">Da Scoperta TRAMA</span>
+                      )}
+                      {!occ.isRangeStart || !occ.isRangeEnd ? (
+                        <span className="text-[10px] font-medium text-trama-violet">
+                          {occ.isRangeStart ? "Inizia oggi" : occ.isRangeEnd ? "Ultimo giorno" : "In corso"}
+                        </span>
+                      ) : null}
+                    </div>
+                    <div className="flex items-center gap-1.5 text-[12.5px] font-bold text-ink">
+                      <i
+                        className={`ti ${occ.kind === "activity" ? "ti-ball-football" : "ti-calendar-event"} text-[13px] text-trama-violet`}
+                      />
+                      {occ.title}
+                    </div>
+                    <div className="flex flex-wrap items-center gap-2 text-[11px] text-ink-2">
+                      <span className="flex items-center gap-1">
+                        <i className="ti ti-clock text-[11px] text-ink-3" />
+                        {formatOccurrenceTime(occ)}
+                      </span>
+                      {occ.kidNames.length > 0 && (
+                        <span className="flex items-center gap-1">
+                          <i className="ti ti-users text-[11px] text-ink-3" />
+                          {occ.kidNames.join(", ")}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                ))}
+            </div>
+          )}
+
           {selectedDay.dismissed ? (
             <p className="text-[12.5px] text-ink-2">Segnata come &quot;non ti serve&quot;.</p>
           ) : selectedDay.kids.length > 0 ? (

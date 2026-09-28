@@ -15,6 +15,12 @@
 import { SeasonWeek } from "@/lib/data/planner";
 import { KidOverlap } from "@/lib/nextgen/planner-insights";
 import { Kid, PillColor } from "@/lib/types";
+// TRAMA — EXTERNAL PLANNER ITEMS · CALENDAR VISIBILITY (28/09/2026): vedi
+// lib/planner/external-calendar-items-core.ts per la ROOT CAUSE ANALYSIS
+// completa del problema live "non si vedono nel calendario" — questo modulo
+// si limita ad annettere le occorrenze già espanse a ciascuna cella
+// giornaliera, senza calcolare nulla di data-sensitive qui.
+import { ExternalCalendarOccurrence } from "@/lib/planner/external-calendar-items-core";
 
 export interface CalendarDayKid {
   kidId: string;
@@ -41,6 +47,15 @@ export interface CalendarDay {
   activityName?: string;
   kids: CalendarDayKid[];
   hasConflict: boolean;
+  // TRAMA — EXTERNAL PLANNER ITEMS · CALENDAR VISIBILITY (28/09/2026):
+  // occorrenze di External Planner Item su QUESTO giorno esatto (già
+  // espanse dal range multi-day, vedi external-calendar-items-core.ts).
+  // Sempre [] finché il chiamante non passa externalItemsByDate a
+  // buildCalendarMonths — default innocuo, nessuna regressione per chi non
+  // passa ancora questo parametro. VISIBILE ≠ COVERED: questo campo non
+  // influenza mai `covered`/`dismissed` sopra, che restano calcolati SOLO
+  // da SeasonWeek (regola critica sezione 1 del task External Items).
+  externalItems: ExternalCalendarOccurrence[];
 }
 
 export interface CalendarMonth {
@@ -88,7 +103,13 @@ function isoOfDate(d: Date): string {
 export function buildCalendarMonths(
   weeks: SeasonWeek[],
   kids: Kid[],
-  overlaps: KidOverlap[]
+  overlaps: KidOverlap[],
+  // TRAMA — EXTERNAL PLANNER ITEMS · CALENDAR VISIBILITY (28/09/2026):
+  // Map<dateIso, occorrenze[]> già espansa (external-calendar-items-core.ts)
+  // — parametro opzionale con default Map vuota, cosi qualunque altro
+  // chiamante esistente/test che non lo passa continua a funzionare
+  // identico a prima (nessuna riga rimossa da questo file, solo annessa).
+  externalItemsByDate: Map<string, ExternalCalendarOccurrence[]> = new Map()
 ): CalendarMonth[] {
   if (weeks.length === 0) return [];
 
@@ -136,6 +157,13 @@ export function buildCalendarMonths(
       const dateIso = isoOfDate(new Date(Date.UTC(cursorYear, cursorMonth, day)));
       const seasonWeek = weekByDate.get(dateIso);
 
+      // TRAMA — EXTERNAL PLANNER ITEMS (28/09/2026): un impegno esterno è
+      // indipendente dalla stagione TRAMA (la famiglia può crearlo anche in
+      // un giorno fuori stagione/weekend) — cercato per QUESTA dateIso
+      // esatta prima di decidere se la cella è "in stagione" o no, cosi
+      // resta visibile in entrambi i casi (mai nascosto da inSeason=false).
+      const dayExternalItems = externalItemsByDate.get(dateIso) ?? [];
+
       if (!seasonWeek) {
         cells.push({
           dateIso,
@@ -149,6 +177,7 @@ export function buildCalendarMonths(
           dismissed: false,
           kids: [],
           hasConflict: false,
+          externalItems: dayExternalItems,
         });
         continue;
       }
@@ -171,6 +200,7 @@ export function buildCalendarMonths(
         activityName: seasonWeek.activityName,
         kids: dayKids,
         hasConflict: conflictWeekIndexes.has(seasonWeek.index),
+        externalItems: dayExternalItems,
       });
     }
 

@@ -1063,6 +1063,20 @@ export default function PlannerClient({
                 // reale prima di usarlo, e reagisce anche ai CAMBI di questo
                 // prop dopo il mount (non solo al valore iniziale).
                 initialWeekStartDate={weekOverride}
+                // TRAMA — EXTERNAL PLANNER ITEMS · CALENDAR VISIBILITY
+                // (28/09/2026, live UX fix): ROOT CAUSE del problema
+                // segnalato da Fabrizio ("gli External Planner Items non si
+                // vedono nel calendario") — externalPlannerItems era già
+                // disponibile qui come prop (usata solo da
+                // <ExternalPlannerItemsSection> sotto), ma non veniva MAI
+                // passata a <PlannerCalendarView>, che quindi non aveva modo
+                // di saperli. Nessun'altra causa trovata (nessun problema di
+                // query/filtro/feature flag) — vedi
+                // lib/planner/external-calendar-items-core.ts per l'analisi
+                // completa. Se il flag risolve false, externalPlannerItems è
+                // già [] per costruzione (stesso principio difensivo delle
+                // altre capability gated di questa pagina).
+                externalPlannerItems={externalPlannerItems}
               />
               {/* TRAMA — SCHOOL CALENDAR UX REFINEMENT (§7-8, 14/09/2026):
                   Calendar Export non è più una card prominente in cima al
