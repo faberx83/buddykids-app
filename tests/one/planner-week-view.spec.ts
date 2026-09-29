@@ -8,19 +8,27 @@ import {
   weekConflictDetailForKid,
   buildWeekSummaryLabel,
   firstConflictedDayIndex,
+  // WEEK VIEW V2 (29/09/2026, brief verbatim di Fabrizio dopo la
+  // validazione live del redesign precedente — vedi lib/nextgen/week-view.ts
+  // per la documentazione completa di ciascuna funzione).
+  formatSelectedDayHeaderIt,
+  selectedDayItemsCountLabel,
+  countDayConflicts,
+  dayConflictBadgeLabel,
+  categoryChipForTramaRow,
+  externalKindChip,
+  selectedDayIndexInWeek,
 } from "../../lib/nextgen/week-view";
 import type { AgendaRow } from "../../lib/nextgen/agenda-view";
 import type { KidOverlap } from "../../lib/nextgen/planner-insights";
 
-// TRAMA — WEEK PLANNER UX REDESIGN (29/09/2026, brief verbatim di Fabrizio).
-// Stesso principio "[no browser]" di tests/one/planner-agenda-view.spec.ts:
-// la logica pura specifica della vista Settimana (lib/nextgen/week-view.ts)
-// è coperta qui con unit test diretti, senza browser. Le parti non
-// praticamente esercitabili con un browser live in questa sessione
-// (interazione DOM reale del day strip/scroll-to-day a ~390px) sono
-// verificate con controlli statici del sorgente del componente — stessa
-// tecnica di tests/one/planner-agenda-view.spec.ts e
-// tests/one/school-calendar-ux-refinement.spec.ts.
+// TRAMA — WEEK VIEW V2 (29/09/2026). Stesso principio "[no browser]" di
+// tests/one/planner-agenda-view.spec.ts: la logica pura specifica della
+// vista Settimana (lib/nextgen/week-view.ts) è coperta qui con unit test
+// diretti, senza browser. Le parti non praticamente esercitabili con un
+// browser live in questa sessione (sticky reale a ~390px, tap sullo strip)
+// sono verificate con controlli statici del sorgente del componente — stessa
+// tecnica di tests/one/planner-agenda-view.spec.ts.
 //
 // Comando: npx playwright test tests/one/planner-week-view.spec.ts
 
@@ -42,23 +50,38 @@ function overlap(overrides: Partial<KidOverlap> = {}): KidOverlap {
   };
 }
 
+function tramaRow(overrides: Partial<Extract<AgendaRow, { kind: "trama" }>> = {}): AgendaRow {
+  return {
+    kind: "trama",
+    kidId: "kid-1",
+    kidName: "Lino",
+    accentColor: "sky",
+    title: "Campus",
+    ...overrides,
+  };
+}
+
+// ============================================================================
+// Funzioni INVARIATE dal redesign precedente (WEEK PLANNER UX REDESIGN) —
+// riusate identiche da V2 per l'header/riepilogo/conflitto a livello di
+// INTERA settimana. Test invariati.
+// ============================================================================
+
 test.describe("lib/nextgen/week-view — formatWeekDateRangeIt", () => {
   test("stessa settimana/mese/anno: 'D–D mese anno'", () => {
     expect(formatWeekDateRangeIt("2026-04-06")).toBe("6–12 aprile 2026");
   });
 
   test("settimana a cavallo di due mesi, stesso anno", () => {
-    // Lunedì 30/03/2026 -> Domenica 05/04/2026
     expect(formatWeekDateRangeIt("2026-03-30")).toBe("30 mar – 5 apr 2026");
   });
 
   test("settimana a cavallo di due anni (dicembre/gennaio)", () => {
-    // Lunedì 28/12/2026 -> Domenica 03/01/2027
     expect(formatWeekDateRangeIt("2026-12-28")).toBe("28 dic 2026 – 3 gen 2027");
   });
 });
 
-test.describe("lib/nextgen/week-view — overlapsForWeekIndex / conflitti", () => {
+test.describe("lib/nextgen/week-view — overlapsForWeekIndex / conflitti settimana", () => {
   test("weekIndex null -> nessun overlap (fuori stagione, mai un falso conflitto)", () => {
     expect(overlapsForWeekIndex([overlap()], null)).toEqual([]);
   });
@@ -93,22 +116,12 @@ test.describe("lib/nextgen/week-view — overlapsForWeekIndex / conflitti", () =
   });
 
   test("firstConflictedDayIndex: trova il primo giorno con una riga TRAMA in conflitto", () => {
-    const rows: AgendaRow[][] = [
-      [], // Lun — niente
-      [{ kind: "trama", kidId: "kid-1", kidName: "Lino", accentColor: "sky", title: "Campus" }], // Mar — conflitto
-      [],
-      [],
-      [],
-      [],
-      [],
-    ];
+    const rows: AgendaRow[][] = [[], [tramaRow()], [], [], [], [], []];
     expect(firstConflictedDayIndex(rows, new Set(["kid-1"]))).toBe(1);
   });
 
   test("firstConflictedDayIndex: null se nessun giorno ha un conflitto reale", () => {
-    const rows: AgendaRow[][] = [
-      [{ kind: "trama", kidId: "kid-1", kidName: "Lino", accentColor: "sky", title: "Campus" }],
-    ];
+    const rows: AgendaRow[][] = [[tramaRow()]];
     expect(firstConflictedDayIndex(rows, new Set())).toBeNull();
   });
 });
@@ -121,9 +134,9 @@ test.describe("lib/nextgen/week-view — buildWeekSummaryLabel", () => {
 
   test("conteggio attività/giorni, nessun conflitto -> niente terza parte", () => {
     const rows: AgendaRow[][] = [
-      [{ kind: "trama", kidId: "kid-1", kidName: "Lino", accentColor: "sky", title: "Campus" }],
+      [tramaRow({ title: "Campus" })],
       [],
-      [{ kind: "trama", kidId: "kid-1", kidName: "Lino", accentColor: "sky", title: "Calcio" }],
+      [tramaRow({ title: "Calcio" })],
       [],
       [],
       [],
@@ -133,60 +146,180 @@ test.describe("lib/nextgen/week-view — buildWeekSummaryLabel", () => {
   });
 
   test("include il conteggio conflitti quando presente", () => {
-    const rows: AgendaRow[][] = [
-      [{ kind: "trama", kidId: "kid-1", kidName: "Lino", accentColor: "sky", title: "Campus" }],
-      [],
-      [],
-      [],
-      [],
-      [],
-      [],
-    ];
+    const rows: AgendaRow[][] = [[tramaRow()], [], [], [], [], [], []];
     expect(buildWeekSummaryLabel(rows, 1)).toBe("1 attività · 1 giorno · 1 sovrapposizione");
   });
 });
 
-// AUDIT SORGENTE (sezioni 3-21 del brief) — verifiche statiche sul
-// componente reale, stessa tecnica già in uso in
-// tests/one/planner-agenda-view.spec.ts e
-// tests/one/school-calendar-ux-refinement.spec.ts: "nessun browser reale
-// disponibile in questo sandbox" (sezione 21 del brief) — qui verifichiamo
-// dal sorgente che le regole del redesign siano rispettate nel JSX reale,
-// non solo nella logica pura sopra.
-test.describe("PlannerCalendarView.tsx — audit sorgente vista Settimana", () => {
+// ============================================================================
+// Funzioni NUOVE — WEEK VIEW V2 (sticky navigator + selected-day timeline).
+// ============================================================================
+
+test.describe("lib/nextgen/week-view — formatSelectedDayHeaderIt", () => {
+  test("giorno completo minuscolo (uppercase applicato via CSS, stessa convenzione di formatWeekDateRangeIt)", () => {
+    // Martedì 29 settembre 2026
+    expect(formatSelectedDayHeaderIt("2026-09-29")).toBe("martedì 29 settembre");
+  });
+
+  test("domenica (fine settimana ISO)", () => {
+    expect(formatSelectedDayHeaderIt("2026-10-04")).toBe("domenica 4 ottobre");
+  });
+});
+
+test.describe("lib/nextgen/week-view — selectedDayItemsCountLabel", () => {
+  test("giorno vuoto -> stringa vuota (il chiamante mostra l'empty state, sezione 23)", () => {
+    expect(selectedDayItemsCountLabel([])).toBe("");
+  });
+
+  test("singolare", () => {
+    expect(selectedDayItemsCountLabel([tramaRow()])).toBe("1 impegno");
+  });
+
+  test("plurale", () => {
+    expect(selectedDayItemsCountLabel([tramaRow(), tramaRow({ kidId: "kid-2" })])).toBe("2 impegni");
+  });
+});
+
+test.describe("lib/nextgen/week-view — countDayConflicts / dayConflictBadgeLabel", () => {
+  test("nessun bambino in conflitto -> 0, null (nessun warning fabbricato)", () => {
+    const rows = [tramaRow({ kidId: "kid-1" })];
+    expect(countDayConflicts(rows, new Set())).toBe(0);
+    expect(dayConflictBadgeLabel(countDayConflicts(rows, new Set()))).toBeNull();
+  });
+
+  test("conta solo le righe TRAMA di kid realmente in conflitto in questa settimana", () => {
+    const rows: AgendaRow[] = [
+      tramaRow({ kidId: "kid-1" }),
+      tramaRow({ kidId: "kid-2" }),
+      { kind: "external", occ: extOcc() },
+    ];
+    expect(countDayConflicts(rows, new Set(["kid-1"]))).toBe(1);
+  });
+
+  test("dayConflictBadgeLabel: singolare/plurale", () => {
+    expect(dayConflictBadgeLabel(1)).toBe("1 conflitto");
+    expect(dayConflictBadgeLabel(2)).toBe("2 conflitti");
+  });
+});
+
+test.describe("lib/nextgen/week-view — categoryChipForTramaRow (sezione 8/9/11 del brief)", () => {
+  test("nessun tag assegnato -> null (fallback neutro, MAI un'icona/colore inventati)", () => {
+    expect(categoryChipForTramaRow({})).toBeNull();
+    expect(categoryChipForTramaRow({ categoryLabel: undefined })).toBeNull();
+  });
+
+  test("tag reale con emoji -> emoji+label passati così come sono (mai inferiti dal titolo)", () => {
+    expect(categoryChipForTramaRow({ categoryLabel: "Calcio", categoryEmoji: "⚽" })).toEqual({
+      emoji: "⚽",
+      label: "Calcio",
+    });
+  });
+
+  test("tag reale SENZA emoji (admin non l'ha scelto) -> pallino neutro '•', mai un emoji indovinato", () => {
+    expect(categoryChipForTramaRow({ categoryLabel: "Judo" })).toEqual({ emoji: "•", label: "Judo" });
+  });
+});
+
+test.describe("lib/nextgen/week-view — externalKindChip (sezione 9 del brief, audit External Items)", () => {
+  test("kind='activity' -> etichetta neutra, mai una categoria specifica indovinata", () => {
+    expect(externalKindChip("activity")).toEqual({ emoji: "🎯", label: "Attività" });
+  });
+
+  test("kind='commitment' -> etichetta neutra distinta", () => {
+    expect(externalKindChip("commitment")).toEqual({ emoji: "📌", label: "Impegno" });
+  });
+});
+
+test.describe("lib/nextgen/week-view — selectedDayIndexInWeek", () => {
+  const weekDates = ["2026-09-28", "2026-09-29", "2026-09-30", "2026-10-01", "2026-10-02", "2026-10-03", "2026-10-04"];
+
+  test("trova l'indice 0=Lun..6=Dom", () => {
+    expect(selectedDayIndexInWeek(weekDates, "2026-09-29")).toBe(1);
+    expect(selectedDayIndexInWeek(weekDates, "2026-10-04")).toBe(6);
+  });
+
+  test("-1 se la data non appartiene a questa settimana (guardia difensiva)", () => {
+    expect(selectedDayIndexInWeek(weekDates, "2026-10-05")).toBe(-1);
+  });
+});
+
+function extOcc() {
+  return {
+    itemId: "ext-1",
+    dateIso: "2026-09-29",
+    title: "Centro Diurno Estivo",
+    kind: "activity" as const,
+    allDay: true,
+    startTime: null,
+    endTime: null,
+    kidNames: ["Lino"],
+    sourceType: "manual" as const,
+    isRangeStart: true,
+    isRangeEnd: true,
+  };
+}
+
+// AUDIT SORGENTE (WEEK VIEW V2) — verifiche statiche sul componente reale,
+// stessa tecnica già in uso in tests/one/planner-agenda-view.spec.ts:
+// "nessun browser reale disponibile in questo sandbox" (sezione 33 del
+// brief) — qui verifichiamo dal sorgente che le regole del redesign siano
+// rispettate nel JSX reale, non solo nella logica pura sopra.
+test.describe("PlannerCalendarView.tsx — audit sorgente Week View V2", () => {
   const source = readSource("../../components/nextgen/PlannerCalendarView.tsx");
 
   test("la vista Settimana ha un data-testid dedicato", () => {
     expect(source).toContain('data-testid="planner-week-view"');
   });
 
+  test("sezione 3/27 — navigatore sticky presente, con offset sotto l'header mobile e z-index sotto l'header (z-30)", () => {
+    expect(source).toContain('data-testid="week-sticky-navigator"');
+    const navStart = source.indexOf('data-testid="week-sticky-navigator"');
+    const navBlock = source.slice(navStart - 400, navStart + 200);
+    expect(navBlock).toContain("sticky top-[57px]");
+    expect(navBlock).toContain("z-20");
+    expect(navBlock).toContain("md:top-0");
+  });
+
   test("intestazione mostra SEMPRE il range di date reale (mai solo 'Sett. N')", () => {
     expect(source).toContain("formatWeekDateRangeIt(weekMonday)");
   });
 
-  test("day strip a 7 giorni presente", () => {
-    expect(source).toContain('data-testid="week-day-strip"');
+  test("day strip a 7 giorni presente dentro il navigatore sticky", () => {
+    const navStart = source.indexOf('data-testid="week-sticky-navigator"');
+    const navEnd = source.indexOf("</div>\n              </div>", navStart);
+    const navBlock = source.slice(navStart, navEnd > 0 ? navEnd : navStart + 4000);
+    expect(navBlock).toContain('data-testid="week-day-strip"');
   });
 
-  test("gruppi cronologici per giorno (uno per data, non un'unica lista appiattita)", () => {
-    expect(source).toContain("data-testid={`week-day-group-${dateIso}`}");
+  test("sezione 16 — NESSUN anchor scroll/page jump nella vista Settimana: scrollIntoView/scrollToDay rimossi dal redesign V2 (il .scrollIntoView() del pannello Condivisione Piano, funzionalità distinta e invariata, resta fuori da questo blocco)", () => {
+    const weekViewStart = source.indexOf('data-testid="planner-week-view"');
+    const weekViewEnd = source.indexOf("Riepilogo del giorno selezionato", weekViewStart);
+    const weekViewBlock = source.slice(weekViewStart, weekViewEnd);
+    expect(weekViewBlock).not.toContain("scrollToDay");
+    expect(weekViewBlock).not.toContain(".scrollIntoView(");
+    expect(weekViewBlock).not.toContain("weekDayGroupRefs");
   });
 
-  test("badge conflitto settimana esiste ed è condizionale (mai renderizzato incondizionatamente)", () => {
+  test("sezione 5 — SOLO il giorno selezionato è renderizzato (nessuna sezione-giorno per gli altri 6 giorni)", () => {
+    expect(source).toContain('data-testid="week-selected-day"');
+    expect(source).toContain('data-testid="week-selected-day-header"');
+    // Il vecchio pattern "un blocco per ciascuna data" (week-day-group-${dateIso})
+    // non esiste più: la V2 non mappa weekDates in blocchi multipli di contenuto.
+    expect(source).not.toContain("week-day-group-");
+  });
+
+  test("badge conflitto settimana esiste, è condizionale e NON scrolla (status tappabile, sezione 20/22)", () => {
     expect(source).toContain('data-testid="week-conflict-badge"');
     expect(source).toContain("{conflictBadge && (");
-  });
-
-  test("il badge conflitto settimana naviga al primo giorno interessato (scrollToDay)", () => {
-    const badgeBlockStart = source.indexOf('data-testid="week-conflict-badge"');
-    const nearby = source.slice(badgeBlockStart - 400, badgeBlockStart + 600);
+    const badgeStart = source.indexOf('data-testid="week-conflict-badge"');
+    const nearby = source.slice(badgeStart - 200, badgeStart + 500);
     expect(nearby).toContain("firstConflictIdx");
-    expect(nearby).toContain("scrollToDay");
+    expect(nearby).not.toContain("scrollToDay");
   });
 
   test("Andata/Ritorno restano incorporati nella card attività TRAMA, non isolati", () => {
     const rowStart = source.indexOf('data-testid="week-row-trama"');
-    const rowBlock = source.slice(rowStart, rowStart + 4000);
+    const rowBlock = source.slice(rowStart, rowStart + 4500);
     expect(rowBlock).toContain("MOMENTS.map");
     expect(rowBlock).toContain("respKey(row.kidId");
   });
@@ -196,15 +329,32 @@ test.describe("PlannerCalendarView.tsx — audit sorgente vista Settimana", () =
     expect(source).toContain("{conflictDetail && (");
   });
 
-  test("più attività nello stesso giorno restano card separate (rows.map, non un trasporto unico aggregato)", () => {
-    const groupStart = source.indexOf('data-testid={`week-day-group-${dateIso}`}');
-    const groupBlock = source.slice(groupStart, groupStart + 6000);
-    expect(groupBlock).toContain("rows.map((row, rowIdx) => {");
+  test("sezione 8 — gerarchia visiva: pallino colore bambino primario, badge TRAMA/Esterno espliciti, categoria come cue secondario testuale", () => {
+    // categoryChip è calcolato PRIMA della JSX (const, subito dopo
+    // conflictDetail) — la finestra parte quindi un po' prima del
+    // data-testid, non dopo.
+    const rowStart = source.indexOf('data-testid="week-row-trama"');
+    const rowBlock = source.slice(rowStart - 300, rowStart + 2500);
+    expect(rowBlock).toContain("DOT_BG[row.accentColor]");
+    expect(rowBlock).toContain("TRAMA");
+    expect(rowBlock).toContain("categoryChipForTramaRow(row)");
+    expect(rowBlock).toContain('data-testid="week-category-chip"');
+
+    const extStart = source.indexOf('data-testid="week-row-external"');
+    const extBlock = source.slice(extStart - 300, extStart + 2000);
+    expect(extBlock).toContain("Esterno");
+    expect(extBlock).toContain("externalKindChip(occ.kind)");
   });
 
-  test("empty state settimana compatto, mai un elenco lungo vuoto", () => {
-    expect(source).toContain("Nessun impegno questa settimana.");
-    expect(source).toContain("totalActivities === 0");
+  test("più attività nello stesso giorno restano card separate (selectedRows.map, non un trasporto unico aggregato)", () => {
+    const selStart = source.indexOf('data-testid="week-selected-day"');
+    const selBlock = source.slice(selStart, selStart + 8000);
+    expect(selBlock).toContain("selectedRows.map((row, rowIdx) => {");
+  });
+
+  test("empty state del GIORNO selezionato compatto (sezione 23), mai un elenco lungo vuoto", () => {
+    expect(source).toContain("Nessun impegno");
+    expect(source).toContain("selectedRows.length === 0");
   });
 
   test("riepilogo settimana presente e condizionale (mai '0 attività')", () => {
@@ -234,16 +384,9 @@ test.describe("PlannerCalendarView.tsx — audit sorgente vista Settimana", () =
     expect(source).toContain('data-testid="week-picker-select"');
   });
 
-  test("SCOPERTA LABEL AUDIT — nessuna label ambigua 'Scoperta' bare (era il vecchio stato 'settimana non coperta', riusava la stessa parola del concetto Discovery/'Scoperta TRAMA')", () => {
-    // La sola occorrenza ammessa è la provenienza "Da Scoperta TRAMA"
-    // (Discovery reale) — mai una card/label che dice solo "Scoperta".
+  test("SCOPERTA LABEL AUDIT — nessuna label ambigua 'Scoperta' bare (era il vecchio stato 'settimana non coperta')", () => {
     const bareScopertaRegex = />\s*Scoperta\s*</;
     expect(bareScopertaRegex.test(source)).toBe(false);
-    // Il rimpiazzo semantico corretto ("questa settimana non ha ancora
-    // organizzazione") usa "Da organizzare", stesso testo già usato altrove
-    // nell'app per lo stato "uncovered" (WEEK_STATUS_LABEL in
-    // lib/nextgen/planner-insights.ts) — coerenza di vocabolario, non un
-    // neologismo inventato per questo task.
     expect(source).toContain("Da organizzare");
   });
 
