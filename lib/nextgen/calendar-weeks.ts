@@ -26,6 +26,13 @@ export interface CalendarDayKid {
   kidId: string;
   kidName: string;
   accentColor: PillColor;
+  // WEEK VIEW V2 (29/09/2026, brief verbatim di Fabrizio, sezione 9) — primo
+  // tag reale dell'attività per questo bambino/settimana (SeasonWeek.
+  // coveredKids[].categoryLabel/categoryEmoji, vedi lib/data/planner.ts per
+  // la root cause analysis completa: dato reale, mai inferito dal titolo).
+  // undefined se l'attività non ha alcun tag assegnato.
+  categoryLabel?: string;
+  categoryEmoji?: string;
 }
 
 export interface CalendarDay {
@@ -183,9 +190,18 @@ export function buildCalendarMonths(
       }
 
       const dayKids: CalendarDayKid[] = seasonWeek.coveredKids
-        .map((ck) => kidById.get(ck.kidId))
-        .filter((k): k is Kid => Boolean(k))
-        .map((k) => ({ kidId: k.id, kidName: k.name, accentColor: accentColorForKid(k) }));
+        .map((ck): CalendarDayKid | null => {
+          const k = kidById.get(ck.kidId);
+          if (!k) return null;
+          return {
+            kidId: k.id,
+            kidName: k.name,
+            accentColor: accentColorForKid(k),
+            categoryLabel: ck.categoryLabel,
+            categoryEmoji: ck.categoryEmoji,
+          };
+        })
+        .filter((k): k is CalendarDayKid => k !== null);
 
       cells.push({
         dateIso,

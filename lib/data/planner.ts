@@ -27,6 +27,20 @@ export interface KidCoverage {
   kidId: string;
   activityName: string;
   activityTagColor?: PillColor;
+  // WEEK VIEW V2 (29/09/2026, brief verbatim di Fabrizio, sezione 9 "EVENT
+  // TYPE / CATEGORY AUDIT") — PRIMO tag reale scelto dall'admin per questa
+  // attività (join activities -> activity_tags -> tags, stessa relazione già
+  // letta da lib/data/activities.ts#mapRow per le card Discovery). NON è una
+  // tassonomia a 5-6 famiglie: `tags.label` è testo libero scelto dall'admin
+  // (es. "Calcio", "Piscina", "Judo"), senza alcuna colonna di
+  // raggruppamento/famiglia nello schema (supabase/schema.sql, tabella
+  // `tags`: id/label/emoji/bg_color, nessun "family"/"group"). Mostrarlo così
+  // com'è (label+emoji REALI, mai inferiti dal titolo dell'attività) è
+  // l'unico cue di categoria onesto disponibile oggi — vedi commento più
+  // esteso in lib/nextgen/week-view.ts#categoryChipForTramaRow. undefined se
+  // l'attività non ha alcun tag assegnato (fallback neutro, sezione 11).
+  categoryLabel?: string;
+  categoryEmoji?: string;
   // Slug dell'attività (Activity.id) — serve alla CTA "Aggiungi [bambino]"
   // del Planner per costruire un link diretto a /booking/{slug}, senza
   // passare da Cerca (si conosce già l'attività: è quella prenotata per il
@@ -62,6 +76,9 @@ export interface SeasonWeek {
   covered: boolean; // almeno un bambino ha una prenotazione questa settimana
   activityName?: string; // vista aggregata: nome della PRIMA attività trovata per questa settimana
   activityTagColor?: PillColor; // colore della prima categoria dell'attività, per la tinta della card in Home
+  // WEEK VIEW V2 — vista aggregata dei due campi sopra, vedi KidCoverage.categoryLabel/categoryEmoji.
+  categoryLabel?: string;
+  categoryEmoji?: string;
   activitySlug?: string; // vista aggregata: slug della PRIMA attività trovata (per "Aggiungi [bambino]")
   // Task #357: id della PRIMA prenotazione trovata per questa settimana —
   // usato dal Planner per linkare a "Le mie prenotazioni" (?bookingId=)
@@ -103,10 +120,31 @@ export interface PlannerData {
   firstUncoveredIndex: number | null;
 }
 
+// WEEK VIEW V2 — stessa relazione activities -> activity_tags -> tags già
+// letta da lib/data/activities.ts (RawTagRef), qui minimale (solo
+// label/emoji: bg_color non serve al Planner, che usa già
+// activityTagColor/pills per la tinta).
+interface RawActivityTagRef {
+  tags: { label: string; emoji: string | null } | { label: string; emoji: string | null }[] | null;
+}
+
 interface RawActivityRef {
   slug: string;
   name: string;
   pills: { color: PillColor }[] | null;
+  activity_tags: RawActivityTagRef[] | null;
+}
+
+// WEEK VIEW V2 (sezione 9 del brief) — PRIMO tag reale dell'attività, stessa
+// convenzione "prima trovata" già usata per activityTagColor/activitySlug
+// sopra. undefined se l'attività non ha alcun tag (mai un fallback inventato,
+// sezione 11).
+function firstActivityTag(activity: RawActivityRef | null): { label: string; emoji?: string } | undefined {
+  const ref = activity?.activity_tags?.[0];
+  if (!ref) return undefined;
+  const tag = Array.isArray(ref.tags) ? ref.tags[0] : ref.tags;
+  if (!tag?.label) return undefined;
+  return { label: tag.label, emoji: tag.emoji ?? undefined };
 }
 
 interface RawBookingRow {
@@ -181,7 +219,7 @@ export async function getPlannerData(): Promise<PlannerData> {
   const { data, error } = await supabase
     .from("bookings")
     .select(
-      "id, status, partner_decision, activities ( slug, name, pills ), booking_weeks ( activity_weeks ( start_date, end_date ) ), booking_days ( partner_decision, activity_days ( date ) ), booking_kids ( kid_id )"
+      "id, status, partner_decision, activities ( slug, name, pills, activity_tags ( tags ( label, emoji ) ) ), booking_weeks ( activity_weeks ( start_date, end_date ) ), booking_days ( partner_decision, activity_days ( date ) ), booking_kids ( kid_id )"
     )
     .eq("parent_id", user.id)
     .neq("status", "cancelled");
@@ -204,6 +242,7 @@ export async function getPlannerData(): Promise<PlannerData> {
     const activity = firstOf(row.activities);
     const activityName = activity?.name;
     const activityTagColor = activity?.pills?.[0]?.color;
+    const activityTag = firstActivityTag(activity);
     const activitySlug = activity?.slug;
     const partnerDecision = row.partner_decision ?? "pending";
     const kidIds = (row.booking_kids ?? []).map((bk) => bk.kid_id);
@@ -223,12 +262,23 @@ export async function getPlannerData(): Promise<PlannerData> {
           if (!seasonWeek.activityName) {
             seasonWeek.activityName = activityName;
             seasonWeek.activityTagColor = activityTagColor;
+            seasonWeek.categoryLabel = activityTag?.label;
+            seasonWeek.categoryEmoji = activityTag?.emoji;
             seasonWeek.activitySlug = activitySlug;
             seasonWeek.bookingId = row.id;
           }
           for (const kidId of kidIds) {
             if (!seasonWeek.coveredKids.some((c) => c.kidId === kidId)) {
-              seasonWeek.coveredKids.push({ kidId, activityName, activityTagColor, activitySlug, partnerDecision, bookingId: row.id });
+              seasonWeek.coveredKids.push({
+                kidId,
+                activityName,
+                activityTagColor,
+                categoryLabel: activityTag?.label,
+                categoryEmoji: activityTag?.emoji,
+                activitySlug,
+                partnerDecision,
+                bookingId: row.id,
+              });
             }
           }
         }
@@ -245,6 +295,7 @@ export async function getPlannerData(): Promise<PlannerData> {
     const activity = firstOf(row.activities);
     const activityName = activity?.name;
     const activityTagColor = activity?.pills?.[0]?.color;
+    const activityTag = firstActivityTag(activity);
     const activitySlug = activity?.slug;
     // BUG CORRETTO 02/09/2026 (segnalazione Fabrizio, Sett.14 "Prova FP"):
     // qui, a differenza del giro sopra (booking_weeks, dove
@@ -273,13 +324,24 @@ export async function getPlannerData(): Promise<PlannerData> {
           if (!seasonWeek.activityName) {
             seasonWeek.activityName = activityName;
             seasonWeek.activityTagColor = activityTagColor;
+            seasonWeek.categoryLabel = activityTag?.label;
+            seasonWeek.categoryEmoji = activityTag?.emoji;
             seasonWeek.activitySlug = activitySlug;
             seasonWeek.bookingId = row.id;
           }
         }
         for (const kidId of kidIds) {
           if (!seasonWeek.coveredKids.some((c) => c.kidId === kidId)) {
-            seasonWeek.coveredKids.push({ kidId, activityName, activityTagColor, activitySlug, partnerDecision, bookingId: row.id });
+            seasonWeek.coveredKids.push({
+              kidId,
+              activityName,
+              activityTagColor,
+              categoryLabel: activityTag?.label,
+              categoryEmoji: activityTag?.emoji,
+              activitySlug,
+              partnerDecision,
+              bookingId: row.id,
+            });
           }
         }
       }

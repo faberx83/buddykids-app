@@ -81,7 +81,19 @@ export function formatMonthYearIt(iso: string): string {
 // monte da buildCalendarMonths/dayFromWeek — zero logica di coverage
 // duplicata o reinterpretata.
 export type AgendaRow =
-  | { kind: "trama"; kidId: string; kidName: string; accentColor: string; title: string }
+  | {
+      kind: "trama";
+      kidId: string;
+      kidName: string;
+      accentColor: string;
+      title: string;
+      // WEEK VIEW V2 (29/09/2026) — vedi CalendarDayKid.categoryLabel/
+      // categoryEmoji in lib/nextgen/calendar-weeks.ts: dato reale (primo tag
+      // dell'attività), mai inferito dal titolo. undefined = nessun tag
+      // assegnato (fallback neutro, sezione 11 del brief).
+      categoryLabel?: string;
+      categoryEmoji?: string;
+    }
   | { kind: "external"; occ: ExternalCalendarOccurrence };
 
 export function buildAgendaRows(cell: CalendarDay): AgendaRow[] {
@@ -94,6 +106,8 @@ export function buildAgendaRows(cell: CalendarDay): AgendaRow[] {
         kidName: k.kidName,
         accentColor: k.accentColor,
         title: cell.activityName ?? "Attività prenotata",
+        categoryLabel: k.categoryLabel,
+        categoryEmoji: k.categoryEmoji,
       });
     }
   }
