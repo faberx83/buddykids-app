@@ -83,6 +83,15 @@ import {
   weekConflictDetailForKid,
   buildWeekSummaryLabel,
   firstConflictedDayIndex,
+  // WEEK VIEW V2 (29/09/2026) — vedi lib/nextgen/week-view.ts per la
+  // documentazione completa di ciascuna funzione.
+  formatSelectedDayHeaderIt,
+  selectedDayItemsCountLabel,
+  countDayConflicts,
+  dayConflictBadgeLabel,
+  categoryChipForTramaRow,
+  externalKindChip,
+  selectedDayIndexInWeek,
 } from "@/lib/nextgen/week-view";
 
 // SPRINT 5.2 (NEXTGEN) — Planner, modalità Calendario: "Giorno, settimana e
@@ -597,11 +606,16 @@ export default function PlannerCalendarView({
     );
   }
 
-  // TRAMA — WEEK PLANNER UX REDESIGN (29/09/2026): un ref per gruppo-giorno
-  // della vista Settimana (sotto), usato SOLO per lo scroll-to-day quando si
-  // tocca un giorno del day strip o il badge conflitto settimana (sezione 4
-  // e 12 del brief) — nessuna persistenza, nessun dato, solo un indice DOM.
-  const weekDayGroupRefs = useRef<Record<string, HTMLDivElement | null>>({});
+  // WEEK VIEW V2 (29/09/2026, brief verbatim di Fabrizio dopo la validazione
+  // live del redesign precedente) — requisito esplicito "NO anchor
+  // scrolling, NO full page jump" (sezione 4/16 del nuovo brief): il vecchio
+  // ref-per-giorno + scrollIntoView di WEEK PLANNER UX REDESIGN è stato
+  // rimosso. Il "giorno selezionato" della vista Settimana resta lo stesso
+  // `agendaDate` già condiviso con la vista Agenda (comportamento voluto,
+  // invariato dal redesign precedente — vedi commento sopra il ramo
+  // "settimana"): toccare un giorno dello strip cambia SOLO quello stato, il
+  // contenuto sotto lo strip sticky cambia "sul posto", nessuno scroll
+  // programmatico.
 
   // SPRINT 5.3 — "Condivisione Piano": link pubblico di sola lettura per il
   // mese visualizzato o per una singola settimana (dal riepilogo). Niente
@@ -1121,41 +1135,57 @@ export default function PlannerCalendarView({
           )}
         </div>
       ) : (
-        // TRAMA — WEEK PLANNER UX REDESIGN (29/09/2026, brief verbatim di
-        // Fabrizio dopo la live QA della vecchia lista "Sett. 1/Sett. 2/...
-        // Sett. 16" con "Scoperta" ripetuto — vedi root cause di "Scoperta"
-        // nel commento della card TRAMA sotto). Sostituita dall'intestazione
-        // Sett. N + range date reale (sezione 3), day strip a 7 giorni
-        // (sezione 4) e gruppi cronologici per giorno (sezione 5) — STESSO
-        // principio "Agenda espansa a 7 giorni" del punto 2 del brief: riusa
-        // buildAgendaRows/mondayOfIso/addDaysIso già estratti per Agenda
-        // (lib/nextgen/agenda-view.ts), zero calcolo duplicato. Questa vista
-        // NON legge/scrive mai `selectedDay` (che resta esclusivo di Mese,
-        // sotto — punto 19 del brief "non toccare Mese"): stato completamente
-        // indipendente, ancorato alla stessa `agendaDate` già usata da
-        // Agenda (cambiare settimana qui sposta anche il giorno mostrato in
-        // Agenda, e viceversa — comportamento voluto, non un bug).
+        // TRAMA — WEEK VIEW V2 (29/09/2026, brief verbatim di Fabrizio dopo
+        // aver validato dal vivo il redesign precedente — "WEEK PLANNER UX
+        // REDESIGN", commit 6ad1b86/63446ac/602652d — e trovato un limite
+        // reale: 7 sezioni-giorno impilate verticalmente si comportavano più
+        // come una lunga lista che come un calendario, lo strip settimanale
+        // spariva scrollando, le card erano ancora alte). Nuovo modello
+        // mentale (sezione 2 del nuovo brief): WEEK = navigatore settimanale
+        // STICKY + agenda del SOLO giorno selezionato sotto — ispirato a
+        // Google Calendar/Outlook, MAI un clone: linguaggio visivo TRAMA.
+        // Riusa AL 100% la logica pura già esistente per Agenda/Settimana
+        // (mondayOfIso/addDaysIso/buildAgendaRows/agendaCellFor,
+        // overlapsForWeekIndex/weekConflictBadgeLabel/weekConflictDetailForKid/
+        // buildWeekSummaryLabel/firstConflictedDayIndex) + le nuove funzioni
+        // pure aggiunte in lib/nextgen/week-view.ts per V2
+        // (formatSelectedDayHeaderIt/selectedDayItemsCountLabel/
+        // countDayConflicts/dayConflictBadgeLabel/categoryChipForTramaRow/
+        // externalKindChip/selectedDayIndexInWeek) — zero terzo motore di
+        // rendering (sezione 29 del brief). Il "giorno selezionato" resta lo
+        // stesso `agendaDate` già condiviso con Agenda (comportamento voluto,
+        // invariato). NON legge/scrive mai `selectedDay` (esclusivo di Mese).
+        //
+        // GOVERNANCE — WEEK OVERVIEW (sezione 18 del brief): l'alternanza
+        // "GIORNO | PANORAMICA" (una vera overview calendario, non la vecchia
+        // lista a 7 sezioni) NON è implementata in questo pass — il brief
+        // stesso la marca esplicitamente P1 se aumenta materialmente la
+        // complessità ("implementa solo la forte esperienza selected-day
+        // ora"). Idem per lo swipe orizzontale opzionale (sezione 17,
+        // "benvenuto solo se semplice e robusto... NON necessario"): il tap
+        // sullo strip resta l'unica interazione, nessuna gesture aggiunta in
+        // questo pass. Entrambe le scelte sono riportate nel report finale.
         (() => {
           const weekMonday = mondayOfIso(agendaDate);
           const weekDates = Array.from({ length: 7 }, (_, i) => addDaysIso(weekMonday, i));
           const activeWeek = weeks.find((w) => w.startDate === weekMonday) ?? null;
           const weekDayCells = weekDates.map((d) => agendaCellFor(d));
           const weekDayRows = weekDayCells.map((c) => buildAgendaRows(c));
-          // Sezione 11 del brief — CONFLICT AUDIT: la ROOT CAUSE del vecchio
-          // "⚠ Sovrapposizione" isolato senza contesto è in
-          // lib/nextgen/calendar-weeks.ts#buildCalendarMonths (conflictWeekIndexes,
-          // riga ~117-119): `hasConflict` viene marcato su OGNI cella
-          // giornaliera di una SeasonWeek in conflitto, indistintamente — il
-          // modello dati non ha overlap a grana giornaliera (i KidOverlap di
-          // lib/nextgen/planner-insights.ts sono per kidId+weekId, non per
-          // singolo giorno: nessun booking TRAMA ha un giorno/orario reale,
-          // limite dichiarato in calendar-weeks.ts). Qui recuperiamo il
-          // dettaglio REALE già disponibile (kidName + bookings[].activityName)
-          // via weekConflictDetailForKid, invece del solo triangolo isolato —
-          // ma "giorno interessato" resta, per onestà verso il dato, l'intera
-          // settimana (tutti i feriali Lun-Ven mostrano lo stesso indicatore),
-          // non un singolo giorno preciso: non esiste nel modello dati odierno
-          // l'informazione per restringerlo a un giorno solo.
+          // Sezione 21 del brief (CONFLICT DATA AUDIT) — RICONFERMATO leggendo
+          // per intero lib/nextgen/planner-insights.ts#computeKidOverlaps
+          // prima di scrivere questo blocco: KidOverlap è per
+          // kidId+weekId(=intera SeasonWeek), MAI per singolo giorno/orario —
+          // nessun booking TRAMA porta un giorno o un orario reali nel
+          // modello dati odierno (stessa ROOT CAUSE ANALYSIS già documentata
+          // nel redesign precedente, invariata: lib/nextgen/
+          // calendar-weeks.ts#buildCalendarMonths marca hasConflict su OGNI
+          // giorno feriale della stessa SeasonWeek). "il giorno ha un
+          // conflitto reale" (sezione 4/20, indicatore ⚠ sullo strip e
+          // sull'header del giorno selezionato) significa quindi, con onestà
+          // verso il dato: "in QUESTO giorno compare una card TRAMA di un
+          // bambino che risulta doppio-prenotato in QUESTA settimana" — mai
+          // un conflitto orario preciso fabbricato (sezione 20: "17:30–18:00
+          // si sovrappone a..." NON è mostrato, perché quel dato non esiste).
           const weekOverlaps = overlapsForWeekIndex(overlaps, activeWeek?.index ?? null);
           const weekConflictedKidIds = new Set(weekOverlaps.map((o) => o.kidId));
           const conflictBadge = weekConflictBadgeLabel(weekOverlaps.length);
@@ -1166,35 +1196,87 @@ export default function PlannerCalendarView({
                 .map((ck) => kids.find((k) => k.id === ck.kidId))
                 .filter((k): k is Kid => Boolean(k)))
             : [];
-          const totalActivities = weekDayRows.reduce((sum, rows) => sum + rows.length, 0);
 
-          function scrollToDay(dateIso: string) {
-            weekDayGroupRefs.current[dateIso]?.scrollIntoView({ behavior: "smooth", block: "nearest" });
-          }
+          // Sezione 5/16 — "il contenuto sotto lo strip cambia SUL POSTO,
+          // no anchor scroll, no page jump": nessun ref/scrollIntoView (a
+          // differenza del redesign precedente), il giorno selezionato è
+          // derivato SOLO da `agendaDate`. selectedIdx -1 (agendaDate fuori
+          // da questa settimana) non dovrebbe mai accadere — weekDates è
+          // sempre calcolato dalla stessa agendaDate — ma un fallback a Lun
+          // (indice 0) evita un crash se mai capitasse.
+          const selectedIdxRaw = selectedDayIndexInWeek(weekDates, agendaDate);
+          const selectedIdx = selectedIdxRaw === -1 ? 0 : selectedIdxRaw;
+          const selectedDateIso = weekDates[selectedIdx];
+          const selectedCell = weekDayCells[selectedIdx];
+          const selectedRows = weekDayRows[selectedIdx];
+          const selectedItemsLabel = selectedDayItemsCountLabel(selectedRows);
+          const selectedConflictCount = countDayConflicts(selectedRows, weekConflictedKidIds);
+          const selectedConflictLabel = dayConflictBadgeLabel(selectedConflictCount);
+          const selectedWeekdayDef = activeWeek
+            ? WEEKDAYS.find((wd) => addDaysIso(activeWeek.startDate, wd.dayOffset) === selectedDateIso)
+            : undefined;
 
           return (
             <div className="flex flex-col gap-2.5" data-testid="planner-week-view">
-              {/* Sezione 3 — intestazione: Sett. N (se la settimana in vista
-                  corrisponde a una SeasonWeek reale) + range date SEMPRE
-                  visibile (requisito esplicito: "mai solo Sett. N senza
-                  date"), frecce ± settimana. */}
-              <div className="rounded-2xl bg-white p-3.5">
-                <div className="mb-2 flex items-center justify-between">
+              {/* Sezione 14 (brief precedente, mantenuta) — selettore
+                  compatto per saltare direttamente a una settimana
+                  stagionale. NON sticky di proposito (uso occasionale, resta
+                  fuori dall'area fissa per tenerla minima — sezione 27). */}
+              {weeks.length > 1 && (
+                <select
+                  aria-label="Vai a settimana"
+                  data-testid="week-picker-select"
+                  value={activeWeek?.startDate ?? ""}
+                  onChange={(e) => {
+                    if (e.target.value) setAgendaDate(e.target.value);
+                  }}
+                  className="w-full rounded-xl border border-[#E8EBF0] bg-white px-2.5 py-1.5 text-[11.5px] font-semibold text-ink-2"
+                >
+                  {!activeWeek && (
+                    <option value="" disabled>
+                      Fuori stagione
+                    </option>
+                  )}
+                  {weeks.map((w) => (
+                    <option key={w.index} value={w.startDate}>
+                      Sett. {w.index} — {w.dateRange}
+                      {w.dismissed ? " · Non ti serve" : w.coveredKids.length === 0 ? " · Da organizzare" : ""}
+                    </option>
+                  ))}
+                </select>
+              )}
+
+              {/* Sezioni 3/4/27 — STICKY WEEK NAVIGATOR: header (Sett. N +
+                  range su una riga sola, sezione 3 "avoid duplicated info")
+                  + day strip, uniti nello stesso pannello sticky così restano
+                  visibili insieme mentre il giorno selezionato sotto scrolla.
+                  top-[57px] = altezza reale dell'header mobile sticky di
+                  DashboardLayout.tsx (icona 32px + py-3 24px + bordo 1px,
+                  z-30) verificata leggendo il sorgente prima di scrivere
+                  questo blocco — z-20 (sotto l'header app) evita qualunque
+                  sovrapposizione di layer; md:top-0 perché su desktop
+                  quell'header è md:hidden (nessun ingombro sopra). bg-white
+                  pieno (mai trasparente): deve coprire le card che scorrono
+                  sotto. */}
+              <div
+                className="sticky top-[57px] z-20 rounded-2xl bg-white p-3.5 md:top-0"
+                data-testid="week-sticky-navigator"
+              >
+                <div className="flex items-center justify-between gap-2">
                   <button
                     type="button"
                     onClick={() => setAgendaDate((d) => addDaysIso(d, -7))}
-                    className="flex h-8 w-8 items-center justify-center rounded-full bg-bg text-ink-2 active:scale-95"
+                    className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-bg text-ink-2 active:scale-95"
                     aria-label="Settimana precedente"
                   >
                     <i className="ti ti-chevron-left text-[15px]" />
                   </button>
-                  <div className="flex flex-col items-center">
-                    {activeWeek && (
-                      <div className="font-poppins text-[11px] font-extrabold uppercase tracking-wide text-trama-violet">
-                        Sett. {activeWeek.index}
-                      </div>
-                    )}
-                    <div className="font-poppins text-sm font-bold uppercase text-ink" data-testid="week-date-range">
+                  <div className="flex min-w-0 flex-1 flex-col items-center">
+                    <div
+                      className="truncate font-poppins text-[12.5px] font-bold uppercase text-ink"
+                      data-testid="week-date-range"
+                    >
+                      {activeWeek ? `Sett. ${activeWeek.index} / ` : ""}
                       {formatWeekDateRangeIt(weekMonday)}
                     </div>
                     {weekMonday !== mondayOfIso(todayIso) && (
@@ -1210,54 +1292,23 @@ export default function PlannerCalendarView({
                   <button
                     type="button"
                     onClick={() => setAgendaDate((d) => addDaysIso(d, 7))}
-                    className="flex h-8 w-8 items-center justify-center rounded-full bg-bg text-ink-2 active:scale-95"
+                    className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-bg text-ink-2 active:scale-95"
                     aria-label="Settimana successiva"
                   >
                     <i className="ti ti-chevron-right text-[15px]" />
                   </button>
                 </div>
 
-                {/* Sezione 14 — selettore compatto per saltare direttamente a
-                    una settimana stagionale, invece di dover scorrere
-                    Sett. 1..N una per una (la vecchia lista lunga non è più
-                    la superficie primaria, ma resta un accesso rapido). */}
-                {weeks.length > 1 && (
-                  <select
-                    aria-label="Vai a settimana"
-                    data-testid="week-picker-select"
-                    value={activeWeek?.startDate ?? ""}
-                    onChange={(e) => {
-                      if (e.target.value) setAgendaDate(e.target.value);
-                    }}
-                    className="mb-2.5 w-full rounded-xl border border-[#E8EBF0] bg-white px-2.5 py-1.5 text-[11.5px] font-semibold text-ink-2"
-                  >
-                    {!activeWeek && (
-                      <option value="" disabled>
-                        Fuori stagione
-                      </option>
-                    )}
-                    {weeks.map((w) => (
-                      <option key={w.index} value={w.startDate}>
-                        Sett. {w.index} — {w.dateRange}
-                        {w.dismissed ? " · Non ti serve" : w.coveredKids.length === 0 ? " · Da organizzare" : ""}
-                      </option>
-                    ))}
-                  </select>
-                )}
-
-                {/* Sezione 4 — day strip: 7 giorni, data reale sempre
-                    visibile, oggi/selezionato/conflitto identificabili,
-                    tappabili — stesso identico pattern visivo già validato
-                    per Agenda (WEEKDAY_SHORT3_IT + pallino), qui con un
-                    indicatore di conflitto al posto del pallino quando il
-                    giorno appartiene a una settimana con sovrapposizione. */}
+                {/* Sezione 4/16 — day strip: 7 giorni, data reale sempre
+                    visibile, oggi ≠ selezionato ≠ giorno con impegni/
+                    conflitto, tap cambia SOLO agendaDate (nessuno scroll). */}
                 <div
-                  className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1"
+                  className="-mx-1 mt-2 flex gap-2 overflow-x-auto px-1 pb-1"
                   data-testid="week-day-strip"
                   style={{ scrollbarWidth: "none" }}
                 >
                   {weekDates.map((dateIso, i) => {
-                    const isSelected = dateIso === agendaDate;
+                    const isSelected = i === selectedIdx;
                     const isToday = dateIso === todayIso;
                     const rows = weekDayRows[i];
                     const hasContent = rows.length > 0;
@@ -1269,10 +1320,8 @@ export default function PlannerCalendarView({
                         key={dateIso}
                         type="button"
                         data-testid={`week-day-${dateIso}`}
-                        onClick={() => {
-                          setAgendaDate(dateIso);
-                          scrollToDay(dateIso);
-                        }}
+                        aria-current={isSelected ? "date" : undefined}
+                        onClick={() => setAgendaDate(dateIso)}
                         className={`flex flex-shrink-0 flex-col items-center gap-1 rounded-2xl px-3 py-2 text-[11px] active:scale-95 ${
                           isSelected
                             ? "bg-trama-violet text-white"
@@ -1300,19 +1349,16 @@ export default function PlannerCalendarView({
                 </div>
               </div>
 
-              {/* Sezione 11/12 — badge conflitto SOLO a livello settimana e
-                  SOLO se esiste davvero almeno un conflitto (mai un warning
-                  generico senza dettaglio) — tap porta al primo giorno
-                  interessato. */}
+              {/* Sezione 20/22 — badge conflitto SETTIMANA: STATUS, non una
+                  CTA (niente stile pulsante primario) — tappabile SOLO
+                  perché porta navigazione reale (cambia il giorno
+                  selezionato al primo giorno interessato, senza scroll). */}
               {conflictBadge && (
                 <button
                   type="button"
                   data-testid="week-conflict-badge"
                   onClick={() => {
-                    if (firstConflictIdx !== null) {
-                      setAgendaDate(weekDates[firstConflictIdx]);
-                      scrollToDay(weekDates[firstConflictIdx]);
-                    }
+                    if (firstConflictIdx !== null) setAgendaDate(weekDates[firstConflictIdx]);
                   }}
                   className="flex items-center gap-1.5 self-start rounded-full bg-[#FFF6E5] px-3 py-1.5 text-[11.5px] font-bold text-[#9a6b00] active:scale-[0.98]"
                 >
@@ -1321,304 +1367,282 @@ export default function PlannerCalendarView({
                 </button>
               )}
 
-              {/* Sezione 5/6/7 — gruppi cronologici per giorno: ogni riga
-                  già costruita da buildAgendaRows (identica ad Agenda) porta
-                  con sé titolo/orario/bambino/TRAMA-o-Esterno — mai
-                  Andata/Ritorno "sospesi" senza un'attività visibile sopra
-                  (requisito centrale del brief). Più attività nello stesso
-                  giorno restano card separate, mai un unico trasporto
-                  aggregato (sezione 7). */}
-              <div className="flex flex-col gap-2">
-                {weekDates.map((dateIso, i) => {
-                  const cell = weekDayCells[i];
-                  const rows = weekDayRows[i];
-                  const dayHasConflict = rows.some(
-                    (row) => row.kind === "trama" && weekConflictedKidIds.has(row.kidId)
-                  );
-                  return (
-                    <div
-                      key={dateIso}
-                      ref={(el) => {
-                        weekDayGroupRefs.current[dateIso] = el;
-                      }}
-                      data-testid={`week-day-group-${dateIso}`}
-                      className="rounded-2xl border border-[#E8EBF0] bg-white p-3.5"
-                    >
-                      <div className="mb-2 flex items-center gap-1.5">
-                        <span className="font-poppins text-[12px] font-bold uppercase text-ink">
-                          {WEEKDAY_SHORT3_IT[i]} {Number(dateIso.slice(-2))}
-                        </span>
-                        {dateIso === todayIso && (
-                          <span className="rounded-full bg-trama-violet/10 px-1.5 py-0.5 text-[9.5px] font-bold text-trama-violet">
-                            Oggi
-                          </span>
-                        )}
-                        {dayHasConflict && (
-                          <span className="flex items-center gap-1 text-[10.5px] font-semibold text-[#9a6b00]">
-                            <i className="ti ti-alert-triangle text-[11px]" />
-                            Sovrapposizione
-                          </span>
-                        )}
-                      </div>
+              {/* Sezioni 5/6/7/23 — SELECTED DAY: SOLO il giorno selezionato
+                  è renderizzato qui sotto (nessun'altra sezione-giorno nella
+                  pagina — requisito esplicito "no other day sections should
+                  be rendered below"). */}
+              <div className="rounded-2xl bg-white p-3.5" data-testid="week-selected-day">
+                <div className="mb-2 flex flex-wrap items-center gap-1.5">
+                  <span className="font-poppins text-[13px] font-bold uppercase text-ink" data-testid="week-selected-day-header">
+                    {formatSelectedDayHeaderIt(selectedDateIso)}
+                  </span>
+                  {selectedDateIso === todayIso && (
+                    <span className="rounded-full bg-trama-violet/10 px-1.5 py-0.5 text-[9.5px] font-bold text-trama-violet">
+                      Oggi
+                    </span>
+                  )}
+                  {selectedItemsLabel && <span className="text-[11px] font-semibold text-ink-3">· {selectedItemsLabel}</span>}
+                  {selectedConflictLabel && (
+                    <span className="flex items-center gap-1 text-[10.5px] font-semibold text-[#9a6b00]">
+                      <i className="ti ti-alert-triangle text-[11px]" />
+                      {selectedConflictLabel}
+                    </span>
+                  )}
+                </div>
 
-                      {cell.dismissed ? (
-                        <p className="text-[12px] text-ink-2">Segnata come &quot;non ti serve&quot;.</p>
-                      ) : rows.length === 0 ? (
-                        // Sezione 5 — "giorni senza impegni possono restare
-                        // collassati/mostrare 'Nessun impegno'": nessun vuoto
-                        // verticale grande, una riga di testo discreta.
-                        <p className="text-[12px] text-ink-3">Nessun impegno</p>
-                      ) : (
-                        <div className="flex flex-col gap-2">
-                          {rows.map((row, rowIdx) => {
-                            if (row.kind === "trama") {
-                              // TRAMA — WEEK PLANNER UX REDESIGN: Andata/Ritorno
-                              // restano ESATTAMENTE nello stesso perimetro di
-                              // oggi (kid TRAMA-coperto in QUESTA SeasonWeek,
-                              // giorno feriale Lun-Ven — Weekday non copre
-                              // Sab/Dom, lib/nextgen/responsibility-options.ts).
-                              // Il mockup di Fabrizio (sezione 5/9) mostra
-                              // Andata/Ritorno anche sotto una card "Esterno ·
-                              // Da Scoperta TRAMA" — GOVERNANCE: non estendiamo
-                              // l'assegnazione agli impegni esterni (nessuna
-                              // migration attesa, "non riaprire la logica di
-                              // accompagnamento/ritiro" — vincolo esplicito del
-                              // brief): resta disponibile SOLO qui, sulla card
-                              // TRAMA, esattamente come prima del redesign.
-                              const weekdayDef = activeWeek
-                                ? WEEKDAYS.find((wd) => addDaysIso(activeWeek.startDate, wd.dayOffset) === dateIso)
-                                : undefined;
-                              const kid = kids.find((k) => k.id === row.kidId);
-                              const conflictDetail = weekConflictDetailForKid(weekOverlaps, row.kidId, kid?.gender);
-                              return (
-                                <div
-                                  key={`trama-${row.kidId}-${rowIdx}`}
-                                  data-testid="week-row-trama"
-                                  className={`rounded-xl border-l-4 p-2.5 ${
-                                    AGENDA_BORDER_BG[row.accentColor] ?? AGENDA_BORDER_BG.sky
-                                  }`}
-                                >
-                                  <div className="flex items-start gap-3">
-                                    <div className="w-16 flex-shrink-0 text-[10px] font-bold text-ink-3">
-                                      Tutto il giorno
-                                    </div>
-                                    <div className="min-w-0 flex-1">
-                                      <div className="text-[12.5px] font-bold text-ink">{row.title}</div>
-                                      <div className="flex flex-wrap items-center gap-2 text-[11px] text-ink-2">
-                                        <span className="flex items-center gap-1">
-                                          <span
-                                            className={`h-2 w-2 flex-shrink-0 rounded-full ${DOT_BG[row.accentColor]}`}
-                                          />
-                                          {row.kidName}
-                                        </span>
-                                        <span className="rounded-full bg-bg px-1.5 py-0.5 text-[9.5px] font-bold uppercase tracking-wide text-ink-3">
-                                          TRAMA
-                                        </span>
-                                      </div>
-                                      {conflictDetail && (
-                                        <div className="mt-1 flex items-start gap-1 text-[10.5px] font-semibold text-[#9a6b00]">
-                                          <i className="ti ti-alert-triangle mt-[1px] flex-shrink-0 text-[11px]" />
-                                          {conflictDetail}
-                                        </div>
-                                      )}
-                                    </div>
+                {selectedCell.dismissed ? (
+                  <p className="text-[12px] text-ink-2">Segnata come &quot;non ti serve&quot;.</p>
+                ) : selectedRows.length === 0 ? (
+                  // Sezione 23 — empty state compatto: "Nessun impegno /
+                  // martedì 29 settembre" + CTA esistente "+Aggiungi
+                  // impegno" (stessa azione già disponibile in
+                  // <ExternalPlannerItemsSection>, PlannerClient.tsx — questa
+                  // vista Calendario non duplica quel form, coerente col
+                  // principio "riuso, non un terzo motore").
+                  <div className="rounded-xl border border-dashed border-[#D8DEE8] py-4 text-center">
+                    <i className="ti ti-calendar-off mb-1 text-xl text-ink-3" />
+                    <p className="text-[12px] text-ink-2">Nessun impegno</p>
+                    <p className="text-[10.5px] text-ink-3">{formatSelectedDayHeaderIt(selectedDateIso)}</p>
+                  </div>
+                ) : (
+                  <div className="flex flex-col gap-1.5">
+                    {selectedRows.map((row, rowIdx) => {
+                      if (row.kind === "trama") {
+                        // Sezione 14 (nuovo brief) — Andata/Ritorno restano
+                        // ESATTAMENTE nello stesso perimetro di prima (kid
+                        // TRAMA-coperto in QUESTA SeasonWeek, giorno feriale
+                        // Lun-Ven) e SOLO sulla card TRAMA — non estesi agli
+                        // impegni Esterni (governance esplicita, invariata).
+                        const kid = kids.find((k) => k.id === row.kidId);
+                        const conflictDetail = weekConflictDetailForKid(weekOverlaps, row.kidId, kid?.gender);
+                        const categoryChip = categoryChipForTramaRow(row);
+                        return (
+                          <div
+                            key={`trama-${row.kidId}-${rowIdx}`}
+                            data-testid="week-row-trama"
+                            className={`rounded-xl border-l-4 p-2 ${AGENDA_BORDER_BG[row.accentColor] ?? AGENDA_BORDER_BG.sky}`}
+                          >
+                            <div className="flex items-start gap-2.5">
+                              <div className="w-[52px] flex-shrink-0 text-[9.5px] font-bold uppercase leading-tight text-ink-3">
+                                Tutto
+                                <br />
+                                il giorno
+                              </div>
+                              <div className="min-w-0 flex-1">
+                                <div className="text-[12.5px] font-bold text-ink">{row.title}</div>
+                                {/* Sezione 8 — gerarchia visiva: PRIMARIO
+                                    (pallino colore bambino, già esistente,
+                                    invariato) · SOURCE come badge esplicito
+                                    "TRAMA" · categoria SOLO come cue
+                                    secondario (emoji+etichetta piccola, mai
+                                    un colore pieno sulla card — sezione 8 del
+                                    brief). Ogni distinzione resta anche
+                                    testuale/iconica, mai solo colore
+                                    (sezione 13 accessibilità). */}
+                                <div className="flex flex-wrap items-center gap-1.5 text-[11px] text-ink-2">
+                                  <span className="flex items-center gap-1">
+                                    <span className={`h-2 w-2 flex-shrink-0 rounded-full ${DOT_BG[row.accentColor]}`} />
+                                    {row.kidName}
+                                  </span>
+                                  <span className="rounded-full bg-bg px-1.5 py-0.5 text-[9.5px] font-bold uppercase tracking-wide text-ink-3">
+                                    TRAMA
+                                  </span>
+                                  {categoryChip && (
+                                    <span className="text-[10.5px] text-ink-3" data-testid="week-category-chip">
+                                      {categoryChip.emoji} {categoryChip.label}
+                                    </span>
+                                  )}
+                                </div>
+                                {conflictDetail && (
+                                  <div className="mt-1 flex items-start gap-1 text-[10.5px] font-semibold text-[#9a6b00]">
+                                    <i className="ti ti-alert-triangle mt-[1px] flex-shrink-0 text-[11px]" />
+                                    {conflictDetail}
                                   </div>
+                                )}
+                              </div>
+                            </div>
 
-                                  {/* Sezione 9 — Andata/Ritorno compatti,
-                                      incorporati nella card dell'attività:
-                                      stessa identica azione
-                                      (handleAssign/handleClear/assigningKey/
-                                      localResp) già usata da Mese, layout più
-                                      compatto (due pill, non la griglia a
-                                      piena etichetta). */}
-                                  {weekdayDef && activeWeek && (
-                                    <div className="mt-2 flex items-center gap-1.5 border-t border-black/[0.04] pt-2">
-                                      {MOMENTS.map((mo, moIdx) => {
-                                        const key = respKey(row.kidId, activeWeek.startDate, weekdayDef.value, mo.value);
-                                        const current = localResp[key];
-                                        const currentOption = current
-                                          ? responsibleOptions.find((o) => o.value === current.responsible)
-                                          : null;
-                                        const currentLabel = current
-                                          ? current.responsible === "altro"
-                                            ? current.responsibleLabel || "Altro"
-                                            : currentOption?.label
-                                          : null;
-                                        const isAssigning = assigningKey === key;
-                                        return (
-                                          <span key={key} className="flex min-w-0 flex-1 items-center gap-1">
-                                            {moIdx > 0 && (
-                                              <i className="ti ti-arrow-narrow-right flex-shrink-0 text-[11px] text-ink-3" />
-                                            )}
+                            {/* Andata/Ritorno compatti — stessa identica
+                                azione (handleAssign/handleClear/
+                                assigningKey/localResp) già in uso da Mese. */}
+                            {selectedWeekdayDef && activeWeek && (
+                              <div className="mt-1.5 flex items-center gap-1.5 border-t border-black/[0.04] pt-1.5">
+                                {MOMENTS.map((mo, moIdx) => {
+                                  const key = respKey(row.kidId, activeWeek.startDate, selectedWeekdayDef.value, mo.value);
+                                  const current = localResp[key];
+                                  const currentOption = current
+                                    ? responsibleOptions.find((o) => o.value === current.responsible)
+                                    : null;
+                                  const currentLabel = current
+                                    ? current.responsible === "altro"
+                                      ? current.responsibleLabel || "Altro"
+                                      : currentOption?.label
+                                    : null;
+                                  const isAssigning = assigningKey === key;
+                                  return (
+                                    <span key={key} className="flex min-w-0 flex-1 items-center gap-1">
+                                      {moIdx > 0 && (
+                                        <i className="ti ti-arrow-narrow-right flex-shrink-0 text-[11px] text-ink-3" />
+                                      )}
+                                      <button
+                                        type="button"
+                                        title={mo.label}
+                                        onClick={() => {
+                                          setAssigningKey(isAssigning ? null : key);
+                                          setAltroText(
+                                            current?.responsible === "altro" ? current.responsibleLabel ?? "" : ""
+                                          );
+                                        }}
+                                        className={`flex min-w-0 flex-1 items-center gap-1 rounded-md px-1.5 py-1 text-left text-[11px] font-semibold active:scale-[0.97] ${
+                                          isAssigning
+                                            ? "bg-trama-lilac/20 ring-1 ring-trama-violet"
+                                            : current
+                                              ? "bg-[#F4F6FA] text-ink"
+                                              : "bg-bg text-ink-3"
+                                        }`}
+                                      >
+                                        <span className="sr-only">{mo.label}</span>
+                                        {current ? (
+                                          <>
+                                            {currentOption?.emoji ?? ""} {currentLabel}
+                                          </>
+                                        ) : (
+                                          `+ ${mo.label}`
+                                        )}
+                                      </button>
+                                    </span>
+                                  );
+                                })}
+                              </div>
+                            )}
+
+                            {selectedWeekdayDef &&
+                              activeWeek &&
+                              MOMENTS.some(
+                                (mo) => assigningKey === respKey(row.kidId, activeWeek.startDate, selectedWeekdayDef.value, mo.value)
+                              ) && (
+                                <div className="mt-2 flex flex-col gap-2 rounded-xl bg-bg p-2.5">
+                                  {(() => {
+                                    const [, , weekdayStr, momentStr] = (assigningKey as string).split("__");
+                                    const weekday = weekdayStr as Weekday;
+                                    const moment = momentStr as Moment;
+                                    const current = localResp[assigningKey as string];
+                                    return (
+                                      <>
+                                        <div className="flex flex-wrap gap-1.5">
+                                          {responsibleOptions.map((opt) => (
                                             <button
+                                              key={opt.familyPersonId ?? opt.value}
                                               type="button"
-                                              title={mo.label}
+                                              disabled={savingKey === assigningKey}
                                               onClick={() => {
-                                                setAssigningKey(isAssigning ? null : key);
-                                                setAltroText(
-                                                  current?.responsible === "altro" ? current.responsibleLabel ?? "" : ""
+                                                if (opt.value === "altro" && !opt.familyPersonId) return;
+                                                handleAssign(
+                                                  row.kidId,
+                                                  activeWeek.startDate,
+                                                  weekday,
+                                                  moment,
+                                                  opt.value,
+                                                  opt.familyPersonId ? opt.label : undefined,
+                                                  opt.familyPersonId
                                                 );
                                               }}
-                                              className={`flex min-w-0 flex-1 items-center gap-1 rounded-md px-1.5 py-1 text-left text-[11px] font-semibold active:scale-[0.97] ${
-                                                isAssigning
-                                                  ? "bg-trama-lilac/20 ring-1 ring-trama-violet"
-                                                  : current
-                                                    ? "bg-[#F4F6FA] text-ink"
-                                                    : "bg-bg text-ink-3"
+                                              className={`rounded-full px-2.5 py-1 text-[11px] font-semibold active:scale-95 ${
+                                                current?.responsible === opt.value &&
+                                                (opt.value !== "altro" || current?.responsibleLabel === opt.label)
+                                                  ? "bg-trama-violet text-white"
+                                                  : "bg-white text-ink-2"
                                               }`}
                                             >
-                                              <span className="sr-only">{mo.label}</span>
-                                              {current ? (
-                                                <>
-                                                  {currentOption?.emoji ?? ""} {currentLabel}
-                                                </>
-                                              ) : (
-                                                `+ ${mo.label}`
-                                              )}
+                                              {opt.emoji} {opt.label}
                                             </button>
-                                          </span>
-                                        );
-                                      })}
-                                    </div>
-                                  )}
-
-                                  {weekdayDef &&
-                                    activeWeek &&
-                                    MOMENTS.some(
-                                      (mo) => assigningKey === respKey(row.kidId, activeWeek.startDate, weekdayDef.value, mo.value)
-                                    ) && (
-                                      <div className="mt-2 flex flex-col gap-2 rounded-xl bg-bg p-2.5">
-                                        {(() => {
-                                          const [, , weekdayStr, momentStr] = (assigningKey as string).split("__");
-                                          const weekday = weekdayStr as Weekday;
-                                          const moment = momentStr as Moment;
-                                          const current = localResp[assigningKey as string];
-                                          return (
-                                            <>
-                                              <div className="flex flex-wrap gap-1.5">
-                                                {responsibleOptions.map((opt) => (
-                                                  <button
-                                                    key={opt.familyPersonId ?? opt.value}
-                                                    type="button"
-                                                    disabled={savingKey === assigningKey}
-                                                    onClick={() => {
-                                                      if (opt.value === "altro" && !opt.familyPersonId) return;
-                                                      handleAssign(
-                                                        row.kidId,
-                                                        activeWeek.startDate,
-                                                        weekday,
-                                                        moment,
-                                                        opt.value,
-                                                        opt.familyPersonId ? opt.label : undefined,
-                                                        opt.familyPersonId
-                                                      );
-                                                    }}
-                                                    className={`rounded-full px-2.5 py-1 text-[11px] font-semibold active:scale-95 ${
-                                                      current?.responsible === opt.value &&
-                                                      (opt.value !== "altro" || current?.responsibleLabel === opt.label)
-                                                        ? "bg-trama-violet text-white"
-                                                        : "bg-white text-ink-2"
-                                                    }`}
-                                                  >
-                                                    {opt.emoji} {opt.label}
-                                                  </button>
-                                                ))}
-                                              </div>
-                                              <div className="flex items-center gap-1.5">
-                                                <input
-                                                  type="text"
-                                                  value={altroText}
-                                                  onChange={(e) => setAltroText(e.target.value)}
-                                                  placeholder="Altro: scrivi chi (es. Zia Carla)"
-                                                  className="min-w-0 flex-1 rounded-lg border border-[#E8EBF0] bg-white px-2.5 py-1.5 text-[11.5px] text-ink"
-                                                />
-                                                <button
-                                                  type="button"
-                                                  disabled={savingKey === assigningKey || !altroText.trim()}
-                                                  onClick={() =>
-                                                    handleAssign(row.kidId, activeWeek.startDate, weekday, moment, "altro", altroText)
-                                                  }
-                                                  className="flex-shrink-0 rounded-lg bg-trama-violet px-2.5 py-1.5 text-[11px] font-bold text-white active:scale-[0.97] disabled:opacity-40"
-                                                >
-                                                  OK
-                                                </button>
-                                              </div>
-                                              {current && (
-                                                <button
-                                                  type="button"
-                                                  disabled={savingKey === assigningKey}
-                                                  onClick={() => handleClear(row.kidId, activeWeek.startDate, weekday, moment)}
-                                                  className="self-start text-[11px] font-semibold text-ink-3 active:bg-black/[0.04]"
-                                                >
-                                                  Rimuovi assegnazione
-                                                </button>
-                                              )}
-                                            </>
-                                          );
-                                        })()}
-                                      </div>
-                                    )}
+                                          ))}
+                                        </div>
+                                        <div className="flex items-center gap-1.5">
+                                          <input
+                                            type="text"
+                                            value={altroText}
+                                            onChange={(e) => setAltroText(e.target.value)}
+                                            placeholder="Altro: scrivi chi (es. Zia Carla)"
+                                            className="min-w-0 flex-1 rounded-lg border border-[#E8EBF0] bg-white px-2.5 py-1.5 text-[11.5px] text-ink"
+                                          />
+                                          <button
+                                            type="button"
+                                            disabled={savingKey === assigningKey || !altroText.trim()}
+                                            onClick={() =>
+                                              handleAssign(row.kidId, activeWeek.startDate, weekday, moment, "altro", altroText)
+                                            }
+                                            className="flex-shrink-0 rounded-lg bg-trama-violet px-2.5 py-1.5 text-[11px] font-bold text-white active:scale-[0.97] disabled:opacity-40"
+                                          >
+                                            OK
+                                          </button>
+                                        </div>
+                                        {current && (
+                                          <button
+                                            type="button"
+                                            disabled={savingKey === assigningKey}
+                                            onClick={() => handleClear(row.kidId, activeWeek.startDate, weekday, moment)}
+                                            className="self-start text-[11px] font-semibold text-ink-3 active:bg-black/[0.04]"
+                                          >
+                                            Rimuovi assegnazione
+                                          </button>
+                                        )}
+                                      </>
+                                    );
+                                  })()}
                                 </div>
-                              );
-                            }
-                            const occ = row.occ;
-                            return (
-                              <div
-                                key={`ext-${occ.itemId}-${rowIdx}`}
-                                data-testid="week-row-external"
-                                className={`rounded-xl border-l-4 p-2.5 ${AGENDA_EXTERNAL_BORDER_BG}`}
-                              >
-                                <div className="flex items-start gap-3">
-                                  <div className="w-16 flex-shrink-0 text-[10px] font-bold text-ink-3">
-                                    {formatOccurrenceTime(occ)}
-                                  </div>
-                                  <div className="min-w-0 flex-1">
-                                    <div className="flex flex-wrap items-center gap-1.5">
-                                      <span className="rounded-full bg-white px-1.5 py-0.5 text-[9.5px] font-bold uppercase tracking-wide text-ink-3">
-                                        Esterno
-                                      </span>
-                                      {occ.sourceType === "curated_discovery" && (
-                                        <span className="text-[10px] font-medium text-ink-3">Da Scoperta TRAMA</span>
-                                      )}
-                                    </div>
-                                    <div className="text-[12.5px] font-bold text-ink">{occ.title}</div>
-                                    {occ.kidNames.length > 0 && (
-                                      <div className="text-[11px] text-ink-2">{occ.kidNames.join(", ")}</div>
-                                    )}
-                                  </div>
-                                </div>
+                              )}
+                          </div>
+                        );
+                      }
+                      const occ = row.occ;
+                      const kindChip = externalKindChip(occ.kind);
+                      return (
+                        <div
+                          key={`ext-${occ.itemId}-${rowIdx}`}
+                          data-testid="week-row-external"
+                          className={`rounded-xl border-l-4 p-2 ${AGENDA_EXTERNAL_BORDER_BG}`}
+                        >
+                          <div className="flex items-start gap-2.5">
+                            <div className="w-[52px] flex-shrink-0 text-[9.5px] font-bold uppercase leading-tight text-ink-3">
+                              {formatOccurrenceTime(occ)}
+                            </div>
+                            <div className="min-w-0 flex-1">
+                              <div className="text-[12.5px] font-bold text-ink">{occ.title}</div>
+                              <div className="flex flex-wrap items-center gap-1.5 text-[11px] text-ink-2">
+                                {occ.kidNames.length > 0 && <span>{occ.kidNames.join(", ")}</span>}
+                                <span className="rounded-full bg-white px-1.5 py-0.5 text-[9.5px] font-bold uppercase tracking-wide text-ink-3">
+                                  Esterno
+                                </span>
+                                <span className="text-[10.5px] text-ink-3" data-testid="week-category-chip-external">
+                                  {kindChip.emoji} {kindChip.label}
+                                </span>
                               </div>
-                            );
-                          })}
+                              {occ.sourceType === "curated_discovery" && (
+                                <div className="mt-0.5 text-[10px] font-medium text-ink-3">Da Scoperta TRAMA</div>
+                              )}
+                            </div>
+                          </div>
                         </div>
-                      )}
-                    </div>
-                  );
-                })}
+                      );
+                    })}
+                  </div>
+                )}
               </div>
 
-              {/* Sezione 16 — empty state compatto, mai uno schermo vuoto
-                  lungo: solo quando l'intera settimana non ha alcuna
-                  attività/impegno (TRAMA o esterno). */}
-              {totalActivities === 0 && (
-                <div className="rounded-2xl border border-dashed border-[#D8DEE8] bg-white p-5 text-center">
-                  <i className="ti ti-calendar-off mb-2 text-2xl text-ink-3" />
-                  <p className="text-[12.5px] text-ink-2">Nessun impegno questa settimana.</p>
-                </div>
-              )}
-
-              {/* Sezione 13 — riepilogo compatto, solo se c'è davvero
-                  qualcosa da riassumere (mai "0 attività · 0 giorni"). */}
+              {/* Sezione 24 — riepilogo SETTIMANA, sottile e opzionale (mai
+                  vanity metrics/CTA grande) — distinto dal conteggio del
+                  giorno selezionato sopra. */}
               {summaryLabel && (
                 <div className="rounded-2xl bg-white px-3.5 py-2.5 text-center text-[11.5px] font-semibold text-ink-2">
                   {summaryLabel}
                 </div>
               )}
 
-              {/* Sezione 10 — "Applica a tutta la settimana": stessa identica
-                  azione (setWeekBulkResponsibilityAction) già in uso da Mese
-                  — SOLO il call-site e l'etichetta cambiano (scope esplicito:
-                  "accompagnamento", non l'attività/prenotazione). */}
+              {/* Sezione 26 — "Applica accompagnamento alla settimana":
+                  stessa identica azione (setWeekBulkResponsibilityAction) già
+                  in uso da Mese — invariata, resta a livello di intera
+                  SeasonWeek (non del solo giorno selezionato). */}
               {weekKidsForBulk.length > 0 && activeWeek && (
                 <div className="rounded-xl bg-white" data-testid="week-bulk-assign-panel">
                   <button
