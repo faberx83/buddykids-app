@@ -16,6 +16,9 @@ import PartnerOnboardingCarousel from "@/components/center/OnboardingCarousel";
 import BetaFeedbackButton from "@/components/nextgen/BetaFeedbackButton";
 import NotificationCenter from "@/components/nextgen/NotificationCenter";
 import { getPartnerNotifications } from "@/lib/data/notifications-partner";
+// BUILD_INFO_BUBBLE — test pipeline nuovo account (30/09/2026), temporaneo.
+import BuildInfoBubble from "@/components/BuildInfoBubble";
+import { resolveBuildInfoBubbleLabel } from "@/lib/build-info-bubble";
 
 export default async function CenterLayout({ children }: { children: React.ReactNode }) {
   // Con Supabase collegato, il ruolo reale (da profiles.role) sostituisce del
@@ -38,6 +41,8 @@ export default async function CenterLayout({ children }: { children: React.React
   // TRAMA_ONE_ENABLED verrà aperto oltre la coorte, entrambi si estendono
   // insieme senza bisogno di un secondo flag dedicato.
   let onboardingCarouselProgress: WalkthroughProgressSummary | null = null;
+  // BUILD_INFO_BUBBLE
+  let buildInfoLabel: string | null = null;
 
   if (isSupabaseConfigured) {
     const supabase = await createClient();
@@ -65,6 +70,9 @@ export default async function CenterLayout({ children }: { children: React.React
       spotlightProgress = await getWalkthroughProgress(user.id, "activity_creation_partner");
       onboardingCarouselProgress = await getWalkthroughProgress(user.id, "partner_beta_onboarding");
     }
+
+    // BUILD_INFO_BUBBLE
+    buildInfoLabel = await resolveBuildInfoBubbleLabel({ userId: user.id, role: realRole, tenant: "center" });
   }
 
   // Badge rosso sulla voce "Richieste Gruppo" col conteggio in attesa —
@@ -213,6 +221,8 @@ export default async function CenterLayout({ children }: { children: React.React
           rotte placeholder (questo layout È già il layout Partner reale).
           Montato una sola volta qui, copre ogni pagina /center/*. */}
       <NotificationCenter initialNotifications={partnerNotifications} scope="partner" />
+      {/* BUILD_INFO_BUBBLE */}
+      <BuildInfoBubble label={buildInfoLabel} />
       {/* SPRINT 5 (NEXTGEN) → ESTENSIONE PARTNER — stesso meccanismo "Segnala
           un problema" già in uso lato genitore (app/nextgen/layout.tsx),
           contestualizzato per il Partner: area calcolata sulle rotte

@@ -210,6 +210,21 @@ export const FEATURE_FLAG_REGISTRY = {
     defaultValue: false,
     allowedScopes: ["global", "environment", "user", "role", "cohort"],
   },
+  // TRAMA — TEST PIPELINE NUOVO ACCOUNT (30/09/2026, richiesta di Fabrizio).
+  // Flag TEMPORANEO: governa solo la bolla "Test nuovo Claude · build <sha>"
+  // (components/BuildInfoBubble.tsx) nei layout Genitori/Gestori/Admin.
+  // Nessun dato, nessuna scrittura. Da rimuovere a test concluso (vedi
+  // lib/build-info-bubble.ts per l'elenco completo dei file).
+  BUILD_INFO_BUBBLE_ENABLED: {
+    name: "BUILD_INFO_BUBBLE_ENABLED",
+    description:
+      "TEMPORANEO (test pipeline nuovo account, 30/09/2026). Mostra in alto al centro, nelle aree Genitori, " +
+      "Gestori e Admin, una bolla 'Test nuovo Claude · build <commit> · <data ora>' con il commit e l'ora " +
+      "della build in produzione. Non intercetta tap/click. Default false: attivare solo con override " +
+      "user sul proprio account, poi spegnere e rimuovere il codice.",
+    defaultValue: false,
+    allowedScopes: ["global", "environment", "user", "role", "cohort"],
+  },
 } as const satisfies Record<string, FeatureFlagDefinition>;
 
 export type KnownFeatureFlagName = keyof typeof FEATURE_FLAG_REGISTRY;

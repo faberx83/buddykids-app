@@ -41,6 +41,9 @@ import { NextgenScrollActivityProvider, NextgenScrollArea } from "@/components/n
 // devono sempre poter chiamare useGlobalActionProgress() senza errori) ma
 // diventa un no-op totale: nessuna barra, nessun timer.
 import { GlobalActionProgressProvider } from "@/components/GlobalActionProgress";
+// BUILD_INFO_BUBBLE — test pipeline nuovo account (30/09/2026), temporaneo.
+import BuildInfoBubble from "@/components/BuildInfoBubble";
+import { resolveBuildInfoBubbleLabel } from "@/lib/build-info-bubble";
 
 // SPRINT 0 (NEXTGEN — V2 in parallelo a LEGACY): guscio minimo dell'area
 // genitore NEXTGEN. Stesso guard di autenticazione di app/(main)/layout.tsx
@@ -124,6 +127,8 @@ export default async function NextgenLayout({ children }: { children: React.Reac
   // resolveFeatureFlag() ritornerebbe comunque false senza client Supabase
   // (vedi lib/feature-flags/resolve.ts), stesso risultato reso esplicito qui.
   let globalActionProgressEnabled = false;
+  // BUILD_INFO_BUBBLE — null = nessuna bolla (default, flag off o errore).
+  let buildInfoLabel: string | null = null;
 
   if (isSupabaseConfigured) {
     const supabase = await createClient();
@@ -159,7 +164,7 @@ export default async function NextgenLayout({ children }: { children: React.Reac
     // applicato in app/nextgen/planner/page.tsx (commit a38a49e, "in
     // generale è rallentata l'app") per evitare di reintrodurre lo stesso
     // problema aggiungendo qui un secondo flag risolto uno dopo l'altro.
-    const [enabled, globalActionProgressResolved] = await Promise.all([
+    const [enabled, globalActionProgressResolved, buildInfoLabelResolved] = await Promise.all([
       resolveFeatureFlag({
         flagName: "TRAMA_ONE_ENABLED",
         userId: user.id,
@@ -174,8 +179,11 @@ export default async function NextgenLayout({ children }: { children: React.Reac
         tenant: "family",
         correlationId: generateCorrelationId(),
       }),
+      // BUILD_INFO_BUBBLE
+      resolveBuildInfoBubbleLabel({ userId: user.id, role: realRole, tenant: "family" }),
     ]);
     globalActionProgressEnabled = globalActionProgressResolved;
+    buildInfoLabel = buildInfoLabelResolved;
     if (enabled && realRole === "parent") {
       onboardingProgress = await getWalkthroughProgress(user.id, "parent_beta_onboarding");
       // Sequenza richiesta: il carousel di benvenuto precede il tour
@@ -244,6 +252,8 @@ export default async function NextgenLayout({ children }: { children: React.Reac
           <ParentSpotlight progress={spotlightProgress} />
           <OnboardingCarousel progress={onboardingProgress} />
           {isParentUser && <NotificationCenter initialNotifications={notifications} />}
+          {/* BUILD_INFO_BUBBLE */}
+          <BuildInfoBubble label={buildInfoLabel} />
         </NextgenScrollActivityProvider>
       </NextgenToastProvider>
       </GlobalActionProgressProvider>

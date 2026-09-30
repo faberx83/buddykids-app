@@ -10,6 +10,9 @@ import { generateCorrelationId } from "@/lib/telemetry/correlation";
 // esecuzione) e components/admin/DeployStatusBanner.tsx.
 import { getLatestDeployEvent } from "@/lib/data/deploy-events";
 import DeployStatusBanner from "@/components/admin/DeployStatusBanner";
+// BUILD_INFO_BUBBLE — test pipeline nuovo account (30/09/2026), temporaneo.
+import BuildInfoBubble from "@/components/BuildInfoBubble";
+import { resolveBuildInfoBubbleLabel } from "@/lib/build-info-bubble";
 
 // Segnalazione di Fabrizio: cosa manca lato Admin tra le nuove funzionalità
 // (ticketing, presenze/check-in, preferiti)? Ho proposto e costruito 3
@@ -65,6 +68,8 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   // voce/redirect è toccata).
   let navItems = baseNavItems;
   let deployEvent: Awaited<ReturnType<typeof getLatestDeployEvent>> = null;
+  // BUILD_INFO_BUBBLE
+  let buildInfoLabel: string | null = null;
 
   if (isSupabaseConfigured) {
     const supabase = await createClient();
@@ -106,6 +111,9 @@ export default async function AdminLayout({ children }: { children: React.ReactN
     if (realRole === "platform_admin") {
       deployEvent = await getLatestDeployEvent();
     }
+
+    // BUILD_INFO_BUBBLE
+    buildInfoLabel = await resolveBuildInfoBubbleLabel({ userId: user.id, role: realRole, tenant: "admin" });
   }
 
   return (
@@ -117,6 +125,8 @@ export default async function AdminLayout({ children }: { children: React.ReactN
       variant="admin"
     >
       <DeployStatusBanner event={deployEvent} />
+      {/* BUILD_INFO_BUBBLE */}
+      <BuildInfoBubble label={buildInfoLabel} />
       {children}
     </DashboardLayout>
   );
