@@ -24,22 +24,29 @@ Stiamo riprendendo il lavoro sul progetto BuddyKids/TRAMA (marketplace famiglie-
 doposcuola in Italia). Prima di iniziare, leggi in questo ordine i file nella cartella
 <percorso repo>/docs/trama-one/:
 
-1. MIGRATION_CONTEXT_INDEX.md (questo file, per la mappa completa)
-2. BUSINESS_PLAN.md, ROADMAP.md, PREMORTEM.md (scopo, traiettoria, rischi)
-3. STATE_OF_THE_ART.md, TECHNICAL_FUNCTIONAL_OVERVIEW.md (stato dell'arte tecnico)
-4. TRAMA_FINAL_PRODUCT_STATE_HANDOFF_20260903.md, TRAMA_PILOT_ARCHITECTURE_REVIEW.md,
+1. TRAMA_STATO_AL_20260930.md (sintesi più recente e riconciliata — parti da qui)
+2. MIGRATION_CONTEXT_INDEX.md (questo file, per la mappa completa)
+3. BUSINESS_PLAN.md, ROADMAP.md, PREMORTEM.md (scopo, traiettoria, rischi)
+4. STATE_OF_THE_ART.md, TECHNICAL_FUNCTIONAL_OVERVIEW.md (stato dell'arte tecnico)
+5. TRAMA_FINAL_PRODUCT_STATE_HANDOFF_20260903.md, TRAMA_PILOT_ARCHITECTURE_REVIEW.md,
    TRAMA_DARK_RELEASE_MODEL_REPORT.md, TRAMA_EVOLUTION_LAB_REPORT.md (approfondimenti tecnici)
-5. PLANNER_BETA_V1.1_PROPOSTA.md e school-calendar-milano-puglia/ (feature in corso)
+6. PLANNER_BETA_V1.1_PROPOSTA.md e school-calendar-milano-puglia/ (feature in corso)
 
 Poi conferma cosa hai capito di: cos'è TRAMA, a che punto è, quali feature sono attive in
 produzione, quali sono in corso, e quali sono i prossimi passi da roadmap — prima di procedere
 con qualunque richiesta.
 ```
 
+*Nota: `TRAMA_STATO_AL_20260930.md` è nato come documento del Project sul nuovo account
+(30/09/2026) e riportato qui nel repository per non dipendere da un solo posto — se in futuro
+serve un aggiornamento più recente, crea un nuovo `TRAMA_STATO_AL_<data>.md` con lo stesso
+procedimento invece di modificare questo.*
+
 ## Livello 1 — Orientamento (leggere per primi, ~20 min)
 
 | File | Cosa risponde |
 |---|---|
+| `TRAMA_STATO_AL_20260930.md` | **Partire da qui.** Sintesi più recente e riconciliata di tutto il resto — cos'è TRAMA, a che punto è, cosa è live, cosa è in corso, problemi aperti, incoerenze già risolte tra i documenti sottostanti |
 | `BUSINESS_PLAN.md` | Cos'è TRAMA, per chi, modello di business |
 | `ROADMAP.md` | Cosa è stato fatto, cosa viene dopo, in che ordine |
 | `PREMORTEM.md` | Rischi principali e come sono mitigati |
