@@ -114,11 +114,17 @@ test.describe("Gestore - Il mio centro (header + riepilogo)", () => {
     const cta = page.getByRole("link", { name: "Vedi come ti vedono le famiglie" });
     if (await cta.isVisible().catch(() => false)) {
       const href = await cta.getAttribute("href");
-      expect(href).toMatch(/^\/activity\//);
-      await expect(cta).toHaveAttribute("target", "_blank");
+      expect(href).toMatch(/^\/activity\/[^?]+\?anteprima=partner$/);
+      // TRAMA PARTNER LIVE MOBILE BUGFIX (01/10/2026): prima si asseriva
+      // target="_blank" — era proprio la causa del tap senza effetto dalla
+      // PWA e della freccia "Indietro" senza cronologia. Ora stessa scheda,
+      // con barra di anteprima e ritorno (vedi profilo-centro-mobile.spec.ts).
+      await expect(cta).not.toHaveAttribute("target", "_blank");
+    } else {
+      // Nessuna attività per questo centro di test: stato B esplicito, mai
+      // un pulsante visibile che non fa nulla.
+      await expect(page.getByTestId("family-preview-unavailable")).toBeVisible();
     }
-    // Se assente: nessuna attività pubblicata per questo centro di test —
-    // comportamento corretto (nessuna preview finta), nulla da asserire oltre.
   });
 
   // CENTER-P-03 — Riepilogo configurazione: 4 card con link reali verso le

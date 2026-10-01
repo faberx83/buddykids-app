@@ -11,16 +11,38 @@ import { resolveFeatureFlag } from "@/lib/feature-flags/resolve";
 import { generateCorrelationId } from "@/lib/telemetry/correlation";
 import PhoneShell from "@/components/PhoneShell";
 import DetailClient from "./DetailClient";
+import { getCenterContext } from "@/lib/data/center-admin";
+import { resolveFamilyPreview, FAMILY_PREVIEW_PARAM } from "@/lib/center/family-preview";
 
 export default async function ActivityDetailPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>;
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
   const { id } = await params;
 
   const activity = await getActivityBySlug(id);
   if (!activity) return notFound();
+
+  // TRAMA PARTNER — LIVE MOBILE BUGFIX (01/10/2026): anteprima famiglia dal
+  // portale Partner ("Vedi come ti vedono le famiglie"). Stessa pagina
+  // pubblica, nessuna scheda duplicata. La modalità anteprima si attiva SOLO
+  // se ?anteprima=partner E l'utente loggato è il gestore del centro di
+  // questa attività (uuid profiles.center_id === activities.center_id);
+  // altrimenti il parametro è ignorato e la pagina resta quella pubblica di
+  // sempre. Vedi lib/center/family-preview.ts.
+  // Risoluzione non-throwing: qualunque errore nel leggere il contesto del
+  // viewer → anteprima spenta, pagina pubblica invariata.
+  const partnerPreview = await resolveFamilyPreview({
+    requestedParam: (await searchParams)[FAMILY_PREVIEW_PARAM],
+    activityCenterDbId: activity.centerDbId,
+    activityCenterSlug: activity.centerId,
+    supabaseConfigured: isSupabaseConfigured,
+    loadViewer: getCenterContext,
+    onError: (error) => console.error("[activity/anteprima] contesto viewer non disponibile, anteprima spenta", error),
+  });
 
   // nextgen (01/09/2026, segnalazione Fabrizio "grafica legacy" nel dettaglio
   // attività): non esiste una route /nextgen/activity/... dedicata — Legacy e
@@ -167,6 +189,7 @@ export default async function ActivityDetailPage({
   return (
     <PhoneShell>
       <DetailClient
+        partnerPreview={partnerPreview}
         activity={activity}
         promotions={promotions}
         initialFavorite={initialFavorite}

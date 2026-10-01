@@ -15,6 +15,8 @@ import ContactCenterButton from "@/components/ContactCenterButton";
 import { toggleFavoriteAction } from "@/app/actions/favorites";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
 import { calculateDayBookingCost, dayPrice, meetsMinDaysRequirement } from "@/lib/day-pricing";
+import FamilyPreviewBar from "./FamilyPreviewBar";
+import { FAMILY_PREVIEW_RETURN_HREF } from "@/lib/center/family-preview";
 
 const weekdayLabels = ["lunedì", "martedì", "mercoledì", "giovedì", "venerdì"];
 const weekdayShort = ["Lun", "Mar", "Mer", "Gio", "Ven", "Sab", "Dom"];
@@ -30,6 +32,7 @@ export default function DetailClient({
   existingBooking = null,
   activityAvailable = true,
   realSpotsLeft = undefined,
+  partnerPreview = false,
 }: {
   activity: Activity;
   promotions: Promotion[];
@@ -100,6 +103,14 @@ export default function DetailClient({
   // settimana offerta): in quel caso si mostra solo "Posti disponibili"
   // generico, mai un numero potenzialmente falso.
   realSpotsLeft?: number;
+  // TRAMA PARTNER — LIVE MOBILE BUGFIX (01/10/2026): true solo quando il
+  // gestore del centro di QUESTA attività arriva da "Vedi come ti vedono le
+  // famiglie" (?anteprima=partner, verificato server-side in page.tsx).
+  // Stessa scheda della famiglia + barra di anteprima; le azioni che
+  // scriverebbero dati (Prenota, Preferiti, Contatta il gestore) sono
+  // disattivate, così l'anteprima non crea mai dati finti. false = pagina
+  // pubblica invariata.
+  partnerPreview?: boolean;
 }) {
   const accentBg = nextgen ? "bg-trama-violet" : "bg-sky";
   const accentText = nextgen ? "text-trama-violet" : "text-sky";
@@ -266,6 +277,7 @@ export default function DetailClient({
 
   return (
     <div className="flex h-full min-h-screen flex-col sm:min-h-0 sm:flex-1">
+      {partnerPreview && <FamilyPreviewBar />}
       <div
         className="relative flex h-[230px] flex-shrink-0 items-center justify-center bg-cover bg-center"
         style={
@@ -281,28 +293,36 @@ export default function DetailClient({
         <button
           onClick={(e) => {
             e.stopPropagation();
-            router.back();
+            // In anteprima Partner il ritorno è deterministico verso "Il mio
+            // centro" (anche dopo un refresh, quando la cronologia non
+            // contiene la pagina Partner). Altrimenti invariato.
+            if (partnerPreview) router.push(FAMILY_PREVIEW_RETURN_HREF);
+            else router.back();
           }}
-          aria-label="Indietro"
+          aria-label={partnerPreview ? "Torna al tuo centro" : "Indietro"}
           className="absolute left-[18px] top-[18px] z-10 flex h-[38px] w-[38px] items-center justify-center rounded-full bg-white/90 text-lg text-ink backdrop-blur-sm transition-transform hover:scale-110"
         >
           <i className="ti ti-arrow-left" />
         </button>
-        <button
-          onClick={(e) => {
-            e.stopPropagation();
-            const next = !fav;
-            setFav(next); // aggiornamento ottimistico
-            if (activity.dbId && isSupabaseConfigured) {
-              toggleFavoriteAction(activity.dbId, next).then((result) => {
-                if (result.error) setFav(!next); // rollback se la scrittura fallisce
-              });
-            }
-          }}
-          className="absolute right-[18px] top-[18px] z-10 flex h-[38px] w-[38px] items-center justify-center rounded-full bg-white/90 text-lg text-orange backdrop-blur-sm transition-transform hover:scale-110"
-        >
-          <i className={fav ? "ti ti-heart-filled" : "ti ti-heart"} />
-        </button>
+        {/* Anteprima Partner: niente cuore — salverebbe un preferito
+            sull'account del gestore (dato finto). Nascosto, non "morto". */}
+        {!partnerPreview && (
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              const next = !fav;
+              setFav(next); // aggiornamento ottimistico
+              if (activity.dbId && isSupabaseConfigured) {
+                toggleFavoriteAction(activity.dbId, next).then((result) => {
+                  if (result.error) setFav(!next); // rollback se la scrittura fallisce
+                });
+              }
+            }}
+            className="absolute right-[18px] top-[18px] z-10 flex h-[38px] w-[38px] items-center justify-center rounded-full bg-white/90 text-lg text-orange backdrop-blur-sm transition-transform hover:scale-110"
+          >
+            <i className={fav ? "ti ti-heart-filled" : "ti ti-heart"} />
+          </button>
+        )}
       </div>
 
       <div className="no-scrollbar flex-1 overflow-y-auto px-5 py-[18px]">
@@ -319,9 +339,12 @@ export default function DetailClient({
           </div>
         </div>
 
-        <div className="mb-3">
-          <ContactCenterButton activityDbId={activity.dbId} />
-        </div>
+        {/* Anteprima Partner: il gestore scriverebbe a sé stesso. */}
+        {!partnerPreview && (
+          <div className="mb-3">
+            <ContactCenterButton activityDbId={activity.dbId} />
+          </div>
+        )}
 
         <div className="mb-3 flex flex-wrap gap-2.5">
           <span className="flex items-center gap-1 text-xs text-ink-2">
@@ -751,7 +774,19 @@ export default function DetailClient({
             <div className="text-[11px] text-ink-2">per settimana</div>
           </div>
         )}
-        {selectedDayDates.length > 0 && meetsMinDays ? (
+        {partnerPreview ? (
+          // Anteprima Partner: la famiglia qui vede "Prenota ora"; il
+          // gestore vede lo stesso pulsante ma disattivato (la barra in
+          // alto spiega perché) — nessuna prenotazione finta.
+          <button
+            type="button"
+            disabled
+            data-testid="family-preview-booking-disabled"
+            className="cursor-not-allowed rounded-lg bg-[#C5CDD8] px-7 py-3.5 text-[15px] font-bold text-white"
+          >
+            Prenota ora
+          </button>
+        ) : selectedDayDates.length > 0 && meetsMinDays ? (
           // FIX (segnalazione Fabrizio 05/09/2026, screenshot "perché non
           // posso prenotare?"): per un'attività "Giorni spot" già prenotata
           // parzialmente (es. 6 giorni su una stagione che ne offre molti di

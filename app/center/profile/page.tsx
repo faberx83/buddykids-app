@@ -4,6 +4,7 @@ import { getMyCenter } from "@/lib/data/center-admin";
 import { getActivitiesForCenter, getPromotionsForActivities } from "@/lib/data/activities";
 import { getCenterOnboardingState } from "@/lib/onboarding/data";
 import { CenterOnboardingStatus } from "@/lib/onboarding/types";
+import { buildFamilyPreviewHref, pickFamilyPreviewSlug } from "@/lib/center/family-preview";
 
 // Forza il render dinamico per-richiesta: questa pagina dipende dalla
 // sessione/cookie dell'utente loggato (getMyCenter -> getCenterContext),
@@ -48,7 +49,17 @@ export default async function CenterProfilePage() {
   // non ha ancora nessuna attività pubblicata, non esiste alcuna vera
   // superficie pubblica da mostrare: niente CTA, niente preview finta (vedi
   // FINAL_AUDIT/CURRENT_STATE_ADDENDUM per questo gap documentato).
-  const previewActivityId = myActivities.length > 0 ? myActivities[0].id : null;
+  //
+  // TRAMA PARTNER — LIVE MOBILE BUGFIX (01/10/2026), segnalazione live di
+  // Fabrizio: tap sulla CTA → "non succede nulla". Root cause: il link
+  // apriva /activity/[slug] in una nuova scheda (target _blank). Dalla PWA installata
+  // (display: standalone) una nuova scheda non è garantita (iOS/Android la
+  // gestiscono in modo diverso, a volte senza effetto visibile) e, anche
+  // quando si apre, è un contesto SENZA cronologia: la freccia "Indietro"
+  // della scheda attività (router.back()) non porta da nessuna parte e il
+  // contesto Partner si perde. Ora: stessa scheda, ?anteprima=partner (vedi
+  // lib/center/family-preview.ts) con barra di ritorno a "Il mio centro".
+  const previewActivitySlug = pickFamilyPreviewSlug(myActivities);
 
   // Checklist binaria REALE (sez. 12-13) — NON riusa il checklist item
   // "profile_complete" di lib/onboarding/checklist-registry.ts: quella riga
@@ -72,33 +83,60 @@ export default async function CenterProfilePage() {
 
   return (
     <div className="max-w-2xl">
-      <div className="mb-4 flex items-center gap-4 rounded-[14px] bg-white p-4 shadow-[0_1px_3px_rgba(0,0,0,0.04)]">
-        <div
-          className="flex h-14 w-14 flex-shrink-0 items-center justify-center overflow-hidden rounded-full text-2xl"
-          style={{ background: center.gradient }}
-        >
-          {center.logoUrl ? (
-            // eslint-disable-next-line @next/next/no-img-element -- logo caricato dall'utente, nessuna ottimizzazione next/image necessaria per un avatar 56px
-            <img src={center.logoUrl} alt="" className="h-full w-full object-cover" />
-          ) : (
-            center.emoji
-          )}
-        </div>
-        <div className="min-w-0 flex-1">
-          <div className="text-lg font-bold text-ink">{center.name}</div>
-          <div className="text-[12.5px] text-ink-2">
-            {center.city ? `${center.city} · ` : ""}
-            {ONBOARDING_STATUS_LABEL[onboarding.status]}
+      {/* TRAMA PARTNER — LIVE MOBILE BUGFIX (01/10/2026). Root cause della
+          sovrapposizione su mobile: riga flex unica [logo][testo flex-1
+          min-w-0][CTA flex-shrink-0 whitespace-nowrap]. Sotto ~480px la CTA
+          (~235px, non comprimibile) + logo + gap superavano lo spazio
+          disponibile: la colonna testo veniva schiacciata a ~0px, il nome
+          del centro "colava" fuori dalla sua colonna sopra la CTA e la CTA
+          sporgeva oltre il bordo della card. Ora su mobile si impila
+          ([logo][nome+città+stato] sopra, CTA a tutta larghezza sotto); da
+          sm (≥640px) torna la riga orizzontale di prima, con la CTA a destra
+          — layout desktop invariato. Nessuna riduzione del font. */}
+      <div
+        data-testid="center-profile-header"
+        className="mb-4 flex flex-col gap-3 rounded-[14px] bg-white p-4 shadow-[0_1px_3px_rgba(0,0,0,0.04)] sm:flex-row sm:items-center sm:gap-4"
+      >
+        <div className="flex min-w-0 flex-1 items-center gap-4">
+          <div
+            className="flex h-14 w-14 flex-shrink-0 items-center justify-center overflow-hidden rounded-full text-2xl"
+            style={{ background: center.gradient }}
+          >
+            {center.logoUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element -- logo caricato dall'utente, nessuna ottimizzazione next/image necessaria per un avatar 56px
+              <img src={center.logoUrl} alt="" className="h-full w-full object-cover" />
+            ) : (
+              center.emoji
+            )}
+          </div>
+          <div className="min-w-0 flex-1">
+            <div data-testid="center-profile-name" className="break-words text-lg font-bold leading-snug text-ink">
+              {center.name}
+            </div>
+            <div className="break-words text-[12.5px] text-ink-2">
+              {center.city ? `${center.city} · ` : ""}
+              {ONBOARDING_STATUS_LABEL[onboarding.status]}
+            </div>
           </div>
         </div>
-        {previewActivityId && (
+        {previewActivitySlug ? (
           <Link
-            href={`/activity/${previewActivityId}`}
-            target="_blank"
-            className="flex-shrink-0 whitespace-nowrap rounded-lg border border-[#E8EBF0] px-3.5 py-2 text-[12.5px] font-bold text-ink"
+            href={buildFamilyPreviewHref(previewActivitySlug)}
+            data-testid="family-preview-cta"
+            className="flex min-h-[44px] w-full items-center justify-center rounded-lg border border-[#E8EBF0] px-3.5 py-2 text-center text-[12.5px] font-bold text-ink transition-colors hover:bg-bg focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sky sm:w-auto sm:flex-shrink-0 sm:whitespace-nowrap md:min-h-0"
           >
             Vedi come ti vedono le famiglie
           </Link>
+        ) : (
+          // Stato B esplicito: nessuna attività → nessuna superficie
+          // pubblica reale da mostrare. Niente pulsante "morto": un testo
+          // non interattivo che dice perché e cosa fare.
+          <p
+            data-testid="family-preview-unavailable"
+            className="rounded-lg bg-bg px-3.5 py-2 text-[12px] text-ink-2 sm:max-w-[220px]"
+          >
+            Anteprima famiglia disponibile dopo aver creato la prima attività.
+          </p>
         )}
       </div>
 
