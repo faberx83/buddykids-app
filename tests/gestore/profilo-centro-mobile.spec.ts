@@ -244,4 +244,43 @@ test.describe("Gestore - Il mio centro - anteprima famiglia", () => {
     expect(html).toContain('aria-label="Indietro"');
     await anon.dispose();
   });
+
+  // BUG LIVE 01/10/2026 (dopo il deploy di 5a5f58e): sul portale Partner reale
+  // (buddykids-partner.vercel.app, tenant "partner") il click dava 404
+  // perché proxy.ts riscriveva /activity/<slug> in /center/activity/<slug>.
+  // Questo test gira SUL HOST PARTNER, dove il bug si manifestava.
+  test("PCM-10 - host Partner: click CTA → anteprima (mai 404), ritorno a Il mio centro", async ({ browser, playwright }) => {
+    test.skip(!isRealDeployment, "Serve l'host Partner reale (alias buddykids-partner.vercel.app impostato da deploy.sh).");
+    const partnerBaseURL = process.env.TEST_PARTNER_BASE_URL || "https://buddykids-partner.vercel.app";
+
+    // anonimo sull'host Partner: la scheda pubblica risponde 200, non 404
+    const anon = await playwright.request.newContext({ baseURL: partnerBaseURL });
+
+    const ctx = await browser.newContext({ baseURL: partnerBaseURL, viewport: { width: 390, height: 844 } });
+    const page = await ctx.newPage();
+    await loginAs(page, "center_admin");
+    await page.goto("/center/profile");
+    const cta = page.getByRole("link", { name: CTA_NAME });
+    test.skip(!(await cta.isVisible().catch(() => false)), "Centro di test senza attività.");
+    const href = (await cta.getAttribute("href"))!;
+
+    const anonRes = await anon.get(href, { maxRedirects: 0 });
+    expect(anonRes.status()).toBe(200);
+    expect(await anonRes.text()).not.toContain('data-testid="family-preview-bar"');
+    await anon.dispose();
+
+    const [response] = await Promise.all([
+      page.waitForResponse((r) => r.url().includes("/activity/") && r.request().resourceType() === "document").catch(() => null),
+      cta.click(),
+    ]);
+    await page.waitForURL((url) => url.pathname.startsWith("/activity/"));
+    if (response) expect(response.status()).not.toBe(404);
+    await expect(page.getByText(/page not found|404/i)).toHaveCount(0);
+    await expect(page.getByTestId("family-preview-bar")).toBeVisible();
+
+    await page.getByTestId("family-preview-back").click();
+    await page.waitForURL((url) => url.pathname === "/center/profile");
+    await expect(page.getByTestId("center-profile-header")).toBeVisible();
+    await ctx.close();
+  });
 });

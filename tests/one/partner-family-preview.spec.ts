@@ -186,14 +186,20 @@ test.describe("TRAMA Partner — scheda attività in anteprima: call site [no br
     expect(PREVIEW_BAR).toContain("min-h-[44px]");
   });
 
-  test("PFP-20: proxy.ts NON toccato da questo fix (nessuna eccezione /activity per host partner./admin.)", () => {
-    // PRE-APPLY REVIEW: in produzione esiste un solo dominio
-    // (buddykids-app.vercel.app, tenant famiglia) e nessuna env
-    // NEXT_PUBLIC_PARTNER_HOSTS/ADMIN_HOSTS — l'eccezione era latente,
-    // rimandata a quando esisteranno i sottodomini.
+  test("PFP-20: proxy — /activity servita così com'è sul tenant partner (regola 3, prima della riscrittura /center)", () => {
+    // BUG LIVE 01/10: il Partner in produzione gira su
+    // buddykids-partner.vercel.app (alias di deploy.sh, tenant "partner").
+    // Senza questa eccezione la regola 5) riscrive /activity/<slug> in
+    // /center/activity/<slug> → 404 (log Vercel: GET /activity/prova-fp 404).
     const rule3 = PROXY.slice(PROXY.indexOf("// 3) Percorsi condivisi"), PROXY.indexOf("// 4) Sottodomini protetti"));
-    expect(rule3).not.toContain('pathname.startsWith("/activity")');
-    expect(PROXY).not.toContain("LIVE MOBILE BUGFIX");
+    expect(rule3).toContain('pathname.startsWith("/activity")');
+    // e resta nel blocco che fa `return sessionResponse` PRIMA del gate di
+    // ruolo (4) e della riscrittura (5)
+    const rule3Return = rule3.indexOf("return sessionResponse;");
+    expect(rule3.indexOf('pathname.startsWith("/activity")')).toBeLessThan(rule3Return);
+    // il ramo famiglia continua a escludere /activity dal gate di login
+    const familyBranch = PROXY.slice(PROXY.indexOf('if (tenant === "family")'), PROXY.indexOf("// 3) Percorsi condivisi"));
+    expect(familyBranch).toContain('!pathname.startsWith("/activity")');
   });
 });
 
@@ -207,7 +213,7 @@ test.describe("TRAMA Partner — scheda attività in anteprima: call site [no br
 //   - genitore: riga profiles propria, center_id null
 //   - gestore di altro centro: center_id del proprio centro (≠)
 //   - gestore proprietario: center_id = activities.center_id
-// I test HTTP reali (senza cookie e con login) sono in
+// I test HTTP reali (anche sull'host Partner, PCM-10) (senza cookie e con login) sono in
 // tests/gestore/profilo-centro-mobile.spec.ts (PCM-07..09).
 const ACTIVITY_CENTER = { activityCenterDbId: "f572aa29", activityCenterSlug: "centro-estivo-prova-candidatura" };
 

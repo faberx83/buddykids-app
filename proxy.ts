@@ -167,6 +167,17 @@ export async function proxy(request: NextRequest) {
     pathname.startsWith("/manifest") ||
     pathname.startsWith("/privacy") ||
     pathname.startsWith("/terms") ||
+    // TRAMA PARTNER — anteprima famiglia (01/10/2026). BUG LIVE: dal portale
+    // Partner in produzione (buddykids-partner.vercel.app, alias impostato da
+    // deploy.sh [4/5] → tenant "partner") il click su "Vedi come ti vedono le
+    // famiglie" (/activity/<slug>?anteprima=partner) dava 404: la regola 5)
+    // sotto riscriveva /activity/<slug> in /center/activity/<slug>, che non
+    // esiste (log Vercel 01/10 10:55: GET /activity/prova-fp 404). La scheda
+    // attività è pubblica per costruzione (stessa esclusione /activity del
+    // ramo famiglia sopra, RLS "lettura pubblica"): va servita così com'è
+    // anche qui, nella stessa sessione Partner — così page.tsx può
+    // riconoscere il gestore e mostrare la barra di anteprima.
+    pathname.startsWith("/activity") ||
     pathname === "/sw.js"
   ) {
     return sessionResponse;
