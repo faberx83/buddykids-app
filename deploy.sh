@@ -13,6 +13,9 @@
 #   TEST_BASE_URL=<url> ONLY_SITEMAP=1 bash deploy.sh  # sitemap contro <url> invece della produzione
 #   ALLOW_TEST_FAILURES=1 bash deploy.sh           # non blocca su test falliti (passato a test-deploy.sh)
 #   TEST_SCOPE=smoke|journeys|critical|all bash deploy.sh  # scope dei test (passato a test-deploy.sh)
+#   PATCH=~/Downloads/x.patch bash deploy.sh       # applica una patch di Claude (git am) e poi fa il deploy
+#   APPLY_SQL="supabase/a.sql supabase/b.sql" bash deploy.sh   # esegue SQL in produzione PRIMA del deploy
+#   APPLY_SQL="supabase/x.sql" SQL_ONLY=1 bash deploy.sh       # solo SQL, nessun deploy (vedi [0/5])
 #   INCLUDE_MOBILE=1 bash deploy.sh                # include il progetto mobile-chrome anche in TEST_SCOPE=critical
 #   ALLOW_PROD_FROM_NON_MAIN=1 bash deploy.sh      # override esplicito per deployare da un branch diverso da main
 #   ALLOW_DIRTY_PROD=1 bash deploy.sh              # override esplicito per deployare con working tree sporco
@@ -187,6 +190,98 @@ if [ -n "$ONLY_SITEMAP" ]; then
   echo ""
   bash test-deploy.sh "$SITEMAP_TARGET"
   exit $?
+fi
+
+# ────────────────────────────────────────────────────────────────
+# [0/5] Tutto da shell (richiesta di Fabrizio, 07/10/2026): patch di Claude e
+# SQL (migration, script flag) applicati da questo stesso comando, senza
+# passare da SQL Editor o terminali separati. Entrambi OPZIONALI: senza
+# PATCH / APPLY_SQL lo script si comporta esattamente come prima.
+#
+#   PATCH=~/Downloads/x.patch bash deploy.sh
+#       → git am della patch (deve stare FUORI dal repo, altrimenti il working
+#         tree risulterebbe sporco), poi il deploy normale.
+#   APPLY_SQL="supabase/migration_40_....sql" bash deploy.sh
+#       → esegue i file SQL (in ordine, ognuno in una transazione unica, stop
+#         al primo errore) PRIMA del push/deploy. Richiede SUPABASE_DB_URL in
+#         .env.deploy e psql installato (brew install libpq).
+#   APPLY_SQL="supabase/script_....sql" SQL_ONLY=1 bash deploy.sh
+#       → solo SQL, nessun push, nessun deploy (es. promozione flag).
+#
+# Conferma esplicita prima di ogni SQL (scrivi APPLICA); ASSUME_YES=1 la salta.
+# ────────────────────────────────────────────────────────────────
+if [ -n "$PATCH" ]; then
+  echo "[0/5] 🩹 Applico la patch: $PATCH"
+  if [ ! -f "$PATCH" ]; then
+    echo "🛑 Patch non trovata: $PATCH"
+    exit 1
+  fi
+  PATCH_ABS="$(cd "$(dirname "$PATCH")" && pwd)/$(basename "$PATCH")"
+  REPO_ROOT="$(git rev-parse --show-toplevel)"
+  case "$PATCH_ABS" in
+    "$REPO_ROOT"/*)
+      echo "🛑 La patch è dentro il repository ($PATCH_ABS): spostala fuori (es. ~/Downloads) e rilancia."
+      exit 1
+      ;;
+  esac
+  if [ "$(git branch --show-current)" != "main" ]; then
+    echo "🛑 Patch non applicata: branch corrente diverso da 'main'."
+    exit 1
+  fi
+  if [ -n "$(git status --porcelain)" ]; then
+    echo "🛑 Patch non applicata: working tree sporco. Committa o ripulisci prima."
+    git status --short
+    exit 1
+  fi
+  if git am --3way "$PATCH_ABS"; then
+    echo "✅ Patch applicata: $(git log --oneline -1)"
+  else
+    git am --abort >/dev/null 2>&1 || true
+    echo "🛑 git am fallito: patch NON applicata, repository riportato allo stato precedente."
+    exit 1
+  fi
+  echo ""
+fi
+
+if [ -n "$APPLY_SQL" ]; then
+  echo "[0/5] 🗄️  SQL da applicare in produzione (Supabase):"
+  for f in $APPLY_SQL; do
+    if [ ! -f "$f" ]; then
+      echo "🛑 File SQL non trovato: $f"
+      exit 1
+    fi
+    echo "     - $f"
+  done
+  if [ -z "$SUPABASE_DB_URL" ]; then
+    echo "🛑 SUPABASE_DB_URL non impostata: aggiungila a .env.deploy (vedi .env.deploy.example)."
+    exit 1
+  fi
+  if ! command -v psql >/dev/null 2>&1; then
+    echo "🛑 psql non trovato: installalo con 'brew install libpq && brew link --force libpq'."
+    exit 1
+  fi
+  if [ -z "$ASSUME_YES" ]; then
+    printf "⚠️  Questi file scrivono sul database di PRODUZIONE. Scrivi APPLICA per confermare: "
+    read -r SQL_CONFIRM
+    if [ "$SQL_CONFIRM" != "APPLICA" ]; then
+      echo "🛑 Annullato: nessun SQL eseguito, nessun deploy."
+      exit 1
+    fi
+  fi
+  for f in $APPLY_SQL; do
+    echo "▶️  $f"
+    if psql "$SUPABASE_DB_URL" -v ON_ERROR_STOP=1 --single-transaction -f "$f"; then
+      echo "✅ $f applicato."
+    else
+      echo "🛑 $f FALLITO (transazione annullata). Stop: nessun file successivo, nessun deploy."
+      exit 1
+    fi
+  done
+  echo ""
+  if [ -n "$SQL_ONLY" ]; then
+    echo "✅ SQL_ONLY: SQL applicato, nessun push e nessun deploy eseguiti."
+    exit 0
+  fi
 fi
 
 # ────────────────────────────────────────────────────────────────
