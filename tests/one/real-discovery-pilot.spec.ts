@@ -723,9 +723,11 @@ test.describe("DISCOVERY MAP + POLISH — popup (statico sul sorgente)", () => {
     expect(before.lastIndexOf("invitable &&")).toBeGreaterThan(before.lastIndexOf("</a>"));
   });
 
-  test("MAP-15: il popup mostra la microcopy 'Gestore non ancora identificato da TRAMA' solo per i lead non invitabili", () => {
+  // FAMILY-FIRST BETA PASS (07/10/2026): microcopy riformulata in positivo
+  // ("puoi comunque salvarla e organizzarla"), stessa condizione !invitable.
+  test("MAP-15: il popup mostra la microcopy 'Il centro non è ancora su TRAMA' solo per i lead non invitabili", () => {
     const source = readSource("../../components/nextgen/DiscoveryMapPopupCard.tsx");
-    expect(source).toContain("Gestore non ancora identificato da TRAMA");
+    expect(source).toContain("Il centro non è ancora su TRAMA: puoi comunque salvarla e organizzarla.");
     expect(source).toContain("{!invitable && (");
   });
 

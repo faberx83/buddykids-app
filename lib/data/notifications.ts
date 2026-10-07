@@ -206,7 +206,10 @@ export async function getParentNotifications(): Promise<NotificationItem[]> {
       id: makeNotificationId("trama_announcement", a.id),
       type: "trama_announcement",
       priority: "info",
-      title: a.userTitle,
+      // FAMILY-FIRST BETA PASS (07/10/2026): una voce "In arrivo" si
+      // dichiara tale anche nella campanella (mai scambiabile per una
+      // funzione già disponibile); il deepLink è già la sua ancora in Novità.
+      title: a.availability === "coming_soon" ? `In arrivo: ${a.userTitle}` : a.userTitle,
       body: a.userBody,
       relevantAt: `${a.releasedAt}T00:00:00.000Z`,
       isSeen: false,

@@ -20,7 +20,10 @@
 import { createClient } from "@/lib/supabase/server";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
 import { revalidatePath } from "next/cache";
-import { getAnnouncementById } from "@/lib/announcements/catalog";
+import { getAnnouncementById, isComingSoon } from "@/lib/announcements/catalog";
+import { isMissingTableError, voteTelemetryDetail } from "@/lib/announcements/votes";
+import { persistProductEvent } from "@/lib/telemetry/events";
+import { generateCorrelationId } from "@/lib/telemetry/correlation";
 
 async function upsertReceipt(
   announcementId: string,
@@ -64,4 +67,98 @@ export async function markAnnouncementSeenAction(announcementId: string): Promis
 
 export async function dismissAnnouncementCalloutAction(announcementId: string): Promise<{ error?: string }> {
   return upsertReceipt(announcementId, "dismissed_at");
+}
+
+// ════════════════════════════════════════════════════════════════
+// TRAMA — FAMILY-FIRST BETA PASS (07/10/2026)
+// ════════════════════════════════════════════════════════════════
+
+/**
+ * Apertura della pagina Novità: le voci visibili ancora non lette diventano
+ * lette (stesso seen_at della campanella), così il badge si spegne anche
+ * leggendole dalla pagina e non solo cliccandole nella campanella. Le
+ * dismissioni dei callout contestuali (dismissed_at) non vengono toccate:
+ * l'upsert scrive solo seen_at.
+ */
+export async function markAnnouncementsSeenFromNovitaAction(announcementIds: string[]): Promise<{ error?: string }> {
+  if (!isSupabaseConfigured) return { error: "Supabase non configurato" };
+  const entries = announcementIds
+    .map((id) => getAnnouncementById(id))
+    .filter((e): e is NonNullable<typeof e> => Boolean(e));
+  if (entries.length === 0) return {};
+
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { error: "Non autenticato" };
+
+  const now = new Date().toISOString();
+  const { error } = await supabase.from("announcement_receipts").upsert(
+    entries.map((e) => ({
+      parent_id: user.id,
+      announcement_id: e.id,
+      announcement_version: e.version,
+      seen_at: now,
+    })),
+    { onConflict: "parent_id,announcement_id,announcement_version" }
+  );
+  if (error) return { error: error.message };
+
+  for (const e of entries) {
+    await persistProductEvent(
+      { event: "announcement_read", correlationId: generateCorrelationId(), tenant: "family", detail: e.id },
+      { supabase, userId: user.id }
+    );
+  }
+
+  revalidatePath("/nextgen", "layout");
+  return {};
+}
+
+/**
+ * 👍/👎 su una voce "In arrivo" (announcement_votes, migration 40). vote = 0
+ * ritira il voto. Accettato SOLO per voci coming_soon del catalogo.
+ */
+export async function setAnnouncementVoteAction(
+  announcementId: string,
+  vote: -1 | 0 | 1
+): Promise<{ error?: string }> {
+  if (!isSupabaseConfigured) return { error: "Supabase non configurato" };
+  const entry = getAnnouncementById(announcementId);
+  if (!entry || !isComingSoon(entry)) return { error: "Voce non votabile" };
+  if (vote !== -1 && vote !== 0 && vote !== 1) return { error: "Voto non valido" };
+
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { error: "Non autenticato" };
+
+  const { error } =
+    vote === 0
+      ? await supabase.from("announcement_votes").delete().eq("parent_id", user.id).eq("announcement_id", announcementId)
+      : await supabase
+          .from("announcement_votes")
+          .upsert(
+            { parent_id: user.id, announcement_id: announcementId, vote, updated_at: new Date().toISOString() },
+            { onConflict: "parent_id,announcement_id" }
+          );
+  if (error) {
+    if (isMissingTableError(error)) return { error: "Il voto non è ancora disponibile." };
+    return { error: error.message };
+  }
+
+  await persistProductEvent(
+    {
+      event: "announcement_voted",
+      correlationId: generateCorrelationId(),
+      tenant: "family",
+      detail: voteTelemetryDetail(announcementId, vote),
+    },
+    { supabase, userId: user.id }
+  );
+
+  revalidatePath("/nextgen/novita");
+  return {};
 }

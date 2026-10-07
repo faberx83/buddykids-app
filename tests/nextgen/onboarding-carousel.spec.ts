@@ -1,9 +1,22 @@
 import { test, expect } from "../fixtures/roles";
 import { loginAs, isRealDeployment } from "../fixtures/roles";
 import { WALKTHROUGH_REGISTRY } from "../../lib/walkthrough/registry";
-import { ONBOARDING_SLIDES, ONBOARDING_FLOW_STAGES } from "../../lib/nextgen/onboarding-slides";
+import {
+  ONBOARDING_SLIDES,
+  PARENT_ONBOARDING_TUTORIAL_KEY,
+  PARENT_ONBOARDING_STEP_KEY,
+} from "../../lib/nextgen/onboarding-slides";
+
+const DIALOG_NAME = "Trova attività giuste per i tuoi figli.";
+const LAST_TITLE = "Fate rete con altre famiglie.";
 
 // TRAMA — Parent Private Beta Onboarding Carousel.
+//
+// FAMILY-FIRST BETA PASS (07/10/2026): nuova versione a 4 schermate (Scopri,
+// Organizza, Coordina, Insieme) con chiave di tutorial "family_first_onboarding"
+// e visibile anche all'Admin piattaforma nell'app famiglie. Test aggiornati:
+// stessi controlli (comparsa, Salta, completa, persistenza, ruoli, tastiera,
+// replay), testi e conteggi della nuova versione.
 //
 // FINAL PRE-FREEZE WAVE (08/09/2026) — copy sostituita integralmente (vedi
 // lib/nextgen/onboarding-slides.ts), test aggiornati di conseguenza. I test
@@ -26,15 +39,17 @@ test.describe("TRAMA — Onboarding Carousel Parent (Private Beta)", () => {
   test("ONB-P01 - Parent prima esperienza -> carousel visibile", async ({ page }) => {
     test.skip(
       !isRealDeployment,
-      "Richiede un deploy con Supabase configurato, account genitore di test in cohort TRAMA_ONE_ENABLED, e stato tutorial 'parent_beta_onboarding' non ancora risolto."
+      "Richiede un deploy con Supabase configurato, account genitore di test in cohort TRAMA_ONE_ENABLED, e stato tutorial 'family_first_onboarding' non ancora risolto."
     );
     await loginAs(page, "parent");
     await page.goto("/nextgen");
 
-    const dialog = page.getByRole("dialog", { name: "Le attività dei tuoi figli sono sparse." });
+    const dialog = page.getByRole("dialog", { name: DIALOG_NAME });
     await expect(dialog).toBeVisible();
-    await expect(dialog.getByText("1/5")).toBeVisible();
-    await expect(dialog.getByText("Le loro settimane non devono esserlo.")).toBeVisible();
+    await expect(dialog.getByText("1/4")).toBeVisible();
+    await expect(
+      dialog.getByText("Sport, musica, centri estivi: cerca per età, zona e settimana, e salva quello che ti interessa.")
+    ).toBeVisible();
     await expect(dialog.getByRole("button", { name: "Continua" })).toBeVisible();
     await expect(dialog.getByRole("button", { name: "Salta" })).toBeVisible();
   });
@@ -47,14 +62,14 @@ test.describe("TRAMA — Onboarding Carousel Parent (Private Beta)", () => {
     await loginAs(page, "parent");
     await page.goto("/nextgen");
 
-    const dialog = page.getByRole("dialog", { name: "Le attività dei tuoi figli sono sparse." });
+    const dialog = page.getByRole("dialog", { name: DIALOG_NAME });
     if (await dialog.isVisible().catch(() => false)) {
       await dialog.getByRole("button", { name: "Salta" }).click();
       await expect(dialog).toHaveCount(0);
     }
 
     await page.reload();
-    await expect(page.getByRole("dialog", { name: "Le attività dei tuoi figli sono sparse." })).toHaveCount(0);
+    await expect(page.getByRole("dialog", { name: DIALOG_NAME })).toHaveCount(0);
   });
 
   test("ONB-P03 - 'Salta' persiste il completamento (chiude subito, resta chiuso dopo reload)", async ({ page }) => {
@@ -65,7 +80,7 @@ test.describe("TRAMA — Onboarding Carousel Parent (Private Beta)", () => {
     await loginAs(page, "parent");
     await page.goto("/nextgen");
 
-    const dialog = page.getByRole("dialog", { name: "Le attività dei tuoi figli sono sparse." });
+    const dialog = page.getByRole("dialog", { name: DIALOG_NAME });
     if (!(await dialog.isVisible().catch(() => false))) {
       test.skip(true, "Carousel già risolto per questo account: nessuna 'prima esperienza' da saltare in questo run.");
     }
@@ -73,10 +88,10 @@ test.describe("TRAMA — Onboarding Carousel Parent (Private Beta)", () => {
     await expect(dialog).toHaveCount(0);
 
     await page.reload();
-    await expect(page.getByRole("dialog", { name: "Le attività dei tuoi figli sono sparse." })).toHaveCount(0);
+    await expect(page.getByRole("dialog", { name: DIALOG_NAME })).toHaveCount(0);
   });
 
-  test("ONB-P04 - Completare 5/5 (Continua x4 + CTA finale) persiste il completamento", async ({ page }) => {
+  test("ONB-P04 - Completare 4/4 (Continua x3 + CTA finale) persiste il completamento", async ({ page }) => {
     test.skip(
       !isRealDeployment,
       "Richiede un deploy con Supabase configurato, account genitore di test in cohort, e carousel non ancora risolto."
@@ -84,38 +99,38 @@ test.describe("TRAMA — Onboarding Carousel Parent (Private Beta)", () => {
     await loginAs(page, "parent");
     await page.goto("/nextgen");
 
-    const dialog = page.getByRole("dialog", { name: "Le attività dei tuoi figli sono sparse." });
+    const dialog = page.getByRole("dialog", { name: DIALOG_NAME });
     if (!(await dialog.isVisible().catch(() => false))) {
       test.skip(true, "Carousel già risolto per questo account: nessuna 'prima esperienza' da completare in questo run.");
     }
 
-    for (const expectedProgress of ["1/5", "2/5", "3/5", "4/5"]) {
+    for (const expectedProgress of ["1/4", "2/4", "3/4"]) {
       await expect(dialog.getByText(expectedProgress)).toBeVisible();
       await dialog.getByRole("button", { name: "Continua" }).click();
     }
-    await expect(dialog.getByText("5/5")).toBeVisible();
-    await expect(dialog.getByText("Condividi. Coordina. Intreccia.")).toBeVisible();
+    await expect(dialog.getByText("4/4")).toBeVisible();
+    await expect(dialog.getByRole("heading", { name: LAST_TITLE })).toBeVisible();
     await dialog.getByRole("button", { name: "Inizia a organizzare" }).click();
     await expect(dialog).toHaveCount(0);
 
     await page.reload();
-    await expect(page.getByRole("dialog", { name: "Le attività dei tuoi figli sono sparse." })).toHaveCount(0);
+    await expect(page.getByRole("dialog", { name: DIALOG_NAME })).toHaveCount(0);
   });
 
   test("ONB-P05 - Partner non vede mai il carousel Parent", async ({ page }) => {
     test.skip(!isRealDeployment, "Richiede un deploy con Supabase configurato e l'account gestore di test.");
     await loginAs(page, "center_admin");
     await page.goto("/center");
-    await expect(page.getByRole("dialog", { name: "Le attività dei tuoi figli sono sparse." })).toHaveCount(0);
-    await expect(page.getByText("Condividi. Coordina. Intreccia.")).toHaveCount(0);
+    await expect(page.getByRole("dialog", { name: DIALOG_NAME })).toHaveCount(0);
+    await expect(page.getByRole("heading", { name: LAST_TITLE })).toHaveCount(0);
   });
 
-  test("ONB-P06 - Admin non vede mai il carousel Parent", async ({ page }) => {
+  test("ONB-P06 - Admin non vede il carousel nell'area Admin", async ({ page }) => {
     test.skip(!isRealDeployment, "Richiede un deploy con Supabase configurato e l'account platform admin di test.");
     await loginAs(page, "platform_admin");
     await page.goto("/admin");
-    await expect(page.getByRole("dialog", { name: "Le attività dei tuoi figli sono sparse." })).toHaveCount(0);
-    await expect(page.getByText("Condividi. Coordina. Intreccia.")).toHaveCount(0);
+    await expect(page.getByRole("dialog", { name: DIALOG_NAME })).toHaveCount(0);
+    await expect(page.getByRole("heading", { name: LAST_TITLE })).toHaveCount(0);
   });
 
   // NOTA (§15/ONB-P07): LEGAL_TERMS_GATE è OFF in produzione oggi e questa
@@ -135,7 +150,7 @@ test.describe("TRAMA — Onboarding Carousel Parent (Private Beta)", () => {
     await loginAs(page, "parent");
     await page.goto("/nextgen");
     await expect(page).toHaveURL(/\/auth\/legal-pending/);
-    await expect(page.getByRole("dialog", { name: "Le attività dei tuoi figli sono sparse." })).toHaveCount(0);
+    await expect(page.getByRole("dialog", { name: DIALOG_NAME })).toHaveCount(0);
   });
 
   test("ONB-P11 - 390px: nessun overflow orizzontale evidente", async ({ page }) => {
@@ -147,7 +162,7 @@ test.describe("TRAMA — Onboarding Carousel Parent (Private Beta)", () => {
     await loginAs(page, "parent");
     await page.goto("/nextgen");
 
-    const dialog = page.getByRole("dialog", { name: "Le attività dei tuoi figli sono sparse." });
+    const dialog = page.getByRole("dialog", { name: DIALOG_NAME });
     if (!(await dialog.isVisible().catch(() => false))) {
       test.skip(true, "Carousel già risolto per questo account in questo run.");
     }
@@ -165,15 +180,15 @@ test.describe("TRAMA — Onboarding Carousel Parent (Private Beta)", () => {
     await loginAs(page, "parent");
     await page.goto("/nextgen");
 
-    const dialog = page.getByRole("dialog", { name: "Le attività dei tuoi figli sono sparse." });
+    const dialog = page.getByRole("dialog", { name: DIALOG_NAME });
     if (!(await dialog.isVisible().catch(() => false))) {
       test.skip(true, "Carousel già risolto per questo account in questo run.");
     }
-    await expect(dialog.getByText("1/5")).toBeVisible();
+    await expect(dialog.getByText("1/4")).toBeVisible();
     await expect(dialog).toBeFocused();
 
     await page.keyboard.press("ArrowRight");
-    await expect(dialog.getByText("2/5")).toBeVisible();
+    await expect(dialog.getByText("2/4")).toBeVisible();
 
     await page.keyboard.press("Escape");
     await expect(dialog).toHaveCount(0);
@@ -187,30 +202,26 @@ test.describe("TRAMA — Onboarding Carousel Parent (Private Beta)", () => {
 // tests/one/planner-first-uncovered.spec.ts).
 // ————————————————————————————————————————————————————————————————————————
 test.describe("TRAMA — Onboarding Carousel [no browser]", () => {
-  test("registry: parent_beta_onboarding esiste con un solo step sentinella 'carousel'", () => {
-    const definition = WALKTHROUGH_REGISTRY.parent_beta_onboarding;
+  test("registry: family_first_onboarding esiste con un solo step sentinella 'carousel'", () => {
+    expect(PARENT_ONBOARDING_TUTORIAL_KEY).toBe("family_first_onboarding");
+    expect(PARENT_ONBOARDING_STEP_KEY).toBe("carousel");
+    const definition = WALKTHROUGH_REGISTRY[PARENT_ONBOARDING_TUTORIAL_KEY];
     expect(definition).toBeTruthy();
     expect(definition.steps.map((s) => s.key)).toEqual(["carousel"]);
+    // la versione precedente resta registrata solo per lo storico
+    expect(WALKTHROUGH_REGISTRY.parent_beta_onboarding).toBeTruthy();
   });
 
-  test("ONB-P08 [no browser] - la slide 4 (dal centro alla giornata) non implica conferma istantanea: 'Stato' resta una tappa distinta", () => {
-    // FINAL PRE-FREEZE WAVE (08/09/2026) — invariante riscritto: la vecchia
-    // slide "richiesta" (ONBOARDING_REQUEST_FLOW, "Tu chiedi. Il centro
-    // risponde.") non esiste più (copy sostituita integralmente). L'intento
-    // originale del test — non lasciar intendere che una prenotazione sia
-    // confermata all'istante — è preservato verificando che il flusso
-    // ONBOARDING_FLOW_STAGES della nuova slide 4 ("Dal centro alla
-    // giornata.") contenga ancora una tappa "Stato" distinta da "Centro" e
-    // "Presenza".
-    const slide4 = ONBOARDING_SLIDES[3];
-    expect(slide4.key).toBe("from-center-to-day");
-    expect(slide4.title).toBe("Dal centro alla giornata.");
-    expect(ONBOARDING_FLOW_STAGES.some((s) => s.label === "Stato")).toBe(true);
+  test("ONB-P08 [no browser] - Scopri → Organizza → Coordina → Insieme, progress 1/4..4/4", () => {
+    expect(ONBOARDING_SLIDES.map((s) => s.eyebrow)).toEqual(["Scopri", "Organizza", "Coordina", "Insieme"]);
+    expect(ONBOARDING_SLIDES.map((s) => s.progress)).toEqual(["1/4", "2/4", "3/4", "4/4"]);
+    expect(ONBOARDING_SLIDES[ONBOARDING_SLIDES.length - 1].ctaLabel).toBe("Inizia a organizzare");
+    for (const s of ONBOARDING_SLIDES.slice(0, -1)) expect(s.ctaLabel).toBe("Continua");
   });
 
   test("ONB-P09 [no browser] - nessuna slide menziona scoring/AI ranking ('Match 99%' o simili)", () => {
     for (const slide of ONBOARDING_SLIDES) {
-      const haystack = `${slide.title} ${slide.body} ${slide.microCopy ?? ""}`;
+      const haystack = `${slide.titleBefore}${slide.titleHighlight}${slide.titleAfter} ${slide.body} ${slide.note} ${slide.pops.map((p) => `${p.title} ${p.subtitle}`).join(" ")}`;
       expect(haystack).not.toMatch(/match\s*\d+%/i);
       expect(haystack.toLowerCase()).not.toContain("scoring");
       expect(haystack.toLowerCase()).not.toContain("ranking");
@@ -220,21 +231,50 @@ test.describe("TRAMA — Onboarding Carousel [no browser]", () => {
   test("ONB-P10 [no browser] - nessuna slide menziona pagamento/checkout/carta/transazione", () => {
     const forbidden = /pagamento|checkout|carta di credito|transazione|totale da pagare/i;
     for (const slide of ONBOARDING_SLIDES) {
-      const haystack = `${slide.title} ${slide.body} ${slide.microCopy ?? ""}`;
+      const haystack = `${slide.titleBefore}${slide.titleHighlight}${slide.titleAfter} ${slide.body} ${slide.note}`;
       expect(haystack).not.toMatch(forbidden);
     }
   });
 
-  test("Slide 2 usa il titolo DEFINITIVO approvato in questa wave ('Quando resta un buco, TRAMA ti aiuta a riempirlo.')", () => {
-    // FINAL PRE-FREEZE WAVE (08/09/2026) — titolo precedente ("Le tue
-    // settimane, finalmente visibili") sostituito con la nuova copy
-    // verbatim dallo spec Fabrizio; invariante aggiornato di conseguenza.
-    const slide2 = ONBOARDING_SLIDES[1];
-    expect(slide2.title).toBe("Quando resta un buco, TRAMA ti aiuta a riempirlo.");
+  test("ONB-P14 [no browser] - family-first: la prima slide dice che TRAMA serve anche se il centro non è su TRAMA", () => {
+    expect(ONBOARDING_SLIDES[0].note).toBe("Anche quando il centro non è ancora su TRAMA.");
+    const titles = ONBOARDING_SLIDES.map((s) => `${s.titleBefore}${s.titleHighlight}${s.titleAfter}`);
+    expect(titles).toEqual([
+      "Trova attività giuste per i tuoi figli.",
+      "Tutto nello stesso Planner.",
+      "Chi porta, chi riprende.",
+      "Fate rete con altre famiglie.",
+    ]);
   });
 
-  test("5 slide totali, progress 1/5..5/5 nell'ordine atteso", () => {
-    expect(ONBOARDING_SLIDES.map((s) => s.progress)).toEqual(["1/5", "2/5", "3/5", "4/5", "5/5"]);
+  test("ONB-P15 [no browser] - le funzioni future compaiono SOLO come 'In arrivo' (deleghe)", () => {
+    const pops = ONBOARDING_SLIDES.flatMap((s) => s.pops);
+    const deleghe = pops.filter((p) => /deleg/i.test(p.title));
+    expect(deleghe).toHaveLength(1);
+    expect(deleghe[0].comingSoon).toBe(true);
+    for (const s of ONBOARDING_SLIDES) {
+      expect(`${s.body} ${s.note}`.toLowerCase()).not.toContain("deleg");
+    }
+  });
+
+  test("ONB-P16 [no browser] - il carousel compare per genitori e Admin piattaforma nell'app famiglie, non per i gestori", () => {
+    const fs = require("fs") as typeof import("fs");
+    const path = require("path") as typeof import("path");
+    const layout = fs.readFileSync(path.join(__dirname, "../../app/nextgen/layout.tsx"), "utf-8");
+    expect(layout).toContain('if (enabled && (realRole === "parent" || realRole === "platform_admin")) {');
+    expect(layout).toContain("getWalkthroughProgress(user.id, PARENT_ONBOARDING_TUTORIAL_KEY)");
+  });
+
+  test("ONB-P17 [no browser] - animazioni solo CSS, disattivate con prefers-reduced-motion", () => {
+    const fs = require("fs") as typeof import("fs");
+    const path = require("path") as typeof import("path");
+    const component = fs.readFileSync(path.join(__dirname, "../../components/nextgen/OnboardingCarousel.tsx"), "utf-8");
+    const css = fs.readFileSync(path.join(__dirname, "../../app/globals.css"), "utf-8");
+    for (const name of ["trama-onb-float", "trama-onb-screen", "trama-onb-text-next", "trama-onb-pop-left", "trama-onb-pop-right"]) {
+      expect(css).toContain(`@keyframes ${name}`);
+      expect(component).toContain(`motion-safe:animate-[${name}`);
+    }
+    expect(component).not.toContain("gsap");
   });
 });
 
@@ -243,11 +283,11 @@ test.describe("TRAMA — Onboarding Carousel [no browser]", () => {
 // questa wave non esisteva alcun modo per un genitore di far ripartire il
 // carousel dopo la prima sessione. Gated isRealDeployment come gli altri
 // test "dal vivo" di questa suite: verifica solo che il bottone esista e
-// che, cliccato, riporti il carousel alla slide 1/5 alla navigazione
+// che, cliccato, riporti il carousel alla slide 1/4 alla navigazione
 // successiva — non duplica ONB-P01/P04 (contenuto slide già coperto lì).
 // ————————————————————————————————————————————————————————————————————————
 test.describe("TRAMA — Onboarding Carousel Parent — Replay", () => {
-  test("ONB-P13 - 'Rivedi introduzione TRAMA' da Preferenze riavvia il carousel dalla slide 1/5", async ({ page }) => {
+  test("ONB-P13 - 'Rivedi introduzione TRAMA' da Preferenze riavvia il carousel dalla slide 1/4", async ({ page }) => {
     test.skip(
       !isRealDeployment,
       "Richiede un deploy con Supabase configurato e account genitore di test in cohort TRAMA_ONE_ENABLED."
@@ -263,8 +303,8 @@ test.describe("TRAMA — Onboarding Carousel Parent — Replay", () => {
     await expect(page.getByText(/Introduzione riavviata/)).toBeVisible();
 
     await page.goto("/nextgen");
-    const dialog = page.getByRole("dialog", { name: "Le attività dei tuoi figli sono sparse." });
+    const dialog = page.getByRole("dialog", { name: DIALOG_NAME });
     await expect(dialog).toBeVisible();
-    await expect(dialog.getByText("1/5")).toBeVisible();
+    await expect(dialog.getByText("1/4")).toBeVisible();
   });
 });

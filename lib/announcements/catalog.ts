@@ -24,6 +24,22 @@ import type { KnownFeatureFlagName } from "@/lib/feature-flags/registry";
 
 export type AnnouncementAudience = "parent";
 
+/**
+ * TRAMA — FAMILY-FIRST BETA PASS (07/10/2026), decisione di Fabrizio:
+ * l'area Novità comunica anche evoluzioni REALMENTE pianificate.
+ *  - "available"   (default): funzione rilasciata e utilizzabile; la CTA porta
+ *                   alla funzione (regola §13 invariata).
+ *  - "coming_soon": "In arrivo". Nessuna CTA verso la funzione (non esiste
+ *                   ancora): il deepLink punta alla voce stessa dentro la
+ *                   pagina Novità. Niente date, niente requiredFeatureFlag
+ *                   (non c'è una capability da sbloccare). Raccoglie 👍/👎.
+ * Il badge resta "hai una novità da leggere": una voce In arrivo genera
+ * unread quando viene pubblicata e si spegne quando l'utente la legge, non
+ * resta accesa fino al rilascio. Al rilascio vero: availability "available",
+ * deepLink alla funzione e version + 1 (torna "nuova" per tutti).
+ */
+export type AnnouncementAvailability = "available" | "coming_soon";
+
 export interface AnnouncementCatalogEntry {
   /** Identificatore stabile, kebab-case — usato come chiave in announcement_receipts.announcement_id. */
   id: string;
@@ -57,6 +73,21 @@ export interface AnnouncementCatalogEntry {
   contextualSurface?: string;
   /** ISO date — per l'ordinamento "Novità TRAMA" (Level 3, §10) e per relevantAt nel Notification Center. */
   releasedAt: string;
+  /** Assente = "available". Vedi AnnouncementAvailability. */
+  availability?: AnnouncementAvailability;
+}
+
+export function announcementAvailability(a: Pick<AnnouncementCatalogEntry, "availability">): AnnouncementAvailability {
+  return a.availability ?? "available";
+}
+
+export function isComingSoon(a: Pick<AnnouncementCatalogEntry, "availability">): boolean {
+  return announcementAvailability(a) === "coming_soon";
+}
+
+/** Ancora della voce dentro /nextgen/novita (usata come deepLink delle voci In arrivo). */
+export function novitaAnchorHref(id: string): string {
+  return `/nextgen/novita#${id}`;
 }
 
 export const ANNOUNCEMENT_CATALOG: AnnouncementCatalogEntry[] = [
@@ -101,6 +132,36 @@ export const ANNOUNCEMENT_CATALOG: AnnouncementCatalogEntry[] = [
     userBody: "Ora puoi aggiungere ai Preferiti anche le attività che TRAMA ha trovato sul territorio.",
     deepLink: "/nextgen/preferiti",
     releasedAt: "2026-09-23",
+  },
+  // TRAMA — FAMILY-FIRST BETA PASS (07/10/2026). Voci "In arrivo" decise da
+  // Fabrizio (D2). Prodotto: claude/DECISIONI_ACCOMPAGNAMENTO_RITIRO_20260930.md.
+  // Testi volutamente prudenti: niente date, niente promesse rigide; per le
+  // deleghe nessun dettaglio sul meccanismo finché non c'è il parere legale.
+  {
+    id: "accompagnamento-ritiro",
+    releaseId: "accompagnamento-ritiro",
+    version: 1,
+    audience: ["parent"],
+    announceToUsers: true,
+    availability: "coming_soon",
+    userTitle: "Chi accompagna e chi ritira, attività per attività",
+    userBody:
+      "Stiamo lavorando per farti indicare chi porta e chi riprende per ogni singola attività, coinvolgendo anche nonni, tata o un altro genitore.",
+    deepLink: novitaAnchorHref("accompagnamento-ritiro"),
+    releasedAt: "2026-10-07",
+  },
+  {
+    id: "deleghe-smart",
+    releaseId: "deleghe-smart",
+    version: 1,
+    audience: ["parent"],
+    announceToUsers: true,
+    availability: "coming_soon",
+    userTitle: "Deleghe smart per il ritiro",
+    userBody:
+      "Stiamo studiando un modo semplice e sicuro per autorizzare chi ritira i tuoi figli al centro, senza moduli di carta. Ci interessa sapere se ti sarebbe utile.",
+    deepLink: novitaAnchorHref("deleghe-smart"),
+    releasedAt: "2026-10-07",
   },
 ];
 

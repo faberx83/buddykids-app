@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import type { BetaFeedbackItem, BetaFeedbackStatus, BetaFeedbackSource } from "@/lib/nextgen/beta-feedback-shared";
-import { computeBetaFeedbackCounts } from "@/lib/nextgen/beta-feedback-shared";
+import { computeBetaFeedbackCounts, betaFeedbackCategoryLabel } from "@/lib/nextgen/beta-feedback-shared";
 import { updateBetaFeedbackStatusAction, confirmBetaFeedbackForPipelineAction } from "@/app/actions/beta-feedback";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
 
@@ -167,6 +167,11 @@ export default function SegnalazioniBetaAdminClient({ initialItems }: { initialI
                   <span className={`rounded-full px-2 py-0.5 text-[10.5px] font-semibold ${SOURCE_LABEL[item.appSource].cls}`}>
                     {SOURCE_LABEL[item.appSource].label}
                   </span>
+                  {item.category && (
+                    <span className="rounded-full bg-[#F0EEFF] px-2 py-0.5 text-[10.5px] font-semibold text-[#6F63C5]">
+                      {betaFeedbackCategoryLabel(item.category)}
+                    </span>
+                  )}
                   <span className="rounded-full bg-[#F4F6FA] px-2 py-0.5 text-[10.5px] font-semibold text-ink-2">
                     {item.area}
                   </span>
@@ -185,6 +190,24 @@ export default function SegnalazioniBetaAdminClient({ initialItems }: { initialI
                 <div className="mt-0.5 text-[11px] text-ink-3">
                   {item.parentName || "Genitore"} · {item.pagePath} · {new Date(item.createdAt).toLocaleDateString("it-IT")}
                 </div>
+                {item.clientContext && (
+                  <div className="mt-0.5 text-[10.5px] text-ink-3">
+                    {[
+                      item.clientContext.role,
+                      item.clientContext.standalone ? "PWA installata" : "browser",
+                      item.clientContext.viewport,
+                      item.clientContext.build ? `build ${item.clientContext.build}` : null,
+                      item.clientContext.source ? `da ${item.clientContext.source}` : null,
+                    ]
+                      .filter(Boolean)
+                      .join(" · ")}
+                    {item.clientContext.userAgent && (
+                      <span className="block truncate" title={item.clientContext.userAgent}>
+                        {item.clientContext.userAgent}
+                      </span>
+                    )}
+                  </div>
+                )}
                 {item.status !== "risolto" && (
                   <input
                     value={noteDraft[item.id] ?? item.adminNote ?? ""}

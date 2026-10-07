@@ -10,13 +10,19 @@ import { loginAs, isRealDeployment } from "../fixtures/roles";
 // provenienza (oggi solo "genitori"), e una sezione "temporanea" lato
 // genitore per seguire l'esito delle proprie segnalazioni.
 
+// FAMILY-FIRST BETA PASS (07/10/2026): lato famiglie il pannello si chiama
+// "Aiutaci a migliorare TRAMA" (tipo facoltativo, dettatura da tastiera,
+// conferma nel pannello). Stessi controlli di prima, testi aggiornati; lato
+// Partner (tests/gestore/beta-feedback-center.spec.ts) nulla cambia.
+const FAMILY_FEEDBACK = "Aiutaci a migliorare TRAMA";
+
 test.describe("NEXTGEN Sprint 5 - Segnala un problema (BETA)", () => {
-  test("TC-N286 - La floating CTA 'Segnala un problema' è visibile nelle pagine genitore NEXTGEN", async ({ page }) => {
+  test("TC-N286 - La floating CTA feedback è visibile nelle pagine genitore NEXTGEN", async ({ page }) => {
     test.skip(!isRealDeployment, "Richiede un deploy con Supabase configurato e l'account genitore di test.");
     await loginAs(page, "parent");
     await page.goto("/nextgen/planner");
 
-    await expect(page.getByRole("button", { name: "Segnala un problema" })).toBeVisible();
+    await expect(page.getByRole("button", { name: FAMILY_FEEDBACK })).toBeVisible();
   });
 
   // La CTA condivide ancora il layout con le rotte placeholder Sprint 0
@@ -30,7 +36,7 @@ test.describe("NEXTGEN Sprint 5 - Segnala un problema (BETA)", () => {
     await loginAs(page, "platform_admin");
     await page.goto("/nextgen/admin");
 
-    await expect(page.getByRole("button", { name: "Segnala un problema" })).toHaveCount(0);
+    await expect(page.getByRole("button", { name: FAMILY_FEEDBACK })).toHaveCount(0);
   });
 
   test("TC-N288 - Inviare una segnalazione vuota mostra un errore, con testo mostra conferma", async ({ page }) => {
@@ -38,16 +44,20 @@ test.describe("NEXTGEN Sprint 5 - Segnala un problema (BETA)", () => {
     await loginAs(page, "parent");
     await page.goto("/nextgen/planner");
 
-    await page.getByRole("button", { name: "Segnala un problema" }).click();
-    await expect(page.getByText("Segnala un problema", { exact: true })).toBeVisible();
+    await page.getByRole("button", { name: FAMILY_FEEDBACK }).click();
+    await expect(page.getByRole("dialog", { name: FAMILY_FEEDBACK })).toBeVisible();
 
-    await page.getByRole("button", { name: "Invia segnalazione" }).click();
+    await page.getByRole("button", { name: "Invia", exact: true }).click();
     await expect(page.getByText("Scrivi qualcosa prima di inviare")).toBeVisible();
 
-    await page.getByPlaceholder("Cosa non funziona o cosa miglioreresti?").fill("Il pulsante X non risponde al tocco.");
-    await page.getByRole("button", { name: "Invia segnalazione" }).click();
+    await page.getByRole("button", { name: "Problema" }).click();
+    await expect(page.getByRole("button", { name: "Problema" })).toHaveAttribute("aria-pressed", "true");
+    await expect(page.getByText("Scrivi oppure usa il microfono della tastiera per dettare.")).toBeVisible();
+    await page.getByPlaceholder("Racconta cosa ti servirebbe o cosa non ha funzionato…").fill("Il pulsante X non risponde al tocco.");
+    await page.getByRole("button", { name: "Invia", exact: true }).click();
 
-    await expect(page.getByText("Segnalazione inviata, grazie!")).toBeVisible();
+    await expect(page.getByTestId("beta-feedback-success")).toBeVisible();
+    await expect(page.getByText("Grazie! Abbiamo ricevuto il tuo messaggio.")).toBeVisible();
   });
 
   test("TC-N289 - Profilo mostra la sezione temporanea 'Le mie segnalazioni' con lo stato inviato", async ({ page }) => {
@@ -112,7 +122,7 @@ test.describe("NEXTGEN Sprint 5 - Segnala un problema (BETA)", () => {
     await loginAs(page, "parent");
     await page.goto("/nextgen/planner");
 
-    const button = page.getByRole("button", { name: "Segnala un problema" });
+    const button = page.getByRole("button", { name: FAMILY_FEEDBACK });
     await expect(button).toBeVisible();
 
     const buttonBox = await button.boundingBox();
@@ -155,5 +165,20 @@ test.describe("NEXTGEN Sprint 5 - Segnala un problema (BETA)", () => {
 
     await expect(row.getByText("In coda per la pipeline", { exact: true })).toBeVisible();
     await expect(row.getByRole("button", { name: "Conferma e metti in pipeline" })).toHaveCount(0);
+  });
+
+  // FAMILY-FIRST BETA PASS — accessi permanenti oltre al pulsante flottante.
+  test("TC-N293 - Il feedback si apre anche dal Profilo e dalla pagina Novità (stesso pannello)", async ({ page }) => {
+    test.skip(!isRealDeployment, "Richiede un deploy con Supabase configurato e l'account genitore di test.");
+    await loginAs(page, "parent");
+
+    await page.goto("/nextgen/profile");
+    await page.getByRole("button", { name: /Aiutaci a migliorare TRAMA/ }).filter({ hasText: "Aiutaci" }).click();
+    await expect(page.getByRole("dialog", { name: FAMILY_FEEDBACK })).toBeVisible();
+    await page.getByRole("button", { name: "Chiudi" }).click();
+
+    await page.goto("/nextgen/novita");
+    await page.getByRole("button", { name: "Scrivici" }).click();
+    await expect(page.getByRole("dialog", { name: FAMILY_FEEDBACK })).toBeVisible();
   });
 });

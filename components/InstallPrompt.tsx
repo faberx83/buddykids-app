@@ -133,11 +133,13 @@ export default function InstallPrompt({
     <div className="fixed inset-x-4 bottom-20 z-50 flex items-center gap-3 rounded-lg border border-[#E8EBF0] bg-white p-4 shadow-lg md:inset-x-auto md:bottom-6 md:right-6 md:w-80">
       <span className="text-2xl">📲</span>
       <div className="flex-1">
-        <p className="text-sm font-bold text-ink">Installa {appName}</p>
+        {/* FAMILY-FIRST BETA PASS (07/10/2026): TRAMA è una PWA in beta, non
+            un'app degli store — si aggiunge alla schermata Home dal browser. */}
+        <p className="text-sm font-bold text-ink">Aggiungi {appName} alla schermata Home</p>
         <p className="text-xs text-ink-2">
           {showIosHint
-            ? <>Tocca <i className="ti ti-share-2" /> Condividi, poi &quot;Aggiungi a Home&quot;.</>
-            : "Accesso più rapido, come un'app vera."}
+            ? <>Tocca <i className="ti ti-share-2" /> Condividi, poi &quot;Aggiungi alla schermata Home&quot;.</>
+            : "È in beta: la usi come un'app, direttamente dal browser."}
         </p>
       </div>
       <div className="flex flex-shrink-0 flex-col items-end gap-1.5">
@@ -151,7 +153,7 @@ export default function InstallPrompt({
             style={{ background: themeColor }}
             className="rounded-md px-3 py-1.5 text-xs font-bold text-white"
           >
-            Installa
+            Aggiungi
           </button>
         )}
         <button onClick={dismiss} className="text-[11px] text-ink-3">

@@ -1,111 +1,171 @@
-// TRAMA — Parent Private Beta Onboarding Carousel: dati PURI delle 5 slide,
-// separati dal componente di rendering (components/nextgen/
-// OnboardingCarousel.tsx) apposta per essere testabili senza un browser
-// (stesso principio "no browser" già usato per lib/data/planner.ts#
-// firstUncoveredWeekIndex, vedi tests/one/planner-first-uncovered.spec.ts).
+// TRAMA — Onboarding famiglie: dati PURI delle slide, separati dal componente
+// di rendering (components/nextgen/OnboardingCarousel.tsx) per essere
+// testabili senza browser (tests/nextgen/onboarding-carousel.spec.ts).
 //
-// FINAL PRE-FREEZE WAVE (sez. 21, 08/09/2026) — copy sostituita INTEGRALMENTE
-// con quella data verbatim da Fabrizio in questa wave (5 schermate, stesso
-// numero di prima, stesso motore/persistenza invariati). La versione
-// precedente (approvata a sua volta da un pptx di riferimento, vedi
-// TRAMA_PARENT_ONBOARDING_IMPLEMENTATION.md per la nota di trasparenza
-// storica) è sostituita, non affiancata — un solo carousel canonico.
+// FAMILY-FIRST BETA PASS (07/10/2026) — nuova versione approvata da Fabrizio
+// sull'anteprima animata (fondo bianco, telefono 3D leggero, card che escono
+// dal telefono). Quattro schermate: Scopri → Organizza → Coordina → Insieme.
+// Principio: TRAMA è utile anche quando i centri della famiglia non sono su
+// TRAMA. Sostituisce la versione a 5 slide del 08/09 ("Le attività dei tuoi
+// figli sono sparse…", "Dal centro alla giornata"), non la affianca.
 //
-// Regole di contenuto EREDITATE dalla versione precedente (invarianti di
-// prodotto, non solo di questo giro di copy — vedi TRAMA_PLATFORM_PRODUCT_
-// TRUTH.md): nessuna slide deve mai contenere "Match 99%" o altro scoring/
-// AI ranking non ancora una capability reale, nessuna menzione di pagamento/
-// checkout/carta/transazione (il Golden Path si ferma alla richiesta, mai al
-// pagamento), e "prenotato" non deve mai essere presentato come sinonimo di
-// "confermato" senza qualificazione — coerente con la Slide 4 di questo giro
-// che mostra esplicitamente lo STATO (prenotazione · disponibilità ·
-// aggiornamenti) come una tappa distinta, non implicita.
+// Nuova chiave di tutorial (non più "parent_beta_onboarding"): chi aveva già
+// completato o saltato la versione precedente vede quella nuova UNA volta al
+// prossimo accesso — scelta voluta, il posizionamento è cambiato.
 //
-// Verificato dai test [no browser] in tests/nextgen/onboarding-carousel.spec.ts
-// (aggiornati in questa stessa wave per la nuova copy).
+// Regole di contenuto (invariate): nessuno scoring/AI ranking ("Match 99%"),
+// nessun pagamento/checkout, nessuna funzione futura presentata come
+// disponibile (le deleghe compaiono solo con l'etichetta "In arrivo"). Dati
+// demo SEMPRE fittizi, mai dati reali dell'utente.
 
-export type OnboardingSlideVisual = "chaos" | "search" | "responsibility" | "flow" | "share";
+export const PARENT_ONBOARDING_TUTORIAL_KEY = "family_first_onboarding";
+export const PARENT_ONBOARDING_STEP_KEY = "carousel";
+
+export type OnboardingSlideVisual = "discover" | "organize" | "coordinate" | "together";
+
+export interface OnboardingPop {
+  /** Icona Tabler (classe "ti-…"). */
+  icon: string;
+  tone: "violet" | "green" | "amber";
+  title: string;
+  subtitle: string;
+  /** Etichetta "In arrivo" accanto al titolo (funzione non ancora disponibile). */
+  comingSoon?: boolean;
+  side: "left" | "right";
+  /** Posizione verticale nel palco, in percentuale. */
+  top: number;
+}
 
 export interface OnboardingSlide {
   key: string;
-  progress: string; // "1/5" .. "5/5"
-  title: string;
+  progress: string; // "1/4" .. "4/4"
+  eyebrow: string;
+  /** Titolo diviso in tre parti: la parte centrale è evidenziata. */
+  titleBefore: string;
+  titleHighlight: string;
+  titleAfter: string;
   body: string;
-  microCopy?: string;
+  note: string;
   ctaLabel: string;
   visual: OnboardingSlideVisual;
+  /** Inclinazione del telefono (gradi) per questa slide. */
+  tilt: { y: number; x: number };
+  pops: [OnboardingPop, OnboardingPop];
 }
 
 export const ONBOARDING_SLIDES: OnboardingSlide[] = [
   {
-    key: "scattered",
-    progress: "1/5",
-    title: "Le attività dei tuoi figli sono sparse.",
-    body: "Le loro settimane non devono esserlo.",
+    key: "discover",
+    progress: "1/4",
+    eyebrow: "Scopri",
+    titleBefore: "Trova attività ",
+    titleHighlight: "giuste",
+    titleAfter: " per i tuoi figli.",
+    body: "Sport, musica, centri estivi: cerca per età, zona e settimana, e salva quello che ti interessa.",
+    note: "Anche quando il centro non è ancora su TRAMA.",
     ctaLabel: "Continua",
-    visual: "chaos",
+    visual: "discover",
+    tilt: { y: -14, x: 6 },
+    pops: [
+      { icon: "ti-circle-check-filled", tone: "violet", title: "Su TRAMA", subtitle: "gestita dal centro, prenoti qui", side: "left", top: 20 },
+      { icon: "ti-heart-filled", tone: "green", title: "Scoperta TRAMA", subtitle: "la salvi e la organizzi comunque", side: "right", top: 60 },
+    ],
   },
   {
-    key: "gap",
-    progress: "2/5",
-    title: "Quando resta un buco, TRAMA ti aiuta a riempirlo.",
-    body: "Cerca tra le attività compatibili con i tuoi figli e con la settimana ancora da organizzare.",
-    microCopy: "Attività · Centro · Distanza · Servizi · Disponibilità",
+    key: "organize",
+    progress: "2/4",
+    eyebrow: "Organizza",
+    titleBefore: "Tutto nello ",
+    titleHighlight: "stesso",
+    titleAfter: " Planner.",
+    body: "Attività prenotate su TRAMA, corsi trovati altrove e impegni di famiglia: una sola settimana da guardare.",
+    note: "Quello che non trovi, lo aggiungi tu in pochi secondi.",
     ctaLabel: "Continua",
-    visual: "search",
+    visual: "organize",
+    tilt: { y: 12, x: 5 },
+    pops: [
+      { icon: "ti-plus", tone: "green", title: "Calcio · mar 17:00", subtitle: "aggiunto da te", side: "right", top: 16 },
+      { icon: "ti-confetti", tone: "amber", title: "Festa di Sofia", subtitle: "sabato · 16:00", side: "left", top: 66 },
+    ],
   },
   {
-    key: "organized",
-    progress: "3/5",
-    title: "Prenotato non significa ancora organizzato.",
-    body: "Ogni settimana ha anche una logistica da decidere.",
-    microCopy: "Chi lo porta? · Chi lo riprende?",
+    key: "coordinate",
+    progress: "3/4",
+    eyebrow: "Coordina",
+    titleBefore: "Chi porta, ",
+    titleHighlight: "chi riprende.",
+    titleAfter: "",
+    body: "Aggiungi chi ti aiuta (l'altro genitore, i nonni, la tata) e decidi andate e ritorni di ogni giornata.",
+    note: "Indirizzi e promemoria restano nel Planner.",
     ctaLabel: "Continua",
-    visual: "responsibility",
+    visual: "coordinate",
+    tilt: { y: -8, x: 4 },
+    pops: [
+      { icon: "ti-arrows-exchange", tone: "violet", title: "Riprende Nonna Rita", subtitle: "Luca · 18:15", side: "left", top: 22 },
+      { icon: "ti-shield-check", tone: "amber", title: "Deleghe smart", subtitle: "ritiro sicuro, senza carta", comingSoon: true, side: "right", top: 66 },
+    ],
   },
   {
-    key: "from-center-to-day",
-    progress: "4/5",
-    title: "Dal centro alla giornata.",
-    body: "Dalla scheda del centro fino al check-in del giorno stesso, tutto resta collegato.",
-    ctaLabel: "Continua",
-    visual: "flow",
-  },
-  {
-    key: "share",
-    progress: "5/5",
-    title: "Condividi. Coordina. Intreccia.",
-    body: "Altro genitore, nonni, tata, gruppi: lo stesso piano, visibile a chi serve.",
+    key: "together",
+    progress: "4/4",
+    eyebrow: "Insieme",
+    titleBefore: "Fate rete con ",
+    titleHighlight: "altre famiglie.",
+    titleAfter: "",
+    body: "Crea un gruppo con le famiglie dei compagni, invitale con un link e condividi il piano con chi vuoi.",
+    note: "TRAMA è in beta: dicci cosa ti serve, la costruiamo con te.",
     ctaLabel: "Inizia a organizzare",
-    visual: "share",
+    visual: "together",
+    tilt: { y: 10, x: 5 },
+    pops: [
+      { icon: "ti-user-check", tone: "green", title: "Famiglia Rossi", subtitle: "ha accettato l'invito", side: "right", top: 18 },
+      { icon: "ti-share", tone: "violet", title: "Piano condiviso", subtitle: "con Nonna Rita e Tata Giulia", side: "left", top: 66 },
+    ],
   },
 ];
 
-// Dati demo FITTIZI (mai reali) usati solo nelle illustrazioni delle slide.
+// Dati demo FITTIZI usati solo dentro le schermate del telefono.
 export const ONBOARDING_DEMO_KIDS = ["Sofia", "Luca"] as const;
-export const ONBOARDING_DEMO_ACTIVITIES_CHAOS = ["Nuoto", "Nonni", "Centro estivo", "Danza"] as const;
-export const ONBOARDING_DEMO_CENTER = "Centro Demo Aurora";
-export const ONBOARDING_DEMO_ACTIVITY_SEARCH = "Estate Sport — Demo";
-export const ONBOARDING_DEMO_WEEK_LABEL = "Libero in SETT. 15";
 
-// Slide 3 (Chi fa cosa) — Andata/Ritorno per un bambino demo, stesso
-// principio "mai dati reali" delle altre slide.
-export const ONBOARDING_DEMO_RESPONSIBILITY: { kid: string; andata: string; ritorno: string } = {
-  kid: "Sofia",
-  andata: "Mamma",
-  ritorno: "Tata",
-};
+export const ONBOARDING_DEMO_DISCOVER = {
+  heading: "Per Sofia, 7 anni",
+  query: "Sport vicino a casa",
+  filters: ["Sport", "Musica", "Estate"],
+  partner: { emoji: "⚽", name: "Estate Sport Demo", meta: "Centro Demo Aurora · 1,2 km", cta: "Prenota" },
+  curated: { emoji: "🏊", name: "Nuoto bambini", meta: "Piscina Demo · 2,4 km", cta: "Aggiungi al Planner" },
+} as const;
 
-// Slide 4 (Dal centro alla giornata) — le 4 tappe del flusso, con i
-// sotto-elementi indicati esplicitamente nella specifica di questo giro.
-export const ONBOARDING_FLOW_STAGES: { label: string; icon: string; items: string[] }[] = [
-  { label: "Centro", icon: "ti-building", items: ["Sede", "Servizi", "Informazioni"] },
-  { label: "Stato", icon: "ti-clipboard-check", items: ["Prenotazione", "Disponibilità", "Aggiornamenti"] },
-  { label: "Logistica", icon: "ti-map-pin", items: ["Dove", "Quando", "Chi"] },
-  { label: "Presenza", icon: "ti-user-check", items: ["Check-in", "Presenze"] },
-];
+export const ONBOARDING_DEMO_WEEK = {
+  heading: "Settimana 13–17 ott",
+  days: [
+    { label: "L", day: "13" },
+    { label: "M", day: "14", active: true },
+    { label: "M", day: "15" },
+    { label: "G", day: "16" },
+    { label: "V", day: "17" },
+  ],
+  items: [
+    { time: "08:30 – 16:00", name: "Doposcuola Demo", source: "Su TRAMA · confermato", tone: "violet" },
+    { time: "17:00 – 18:15", name: "Calcio · Luca", source: "Aggiunto da te", tone: "green" },
+    { time: "18:30", name: "Dentista · Sofia", source: "Impegno di famiglia", tone: "amber" },
+    { time: "Gio 16:30", name: "Pianoforte · Sofia", source: "Trovato in Scopri", tone: "green" },
+  ],
+} as const;
 
-// Slide 5 (Condividi) — persone/canali con cui un piano può essere
-// condiviso, dati fittizi coerenti con le capability reali (Chi fa cosa,
-// Gruppi, Piano condiviso) — mai un elenco di feature inventate.
-export const ONBOARDING_SHARE_PEOPLE = ["Altro genitore", "Nonni", "Tata", "Gruppo"] as const;
+export const ONBOARDING_DEMO_RESPONSIBILITY = {
+  heading: "Martedì 14 ottobre",
+  helpers: ["M", "P", "R", "G"],
+  rows: [
+    { kid: "Sofia", activity: "Dentista", porta: "Mamma", riprende: "Mamma" },
+    { kid: "Luca", activity: "Calcio", porta: "Papà", riprende: "Nonna Rita" },
+  ],
+} as const;
+
+export const ONBOARDING_DEMO_GROUPS = {
+  heading: "Andiamo insieme",
+  groups: [
+    { name: "Calcio Under 8", meta: "4 famiglie · stesso corso del martedì", members: ["A", "B", "C"], cta: "Invita una famiglia" },
+    { name: "Centro estivo 2027", meta: "2 famiglie · valutate insieme", members: ["D", "E"] },
+  ],
+  shared: { name: "Piano condiviso", meta: "Link per nonni e tata, anche senza account" },
+} as const;

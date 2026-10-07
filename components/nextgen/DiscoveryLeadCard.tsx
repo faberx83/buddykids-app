@@ -140,6 +140,9 @@ export default function DiscoveryLeadCard({
   // flow, sezione 4: multi-bambino supportato).
   type PlanState = "idle" | "confirm" | "submitting" | "done" | "error";
   const [planState, setPlanState] = useState<PlanState>(initialInPlanner ? "done" : "idle");
+  // FAMILY-FIRST BETA PASS: unica condizione per "Aggiungi al Planner"
+  // come azione disponibile (stessa usata già nel ramo source-only sotto).
+  const canAddToPlanner = plannerEnabled && planState !== "done" && kids.length > 0;
   const [planError, setPlanError] = useState<string | null>(null);
   const [planKidIds, setPlanKidIds] = useState<string[]>([]);
   // TRAMA — DATELESS DISCOVERY (sezione 5/6 del task, 28/09/2026, live UX
@@ -351,35 +354,47 @@ export default function DiscoveryLeadCard({
             link. Nessun "Prenota ora" finto, nessun bottone disabilitato
             senza spiegazione, nessuna disponibilità finta — nessuno di
             questi ha un sistema reale dietro (§14). */}
+        {/* TRAMA — FAMILY-FIRST BETA PASS (07/10/2026): gerarchia invertita
+            quando il Planner è disponibile. "Aggiungi al Planner" diventa la
+            PRIMARY (la Scoperta è utile alla famiglia anche se il centro non
+            è su TRAMA), "Proponi invito" resta visibile come SECONDARY con
+            testo (non più solo icona per il Planner). Senza Planner
+            (flag spento o nessun bambino) la riga resta quella di prima. */}
         {invitable && proposeState !== "confirm" && proposeState !== "submitting" && planState !== "confirm" && planState !== "submitting" && (
           <div className="flex items-center gap-2">
+            {canAddToPlanner && (
+              <button
+                type="button"
+                onClick={() => setPlanState("confirm")}
+                className="flex-1 rounded-full bg-trama-violet px-3 py-2 text-center text-[12px] font-semibold text-white active:scale-[0.98]"
+              >
+                Aggiungi al Planner
+              </button>
+            )}
             {proposeState === "done" ? (
-              <span className="flex flex-1 items-center justify-center gap-1.5 rounded-full bg-green-light px-3 py-2 text-center text-[12px] font-semibold text-[#2d8f52]">
+              <span
+                className={`flex items-center justify-center gap-1.5 rounded-full bg-green-light px-3 py-2 text-center text-[12px] font-semibold text-[#2d8f52] ${canAddToPlanner ? "shrink-0" : "flex-1"}`}
+              >
                 <i className="ti ti-circle-check-filled text-[14px]" />
                 Proposta inviata
               </span>
             ) : proposeState === "already" ? (
-              <span className="flex-1 rounded-full bg-[#F4F6FA] px-3 py-2 text-center text-[12px] font-semibold text-ink-2">
-                Hai già proposto questo centro
+              <span
+                className={`rounded-full bg-[#F4F6FA] px-3 py-2 text-center text-[12px] font-semibold text-ink-2 ${canAddToPlanner ? "shrink-0" : "flex-1"}`}
+              >
+                {canAddToPlanner ? "Già proposto" : "Hai già proposto questo centro"}
               </span>
             ) : (
               <button
                 type="button"
                 onClick={() => setProposeState("confirm")}
-                className="flex-1 rounded-full bg-trama-violet px-3 py-2 text-center text-[12px] font-semibold text-white active:scale-[0.98]"
+                className={
+                  canAddToPlanner
+                    ? "shrink-0 rounded-full border border-[#E8EBF0] px-3 py-2 text-center text-[12px] font-semibold text-ink-2 active:scale-[0.98]"
+                    : "flex-1 rounded-full bg-trama-violet px-3 py-2 text-center text-[12px] font-semibold text-white active:scale-[0.98]"
+                }
               >
                 Proponi invito
-              </button>
-            )}
-            {plannerEnabled && planState !== "done" && kids.length > 0 && (
-              <button
-                type="button"
-                aria-label="Aggiungi al Planner"
-                title="Aggiungi al Planner"
-                onClick={() => setPlanState("confirm")}
-                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-[#E8EBF0] text-ink-2"
-              >
-                <i className="ti ti-calendar-plus text-[15px]" />
               </button>
             )}
             <a
@@ -408,7 +423,7 @@ export default function DiscoveryLeadCard({
             allarmistico. */}
         {!invitable && planState !== "confirm" && planState !== "submitting" && (
           <>
-            <p className="mb-1.5 text-[10.5px] text-ink-3">Gestore non ancora identificato da TRAMA.</p>
+            <p className="mb-1.5 text-[10.5px] text-ink-3">Il centro non è ancora su TRAMA: puoi comunque salvarla e organizzarla.</p>
             <div className="flex items-center gap-2">
               {plannerEnabled && planState !== "done" && kids.length > 0 && (
                 <button

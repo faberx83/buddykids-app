@@ -1,6 +1,6 @@
 import { test, expect } from "@playwright/test";
 import { isRealDeployment, loginAs } from "../fixtures/roles";
-import { ANNOUNCEMENT_CATALOG, getAnnouncementById } from "../../lib/announcements/catalog";
+import { ANNOUNCEMENT_CATALOG, getAnnouncementById, isComingSoon } from "../../lib/announcements/catalog";
 import { CLIENT_CURSOR_TYPES, sortNotifications, countUnseen, makeNotificationId, type NotificationItem } from "../../lib/notifications/model";
 import { FEATURE_FLAG_REGISTRY } from "../../lib/feature-flags/registry";
 
@@ -22,6 +22,16 @@ test.describe("Novità TRAMA — catalogo editoriale (no browser)", () => {
       expect(a.id).toMatch(/^[a-z0-9-]+$/);
       expect(a.deepLink.startsWith("/")).toBe(true);
       expect(a.deepLink).not.toBe("/nextgen/novita"); // CTA primaria porta SEMPRE alla feature, mai al changelog (§13)
+      // FAMILY-FIRST BETA PASS (07/10/2026): regola §13 resa esplicita per i
+      // due stati. Disponibile → mai verso la pagina Novità. In arrivo → SOLO
+      // verso la propria ancora in Novità (la funzione non esiste ancora).
+      if (isComingSoon(a)) {
+        expect(a.deepLink).toBe(`/nextgen/novita#${a.id}`);
+        expect(a.requiredFeatureFlag).toBeUndefined();
+        expect(a.contextualSurface).toBeUndefined();
+      } else {
+        expect(a.deepLink.startsWith("/nextgen/novita")).toBe(false);
+      }
     }
   });
 

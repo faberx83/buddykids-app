@@ -6,6 +6,7 @@ import LogoutButton from "@/components/LogoutButton";
 import ProfileHeaderClient from "@/components/ProfileHeaderClient";
 import ProfileKidsSection from "@/components/ProfileKidsSection";
 import HubCard from "@/components/nextgen/HubCard";
+import { openBetaFeedback } from "@/lib/nextgen/feedback-open";
 import DecorativeIntroCard from "@/components/nextgen/DecorativeIntroCard";
 import { writeVersionPreference } from "@/lib/version-preference";
 import type { ParentRole, Gender } from "@/lib/data/profile";
@@ -243,6 +244,27 @@ export default function ProfileNextgenClient({
             "BETA" per ricordare che va rimossa a fine fase, invece che
             mimetizzata tra le altre come se fosse permanente. */}
         <div className="mt-2 text-[11px] font-bold uppercase tracking-wide text-ink-3">Beta</div>
+        {/* TRAMA — FAMILY-FIRST BETA PASS (07/10/2026): accesso permanente al
+            feedback, oltre al pulsante flottante. Apre lo stesso pannello
+            (BetaFeedbackButton, via evento window) — nessun secondo form. */}
+        <button
+          type="button"
+          onClick={() => openBetaFeedback("profilo")}
+          className="flex items-center gap-3 rounded-2xl bg-white p-4 text-left active:bg-black/[0.06]"
+        >
+          <span
+            className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-full text-[19px]"
+            style={{ background: "#F0EEFF", color: "#6F63C5" }}
+            aria-hidden="true"
+          >
+            <i className="ti ti-bulb" />
+          </span>
+          <div className="min-w-0 flex-1">
+            <div className="text-[13.5px] font-bold text-ink">Aiutaci a migliorare TRAMA</div>
+            <div className="text-[11.5px] text-ink-2">Un&apos;idea, un problema o qualcosa che ti manca</div>
+          </div>
+          <i className="ti ti-chevron-right flex-shrink-0 text-[16px] text-ink-3" aria-hidden="true" />
+        </button>
         <HubCard
           href="/nextgen/profile/segnalazioni"
           icon="ti-message-report"

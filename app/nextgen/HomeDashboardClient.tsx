@@ -2,6 +2,7 @@
 
 import { useMemo } from "react";
 import Link from "next/link";
+import { NEW_EXTERNAL_ITEM_HREF } from "@/lib/planner/new-external-item-link";
 import { useRouter } from "next/navigation";
 import { PlannerData } from "@/lib/data/planner";
 import { MyBooking } from "@/lib/data/my-bookings";
@@ -126,6 +127,7 @@ export default function HomeDashboardClient({
   responsibilities,
   coordinationBookedDays,
   favoriteActivityIds = [],
+  externalPlannerItemsEnabled = false,
 }: {
   firstName: string | null;
   planner: PlannerData;
@@ -150,6 +152,9 @@ export default function HomeDashboardClient({
   // FIX (segnalazione Fabrizio 06/09/2026, punto 1: preferito non visibile
   // fuori dalla scheda attività) — vedi ActivityCard.tsx#initialFavorite.
   favoriteActivityIds?: string[];
+  // FAMILY-FIRST BETA PASS (07/10/2026): mostra "Aggiungi un impegno" solo
+  // quando gli impegni esterni sono disponibili per l'utente.
+  externalPlannerItemsEnabled?: boolean;
 }) {
   const router = useRouter();
   const favoriteIdsSet = useMemo(() => new Set(favoriteActivityIds), [favoriteActivityIds]);
@@ -335,7 +340,7 @@ export default function HomeDashboardClient({
         />
         <div aria-hidden className="pointer-events-none absolute -bottom-12 -right-2 h-24 w-24 rounded-full bg-trama-lilac/20" />
         <div className="relative">
-          <p className="mb-1.5 text-sm font-semibold text-ink-2">La tua estate</p>
+          <p className="mb-1.5 text-sm font-semibold text-ink-2">Le attività dei tuoi figli</p>
           {/* SEGNALAZIONE DI FABRIZIO: "sistemare le dimensioni font perché
               vanno a capo" — 28px (era 30px) resta nel range richiesto
               (28-32px) ma lascia più margine sugli schermi stretti. */}
@@ -631,6 +636,23 @@ export default function HomeDashboardClient({
         </div>
         <i className="ti ti-chevron-right text-lg" />
       </Link>
+
+      {/* FAMILY-FIRST BETA PASS (07/10/2026): il Planner organizza anche ciò
+          che nasce fuori da TRAMA — scorciatoia diretta al modulo impegni. */}
+      {externalPlannerItemsEnabled && (
+        <Link
+          href={NEW_EXTERNAL_ITEM_HREF}
+          data-testid="home-add-external-item"
+          className="flex items-center gap-3 rounded-2xl border border-[#E8EBF0] bg-white px-5 py-3.5 active:scale-[0.99]"
+        >
+          <i className="ti ti-calendar-plus flex-shrink-0 text-[20px] text-trama-violet" aria-hidden="true" />
+          <div className="min-w-0 flex-1">
+            <div className="text-[14px] font-bold text-ink">Aggiungi un impegno</div>
+            <div className="text-[12px] text-ink-2">Sport, musica, scuola, feste: anche se non è su TRAMA</div>
+          </div>
+          <i className="ti ti-chevron-right flex-shrink-0 text-ink-3" aria-hidden="true" />
+        </Link>
+      )}
     </div>
   );
 }

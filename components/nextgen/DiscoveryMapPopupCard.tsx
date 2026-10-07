@@ -138,7 +138,7 @@ export default function DiscoveryMapPopupCard({
       )}
 
       {!invitable && (
-        <p className="mt-1.5 text-[10px] leading-snug text-ink-3">Gestore non ancora identificato da TRAMA.</p>
+        <p className="mt-1.5 text-[10px] leading-snug text-ink-3">Il centro non è ancora su TRAMA: puoi comunque salvarla e organizzarla.</p>
       )}
 
       <div className="mt-2 flex flex-col gap-1.5">

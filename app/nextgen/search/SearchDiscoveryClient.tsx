@@ -11,7 +11,9 @@ import { getSeasonWeekRanges, isoDate, formatShortRange, SeasonWeekRange } from 
 import ActivityCard from "@/components/ActivityCard";
 import PageHeader from "@/components/PageHeader";
 import { ProductStatusChip } from "@/components/ProductStatusChip";
+import Link from "next/link";
 import SuggestCenterCard from "@/components/nextgen/SuggestCenterCard";
+import { NEW_EXTERNAL_ITEM_HREF } from "@/lib/planner/new-external-item-link";
 import { generateCorrelationId } from "@/lib/telemetry/correlation";
 // TRAMA — REAL DISCOVERY PILOT (16/09/2026). Card e dataset dedicati, mai
 // mescolati con Activity/ActivityCard — vedi lib/discovery/real-dataset.ts
@@ -228,6 +230,7 @@ function ResultCard({
         correlationId={correlationId}
         weekStarts={weekStarts}
         initialFavorite={isFavorite}
+        managedOnTrama
       />
     </div>
   );
@@ -1727,6 +1730,26 @@ export default function SearchDiscoveryClient({
             <p className="rounded-lg border border-dashed border-[#D8DEE8] bg-white p-5 text-center text-sm text-ink-2">
               Nessuna attività corrisponde ai filtri scelti.
             </p>
+            {/* TRAMA — FAMILY-FIRST BETA PASS (07/10/2026): "nessun risultato"
+                non è un vicolo cieco. Se il Planner degli impegni esterni è
+                disponibile per l'utente, l'attività che cercava può comunque
+                entrare nel suo Planner (modulo già aperto, vedi
+                lib/planner/new-external-item-link.ts). */}
+            {externalPlannerItemsEnabled && (
+              <div data-testid="discovery-empty-add-to-planner" className="rounded-lg bg-trama-violet/[0.06] p-4">
+                <p className="text-[13.5px] font-bold text-ink">Non trovi quello che cerchi?</p>
+                <p className="mt-1 text-[12.5px] leading-snug text-ink-2">
+                  Puoi comunque aggiungerlo al tuo Planner: corso, sport, centro trovato altrove o qualsiasi impegno.
+                </p>
+                <Link
+                  href={NEW_EXTERNAL_ITEM_HREF}
+                  className="mt-3 inline-flex min-h-[44px] items-center gap-1.5 rounded-full bg-trama-violet px-4 text-[13px] font-bold text-white active:scale-[0.97]"
+                >
+                  <i className="ti ti-calendar-plus text-[15px]" aria-hidden="true" />
+                  Aggiungilo al Planner
+                </Link>
+              </div>
+            )}
             {/* TRAMA ONE Build Sprint 5 — J11: punto di ingresso "Suggerisci un
                 centro" nello stato zero-risultati (§B.2.1 fonte di design,
                 Opzione A raccomandata). demandContext raccoglie SOLO segnali

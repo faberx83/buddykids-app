@@ -26,6 +26,7 @@ import { createClient } from "@/lib/supabase/server";
 import { resolveFeatureFlagVisibility } from "@/lib/feature-flags/resolve";
 import { anyResolvedViaInternalPreview } from "@/lib/feature-flags/internal-preview";
 import { generateCorrelationId } from "@/lib/telemetry/correlation";
+import { persistProductEvent } from "@/lib/telemetry/events";
 import { REAL_DISCOVERY_LEADS, type DiscoveryLeadRecord } from "@/lib/discovery/real-dataset";
 // TRAMA — EXTERNAL PLANNER ITEMS (sezioni 7/15/16 del task): "Aggiungi al
 // Planner" da una Scoperta TRAMA. Stesso pattern Dark Release delle altre
@@ -126,6 +127,19 @@ export default async function NextgenSearchPage() {
       curatedLeadIdsInPlanner = Array.from(await getCuratedLeadIdsInPlanner());
     }
     realDiscoveryBadgeVisible = anyResolvedViaInternalPreview([realDiscoveryDetail, externalPlannerItemsDetail]);
+
+    // TRAMA — FAMILY-FIRST BETA PASS (07/10/2026): segnale "apertura Scopri"
+    // (product_events, best-effort: mai bloccante per la pagina).
+    if (user) {
+      try {
+        await persistProductEvent(
+          { event: "discovery_opened", correlationId: generateCorrelationId(), tenant: "family", role },
+          { supabase, userId: user.id }
+        );
+      } catch {
+        // telemetria persa: nessun impatto sulla pagina
+      }
+    }
   }
 
   return (

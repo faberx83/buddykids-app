@@ -13,9 +13,16 @@ export default function ActivityCard({
   correlationId,
   weekStarts,
   initialFavorite,
+  managedOnTrama = false,
 }: {
   activity: Activity;
   matchPercent?: number;
+  // TRAMA — FAMILY-FIRST BETA PASS (07/10/2026): in Scopri le attività
+  // Partner si distinguono dalle Scoperte TRAMA con una pillola "Su TRAMA"
+  // (gestita direttamente dal centro: info ufficiali, disponibilità,
+  // prenotazione). Facoltativa: Home/Community e gli altri punti di
+  // riuso restano invariati.
+  managedOnTrama?: boolean;
   // TRAMA ONE Build Sprint 3 — "context object" leggero (source/
   // correlationId), stesso trattamento già applicato a
   // ActivityCardHorizontal.tsx (card LEGACY): da dove arriva il click (es.
@@ -86,6 +93,17 @@ export default function ActivityCard({
           // il colore CTA/primario del rebrand, per coerenza con Login/Home.
           <div className="absolute left-2.5 top-2.5 z-[1] rounded-full bg-trama-violet px-2.5 py-1 text-[11px] font-bold text-white">
             Match {matchPercent}%
+          </div>
+        )}
+        {managedOnTrama && (
+          <div
+            className={`absolute left-2.5 z-[1] flex items-center gap-1 rounded-full bg-white/95 px-2.5 py-1 text-[11px] font-bold text-trama-violet backdrop-blur-sm ${
+              matchPercent !== undefined ? "top-[38px]" : "top-2.5"
+            }`}
+            title="Gestita dal centro su TRAMA: informazioni ufficiali e prenotazione"
+          >
+            <i className="ti ti-circle-check-filled text-[12px]" aria-hidden="true" />
+            Su TRAMA
           </div>
         )}
         <div className="relative z-[1] m-2 flex items-center gap-1 rounded-full bg-white/95 px-2.5 py-1 text-[11px] font-semibold backdrop-blur-sm">

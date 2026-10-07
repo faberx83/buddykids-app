@@ -1,52 +1,37 @@
 "use client";
 
-// TRAMA — Parent Private Beta Onboarding Carousel (implementazione finale).
-// Fonte visiva: trama-onboarding-private-beta-final.pptx (composizione,
-// hierarchy, copy, palette, typography, CTA, progress già approvati — vedi
-// TRAMA_PARENT_ONBOARDING_IMPLEMENTATION.md per la nota di trasparenza su
-// come questo file non fosse presente in questo ambiente di sviluppo).
+// TRAMA — Onboarding famiglie (FAMILY-FIRST BETA PASS, 07/10/2026).
+// Versione approvata da Fabrizio sull'anteprima animata: fondo bianco,
+// telefono 3D leggero che fluttua, card che escono dal telefono, transizioni
+// con leggero blur. Quattro schermate (lib/nextgen/onboarding-slides.ts):
+// Scopri → Organizza → Coordina → Insieme.
 //
-// Montato in app/nextgen/layout.tsx, UNA sola volta, gated a Parent + cohort
-// TRAMA_ONE_ENABLED (stesso meccanismo già usato per ParentSpotlight/
-// discover_book_parent — "Private Beta" è letteralmente quel cohort).
+// Animazioni: solo CSS (keyframes trama-onb-* in app/globals.css), nessuna
+// libreria nuova. prefers-reduced-motion: niente movimento, solo il cambio
+// di contenuto.
 //
-// Persistenza: riusa 100% l'infrastruttura Walkthrough esistente (nessuna
-// nuova migration) — un solo step sentinella "carousel" del tutorial
-// "parent_beta_onboarding" (lib/walkthrough/registry.ts), scritto su
-// public.tutorial_progress tramite le stesse Server Action generiche di
-// app/actions/walkthrough.ts (completeWalkthroughStepAction/
-// skipWalkthroughStepAction/startWalkthroughStepAction) già usate da
-// PartnerSpotlight/ParentSpotlight. L'avanzamento INTERNO delle 5 slide
-// (quale schermata sto guardando ora) vive solo in useState qui: non ha
-// senso persisterlo passo-passo, conta solo il risultato finale.
-//
-// Accessibilità (WCAG AA + tastiera, requisito esplicito del task):
-// role="dialog" + aria-modal, focus trap manuale (Tab/Shift+Tab ciclano
-// solo dentro), focus iniziale sul dialog stesso, ESC = equivalente di
-// "Salta" (stessa convenzione già stabilita in SpotlightEngine.tsx), frecce
-// sinistra/destra per Indietro/Continua, elementi decorativi aria-hidden,
-// stato "Passo N di 5" annunciato via aria-live, prefers-reduced-motion
-// rispettata con le varianti Tailwind motion-safe:/motion-reduce:. Nessuno
-// stato è affidato SOLO al colore (icone + testo affiancano sempre i colori
-// di stato in ogni slide).
-//
-// Swipe mobile: deliberatamente NON implementato (istruzione esplicita del
-// task: "non introdurre gesture fragili solo per rispettare il design") —
-// la navigazione touch avviene tramite i pulsanti Continua/Indietro, già a
-// piena larghezza e con touch target ampio.
+// Motore invariato rispetto alla versione precedente:
+//  - montato UNA volta in app/nextgen/layout.tsx (Parent o Admin piattaforma
+//    con TRAMA_ONE_ENABLED);
+//  - persistenza su tutorial_progress tramite le Server Action walkthrough
+//    esistenti (start/complete/skip), un solo step sentinella "carousel";
+//  - accessibilità: role="dialog" + aria-modal, focus trap, ESC = Salta,
+//    frecce sinistra/destra, "N/4" annunciato via aria-live, elementi
+//    decorativi aria-hidden. Nessuno swipe (scelta già fatta: niente gesture
+//    fragili, i pulsanti sono a piena larghezza).
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   ONBOARDING_SLIDES,
-  ONBOARDING_DEMO_KIDS,
-  ONBOARDING_DEMO_ACTIVITIES_CHAOS,
-  ONBOARDING_DEMO_CENTER,
-  ONBOARDING_DEMO_ACTIVITY_SEARCH,
-  ONBOARDING_DEMO_WEEK_LABEL,
+  ONBOARDING_DEMO_DISCOVER,
+  ONBOARDING_DEMO_WEEK,
   ONBOARDING_DEMO_RESPONSIBILITY,
-  ONBOARDING_FLOW_STAGES,
-  ONBOARDING_SHARE_PEOPLE,
+  ONBOARDING_DEMO_GROUPS,
+  PARENT_ONBOARDING_TUTORIAL_KEY,
+  PARENT_ONBOARDING_STEP_KEY,
+  type OnboardingPop,
+  type OnboardingSlideVisual,
 } from "@/lib/nextgen/onboarding-slides";
 import type { WalkthroughProgressSummary } from "@/lib/walkthrough/data";
 import {
@@ -55,8 +40,8 @@ import {
   skipWalkthroughStepAction,
 } from "@/app/actions/walkthrough";
 
-const TUTORIAL_KEY = "parent_beta_onboarding";
-const STEP_KEY = "carousel";
+const TUTORIAL_KEY = PARENT_ONBOARDING_TUTORIAL_KEY;
+const STEP_KEY = PARENT_ONBOARDING_STEP_KEY;
 
 function getFocusable(container: HTMLElement): HTMLElement[] {
   return Array.from(
@@ -71,6 +56,7 @@ export default function OnboardingCarousel({ progress }: { progress: Walkthrough
   const visible = progress?.currentStepKey === STEP_KEY;
   const [dismissed, setDismissed] = useState(false);
   const [slideIndex, setSlideIndex] = useState(0);
+  const [direction, setDirection] = useState<1 | -1>(1);
   const dialogRef = useRef<HTMLDivElement>(null);
   const startedRef = useRef(false);
   const focusedOnceRef = useRef(false);
@@ -79,9 +65,6 @@ export default function OnboardingCarousel({ progress }: { progress: Walkthrough
   const slide = ONBOARDING_SLIDES[slideIndex];
   const isLast = slideIndex === ONBOARDING_SLIDES.length - 1;
 
-  // "Inizia" implicito: il percorso parte "in_progress" appena il carousel
-  // compare, stesso pattern di stato già usato dal motore Spotlight (nessun
-  // secondo "Inizia" richiesto qui: la prima CTA è già "Continua").
   useEffect(() => {
     if (show && !startedRef.current) {
       startedRef.current = true;
@@ -89,9 +72,6 @@ export default function OnboardingCarousel({ progress }: { progress: Walkthrough
     }
   }, [show]);
 
-  // Focus iniziale sul dialog quando compare o quando cambia slide (annuncia
-  // il nuovo contenuto agli screen reader tramite il titolo, letto subito
-  // dopo per via di aria-labelledby).
   useEffect(() => {
     if (show && dialogRef.current && !focusedOnceRef.current) {
       focusedOnceRef.current = true;
@@ -104,7 +84,7 @@ export default function OnboardingCarousel({ progress }: { progress: Walkthrough
 
   const finish = useCallback(
     async (outcome: "completed" | "skipped") => {
-      setDismissed(true); // optimistic: chiude subito, nessuna attesa di rete
+      setDismissed(true); // chiude subito, nessuna attesa di rete
       const action = outcome === "completed" ? completeWalkthroughStepAction : skipWalkthroughStepAction;
       await action(TUTORIAL_KEY, STEP_KEY);
       router.refresh();
@@ -118,11 +98,21 @@ export default function OnboardingCarousel({ progress }: { progress: Walkthrough
       void finish("completed");
       return;
     }
+    setDirection(1);
     setSlideIndex((i) => Math.min(i + 1, ONBOARDING_SLIDES.length - 1));
   }, [isLast, finish]);
   const handleBack = useCallback(() => {
+    setDirection(-1);
     setSlideIndex((i) => Math.max(i - 1, 0));
   }, []);
+  const goTo = useCallback(
+    (i: number) => {
+      if (i === slideIndex) return;
+      setDirection(i > slideIndex ? 1 : -1);
+      setSlideIndex(i);
+    },
+    [slideIndex]
+  );
 
   function handleKeyDown(e: React.KeyboardEvent<HTMLDivElement>) {
     if (e.key === "Escape") {
@@ -159,9 +149,8 @@ export default function OnboardingCarousel({ progress }: { progress: Walkthrough
 
   return (
     <div
-      className="fixed inset-0 z-[90] flex items-end justify-center bg-black/50 p-0 sm:items-center sm:p-4"
-      // Click sull'overlay = "Salta" (nessuna conferma richiesta, requisito
-      // esplicito): stesso comportamento del pulsante "Salta" espliciito.
+      className="fixed inset-0 z-[90] flex items-stretch justify-center bg-white sm:items-center sm:bg-black/40 sm:p-4"
+      // Click fuori dal riquadro (solo desktop, su mobile è a tutto schermo) = "Salta".
       onClick={handleSkip}
     >
       <div
@@ -172,70 +161,126 @@ export default function OnboardingCarousel({ progress }: { progress: Walkthrough
         tabIndex={-1}
         onKeyDown={handleKeyDown}
         onClick={(e) => e.stopPropagation()}
-        className="motion-safe:animate-fade-in flex max-h-[92vh] w-full flex-col overflow-y-auto rounded-t-[28px] bg-trama-page p-6 shadow-xl outline-none sm:max-w-[640px] sm:rounded-[28px] sm:p-8"
+        className="relative isolate flex h-[100dvh] w-full flex-col overflow-hidden bg-white outline-none sm:h-[min(860px,92dvh)] sm:max-w-[430px] sm:rounded-[28px] sm:shadow-xl"
       >
-        {/* Header: progress + Salta (sempre visibile, ogni slide) */}
-        <div className="mb-4 flex items-center justify-between gap-3">
-          <div aria-live="polite" className="flex items-center gap-2">
-            <span className="text-[11px] font-bold uppercase tracking-wide text-ink-3">{slide.progress}</span>
-            <div className="flex gap-1" aria-hidden="true">
-              {ONBOARDING_SLIDES.map((s, i) => (
-                <span
-                  key={s.key}
-                  className={`h-1.5 w-1.5 rounded-full motion-safe:transition-colors ${
-                    i === slideIndex ? "bg-trama-violet" : i < slideIndex ? "bg-trama-violet/50" : "bg-[#E8EBF0]"
-                  }`}
-                />
-              ))}
-            </div>
+        {/* Aloni appena accennati dietro il telefono */}
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute -left-[20%] top-[6%] -z-10 h-[300px] w-[300px] rounded-full bg-trama-violet opacity-10 blur-[70px]"
+        />
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute -right-[25%] top-[26%] -z-10 h-[240px] w-[240px] rounded-full bg-trama-green opacity-[0.08] blur-[70px]"
+        />
+
+        {/* Barra alta: marchio + BETA, Salta */}
+        <div className="flex items-center justify-between px-5 pt-[calc(14px+env(safe-area-inset-top,0px))]">
+          <div className="flex items-center gap-2 font-poppins text-[13px] font-bold tracking-[0.14em] text-trama-navy">
+            <span aria-hidden="true" className="flex h-[22px] w-[22px] items-center justify-center rounded-[7px] bg-trama-violet">
+              <i className="ti ti-menu-2 text-[13px] text-white" />
+            </span>
+            TRAMA
+            <span className="rounded-full bg-trama-violet/10 px-[7px] py-[2px] font-sans text-[10px] font-bold tracking-[0.08em] text-trama-violet">
+              BETA
+            </span>
           </div>
           <button
             type="button"
             onClick={handleSkip}
-            className="min-h-[36px] rounded-full px-3 text-[13px] font-semibold text-ink-2 active:scale-95"
+            className="min-h-[44px] rounded-lg px-1.5 text-[13px] font-semibold text-ink-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-trama-violet active:scale-95"
           >
             Salta
           </button>
         </div>
 
-        {/* Visual illustrativo, per slide */}
-        <div className="mb-5 flex-shrink-0" aria-hidden="true">
-          {slide.visual === "chaos" && <ChaosVisual />}
-          {slide.visual === "search" && <SearchVisual />}
-          {slide.visual === "responsibility" && <ResponsibilityVisual />}
-          {slide.visual === "flow" && <FlowVisual />}
-          {slide.visual === "share" && <ShareVisual />}
+        {/* Palco: telefono + card che escono */}
+        <div className="relative grid min-h-0 flex-1 place-items-center" aria-hidden="true">
+          <div className="relative z-[1] [perspective:1100px] motion-safe:animate-[trama-onb-float_2.8s_ease-in-out_infinite]">
+            <div
+              className="relative aspect-[9/18.5] max-h-[44dvh] w-[clamp(160px,46vw,200px)] rounded-[34px] bg-[#1B1F2B] p-1.5 shadow-[0_0_0_1px_#2B3142,0_28px_50px_rgba(23,42,77,0.18),0_8px_18px_rgba(23,42,77,0.10)] motion-safe:transition-transform motion-safe:duration-[900ms] motion-safe:ease-[cubic-bezier(0.65,0,0.35,1)] motion-reduce:!transform-none"
+              style={{ transform: `rotateY(${slide.tilt.y}deg) rotateX(${slide.tilt.x}deg)` }}
+            >
+              <div className="absolute left-1/2 top-[11px] z-[3] h-4 w-[60px] -translate-x-1/2 rounded-xl bg-[#1B1F2B]" />
+              <div className="relative h-full overflow-hidden rounded-[29px] bg-white">
+                <div
+                  key={slide.key}
+                  className="absolute inset-0 flex flex-col gap-1.5 px-2.5 pb-2.5 pt-8 motion-safe:animate-[trama-onb-screen_0.5s_cubic-bezier(0.22,1,0.36,1)_both]"
+                >
+                  <div className="absolute left-4 right-4 top-[11px] flex justify-between text-[7.5px] text-ink-3">
+                    <span>9:41</span>
+                    <span>●●● ▮</span>
+                  </div>
+                  <PhoneScreen visual={slide.visual} />
+                </div>
+              </div>
+            </div>
+          </div>
+          {slide.pops.map((pop, i) => (
+            <PopCard key={`${slide.key}-${i}`} pop={pop} delayMs={350 + i * 140} />
+          ))}
         </div>
 
-        {/* Copy */}
-        <h2
-          id="onboarding-carousel-title"
-          className="mb-2 font-poppins text-2xl font-bold leading-tight text-ink sm:text-[28px]"
+        {/* Testo */}
+        <div
+          key={`copy-${slide.key}`}
+          className={`px-6 ${direction === 1 ? "motion-safe:animate-[trama-onb-text-next_0.55s_cubic-bezier(0.22,1,0.36,1)_both]" : "motion-safe:animate-[trama-onb-text-prev_0.55s_cubic-bezier(0.22,1,0.36,1)_both]"}`}
         >
-          {slide.title}
-        </h2>
-        <p className="text-[15px] leading-relaxed text-ink-2">{slide.body}</p>
-        {slide.microCopy && <p className="mt-2 text-[13px] font-medium text-trama-violet">{slide.microCopy}</p>}
+          <div className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-[0.16em] text-trama-violet">
+            <span aria-hidden="true" className="h-[1.5px] w-[22px] bg-trama-violet" />
+            {slide.eyebrow}
+          </div>
+          <h2
+            id="onboarding-carousel-title"
+            className="my-2.5 text-balance font-poppins text-[clamp(26px,7.4vw,32px)] font-bold leading-[1.08] tracking-[-0.02em] text-trama-navy"
+          >
+            {slide.titleBefore}
+            <span className="text-trama-violet">{slide.titleHighlight}</span>
+            {slide.titleAfter}
+          </h2>
+          <p className="max-w-[34ch] text-[15px] leading-relaxed text-ink-2">{slide.body}</p>
+          <p className="mt-2.5 text-[12px] text-ink-3">{slide.note}</p>
+        </div>
 
-        {/* Navigazione */}
-        <div className="mt-6 flex items-center gap-3">
-          {slideIndex > 0 && (
+        {/* Controlli */}
+        <div className="flex flex-col gap-4 px-6 pb-[calc(20px+env(safe-area-inset-bottom,0px))] pt-4">
+          <div className="flex items-center gap-2.5">
+            <span aria-live="polite" className="text-[11px] font-bold tabular-nums tracking-[0.08em] text-ink-3">
+              {slide.progress}
+            </span>
+            <div className="flex gap-1.5" role="group" aria-label="Schermate">
+              {ONBOARDING_SLIDES.map((s, i) => (
+                <button
+                  key={s.key}
+                  type="button"
+                  onClick={() => goTo(i)}
+                  aria-label={`Schermata ${i + 1}, ${s.eyebrow}`}
+                  aria-current={i === slideIndex ? "step" : undefined}
+                  className={`h-1 rounded-full motion-safe:transition-all motion-safe:duration-300 ${
+                    i === slideIndex ? "w-[30px] bg-trama-violet" : "w-[18px] bg-[#E6E8F0]"
+                  }`}
+                />
+              ))}
+            </div>
+          </div>
+          <div className="flex gap-2.5">
+            {slideIndex > 0 && (
+              <button
+                type="button"
+                onClick={handleBack}
+                aria-label="Indietro"
+                className="flex min-h-[52px] w-[52px] flex-shrink-0 items-center justify-center rounded-full border border-[#E6E8F0] text-ink active:scale-[0.97]"
+              >
+                <i className="ti ti-chevron-left text-[18px]" />
+              </button>
+            )}
             <button
               type="button"
-              onClick={handleBack}
-              aria-label="Indietro"
-              className="flex min-h-[48px] flex-shrink-0 items-center justify-center rounded-full border border-[#E8EBF0] px-4 text-[15px] font-semibold text-ink active:scale-[0.97]"
+              onClick={handleContinue}
+              className="min-h-[52px] flex-1 rounded-full bg-trama-violet text-[15.5px] font-bold text-white shadow-[0_10px_22px_rgba(111,99,197,0.25)] active:scale-[0.97]"
             >
-              <i className="ti ti-chevron-left text-[18px]" />
+              {slide.ctaLabel}
             </button>
-          )}
-          <button
-            type="button"
-            onClick={handleContinue}
-            className="min-h-[48px] flex-1 rounded-full bg-trama-violet text-[15px] font-bold text-white active:scale-[0.97]"
-          >
-            {slide.ctaLabel}
-          </button>
+          </div>
         </div>
       </div>
     </div>
@@ -243,175 +288,254 @@ export default function OnboardingCarousel({ progress }: { progress: Walkthrough
 }
 
 // ————————————————————————————————————————————————————————————————————————
-// Visual per slide — SVG/HTML nativi, nessun raster. Dati fittizi da
-// lib/nextgen/onboarding-slides.ts, mai dati reali dell'utente.
+// Card che escono dal telefono
 // ————————————————————————————————————————————————————————————————————————
 
-function KidChip({ name }: { name: string }) {
+const POP_TONE: Record<OnboardingPop["tone"], string> = {
+  violet: "bg-trama-violet/10 text-trama-violet",
+  green: "bg-trama-green/10 text-trama-green",
+  amber: "bg-[#FFF3DF] text-[#B86E00]",
+};
+
+function PopCard({ pop, delayMs }: { pop: OnboardingPop; delayMs: number }) {
   return (
-    <span className="inline-flex items-center gap-1 rounded-full bg-trama-violet/10 px-2.5 py-1 text-[12px] font-semibold text-trama-violet">
-      <i className="ti ti-user-circle text-[14px]" />
-      {name}
+    <div
+      className={`absolute z-[2] flex max-w-[64%] items-center gap-2 rounded-[14px] border border-[#E6E8F0] bg-white px-[11px] py-2 text-[11.5px] text-trama-navy shadow-[0_14px_30px_rgba(23,42,77,0.12),0_2px_6px_rgba(23,42,77,0.06)] ${
+        pop.side === "left"
+          ? "left-4 motion-safe:animate-[trama-onb-pop-left_0.7s_cubic-bezier(0.34,1.56,0.64,1)_both]"
+          : "right-4 motion-safe:animate-[trama-onb-pop-right_0.7s_cubic-bezier(0.34,1.56,0.64,1)_both]"
+      }`}
+      style={{ top: `${pop.top}%`, animationDelay: `${delayMs}ms` }}
+    >
+      <span className={`flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-lg text-[13px] ${POP_TONE[pop.tone]}`}>
+        <i className={`ti ${pop.icon}`} />
+      </span>
+      <span className="min-w-0">
+        <b className="block font-bold">
+          {pop.title}
+          {pop.comingSoon && (
+            <span className="ml-1 whitespace-nowrap rounded-full bg-[#FFF3DF] px-1.5 py-px text-[9px] font-bold text-[#B86E00]">
+              In arrivo
+            </span>
+          )}
+        </b>
+        <small className="block text-[10px] text-ink-3">{pop.subtitle}</small>
+      </span>
+    </div>
+  );
+}
+
+// ————————————————————————————————————————————————————————————————————————
+// Schermate dentro il telefono — dati demo fittizi, mai dati reali.
+// ————————————————————————————————————————————————————————————————————————
+
+const TONE_BAR: Record<string, string> = {
+  violet: "bg-trama-violet",
+  green: "bg-trama-green",
+  amber: "bg-trama-orange",
+};
+
+function ScreenHeader({ sub, title }: { sub: string; title: string }) {
+  return (
+    <>
+      <div className="text-[7.5px] font-bold uppercase tracking-[0.1em] text-trama-violet">{sub}</div>
+      <div className="font-poppins text-[12px] font-bold text-trama-navy">{title}</div>
+    </>
+  );
+}
+
+function MiniCard({
+  emoji,
+  tag,
+  tagTone,
+  name,
+  meta,
+  cta,
+  ctaSolid,
+  heroTone,
+}: {
+  emoji: string;
+  tag: string;
+  tagTone: "trama" | "found";
+  name: string;
+  meta: string;
+  cta: string;
+  ctaSolid: boolean;
+  heroTone: "violet" | "green";
+}) {
+  return (
+    <div className="overflow-hidden rounded-[10px] border border-[#E6E8F0] bg-white">
+      <div className={`relative grid h-9 place-items-center text-[17px] ${heroTone === "violet" ? "bg-trama-violet/10" : "bg-trama-green/10"}`}>
+        {emoji}
+        <span
+          className={`absolute bottom-1 left-1.5 rounded-full px-[5px] py-[2px] text-[6.5px] font-bold ${
+            tagTone === "trama" ? "bg-trama-violet text-white" : "border border-[#E6E8F0] bg-white text-trama-navy"
+          }`}
+        >
+          {tag}
+        </span>
+      </div>
+      <div className="px-[7px] pb-1.5 pt-[5px]">
+        <div className="text-[8.5px] font-bold text-trama-navy">{name}</div>
+        <div className="mt-px text-[7px] text-ink-3">{meta}</div>
+        <div
+          className={`mt-[5px] rounded-full p-1 text-center text-[7px] font-bold ${
+            ctaSolid ? "bg-trama-violet text-white" : "border border-[#E6E8F0] text-trama-navy"
+          }`}
+        >
+          {cta}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function Avatar({ letter, tone }: { letter: string; tone: number }) {
+  const tones = ["bg-[#FBD9E6]", "bg-[#D5ECFF]", "bg-[#FFE9C7]", "bg-trama-green/15", "bg-trama-violet/15"];
+  return (
+    <span
+      className={`grid h-[18px] w-[18px] place-items-center rounded-full text-[8px] font-bold text-trama-navy ${tones[tone % tones.length]}`}
+    >
+      {letter}
     </span>
   );
 }
 
-function ChaosVisual() {
-  return (
-    <div className="rounded-2xl bg-white p-4">
-      <div className="flex items-center justify-between gap-3">
-        {/* Impegni sparsi — chip ruotate a piccolo angolo casuale ma FISSO
-            (mai Math.random: deve renderizzare identico ad ogni load/test,
-            niente hydration mismatch). */}
-        <div className="relative h-24 flex-1">
-          {ONBOARDING_DEMO_ACTIVITIES_CHAOS.map((a, i) => {
-            const rotations = [-6, 4, -3, 7];
-            const tops = [0, 14, 34, 4];
-            const lefts = [0, 55, 20, 70];
-            return (
-              <span
-                key={a}
-                style={{
-                  transform: `rotate(${rotations[i % rotations.length]}deg)`,
-                  top: tops[i % tops.length],
-                  left: `${lefts[i % lefts.length]}%`,
-                }}
-                className="absolute whitespace-nowrap rounded-lg border border-[#E8EBF0] bg-trama-card px-2 py-1 text-[11px] font-semibold text-ink-2 shadow-sm"
-              >
-                {a}
-              </span>
-            );
-          })}
+function PhoneScreen({ visual }: { visual: OnboardingSlideVisual }) {
+  if (visual === "discover") {
+    const d = ONBOARDING_DEMO_DISCOVER;
+    return (
+      <>
+        <ScreenHeader sub="Scopri" title={d.heading} />
+        <div className="flex items-center gap-1 rounded-[9px] bg-trama-card px-2 py-1.5 text-[8px] text-ink-2">
+          <i className="ti ti-search text-[9px] text-ink-3" />
+          {d.query}
         </div>
-        <i className="ti ti-arrow-narrow-right flex-shrink-0 text-2xl text-ink-3" />
-        {/* Settimane organizzate */}
-        <div className="flex flex-1 flex-col gap-1.5">
-          {[1, 2, 3].map((n) => (
-            <div
-              key={n}
-              className="flex items-center gap-2 rounded-lg bg-trama-green/10 px-2.5 py-1.5 text-[11px] font-semibold text-trama-green"
+        <div className="flex flex-wrap gap-1">
+          {d.filters.map((f, i) => (
+            <span
+              key={f}
+              className={`rounded-full border px-1.5 py-[3px] text-[7px] ${
+                i === 0 ? "border-trama-violet/10 bg-trama-violet/10 font-bold text-trama-violet" : "border-[#E6E8F0] text-ink-2"
+              }`}
             >
-              <i className="ti ti-circle-check-filled text-[13px]" />
-              Settimana {n}
+              {f}
+            </span>
+          ))}
+        </div>
+        <MiniCard
+          emoji={d.partner.emoji}
+          tag="Su TRAMA"
+          tagTone="trama"
+          name={d.partner.name}
+          meta={d.partner.meta}
+          cta={d.partner.cta}
+          ctaSolid
+          heroTone="violet"
+        />
+        <MiniCard
+          emoji={d.curated.emoji}
+          tag="Scoperta TRAMA"
+          tagTone="found"
+          name={d.curated.name}
+          meta={d.curated.meta}
+          cta={d.curated.cta}
+          ctaSolid={false}
+          heroTone="green"
+        />
+      </>
+    );
+  }
+  if (visual === "organize") {
+    const w = ONBOARDING_DEMO_WEEK;
+    return (
+      <>
+        <ScreenHeader sub="Planner" title={w.heading} />
+        <div className="grid grid-cols-5 gap-[3px]">
+          {w.days.map((day, i) => (
+            <div
+              key={`${day.label}-${i}`}
+              className={`rounded-[7px] py-1 text-center text-[7px] text-ink-3 ${"active" in day && day.active ? "bg-trama-violet/10" : ""}`}
+            >
+              {day.label}
+              <b className="block font-poppins text-[10px] text-trama-navy">{day.day}</b>
             </div>
           ))}
         </div>
-      </div>
-      <div className="mt-3 flex gap-1.5">
-        {ONBOARDING_DEMO_KIDS.map((k) => (
-          <KidChip key={k} name={k} />
-        ))}
-      </div>
-    </div>
-  );
-}
-
-function SearchVisual() {
-  return (
-    <div className="rounded-2xl bg-white p-4">
-      <div className="mb-2.5 flex items-center gap-2 rounded-full bg-trama-orange/10 px-3 py-1.5 text-[12px] font-semibold text-trama-orange">
-        <i className="ti ti-calendar-exclamation text-[14px]" />
-        {ONBOARDING_DEMO_WEEK_LABEL}
-      </div>
-      <div className="mb-2.5 flex items-center gap-2 rounded-xl border border-[#E8EBF0] px-3 py-2 text-[13px] text-ink-2">
-        <i className="ti ti-search text-[15px]" />
-        {ONBOARDING_DEMO_CENTER}
-      </div>
-      <div className="flex items-center justify-between rounded-xl bg-trama-card p-3">
-        <div>
-          <div className="text-[13px] font-bold text-ink">{ONBOARDING_DEMO_ACTIVITY_SEARCH}</div>
-          <div className="mt-0.5 flex items-center gap-1 text-[11px] font-semibold text-trama-green">
-            <i className="ti ti-circle-check-filled text-[12px]" />
-            Disponibile
-          </div>
-        </div>
-        <i className="ti ti-chevron-right text-ink-3" />
-      </div>
-    </div>
-  );
-}
-
-// Slide 3 — "Chi fa cosa": Andata/Ritorno per un bambino demo, MAI solo
-// colore (icona + etichetta su ogni riga, stesso principio delle altre
-// slide).
-function ResponsibilityVisual() {
-  return (
-    <div className="rounded-2xl bg-white p-4">
-      <div className="mb-2.5">
-        <KidChip name={ONBOARDING_DEMO_RESPONSIBILITY.kid} />
-      </div>
-      <div className="flex flex-col gap-2">
-        <div className="flex items-center justify-between rounded-xl bg-trama-card px-3 py-2">
-          <span className="flex items-center gap-2 text-[12.5px] font-semibold text-ink-2">
-            <i className="ti ti-arrow-up-right text-[15px] text-ink-3" />
-            Andata
-          </span>
-          <span className="text-[12.5px] font-bold text-ink">{ONBOARDING_DEMO_RESPONSIBILITY.andata}</span>
-        </div>
-        <div className="flex items-center justify-between rounded-xl bg-trama-card px-3 py-2">
-          <span className="flex items-center gap-2 text-[12.5px] font-semibold text-ink-2">
-            <i className="ti ti-arrow-down-left text-[15px] text-ink-3" />
-            Ritorno
-          </span>
-          <span className="text-[12.5px] font-bold text-ink">{ONBOARDING_DEMO_RESPONSIBILITY.ritorno}</span>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// Slide 4 — "Dal centro alla giornata": stesso linguaggio visivo a
-// pillole+freccia già collaudato nella versione precedente del carousel
-// (colonna su mobile, riga su sm+, per lo stesso motivo di leggibilità
-// documentato nella cronologia di questo componente), applicato alle 4
-// tappe di ONBOARDING_FLOW_STAGES invece dei 6 passaggi della richiesta.
-function FlowVisual() {
-  return (
-    <div className="rounded-2xl bg-white p-4">
-      <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-stretch sm:gap-1.5">
-        {ONBOARDING_FLOW_STAGES.map((stage, i) => (
-          <div key={stage.label} className="flex flex-col items-start gap-1.5 sm:flex-row sm:items-center">
-            <div className="rounded-xl bg-trama-card px-2.5 py-1.5">
-              <div className="flex items-center gap-1.5 text-[11px] font-bold text-trama-violet">
-                <i className={`ti ${stage.icon} text-[13px]`} />
-                {stage.label}
-              </div>
-              <div className="mt-0.5 text-[10.5px] text-ink-2">{stage.items.join(" · ")}</div>
+        {w.items.map((item) => (
+          <div key={item.name} className="flex gap-1.5 rounded-[9px] border border-[#E6E8F0] bg-white px-[7px] py-1.5">
+            <span className={`w-[3px] flex-shrink-0 rounded-full ${TONE_BAR[item.tone]}`} />
+            <div>
+              <div className="text-[7px] tabular-nums text-ink-3">{item.time}</div>
+              <div className="text-[8.5px] font-bold text-trama-navy">{item.name}</div>
+              <div className="text-[6.5px] text-ink-3">{item.source}</div>
             </div>
-            {i < ONBOARDING_FLOW_STAGES.length - 1 && (
-              <>
-                <i className="ti ti-arrow-narrow-down block pl-3 text-[14px] text-ink-3 sm:hidden" aria-hidden="true" />
-                <i className="ti ti-arrow-narrow-right hidden text-[14px] text-ink-3 sm:inline" aria-hidden="true" />
-              </>
-            )}
           </div>
         ))}
-      </div>
-    </div>
-  );
-}
-
-// Slide 5 — "Condividi": persone/canali con cui il piano può essere
-// condiviso (Chi fa cosa, Gruppi, Piano condiviso — capability reali, non
-// un elenco di feature inventate).
-function ShareVisual() {
-  return (
-    <div className="rounded-2xl bg-white p-4">
-      <div className="flex flex-wrap gap-1.5">
-        {ONBOARDING_SHARE_PEOPLE.map((person) => (
-          <span
-            key={person}
-            className="inline-flex items-center gap-1.5 rounded-full bg-trama-card px-2.5 py-1.5 text-[12px] font-semibold text-ink-2"
-          >
-            <i className="ti ti-user-circle text-[14px] text-ink-3" />
-            {person}
-          </span>
+      </>
+    );
+  }
+  if (visual === "coordinate") {
+    const r = ONBOARDING_DEMO_RESPONSIBILITY;
+    return (
+      <>
+        <ScreenHeader sub="Chi fa cosa" title={r.heading} />
+        <div className="flex gap-1">
+          {r.helpers.map((h, i) => (
+            <Avatar key={h} letter={h} tone={i} />
+          ))}
+        </div>
+        {r.rows.map((row, i) => (
+          <div key={row.kid} className="flex flex-col gap-1">
+            <div className="flex items-center gap-1.5 text-[8.5px] font-bold text-trama-navy">
+              <Avatar letter={row.kid[0]} tone={i} />
+              {row.kid} · {row.activity}
+            </div>
+            <div className="grid grid-cols-2 gap-1">
+              <div className="rounded-lg bg-trama-card px-1.5 py-[5px]">
+                <small className="block text-[6.5px] uppercase tracking-[0.08em] text-ink-3">Porta</small>
+                <strong className="text-[8.5px] text-trama-navy">{row.porta}</strong>
+              </div>
+              <div className="rounded-lg bg-trama-card px-1.5 py-[5px]">
+                <small className="block text-[6.5px] uppercase tracking-[0.08em] text-ink-3">Riprende</small>
+                <strong className="text-[8.5px] text-trama-navy">{row.riprende}</strong>
+              </div>
+            </div>
+          </div>
         ))}
+        <div className="text-[7px] font-bold text-trama-green">✓ Giornata organizzata</div>
+      </>
+    );
+  }
+  const g = ONBOARDING_DEMO_GROUPS;
+  return (
+    <>
+      <ScreenHeader sub="Gruppi" title={g.heading} />
+      {g.groups.map((group) => (
+        <div key={group.name} className="flex flex-col gap-1 rounded-[10px] border border-[#E6E8F0] p-[7px]">
+          <div className="flex items-center justify-between">
+            <div className="text-[8.5px] font-bold text-trama-navy">{group.name}</div>
+            <div className="flex">
+              {group.members.map((m, i) => (
+                <span key={m} className={i === 0 ? "" : "-ml-[5px]"}>
+                  <Avatar letter={m} tone={i + 2} />
+                </span>
+              ))}
+            </div>
+          </div>
+          <div className="text-[7px] text-ink-3">{group.meta}</div>
+          {"cta" in group && group.cta && (
+            <div className="rounded-full bg-trama-violet p-1 text-center text-[7px] font-bold text-white">{group.cta}</div>
+          )}
+        </div>
+      ))}
+      <div className="flex gap-1.5 rounded-[9px] border border-[#E6E8F0] bg-white px-[7px] py-1.5">
+        <span className="w-[3px] flex-shrink-0 rounded-full bg-trama-violet" />
+        <div>
+          <div className="text-[8.5px] font-bold text-trama-navy">{g.shared.name}</div>
+          <div className="text-[6.5px] text-ink-3">{g.shared.meta}</div>
+        </div>
       </div>
-      <div className="mt-3 inline-flex items-center gap-1.5 rounded-full bg-trama-violet/10 px-2.5 py-1.5 text-[11px] font-semibold text-trama-violet">
-        <i className="ti ti-share text-[13px]" />
-        Piano condiviso
-      </div>
-    </div>
+    </>
   );
 }

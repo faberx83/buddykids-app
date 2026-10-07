@@ -12,6 +12,8 @@ import { getFavoriteActivityIds } from "@/lib/data/favorites";
 import { computeMatchesForKid } from "@/lib/matching";
 import { WEEKDAYS } from "@/lib/nextgen/responsibility-options";
 import HomeDashboardClient from "./HomeDashboardClient";
+import { resolveFeatureFlagVisibility } from "@/lib/feature-flags/resolve";
+import { generateCorrelationId } from "@/lib/telemetry/correlation";
 
 // TRAMA BETA v1.1.1 — ORGANIZATION COMPLETENESS: stessa tecnica di addDaysIso
 // duplicata altrove nel repo (piccola funzione pura, vedi lib/nextgen/
@@ -49,6 +51,21 @@ export default async function NextgenHomePage() {
   // date reali di planner.weeks — non una nuova interpretazione delle
   // settimane, solo una dipendenza in più tra due fetch già esistenti.
   const planner = await getPlannerData();
+
+  // TRAMA — FAMILY-FIRST BETA PASS (07/10/2026): scorciatoia "Aggiungi un
+  // impegno" in Home solo se la funzione è davvero disponibile per l'utente
+  // (stesso flag e stesso resolver del Planner).
+  const externalPlannerItemsEnabled = user
+    ? (
+        await resolveFeatureFlagVisibility({
+          flagName: "EXTERNAL_PLANNER_ITEMS_ENABLED",
+          userId: user.id,
+          role: "parent",
+          tenant: "family",
+          correlationId: generateCorrelationId(),
+        })
+      ).enabled
+    : false;
 
   // Union delle date lun-ven di TUTTE le settimane non "dismissed" (non solo
   // future: il filtro "futuro/rilevante" — stessa convenzione di
@@ -204,6 +221,7 @@ export default async function NextgenHomePage() {
       // ritorna prima, riga ~20).
       activitiesAreMockFallback={isMockActivitiesArray(activities)}
       favoriteActivityIds={Array.from(favoriteActivityIds)}
+      externalPlannerItemsEnabled={externalPlannerItemsEnabled}
     />
   );
 }

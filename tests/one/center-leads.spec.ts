@@ -28,7 +28,9 @@ test.describe("TRAMA ONE — CenterLead: suggerimento centro non iscritto (Sprin
     await page.getByPlaceholder("Cerca per nome…").fill("zzzznonexistentcenterzzzz9999");
 
     await expect(page.getByText("Nessuna attività corrisponde ai filtri scelti.")).toBeVisible();
-    await expect(page.getByText("Non trovi il centro che cerchi?")).toBeVisible();
+    // FAMILY-FIRST BETA PASS (07/10/2026): testo riformulato, stesso punto di ingresso.
+    await expect(page.getByText("Conosci un centro che non è ancora su TRAMA?")).toBeVisible();
+    await expect(page.getByRole("button", { name: "Suggerisci un centro" })).toBeVisible();
   });
 
   test("TC-N601 - Genitore: inviare una segnalazione crea SOLO una riga center_leads, mai un'attività pubblica", async ({

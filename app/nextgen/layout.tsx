@@ -13,6 +13,7 @@ import { generateCorrelationId } from "@/lib/telemetry/correlation";
 import { getWalkthroughProgress, WalkthroughProgressSummary } from "@/lib/walkthrough/data";
 import ParentSpotlight from "@/components/spotlight/ParentSpotlight";
 import OnboardingCarousel from "@/components/nextgen/OnboardingCarousel";
+import { PARENT_ONBOARDING_TUTORIAL_KEY } from "@/lib/nextgen/onboarding-slides";
 import NotificationCenter from "@/components/nextgen/NotificationCenter";
 import NextgenAuthRedirect from "@/components/nextgen/NextgenAuthRedirect";
 import { getParentNotifications } from "@/lib/data/notifications";
@@ -184,8 +185,13 @@ export default async function NextgenLayout({ children }: { children: React.Reac
     ]);
     globalActionProgressEnabled = globalActionProgressResolved;
     buildInfoLabel = buildInfoLabelResolved;
-    if (enabled && realRole === "parent") {
-      onboardingProgress = await getWalkthroughProgress(user.id, "parent_beta_onboarding");
+    // FAMILY-FIRST BETA PASS (07/10/2026): carousel anche per l'Admin
+    // piattaforma (Fabrizio usa l'app famiglie con il proprio account admin,
+    // che non è "parent"), con la nuova chiave di tutorial: tutti lo vedono
+    // una volta al prossimo accesso. Center admin esclusi come prima (hanno
+    // il proprio carousel Partner).
+    if (enabled && (realRole === "parent" || realRole === "platform_admin")) {
+      onboardingProgress = await getWalkthroughProgress(user.id, PARENT_ONBOARDING_TUTORIAL_KEY);
       // Sequenza richiesta: il carousel di benvenuto precede il tour
       // Spotlight in-context — non recuperare/montare quest'ultimo finché il
       // carousel non risulta completato o saltato (currentStepKey null),

@@ -272,6 +272,22 @@ export const WALKTHROUGH_REGISTRY: Record<string, WalkthroughDefinition> = {
       },
     ],
   },
+  // FAMILY-FIRST BETA PASS (07/10/2026): nuovo onboarding famiglie (4
+  // schermate Scopri/Organizza/Coordina/Insieme). Chiave NUOVA apposta: chi
+  // aveva completato o saltato "parent_beta_onboarding" vede la nuova
+  // versione una volta al prossimo accesso. La voce precedente resta nel
+  // registry solo per lo storico (righe tutorial_progress esistenti).
+  family_first_onboarding: {
+    key: "family_first_onboarding",
+    title: "Benvenuto in TRAMA (beta famiglie)",
+    steps: [
+      {
+        key: "carousel",
+        title: "Onboarding famiglie",
+        description: "Le 4 schermate di benvenuto: Scopri, Organizza, Coordina, Insieme.",
+      },
+    ],
+  },
   // FINAL PRE-FREEZE WAVE (sez. 19-22, 08/09/2026) — controparte Partner di
   // parent_beta_onboarding sopra, stesso identico pattern (un solo step
   // sentinella "carousel", zero nuova migration, stessa infrastruttura

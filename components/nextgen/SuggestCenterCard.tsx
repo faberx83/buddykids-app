@@ -43,11 +43,14 @@ export default function SuggestCenterCard({ demandContext }: { demandContext: Ce
   if (!open) {
     return (
       <div className="flex flex-col items-center gap-2 rounded-lg border border-dashed border-[#D8DEE8] bg-white p-4 text-center">
-        <p className="text-sm text-ink-2">Non trovi il centro che cerchi?</p>
+        {/* FAMILY-FIRST BETA PASS (07/10/2026): accanto a "Aggiungilo al
+            Planner" questa diventa l'azione secondaria (stesso flusso,
+            stesso form, nessun cambio di dati). */}
+        <p className="text-sm text-ink-2">Conosci un centro che non è ancora su TRAMA?</p>
         <button
           type="button"
           onClick={() => setOpen(true)}
-          className="rounded-full bg-trama-violet px-4 py-2 text-[13px] font-semibold text-white active:scale-95"
+          className="rounded-full border border-trama-violet px-4 py-2 text-[13px] font-semibold text-trama-violet active:scale-95"
         >
           Suggerisci un centro
         </button>

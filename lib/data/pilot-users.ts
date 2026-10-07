@@ -1,4 +1,5 @@
 import "server-only";
+import { PARENT_ONBOARDING_TUTORIAL_KEY } from "@/lib/nextgen/onboarding-slides";
 
 // TRAMA — Wave 1 "Pilot Observability" (vedi
 // docs/trama-one/analysis/TRAMA_PILOT_OBSERVABILITY_COORDINATION_IMPLEMENTATION.md
@@ -94,7 +95,7 @@ export interface PilotUserDetail {
 // Onboarding Beta: un solo tutorial, un solo step (lib/walkthrough/registry.ts
 // "parent_beta_onboarding" -> step "carousel") — lo stato del carousel È lo
 // stato di onboarding, nessuna aggregazione multi-step necessaria qui.
-const ONBOARDING_TUTORIAL_KEY = "parent_beta_onboarding";
+const ONBOARDING_TUTORIAL_KEY = PARENT_ONBOARDING_TUTORIAL_KEY;
 
 export const PILOT_ACTION_LABEL: Record<"kid" | "booking" | "group", string> = {
   kid: "Bambino aggiunto",

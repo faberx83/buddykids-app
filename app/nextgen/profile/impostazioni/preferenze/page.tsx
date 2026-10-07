@@ -5,6 +5,7 @@ import { isSupabaseConfigured } from "@/lib/supabase/env";
 import { resolveFeatureFlag } from "@/lib/feature-flags/resolve";
 import { generateCorrelationId } from "@/lib/telemetry/correlation";
 import { getTutorialDefinition } from "@/lib/walkthrough/registry";
+import { PARENT_ONBOARDING_TUTORIAL_KEY } from "@/lib/nextgen/onboarding-slides";
 import { Role } from "@/lib/types";
 
 // TRAMA ONE (24/08/2026) — guscio NEXTGEN-native per "Preferenze", stesso
@@ -32,8 +33,10 @@ export default async function NextgenPreferenzePage() {
     if (user) {
       const { data: authProfile } = await supabase.from("profiles").select("role").eq("id", user.id).single();
       const realRole = (authProfile?.role as Role) ?? "parent";
+      // FAMILY-FIRST BETA PASS (07/10/2026): anche l'Admin piattaforma (stesso
+      // gate di app/nextgen/layout.tsx per il carousel).
       showReplay =
-        realRole === "parent" &&
+        (realRole === "parent" || realRole === "platform_admin") &&
         (await resolveFeatureFlag({
           flagName: "TRAMA_ONE_ENABLED",
           userId: user.id,
@@ -43,7 +46,7 @@ export default async function NextgenPreferenzePage() {
         }));
     }
   }
-  const carousel = getTutorialDefinition("parent_beta_onboarding");
+  const carousel = getTutorialDefinition(PARENT_ONBOARDING_TUTORIAL_KEY);
   const tour = getTutorialDefinition("discover_book_parent");
 
   return (

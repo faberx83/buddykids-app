@@ -15,7 +15,8 @@
 // "impegno"/"I tuoi impegni"/"Aggiungi impegno", coerente con il resto del
 // Planner (Timeline, Missioni, Promemoria — stesso registro linguistico).
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { wantsNewExternalItem } from "@/lib/planner/new-external-item-link";
 import type { Kid } from "@/lib/types";
 import type { ExternalPlannerItem, ExternalPlannerItemInput, ExternalPlannerItemKind } from "@/lib/data/external-planner-items";
 import {
@@ -253,6 +254,15 @@ function ItemForm({
 export default function ExternalPlannerItemsSection({ items, kids }: { items: ExternalPlannerItem[]; kids: Kid[] }) {
   const showToast = useNextgenToast();
   const [mode, setMode] = useState<"idle" | "creating" | { editing: string }>("idle");
+  // FAMILY-FIRST BETA PASS (07/10/2026): arrivando da "Aggiungilo al tuo
+  // Planner" (Scopri senza risultati / Home) il modulo è già aperto.
+  // window.location (non useSearchParams): nessun Suspense boundary da
+  // aggiungere alla pagina Planner.
+  useEffect(() => {
+    if (!wantsNewExternalItem(window.location.search)) return;
+    setMode("creating");
+    document.getElementById("impegni")?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }, []);
   const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
   // TRAMA — DELETE UX · OPTIMISTIC REMOVAL (28/09/2026, live UX fix).
   //
@@ -344,7 +354,7 @@ export default function ExternalPlannerItemsSection({ items, kids }: { items: Ex
   }
 
   return (
-    <div className="mb-4">
+    <div id="impegni" className="mb-4 scroll-mt-20">
       <div className="mb-2.5 flex items-center justify-between">
         <div className="font-poppins text-sm font-bold text-ink">I tuoi impegni</div>
         {mode === "idle" && (
@@ -363,7 +373,7 @@ export default function ExternalPlannerItemsSection({ items, kids }: { items: Ex
 
       {sorted.length === 0 && mode === "idle" && (
         <p className="rounded-xl border border-dashed border-[#E8EBF0] p-3 text-[12px] text-ink-3">
-          Nessun impegno esterno ancora — aggiungi qui ciò che organizzi fuori da TRAMA (calcio, danza, dentista, un centro estivo trovato altrove…).
+          Aggiungi tutto quello che riguarda i tuoi figli, anche se non è su TRAMA: sport, musica, scuola, una festa, una visita, un impegno di famiglia.
         </p>
       )}
 

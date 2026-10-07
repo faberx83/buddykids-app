@@ -3,6 +3,14 @@
 import { createClient } from "@/lib/supabase/server";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
 import { revalidatePath } from "next/cache";
+import {
+  isBetaFeedbackCategory,
+  isMissingColumnError,
+  sanitizeBetaFeedbackClientContext,
+} from "@/lib/nextgen/beta-feedback-shared";
+import { getBuildInfo } from "@/lib/build-info";
+import { persistProductEvent } from "@/lib/telemetry/events";
+import { generateCorrelationId } from "@/lib/telemetry/correlation";
 
 // SPRINT 5 (NEXTGEN) — "Segnala un problema": il genitore invia una
 // segnalazione dalla floating CTA (BetaFeedbackButton.tsx), sempre in stato
@@ -26,7 +34,11 @@ export async function submitBetaFeedbackAction(
   area: string,
   pagePath: string,
   message: string,
-  appSource: "genitori" | "gestore" = "genitori"
+  appSource: "genitori" | "gestore" = "genitori",
+  // TRAMA — FAMILY-FIRST BETA PASS (07/10/2026): tipo facoltativo + contesto
+  // automatico (migration 40). Parametro opzionale: i call site esistenti
+  // restano validi senza modifiche.
+  extra?: { category?: string | null; clientContext?: unknown }
 ): Promise<{ error?: string }> {
   if (!isSupabaseConfigured) return { error: "Supabase non configurato" };
   if (!message.trim()) return { error: "Scrivi qualcosa prima di inviare" };
@@ -37,24 +49,54 @@ export async function submitBetaFeedbackAction(
   } = await supabase.auth.getUser();
   if (!user) return { error: "Non autenticato" };
 
-  const { error } = await supabase.from("beta_feedback").insert({
+  const base = {
     parent_id: user.id,
     app_source: appSource,
     area,
     page_path: pagePath,
     message: message.trim(),
     status: "nuovo",
-  });
+  };
+
+  const category = isBetaFeedbackCategory(extra?.category) ? extra?.category : null;
+  let clientContext: Record<string, unknown> | null = null;
+  if (extra) {
+    const { data: profile } = await supabase.from("profiles").select("role").eq("id", user.id).maybeSingle();
+    clientContext = {
+      ...sanitizeBetaFeedbackClientContext(extra.clientContext),
+      role: (profile?.role as string | undefined) ?? undefined,
+      build: getBuildInfo().shortSha ?? undefined,
+    };
+  }
+
+  let { error } = await supabase
+    .from("beta_feedback")
+    .insert(extra ? { ...base, category, client_context: clientContext } : base);
+
+  // Migration 40 non ancora applicata: le colonne nuove non esistono.
+  // Il feedback si salva comunque con le sole colonne storiche (mai perso).
+  if (error && extra && isMissingColumnError(error)) {
+    ({ error } = await supabase.from("beta_feedback").insert(base));
+  }
 
   if (error) return { error: error.message };
+
+  await persistProductEvent(
+    {
+      event: "feedback_submitted",
+      correlationId: generateCorrelationId(),
+      tenant: appSource === "gestore" ? "partner" : "family",
+      role: (clientContext?.role as string | undefined) ?? null,
+      detail: category ?? "senza_categoria",
+    },
+    { supabase, userId: user.id }
+  );
+
   revalidatePath("/nextgen/profile/segnalazioni");
   revalidatePath("/admin/segnalazioni-beta");
   return {};
 }
 
-// Solo un Admin piattaforma può cambiare stato/nota (le policy RLS lo
-// impongono comunque: l'unica policy di update su beta_feedback richiede
-// is_platform_admin()).
 export async function updateBetaFeedbackStatusAction(
   id: string,
   status: "nuovo" | "in_gestione" | "risolto",

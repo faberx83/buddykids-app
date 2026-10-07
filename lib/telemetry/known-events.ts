@@ -133,6 +133,19 @@ export const KNOWN_PRODUCT_EVENTS = [
   // detail/source_type dell'evento generico. `detail` = SOLO il
   // curated_lead_id (stringa statica del dataset code-based).
   "curated_added_to_planner",
+  // TRAMA — FAMILY-FIRST BETA PASS (07/10/2026). Segnali minimi della beta
+  // family-first, nella stessa tabella product_events (nessuna nuova
+  // piattaforma analytics, nessuna migration: event_name non ha vincoli).
+  // `detail` mai con dati personali: solo id statici (lead, annuncio) o la
+  // categoria del feedback.
+  "discovery_opened", // apertura di Scopri (server, app/nextgen/search/page.tsx)
+  // (salvataggio curated = "favorite_added" con detail "curated:<id>";
+  // invito centro = "curated_listing_invite_proposed": già tracciati, riusati.)
+  "novita_opened", // apertura pagina Novità
+  "announcement_read", // Novità segnata come letta (detail = announcement id)
+  "announcement_voted", // 👍/👎 su una Novità "In arrivo" (detail = `${id}:up|down|none`)
+  "feedback_opened", // apertura del pannello feedback (detail = sorgente)
+  "feedback_submitted", // invio feedback (detail = categoria)
 ] as const;
 
 export type KnownProductEvent = (typeof KNOWN_PRODUCT_EVENTS)[number];
