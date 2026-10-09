@@ -154,6 +154,12 @@ test.describe("Feedback beta — famiglie [no browser]", () => {
     const action = read("../../app/actions/beta-feedback.ts");
     expect(action).toContain("if (error && extra && isMissingColumnError(error)) {");
     expect(action).toContain('({ error } = await supabase.from("beta_feedback").insert(base));');
+    // Regressione build Vercel 09/10/2026 (TS2345): mai un oggetto unione
+    // dentro insert() — due chiamate distinte, una per forma di riga.
+    expect(action).not.toMatch(/\.insert\(\s*extra\s*\?/);
+    expect(action).toContain(
+      'await supabase.from("beta_feedback").insert({ ...base, category, client_context: clientContext })'
+    );
   });
 
   test("FFB-13: pannello famiglie — titolo, tipi, suggerimento dettatura, conferma nel pannello, input 16px", () => {

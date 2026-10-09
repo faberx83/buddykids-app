@@ -92,13 +92,13 @@ export async function getAllBetaFeedbackForAdmin(): Promise<BetaFeedbackItem[]> 
     .from("beta_feedback")
     .select(`${baseColumns}, category, client_context`)
     .order("created_at", { ascending: false });
-  let data = attempt.data as RawRow[] | null;
+  let data = attempt.data as unknown as RawRow[] | null;
   let error = attempt.error;
 
   // Migration 40 non ancora applicata: stessa lista di prima, senza categoria.
   if (error && isMissingColumnError(error)) {
     const fallback = await supabase.from("beta_feedback").select(baseColumns).order("created_at", { ascending: false });
-    data = fallback.data as RawRow[] | null;
+    data = fallback.data as unknown as RawRow[] | null;
     error = fallback.error;
   }
 

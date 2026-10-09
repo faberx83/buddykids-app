@@ -69,9 +69,12 @@ export async function submitBetaFeedbackAction(
     };
   }
 
-  let { error } = await supabase
-    .from("beta_feedback")
-    .insert(extra ? { ...base, category, client_context: clientContext } : base);
+  // Due chiamate distinte (non un'unica insert con un oggetto unione): il
+  // tipo generico di insert() inferito da un'unione rifiuta le colonne nuove
+  // (TS2345 "'category' does not exist") nel type-check di next build.
+  let { error } = extra
+    ? await supabase.from("beta_feedback").insert({ ...base, category, client_context: clientContext })
+    : await supabase.from("beta_feedback").insert(base);
 
   // Migration 40 non ancora applicata: le colonne nuove non esistono.
   // Il feedback si salva comunque con le sole colonne storiche (mai perso).
