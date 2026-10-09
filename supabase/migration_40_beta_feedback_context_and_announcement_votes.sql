@@ -1,8 +1,10 @@
 -- Migrazione 40 — Family-first beta pass: feedback con categoria/contesto e
 -- voti 👍/👎 sulle Novità "In arrivo".
 --
--- STATO: PREPARATA, NON APPLICATA. La applica Fabrizio (governance invariata),
--- da shell:  APPLY_SQL="supabase/migration_40_beta_feedback_context_and_announcement_votes.sql" bash deploy.sh
+-- STATO: APPLICATA in produzione il 09/10/2026 12:19 da Fabrizio
+-- (APPLY_SQL=… SQL_ONLY=1 bash deploy.sh), verificata in sola lettura.
+-- Nota: deploy.sh esegue da solo i file con la riga "STATO: PREPARATA, NON
+-- APPLICATA"; per questo, una volta applicata, la riga va aggiornata.
 --
 -- Additiva e reversibile. Nessuna riga esistente modificata.
 -- Il codice funziona anche PRIMA di questa migrazione:

@@ -13,9 +13,13 @@
 #   TEST_BASE_URL=<url> ONLY_SITEMAP=1 bash deploy.sh  # sitemap contro <url> invece della produzione
 #   ALLOW_TEST_FAILURES=1 bash deploy.sh           # non blocca su test falliti (passato a test-deploy.sh)
 #   TEST_SCOPE=smoke|journeys|critical|all bash deploy.sh  # scope dei test (passato a test-deploy.sh)
-#   PATCH=~/Downloads/x.patch bash deploy.sh       # applica una patch di Claude (git am) e poi fa il deploy
-#   APPLY_SQL="supabase/a.sql supabase/b.sql" bash deploy.sh   # esegue SQL in produzione PRIMA del deploy
-#   APPLY_SQL="supabase/x.sql" SQL_ONLY=1 bash deploy.sh       # solo SQL, nessun deploy (vedi [0/5])
+#   bash deploy.sh                                 # FA TUTTO (vedi [0/5]): patch di Claude da ~/Downloads, npm install,
+#                                                   # controllo tipi, SQL in attesa (con conferma APPLICA), deploy
+#   SQL_ONLY=1 bash deploy.sh                      # solo patch + SQL in attesa, nessun push e nessun deploy
+#   SKIP_SQL=1 bash deploy.sh                      # deploy del solo codice, senza SQL
+#   PATCH=~/Downloads/x.patch bash deploy.sh       # applica SOLO quella patch (niente scansione di ~/Downloads)
+#   APPLY_SQL="supabase/a.sql supabase/b.sql" bash deploy.sh   # esegue ESATTAMENTE questi SQL PRIMA del deploy
+#   APPLY_SQL="supabase/x.sql" SQL_ONLY=1 bash deploy.sh       # solo quei SQL, nessun deploy
 #   INCLUDE_MOBILE=1 bash deploy.sh                # include il progetto mobile-chrome anche in TEST_SCOPE=critical
 #   ALLOW_PROD_FROM_NON_MAIN=1 bash deploy.sh      # override esplicito per deployare da un branch diverso da main
 #   ALLOW_DIRTY_PROD=1 bash deploy.sh              # override esplicito per deployare con working tree sporco
@@ -193,59 +197,313 @@ if [ -n "$ONLY_SITEMAP" ]; then
 fi
 
 # ────────────────────────────────────────────────────────────────
-# [0/5] Tutto da shell (richiesta di Fabrizio, 07/10/2026): patch di Claude e
-# SQL (migration, script flag) applicati da questo stesso comando, senza
-# passare da SQL Editor o terminali separati. Entrambi OPZIONALI: senza
-# PATCH / APPLY_SQL lo script si comporta esattamente come prima.
+# [0/5] UN SOLO COMANDO (richiesta di Fabrizio, 07/10 e 09/10/2026): "tutti i
+# comandi da terminale con l'unico lancio del bash". Prima del deploy vero e
+# proprio, `bash deploy.sh` fa da solo, in quest'ordine:
 #
-#   PATCH=~/Downloads/x.patch bash deploy.sh
-#       → git am della patch (deve stare FUORI dal repo, altrimenti il working
-#         tree risulterebbe sporco), poi il deploy normale.
-#   APPLY_SQL="supabase/migration_40_....sql" bash deploy.sh
-#       → esegue i file SQL (in ordine, ognuno in una transazione unica, stop
-#         al primo errore) PRIMA del push/deploy. Richiede SUPABASE_DB_URL in
-#         .env.deploy e psql installato (brew install libpq).
-#   APPLY_SQL="supabase/script_....sql" SQL_ONLY=1 bash deploy.sh
-#       → solo SQL, nessun push, nessun deploy (es. promozione flag).
+#   0a) MODIFICHE DI CLAUDE, senza scaricare nulla a mano, da tre fonti:
+#       1. i rami GitHub "claude/*" (ogni sessione di Claude Code, da Mac,
+#          iPad o telefono, pubblica lì i suoi commit): i commit nuovi vengono
+#          mostrati e, dopo conferma (s), portati su main (fast-forward o
+#          cherry-pick di quelli mancanti);
+#       2. la cartella .trama-inbox/ dentro il repo (gitignored: Claude ci
+#          scrive le patch direttamente quando il Mac è collegato);
+#       3. ~/Downloads (ripiego manuale, patch scaricate dalla chat).
+#       Per le cartelle: patch trama-*.patch dalla più vecchia, git am; quelle
+#       già nella storia (git patch-id) vengono solo archiviate; tutte finiscono
+#       in <cartella>/trama-patch-applicate/, così nulla si applica due volte.
+#       Se le modifiche cambiano deploy.sh, lo script si rilancia da solo con
+#       la versione nuova.
+#   0b) DIPENDENZE — se package.json è cambiato (o node_modules è indietro),
+#       npm install; se package-lock.json cambia, lo committa da solo.
+#   0c) CONTROLLO TIPI — npx tsc --noEmit: un errore come quello del 09/10
+#       (build Vercel fallita) si ferma qui, prima di push e deploy.
+#   0d) SQL IN ATTESA — i file supabase/*.sql che contengono la riga
+#       "-- STATO: PREPARATA, NON APPLICATA" e non risultano già applicati da
+#       questo Mac (registro ~/.trama-deploy/sql-applicati.log) vengono
+#       mostrati e, dopo conferma scritta APPLICA, eseguiti in produzione
+#       (uno per transazione, stop al primo errore), PRIMA del deploy.
 #
-# Conferma esplicita prima di ogni SQL (scrivi APPLICA); ASSUME_YES=1 la salta.
+# Override espliciti (tutti opzionali):
+#   PATCH=~/percorso/x.patch   applica SOLO quella patch (niente ramo, niente cartelle)
+#   PATCH_INBOX=~/altra/cartella   cartella di ripiego al posto di ~/Downloads
+#   INBOX_BRANCH=modello       rami GitHub da leggere al posto di claude/*
+#   NO_GIT_INBOX=1             non guardare i rami GitHub
+#   NO_PATCH_INBOX=1           non guardare le cartelle
+#   SKIP_NPM=1 / SKIP_CHECKS=1 salta 0b / 0c
+#   APPLY_SQL="supabase/a.sql supabase/b.sql"   esegue ESATTAMENTE questi SQL (al posto della ricerca automatica)
+#   SKIP_SQL=1                 non eseguire SQL (deploy del solo codice)
+#   SQL_ONLY=1                 solo SQL, nessun push, nessun deploy
+#   ASSUME_YES=1               salta la conferma APPLICA (sconsigliato)
 # ────────────────────────────────────────────────────────────────
-if [ -n "$PATCH" ]; then
-  echo "[0/5] 🩹 Applico la patch: $PATCH"
+
+DEPLOY_STATE_DIR="${DEPLOY_STATE_DIR:-$HOME/.trama-deploy}"
+SQL_LEDGER="$DEPLOY_STATE_DIR/sql-applicati.log"
+PATCH_INBOX="${PATCH_INBOX:-$HOME/Downloads}"
+REPO_INBOX="$(git rev-parse --show-toplevel)/.trama-inbox"
+INBOX_BRANCH="${INBOX_BRANCH:-claude/*}"
+REPO_ROOT="$(git rev-parse --show-toplevel)"
+SUMMARY_LINES="${TRAMA_SUMMARY_LINES:-}"
+
+summary_add() {
+  SUMMARY_LINES="${SUMMARY_LINES}   • $1
+"
+}
+
+file_sha256() {
+  if command -v shasum >/dev/null 2>&1; then
+    shasum -a 256 "$1" | awk '{print $1}'
+  else
+    sha256sum "$1" | awk '{print $1}'
+  fi
+}
+
+require_main_and_clean() {
+  local what="$1"
+  if [ "$(git branch --show-current)" != "main" ]; then
+    echo "🛑 $what: branch corrente diverso da 'main'."
+    exit 1
+  fi
+  if [ -n "$(git status --porcelain)" ]; then
+    echo "🛑 $what: working tree sporco. Committa o ripulisci prima:"
+    git status --short
+    exit 1
+  fi
+}
+
+# Patch-id (contenuto delle modifiche, indipendente da autore/data/commit)
+# delle ultime 300 modifiche: serve a capire se una patch è già applicata.
+history_patch_ids() {
+  git log -p -n 300 --no-merges 2>/dev/null | git patch-id --stable | awk '{print $1}'
+}
+
+archive_patch() {
+  local archive_dir
+  archive_dir="$(dirname "$1")/trama-patch-applicate"
+  mkdir -p "$archive_dir"
+  local dest="$archive_dir/$(basename "$1")"
+  [ -e "$dest" ] && dest="$archive_dir/$(date +%Y%m%d-%H%M%S)-$(basename "$1")"
+  mv "$1" "$dest"
+}
+
+# Applica UNA patch (file mbox di git format-patch, anche con più commit).
+# Ritorna 0 se applicata, 2 se era già presente (solo archiviata).
+apply_one_patch() {
+  local patch_file="$1" patch_abs known ids total present
+  patch_abs="$(cd "$(dirname "$patch_file")" && pwd)/$(basename "$patch_file")"
+  case "$patch_abs" in
+    "$REPO_INBOX"/*)
+      # .trama-inbox/ è gitignored: non sporca il working tree.
+      ;;
+    "$REPO_ROOT"/*)
+      echo "🛑 La patch è dentro il repository ($patch_abs): spostala in .trama-inbox/ o fuori (es. ~/Downloads) e rilancia."
+      exit 1
+      ;;
+  esac
+
+  ids="$(git patch-id --stable < "$patch_abs" | awk '{print $1}')"
+  if [ -z "$ids" ]; then
+    echo "🛑 $(basename "$patch_abs") non sembra una patch git valida. Spostala o cancellala e rilancia."
+    exit 1
+  fi
+  known="$(history_patch_ids)"
+  total=0
+  present=0
+  for id in $ids; do
+    total=$((total + 1))
+    if printf '%s\n' "$known" | grep -qx "$id"; then
+      present=$((present + 1))
+    fi
+  done
+
+  if [ "$present" -eq "$total" ]; then
+    archive_patch "$patch_abs"
+    echo "   ↪︎  $(basename "$patch_abs"): già applicata in passato, archiviata."
+    return 2
+  fi
+  if [ "$present" -gt 0 ]; then
+    echo "🛑 $(basename "$patch_abs"): applicata solo in parte ($present commit su $total già presenti)."
+    echo "🛑 Nessuna modifica fatta. Manda questo messaggio a Claude."
+    exit 1
+  fi
+
+  require_main_and_clean "Patch non applicata"
+  if git am --3way "$patch_abs"; then
+    archive_patch "$patch_abs"
+    echo "   ✅ $(basename "$patch_abs"): applicata ($total commit)."
+    summary_add "patch applicata: $(basename "$patch_abs") ($total commit)"
+    return 0
+  fi
+  git am --abort >/dev/null 2>&1 || true
+  echo "🛑 git am fallito su $(basename "$patch_abs"): patch NON applicata, repository riportato allo stato precedente."
+  echo "🛑 La patch resta in $(dirname "$patch_abs"). Manda questo messaggio a Claude."
+  exit 1
+}
+
+HEAD_BEFORE_PATCHES="$(git rev-parse HEAD)"
+
+if [ -n "$TRAMA_DEPLOY_REEXEC" ]; then
+  # Rilancio dopo una patch che ha cambiato deploy.sh: le patch sono già
+  # state applicate dal giro precedente, che ci passa da dove ripartire.
+  HEAD_BEFORE_PATCHES="${TRAMA_HEAD_BEFORE_PATCHES:-$HEAD_BEFORE_PATCHES}"
+  echo "🔁 deploy.sh aggiornato dalle modifiche di Claude: proseguo con la versione nuova."
+  echo ""
+elif [ -n "$PATCH" ]; then
+  echo "[0/5] 🩹 Patch indicata: $PATCH"
   if [ ! -f "$PATCH" ]; then
     echo "🛑 Patch non trovata: $PATCH"
     exit 1
   fi
   PATCH_ABS="$(cd "$(dirname "$PATCH")" && pwd)/$(basename "$PATCH")"
-  REPO_ROOT="$(git rev-parse --show-toplevel)"
-  case "$PATCH_ABS" in
-    "$REPO_ROOT"/*)
-      echo "🛑 La patch è dentro il repository ($PATCH_ABS): spostala fuori (es. ~/Downloads) e rilancia."
+  apply_one_patch "$PATCH_ABS" || true
+  echo ""
+else
+  # 1) Rami GitHub claude/* ─────────────────────────────────────────
+  # Ogni sessione di Claude (Claude Code da Mac, iPad, telefono) pubblica i
+  # propri commit su un ramo "claude/<nome-sessione>" (mai su main). Qui si
+  # raccolgono i commit di quei rami non ancora su main (git cherry: per
+  # contenuto, quindi mai due volte), dal ramo più vecchio al più recente,
+  # e dopo una conferma (s) vengono portati su main.
+  if [ -z "$NO_GIT_INBOX" ] && [ -n "$(git ls-remote --heads origin "refs/heads/$INBOX_BRANCH" 2>/dev/null)" ]; then
+    git fetch -q --prune origin "+refs/heads/$INBOX_BRANCH:refs/remotes/origin/$INBOX_BRANCH"
+    INBOX_PLAN=""
+    INBOX_TOTAL=0
+    for ref in $(git for-each-ref --sort=committerdate --format='%(refname)' "refs/remotes/origin/$INBOX_BRANCH"); do
+      pending="$(git cherry HEAD "$ref" | awk '$1 == "+" {print $2}')"
+      [ -n "$pending" ] || continue
+      n="$(printf '%s\n' "$pending" | grep -c .)"
+      INBOX_TOTAL=$((INBOX_TOTAL + n))
+      INBOX_PLAN="$INBOX_PLAN $ref"
+      echo "[0/5] 📥 Ramo ${ref#refs/remotes/origin/}: $n commit nuovi di Claude"
+      for c in $pending; do echo "      • $(git log --format='%h %s' -1 "$c")"; done
+    done
+    if [ "$INBOX_TOTAL" -gt 0 ]; then
+      INBOX_OK="s"
+      if [ -z "$ASSUME_YES" ]; then
+        printf "   Porto queste modifiche su main e le pubblico? Scrivi s per sì, n per saltarle: "
+        read -r INBOX_OK
+      fi
+      if [ "$INBOX_OK" = "s" ] || [ "$INBOX_OK" = "S" ]; then
+        require_main_and_clean "Modifiche dei rami claude/* non applicate"
+        for ref in $INBOX_PLAN; do
+          branch="${ref#refs/remotes/origin/}"
+          if git merge-base --is-ancestor HEAD "$ref"; then
+            git merge -q --ff-only "$ref"
+          else
+            for c in $(git cherry HEAD "$ref" | awk '$1 == "+" {print $2}'); do
+              if ! git cherry-pick "$c" >/dev/null; then
+                git cherry-pick --abort >/dev/null 2>&1 || true
+                echo "🛑 Il commit $(git log --oneline -1 "$c") del ramo $branch non si applica su main."
+                echo "🛑 Nessuna modifica lasciata a metà. Manda questo messaggio a Claude."
+                exit 1
+              fi
+            done
+          fi
+          summary_add "dal ramo $branch"
+        done
+        git log --oneline "$HEAD_BEFORE_PATCHES..HEAD" | sed 's/^/   ✅ /'
+      else
+        echo "   ⏭️  Modifiche dei rami claude/* saltate (restano sui rami, le ripropongo al prossimo lancio)."
+      fi
+      echo ""
+    fi
+  fi
+
+  # 2) e 3) Cartelle: .trama-inbox/ nel repo, poi ~/Downloads ───────
+  if [ -z "$NO_PATCH_INBOX" ]; then
+    for inbox_dir in "$REPO_INBOX" "$PATCH_INBOX"; do
+      [ -d "$inbox_dir" ] || continue
+      PATCH_LIST="$(ls -1tr "$inbox_dir"/trama-*.patch 2>/dev/null || true)"
+      [ -n "$PATCH_LIST" ] || continue
+      echo "[0/5] 🩹 Patch di Claude trovate in $inbox_dir:"
+      while IFS= read -r p; do
+        [ -n "$p" ] && [ -f "$p" ] && apply_one_patch "$p" || true
+      done <<EOF_PATCH_LIST
+$PATCH_LIST
+EOF_PATCH_LIST
+      echo ""
+    done
+  fi
+fi
+
+if [ -z "$TRAMA_DEPLOY_REEXEC" ] && [ "$(git rev-parse HEAD)" != "$HEAD_BEFORE_PATCHES" ] \
+  && ! git diff --quiet "$HEAD_BEFORE_PATCHES" HEAD -- deploy.sh; then
+  # bash legge lo script mentre lo esegue: dopo una patch che ha cambiato
+  # deploy.sh si riparte con la versione nuova (stesso log, stessa notifica).
+  trap - EXIT
+  exec env TRAMA_DEPLOY_REEXEC=1 TRAMA_HEAD_BEFORE_PATCHES="$HEAD_BEFORE_PATCHES" NO_LOG_FILE=1 \
+    TRAMA_SUMMARY_LINES="$SUMMARY_LINES" \
+    LOG_FILE="${LOG_FILE:-}" bash "$REPO_ROOT/deploy.sh"
+fi
+
+# 0b) Dipendenze ─────────────────────────────────────────────────
+NEEDS_NPM=""
+if [ -z "$SKIP_NPM" ] && [ -z "$SQL_ONLY" ]; then
+  if [ "$(git rev-parse HEAD)" != "$HEAD_BEFORE_PATCHES" ] \
+    && ! git diff --quiet "$HEAD_BEFORE_PATCHES" HEAD -- package.json package-lock.json; then
+    NEEDS_NPM="le patch hanno cambiato le dipendenze"
+  elif [ ! -f node_modules/.package-lock.json ]; then
+    NEEDS_NPM="node_modules assente"
+  elif [ package.json -nt node_modules/.package-lock.json ] || [ package-lock.json -nt node_modules/.package-lock.json ]; then
+    NEEDS_NPM="node_modules non allineato a package.json"
+  fi
+fi
+if [ -n "$NEEDS_NPM" ]; then
+  echo "[0/5] 📦 npm install ($NEEDS_NPM)..."
+  npm install --no-audit --no-fund
+  if ! git diff --quiet -- package-lock.json; then
+    DIRTY_OTHER="$(git status --porcelain | grep -v ' package-lock.json$' || true)"
+    if [ -n "$DIRTY_OTHER" ]; then
+      echo "🛑 npm install ha modificato anche altri file, non li committo da solo:"
+      echo "$DIRTY_OTHER"
       exit 1
-      ;;
-  esac
-  if [ "$(git branch --show-current)" != "main" ]; then
-    echo "🛑 Patch non applicata: branch corrente diverso da 'main'."
-    exit 1
-  fi
-  if [ -n "$(git status --porcelain)" ]; then
-    echo "🛑 Patch non applicata: working tree sporco. Committa o ripulisci prima."
-    git status --short
-    exit 1
-  fi
-  if git am --3way "$PATCH_ABS"; then
-    echo "✅ Patch applicata: $(git log --oneline -1)"
+    fi
+    git add package-lock.json
+    git commit -q -m "chore(deps): package-lock.json aggiornato da deploy.sh"
+    echo "   ✅ package-lock.json aggiornato e committato ($(git rev-parse --short HEAD))."
+    summary_add "package-lock.json aggiornato e committato"
   else
-    git am --abort >/dev/null 2>&1 || true
-    echo "🛑 git am fallito: patch NON applicata, repository riportato allo stato precedente."
+    echo "   ✅ Dipendenze installate, package-lock.json invariato."
+  fi
+  echo ""
+fi
+
+# 0c) Controllo tipi ─────────────────────────────────────────────
+if [ -z "$SKIP_CHECKS" ] && [ -z "$SQL_ONLY" ]; then
+  echo "[0/5] 🔍 Controllo tipi (npx tsc --noEmit)..."
+  # Rigenera i tipi delle route (.next/types) come fa next build, così un
+  # residuo di una build locale vecchia non dà falsi errori.
+  npx next typegen >/dev/null 2>&1 || true
+  if npx tsc --noEmit; then
+    echo "   ✅ Nessun errore di tipo."
+  else
+    echo "🛑 Errori di tipo: nessun SQL, nessun push, nessun deploy. Manda questo messaggio a Claude."
     exit 1
   fi
   echo ""
 fi
 
+# 0d) SQL in produzione ──────────────────────────────────────────
+SQL_TO_APPLY=""
+SQL_SOURCE=""
 if [ -n "$APPLY_SQL" ]; then
-  echo "[0/5] 🗄️  SQL da applicare in produzione (Supabase):"
-  for f in $APPLY_SQL; do
+  SQL_TO_APPLY="$APPLY_SQL"
+  SQL_SOURCE="indicati con APPLY_SQL"
+elif [ -z "$SKIP_SQL" ]; then
+  for f in supabase/*.sql; do
+    [ -f "$f" ] || continue
+    grep -q '^-- STATO: PREPARATA, NON APPLICATA' "$f" || continue
+    if [ -f "$SQL_LEDGER" ] && awk '{print $1}' "$SQL_LEDGER" | grep -qx "$f"; then
+      continue
+    fi
+    SQL_TO_APPLY="$SQL_TO_APPLY $f"
+  done
+  SQL_SOURCE="in attesa (marcati PREPARATA, NON APPLICATA e non ancora eseguiti da questo Mac)"
+fi
+
+if [ -n "$SQL_TO_APPLY" ]; then
+  echo "[0/5] 🗄️  SQL da applicare in produzione (Supabase), $SQL_SOURCE:"
+  for f in $SQL_TO_APPLY; do
     if [ ! -f "$f" ]; then
       echo "🛑 File SQL non trovato: $f"
       exit 1
@@ -254,6 +512,7 @@ if [ -n "$APPLY_SQL" ]; then
   done
   if [ -z "$SUPABASE_DB_URL" ]; then
     echo "🛑 SUPABASE_DB_URL non impostata: aggiungila a .env.deploy (vedi .env.deploy.example)."
+    echo "🛑 Per pubblicare solo il codice senza SQL: SKIP_SQL=1 bash deploy.sh"
     exit 1
   fi
   if ! command -v psql >/dev/null 2>&1; then
@@ -268,20 +527,32 @@ if [ -n "$APPLY_SQL" ]; then
       exit 1
     fi
   fi
-  for f in $APPLY_SQL; do
+  mkdir -p "$DEPLOY_STATE_DIR"
+  for f in $SQL_TO_APPLY; do
     echo "▶️  $f"
     if psql "$SUPABASE_DB_URL" -v ON_ERROR_STOP=1 --single-transaction -f "$f"; then
+      echo "$f $(file_sha256 "$f") $(date +%Y-%m-%dT%H:%M:%S) $(git rev-parse --short HEAD)" >> "$SQL_LEDGER"
       echo "✅ $f applicato."
+      summary_add "SQL applicato: $f"
     else
       echo "🛑 $f FALLITO (transazione annullata). Stop: nessun file successivo, nessun deploy."
       exit 1
     fi
   done
   echo ""
-  if [ -n "$SQL_ONLY" ]; then
-    echo "✅ SQL_ONLY: SQL applicato, nessun push e nessun deploy eseguiti."
-    exit 0
-  fi
+elif [ -n "$SQL_ONLY" ]; then
+  echo "[0/5] 🗄️  Nessun SQL in attesa."
+fi
+
+if [ -n "$SQL_ONLY" ]; then
+  echo "✅ SQL_ONLY: nessun push e nessun deploy eseguiti."
+  exit 0
+fi
+
+if [ -n "$SUMMARY_LINES" ]; then
+  echo "[0/5] Riepilogo preparazione:"
+  printf '%s' "$SUMMARY_LINES"
+  echo ""
 fi
 
 # ────────────────────────────────────────────────────────────────

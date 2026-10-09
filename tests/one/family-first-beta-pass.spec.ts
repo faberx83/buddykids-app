@@ -319,7 +319,10 @@ test.describe("Telemetria beta, flag e deploy da shell [no browser]", () => {
   test("FFB-26: deploy.sh — PATCH e APPLY_SQL da shell, con conferma, transazione unica e stop al primo errore", () => {
     const sh = read("../../deploy.sh");
     expect(sh).toContain('if [ -n "$PATCH" ]; then');
-    expect(sh).toContain('git am --3way "$PATCH_ABS"');
+    // 09/10/2026: la logica di git am è nella funzione apply_one_patch (usata
+    // sia da PATCH= sia dalla scansione automatica di ~/Downloads).
+    expect(sh).toContain('apply_one_patch "$PATCH_ABS"');
+    expect(sh).toContain('git am --3way "$patch_abs"');
     expect(sh).toContain("La patch è dentro il repository");
     expect(sh).toContain('if [ -n "$APPLY_SQL" ]; then');
     expect(sh).toContain('psql "$SUPABASE_DB_URL" -v ON_ERROR_STOP=1 --single-transaction -f "$f"');
