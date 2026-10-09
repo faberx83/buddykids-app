@@ -33,6 +33,7 @@ Regole operative permanenti per qualunque lavoro su questo repository. Non sono 
 ## 3. Deploy e test
 
 - `deploy.sh` resta il punto di ingresso operativo principale.
+- Sessioni di Claude (qualsiasi dispositivo): consegnano i commit su un ramo `claude/<nome>`, mai su `main`; Fabrizio lancia solo `bash deploy.sh`, che porta i rami `claude/*` su main dopo conferma. Leggere `docs/trama-one/claude/LEGGIMI_SESSIONI_CLAUDE.md`.
 - `deploy.sh` e `test-deploy.sh` devono essere adattati incrementalmente, non riscritti senza necessità.
 - `bash deploy.sh` deve eseguire deploy e test automatici.
 - `SKIP_TESTS=1 bash deploy.sh` deve eseguire il solo deploy.
