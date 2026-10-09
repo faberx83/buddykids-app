@@ -42,11 +42,14 @@ const config: Config = {
         },
       },
       fontFamily: {
-        sans: ["Inter", "sans-serif"],
+        // GO-LIVE · COMPLIANCE (09/10/2026): i font arrivano da next/font
+        // (app/layout.tsx) tramite variabili CSS; "Inter"/"Poppins" restano
+        // come ripiego se la variabile non è definita.
+        sans: ["var(--font-inter)", "Inter", "sans-serif"],
         // Titoli/hero del rebrand TRAMA (Poppins SemiBold 18-34px) — vedi
         // "TRAMA - Dev Handoff.dc.html" sezione 3. Inter resta il font di
         // default per tutto il resto (invariato).
-        poppins: ["Poppins", "sans-serif"],
+        poppins: ["var(--font-poppins)", "Poppins", "sans-serif"],
       },
       borderRadius: {
         sm: "10px",

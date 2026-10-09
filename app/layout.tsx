@@ -1,5 +1,10 @@
 import type { Metadata, Viewport } from "next";
 import { headers } from "next/headers";
+import { Inter, Poppins } from "next/font/google";
+// GO-LIVE · COMPLIANCE (09/10/2026): icone Tabler servite dal nostro dominio
+// (pacchetto npm, stessa versione 3.19.0 che prima arrivava da jsDelivr).
+// Nessuna richiesta a CDN di terze parti dal browser delle famiglie.
+import "@tabler/icons-webfont/dist/tabler-icons.min.css";
 import "./globals.css";
 import { DemoRoleProvider } from "@/components/DemoRoleProvider";
 import RoleSwitcher from "@/components/RoleSwitcher";
@@ -7,6 +12,24 @@ import InstallPrompt from "@/components/InstallPrompt";
 import VersionToggle from "@/components/VersionToggle";
 import AppSplashOverlay from "@/components/AppSplashOverlay";
 import { tenantForHost, TENANT_CONFIG, splashLinks } from "@/lib/tenant";
+
+// GO-LIVE · COMPLIANCE (09/10/2026): Inter e Poppins con next/font. I file
+// vengono scaricati UNA volta in fase di build e serviti dal nostro dominio:
+// il browser non contatta più Google Fonts (nessun dato a terzi, nessun
+// cookie banner necessario per i font). Stessi pesi di prima. Le variabili
+// CSS sono usate da tailwind.config.ts (fontFamily.sans / fontFamily.poppins).
+const inter = Inter({
+  subsets: ["latin"],
+  weight: ["400", "500", "600", "700"],
+  variable: "--font-inter",
+  display: "swap",
+});
+const poppins = Poppins({
+  subsets: ["latin"],
+  weight: ["500", "600", "700", "800"],
+  variable: "--font-poppins",
+  display: "swap",
+});
 
 async function currentTenantConfig() {
   const headerList = await headers();
@@ -65,21 +88,7 @@ export default async function RootLayout({
   const appName = config.title.split(" — ")[0];
 
   return (
-    <html lang="it">
-      <head>
-        {/* Stessi font e icone del mockup approvato, caricati via CDN come nell'originale */}
-        <link
-          rel="stylesheet"
-          href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.19.0/dist/tabler-icons.min.css"
-        />
-        {/* Poppins aggiunto per il rebrand TRAMA (titoli/hero, vedi
-            tailwind.config.ts#fontFamily.poppins) — Inter resta il font di
-            default per tutto il resto, invariato. */}
-        <link
-          rel="stylesheet"
-          href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Poppins:wght@500;600;700;800&display=swap"
-        />
-      </head>
+    <html lang="it" className={`${inter.variable} ${poppins.variable}`}>
       <body className="font-sans antialiased">
         {/* BUGFIX (Fabrizio: "in apertura della PWA si vede ancora lo sfondo
             colorato... aggiungi anche nome TRAMA e claim") — vedi commento in

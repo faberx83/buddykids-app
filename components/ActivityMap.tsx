@@ -5,15 +5,21 @@ import Link from "next/link";
 import { MapContainer, TileLayer, Marker, Popup, useMap, useMapEvents } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
+import markerIcon2x from "leaflet/dist/images/marker-icon-2x.png";
+import markerIcon from "leaflet/dist/images/marker-icon.png";
+import markerShadow from "leaflet/dist/images/marker-shadow.png";
 
 // Leaflet cerca di default le immagini dei marker in un percorso relativo
 // che i bundler (Next/webpack) non risolvono correttamente. Le puntiamo
-// esplicitamente a una CDN invece di dover configurare il bundler.
+// esplicitamente ai file del pacchetto leaflet, importati come immagini
+// statiche: Next li serve dal nostro dominio.
+// GO-LIVE · COMPLIANCE (09/10/2026): prima arrivavano da unpkg (CDN di
+// terze parti, IP del visitatore inviato fuori). Stesse immagini, 1.9.4.
 delete (L.Icon.Default.prototype as unknown as { _getIconUrl?: unknown })._getIconUrl;
 L.Icon.Default.mergeOptions({
-  iconRetinaUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png",
-  iconUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png",
-  shadowUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png",
+  iconRetinaUrl: markerIcon2x.src,
+  iconUrl: markerIcon.src,
+  shadowUrl: markerShadow.src,
 });
 
 const userIcon = L.divIcon({
