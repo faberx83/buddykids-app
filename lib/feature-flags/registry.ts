@@ -103,6 +103,19 @@ export const FEATURE_FLAG_REGISTRY = {
     defaultValue: false,
     allowedScopes: ["global", "environment", "user", "role", "cohort"],
   },
+  RADAR_ENABLED: {
+    name: "RADAR_ENABLED",
+    // TRAMA — RADAR / COMMUNITY DISCOVERY (12/10/2026), patch 1 (motore):
+    // risolto server-side da app/api/radar/analyze/route.ts e
+    // app/actions/radar.ts. ASSUME supabase/migration_42 applicata.
+    description:
+      "Abilita Radar: foto di un volantino, screenshot, link o testo → controllo di pertinenza, " +
+      "estrazione dati, deduplica e Community Discovery (visibile a tutti con badge 'Segnalato dalla " +
+      "community'). Default false: prima solo cohort:internal-preview, attivata da Fabrizio. Analisi " +
+      "in simulazione finché non c'è ANTHROPIC_API_KEY su Vercel.",
+    defaultValue: false,
+    allowedScopes: ["global", "environment", "user", "role", "cohort"],
+  },
   EXTERNAL_PLANNER_ITEMS_ENABLED: {
     name: "EXTERNAL_PLANNER_ITEMS_ENABLED",
     // TRAMA — EXTERNAL PLANNER ITEMS (implementato per davvero — vedi

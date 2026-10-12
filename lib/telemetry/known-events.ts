@@ -146,6 +146,21 @@ export const KNOWN_PRODUCT_EVENTS = [
   "announcement_voted", // 👍/👎 su una Novità "In arrivo" (detail = `${id}:up|down|none`)
   "feedback_opened", // apertura del pannello feedback (detail = sorgente)
   "feedback_submitted", // invio feedback (detail = categoria)
+  // TRAMA — RADAR / COMMUNITY DISCOVERY (12/10/2026), brief §23. `detail` =
+  // nome dell'analizzatore o id del contenuto, mai testo dell'utente.
+  "radar_opened",
+  "radar_image_submitted",
+  "radar_url_submitted",
+  "radar_text_submitted",
+  "radar_relevant_detected",
+  "radar_irrelevant_rejected",
+  "radar_uncertain_detected",
+  "radar_existing_activity_matched",
+  "radar_community_discovery_created",
+  "radar_duplicate_detected",
+  "radar_user_corrected_extraction",
+  "radar_favorite_after_import",
+  "radar_planner_after_import",
 ] as const;
 
 export type KnownProductEvent = (typeof KNOWN_PRODUCT_EVENTS)[number];

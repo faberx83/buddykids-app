@@ -220,6 +220,36 @@ export const FEATURE_CATALOG: FeatureCatalogEntry[] = [
     releaseEligible: true,
   },
   {
+    // TRAMA — RADAR / COMMUNITY DISCOVERY (12/10/2026): patch 1 (motore:
+    // migration_42, analisi, deduplica, salvataggio). L'interfaccia in
+    // Scopri arriva con la patch 2: finché non c'è, la voce resta
+    // INTERNAL_PREVIEW e raggiungibile solo via API.
+    key: "radar_community_discovery",
+    label: "Radar — Aggiungi una scoperta (Community Discovery)",
+    area: "parent",
+    status: "INTERNAL_PREVIEW",
+    flagName: "RADAR_ENABLED",
+    description:
+      "Un genitore trasforma un volantino, uno screenshot, un link o un testo in una Scoperta: controllo di " +
+      "pertinenza obbligatorio (nessun record da contenuti non pertinenti o dubbi), estrazione senza dati " +
+      "inventati, deduplica con Partner/Curated/Community (1 contenuto, N invii, N segnali), segnali di " +
+      "interesse privati di default. I file dei volantini non vengono conservati (solo impronta SHA-256).",
+    sourceFiles: [
+      "supabase/migration_42_radar_community_discovery.sql",
+      "lib/radar/analyze.ts",
+      "lib/radar/validate.ts",
+      "lib/radar/match.ts",
+      "lib/radar/url-fetch.ts",
+      "app/api/radar/analyze/route.ts",
+      "app/actions/radar.ts",
+    ],
+    note:
+      "Analisi in simulazione (lib/radar/providers/mock.ts) finché non viene impostata ANTHROPIC_API_KEY su " +
+      "Vercel. ASSUME migration_42 applicata.",
+    riskLevel: "medium",
+    releaseEligible: true,
+  },
+  {
     // TRAMA — EXTERNAL PLANNER ITEMS: implementato per davvero (voce
     // aggiornata, non più placeholder). "IMPLEMENTED / INTERNAL PREVIEW":
     // codice applicativo reale, raggiungibile, ma ASSUME
