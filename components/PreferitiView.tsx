@@ -1,6 +1,7 @@
 import PageHeader from "@/components/PageHeader";
 import ActivityCardHorizontal from "@/components/ActivityCardHorizontal";
 import CuratedFavoriteCard from "@/components/CuratedFavoriteCard";
+import CommunityDiscoveryCard from "@/components/nextgen/CommunityDiscoveryCard";
 import type { UnifiedFavoriteItem } from "@/lib/discovery/unified-favorites";
 
 // TRAMA ONE (24/08/2026) — estratto da app/(main)/preferiti/page.tsx per
@@ -38,6 +39,11 @@ export default function PreferitiView({
         {favorites.map((item) =>
           item.kind === "partner" ? (
             <ActivityCardHorizontal key={`partner-${item.activity.id}`} activity={item.activity} />
+          ) : item.kind === "community" ? (
+            // TRAMA — RADAR (13/10/2026): scoperta segnalata dalla community.
+            <div key={`community-${item.discovery.id}`} className="px-5">
+              <CommunityDiscoveryCard discovery={item.discovery} initialFavorite />
+            </div>
           ) : (
             <CuratedFavoriteCard key={`curated-${item.curatedLeadId}`} lead={item.lead} />
           )

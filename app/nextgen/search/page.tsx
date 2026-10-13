@@ -33,7 +33,12 @@ import { REAL_DISCOVERY_LEADS, type DiscoveryLeadRecord } from "@/lib/discovery/
 // capability gated di questa pagina — flag risolto server-side, dataset
 // (qui: solo il set di curated_lead_id già nel Planner, per il badge "✓ Nel
 // Planner") fetchato SOLO se abilitato.
-import { getCuratedLeadIdsInPlanner } from "@/lib/data/external-planner-items";
+import { getCuratedLeadIdsInPlanner, getCommunityDiscoveryIdsInPlanner } from "@/lib/data/external-planner-items";
+// TRAMA — RADAR / COMMUNITY DISCOVERY (13/10/2026), patch 2: stesso pattern
+// Dark Release — flag RADAR_ENABLED risolto server-side, scoperte community
+// lette SOLO se il flag risolve true per questo utente.
+import { getVisibleCommunityDiscoveries } from "@/lib/data/radar";
+import type { CommunityDiscoveryRecord } from "@/lib/radar/community";
 
 // SPRINT 2 (NEXTGEN) — "Ricerca e scoperta": ordinamento intelligente sopra
 // il contesto del genitore. Nessuna nuova query: riusa getActivities/
@@ -89,6 +94,9 @@ export default async function NextgenSearchPage() {
   // capability gated di questa pagina.
   let externalPlannerItemsEnabled = false;
   let curatedLeadIdsInPlanner: string[] = [];
+  let radarEnabled = false;
+  let communityDiscoveries: CommunityDiscoveryRecord[] = [];
+  let communityIdsInPlanner: string[] = [];
   if (isSupabaseConfigured) {
     const supabase = await createClient();
     const {
@@ -99,7 +107,7 @@ export default async function NextgenSearchPage() {
       const { data: profileRow } = await supabase.from("profiles").select("role").eq("id", user.id).single();
       role = (profileRow?.role as string) ?? "parent";
     }
-    const [realDiscoveryDetail, externalPlannerItemsDetail] = await Promise.all([
+    const [realDiscoveryDetail, externalPlannerItemsDetail, radarDetail] = await Promise.all([
       resolveFeatureFlagVisibility({
         flagName: "REAL_DISCOVERY_DATASET_ENABLED",
         userId: user?.id ?? null,
@@ -114,7 +122,22 @@ export default async function NextgenSearchPage() {
         tenant: "family",
         correlationId: generateCorrelationId(),
       }),
+      resolveFeatureFlagVisibility({
+        flagName: "RADAR_ENABLED",
+        userId: user?.id ?? null,
+        role,
+        tenant: "family",
+        correlationId: generateCorrelationId(),
+      }),
     ]);
+    // Il Radar richiede un utente autenticato (invio contenuti, preferiti).
+    radarEnabled = Boolean(user) && radarDetail.enabled;
+    if (radarEnabled) {
+      communityDiscoveries = await getVisibleCommunityDiscoveries(supabase);
+      if (externalPlannerItemsDetail.enabled) {
+        communityIdsInPlanner = Array.from(await getCommunityDiscoveryIdsInPlanner());
+      }
+    }
     if (realDiscoveryDetail.enabled) {
       // Dataset code-based (nessuna query, nessun I/O) — vedi
       // lib/discovery/real-dataset.ts. Il filtro per compatibilità con la
@@ -126,7 +149,7 @@ export default async function NextgenSearchPage() {
     if (externalPlannerItemsEnabled) {
       curatedLeadIdsInPlanner = Array.from(await getCuratedLeadIdsInPlanner());
     }
-    realDiscoveryBadgeVisible = anyResolvedViaInternalPreview([realDiscoveryDetail, externalPlannerItemsDetail]);
+    realDiscoveryBadgeVisible = anyResolvedViaInternalPreview([realDiscoveryDetail, externalPlannerItemsDetail, radarDetail]);
 
     // TRAMA — FAMILY-FIRST BETA PASS (07/10/2026): segnale "apertura Scopri"
     // (product_events, best-effort: mai bloccante per la pagina).
@@ -158,6 +181,9 @@ export default async function NextgenSearchPage() {
       curatedFavoriteLeadIds={Array.from(curatedFavoriteLeadIds)}
       externalPlannerItemsEnabled={externalPlannerItemsEnabled}
       curatedLeadIdsInPlanner={curatedLeadIdsInPlanner}
+      radarEnabled={radarEnabled}
+      communityDiscoveries={communityDiscoveries}
+      communityIdsInPlanner={communityIdsInPlanner}
       contextualAnnouncement={
         contextualAnnouncement
           ? {

@@ -27,6 +27,8 @@ import {
 // la precedenza sulle date del lead quando fornito dal client.
 import type { CuratedLeadDateOverride } from "@/lib/planner/external-planner-items-core";
 import { REAL_DISCOVERY_LEADS } from "@/lib/discovery/real-dataset";
+import { getCommunityDiscoveryById } from "@/lib/data/radar";
+import { communityExternalUrl, formatCommunityPlace } from "@/lib/radar/community";
 
 async function logItemEvent(event: "external_planner_item_created" | "external_planner_item_updated" | "external_planner_item_deleted", itemId: string, sourceType: string) {
   if (!isSupabaseConfigured) return;
@@ -124,5 +126,74 @@ export async function addCuratedLeadToPlannerAction(
     revalidatePath("/nextgen/search");
   }
 
+  return result;
+}
+
+// TRAMA — RADAR (13/10/2026): "Da organizzare" da una Community Discovery
+// ("Segnalato dalla community"). Stesso contratto di
+// addCuratedLeadToPlannerAction: bambini e date arrivano già confermati dal
+// dialog lato client. Le date non vengono MAI inventate: se la scoperta non
+// le conosce con certezza, l'utente le indica nel dialog (obbligatorie).
+export async function addCommunityDiscoveryToPlannerAction(
+  communityDiscoveryId: string,
+  kidIds: string[],
+  dates: CuratedLeadDateOverride,
+  fromRadar = false
+): Promise<MutationResult> {
+  if (!isSupabaseConfigured) return { error: "Supabase non configurato" };
+  const supabase = await createClient();
+  const discovery = await getCommunityDiscoveryById(supabase, communityDiscoveryId);
+  if (!discovery) return { error: "Scoperta non trovata." };
+  if (!dates?.startDate || !dates?.endDate) return { error: "Indica quando si svolge questo impegno." };
+
+  const notes = [
+    discovery.dateTextRaw && !discovery.startDate ? `Date indicate nella segnalazione: ${discovery.dateTextRaw}` : null,
+    discovery.scheduleText ? `Orari: ${discovery.scheduleText}` : null,
+  ]
+    .filter(Boolean)
+    .join("\n");
+
+  const result = await createExternalPlannerItem(
+    {
+      kind: "activity",
+      title: discovery.title,
+      startDate: dates.startDate,
+      endDate: dates.endDate,
+      allDay: true,
+      startTime: null,
+      endTime: null,
+      location: formatCommunityPlace(discovery),
+      notes: notes || null,
+      externalUrl: communityExternalUrl(discovery),
+      kidIds,
+    },
+    {
+      sourceType: "community_discovery",
+      sourceRef: discovery.id,
+      organizerSnapshot: discovery.organizerName,
+    }
+  );
+
+  if (!result.error && result.id) {
+    await logItemEvent("external_planner_item_created", result.id, "community_discovery");
+    if (fromRadar) {
+      try {
+        const {
+          data: { user },
+        } = await supabase.auth.getUser();
+        if (user) {
+          await persistProductEvent(
+            { event: "radar_planner_after_import", correlationId: generateCorrelationId(), tenant: "family", detail: discovery.id },
+            { supabase, userId: user.id }
+          );
+        }
+      } catch {
+        // silenzioso, per costruzione.
+      }
+    }
+    revalidatePath("/nextgen/planner");
+    revalidatePath("/nextgen/search");
+    revalidatePath(`/nextgen/scoperta/${discovery.id}`);
+  }
   return result;
 }

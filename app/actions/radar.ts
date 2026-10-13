@@ -24,6 +24,7 @@ import { EXTRACTED_FIELDS, type CandidateKind, type FieldProvenance, type RadarE
 import { persistProductEvent } from "@/lib/telemetry/events";
 import { generateCorrelationId } from "@/lib/telemetry/correlation";
 import type { KnownProductEvent } from "@/lib/telemetry/known-events";
+import { communityDetailHref } from "@/lib/radar/community";
 
 type ActionResult<T extends object = object> = ({ ok: true } & T) | { ok: false; error: string };
 
@@ -97,6 +98,27 @@ async function targetExists(
   return !!data;
 }
 
+/**
+ * Dove portare l'utente per un contenuto già su TRAMA. Le attività Partner
+ * hanno l'URL per slug (non per id); le Scoperte TRAMA non hanno una scheda
+ * propria e si aprono in Scopri cercandone il titolo.
+ */
+async function hrefForTarget(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  kind: CandidateKind,
+  id: string,
+  fromRadar = true
+): Promise<string> {
+  if (kind === "community") return communityDetailHref(id, fromRadar);
+  if (kind === "curated") {
+    const lead = REAL_DISCOVERY_LEADS.find((l) => l.id === id);
+    return lead ? `/nextgen/search?q=${encodeURIComponent(lead.activityTitle)}` : "/nextgen/search";
+  }
+  const { data } = await supabase.from("activities").select("slug").eq("id", id).maybeSingle();
+  const slug = (data as { slug: string | null } | null)?.slug;
+  return slug ? `/activity/${slug}` : "/nextgen/search";
+}
+
 function outcomeFor(kind: CandidateKind): "matched_activity" | "matched_curated" | "matched_community" {
   return kind === "activity" ? "matched_activity" : kind === "curated" ? "matched_curated" : "matched_community";
 }
@@ -133,7 +155,7 @@ export async function linkExistingAction(
   submissionId: string,
   kind: CandidateKind,
   targetId: string
-): Promise<ActionResult<{ kind: CandidateKind; id: string }>> {
+): Promise<ActionResult<{ kind: CandidateKind; id: string; href: string }>> {
   const auth = await authorize();
   if ("error" in auth) return { ok: false, error: auth.error ?? "Errore." };
   const { supabase, userId } = auth;
@@ -146,13 +168,13 @@ export async function linkExistingAction(
 
   await linkSubmission(supabase, userId, submissionId, kind, targetId);
   await logEvent(supabase, userId, "radar_existing_activity_matched", `${kind}:${targetId}`);
-  return { ok: true, kind, id: targetId };
+  return { ok: true, kind, id: targetId, href: await hrefForTarget(supabase, kind, targetId) };
 }
 
 export async function saveCommunityDiscoveryAction(
   submissionId: string,
   fields: Partial<RadarExtractedData>
-): Promise<ActionResult<{ kind: CandidateKind; id: string; created: boolean }>> {
+): Promise<ActionResult<{ kind: CandidateKind; id: string; created: boolean; href: string }>> {
   const auth = await authorize();
   if ("error" in auth) return { ok: false, error: auth.error ?? "Errore." };
   const { supabase, userId } = auth;
@@ -175,7 +197,7 @@ export async function saveCommunityDiscoveryAction(
   if (strong) {
     await linkSubmission(supabase, userId, submissionId, strong.kind, strong.id);
     await logEvent(supabase, userId, "radar_duplicate_detected", `${strong.kind}:${strong.id}`);
-    return { ok: true, kind: strong.kind, id: strong.id, created: false };
+    return { ok: true, kind: strong.kind, id: strong.id, created: false, href: await hrefForTarget(supabase, strong.kind, strong.id) };
   }
 
   const provenance = await computeProvenance(submission.extracted ?? {}, final);
@@ -234,7 +256,7 @@ export async function saveCommunityDiscoveryAction(
     await logEvent(supabase, userId, "radar_user_corrected_extraction", id);
   }
   revalidatePath("/nextgen/search");
-  return { ok: true, kind: "community", id, created: true };
+  return { ok: true, kind: "community", id, created: true, href: communityDetailHref(id, true) };
 }
 
 export async function abandonSubmissionAction(submissionId: string): Promise<ActionResult> {
@@ -278,5 +300,49 @@ export async function reportAnywayAction(submissionId: string, message: string):
     .update({ outcome: "reported_anyway", updated_at: new Date().toISOString() })
     .eq("id", submissionId)
     .eq("submitted_by", userId);
+  return { ok: true };
+}
+
+/**
+ * Eventi di esperienza (patch 2): apertura del Radar e preferito subito
+ * dopo l'import. Best-effort: mai bloccante per l'utente.
+ */
+export async function logRadarEventAction(
+  event: "radar_opened" | "radar_favorite_after_import",
+  detail?: string
+): Promise<void> {
+  try {
+    const auth = await authorize();
+    if ("error" in auth) return;
+    await logEvent(auth.supabase, auth.userId, event, (detail ?? "").slice(0, 80));
+  } catch {
+    // telemetria persa: nessun impatto
+  }
+}
+
+/**
+ * Pagina admin Radar: nascondere o rimostrare una Community Discovery
+ * (decisione D3). Solo platform_admin; la RLS lo impone comunque.
+ */
+export async function setCommunityDiscoveryStatusAction(id: string, status: "visible" | "hidden"): Promise<ActionResult> {
+  if (!isSupabaseConfigured) return { ok: false, error: "Servizio non disponibile." };
+  if (status !== "visible" && status !== "hidden") return { ok: false, error: "Richiesta non valida." };
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { ok: false, error: "Accedi per continuare." };
+  const { data: profile } = await supabase.from("profiles").select("role").eq("id", user.id).maybeSingle();
+  if ((profile as { role: string } | null)?.role !== "platform_admin") return { ok: false, error: "Solo per amministratori." };
+
+  const { data, error } = await supabase
+    .from("community_discoveries")
+    .update({ status, updated_at: new Date().toISOString() })
+    .eq("id", id)
+    .select("id");
+  if (error || !data || (data as unknown[]).length === 0) return { ok: false, error: "Aggiornamento non riuscito." };
+  revalidatePath("/admin/radar");
+  revalidatePath("/nextgen/search");
+  revalidatePath(`/nextgen/scoperta/${id}`);
   return { ok: true };
 }

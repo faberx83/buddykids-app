@@ -407,6 +407,9 @@ export default function ExternalPlannerItemsSection({ items, kids }: { items: Ex
                     {item.sourceType === "curated_discovery" && (
                       <span className="text-[10px] font-medium text-ink-3">Da Scoperta TRAMA</span>
                     )}
+                    {item.sourceType === "community_discovery" && (
+                      <span className="text-[10px] font-medium text-ink-3">Segnalato dalla community</span>
+                    )}
                   </div>
                   <div className="flex items-center gap-1.5 text-[13.5px] font-bold text-ink">
                     <i className={`ti ${KIND_ICON[item.kind]} text-[14px] text-trama-violet`} />

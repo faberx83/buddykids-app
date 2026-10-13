@@ -44,7 +44,7 @@ export interface ExternalCalendarOccurrence {
   startTime: string | null;
   endTime: string | null;
   kidNames: string[];
-  sourceType: "manual" | "curated_discovery";
+  sourceType: "manual" | "curated_discovery" | "community_discovery";
   // Multi-day rendering (sezione 2 del task): serve a decidere se mostrare
   // "inizia oggi"/"continua"/"finisce oggi" in un'agenda, senza dover
   // ricalcolare il range originale a partire dalla sola occorrenza del

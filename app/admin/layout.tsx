@@ -38,6 +38,7 @@ const baseNavItems = [
   // TRAMA ONE Build Sprint 5 — coda CenterLead (J11, suggerimento centro non
   // iscritto): stessa lista flat, nessuna sotto-voce.
   { href: "/admin/center-leads", label: "Segnalazioni centri", icon: "ti-map-pin-plus" },
+  { href: "/admin/radar", label: "Radar community", icon: "ti-radar" },
   { href: "/admin/feature-flags", label: "Feature flag", icon: "ti-flag-3" },
   // TRAMA — SCHOOL CALENDAR INTELLIGENCE (14/09/2026, §B11) — dataset
   // calendari/eventi scolastici (region/anno scolastico/eventi di

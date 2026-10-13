@@ -105,7 +105,8 @@ function mapRow(row: RawItemRow): ExternalPlannerItem {
     location: row.location,
     notes: row.notes,
     externalUrl: row.external_url,
-    sourceType: row.source_type === "curated_discovery" ? "curated_discovery" : "manual",
+    sourceType:
+      row.source_type === "curated_discovery" || row.source_type === "community_discovery" ? row.source_type : "manual",
     sourceRef: row.source_ref,
     organizerSnapshot: row.organizer_snapshot,
     kidIds: (row.external_planner_item_kids ?? []).map((k) => k.kid_id),
@@ -146,6 +147,16 @@ export async function getExternalPlannerItemsForParent(): Promise<ExternalPlanne
 // genitore (source_type='curated_discovery'), stesso pattern di
 // getCuratedFavoriteLeadIds().
 export async function getCuratedLeadIdsInPlanner(): Promise<Set<string>> {
+  return getSourceRefsInPlanner("curated_discovery");
+}
+
+// TRAMA — RADAR (13/10/2026): stesso dato per le Community Discovery
+// (source_type='community_discovery', source_ref = uuid della scoperta).
+export async function getCommunityDiscoveryIdsInPlanner(): Promise<Set<string>> {
+  return getSourceRefsInPlanner("community_discovery");
+}
+
+async function getSourceRefsInPlanner(sourceType: "curated_discovery" | "community_discovery"): Promise<Set<string>> {
   if (!isSupabaseConfigured) return new Set();
   const supabase = await createClient();
   const {
@@ -157,7 +168,7 @@ export async function getCuratedLeadIdsInPlanner(): Promise<Set<string>> {
     .from("external_planner_items")
     .select("source_ref")
     .eq("parent_id", user.id)
-    .eq("source_type", "curated_discovery")
+    .eq("source_type", sourceType)
     .is("deleted_at", null);
   if (error || !data) return new Set();
   return new Set(data.map((r) => r.source_ref as string).filter((v): v is string => Boolean(v)));

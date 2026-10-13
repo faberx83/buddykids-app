@@ -9,6 +9,8 @@ import { getActivities } from "@/lib/data/activities";
 import { Activity } from "@/lib/types";
 import { getCuratedFavoritesForParent } from "@/lib/data/curated-favorites";
 import { buildUnifiedFavorites, type UnifiedFavoriteItem } from "@/lib/discovery/unified-favorites";
+import { COMMUNITY_COLUMNS, mapCommunityRow } from "@/lib/data/radar";
+import { parseCommunityFavoriteId, type CommunityDiscoveryRecord } from "@/lib/radar/community";
 
 // Usata dalla scheda attività per sapere se mostrare il cuore pieno o vuoto
 // all'apertura — un Set di activity_id (dbId) per lookup rapido.
@@ -51,14 +53,35 @@ export async function getUnifiedFavoritesForParent(): Promise<UnifiedFavoriteIte
     getCuratedFavoritesForParent(),
   ]);
 
+  // FIX (RADAR, 13/10/2026): prima, senza preferiti Partner né promossi, la
+  // funzione restituiva [] e i preferiti Scoperta TRAMA (e ora community)
+  // sparivano dalla pagina. Ora getActivities() si salta solo quando non
+  // serve, ma la lista si costruisce sempre.
   const needsActivities = favoriteIds.size > 0 || curatedFavorites.some((cf) => cf.promotedToActivityId);
-  if (!needsActivities) return [];
-
-  const activities = await getActivities();
+  const activities = needsActivities ? await getActivities() : [];
   const partnerActivities = activities.filter((a) => a.dbId && favoriteIds.has(a.dbId));
   const promotedActivitiesById = new Map(
     activities.filter((a) => a.dbId).map((a) => [a.dbId as string, a])
   );
 
-  return buildUnifiedFavorites(partnerActivities, curatedFavorites, promotedActivitiesById);
+  // TRAMA — RADAR: preferiti "community:<uuid>" risolti sulle Community
+  // Discovery visibili (RLS). Una scoperta nascosta o rimossa viene omessa.
+  const communityIds = curatedFavorites
+    .map((cf) => parseCommunityFavoriteId(cf.curatedLeadId))
+    .filter((id): id is string => Boolean(id));
+  const communityById = new Map<string, CommunityDiscoveryRecord>();
+  if (communityIds.length > 0 && isSupabaseConfigured) {
+    const supabase = await createClient();
+    const { data } = await supabase
+      .from("community_discoveries")
+      .select(COMMUNITY_COLUMNS)
+      .in("id", communityIds)
+      .eq("status", "visible");
+    for (const row of (data ?? []) as unknown as Parameters<typeof mapCommunityRow>[0][]) {
+      const record = mapCommunityRow(row);
+      communityById.set(record.id, record);
+    }
+  }
+
+  return buildUnifiedFavorites(partnerActivities, curatedFavorites, promotedActivitiesById, communityById);
 }

@@ -19,6 +19,11 @@ import { generateCorrelationId } from "@/lib/telemetry/correlation";
 // mescolati con Activity/ActivityCard — vedi lib/discovery/real-dataset.ts
 // per il perché (Data Model Audit).
 import DiscoveryLeadCard from "@/components/nextgen/DiscoveryLeadCard";
+// TRAMA — RADAR / COMMUNITY DISCOVERY (13/10/2026), patch 2: scoperte
+// segnalate dai genitori nella stessa lista + "+ Aggiungi una scoperta".
+import CommunityDiscoveryCard from "@/components/nextgen/CommunityDiscoveryCard";
+import RadarAddDiscoverySheet from "@/components/nextgen/RadarAddDiscoverySheet";
+import { communityFavoriteId, filterCommunityDiscoveries, type CommunityDiscoveryRecord } from "@/lib/radar/community";
 import {
   isDiscoveryLeadCompatibleWithWeek,
   isDiscoveryLeadCompatibleWithAgeRange,
@@ -252,6 +257,9 @@ export default function SearchDiscoveryClient({
   contextualAnnouncement = null,
   externalPlannerItemsEnabled = false,
   curatedLeadIdsInPlanner = [],
+  radarEnabled = false,
+  communityDiscoveries = [],
+  communityIdsInPlanner = [],
 }: {
   activities: Activity[];
   kids: Kid[];
@@ -293,6 +301,11 @@ export default function SearchDiscoveryClient({
   // "Aggiungi al Planner" mostrata in quel caso.
   externalPlannerItemsEnabled?: boolean;
   curatedLeadIdsInPlanner?: string[];
+  // TRAMA — RADAR (13/10/2026): tutti default sicuri (nessun CTA, nessun
+  // dato) se RADAR_ENABLED risolve false lato server.
+  radarEnabled?: boolean;
+  communityDiscoveries?: CommunityDiscoveryRecord[];
+  communityIdsInPlanner?: string[];
   // BUG CORRETTO 07/08/2026 (segnalato da Fabrizio: "il filtro sulle
   // settimane deve seguire la stessa logica del Planner: se alcune
   // settimane sono passate non devo poterle vedere") — prima il filtro
@@ -643,6 +656,45 @@ export default function SearchDiscoveryClient({
     onlyDaySpots,
   ]);
 
+  // TRAMA — RADAR (13/10/2026): stessi filtri della lista, stessa regola
+  // delle Scoperte TRAMA (un dato non indicato non esclude). Nessuna
+  // coordinata: le scoperte community non compaiono mai in Mappa né in
+  // "Nella tua zona" (nessuna prossimità inventata).
+  const compatibleCommunityDiscoveries = useMemo(() => {
+    if (communityDiscoveries.length === 0) return [];
+    const ranges = getSeasonWeekRanges(seasonYear);
+    const selectedWeekRanges = selectedWeekStarts
+      .map((start) => ranges.find((r) => isoDate(r.start) === start))
+      .filter((r): r is SeasonWeekRange => Boolean(r))
+      .map((r) => ({ start: isoDate(r.start), end: isoDate(r.end) }));
+    return filterCommunityDiscoveries(communityDiscoveries, {
+      minAge,
+      maxAge,
+      maxPrice,
+      zone,
+      query,
+      selectedTagIds,
+      selectedWeekRanges,
+      coverageFilterActive: selectedCoverageModes.length > 0 || onlyDaySpots,
+    });
+  }, [communityDiscoveries, seasonYear, selectedWeekStarts, minAge, maxAge, maxPrice, zone, query, selectedTagIds, selectedCoverageModes, onlyDaySpots]);
+  const communityIdsInPlannerSet = useMemo(() => new Set(communityIdsInPlanner), [communityIdsInPlanner]);
+  // Contenuto condiviso da un'altra app (Android share_target, vedi
+  // public/manifest-nextgen.json): letto UNA volta all'apertura, così la
+  // sincronizzazione dei filtri nell'URL non lo perde a metà.
+  const [sharedRadar] = useState(() => {
+    const url = searchParams.get("radar_url") ?? "";
+    const text = [searchParams.get("radar_title"), searchParams.get("radar_text")].filter(Boolean).join("\n");
+    // Il link condiviso da Android a volte arriva dentro "text" invece che "url".
+    const urlFromText = !url ? (text.match(/https?:\/\/\S+/)?.[0] ?? "") : "";
+    return { url: url || urlFromText, text: url || urlFromText ? "" : text };
+  });
+  const sharedRadarUrl = sharedRadar.url;
+  const sharedRadarText = sharedRadar.text;
+  const [radarOpen, setRadarOpen] = useState(
+    () => radarEnabled && (searchParams.get("radar") === "1" || Boolean(sharedRadarUrl || sharedRadarText))
+  );
+
   const [radiusKm, setRadiusKm] = useState(DEFAULT_RADIUS_KM);
   // TRAMA ONE Build Sprint 3 — "Giorni spot": stesso filtro/stesso principio
   // di LEGACY (SearchClient.tsx) — "solo attività con Giorni spot
@@ -949,8 +1001,8 @@ export default function SearchDiscoveryClient({
   // (totalResultsCount) alimenta l'unico "X attività trovate" mostrato in
   // UI: nessun count separato "Scoperte TRAMA" da nessuna parte.
   const totalResultsCount = useMemo(
-    () => countDiscoveryResults(matches, compatibleRealDiscoveryLeads),
-    [matches, compatibleRealDiscoveryLeads]
+    () => countDiscoveryResults(matches, compatibleRealDiscoveryLeads, compatibleCommunityDiscoveries),
+    [matches, compatibleRealDiscoveryLeads, compatibleCommunityDiscoveries]
   );
   // §5 "MULTI-SEDE — TRE COUNT DISTINTI": alias di sola leggibilità, stesso
   // valore di `totalResultsCount` — il numero di ATTIVITÀ trovate (Partner +
@@ -959,8 +1011,8 @@ export default function SearchDiscoveryClient({
 
   // Senza geo attiva: un'unica lista intercalata su TUTTI i risultati.
   const unifiedResults = useMemo(
-    () => interleaveDiscoveryResults(matches, compatibleRealDiscoveryLeads),
-    [matches, compatibleRealDiscoveryLeads]
+    () => interleaveDiscoveryResults(matches, compatibleRealDiscoveryLeads, 2, compatibleCommunityDiscoveries),
+    [matches, compatibleRealDiscoveryLeads, compatibleCommunityDiscoveries]
   );
 
   // Con geo attiva: i lead curati (nessuna coordinata verificata) non
@@ -972,11 +1024,12 @@ export default function SearchDiscoveryClient({
   // raggio scelto. Comportamento documentato nel report ANALYSIS PASS §15.
   const nearbyResults = useMemo(() => interleaveDiscoveryResults(nearby, []), [nearby]);
   const farResults = useMemo(
-    () => interleaveDiscoveryResults(far, compatibleRealDiscoveryLeads),
-    [far, compatibleRealDiscoveryLeads]
+    () => interleaveDiscoveryResults(far, compatibleRealDiscoveryLeads, 2, compatibleCommunityDiscoveries),
+    [far, compatibleRealDiscoveryLeads, compatibleCommunityDiscoveries]
   );
 
   function resultKey(result: DiscoveryResult): string {
+    if (result.kind === "community") return `community-${result.discovery.id}`;
     return result.kind === "partner" ? result.match.activity.id : `curated-${result.lead.id}`;
   }
 
@@ -989,6 +1042,16 @@ export default function SearchDiscoveryClient({
           correlationId={searchCorrelationId}
           weekStarts={selectedWeekStarts}
           isFavorite={!!result.match.activity.dbId && favoriteIdsSet.has(result.match.activity.dbId)}
+        />
+      );
+    }
+    if (result.kind === "community") {
+      return (
+        <CommunityDiscoveryCard
+          key={resultKey(result)}
+          discovery={result.discovery}
+          initialFavorite={curatedFavoriteIdsSet.has(communityFavoriteId(result.discovery.id))}
+          inPlanner={communityIdsInPlannerSet.has(result.discovery.id)}
         />
       );
     }
@@ -1107,6 +1170,26 @@ export default function SearchDiscoveryClient({
             Selezionate per voi{uncoveredWeekLabel ? ` — priorità a chi è libero in ${uncoveredWeekLabel}` : ""}
           </span>
         </div>
+
+        {/* TRAMA — RADAR (13/10/2026): ingresso unico per mandare a TRAMA
+            una scoperta trovata fuori (volantino, link, testo). Solo con
+            RADAR_ENABLED risolto true lato server. */}
+        {radarEnabled && (
+          <button
+            type="button"
+            onClick={() => setRadarOpen(true)}
+            data-testid="radar-add-discovery-cta"
+            className="mb-3 flex w-full items-center gap-3 rounded-xl border border-dashed border-trama-violet/40 bg-trama-violet/5 px-4 py-3 text-left"
+          >
+            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-trama-violet text-lg font-bold text-white" aria-hidden>
+              +
+            </span>
+            <span>
+              <span className="block text-[14px] font-bold text-ink">Aggiungi una scoperta</span>
+              <span className="block text-[12px] text-ink-2">Hai visto un volantino o un post? Mandalo a TRAMA</span>
+            </span>
+          </button>
+        )}
 
         {contextualAnnouncement && (
           <AnnouncementCallout
@@ -1791,6 +1874,20 @@ export default function SearchDiscoveryClient({
           DiscoveryProposeInviteDialog.tsx). Visibile solo quando
           `proposeDialogLead` è valorizzato (tap su "Proponi invito" in un
           popup Mappa). */}
+      {radarEnabled && (
+        <RadarAddDiscoverySheet
+          open={radarOpen}
+          onClose={() => {
+            setRadarOpen(false);
+            // Via i parametri della condivisione, per non riaprire il pannello.
+            if (searchParams.get("radar") || searchParams.get("radar_url") || searchParams.get("radar_text") || searchParams.get("radar_title")) {
+              router.replace(pathname);
+            }
+          }}
+          initialUrl={sharedRadarUrl}
+          initialText={sharedRadarText}
+        />
+      )}
       {proposeDialogLead && (
         <DiscoveryProposeInviteDialog
           lead={proposeDialogLead}

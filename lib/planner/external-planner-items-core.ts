@@ -11,7 +11,8 @@
 import type { DiscoveryLeadRecord } from "@/lib/discovery/real-dataset";
 
 export type ExternalPlannerItemKind = "activity" | "commitment";
-export type ExternalPlannerItemSourceType = "manual" | "curated_discovery";
+// "community_discovery" (RADAR, 13/10/2026): consentito dalla migration 42.
+export type ExternalPlannerItemSourceType = "manual" | "curated_discovery" | "community_discovery";
 
 export interface ExternalPlannerItemInput {
   kind: ExternalPlannerItemKind;

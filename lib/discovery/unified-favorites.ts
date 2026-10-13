@@ -10,10 +10,13 @@
 import type { Activity } from "@/lib/types";
 import type { DiscoveryLeadRecord } from "@/lib/discovery/real-dataset";
 import type { CuratedFavoriteRecord } from "@/lib/data/curated-favorites";
+import { parseCommunityFavoriteId, type CommunityDiscoveryRecord } from "@/lib/radar/community";
 
 export type UnifiedFavoriteItem =
   | { kind: "partner"; activity: Activity }
-  | { kind: "curated"; curatedLeadId: string; lead: DiscoveryLeadRecord; createdAt: string };
+  | { kind: "curated"; curatedLeadId: string; lead: DiscoveryLeadRecord; createdAt: string }
+  // TRAMA — RADAR (13/10/2026): "community:<uuid>" in curated_favorites.
+  | { kind: "community"; favoriteId: string; discovery: CommunityDiscoveryRecord; createdAt: string };
 
 /**
  * §4 "CURATED → FULL TRAMA TRANSITION": un curated_favorites con
@@ -35,7 +38,8 @@ export type UnifiedFavoriteItem =
 export function buildUnifiedFavorites(
   partnerActivities: Activity[],
   curatedFavorites: CuratedFavoriteRecord[],
-  promotedActivitiesById: Map<string, Activity>
+  promotedActivitiesById: Map<string, Activity>,
+  communityById: Map<string, CommunityDiscoveryRecord> = new Map()
 ): UnifiedFavoriteItem[] {
   const partnerDbIds = new Set(partnerActivities.map((a) => a.dbId).filter(Boolean) as string[]);
   const items: UnifiedFavoriteItem[] = partnerActivities.map((activity) => ({ kind: "partner", activity }));
@@ -50,6 +54,13 @@ export function buildUnifiedFavorites(
       }
       // Se l'attività promossa non risolve (es. disattivata nel frattempo),
       // resta silenzioso: nessuna card Curated fittizia, nessun errore.
+      continue;
+    }
+    const communityId = parseCommunityFavoriteId(cf.curatedLeadId);
+    if (communityId) {
+      const discovery = communityById.get(communityId);
+      // Scoperta nascosta dall'admin o non più visibile: omessa, mai una card rotta.
+      if (discovery) items.push({ kind: "community", favoriteId: cf.curatedLeadId, discovery, createdAt: cf.createdAt });
       continue;
     }
     if (!cf.lead) continue; // dato mancante — vedi doc sopra

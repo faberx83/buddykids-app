@@ -924,6 +924,9 @@ export default function PlannerCalendarView({
                             {occ.sourceType === "curated_discovery" && (
                               <span className="text-[10px] font-medium text-ink-3">Da Scoperta TRAMA</span>
                             )}
+                            {occ.sourceType === "community_discovery" && (
+                              <span className="text-[10px] font-medium text-ink-3">Segnalato dalla community</span>
+                            )}
                           </div>
                           <div className="text-[12.5px] font-bold text-ink">{occ.title}</div>
                           {occ.kidNames.length > 0 && (
@@ -1621,6 +1624,9 @@ export default function PlannerCalendarView({
                               {occ.sourceType === "curated_discovery" && (
                                 <div className="mt-0.5 text-[10px] font-medium text-ink-3">Da Scoperta TRAMA</div>
                               )}
+                              {occ.sourceType === "community_discovery" && (
+                                <div className="mt-0.5 text-[10px] font-medium text-ink-3">Segnalato dalla community</div>
+                              )}
                             </div>
                           </div>
                         </div>
@@ -1885,6 +1891,9 @@ export default function PlannerCalendarView({
                       </span>
                       {occ.sourceType === "curated_discovery" && (
                         <span className="text-[10px] font-medium text-ink-3">Da Scoperta TRAMA</span>
+                      )}
+                      {occ.sourceType === "community_discovery" && (
+                        <span className="text-[10px] font-medium text-ink-3">Segnalato dalla community</span>
                       )}
                       {!occ.isRangeStart || !occ.isRangeEnd ? (
                         <span className="text-[10px] font-medium text-trama-violet">

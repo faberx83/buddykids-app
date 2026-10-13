@@ -105,31 +105,9 @@ export async function countRecentSubmissions(supabase: Supabase, userId: string)
   return count ?? 0;
 }
 
-export interface CommunityDiscoveryRecord {
-  id: string;
-  title: string;
-  organizerName: string | null;
-  category: string | null;
-  shortDescription: string | null;
-  ageMin: number | null;
-  ageMax: number | null;
-  startDate: string | null;
-  endDate: string | null;
-  dateTextRaw: string | null;
-  scheduleText: string | null;
-  locationName: string | null;
-  address: string | null;
-  comune: string | null;
-  price: number | null;
-  priceUnit: string | null;
-  contactPhone: string | null;
-  contactEmail: string | null;
-  websiteUrl: string | null;
-  socialUrl: string | null;
-  registrationInfo: string | null;
-  fieldProvenance: Record<string, string>;
-  createdAt: string;
-}
+// Tipo spostato in lib/radar/community.ts (usabile anche lato client).
+export type { CommunityDiscoveryRecord } from "@/lib/radar/community";
+import type { CommunityDiscoveryRecord } from "@/lib/radar/community";
 
 interface CommunityRawRow {
   id: string;
@@ -201,4 +179,86 @@ export async function getCommunityDiscoveryById(supabase: Supabase, id: string):
   const { data, error } = await supabase.from("community_discoveries").select(COMMUNITY_COLUMNS).eq("id", id).maybeSingle();
   if (error || !data) return null;
   return mapCommunityRow(data as unknown as CommunityRawRow);
+}
+
+// ── Pagina admin Radar (patch 2, 13/10/2026) ───────────────────────
+// Lettura per platform_admin (la RLS restituisce tutto solo a lui): le
+// scoperte community in ogni stato, i possibili doppioni (stessa chiave di
+// deduplica) e gli invii dubbi o rifiutati da guardare a mano.
+
+export interface RadarAdminCommunityRow extends CommunityDiscoveryRecord {
+  status: string;
+  dedupeKey: string | null;
+}
+
+export interface RadarAdminSubmissionRow {
+  id: string;
+  sourceType: string;
+  sourceUrl: string | null;
+  relevanceStatus: string;
+  relevanceConfidence: string | null;
+  warnings: string[];
+  title: string | null;
+  userNote: string | null;
+  analyzer: string | null;
+  outcome: string;
+  createdAt: string;
+}
+
+export interface RadarAdminOverview {
+  community: RadarAdminCommunityRow[];
+  duplicateGroups: { dedupeKey: string; ids: string[] }[];
+  submissions: RadarAdminSubmissionRow[];
+}
+
+export async function getRadarAdminOverview(supabase: Supabase): Promise<RadarAdminOverview> {
+  const [communityRes, submissionsRes] = await Promise.all([
+    supabase.from("community_discoveries").select(COMMUNITY_COLUMNS).order("created_at", { ascending: false }).limit(200),
+    supabase
+      .from("discovery_submissions")
+      .select("id, source_type, source_url, relevance_status, relevance_confidence, warnings, extracted, user_note, analyzer, outcome, created_at")
+      .or("relevance_status.eq.uncertain,relevance_status.eq.not_relevant,outcome.eq.reported_anyway")
+      .order("created_at", { ascending: false })
+      .limit(100),
+  ]);
+
+  const community: RadarAdminCommunityRow[] = ((communityRes.data ?? []) as unknown as (CommunityRawRow & { status: string; dedupe_key: string | null })[]).map(
+    (row) => ({ ...mapCommunityRow(row), status: row.status, dedupeKey: row.dedupe_key })
+  );
+
+  const byKey = new Map<string, string[]>();
+  for (const c of community) {
+    if (!c.dedupeKey || c.status === "merged") continue;
+    byKey.set(c.dedupeKey, [...(byKey.get(c.dedupeKey) ?? []), c.id]);
+  }
+  const duplicateGroups = [...byKey.entries()].filter(([, ids]) => ids.length > 1).map(([dedupeKey, ids]) => ({ dedupeKey, ids }));
+
+  type RawSubmission = {
+    id: string;
+    source_type: string;
+    source_url: string | null;
+    relevance_status: string;
+    relevance_confidence: string | null;
+    warnings: string[] | null;
+    extracted: { title?: string | null } | null;
+    user_note: string | null;
+    analyzer: string | null;
+    outcome: string;
+    created_at: string;
+  };
+  const submissions = ((submissionsRes.data ?? []) as unknown as RawSubmission[]).map((r) => ({
+    id: r.id,
+    sourceType: r.source_type,
+    sourceUrl: r.source_url,
+    relevanceStatus: r.relevance_status,
+    relevanceConfidence: r.relevance_confidence,
+    warnings: r.warnings ?? [],
+    title: r.extracted?.title ?? null,
+    userNote: r.user_note,
+    analyzer: r.analyzer,
+    outcome: r.outcome,
+    createdAt: r.created_at,
+  }));
+
+  return { community, duplicateGroups, submissions };
 }

@@ -17,10 +17,16 @@
 
 import type { SmartMatch } from "@/lib/nextgen/smart-search";
 import { isDiscoveryLeadInvitable, type DiscoveryLeadRecord } from "@/lib/discovery/real-dataset";
+import type { CommunityDiscoveryRecord } from "@/lib/radar/community";
 
+// TRAMA — RADAR (13/10/2026): terzo tipo di risultato, le scoperte
+// segnalate dai genitori ("Segnalato dalla community"). Stesso principio:
+// nessuno score inventato, entrano nello stesso slot delle Scoperte TRAMA,
+// DOPO di loro (prima le fonti verificate da TRAMA, poi la community).
 export type DiscoveryResult =
   | { kind: "partner"; match: SmartMatch }
-  | { kind: "curated"; lead: DiscoveryLeadRecord };
+  | { kind: "curated"; lead: DiscoveryLeadRecord }
+  | { kind: "community"; discovery: CommunityDiscoveryRecord };
 
 /**
  * Interleaving DETERMINISTICO, senza inventare uno score cross-domain.
@@ -47,20 +53,27 @@ export type DiscoveryResult =
 export function interleaveDiscoveryResults(
   partnerMatches: SmartMatch[],
   curatedLeads: DiscoveryLeadRecord[],
-  partnerPerCurated = 2
+  partnerPerCurated = 2,
+  communityDiscoveries: CommunityDiscoveryRecord[] = []
 ): DiscoveryResult[] {
   const results: DiscoveryResult[] = [];
+  // Slot "non Partner": prima le Scoperte TRAMA, poi la community — ordine
+  // interno di ciascuna lista sempre preservato.
+  const secondary: DiscoveryResult[] = [
+    ...curatedLeads.map((lead): DiscoveryResult => ({ kind: "curated", lead })),
+    ...communityDiscoveries.map((discovery): DiscoveryResult => ({ kind: "community", discovery })),
+  ];
   let partnerIndex = 0;
-  let curatedIndex = 0;
+  let secondaryIndex = 0;
 
-  while (partnerIndex < partnerMatches.length || curatedIndex < curatedLeads.length) {
+  while (partnerIndex < partnerMatches.length || secondaryIndex < secondary.length) {
     for (let i = 0; i < partnerPerCurated && partnerIndex < partnerMatches.length; i++) {
       results.push({ kind: "partner", match: partnerMatches[partnerIndex] });
       partnerIndex++;
     }
-    if (curatedIndex < curatedLeads.length) {
-      results.push({ kind: "curated", lead: curatedLeads[curatedIndex] });
-      curatedIndex++;
+    if (secondaryIndex < secondary.length) {
+      results.push(secondary[secondaryIndex]);
+      secondaryIndex++;
     }
   }
 
@@ -72,8 +85,12 @@ export function interleaveDiscoveryResults(
  * visibile complessivo, Partner + Curated. Nessun count separato "Scoperte
  * TRAMA" da nessuna parte della UI.
  */
-export function countDiscoveryResults(partnerMatches: SmartMatch[], curatedLeads: DiscoveryLeadRecord[]): number {
-  return partnerMatches.length + curatedLeads.length;
+export function countDiscoveryResults(
+  partnerMatches: SmartMatch[],
+  curatedLeads: DiscoveryLeadRecord[],
+  communityDiscoveries: CommunityDiscoveryRecord[] = []
+): number {
+  return partnerMatches.length + curatedLeads.length + communityDiscoveries.length;
 }
 
 // ============ MAP UNIFICATION (TRAMA — DISCOVERY MAP + POLISH, 21/09/2026) ============
