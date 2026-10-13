@@ -54,6 +54,13 @@ import { markAnnouncementSeenAction } from "@/app/actions/announcements";
 // STESSA logica per i pallini "Prenotazioni"/"Profilo" — vedi
 // lib/notifications/seen-cursor.ts per il motivo dell'estrazione.
 import { readLastSeenAt, writeLastSeenAt } from "@/lib/notifications/seen-cursor";
+import {
+  HEADER_BELL_EVENT,
+  OPEN_NOTIFICATIONS_EVENT,
+  announceUnseenCount,
+  isHeaderBellPresent,
+  type HeaderBellDetail,
+} from "@/lib/nextgen/notification-bridge";
 // TRAMA BETA v1.1.1 (FINAL FUNCTIONAL + UI CONSISTENCY FIXES, punto 7) —
 // vedi lib/nextgen/floating-controls.ts per la ROOT CAUSE ANALYSIS. Il
 // Provider è montato solo in app/nextgen/layout.tsx (scope "parent"): per
@@ -129,6 +136,44 @@ export default function NotificationCenter({
     bellRef.current?.focus();
   }
 
+  // TRAMA — HOME V2 (Fase 1, 13/10/2026): ponte con la campanella
+  // nell'intestazione della Home V2 (lib/nextgen/notification-bridge.ts).
+  // Solo scope "parent"; fuori dalla Home V2 nessuno emette questi eventi,
+  // quindi headerBellPresent resta false e il pulsante flottante è invariato.
+  const [headerBellPresent, setHeaderBellPresent] = useState(false);
+
+  useEffect(() => {
+    if (scope !== "parent") return;
+    function onHeaderBell(e: Event) {
+      const detail = (e as CustomEvent<HeaderBellDetail | undefined>).detail;
+      setHeaderBellPresent(Boolean(detail?.present));
+    }
+    // Stessi passi di openCenter() sopra (cursore "visto" avanzato ad ora),
+    // ripetuti qui per non leggere una funzione del render dentro l'effetto.
+    function onOpenRequest() {
+      const now = new Date().toISOString();
+      writeLastSeenAt(scope, now);
+      setLastSeenAt(now);
+      setOpen(true);
+    }
+    window.addEventListener(HEADER_BELL_EVENT, onHeaderBell);
+    window.addEventListener(OPEN_NOTIFICATIONS_EVENT, onOpenRequest);
+    // La Home V2 può aver annunciato la sua campanella prima che questo
+    // effetto si mettesse in ascolto (gli effetti della pagina girano prima
+    // di quelli del layout): allineamento una tantum allo stato condiviso.
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- sincronizzazione one-shot con uno stato esterno (lib/nextgen/notification-bridge.ts) che esiste solo lato client, stesso pattern SSR-safe di readLastSeenAt sopra.
+    if (isHeaderBellPresent()) setHeaderBellPresent(true);
+    return () => {
+      window.removeEventListener(HEADER_BELL_EVENT, onHeaderBell);
+      window.removeEventListener(OPEN_NOTIFICATIONS_EVENT, onOpenRequest);
+    };
+  }, [scope]);
+
+  useEffect(() => {
+    if (scope !== "parent" || !headerBellPresent) return;
+    announceUnseenCount(unseenCount);
+  }, [scope, headerBellPresent, unseenCount]);
+
   useEffect(() => {
     if (!open) return;
     closeRef.current?.focus();
@@ -174,6 +219,9 @@ export default function NotificationCenter({
 
   return (
     <>
+      {/* HOME V2: con la campanella nell'intestazione presente, niente
+          pulsante flottante (il dialog resta questo, invariato). */}
+      {!headerBellPresent && (
       <button
         ref={bellRef}
         type="button"
@@ -214,6 +262,7 @@ export default function NotificationCenter({
           </span>
         )}
       </button>
+      )}
 
       {open && (
         <div

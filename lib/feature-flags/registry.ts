@@ -238,6 +238,21 @@ export const FEATURE_FLAG_REGISTRY = {
     defaultValue: false,
     allowedScopes: ["global", "environment", "user", "role", "cohort"],
   },
+  // TRAMA — HOME V2 (Fase 1, 13/10/2026, iniziativa "Home e Planner v2",
+  // baseline visuale V2.1). Risolto server-side in app/nextgen/page.tsx:
+  // acceso → HomeDashboardV2Client, spento o errore di lettura → Home
+  // attuale (HomeDashboardClient) invariata. Nessuna migration, nessun dato
+  // nuovo: rollback immediato spegnendo il flag dalla card Release.
+  HOME_V2_ENABLED: {
+    name: "HOME_V2_ENABLED",
+    description:
+      "Abilita la nuova Home famiglie (V2): Oggi come timeline unica (prenotazioni TRAMA, Scoperte nel " +
+      "Planner, impegni aggiunti a mano), Da fare in una sola lista (max 3), riepilogo del periodo, " +
+      "prossima chiusura scolastica, suggerimenti e azioni rapide. Default false: la Home attuale resta " +
+      "il ripiego per chiunque non sia nella coorte attivata dalla card Release.",
+    defaultValue: false,
+    allowedScopes: ["global", "environment", "user", "role", "cohort"],
+  },
 } as const satisfies Record<string, FeatureFlagDefinition>;
 
 export type KnownFeatureFlagName = keyof typeof FEATURE_FLAG_REGISTRY;

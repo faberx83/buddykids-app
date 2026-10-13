@@ -412,3 +412,84 @@ export async function getKidSchoolProfilesForParent(kidIds: string[]): Promise<R
   }
   return result;
 }
+
+// TRAMA — HOME V2 (Fase 1, 13/10/2026). Intervalli di chiusura per figlio,
+// per la card "Prossima chiusura" della Home V2 (la scelta della chiusura
+// è logica pura in lib/school-calendar/next-closure.ts). Stesse tabelle e
+// stesse query di getSchoolCalendarPlannerContext sopra, in sola lettura:
+// nessuna tabella nuova. Fail-safe: qualunque errore o assenza di profilo
+// scolastico → nessun intervallo (la card semplicemente non compare). Il
+// chiamante risolve SCHOOL_CALENDAR_INTELLIGENCE_ENABLED prima di chiamarla.
+export interface KidClosureIntervals {
+  kidId: string;
+  closures: ReturnType<typeof buildClosureIntervals>;
+}
+
+export async function getKidClosureIntervalsForParent(
+  kidIds: string[]
+): Promise<{ hasAnySchoolProfile: boolean; closuresByKid: KidClosureIntervals[] }> {
+  const empty = { hasAnySchoolProfile: false, closuresByKid: [] as KidClosureIntervals[] };
+  if (!isSupabaseConfigured || kidIds.length === 0) return empty;
+
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return empty;
+
+  const { data: profileRows, error: profileError } = await supabase
+    .from("kid_school_profiles")
+    .select("kid_id, region, comune")
+    .eq("parent_id", user.id)
+    .in("kid_id", kidIds);
+  if (profileError || !profileRows || profileRows.length === 0) return empty;
+
+  const profiles = profileRows as RawKidSchoolProfileRow[];
+  const regions = Array.from(new Set(profiles.map((p) => p.region)));
+
+  const { data: calendarRows, error: calendarError } = await supabase
+    .from("school_calendars")
+    .select("id, region")
+    .eq("country", "IT")
+    .eq("status", "published")
+    .in("region", regions);
+  if (calendarError || !calendarRows || calendarRows.length === 0) {
+    return { hasAnySchoolProfile: true, closuresByKid: [] };
+  }
+
+  const calendars = calendarRows as RawSchoolCalendarRow[];
+  const regionByCalendarId = new Map(calendars.map((c) => [c.id, c.region]));
+  const { data: eventRows } = await supabase
+    .from("school_calendar_events")
+    .select("calendar_id, start_date, end_date, event_type, label, comune")
+    .in(
+      "calendar_id",
+      calendars.map((c) => c.id)
+    );
+
+  const regionComuneEvents: RegionComuneEvent[] = [];
+  for (const row of (eventRows ?? []) as RawSchoolCalendarEventRow[]) {
+    if (!KNOWN_EVENT_TYPES.has(row.event_type as SchoolCalendarEventType)) continue;
+    const region = regionByCalendarId.get(row.calendar_id);
+    if (!region) continue;
+    regionComuneEvents.push({
+      region,
+      comune: row.comune,
+      event: {
+        startDate: row.start_date,
+        endDate: row.end_date,
+        eventType: row.event_type as SchoolCalendarEventType,
+        label: row.label ?? "",
+      },
+    });
+  }
+  const groupedEvents = groupEventsByScope(regionComuneEvents);
+
+  return {
+    hasAnySchoolProfile: true,
+    closuresByKid: profiles.map((p) => ({
+      kidId: p.kid_id,
+      closures: buildClosureIntervals(composeKidCalendarEvents(groupedEvents, { region: p.region, comune: p.comune })),
+    })),
+  };
+}

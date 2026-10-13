@@ -12,6 +12,8 @@ import { getFavoriteActivityIds } from "@/lib/data/favorites";
 import { computeMatchesForKid } from "@/lib/matching";
 import { WEEKDAYS } from "@/lib/nextgen/responsibility-options";
 import HomeDashboardClient from "./HomeDashboardClient";
+import HomeDashboardV2Client from "./HomeDashboardV2Client";
+import { loadHomeV2Props } from "./home-v2-data";
 import { resolveFeatureFlagVisibility } from "@/lib/feature-flags/resolve";
 import { generateCorrelationId } from "@/lib/telemetry/correlation";
 
@@ -51,6 +53,33 @@ export default async function NextgenHomePage() {
   // date reali di planner.weeks — non una nuova interpretazione delle
   // settimane, solo una dipendenza in più tra due fetch già esistenti.
   const planner = await getPlannerData();
+
+  // TRAMA — HOME V2 (Fase 1, 13/10/2026): con HOME_V2_ENABLED acceso la Home
+  // è HomeDashboardV2Client (dati in ./home-v2-data.ts). Flag spento, utente
+  // non autenticato o errore di lettura del flag (resolveFeatureFlagVisibility
+  // è fail-closed, in più il try/catch qui sotto) → tutto il codice che segue,
+  // cioè la Home attuale, invariata. Rollback: spegnere il flag.
+  let homeV2Enabled = false;
+  if (user) {
+    try {
+      homeV2Enabled = (
+        await resolveFeatureFlagVisibility({
+          flagName: "HOME_V2_ENABLED",
+          userId: user.id,
+          role: "parent",
+          tenant: "family",
+          correlationId: generateCorrelationId(),
+        })
+      ).enabled;
+    } catch {
+      homeV2Enabled = false;
+    }
+  }
+  if (user && homeV2Enabled) {
+    const { data: v2Profile } = await supabase.from("profiles").select("full_name").eq("id", user.id).single();
+    const v2Props = await loadHomeV2Props({ userId: user.id, fullName: v2Profile?.full_name ?? null, planner });
+    return <HomeDashboardV2Client {...v2Props} />;
+  }
 
   // TRAMA — FAMILY-FIRST BETA PASS (07/10/2026): scorciatoia "Aggiungi un
   // impegno" in Home solo se la funzione è davvero disponibile per l'utente

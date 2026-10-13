@@ -126,6 +126,21 @@ export const RELEASE_CATALOG: ReleaseCatalogEntry[] = [
     notes:
       "Creata il 16/09/2026, estesa il 17/09 (COMPLETION PASS: dataset 6→13, filtri, analytics), il 21/09/2026 (DISCOVERY UNIFICATION + PROPONI INVITO: result set unico, CTA 'Proponi invito' su riuso di center_leads) e il 23/09/2026 (POST-DISCOVERY CONSOLIDATION: Curated Favorites, tabella curated_favorites NON ANCORA APPLICATA — migration 38). Non ancora verificata visivamente live in nessuna delle iterazioni (nessun accesso a browser/dev-server nell'ambiente di sviluppo): resta dietro flag (cohort:internal-preview) finché Fabrizio non la abilita e la controlla di persona.",
   },
+  {
+    // TRAMA — HOME V2 (Fase 1, 13/10/2026). Una release a sé: si accende e
+    // si spegne indipendentemente dal Planner (Fase 2, non ancora qui).
+    id: "home-v2",
+    label: "TRAMA — Home V2",
+    shortDescription:
+      "Nuova Home famiglie: cosa succede oggi, cosa c'è da fare, come sta il periodo, prossima chiusura della scuola.",
+    targetAudience: ["parent"],
+    featureKeys: ["home_v2"],
+    knownLimitations: [
+      "home_v2 (Fase 1): il riepilogo del periodo usa la stagione estiva già calcolata dal Planner; gli impegni aggiunti a mano compaiono in Oggi ma non contano nella copertura (regola attuale). Suggerimenti solo Partner. La prossima chiusura richiede il calendario scolastico attivo e la scuola indicata per almeno un figlio.",
+    ],
+    notes:
+      "Creata il 13/10/2026. Ripiego: con il flag spento, o se la lettura del flag fallisce, resta la Home attuale. Da verificare dal vivo da Fabrizio prima di estendere oltre l'anteprima interna.",
+  },
 ];
 
 export function getReleaseCatalog(): ReleaseCatalogEntry[] {

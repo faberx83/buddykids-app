@@ -733,6 +733,40 @@ export const FEATURE_CATALOG: FeatureCatalogEntry[] = [
     sourceFiles: ["app/admin/legal/page.tsx", "lib/legal/gate.ts"],
     riskLevel: "low",
   },
+  {
+    // TRAMA — HOME V2 (Fase 1, 13/10/2026): iniziativa "Home e Planner v2",
+    // baseline visuale V2.1. Gestita dalla release "home-v2"
+    // (lib/releases/catalog.ts). AgendaItemRow e SeasonSummaryCard sono già
+    // pensati per il Planner V2 (fase successiva, non ancora implementata).
+    key: "home_v2",
+    label: "Home V2 — Oggi, Da fare, riepilogo del periodo",
+    area: "parent",
+    status: "INTERNAL_PREVIEW",
+    flagName: "HOME_V2_ENABLED",
+    description:
+      "Nuova Home famiglie: alert solo per un problema di oggi, Oggi come timeline unica (TRAMA, Scoperte " +
+      "nel Planner, impegni aggiunti a mano, senza gerarchia), coordinamento della giornata compatto se " +
+      "completo, Da fare (max 3, una CTA per voce), riepilogo del periodo con stato iniziale per famiglie " +
+      "nuove, prossima chiusura scolastica, suggerimenti e azioni rapide. Nessuna migration.",
+    sourceFiles: [
+      "app/nextgen/page.tsx",
+      "app/nextgen/HomeDashboardV2Client.tsx",
+      "app/nextgen/home-v2-data.ts",
+      "components/nextgen/AgendaItemRow.tsx",
+      "components/nextgen/SeasonSummaryCard.tsx",
+      "lib/nextgen/home-inbox.ts",
+      "lib/nextgen/today-agenda.ts",
+      "lib/nextgen/season-summary.ts",
+      "lib/school-calendar/next-closure.ts",
+      "lib/nextgen/notification-bridge.ts",
+    ],
+    note:
+      "Il riepilogo usa i dati della stagione estiva già calcolati dal Planner (titolo 'Estate AAAA'); gli " +
+      "impegni esterni compaiono in Oggi ma, come da regola attuale, non contano nella copertura. " +
+      "Suggerimenti: solo Partner (logica esistente).",
+    riskLevel: "medium",
+    releaseEligible: true,
+  },
 ];
 
 export function getFeatureCatalog(): FeatureCatalogEntry[] {
