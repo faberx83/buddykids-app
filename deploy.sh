@@ -180,6 +180,30 @@ if [ -z "$NO_LOG_FILE" ]; then
 fi
 
 # ────────────────────────────────────────────────────────────────
+# Certificati aziendali (13/10/2026). Sui Mac con un filtro di rete aziendale
+# (es. Cloudflare Zero Trust / WARP, SASE) il traffico HTTPS viene ispezionato
+# con un certificato dell'azienda installato nel Portachiavi di sistema.
+# Safari, curl e git lo accettano; Node.js (quindi "npx vercel") NO, e fallisce
+# con "Error: fetch failed". Qui esportiamo i certificati del Portachiavi in un
+# file e lo passiamo a Node con NODE_EXTRA_CA_CERTS: aggiunge fiducia, non ne
+# toglie. Se il filtro non c'è, non cambia nulla.
+# Override: NO_SYSTEM_CA=1 bash deploy.sh per disattivare.
+# ────────────────────────────────────────────────────────────────
+if [ -z "$NO_SYSTEM_CA" ] && [ -z "$NODE_EXTRA_CA_CERTS" ] && [ "$(uname)" = "Darwin" ] && command -v security >/dev/null 2>&1; then
+  TRAMA_CA_FILE="$HOME/.trama-deploy/certificati-sistema.pem"
+  mkdir -p "$HOME/.trama-deploy"
+  security find-certificate -a -p /Library/Keychains/System.keychain > "$TRAMA_CA_FILE" 2>/dev/null || true
+  security find-certificate -a -p "$HOME/Library/Keychains/login.keychain-db" >> "$TRAMA_CA_FILE" 2>/dev/null || true
+  if grep -q "BEGIN CERTIFICATE" "$TRAMA_CA_FILE" 2>/dev/null; then
+    export NODE_EXTRA_CA_CERTS="$TRAMA_CA_FILE"
+    if grep -qi "cloudflare" <(security find-certificate -a /Library/Keychains/System.keychain 2>/dev/null); then
+      echo "🔐 Rilevato certificato Cloudflare aziendale: Node userà i certificati del Mac."
+      echo ""
+    fi
+  fi
+fi
+
+# ────────────────────────────────────────────────────────────────
 # ONLY_SITEMAP: intercettato PRIMA di qualunque git push / vercel --prod /
 # alias set / cleanup completo / suite Playwright ordinaria, e PRIMA dei
 # preflight branch/working-tree sottostanti (non produce un deploy, quindi
@@ -669,7 +693,13 @@ fi
 
 echo ""
 echo "[3/5] 🚀 Pubblico in produzione su Vercel..."
-npx vercel --prod
+if ! npx vercel --prod; then
+  echo ""
+  echo "🛑 Pubblicazione su Vercel non riuscita. Database e GitHub sono già a posto:"
+  echo "   rilanciando 'bash deploy.sh' riparte da qui, senza ripetere nulla."
+  echo "   Se compare 'fetch failed': di solito è la rete (Wi-Fi, VPN o filtro aziendale)."
+  exit 1
+fi
 
 echo ""
 echo "[4/5] 🔗 Riallineo gli alias (partner/admin) all'ultimo deploy..."
