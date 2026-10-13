@@ -693,11 +693,24 @@ fi
 
 echo ""
 echo "[3/5] 🚀 Pubblico in produzione su Vercel..."
+# Accesso a Vercel (13/10/2026): se la sessione della CLI è scaduta o assente,
+# "vercel --prod" risponde "Not authorized". Qui lo verifichiamo prima e, se
+# serve, apriamo l'accesso nel browser (una volta sola, poi resta salvato).
+if ! npx vercel whoami >/dev/null 2>&1; then
+  echo "🔑 Vercel chiede di accedere di nuovo: si apre il browser, conferma con il tuo account (faberx83)."
+  if ! npx vercel login; then
+    echo "🛑 Accesso a Vercel non completato. Rilancia 'bash deploy.sh' quando vuoi: riparte da qui."
+    exit 1
+  fi
+  echo "✅ Accesso a Vercel fatto."
+fi
 if ! npx vercel --prod; then
   echo ""
   echo "🛑 Pubblicazione su Vercel non riuscita. Database e GitHub sono già a posto:"
   echo "   rilanciando 'bash deploy.sh' riparte da qui, senza ripetere nulla."
   echo "   Se compare 'fetch failed': di solito è la rete (Wi-Fi, VPN o filtro aziendale)."
+  echo "   Se compare 'Not authorized': l'account Vercel collegato non ha accesso al progetto"
+  echo "   (prova: npx vercel logout, poi rilancia bash deploy.sh e accedi come faberx83)."
   exit 1
 fi
 
