@@ -220,10 +220,11 @@ export const FEATURE_CATALOG: FeatureCatalogEntry[] = [
     releaseEligible: true,
   },
   {
-    // TRAMA — RADAR / COMMUNITY DISCOVERY (12/10/2026): patch 1 (motore:
-    // migration_42, analisi, deduplica, salvataggio). L'interfaccia in
-    // Scopri arriva con la patch 2: finché non c'è, la voce resta
-    // INTERNAL_PREVIEW e raggiungibile solo via API.
+    // TRAMA — RADAR / COMMUNITY DISCOVERY (12-13/10/2026): patch 1 (motore:
+    // migration_42, analisi, deduplica, salvataggio) e patch 2 (esperienza:
+    // "+ Aggiungi una scoperta" in Scopri, scheda, Preferiti, Planner,
+    // share_target Android, /admin/radar). Gestita dalla release
+    // "real-discovery-pilot" (lib/releases/catalog.ts).
     key: "radar_community_discovery",
     label: "Radar — Aggiungi una scoperta (Community Discovery)",
     area: "parent",
@@ -242,6 +243,10 @@ export const FEATURE_CATALOG: FeatureCatalogEntry[] = [
       "lib/radar/url-fetch.ts",
       "app/api/radar/analyze/route.ts",
       "app/actions/radar.ts",
+      "components/nextgen/RadarAddDiscoverySheet.tsx",
+      "components/nextgen/CommunityDiscoveryCard.tsx",
+      "app/nextgen/scoperta/[id]/page.tsx",
+      "app/admin/radar/page.tsx",
     ],
     note:
       "Analisi in simulazione (lib/radar/providers/mock.ts) finché non viene impostata ANTHROPIC_API_KEY su " +

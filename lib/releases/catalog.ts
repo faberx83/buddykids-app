@@ -97,7 +97,10 @@ export const RELEASE_CATALOG: ReleaseCatalogEntry[] = [
     shortDescription:
       "Scopri unificato: risultati Partner e Scoperte TRAMA (attività estive reali, non Partner, raccolte da fonti pubbliche) nello stesso result set, stesso count, stessi filtri.",
     targetAudience: ["parent"],
-    featureKeys: ["real_discovery_dataset"],
+    // TRAMA — RADAR (13/10/2026): "Aggiungi una scoperta" vive in Scopri,
+    // nello stesso result set: stessa release, gestibile dalla stessa card
+    // Admin → Feature Flags → Release (Anteprima interna / Pilot / Tutti).
+    featureKeys: ["real_discovery_dataset", "radar_community_discovery"],
     // CORRETTO 21/09/2026 (DISCOVERY UNIFICATION + PROPONI INVITO, §4 del
     // prompt: "Correggi la documentazione stale... che dichiara ancora
     // erroneamente che Real Discovery non è integrato con i filtri"). Le due
@@ -111,6 +114,7 @@ export const RELEASE_CATALOG: ReleaseCatalogEntry[] = [
       "Result set unificato (21/09/2026): Partner e Scoperte TRAMA convivono nello stesso elenco con un unico count, intercalati con un ordinamento deterministico (2 Partner : 1 Curated, nessun Match/punteggio inventato per il Curated) — nessuna sezione separata 'Scoperte TRAMA' più in cima alla pagina.",
       "'Proponi invito' (manifestazione d'interesse verso public.center_leads, infrastruttura esistente) mostrato SOLO sui 7/13 record con un'entità organizzatrice reale e nominata — i 6 record che descrivono un servizio comunale con gestore non nominato/rotante restano visibili ma senza questa CTA (mostrano solo il link alla fonte).",
       "Nessuna immagine: ogni card usa un visual neutro TRAMA (vedi §9 Image/Copyright Audit del report) finché non viene presa una decisione di prodotto/legal sulla gestione immagini.",
+      "radar_community_discovery (V1): analisi in simulazione finché non c'è ANTHROPIC_API_KEY su Vercel (una foto senza testo chiede due righe di descrizione). Le scoperte community non hanno coordinate: niente Mappa né 'Vicino a te'. Condivisione da altre app solo Android, solo link e testo.",
       // AGGIORNATO 23/09/2026 (POST-DISCOVERY CONSOLIDATION): non più un gap
       // — Favorites ora disponibile anche per i lead curati, su una
       // tabella NUOVA e separata (public.curated_favorites, migration 38 —

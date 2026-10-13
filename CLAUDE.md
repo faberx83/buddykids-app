@@ -28,6 +28,7 @@ Regole operative permanenti per qualunque lavoro su questo repository. Non sono 
 - Preferire migrazioni additive, compatibili e reversibili.
 - Non modificare retroattivamente migrazioni già applicate.
 - Utilizzare route isolate, feature flag, coorti beta e adapter.
+- Ogni nuova funzionalità accendibile per fasi va gestita dalla card Release (Admin → Feature Flags → Release): voce in `lib/feature-registry/catalog.ts` con `releaseEligible: true` e chiave in una release di `lib/releases/catalog.ts`. Mai chiedere a Fabrizio di creare override a mano (decisione del 13/10/2026; controllo automatico in `tests/one/release-alignment.spec.ts`).
 - Non implementare capability fuori dall'MVP senza autorizzazione.
 
 ## 3. Deploy e test
