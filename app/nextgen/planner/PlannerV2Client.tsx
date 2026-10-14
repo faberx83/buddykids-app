@@ -65,6 +65,7 @@ import { setResponsibilityAction, clearResponsibilityAction, setWeekBulkResponsi
 import { toggleWeekDismissedAction } from "@/app/actions/profile";
 import { createPlanShareAction } from "@/app/actions/plan-shares";
 import AgendaItemRow, { KidAvatar, kidToneFor } from "@/components/nextgen/AgendaItemRow";
+import TramaThread from "@/components/nextgen/TramaThread";
 import DayCoordinationBlock, { CoordinationTable } from "@/components/nextgen/DayCoordination";
 import SeasonSummaryCard from "@/components/nextgen/SeasonSummaryCard";
 import PlannerMapView from "@/components/nextgen/PlannerMapView";
@@ -324,7 +325,10 @@ export default function PlannerV2Client({
         >
           <i className="ti ti-arrow-left" aria-hidden="true" />
         </button>
-        <h1 className="flex-1 font-poppins text-[24px] font-semibold text-ink">Planner</h1>
+        <div className="flex flex-1 flex-col">
+          <h1 className="font-poppins text-[24px] font-semibold leading-tight text-ink">Planner</h1>
+          <TramaThread className="mt-1.5" />
+        </div>
         <HeaderTool icon="ti-map-2" label="Mappa" onClick={() => setPanel("mappa")} />
         <HeaderTool icon="ti-users-group" label="Gruppi" onClick={() => setPanel("gruppi")} />
         {!navV2Enabled && externalEnabled && (

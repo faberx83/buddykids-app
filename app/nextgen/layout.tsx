@@ -242,7 +242,7 @@ export default async function NextgenLayout({ children }: { children: React.Reac
             deve passare per context invece che per prop — vedi
             components/nextgen/NextgenScrollActivity.tsx. */}
         <NextgenScrollActivityProvider>
-          <div className="flex h-full min-h-0 flex-col">
+          <div className="flex h-full min-h-0 flex-col" data-nav-v2={navV2Enabled ? "" : undefined}>
             {/* TRAMA BETA v1.1.1 (FINAL VISUAL CONFORMANCE PASS, punto 10) —
                 segnalazione: bell (NotificationCenter, bottom-24 left-4) e
                 chat (BetaFeedbackButton, bottom-24 right-4) sono

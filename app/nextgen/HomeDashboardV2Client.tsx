@@ -27,6 +27,7 @@ import { announceHeaderBell, requestOpenNotifications, UNSEEN_COUNT_EVENT, type 
 import { isPushSupported, enablePushNotifications, hasBrowserPushSubscription } from "@/lib/push/client";
 import { updatePreferencesAction } from "@/app/actions/profile";
 import AgendaItemRow from "@/components/nextgen/AgendaItemRow";
+import TramaThread from "@/components/nextgen/TramaThread";
 import DayCoordinationBlock from "@/components/nextgen/DayCoordination";
 import SeasonSummaryCard, { type SeasonSummaryAction, type SeasonSummaryWelcome } from "@/components/nextgen/SeasonSummaryCard";
 import NextgenCheckinCard from "@/components/nextgen/NextgenCheckinCard";
@@ -237,6 +238,7 @@ export default function HomeDashboardV2Client({
             <h1 className="font-poppins text-[19px] font-semibold leading-tight text-ink">
               Ciao{firstName ? ` ${firstName}` : ""}
             </h1>
+            <TramaThread className="my-1" />
             <span className="text-[13px] text-ink-2">
               {todayGreeting}
             </span>

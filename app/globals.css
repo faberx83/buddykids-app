@@ -286,3 +286,13 @@ body:has(.app-shell) {
   from { opacity: 0; transform: translateX(-80px) scale(0.6); filter: blur(8px); }
   to { opacity: 1; transform: none; filter: none; }
 }
+
+/* TRAMA — segno del marchio sotto i titoli (components/nextgen/TramaThread.tsx).
+   Nei componenti condivisi (PageHeader) compare solo nell'area NEXTGEN con la
+   nuova barra accesa: app/nextgen/layout.tsx mette data-nav-v2. */
+.trama-thread-auto {
+  display: none;
+}
+[data-nav-v2] .trama-thread-auto {
+  display: flex;
+}
