@@ -12,7 +12,7 @@ import {
   bookingStatusExplainer,
   type BookingV2Input,
 } from "../../lib/nextgen/bookings-v2";
-import { buildDiscoverPeriods, periodForWeek, activityOpenIn, discoveryOpenIn } from "../../lib/nextgen/discover-v2";
+import { buildDiscoverPeriods, periodForWeek, activityOpenIn, discoveryOpenIn, shortClosureName } from "../../lib/nextgen/discover-v2";
 import { FEATURE_FLAG_REGISTRY } from "../../lib/feature-flags/registry";
 import { FEATURE_CATALOG } from "../../lib/feature-registry/catalog";
 import { RELEASE_CATALOG } from "../../lib/releases/catalog";
@@ -160,5 +160,43 @@ test.describe("SCOPRI-V2", () => {
     const src = read("lib/data/activities.ts");
     const fn = src.slice(src.indexOf("export async function getActivityOpenRanges"), src.indexOf("export async function getActivitiesWithOpenDaySpots"));
     expect(fn).not.toMatch(/\.insert\(|\.update\(|\.upsert\(|\.delete\(/);
+  });
+});
+
+// Ritocchi del 14/10/2026 dopo la prova live (mappa sopra il +, forme
+// diverse di Elenco/Mappa, nome lungo delle vacanze, filtri viola).
+test.describe("TRAMA — Scopri V2: ritocchi grafici [no browser]", () => {
+  const read = (p: string) => fs.readFileSync(path.join(__dirname, "../..", p), "utf-8");
+
+  test("SPV2-12 nome breve delle chiusure nei bottoni 'Per quando'", () => {
+    expect(shortClosureName("Vacanze di Natale 2026/2027 (incl. Natale, Santo Stefano)")).toBe("Vacanze di Natale");
+    expect(shortClosureName("Vacanze di Pasqua 2027")).toBe("Vacanze di Pasqua");
+    expect(shortClosureName("Carnevale ambrosiano")).toBe("Carnevale ambrosiano");
+    const p = buildDiscoverPeriods({
+      todayIso: "2026-10-14",
+      closures: [{ startDate: "2026-12-23", endDate: "2027-01-06", labels: ["Vacanze di Natale 2026/2027 (incl. Natale, Santo Stefano)"], weekdayCount: 11 }],
+      summer: null,
+      summerYear: null,
+    });
+    expect(p[0].label).toBe("Vacanze di Natale");
+    expect(p[0].title).toBe("Per le vacanze di Natale");
+  });
+
+  test("SPV2-13 la mappa non copre la barra in basso (livelli Leaflet chiusi nel suo riquadro)", () => {
+    expect(read("components/ActivityMap.tsx")).toContain('className="relative z-0 w-full overflow-hidden rounded-lg');
+  });
+
+  test("SPV2-14 schede a due voci con la stessa forma dentro e fuori (pillola) in Scopri, Planner, Prenotazioni", () => {
+    expect(read("app/nextgen/search/SearchDiscoveryClient.tsx")).toContain('className="grid grid-cols-2 gap-[3px] rounded-full bg-[#EEF0F4] p-[3px]"');
+    for (const p of ["app/nextgen/planner/PlannerV2Client.tsx", "app/nextgen/prenotazioni/PrenotazioniV2Client.tsx"]) {
+      const src = read(p);
+      expect(src).toContain('className="grid grid-cols-2 gap-1 rounded-full bg-[#EEF0F4] p-1"');
+      expect(src).toContain("`min-h-[40px] rounded-full text-[14px] ${");
+    }
+  });
+
+  test("SPV2-15 in V2 i filtri selezionati sono blu notte come 'Per quando', fuori V2 restano viola", () => {
+    const src = read("app/nextgen/search/SearchDiscoveryClient.tsx");
+    expect(src.match(/v2 \? "border-trama-navy bg-trama-navy text-white" : "border-trama-violet bg-trama-violet text-white"/g)?.length ?? 0).toBeGreaterThanOrEqual(5);
   });
 });

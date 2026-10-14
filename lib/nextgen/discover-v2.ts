@@ -55,6 +55,18 @@ function shortRange(start: string, end: string): string {
 }
 
 /**
+ * Nome breve di una chiusura per i bottoni (14/10/2026, il calendario
+ * scolastico ha etichette lunghe come "Vacanze di Natale 2026/2027 (incl.
+ * Natale, Santo Stefano…)"): via la parentesi e l'anno scolastico finale.
+ */
+export function shortClosureName(label: string): string {
+  return label
+    .replace(/\s*\(.*$/, "")
+    .replace(/\s+\d{4}(\s*[\/–-]\s*\d{2,4})?\s*$/, "")
+    .trim();
+}
+
+/**
  * I periodi di "Per quando", nell'ordine in cui servono a una famiglia:
  *   1-2. le prossime due chiusure della scuola (se indicata), entro 4 mesi;
  *   3.   le prossime 4 settimane;
@@ -71,7 +83,8 @@ export function buildDiscoverPeriods(input: {
   const limit = addDays(input.todayIso, 120);
   for (const c of input.closures.filter((x) => x.startDate > input.todayIso && x.startDate <= limit).slice(0, 2)) {
     const long = c.weekdayCount >= 5;
-    const named = c.labels.find((l) => /natale|pasqua|carnevale/i.test(l));
+    const namedRaw = c.labels.find((l) => /natale|pasqua|carnevale/i.test(l));
+    const named = namedRaw ? shortClosureName(namedRaw) : undefined;
     const label = long ? (named ?? `Vacanze ${shortRange(c.startDate, c.endDate)}`) : `Ponte ${shortRange(c.startDate, c.endDate)}`;
     const title = long
       ? named && /^vacanze/i.test(named)

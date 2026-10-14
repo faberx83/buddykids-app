@@ -339,7 +339,7 @@ export default function PlannerV2Client({
       </header>
 
       {/* SETTIMANA | STAGIONE */}
-      <div role="tablist" aria-label="Vista del Planner" className="grid grid-cols-2 gap-1 rounded-[14px] bg-[#EEF0F4] p-1">
+      <div role="tablist" aria-label="Vista del Planner" className="grid grid-cols-2 gap-1 rounded-full bg-[#EEF0F4] p-1">
         {(["settimana", "stagione"] as const).map((v) => (
           <button
             key={v}
@@ -347,7 +347,7 @@ export default function PlannerV2Client({
             role="tab"
             aria-selected={view === v}
             onClick={() => setView(v)}
-            className={`min-h-[40px] rounded-[10px] text-[14px] ${
+            className={`min-h-[40px] rounded-full text-[14px] ${
               view === v ? "bg-white font-bold text-trama-navy shadow-[0_1px_3px_rgba(23,42,77,0.12)]" : "font-semibold text-[#4B5563]"
             }`}
           >

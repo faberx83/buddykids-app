@@ -1207,7 +1207,7 @@ export default function SearchDiscoveryClient({
         {v2 && (
           <header className="mb-4 flex items-center gap-2.5">
             <h1 className="flex-1 font-poppins text-[24px] font-semibold text-ink">Scopri</h1>
-            <div role="tablist" aria-label="Vista" className="grid grid-cols-2 gap-[3px] rounded-xl bg-[#EEF0F4] p-[3px]">
+            <div role="tablist" aria-label="Vista" className="grid grid-cols-2 gap-[3px] rounded-full bg-[#EEF0F4] p-[3px]">
               {(
                 [
                   ["lista", "Elenco"],
@@ -1220,7 +1220,7 @@ export default function SearchDiscoveryClient({
                   role="tab"
                   aria-selected={viewMode === mode}
                   onClick={() => setViewMode(mode)}
-                  className={`min-h-[36px] rounded-[9px] px-3 text-[13px] ${
+                  className={`min-h-[36px] rounded-full px-3.5 text-[13px] ${
                     viewMode === mode ? "bg-white font-bold text-trama-navy shadow-[0_1px_3px_rgba(23,42,77,0.12)]" : "font-semibold text-[#4B5563]"
                   }`}
                 >
@@ -1424,8 +1424,10 @@ export default function SearchDiscoveryClient({
                 data-spotlight={f.key === "data" ? "week_filter" : undefined}
                 className={`flex flex-shrink-0 cursor-pointer items-center gap-1.5 rounded-full border-[1.5px] px-3 py-1.5 text-xs font-medium transition-colors active:scale-95 ${
                   openPanel === f.key
-                    ? "border-trama-violet bg-trama-violet text-white"
-                    : "border-[#E8EBF0] bg-[#F4F6FA] text-ink-2 hover:border-trama-violet hover:bg-trama-violet hover:text-white"
+                    ? (v2 ? "border-trama-navy bg-trama-navy text-white" : "border-trama-violet bg-trama-violet text-white")
+                    : v2
+                      ? "border-[#E3E6EC] bg-white text-ink"
+                      : "border-[#E8EBF0] bg-[#F4F6FA] text-ink-2 hover:border-trama-violet hover:bg-trama-violet hover:text-white"
                 }`}
               >
                 <i className={`ti ${f.icon} text-[13px]`} />
@@ -1522,7 +1524,7 @@ export default function SearchDiscoveryClient({
                 type="button"
                 onClick={() => setSelectedKidId(null)}
                 className={`rounded-full border-[1.5px] px-3 py-1.5 text-xs font-medium transition-colors active:scale-95 ${
-                  selectedKidId === null ? "border-trama-violet bg-trama-violet text-white" : "border-[#E8EBF0] bg-white text-ink-2"
+                  selectedKidId === null ? (v2 ? "border-trama-navy bg-trama-navy text-white" : "border-trama-violet bg-trama-violet text-white") : "border-[#E8EBF0] bg-white text-ink-2"
                 }`}
               >
                 Tutti i bambini
@@ -1533,7 +1535,7 @@ export default function SearchDiscoveryClient({
                   type="button"
                   onClick={() => setSelectedKidId(k.id)}
                   className={`rounded-full border-[1.5px] px-3 py-1.5 text-xs font-medium transition-colors active:scale-95 ${
-                    selectedKidId === k.id ? "border-trama-violet bg-trama-violet text-white" : "border-[#E8EBF0] bg-white text-ink-2"
+                    selectedKidId === k.id ? (v2 ? "border-trama-navy bg-trama-navy text-white" : "border-trama-violet bg-trama-violet text-white") : "border-[#E8EBF0] bg-white text-ink-2"
                   }`}
                 >
                   {k.name}
@@ -1667,7 +1669,7 @@ export default function SearchDiscoveryClient({
                     type="button"
                     onClick={() => toggleTag(c.id)}
                     className={`rounded-full border-[1.5px] px-3 py-1.5 text-xs font-medium transition-colors active:scale-95 ${
-                      active ? "border-trama-violet bg-trama-violet text-white" : "border-[#E8EBF0] bg-white text-ink-2"
+                      active ? (v2 ? "border-trama-navy bg-trama-navy text-white" : "border-trama-violet bg-trama-violet text-white") : "border-[#E8EBF0] bg-white text-ink-2"
                     }`}
                   >
                     {c.emoji} {c.label}
@@ -1769,7 +1771,7 @@ export default function SearchDiscoveryClient({
                             type="button"
                             onClick={() => toggleWeek(start)}
                             className={`flex w-full items-center justify-between rounded-md px-3 py-2 text-left text-xs font-semibold transition-colors active:scale-[0.99] ${
-                              active ? "bg-trama-violet text-white" : "bg-white text-ink-2"
+                              active ? (v2 ? "bg-trama-navy text-white" : "bg-trama-violet text-white") : "bg-white text-ink-2"
                             }`}
                           >
                             <span>
@@ -1808,7 +1810,7 @@ export default function SearchDiscoveryClient({
                     onClick={() => toggleCoverageMode(mode)}
                     className={`rounded-full border-[1.5px] px-3 py-1.5 text-xs font-medium transition-colors active:scale-95 ${
                       active
-                        ? "border-trama-violet bg-trama-violet text-white"
+                        ? (v2 ? "border-trama-navy bg-trama-navy text-white" : "border-trama-violet bg-trama-violet text-white")
                         : "border-[#E8EBF0] bg-white text-ink-2"
                     }`}
                   >

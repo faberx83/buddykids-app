@@ -104,7 +104,7 @@ export default function PrenotazioniV2Client({
         <span className="text-[13px] text-ink-2">{bookingsSummaryLine(bookings, todayIso)}</span>
       </header>
 
-      <div role="tablist" aria-label="Quali prenotazioni" className="grid grid-cols-2 gap-1 rounded-[14px] bg-[#EEF0F4] p-1">
+      <div role="tablist" aria-label="Quali prenotazioni" className="grid grid-cols-2 gap-1 rounded-full bg-[#EEF0F4] p-1">
         {(
           [
             ["upcoming", `In arrivo · ${upcoming.length}`],
@@ -117,7 +117,7 @@ export default function PrenotazioniV2Client({
             role="tab"
             aria-selected={tab === key}
             onClick={() => setTab(key)}
-            className={`min-h-[40px] rounded-[10px] text-[14px] ${
+            className={`min-h-[40px] rounded-full text-[14px] ${
               tab === key ? "bg-white font-bold text-trama-navy shadow-[0_1px_3px_rgba(23,42,77,0.12)]" : "font-semibold text-[#4B5563]"
             }`}
           >

@@ -239,7 +239,9 @@ export default function ActivityMap({
   const zoom = initialViewState?.zoom ?? 12;
 
   return (
-    <div className="w-full overflow-hidden rounded-lg border border-[#E8EBF0]" style={{ height }}>
+    // 14/10/2026: "relative z-0" chiude i livelli di Leaflet (400-1000) dentro
+    // la mappa, cosi non coprono la barra in basso e il pulsante +.
+    <div className="relative z-0 w-full overflow-hidden rounded-lg border border-[#E8EBF0]" style={{ height }}>
       <MapContainer center={center} zoom={zoom} scrollWheelZoom style={{ height: "100%", width: "100%" }}>
         {/* TRAMA — DISCOVERY LIVE UX BUGFIX (22/09/2026), §1 "MAP TILE LAYER
             — BLOCKER". Cronologia di questo layer, entrambe le cause
