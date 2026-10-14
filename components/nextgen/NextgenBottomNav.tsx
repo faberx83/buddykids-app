@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { NotificationItem, applyClientCursor } from "@/lib/notifications/model";
 import { readLastSeenAt } from "@/lib/notifications/seen-cursor";
+import AddSheet from "@/components/nextgen/AddSheet";
 
 // SPRINT 3 (NEXTGEN) — "trasformare il Planner nella feature principale del
 // prodotto... il cuore dell'esperienza" (richiesta di Fabrizio): finché
@@ -80,9 +81,82 @@ function useNavBadges(notifications: NotificationItem[]) {
   return { hasUnseenBookingResponse, hasUnseenOther };
 }
 
-export default function NextgenBottomNav({ notifications = [] }: { notifications?: NotificationItem[] }) {
+// TRAMA — NUOVA BARRA (14/10/2026, NAV_V2_ENABLED): Home, Planner, + al
+// centro (AddSheet), Scopri, Prenotazioni. Il Profilo esce dalla barra e si
+// apre dall'avatar nell'intestazione della Home V2. variant="classic"
+// (default) = barra attuale, invariata.
+const V2_LEFT = items.slice(0, 2);
+const V2_RIGHT = items.slice(2, 4);
+
+export default function NextgenBottomNav({
+  notifications = [],
+  variant = "classic",
+  addItemEnabled = false,
+}: {
+  notifications?: NotificationItem[];
+  variant?: "classic" | "v2";
+  addItemEnabled?: boolean;
+}) {
   const pathname = usePathname();
   const { hasUnseenBookingResponse, hasUnseenOther } = useNavBadges(notifications);
+  const [addOpen, setAddOpen] = useState(false);
+
+  if (variant === "v2") {
+    const renderItem = (item: (typeof items)[number]) => {
+      const active = isActive(pathname, item.href);
+      const showDot = item.href === "/nextgen/prenotazioni" && hasUnseenBookingResponse;
+      return (
+        <Link
+          key={item.href}
+          href={item.href}
+          data-spotlight={item.spotlightTarget}
+          aria-label={showDot ? `${item.label}, nuove notifiche` : undefined}
+          className="flex flex-1 flex-col items-center gap-[3px] active:scale-90"
+        >
+          <span className="relative">
+            <i className={`ti ${item.icon} text-[22px] transition-colors ${active ? "text-trama-violet" : "text-ink-3"}`} />
+            {showDot && (
+              <span aria-hidden="true" className="absolute -right-0.5 -top-0.5 h-2 w-2 rounded-full bg-trama-orange ring-2 ring-white" />
+            )}
+          </span>
+          <span className={`font-poppins text-[10px] font-medium transition-colors ${active ? "text-trama-violet" : "text-ink-3"}`}>
+            {item.label}
+          </span>
+        </Link>
+      );
+    };
+    return (
+      <>
+        <div
+          className={`relative flex flex-shrink-0 items-end border-t border-[#E8EBF0] bg-white pt-2 ${addOpen ? "z-50" : ""}`}
+          style={{ paddingBottom: "calc(1.25rem + env(safe-area-inset-bottom))" }}
+        >
+          {V2_LEFT.map(renderItem)}
+          <button
+            type="button"
+            onClick={() => setAddOpen((v) => !v)}
+            aria-expanded={addOpen}
+            aria-haspopup="dialog"
+            aria-label={addOpen ? "Chiudi" : "Aggiungi"}
+            className="-mt-7 flex flex-1 flex-col items-center gap-1 active:scale-95"
+          >
+            <span
+              className={`flex h-14 w-14 items-center justify-center rounded-full text-white shadow-[0_6px_16px_rgba(111,99,197,0.35),0_0_0_5px_#FFFFFF] transition-colors ${
+                addOpen ? "bg-trama-navy" : "bg-trama-violet"
+              }`}
+            >
+              <i className={`ti ${addOpen ? "ti-x" : "ti-plus"} text-[26px]`} aria-hidden="true" />
+            </span>
+            <span className={`font-poppins text-[10px] font-semibold ${addOpen ? "text-trama-navy" : "text-[#4A3F9E]"}`}>
+              {addOpen ? "Chiudi" : "Aggiungi"}
+            </span>
+          </button>
+          {V2_RIGHT.map(renderItem)}
+        </div>
+        <AddSheet open={addOpen} onClose={() => setAddOpen(false)} addItemEnabled={addItemEnabled} />
+      </>
+    );
+  }
 
   return (
     <div

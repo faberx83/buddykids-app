@@ -62,6 +62,7 @@ export default function ProfileNextgenClient({
   schoolProfiles,
   residenceCity,
   classicFallbackEnabled,
+  navV2Enabled = false,
 }: {
   fullName: string;
   email: string;
@@ -82,6 +83,7 @@ export default function ProfileNextgenClient({
   // (default false) — governa SOLO se la sezione "Esperienza TRAMA" sotto è
   // renderizzata. Quando false: zero DOM aggiuntivo, nessuna riga fantasma.
   classicFallbackEnabled: boolean;
+  navV2Enabled?: boolean;
 }) {
   const router = useRouter();
 
@@ -237,6 +239,19 @@ export default function ProfileNextgenClient({
           title="Impostazioni"
           subtitle="Sicurezza, preferenze, privacy"
         />
+
+        {/* TRAMA — NUOVA BARRA (14/10/2026): il marchio vive qui, nella
+            pagina "Cos'è TRAMA" (tavola "TRAMA Navigazione · proposta"). */}
+        {navV2Enabled && (
+          <HubCard
+            href="/nextgen/trama"
+            icon="ti-info-circle"
+            iconBg="#F6F4EF"
+            iconColor="#172A4D"
+            title="Cos'è TRAMA"
+            subtitle="Come funziona, contatti, privacy"
+          />
+        )}
 
         {/* SPRINT 5 (feedback Fabrizio: "anche lato genitore ci vuole una
             sezione 'temporanea' per la fase beta in cui rivedere

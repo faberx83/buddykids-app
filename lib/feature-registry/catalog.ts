@@ -768,6 +768,55 @@ export const FEATURE_CATALOG: FeatureCatalogEntry[] = [
     riskLevel: "medium",
     releaseEligible: true,
   },
+  {
+    // TRAMA — PLANNER V2 (14/10/2026, baseline visuale V2.1). Riusa
+    // AgendaItemRow, SeasonSummaryCard, PlannerMapView, PlannerGroupsView,
+    // PlannerBudgetView e le azioni esistenti (chi accompagna, condivisione,
+    // "Non serve"). Nessuna migration.
+    key: "planner_v2",
+    label: "Planner V2 — Settimana e Stagione",
+    area: "parent",
+    status: "INTERNAL_PREVIEW",
+    flagName: "PLANNER_V2_ENABLED",
+    description:
+      "Planner famiglie con due viste: Settimana (qualunque settimana, sette giorni in lista, prenotazioni e " +
+      "impegni insieme, chi accompagna per giorno con assegnazione rapida, striscia dei giorni, Mese) e " +
+      "Stagione (riepilogo come in Home, copertura per figlio, settimane per mese, filtro Da sistemare, " +
+      "Trova attività / Non serve, budget compatto). Mappa e Gruppi come pulsanti secondari; Salvati.",
+    sourceFiles: [
+      "app/nextgen/planner/page.tsx",
+      "app/nextgen/planner/PlannerV2Client.tsx",
+      "app/nextgen/planner/planner-v2-data.ts",
+      "components/nextgen/DayCoordination.tsx",
+      "lib/nextgen/planner-week.ts",
+      "lib/nextgen/planner-season.ts",
+    ],
+    note:
+      "Le settimane della Stagione sono quelle estive già calcolate (getPlannerData). La Settimana mostra " +
+      "qualunque settimana. Gli impegni aggiunti a mano non contano nella copertura (regola attuale).",
+    riskLevel: "medium",
+    releaseEligible: true,
+  },
+  {
+    // TRAMA — NUOVA BARRA (14/10/2026, tavola "TRAMA Navigazione · proposta").
+    key: "nav_v2",
+    label: "Nuova barra — pulsante + e profilo dall'avatar",
+    area: "parent",
+    status: "INTERNAL_PREVIEW",
+    flagName: "NAV_V2_ENABLED",
+    description:
+      "Barra in basso con Home, Planner, + (Un impegno, Chi accompagna, Un altro genitore), Scopri, " +
+      "Prenotazioni. Profilo dall'avatar nell'intestazione della Home V2; pagina 'Cos'è TRAMA' dal Profilo.",
+    sourceFiles: [
+      "components/nextgen/NextgenBottomNav.tsx",
+      "components/nextgen/AddSheet.tsx",
+      "app/nextgen/layout.tsx",
+      "app/nextgen/trama/page.tsx",
+    ],
+    note: "L'avatar per il Profilo è nell'intestazione della Home V2: con la Home attuale il Profilo resta raggiungibile da /nextgen/profile.",
+    riskLevel: "medium",
+    releaseEligible: true,
+  },
 ];
 
 export function getFeatureCatalog(): FeatureCatalogEntry[] {

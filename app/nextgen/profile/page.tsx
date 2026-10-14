@@ -56,6 +56,7 @@ export default async function NextgenProfilePage({
   // sicuro "false" di schoolCalendarEnabled — mai un fallback client-side
   // "acceso".
   let classicFallbackEnabled = false;
+  let navV2Enabled = false; // Nuova barra (14/10): riga "Cos'è TRAMA"
   if (isSupabaseConfigured) {
     const supabase = await createClient();
     const {
@@ -86,6 +87,13 @@ export default async function NextgenProfilePage({
         tenant: "family",
         correlationId: generateCorrelationId(),
       });
+      navV2Enabled = await resolveFeatureFlag({
+        flagName: "NAV_V2_ENABLED",
+        userId: user.id,
+        role: (profileRow?.role as string) ?? "parent",
+        tenant: "family",
+        correlationId: generateCorrelationId(),
+      }).catch(() => false);
     }
   }
 
@@ -106,6 +114,7 @@ export default async function NextgenProfilePage({
       schoolProfiles={schoolProfiles}
       residenceCity={residenceCity}
       classicFallbackEnabled={classicFallbackEnabled}
+      navV2Enabled={navV2Enabled}
     />
   );
 }

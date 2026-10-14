@@ -121,9 +121,11 @@ export async function loadHomeV2Props({
   const todayIso = romeTodayIso();
   const weekStartIso = mondayOfIso(todayIso);
 
-  const [externalEnabled, schoolEnabled] = await Promise.all([
+  const [externalEnabled, schoolEnabled, navV2Enabled] = await Promise.all([
     flagOn("EXTERNAL_PLANNER_ITEMS_ENABLED", userId),
     flagOn("SCHOOL_CALENDAR_INTELLIGENCE_ENABLED", userId),
+    // Nuova barra (14/10): il Profilo si apre dall'avatar nell'intestazione.
+    flagOn("NAV_V2_ENABLED", userId),
   ]);
 
   const weekdayDatesUnion = Array.from(
@@ -368,6 +370,7 @@ export async function loadHomeV2Props({
     recommendations,
     recommendationsTitle: "Idee per le settimane libere",
     externalPlannerItemsEnabled: externalEnabled,
+    navV2Enabled,
     activitiesAreMockFallback: isMockActivitiesArray(activities),
   };
 }

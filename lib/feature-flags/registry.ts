@@ -253,6 +253,25 @@ export const FEATURE_FLAG_REGISTRY = {
     defaultValue: false,
     allowedScopes: ["global", "environment", "user", "role", "cohort"],
   },
+  // TRAMA — PLANNER V2 + NUOVA BARRA (14/10/2026). Due flag separati, due
+  // release separate nella card Release (si accendono indipendentemente).
+  PLANNER_V2_ENABLED: {
+    name: "PLANNER_V2_ENABLED",
+    description:
+      "Abilita il Planner V2: viste Settimana (qualunque settimana, giorno per giorno, con chi accompagna) e " +
+      "Stagione (riepilogo, settimane per mese, filtro Da sistemare, budget compatto); Mappa, Gruppi e Mese " +
+      "come strumenti secondari. Default false: il Planner attuale resta il ripiego.",
+    defaultValue: false,
+    allowedScopes: ["global", "environment", "user", "role", "cohort"],
+  },
+  NAV_V2_ENABLED: {
+    name: "NAV_V2_ENABLED",
+    description:
+      "Abilita la nuova barra in basso: Home, Planner, pulsante + (Aggiungi) al centro, Scopri, Prenotazioni. " +
+      "Il Profilo si apre dall'avatar in Home, dove vive anche 'Cos'è TRAMA'. Default false: barra attuale.",
+    defaultValue: false,
+    allowedScopes: ["global", "environment", "user", "role", "cohort"],
+  },
 } as const satisfies Record<string, FeatureFlagDefinition>;
 
 export type KnownFeatureFlagName = keyof typeof FEATURE_FLAG_REGISTRY;

@@ -141,6 +141,32 @@ export const RELEASE_CATALOG: ReleaseCatalogEntry[] = [
     notes:
       "Creata il 13/10/2026. Ripiego: con il flag spento, o se la lettura del flag fallisce, resta la Home attuale. Da verificare dal vivo da Fabrizio prima di estendere oltre l'anteprima interna.",
   },
+  {
+    // TRAMA — PLANNER V2 (14/10/2026). Release a sé, indipendente da Home V2.
+    id: "planner-v2",
+    label: "TRAMA — Planner V2",
+    shortDescription: "Planner famiglie con le viste Settimana e Stagione; Mappa, Gruppi e Mese come strumenti secondari.",
+    targetAudience: ["parent"],
+    featureKeys: ["planner_v2"],
+    knownLimitations: [
+      "planner_v2: la Stagione mostra le settimane estive già calcolate; la Settimana qualunque settimana. Gli impegni aggiunti a mano non contano nella copertura (regola attuale).",
+    ],
+    notes:
+      "Creata il 14/10/2026. Ripiego: con il flag spento, o se la lettura del flag fallisce, resta il Planner attuale.",
+  },
+  {
+    // TRAMA — NUOVA BARRA (14/10/2026). Pensata insieme a Home V2: l'avatar
+    // per il Profilo sta nell'intestazione della Home V2.
+    id: "nav-v2",
+    label: "TRAMA — Nuova barra",
+    shortDescription: "Barra in basso con il pulsante + al centro; il Profilo si apre dall'avatar in Home.",
+    targetAudience: ["parent"],
+    featureKeys: ["nav_v2"],
+    knownLimitations: [
+      "nav_v2: va accesa insieme a Home V2 (l'avatar del Profilo sta nella sua intestazione).",
+    ],
+    notes: "Creata il 14/10/2026. Ripiego: flag spento = barra attuale con Profilo.",
+  },
 ];
 
 export function getReleaseCatalog(): ReleaseCatalogEntry[] {

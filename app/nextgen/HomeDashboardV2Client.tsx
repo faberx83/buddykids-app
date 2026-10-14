@@ -15,19 +15,19 @@
 //   7. suggerimenti pertinenti (2–3, carosello)
 //   8. azioni rapide
 
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import type { Activity } from "@/lib/types";
 import type { TodayCheckin } from "@/lib/data/checkin";
 import type { AgendaEntry, DayCoordinationSummary } from "@/lib/nextgen/today-agenda";
-import { joinPeople } from "@/lib/nextgen/today-agenda";
 import { buildHomeInbox, type HomeInboxInput, type HomeInboxItem, type UrgentTodayAlert } from "@/lib/nextgen/home-inbox";
 import type { SeasonSummaryModel } from "@/lib/nextgen/season-summary";
 import { NEW_EXTERNAL_ITEM_HREF } from "@/lib/planner/new-external-item-link";
 import { announceHeaderBell, requestOpenNotifications, UNSEEN_COUNT_EVENT, type UnseenCountDetail } from "@/lib/nextgen/notification-bridge";
 import { isPushSupported, enablePushNotifications, hasBrowserPushSubscription } from "@/lib/push/client";
 import { updatePreferencesAction } from "@/app/actions/profile";
-import AgendaItemRow, { KidAvatar, kidToneFor } from "@/components/nextgen/AgendaItemRow";
+import AgendaItemRow from "@/components/nextgen/AgendaItemRow";
+import DayCoordinationBlock from "@/components/nextgen/DayCoordination";
 import SeasonSummaryCard, { type SeasonSummaryAction, type SeasonSummaryWelcome } from "@/components/nextgen/SeasonSummaryCard";
 import NextgenCheckinCard from "@/components/nextgen/NextgenCheckinCard";
 import MockDataBanner from "@/components/MockDataBanner";
@@ -115,6 +115,7 @@ export default function HomeDashboardV2Client({
   recommendationsTitle,
   externalPlannerItemsEnabled,
   activitiesAreMockFallback,
+  navV2Enabled = false,
 }: {
   firstName: string | null;
   todayIso: string;
@@ -134,6 +135,8 @@ export default function HomeDashboardV2Client({
   recommendationsTitle: string;
   externalPlannerItemsEnabled: boolean;
   activitiesAreMockFallback: boolean;
+  /** Nuova barra: avatar → Profilo al posto del logo (il logo vive in "Cos'è TRAMA"). */
+  navV2Enabled?: boolean;
 }) {
   const kidOrder = useMemo(() => kids.map((k) => k.id), [kids]);
   const weekHref = `/nextgen/planner?mode=calendario&week=${weekStartIso}`;
@@ -189,9 +192,6 @@ export default function HomeDashboardV2Client({
   const [showAllTodo, setShowAllTodo] = useState(false);
   const todoItems = showAllTodo ? inbox.all : inbox.visible;
 
-  // ── Coordinamento della giornata: compatto se completo ──
-  const [coordinationOpen, setCoordinationOpen] = useState(false);
-
   // ── Prossima chiusura: "Più tardi" la nasconde su questo dispositivo ──
   const [closureLater, setClosureLater] = useState(false);
   useEffect(() => {
@@ -216,7 +216,17 @@ export default function HomeDashboardV2Client({
       {/* 1. INTESTAZIONE */}
       <header className="flex items-center justify-between gap-3">
         <div className="flex min-w-0 items-center gap-2.5">
-          <img src="/brand/trama-logo-mark.png" alt="" aria-hidden="true" className="h-[25px] w-auto flex-shrink-0" />
+          {navV2Enabled ? (
+            <Link
+              href="/nextgen/profile"
+              aria-label="Profilo e impostazioni"
+              className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-full bg-[#ECE8F8] font-poppins text-[17px] font-semibold text-[#4A3F9E] active:scale-95"
+            >
+              {(firstName?.trim()[0] ?? "").toUpperCase() || <i className="ti ti-user text-[20px]" aria-hidden="true" />}
+            </Link>
+          ) : (
+            <img src="/brand/trama-logo-mark.png" alt="" aria-hidden="true" className="h-[25px] w-auto flex-shrink-0" />
+          )}
           <div className="flex min-w-0 flex-col">
             <h1 className="font-poppins text-[19px] font-semibold leading-tight text-ink">
               Ciao{firstName ? ` ${firstName}` : ""}
@@ -303,35 +313,12 @@ export default function HomeDashboardV2Client({
               />
             ))}
 
-            {coordination.mode === "compact" && (
-              <div className="rounded-b-[20px]">
-                <button
-                  type="button"
-                  aria-expanded={coordinationOpen}
-                  onClick={() => setCoordinationOpen((v) => !v)}
-                  className="flex min-h-[46px] w-full items-center gap-2 px-4 text-left text-[12.5px] text-[#4B5563]"
-                >
-                  <span className="flex h-[18px] w-[18px] flex-shrink-0 items-center justify-center rounded-full bg-[#E6F6F0] text-[#146B4F]">
-                    <i className="ti ti-check text-[11px]" aria-hidden="true" />
-                  </span>
-                  <span className="flex-1">Accompagnamenti decisi · {joinPeople(coordination.people)}</span>
-                  <i className={`ti ${coordinationOpen ? "ti-chevron-up" : "ti-chevron-down"} text-[16px] text-ink-2`} aria-hidden="true" />
-                </button>
-                {coordinationOpen && <CoordinationTable coordination={coordination} kidOrder={kidOrder} padded />}
-              </div>
-            )}
-
-            {coordination.mode === "detailed" && (
-              <div className="flex flex-col gap-2.5 rounded-b-[20px] bg-[#FBFAF7] px-4 pb-3.5 pt-3">
-                <div className="flex items-center justify-between">
-                  <span className="text-[12px] font-semibold text-ink-2">Chi accompagna oggi</span>
-                  <Link href={weekHref} className="flex min-h-[32px] items-center text-[13px] font-bold text-[#5B4FB0]">
-                    Assegna
-                  </Link>
-                </div>
-                <CoordinationTable coordination={coordination} kidOrder={kidOrder} />
-              </div>
-            )}
+            <DayCoordinationBlock
+              coordination={coordination}
+              kidOrder={kidOrder}
+              title="Chi accompagna oggi"
+              assignHref={weekHref}
+            />
           </div>
         )}
 
@@ -486,62 +473,6 @@ function mondayOf(iso: string): string {
   const offset = (d.getUTCDay() + 6) % 7;
   d.setUTCDate(d.getUTCDate() - offset);
   return d.toISOString().slice(0, 10);
-}
-
-function CoordinationTable({
-  coordination,
-  kidOrder,
-  padded = false,
-}: {
-  coordination: DayCoordinationSummary;
-  kidOrder: string[];
-  padded?: boolean;
-}) {
-  const cell = (value: string | null | undefined) => {
-    if (value === undefined) return <span className="text-ink-2">—</span>;
-    if (value === null)
-      return (
-        <span className="justify-self-start rounded-full border-[1.5px] border-dashed border-[#E0A040] px-2.5 py-0.5 font-bold text-[#7A4500]">
-          da decidere
-        </span>
-      );
-    return <span className="font-semibold text-ink">{value}</span>;
-  };
-  return (
-    <div
-      className={`grid grid-cols-[30px_minmax(0,1fr)_minmax(0,1fr)] items-center gap-x-2 gap-y-2 text-[13px] ${
-        padded ? "px-4 pb-3" : ""
-      }`}
-    >
-      <span />
-      <span className="text-[11.5px] text-ink-2">Porta</span>
-      <span className="text-[11.5px] text-ink-2">Ritira</span>
-      {coordination.kids.map((k) => (
-        <KidCoordinationCells key={k.kidId} kid={k} kidOrder={kidOrder} cell={cell} />
-      ))}
-    </div>
-  );
-}
-
-function KidCoordinationCells({
-  kid,
-  kidOrder,
-  cell,
-}: {
-  kid: DayCoordinationSummary["kids"][number];
-  kidOrder: string[];
-  cell: (value: string | null | undefined) => ReactNode;
-}) {
-  return (
-    <>
-      <span title={kid.kidName}>
-        <KidAvatar name={kid.kidName} tone={kidToneFor(kid.kidId, kidOrder)} size={24} />
-        <span className="sr-only">{kid.kidName}</span>
-      </span>
-      {cell(kid.andata)}
-      {cell(kid.ritorno)}
-    </>
-  );
 }
 
 function TodoRow({ item, onPush, pushBusy }: { item: HomeInboxItem; onPush: () => void; pushBusy: boolean }) {

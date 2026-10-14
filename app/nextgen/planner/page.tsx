@@ -23,6 +23,8 @@ import { computeKidOverlaps, computeBudgetSummary, computePriorityWeekIndex } fr
 import { computeMissions } from "@/lib/nextgen/missions";
 import { computeReminders } from "@/lib/nextgen/reminders";
 import PlannerClient from "./PlannerClient";
+import PlannerV2Client from "./PlannerV2Client";
+import { loadPlannerV2Props } from "./planner-v2-data";
 // TRAMA — Calendar Export V1 · ANTEPRIMA INTERNA (11/09/2026, richiesta di
 // Fabrizio, §7 della spec "obbligatoria": "La pagina/superficie deve
 // risolvere la visibilità SERVER-SIDE"). Prima vera pagina che chiama
@@ -67,7 +69,11 @@ function addDaysIso(iso: string, days: number): string {
 // funzioni NUOVE sono in lib/nextgen/planner-insights.ts (sovrapposizioni e
 // budget), che leggono solo i dati già qui, senza toccare il DB una volta di
 // più.
-export default async function NextgenPlannerPage() {
+export default async function NextgenPlannerPage({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
   if (!isSupabaseConfigured) {
     return (
       <div className="px-5 py-8 text-sm text-ink-2">
@@ -115,6 +121,33 @@ export default async function NextgenPlannerPage() {
       const { data: profileRow } = await supabase.from("profiles").select("role, city").eq("id", user.id).single();
       role = (profileRow?.role as string) ?? "parent";
       residenceCity = (profileRow?.city as string) ?? null;
+    }
+
+    // TRAMA — PLANNER V2 (14/10/2026). Flag acceso → Planner V2; spento,
+    // errore di lettura o utente non autenticato → Planner attuale, invariato.
+    if (user) {
+      let plannerV2Enabled = false;
+      try {
+        plannerV2Enabled = (
+          await resolveFeatureFlagVisibility({
+            flagName: "PLANNER_V2_ENABLED",
+            userId: user.id,
+            role,
+            tenant: "family",
+            correlationId: generateCorrelationId(),
+          })
+        ).enabled;
+      } catch {
+        plannerV2Enabled = false;
+      }
+      if (plannerV2Enabled) {
+        const raw = (await searchParams) ?? {};
+        const params = Object.fromEntries(
+          Object.entries(raw).map(([k, v]) => [k, Array.isArray(v) ? v[0] : v])
+        ) as Record<string, string | undefined>;
+        const v2Props = await loadPlannerV2Props({ userId: user.id, role: role ?? "parent", searchParams: params });
+        return <PlannerV2Client {...v2Props} />;
+      }
     }
     // PERF FIX (14/09/2026, segnalato da Fabrizio: "in generale è rallentata
     // l'app") — le due risoluzioni flag sono INDIPENDENTI (nessuna legge

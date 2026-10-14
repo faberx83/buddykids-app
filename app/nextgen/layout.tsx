@@ -130,6 +130,10 @@ export default async function NextgenLayout({ children }: { children: React.Reac
   let globalActionProgressEnabled = false;
   // BUILD_INFO_BUBBLE — null = nessuna bolla (default, flag off o errore).
   let buildInfoLabel: string | null = null;
+  // TRAMA — NUOVA BARRA (14/10/2026): NAV_V2_ENABLED sceglie la barra; il
+  // flag degli impegni decide se il + offre "Un impegno".
+  let navV2Enabled = false;
+  let addItemEnabled = false;
 
   if (isSupabaseConfigured) {
     const supabase = await createClient();
@@ -184,6 +188,30 @@ export default async function NextgenLayout({ children }: { children: React.Reac
       resolveBuildInfoBubbleLabel({ userId: user.id, role: realRole, tenant: "family" }),
     ]);
     globalActionProgressEnabled = globalActionProgressResolved;
+    if (realRole === "parent") {
+      try {
+        const [navV2, externalItems] = await Promise.all([
+          resolveFeatureFlag({
+            flagName: "NAV_V2_ENABLED",
+            userId: user.id,
+            role: realRole,
+            tenant: "family",
+            correlationId: generateCorrelationId(),
+          }),
+          resolveFeatureFlag({
+            flagName: "EXTERNAL_PLANNER_ITEMS_ENABLED",
+            userId: user.id,
+            role: realRole,
+            tenant: "family",
+            correlationId: generateCorrelationId(),
+          }),
+        ]);
+        navV2Enabled = navV2;
+        addItemEnabled = externalItems;
+      } catch {
+        navV2Enabled = false; // ripiego: barra attuale
+      }
+    }
     buildInfoLabel = buildInfoLabelResolved;
     // FAMILY-FIRST BETA PASS (07/10/2026): carousel anche per l'Admin
     // piattaforma (Fabrizio usa l'app famiglie con il proprio account admin,
@@ -251,7 +279,11 @@ export default async function NextgenLayout({ children }: { children: React.Reac
                 contestualizzati, stessa lista `notifications` già calcolata
                 sopra per la campanella — zero nuove query, vedi
                 useNavBadges in NextgenBottomNav.tsx. */}
-            <NextgenBottomNav notifications={notifications} />
+            <NextgenBottomNav
+              notifications={notifications}
+              variant={navV2Enabled ? "v2" : "classic"}
+              addItemEnabled={addItemEnabled}
+            />
           </div>
           {/* SPRINT 5 — floating CTA "Segnala un problema", montata qui una
               sola volta cosi copre ogni pagina genitore NEXTGEN (il componente

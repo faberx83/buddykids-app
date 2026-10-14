@@ -1,0 +1,190 @@
+// TRAMA — PLANNER V2 (14/10/2026). Assemblaggio server-side dei dati del
+// Planner V2, chiamato da app/nextgen/planner/page.tsx SOLO con
+// PLANNER_V2_ENABLED acceso. Nessuna nuova tabella, nessuna scrittura:
+// stesse funzioni di lettura del Planner attuale e della Home V2. Il
+// passaggio da una settimana all'altra avviene sul client (logica pura in
+// lib/nextgen/planner-week.ts), quindi qui si legge tutto una volta sola.
+
+import { getPlannerData } from "@/lib/data/planner";
+import { getMyBookingsForParent } from "@/lib/data/my-bookings";
+import { getKidsForUser } from "@/lib/data/kids";
+import { getActivities } from "@/lib/data/activities";
+import { getParentProfile } from "@/lib/data/profile";
+import { getResponsibilitiesForParent } from "@/lib/data/responsibilities";
+import { getFamilyPeopleForParent } from "@/lib/data/family-people";
+import { getPlannerMapPins } from "@/lib/data/planner-map";
+import { getParentAddresses } from "@/lib/data/addresses";
+import { getCommunitiesForUser } from "@/lib/data/communities";
+import { getGroupsForUser } from "@/lib/data/groups";
+import { getExternalPlannerItemsForParent, type ExternalPlannerItem } from "@/lib/data/external-planner-items";
+import { getKidClosureIntervalsForParent } from "@/lib/data/school-calendar";
+import { getUnifiedFavoritesForParent } from "@/lib/data/favorites";
+import { getPlannerCalendarItemsForParent, type PlannerCalendarItem } from "@/lib/planner/calendar-items";
+import { computeBudgetSummary } from "@/lib/nextgen/planner-insights";
+import { buildCoverage, buildHolidaySummary, closureState, listClosurePeriods, weekdaysBetween } from "@/lib/nextgen/holiday-summary";
+import { countSavedNotInPlanner, type SavedItemInput } from "@/lib/nextgen/planner-season";
+import { resolveFeatureFlagVisibility } from "@/lib/feature-flags/resolve";
+import { generateCorrelationId } from "@/lib/telemetry/correlation";
+import type PlannerV2Client from "./PlannerV2Client";
+
+export type PlannerV2Props = Parameters<typeof PlannerV2Client>[0];
+
+function romeTodayIso(): string {
+  return new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Rome", year: "numeric", month: "2-digit", day: "2-digit" })
+    .format(new Date())
+    .slice(0, 10);
+}
+
+async function flagOn(flagName: string, userId: string, role: string): Promise<boolean> {
+  try {
+    const r = await resolveFeatureFlagVisibility({
+      flagName,
+      userId,
+      role,
+      tenant: "family",
+      correlationId: generateCorrelationId(),
+    });
+    return r.enabled;
+  } catch {
+    return false;
+  }
+}
+
+const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
+
+export async function loadPlannerV2Props({
+  userId,
+  role,
+  searchParams,
+}: {
+  userId: string;
+  role: string;
+  searchParams: Record<string, string | undefined>;
+}): Promise<PlannerV2Props> {
+  const todayIso = romeTodayIso();
+  const [externalEnabled, schoolEnabled, exportEnabled, navV2Enabled] = await Promise.all([
+    flagOn("EXTERNAL_PLANNER_ITEMS_ENABLED", userId, role),
+    flagOn("SCHOOL_CALENDAR_INTELLIGENCE_ENABLED", userId, role),
+    flagOn("CALENDAR_EXPORT_ENABLED", userId, role),
+    flagOn("NAV_V2_ENABLED", userId, role),
+  ]);
+
+  const [planner, bookings, kids, activities, profile, responsibilities, familyPeople, mapPins, addresses, communities, groups, favorites] =
+    await Promise.all([
+      getPlannerData(),
+      getMyBookingsForParent(),
+      getKidsForUser(),
+      getActivities(),
+      getParentProfile(),
+      getResponsibilitiesForParent(),
+      getFamilyPeopleForParent(),
+      getPlannerMapPins(),
+      getParentAddresses(),
+      getCommunitiesForUser(),
+      getGroupsForUser(),
+      getUnifiedFavoritesForParent().catch(() => []),
+    ]);
+
+  const externalItems: ExternalPlannerItem[] = externalEnabled
+    ? await getExternalPlannerItemsForParent().catch((): ExternalPlannerItem[] => [])
+    : [];
+  const calendarExportItems: PlannerCalendarItem[] = exportEnabled
+    ? await getPlannerCalendarItemsForParent().catch((): PlannerCalendarItem[] => [])
+    : [];
+
+  // Chiusure scolastiche: etichette per giorno (Settimana, Mese) e
+  // riepilogo "Ponti e vacanze" a estate finita (Stagione).
+  const closureData = schoolEnabled
+    ? await getKidClosureIntervalsForParent(kids.map((k) => k.id)).catch(() => ({ hasAnySchoolProfile: false, closuresByKid: [] }))
+    : { hasAnySchoolProfile: false, closuresByKid: [] };
+  const closureLabelsByDate: Record<string, string[]> = {};
+  for (const { closures } of closureData.closuresByKid) {
+    for (const c of closures) {
+      if (c.kind === "summer_break") continue;
+      for (const d of weekdaysBetween(c.startDate, c.endDate)) {
+        const list = closureLabelsByDate[d] ?? [];
+        if (c.label && !list.includes(c.label)) list.push(c.label);
+        closureLabelsByDate[d] = list;
+      }
+    }
+  }
+  const coverage = buildCoverage({
+    bookings: bookings.map((b) => ({ status: b.status, partnerDecision: b.partnerDecision, kidIds: b.kidIds, weeks: b.weeks, dayDates: b.dayDates })),
+    externalItems,
+  });
+  const holidaySummary = schoolEnabled
+    ? buildHolidaySummary({
+        periods: listClosurePeriods(closureData.closuresByKid, todayIso).map((p) => ({ ...p, state: closureState(p, coverage) })),
+        todayIso,
+      })
+    : null;
+
+  // Salvati: preferiti con una data possibile, non ancora prenotati né nel Planner.
+  const saved: SavedItemInput[] = favorites.map((f): SavedItemInput =>
+    f.kind === "partner"
+      ? { kind: "partner", ref: f.activity.dbId ?? f.activity.id }
+      : f.kind === "curated"
+        ? { kind: "curated", ref: f.curatedLeadId }
+        : { kind: "community", ref: f.discovery.id, altRefs: [f.favoriteId] }
+  );
+  const savedCount = countSavedNotInPlanner({
+    saved,
+    bookedActivityDbIds: bookings
+      .filter((b) => b.status !== "cancelled" && b.partnerDecision !== "rejected")
+      .map((b) => b.activityDbId)
+      .filter((id): id is string => Boolean(id)),
+    externalSourceRefs: externalItems.map((i) => i.sourceRef).filter((r): r is string => Boolean(r)),
+  });
+
+  const hoursByActivityDbId: Record<string, string | undefined> = {};
+  for (const a of activities) if (a.dbId) hoursByActivityDbId[a.dbId] = a.hours;
+
+  const view = searchParams.view === "stagione" || searchParams.mode === "budget" ? "stagione" : "settimana";
+  const week = searchParams.week && ISO_DATE.test(searchParams.week) ? searchParams.week : null;
+  const panel =
+    searchParams.panel === "mappa" || searchParams.mode === "mappa"
+      ? "mappa"
+      : searchParams.panel === "gruppi" || searchParams.mode === "gruppi"
+        ? "gruppi"
+        : null;
+
+  return {
+    todayIso,
+    initialView: view,
+    initialWeek: week,
+    initialPanel: panel,
+    kids,
+    bookings: bookings.map((b) => ({
+      id: b.id,
+      status: b.status,
+      partnerDecision: b.partnerDecision,
+      activityName: b.activityName,
+      activityDbId: b.activityDbId,
+      centerName: b.centerName,
+      isDayBased: b.isDayBased,
+      dayDates: b.dayDates,
+      weeks: b.weeks.map((w) => ({ startDate: w.startDate, endDate: w.endDate })),
+      kidIds: b.kidIds,
+      kidNames: b.kidNames,
+    })),
+    hoursByActivityDbId,
+    externalItems,
+    externalEnabled,
+    responsibilities,
+    parentRole: profile.parentRole,
+    familyPeople,
+    closureLabelsByDate,
+    holidaySummary,
+    summerWeeks: planner.weeks,
+    budget: computeBudgetSummary(bookings, activities),
+    seasonBudgetTarget: profile.seasonBudgetTarget,
+    mapPins,
+    addresses,
+    communities,
+    groups,
+    savedCount,
+    navV2Enabled,
+    calendarExportEnabled: exportEnabled,
+    calendarExportItems,
+  };
+}
