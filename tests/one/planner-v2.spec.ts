@@ -263,3 +263,8 @@ test.describe("PLANNER-V2 — correzioni verifica live 14/10", () => {
     expect(src).not.toContain("nessun impegno oggi");
   });
 });
+
+test("PV2-22: freccia indietro nell'intestazione del Planner V2", () => {
+  const src = read("app/nextgen/planner/PlannerV2Client.tsx");
+  expect(src).toMatch(/aria-label="Indietro"[\s\S]*ti-arrow-left/);
+});

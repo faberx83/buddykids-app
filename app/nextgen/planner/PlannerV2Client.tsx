@@ -312,6 +312,18 @@ export default function PlannerV2Client({
     <div className="-mb-40 flex min-h-[calc(100%+10rem)] flex-col gap-4 bg-trama-page px-5 pb-24 pt-[18px]">
       {/* INTESTAZIONE: titolo, strumenti secondari, (Aggiungi se la barra non ha il +) */}
       <header className="flex items-center gap-2">
+        {/* Freccia indietro come nelle altre pagine (segnalazione live 14/10). */}
+        <button
+          type="button"
+          onClick={() => {
+            if (window.history.length > 1) router.back();
+            else router.push("/nextgen");
+          }}
+          aria-label="Indietro"
+          className="-ml-2.5 flex h-11 w-11 items-center justify-center rounded-full text-[22px] text-ink active:bg-black/[0.04]"
+        >
+          <i className="ti ti-arrow-left" aria-hidden="true" />
+        </button>
         <h1 className="flex-1 font-poppins text-[24px] font-semibold text-ink">Planner</h1>
         <HeaderTool icon="ti-map-2" label="Mappa" onClick={() => setPanel("mappa")} />
         <HeaderTool icon="ti-users-group" label="Gruppi" onClick={() => setPanel("gruppi")} />
