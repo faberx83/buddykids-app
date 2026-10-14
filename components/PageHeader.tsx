@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useGlobalActionProgress } from "@/components/GlobalActionProgress";
+import TramaThread from "@/components/nextgen/TramaThread";
 
 export default function PageHeader({
   title,
@@ -89,15 +90,19 @@ export default function PageHeader({
           uguale ai titoli root) per restare sicuro anche con i titoli più
           lunghi di questo componente ("Famiglia e logistica", "Le mie
           segnalazioni") in una barra compatta con freccia indietro. */}
-      <h3
-        className={
-          showBrandIcon
-            ? "font-poppins text-lg font-bold text-ink"
-            : "text-base font-bold text-ink"
-        }
-      >
-        {title}
-      </h3>
+      <div className="flex min-w-0 flex-col">
+        <h3
+          className={
+            showBrandIcon
+              ? "font-poppins text-lg font-bold text-ink"
+              : "text-base font-bold text-ink"
+          }
+        >
+          {title}
+        </h3>
+        {/* 14/10/2026: segno TRAMA sotto il titolo, solo NEXTGEN genitore con la nuova barra. */}
+        {showBrandIcon && <TramaThread auto className="mt-1" />}
+      </div>
     </div>
   );
 }

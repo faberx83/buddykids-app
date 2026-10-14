@@ -10,6 +10,7 @@ import { categories } from "@/lib/mock-data";
 import { getSeasonWeekRanges, isoDate, formatShortRange, SeasonWeekRange } from "@/lib/season-weeks";
 import ActivityCard from "@/components/ActivityCard";
 import DiscoverResultCard from "@/components/nextgen/DiscoverResultCard";
+import TramaThread from "@/components/nextgen/TramaThread";
 import { activityOpenIn, discoveryOpenIn, periodForWeek, type DiscoverPeriod } from "@/lib/nextgen/discover-v2";
 import PageHeader from "@/components/PageHeader";
 import { ProductStatusChip } from "@/components/ProductStatusChip";
@@ -462,6 +463,22 @@ export default function SearchDiscoveryClient({
   // settimana estiva (es. "Trova attività" su un ponte dal Planner) diventa
   // un periodo a sé, già selezionato.
   const v2 = discoverV2;
+  // SCOPRI V2 — ritocchi 14/10/2026 ("allinea tutto al nuovo stile"): i
+  // pannelli dei filtri come le card V2 (bianco, angoli 20px, ombra
+  // leggera), titoli più leggibili, pill bianche col bordo. Fuori V2 le
+  // classi restano quelle di prima.
+  const panelBox = (extra = "") =>
+    v2
+      ? `mb-3 rounded-[20px] bg-white p-4 shadow-[0_1px_2px_rgba(23,42,77,0.06),0_6px_20px_rgba(23,42,77,0.06)] ${extra}`
+      : `mb-3 ${extra} rounded-lg border border-[#E8EBF0] bg-bg p-3`;
+  const panelTitle = v2 ? "mb-2.5 text-[13px] font-semibold text-ink" : "mb-2 text-xs font-semibold text-ink-2";
+  const panelChip = v2
+    ? "rounded-full border px-3.5 py-2 text-[13px] font-semibold transition-colors active:scale-95"
+    : "rounded-full border-[1.5px] px-3 py-1.5 text-xs font-medium transition-colors active:scale-95";
+  const panelChipOff = v2 ? "border-[#E3E6EC] bg-white text-ink" : panelChipOff;
+  const panelInput = v2
+    ? "min-h-[44px] w-full rounded-[12px] border border-[#E3E6EC] bg-white px-3 text-[15px] outline-none focus:border-trama-violet"
+    : "w-full rounded-md border border-[#E8EBF0] bg-white px-3 py-2 text-sm outline-none focus:border-trama-violet";
   const [extraPeriod] = useState<DiscoverPeriod | null>(() => {
     if (!v2) return null;
     const weekParam = searchParams.get("week");
@@ -1112,6 +1129,7 @@ export default function SearchDiscoveryClient({
           discovery={result.discovery}
           initialFavorite={curatedFavoriteIdsSet.has(communityFavoriteId(result.discovery.id))}
           inPlanner={communityIdsInPlannerSet.has(result.discovery.id)}
+          v2={!!v2}
         />
       );
     }
@@ -1123,6 +1141,7 @@ export default function SearchDiscoveryClient({
         kids={kids}
         plannerEnabled={externalPlannerItemsEnabled}
         initialInPlanner={curatedLeadIdsInPlannerSet.has(result.lead.id)}
+        v2={!!v2}
       />
     );
   }
@@ -1206,7 +1225,10 @@ export default function SearchDiscoveryClient({
         {/* TRAMA — SCOPRI V2: scheda principale (niente freccia), Elenco/Mappa in alto. */}
         {v2 && (
           <header className="mb-4 flex items-center gap-2.5">
-            <h1 className="flex-1 font-poppins text-[24px] font-semibold text-ink">Scopri</h1>
+            <div className="flex flex-1 flex-col">
+              <h1 className="font-poppins text-[24px] font-semibold leading-tight text-ink">Scopri</h1>
+              <TramaThread className="mt-1.5" />
+            </div>
             <div role="tablist" aria-label="Vista" className="grid grid-cols-2 gap-[3px] rounded-full bg-[#EEF0F4] p-[3px]">
               {(
                 [
@@ -1311,7 +1333,7 @@ export default function SearchDiscoveryClient({
             nessun altro filtro (Date/Copertura/Età/Zona/Tipo attività) viene
             mai toccato da questo bottone. */}
         <div className={v2 ? "relative mb-4" : "relative mb-3"}>
-          {v2 && <i className="ti ti-search pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-[18px] text-ink-2" aria-hidden="true" />}
+          {v2 && <i className="ti ti-search pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-[18px] text-ink-2" aria-hidden="true" />}
           <input
             value={query}
             onChange={(e) => setQuery(e.target.value)}
@@ -1323,7 +1345,7 @@ export default function SearchDiscoveryClient({
             data-spotlight="search_bar"
             className={
               v2
-                ? `min-h-[48px] w-full rounded-[14px] border border-[#E3E6EC] bg-white pl-10 pr-3.5 text-[15px] outline-none focus:border-trama-violet ${query ? "pr-9" : ""}`
+                ? `min-h-[48px] w-full rounded-full border border-[#E3E6EC] bg-white pl-11 pr-4 text-[15px] outline-none focus:border-trama-violet ${query ? "pr-9" : ""}`
                 : `w-full rounded-xl border border-[#E8EBF0] bg-white px-3.5 py-2.5 text-sm outline-none focus:border-trama-violet ${
                     query ? "pr-9" : ""
                   }`
@@ -1422,7 +1444,7 @@ export default function SearchDiscoveryClient({
                 // lib/walkthrough/registry.ts): solo il chip "data" (filtro
                 // settimane), non gli altri pannelli di questa riga.
                 data-spotlight={f.key === "data" ? "week_filter" : undefined}
-                className={`flex flex-shrink-0 cursor-pointer items-center gap-1.5 rounded-full border-[1.5px] px-3 py-1.5 text-xs font-medium transition-colors active:scale-95 ${
+                className={`flex flex-shrink-0 cursor-pointer items-center gap-1.5 rounded-full transition-colors active:scale-95 ${v2 ? "min-h-[36px] border px-3.5 text-[13px] font-semibold" : "border-[1.5px] px-3 py-1.5 text-xs font-medium"} ${
                   openPanel === f.key
                     ? (v2 ? "border-trama-navy bg-trama-navy text-white" : "border-trama-violet bg-trama-violet text-white")
                     : v2
@@ -1517,14 +1539,14 @@ export default function SearchDiscoveryClient({
             prima), ma ora in un pannello a comparsa invece di pill sempre
             visibili, cosi la riga filtri non si allunga con 3+ figli. */}
         {openPanel === "bambini" && (
-          <div className="mb-3 rounded-lg border border-[#E8EBF0] bg-bg p-3">
-            <div className="mb-2 text-xs font-semibold text-ink-2">Bambini</div>
+          <div className={panelBox()}>
+            <div className={panelTitle}>Bambini</div>
             <div className="flex flex-wrap gap-1.5">
               <button
                 type="button"
                 onClick={() => setSelectedKidId(null)}
-                className={`rounded-full border-[1.5px] px-3 py-1.5 text-xs font-medium transition-colors active:scale-95 ${
-                  selectedKidId === null ? (v2 ? "border-trama-navy bg-trama-navy text-white" : "border-trama-violet bg-trama-violet text-white") : "border-[#E8EBF0] bg-white text-ink-2"
+                className={`${panelChip} ${
+                  selectedKidId === null ? (v2 ? "border-trama-navy bg-trama-navy text-white" : "border-trama-violet bg-trama-violet text-white") : panelChipOff
                 }`}
               >
                 Tutti i bambini
@@ -1534,8 +1556,8 @@ export default function SearchDiscoveryClient({
                   key={k.id}
                   type="button"
                   onClick={() => setSelectedKidId(k.id)}
-                  className={`rounded-full border-[1.5px] px-3 py-1.5 text-xs font-medium transition-colors active:scale-95 ${
-                    selectedKidId === k.id ? (v2 ? "border-trama-navy bg-trama-navy text-white" : "border-trama-violet bg-trama-violet text-white") : "border-[#E8EBF0] bg-white text-ink-2"
+                  className={`${panelChip} ${
+                    selectedKidId === k.id ? (v2 ? "border-trama-navy bg-trama-navy text-white" : "border-trama-violet bg-trama-violet text-white") : panelChipOff
                   }`}
                 >
                   {k.name}
@@ -1546,8 +1568,8 @@ export default function SearchDiscoveryClient({
         )}
 
         {openPanel === "eta" && (
-          <div className="mb-3 rounded-lg border border-[#E8EBF0] bg-bg p-3">
-            <div className="mb-2 text-xs font-semibold text-ink-2">Fascia d&apos;età</div>
+          <div className={panelBox()}>
+            <div className={panelTitle}>Fascia d&apos;età</div>
             <div className="flex items-center gap-2">
               <div className="flex-1">
                 <label className="mb-1 block text-[11px] text-ink-3">Da</label>
@@ -1557,7 +1579,7 @@ export default function SearchDiscoveryClient({
                   max={18}
                   value={minAge}
                   onChange={(e) => setMinAge(Math.min(Number(e.target.value), maxAge))}
-                  className="w-full rounded-md border border-[#E8EBF0] bg-white px-3 py-2 text-sm outline-none focus:border-trama-violet"
+                  className={panelInput}
                 />
               </div>
               <span className="mt-4 text-ink-3">—</span>
@@ -1569,7 +1591,7 @@ export default function SearchDiscoveryClient({
                   max={18}
                   value={maxAge}
                   onChange={(e) => setMaxAge(Math.max(Number(e.target.value), minAge))}
-                  className="w-full rounded-md border border-[#E8EBF0] bg-white px-3 py-2 text-sm outline-none focus:border-trama-violet"
+                  className={panelInput}
                 />
               </div>
               <span className="mt-4 whitespace-nowrap text-xs text-ink-2">anni</span>
@@ -1578,8 +1600,8 @@ export default function SearchDiscoveryClient({
         )}
 
         {openPanel === "prezzo" && (
-          <div className="mb-3 rounded-lg border border-[#E8EBF0] bg-bg p-3">
-            <div className="mb-2 text-xs font-semibold text-ink-2">Fino a €{maxPrice} / settimana</div>
+          <div className={panelBox()}>
+            <div className={panelTitle}>Fino a €{maxPrice} / settimana</div>
             <input
               type="range"
               min={50}
@@ -1593,13 +1615,13 @@ export default function SearchDiscoveryClient({
         )}
 
         {openPanel === "zona" && (
-          <div className="mb-3 rounded-lg border border-[#E8EBF0] bg-bg p-3">
+          <div className={panelBox()}>
             <input
               value={zone}
               onChange={(e) => setZone(e.target.value)}
               list="zona-suggestions-nextgen"
               placeholder="Quartiere, via, città..."
-              className="w-full rounded-md border border-[#E8EBF0] bg-white px-3 py-2 text-sm outline-none focus:border-trama-violet"
+              className={panelInput}
             />
             <datalist id="zona-suggestions-nextgen">
               {zoneOptions.map((opt) => (
@@ -1658,8 +1680,8 @@ export default function SearchDiscoveryClient({
         )}
 
         {openPanel === "tag" && (
-          <div className="mb-3 max-h-64 overflow-y-auto rounded-lg border border-[#E8EBF0] bg-bg p-3">
-            <div className="mb-2 text-xs font-semibold text-ink-2">Tipo attività</div>
+          <div className={panelBox("max-h-64 overflow-y-auto")}>
+            <div className={panelTitle}>Tipo attività</div>
             <div className="flex flex-wrap gap-1.5">
               {categories.map((c) => {
                 const active = selectedTagIds.includes(c.id);
@@ -1668,8 +1690,8 @@ export default function SearchDiscoveryClient({
                     key={c.id}
                     type="button"
                     onClick={() => toggleTag(c.id)}
-                    className={`rounded-full border-[1.5px] px-3 py-1.5 text-xs font-medium transition-colors active:scale-95 ${
-                      active ? (v2 ? "border-trama-navy bg-trama-navy text-white" : "border-trama-violet bg-trama-violet text-white") : "border-[#E8EBF0] bg-white text-ink-2"
+                    className={`${panelChip} ${
+                      active ? (v2 ? "border-trama-navy bg-trama-navy text-white" : "border-trama-violet bg-trama-violet text-white") : panelChipOff
                     }`}
                   >
                     {c.emoji} {c.label}
@@ -1681,7 +1703,7 @@ export default function SearchDiscoveryClient({
         )}
 
         {openPanel === "servizi" && (
-          <div className="mb-3 space-y-1.5 rounded-lg border border-[#E8EBF0] bg-bg p-3">
+          <div className={panelBox("space-y-1.5")}>
             <ServiceCheckbox
               label="🕗 Pre-scuola"
               checked={services.preScuola}
@@ -1733,7 +1755,7 @@ export default function SearchDiscoveryClient({
             (ogni settimana si accende/spegne in modo indipendente), con le
             13 settimane raggruppate per mese invece di una lista piatta. */}
         {openPanel === "data" && (
-          <div className="mb-3 max-h-72 overflow-y-auto rounded-lg border border-[#E8EBF0] bg-bg p-3">
+          <div className={panelBox("max-h-72 overflow-y-auto")}>
             <div className="mb-2 flex items-center justify-between">
               <div className="text-xs font-semibold text-ink-2">Settimane di camp</div>
               {selectedWeekStarts.length > 0 && (
@@ -1798,8 +1820,8 @@ export default function SearchDiscoveryClient({
             ("quando posso prenotare, e con che granularità") vista da due
             angoli — capacità dell'attività vs disponibilità del momento. */}
         {openPanel === "copertura" && (
-          <div className="mb-3 rounded-lg border border-[#E8EBF0] bg-bg p-3">
-            <div className="mb-2 text-xs font-semibold text-ink-2">Modalità di prenotazione</div>
+          <div className={panelBox()}>
+            <div className={panelTitle}>Modalità di prenotazione</div>
             <div className="mb-3 flex flex-wrap gap-2">
               {COVERAGE_MODE_ORDER.map((mode) => {
                 const active = selectedCoverageModes.includes(mode);
@@ -1808,10 +1830,10 @@ export default function SearchDiscoveryClient({
                     key={mode}
                     type="button"
                     onClick={() => toggleCoverageMode(mode)}
-                    className={`rounded-full border-[1.5px] px-3 py-1.5 text-xs font-medium transition-colors active:scale-95 ${
+                    className={`${panelChip} ${
                       active
                         ? (v2 ? "border-trama-navy bg-trama-navy text-white" : "border-trama-violet bg-trama-violet text-white")
-                        : "border-[#E8EBF0] bg-white text-ink-2"
+                        : panelChipOff
                     }`}
                   >
                     {COVERAGE_MODE_LABELS[mode]}

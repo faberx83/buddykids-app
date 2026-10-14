@@ -85,7 +85,10 @@ export function buildDiscoverPeriods(input: {
     const long = c.weekdayCount >= 5;
     const namedRaw = c.labels.find((l) => /natale|pasqua|carnevale/i.test(l));
     const named = namedRaw ? shortClosureName(namedRaw) : undefined;
-    const label = long ? (named ?? `Vacanze ${shortRange(c.startDate, c.endDate)}`) : `Ponte ${shortRange(c.startDate, c.endDate)}`;
+    // Bottone il più corto possibile ("Natale", "Pasqua"): il titolo sopra i
+    // risultati resta per esteso ("Per le vacanze di Natale").
+    const chip = named ? named.replace(/^vacanze\s+(di|del|della)\s+/i, "") : null;
+    const label = long ? (chip ? chip.charAt(0).toUpperCase() + chip.slice(1) : `Vacanze ${shortRange(c.startDate, c.endDate)}`) : `Ponte ${shortRange(c.startDate, c.endDate)}`;
     const title = long
       ? named && /^vacanze/i.test(named)
         ? `Per le ${named.charAt(0).toLowerCase()}${named.slice(1)}`

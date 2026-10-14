@@ -30,10 +30,13 @@ export default function CommunityDiscoveryCard({
   discovery,
   initialFavorite = false,
   inPlanner = false,
+  v2 = false,
 }: {
   discovery: CommunityDiscoveryRecord;
   initialFavorite?: boolean;
   inPlanner?: boolean;
+  /** SCOPRI V2 (14/10/2026): stessa forma della card Partner (DiscoverResultCard). */
+  v2?: boolean;
 }) {
   const [fav, setFav] = useState(initialFavorite);
   const href = communityDetailHref(discovery.id);
@@ -51,7 +54,34 @@ export default function CommunityDiscoveryCard({
   }
 
   return (
-    <div className="mb-3 overflow-hidden rounded-lg border border-[#F0F2F5] bg-white" data-testid="community-discovery-card">
+    <div
+      className={v2 ? "mb-3 overflow-hidden rounded-[20px] border border-[#ECEEF2] bg-white" : "mb-3 overflow-hidden rounded-lg border border-[#F0F2F5] bg-white"}
+      data-testid="community-discovery-card"
+    >
+      {v2 ? (
+        <div className="relative flex h-[120px] items-center justify-center bg-[linear-gradient(135deg,#FFF4E8,#FFE9D6)]">
+          <Link href={href} className="absolute inset-0" aria-label={`Apri ${discovery.title}`} />
+          <span className="pointer-events-none text-6xl opacity-40" aria-hidden>
+            {communityCategoryEmoji(discovery.category)}
+          </span>
+          <span className="pointer-events-none absolute left-3 top-3 flex items-center gap-1 rounded-full bg-white px-2.5 py-1 text-[11.5px] font-bold text-[#8A4B00]">
+            <i className="ti ti-users-group text-[13px]" aria-hidden />
+            {COMMUNITY_BADGE_LABEL}
+          </span>
+          <span className="pointer-events-none absolute bottom-2.5 left-3 rounded-full bg-white/90 px-2.5 py-1 text-[11.5px] font-semibold text-ink-2">
+            {communityCategoryLabel(discovery.category)}
+          </span>
+          <button
+            type="button"
+            onClick={handleToggleFavorite}
+            aria-label={fav ? "Togli dai salvati" : "Salva"}
+            aria-pressed={fav}
+            className="absolute right-2.5 top-2.5 z-[2] flex h-10 w-10 items-center justify-center rounded-full bg-white text-trama-navy active:scale-95"
+          >
+            <i className={`ti ${fav ? "ti-bookmark-filled text-trama-violet" : "ti-bookmark"} text-[19px]`} aria-hidden="true" />
+          </button>
+        </div>
+      ) : (
       <div className="relative flex h-[140px] items-center justify-center bg-[linear-gradient(135deg,#FFF4E8,#FFE9D6)]">
         <Link href={href} className="absolute inset-0" aria-label={`Apri ${discovery.title}`} />
         <span className="pointer-events-none text-6xl opacity-40" aria-hidden>
@@ -73,11 +103,14 @@ export default function CommunityDiscoveryCard({
           {fav ? "❤️" : "🤍"}
         </button>
       </div>
-      <Link href={href} className="block p-3">
-        <div className="mb-1 text-sm font-bold text-ink">{discovery.title}</div>
-        {discovery.organizerName && <div className="mb-2 text-[11px] font-medium text-ink-2">{discovery.organizerName}</div>}
+      )}
+      <Link href={href} className={v2 ? "block px-4 pb-[15px] pt-[13px]" : "block p-3"}>
+        <div className={v2 ? "mb-1 text-[16px] font-semibold leading-snug text-ink" : "mb-1 text-sm font-bold text-ink"}>{discovery.title}</div>
+        {discovery.organizerName && (
+          <div className={v2 ? "mb-2 text-[13px] text-ink-2" : "mb-2 text-[11px] font-medium text-ink-2"}>{discovery.organizerName}</div>
+        )}
 
-        <div className="mb-2 flex flex-wrap items-center gap-2 text-[11px] text-ink-2">
+        <div className={`mb-2 flex flex-wrap items-center gap-2 text-ink-2 ${v2 ? "text-[12.5px]" : "text-[11px]"}`}>
           {place && (
             <span className="flex items-center gap-1">
               <i className="ti ti-map-pin text-[13px] text-ink-3" />
@@ -99,15 +132,17 @@ export default function CommunityDiscoveryCard({
         </div>
 
         {discovery.shortDescription && (
-          <p className="mb-2 line-clamp-3 text-[12px] leading-snug text-ink-2">{discovery.shortDescription}</p>
+          <p className={`mb-2 line-clamp-3 leading-snug text-ink-2 ${v2 ? "text-[13px]" : "text-[12px]"}`}>{discovery.shortDescription}</p>
         )}
 
         <div className="flex items-center justify-between">
-          <div className="text-base font-bold text-ink">
+          <div className={v2 ? "text-[15px] font-bold text-trama-navy" : "text-base font-bold text-ink"}>
             {price ?? <span className="text-[11px] font-normal text-ink-3">Prezzo non indicato</span>}
           </div>
           {inPlanner ? (
             <span className="rounded-full bg-green-light px-2.5 py-1 text-[11px] font-semibold text-[#2d8f52]">✓ Nel Planner</span>
+          ) : v2 ? (
+            <span className="flex min-h-[40px] items-center rounded-full bg-trama-violet px-4 text-[13.5px] font-bold text-white">Vedi</span>
           ) : (
             <span className="text-[12px] font-semibold text-trama-violet">Vedi scheda →</span>
           )}

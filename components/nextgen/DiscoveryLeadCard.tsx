@@ -95,6 +95,7 @@ export default function DiscoveryLeadCard({
   kids = [],
   plannerEnabled = false,
   initialInPlanner = false,
+  v2 = false,
 }: {
   lead: DiscoveryLeadRecord;
   // FIX (§6 "FAVORITE BUTTON UX" del task) — stesso pattern di
@@ -110,6 +111,8 @@ export default function DiscoveryLeadCard({
   // per questo utente (stesso principio "nessuna rotta/azione alternativa
   // per un utente normale" delle altre capability gated del repo).
   kids?: Kid[];
+  /** SCOPRI V2 (14/10/2026): stessa forma della card Partner (DiscoverResultCard). */
+  v2?: boolean;
   plannerEnabled?: boolean;
   initialInPlanner?: boolean;
 }) {
@@ -240,7 +243,29 @@ export default function DiscoveryLeadCard({
   }
 
   return (
-    <div className="mb-3 overflow-hidden rounded-lg border border-[#F0F2F5] bg-white">
+    <div className={v2 ? "mb-3 overflow-hidden rounded-[20px] border border-[#ECEEF2] bg-white" : "mb-3 overflow-hidden rounded-lg border border-[#F0F2F5] bg-white"}>
+      {/* SCOPRI V2: fascia 120px, provenienza in alto a sinistra come
+          "Partner TRAMA" nella card Partner, categoria in basso, Salva. */}
+      {v2 && (
+        <div className="relative flex h-[120px] items-center justify-center bg-[linear-gradient(135deg,#F3F0FF,#EDE9FE)]">
+          <span className="text-6xl opacity-40" aria-hidden>
+            {CATEGORY_EMOJI[lead.category]}
+          </span>
+          <span className="absolute left-3 top-3 rounded-full bg-white px-2.5 py-1 text-[11.5px] font-bold text-[#4A3F9E]">Scoperta TRAMA</span>
+          <span className="absolute bottom-2.5 left-3 rounded-full bg-white/90 px-2.5 py-1 text-[11.5px] font-semibold text-ink-2">
+            {CATEGORY_LABELS[lead.category]}
+          </span>
+          <button
+            type="button"
+            onClick={handleToggleFavorite}
+            aria-label={fav ? "Togli dai salvati" : "Salva"}
+            aria-pressed={fav}
+            className="absolute right-2.5 top-2.5 flex h-10 w-10 items-center justify-center rounded-full bg-white text-trama-navy active:scale-95"
+          >
+            <i className={`ti ${fav ? "ti-bookmark-filled text-trama-violet" : "ti-bookmark"} text-[19px]`} aria-hidden="true" />
+          </button>
+        </div>
+      )}
       {/* TRAMA — DISCOVERY MAP + POLISH (21/09/2026), §15 "CARD POLISH —
           LIST": hero portata a 140px (stessa altezza esatta dell'hero foto/
           gradiente di ActivityCard.tsx, non più 72px) con lo stesso schema
@@ -253,6 +278,7 @@ export default function DiscoveryLeadCard({
           card, pur restando due componenti distinti (nessun Match/rating/
           favorite qui: solo un visual neutro per categoria, mai
           un'immagine commerciale). */}
+      {!v2 && (
       <div className="relative flex h-[140px] items-center justify-center bg-[linear-gradient(135deg,#F3F0FF,#EDE9FE)]">
         <span className="text-6xl opacity-40" aria-hidden>
           {CATEGORY_EMOJI[lead.category]}
@@ -276,11 +302,12 @@ export default function DiscoveryLeadCard({
           {fav ? "❤️" : "🤍"}
         </button>
       </div>
-      <div className="p-3">
-        <div className="mb-1 text-sm font-bold text-ink">{lead.activityTitle}</div>
-        <div className="mb-2 text-[11px] font-medium text-ink-2">{lead.organizerName}</div>
+      )}
+      <div className={v2 ? "px-4 pb-[15px] pt-[13px]" : "p-3"}>
+        <div className={v2 ? "mb-1 text-[16px] font-semibold leading-snug text-ink" : "mb-1 text-sm font-bold text-ink"}>{lead.activityTitle}</div>
+        <div className={v2 ? "mb-2 text-[13px] text-ink-2" : "mb-2 text-[11px] font-medium text-ink-2"}>{lead.organizerName}</div>
 
-        <div className="mb-2 flex flex-wrap items-center gap-2 text-[11px] text-ink-2">
+        <div className={`mb-2 flex flex-wrap items-center gap-2 text-ink-2 ${v2 ? "text-[12.5px]" : "text-[11px]"}`}>
           <span className="flex items-center gap-1">
             <i className="ti ti-map-pin text-[13px] text-ink-3" />
             {lead.locationName ? `${lead.locationName}, ${lead.comune}` : lead.comune}
@@ -305,10 +332,10 @@ export default function DiscoveryLeadCard({
           )}
         </div>
 
-        <p className="mb-2 text-[12px] leading-snug text-ink-2">{lead.shortDescription}</p>
+        <p className={v2 ? "mb-2 line-clamp-3 text-[13px] leading-snug text-ink-2" : "mb-2 text-[12px] leading-snug text-ink-2"}>{lead.shortDescription}</p>
 
         <div className="mb-2 flex items-center justify-between">
-          <div className="text-base font-bold text-ink">
+          <div className={v2 ? "text-[15px] font-bold text-trama-navy" : "text-base font-bold text-ink"}>
             {lead.price != null ? (
               <>
                 €{lead.price}

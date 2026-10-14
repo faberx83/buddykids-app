@@ -36,6 +36,7 @@ import { mondayOfIso } from "@/lib/nextgen/planner-week";
 import { cancelBookingAction } from "@/app/actions/bookings";
 import ContactCenterButton from "@/components/ContactCenterButton";
 import { KidAvatar, kidToneFor } from "@/components/nextgen/AgendaItemRow";
+import TramaThread from "@/components/nextgen/TramaThread";
 
 const TONE: Record<BookingTone, string> = {
   green: "bg-[#E6F6F0] text-[#146B4F]",
@@ -100,7 +101,10 @@ export default function PrenotazioniV2Client({
   return (
     <div className="-mb-40 flex min-h-[calc(100%+10rem)] flex-col gap-4 bg-trama-page px-5 pb-24 pt-[18px]">
       <header className="flex flex-col gap-0.5">
-        <h1 className="font-poppins text-[24px] font-semibold text-ink">Prenotazioni</h1>
+        <div className="flex flex-col">
+          <h1 className="font-poppins text-[24px] font-semibold leading-tight text-ink">Prenotazioni</h1>
+          <TramaThread className="mt-1.5" />
+        </div>
         <span className="text-[13px] text-ink-2">{bookingsSummaryLine(bookings, todayIso)}</span>
       </header>
 

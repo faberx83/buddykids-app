@@ -117,7 +117,7 @@ test.describe("SCOPRI-V2", () => {
 
   test("SPV2-07: Per quando — chiusure vicine, prossime settimane, estate", () => {
     const p = buildDiscoverPeriods({ todayIso: TODAY, closures, summer: { start: "2027-06-14", end: "2027-09-10" }, summerYear: 2027 });
-    expect(p.map((x) => x.label)).toEqual(["Ponte 7–8 dic", "Vacanze di Natale", "Prossime settimane", "Estate 2027"]);
+    expect(p.map((x) => x.label)).toEqual(["Ponte 7–8 dic", "Natale", "Prossime settimane", "Estate 2027"]);
     expect(p[0].title).toBe("Per il ponte del 7–8 dicembre");
     expect(p[1].title).toBe("Per le vacanze di Natale");
     const after = buildDiscoverPeriods({ todayIso: TODAY, closures: [], summer: { start: "2026-06-08", end: "2026-09-11" }, summerYear: 2026 });
@@ -178,7 +178,7 @@ test.describe("TRAMA — Scopri V2: ritocchi grafici [no browser]", () => {
       summer: null,
       summerYear: null,
     });
-    expect(p[0].label).toBe("Vacanze di Natale");
+    expect(p[0].label).toBe("Natale");
     expect(p[0].title).toBe("Per le vacanze di Natale");
   });
 
@@ -198,5 +198,58 @@ test.describe("TRAMA — Scopri V2: ritocchi grafici [no browser]", () => {
   test("SPV2-15 in V2 i filtri selezionati sono blu notte come 'Per quando', fuori V2 restano viola", () => {
     const src = read("app/nextgen/search/SearchDiscoveryClient.tsx");
     expect(src.match(/v2 \? "border-trama-navy bg-trama-navy text-white" : "border-trama-violet bg-trama-violet text-white"/g)?.length ?? 0).toBeGreaterThanOrEqual(5);
+  });
+});
+
+// "Allinea tutto al nuovo stile" + segno TRAMA sotto i titoli (14/10/2026).
+test.describe("TRAMA — V2: card Scoperte, pannelli filtro, segno TRAMA [no browser]", () => {
+  const read = (p: string) => fs.readFileSync(path.join(__dirname, "../..", p), "utf-8");
+
+  test("SPV2-16 card Scoperte TRAMA e community in versione V2 solo con Scopri V2", () => {
+    const search = read("app/nextgen/search/SearchDiscoveryClient.tsx");
+    expect(search.match(/v2=\{!!v2\}/g)?.length).toBe(2);
+    for (const p of ["components/nextgen/DiscoveryLeadCard.tsx", "components/nextgen/CommunityDiscoveryCard.tsx"]) {
+      const src = read(p);
+      expect(src).toContain("v2 = false,");
+      expect(src).toContain('rounded-[20px] border border-[#ECEEF2]');
+      expect(src).toContain('aria-label={fav ? "Togli dai salvati" : "Salva"}');
+      // la versione attuale resta com'era (hero 140px)
+      expect(src).toContain("h-[140px]");
+    }
+    expect(read("components/nextgen/DiscoveryLeadCard.tsx")).toContain(">Scoperta TRAMA</span>");
+  });
+
+  test("SPV2-17 pannelli filtro e ricerca in stile V2 senza toccare la versione attuale", () => {
+    const src = read("app/nextgen/search/SearchDiscoveryClient.tsx");
+    expect(src).toContain("const panelBox = (extra = \"\") =>");
+    expect(src).toContain(": `mb-3 ${extra} rounded-lg border border-[#E8EBF0] bg-bg p-3`;");
+    expect(src).not.toContain('className="mb-3 rounded-lg border border-[#E8EBF0] bg-bg p-3"');
+    expect(src).toContain("`min-h-[48px] w-full rounded-full border border-[#E3E6EC] bg-white pl-11 pr-4");
+  });
+
+  test("SPV2-18 segno TRAMA: quattro fili con i colori del logo, decorativo", () => {
+    const src = read("components/nextgen/TramaThread.tsx");
+    for (const c of ["#F66B5E", "#F6A623", "#2DBA8C", "#6F63C5"]) expect(src).toContain(c);
+    expect(src).toContain('aria-hidden="true"');
+  });
+
+  test("SPV2-19 segno TRAMA sotto i titoli di Home, Planner, Scopri, Prenotazioni, Cos'è TRAMA", () => {
+    for (const p of [
+      "app/nextgen/HomeDashboardV2Client.tsx",
+      "app/nextgen/planner/PlannerV2Client.tsx",
+      "app/nextgen/search/SearchDiscoveryClient.tsx",
+      "app/nextgen/prenotazioni/PrenotazioniV2Client.tsx",
+      "app/nextgen/trama/page.tsx",
+    ]) {
+      expect(read(p)).toContain("<TramaThread");
+    }
+  });
+
+  test("SPV2-20 nelle intestazioni condivise (PageHeader) il segno compare solo con la nuova barra accesa", () => {
+    expect(read("components/PageHeader.tsx")).toContain("{showBrandIcon && <TramaThread auto");
+    expect(read("app/nextgen/layout.tsx")).toContain('data-nav-v2={navV2Enabled ? "" : undefined}');
+    const css = read("app/globals.css");
+    expect(css).toMatch(/\.trama-thread-auto \{\s*display: none;/);
+    expect(css).toMatch(/\[data-nav-v2\] \.trama-thread-auto \{\s*display: flex;/);
   });
 });

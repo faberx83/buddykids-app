@@ -5,6 +5,7 @@
 // dà il testo: niente segnaposto visibili agli utenti.
 
 import Link from "next/link";
+import TramaThread from "@/components/nextgen/TramaThread";
 
 const STEPS = [
   { title: "Mettete in fila le settimane", body: "Quello che i figli fanno già, anche fuori da TRAMA." },
@@ -29,6 +30,7 @@ export default function CosETramaPage() {
       <div className="flex flex-col items-start gap-3">
         <img src="/brand/trama-logo-mark.png" alt="TRAMA" className="h-12 w-auto" />
         <h1 className="font-poppins text-[26px] font-semibold leading-tight text-ink">Cos&apos;è TRAMA</h1>
+        <TramaThread className="-mt-1" />
         <p className="text-[15px] leading-relaxed text-[#374151]">
           Il posto dove una famiglia tiene insieme le settimane dei figli: scuola, attività, centri estivi e chi
           accompagna chi.
