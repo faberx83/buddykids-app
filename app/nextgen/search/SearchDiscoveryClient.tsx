@@ -72,6 +72,7 @@ import AnnouncementCallout from "@/components/nextgen/AnnouncementCallout";
 import type { MapItem } from "@/components/ActivityMap";
 import { useSetNextgenHideFloatingControls } from "@/components/nextgen/NextgenScrollActivity";
 import ProfileChip from "@/components/nextgen/ProfileChip";
+import DiscoverFiltersSheet from "@/components/nextgen/DiscoverFiltersSheet";
 
 // Leaflet usa `window`, quindi la mappa va caricata solo lato client — stesso
 // pattern già usato in LEGACY (app/(main)/search/SearchClient.tsx) e nel
@@ -749,6 +750,14 @@ export default function SearchDiscoveryClient({
   const [radarOpen, setRadarOpen] = useState(
     () => radarEnabled && (searchParams.get("radar") === "1" || Boolean(sharedRadarUrl || sharedRadarText))
   );
+  // RADAR dal + (14/10/2026): se si è già in Scopri, "Una scoperta" porta a
+  // ?radar=1 senza rimontare la pagina — il foglio si apre comunque.
+  const radarParam = searchParams.get("radar");
+  const [lastRadarParam, setLastRadarParam] = useState(radarParam);
+  if (radarParam !== lastRadarParam) {
+    setLastRadarParam(radarParam);
+    if (radarEnabled && radarParam === "1") setRadarOpen(true);
+  }
 
   const [radiusKm, setRadiusKm] = useState(DEFAULT_RADIUS_KM);
   // TRAMA ONE Build Sprint 3 — "Giorni spot": stesso filtro/stesso principio
@@ -1111,7 +1120,8 @@ export default function SearchDiscoveryClient({
       const km = geo && a.lat !== undefined && a.lng !== undefined ? haversineKm(geo.lat, geo.lng, a.lat, a.lng) : null;
       const reasons = [
         ...(activePeriod ? [`Posti liberi · ${activePeriod.label}`] : []),
-        ...result.match.reasons.filter((r) => !(activePeriod && r.startsWith("Libera nella"))),
+        // "Ben valutata" no: il voto è un valore inserito a mano, non recensioni vere (14/10/2026).
+        ...result.match.reasons.filter((r) => r !== "Ben valutata" && !(activePeriod && r.startsWith("Libera nella"))),
         ...(a.mealOption === "included" ? ["Pranzo incluso"] : []),
       ].slice(0, 3);
       return (
@@ -1449,7 +1459,56 @@ export default function SearchDiscoveryClient({
           </div>
         )}
 
-        {(!v2 || showFiltersV2) && (
+        {/* SCOPRI V2 — filtri (14/10/2026): con V2 "Filtri" apre un foglio dal
+            basso (DiscoverFiltersSheet) invece della riga di pillole con un
+            pannello per ciascuna; stesso stato e stessa logica. */}
+        {v2 && (
+          <DiscoverFiltersSheet
+            open={showFiltersV2}
+            onClose={() => setShowFiltersV2(false)}
+            resultsCount={totalResultsCount}
+            activeCount={activeFiltersCount}
+            onClearAll={clearAllFilters}
+            minAge={minAge}
+            maxAge={maxAge}
+            onAgeChange={(min, max) => {
+              setMinAge(min);
+              setMaxAge(max);
+            }}
+            maxPrice={maxPrice}
+            onMaxPriceChange={setMaxPrice}
+            zone={zone}
+            onZoneChange={setZone}
+            zoneOptions={zoneOptions}
+            hasGeo={hasGeo}
+            geoLoading={geoStatus === "loading"}
+            geoError={geoStatus === "error" ? geoError : null}
+            onLocateMe={locateMe}
+            onClearGeo={clearGeo}
+            radiusKm={radiusKm}
+            onRadiusChange={setRadiusKm}
+            categories={categories.map((c) => ({
+              id: c.id,
+              label: c.id === "intera" ? "Giornata intera" : c.id === "mezza" ? "Mezza giornata" : c.label,
+            }))}
+            selectedTagIds={selectedTagIds}
+            onToggleTag={toggleTag}
+            services={services}
+            onToggleService={(key) => setServices((s) => ({ ...s, [key]: !s[key] }))}
+            coverageModes={selectedCoverageModes}
+            onToggleCoverage={toggleCoverageMode}
+            onlyDaySpots={onlyDaySpots}
+            onOnlyDaySpotsChange={setOnlyDaySpots}
+            weekGroups={weekRangeGroups.map((g) => ({
+              monthLabel: g.monthLabel,
+              weeks: g.ranges.map((r) => ({ start: isoDate(r.start), label: formatShortRange(r.start, r.end) })),
+            }))}
+            selectedWeekStarts={selectedWeekStarts}
+            onToggleWeek={toggleWeek}
+          />
+        )}
+
+        {!v2 && (
         <div className="mb-1 flex items-center gap-2">
           <div className="no-scrollbar flex min-w-0 flex-1 items-center gap-2 overflow-x-auto pb-1">
             {filters.map((f) => (

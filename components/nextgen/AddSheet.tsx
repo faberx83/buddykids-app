@@ -27,10 +27,13 @@ export default function AddSheet({
   open,
   onClose,
   addItemEnabled,
+  radarEnabled = false,
 }: {
   open: boolean;
   onClose: () => void;
   addItemEnabled: boolean;
+  /** RADAR (14/10/2026, "il pulsante per aggiungere dépliant e foto dove è finito?"): con RADAR_ENABLED il + offre anche "Una scoperta". */
+  radarEnabled?: boolean;
 }) {
   const firstLinkRef = useRef<HTMLAnchorElement | null>(null);
   useEffect(() => {
@@ -64,6 +67,17 @@ export default function AddSheet({
       detail: "Chi porta e chi ritira, giorno per giorno",
       primary: !addItemEnabled,
     },
+    ...(radarEnabled
+      ? [
+          {
+            href: "/nextgen/search?radar=1",
+            icon: "ti-photo-plus",
+            title: "Una scoperta",
+            detail: "Un volantino, una foto o un link trovati fuori da TRAMA",
+            primary: false,
+          },
+        ]
+      : []),
     {
       href: "/nextgen/groups",
       icon: "ti-user-plus",

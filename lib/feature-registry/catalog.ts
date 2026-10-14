@@ -923,12 +923,18 @@ export const FEATURE_CATALOG: FeatureCatalogEntry[] = [
       "Scopri nello stile V2.1: titolo e Elenco/Mappa in alto, ricerca, 'Per quando' (prossime chiusure della " +
       "scuola, prossime 4 settimane, estate) che filtra Partner, Scoperte TRAMA e community per data, 'Per chi' e " +
       "'Filtri · N' (i filtri esistenti in un solo pulsante), card Partner con motivi chiari al posto del Match %, " +
-      "'Mandalo a TRAMA' in fondo.",
+      "'Mandalo a TRAMA' in fondo. Dal 14/10/2026 anche i filtri in un foglio dal basso e la scheda attività " +
+      "V2 (foto o immagine TRAMA, 'Perché fa per voi', 'Cosa include' solo con i servizi presenti, niente voto, " +
+      "recensioni e km inseriti a mano, 'Prenota' blu notte).",
     sourceFiles: [
       "app/nextgen/search/page.tsx",
       "app/nextgen/search/SearchDiscoveryClient.tsx",
       "components/nextgen/DiscoverResultCard.tsx",
+      "components/nextgen/DiscoverFiltersSheet.tsx",
+      "components/nextgen/ActivityDetailV2.tsx",
+      "app/activity/[id]/page.tsx",
       "lib/nextgen/discover-v2.ts",
+      "lib/nextgen/activity-detail-v2.ts",
       "lib/data/activities.ts",
     ],
     note: "Le card Scoperte TRAMA e community restano quelle attuali in questa fase.",

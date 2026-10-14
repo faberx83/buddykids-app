@@ -140,6 +140,7 @@ export default async function NextgenLayout({ children }: { children: React.Reac
   // flag degli impegni decide se il + offre "Un impegno".
   let navV2Enabled = false;
   let addItemEnabled = false;
+  let radarEnabled = false; // RADAR (14/10/2026): "Una scoperta" nel +
   // TRAMA — ONBOARDING V2 (14/10/2026): con il flag acceso l'onboarding V2
   // prende il posto del carousel attuale (chiave tutorial nuova). I dati dei
   // figli e della scuola si leggono SOLO se l'onboarding sta per comparire.
@@ -209,7 +210,7 @@ export default async function NextgenLayout({ children }: { children: React.Reac
     globalActionProgressEnabled = globalActionProgressResolved;
     if (realRole === "parent") {
       try {
-        const [navV2, externalItems] = await Promise.all([
+        const [navV2, externalItems, radar] = await Promise.all([
           resolveFeatureFlag({
             flagName: "NAV_V2_ENABLED",
             userId: user.id,
@@ -224,9 +225,17 @@ export default async function NextgenLayout({ children }: { children: React.Reac
             tenant: "family",
             correlationId: generateCorrelationId(),
           }),
+          resolveFeatureFlag({
+            flagName: "RADAR_ENABLED",
+            userId: user.id,
+            role: realRole,
+            tenant: "family",
+            correlationId: generateCorrelationId(),
+          }).catch(() => false),
         ]);
         navV2Enabled = navV2;
         addItemEnabled = externalItems;
+        radarEnabled = radar;
       } catch {
         navV2Enabled = false; // ripiego: barra attuale
       }
@@ -348,6 +357,7 @@ export default async function NextgenLayout({ children }: { children: React.Reac
               notifications={notifications}
               variant={navV2Enabled ? "v2" : "classic"}
               addItemEnabled={addItemEnabled}
+              radarEnabled={radarEnabled}
             />
           </div>
           {/* SPRINT 5 — floating CTA "Segnala un problema", montata qui una

@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import dynamic from "next/dynamic";
+import { navigationDestination } from "@/lib/nextgen/activity-detail-v2";
 // "import type": PlannerMapPin è un'interfaccia (usata solo come tipo) da un
 // modulo che importa lib/supabase/server — con "import type" il compilatore
 // la elimina sempre dal bundle client, evitando lo stesso bug di build già
@@ -79,6 +80,7 @@ export default function PlannerMapView({ pins, addresses }: { pins: PlannerMapPi
 
   const mappable = pins.filter((p) => p.lat !== null && p.lng !== null);
   const selected = pins.find((p) => p.activityDbId === selectedId) ?? null;
+  const selectedDestination = selected ? navigationDestination(selected.address, selected.lat, selected.lng) : null;
   // 14/10/2026 (Fabrizio: "non capisco i 15 km 29 min da dove li calcoli"):
   // tolta la distanza/tempo "stimati" — era un numero segnaposto generato
   // dall'id dell'attività (Sprint 5.4), non una distanza vera dagli indirizzi
@@ -159,9 +161,12 @@ export default function PlannerMapView({ pins, addresses }: { pins: PlannerMapPi
             >
               Apri scheda
             </Link>
-            {selected.address && (
+            {/* 14/10/2026 ("Avvia navigazione non viene fuori", attività "Prova FP"):
+                con l'indirizzo vuoto ma le coordinate presenti il pulsante non
+                compariva; ora la destinazione ripiega sulle coordinate. */}
+            {selectedDestination && (
               <a
-                href={mapsUrl(selected.address, selectedOrigin?.address)}
+                href={mapsUrl(selectedDestination, selectedOrigin?.address)}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="flex-1 rounded-full bg-trama-violet py-2.5 text-center text-[12.5px] font-bold text-white active:scale-[0.97]"
