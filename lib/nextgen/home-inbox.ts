@@ -50,6 +50,13 @@ export interface HomeInboxBookingInput {
   activityName: string;
   kidNames: string[];
   weeksLabel: string;
+  /** Primo e ultimo giorno prenotato (ISO). Servono per il periodo compatto
+   *  ("5–9 luglio") e per escludere le prenotazioni già concluse. */
+  firstDate?: string | null;
+  lastDate?: string | null;
+  /** Solo prenotazioni a giorni: giorni confermati sul totale. */
+  acceptedDayCount?: number;
+  totalDayCount?: number;
 }
 
 export interface HomeInboxGroupInviteInput {
@@ -74,6 +81,10 @@ export interface HomeInboxInput {
   groupInvites: HomeInboxGroupInviteInput[];
   profileIncomplete: boolean;
   pushInactive: boolean;
+  /** Oggi (ISO). Se presente, le prenotazioni già concluse non entrano in
+   *  "Da fare" (segnalazione live 14/10: una conferma parziale di settembre
+   *  compariva ancora a ottobre). */
+  todayIso?: string;
 }
 
 export interface HomeInboxResult {
@@ -89,9 +100,32 @@ function joinNames(names: string[]): string {
   return `${clean.slice(0, -1).join(", ")} e ${clean[clean.length - 1]}`;
 }
 
+const MONTHS_IT = ["gennaio", "febbraio", "marzo", "aprile", "maggio", "giugno", "luglio", "agosto", "settembre", "ottobre", "novembre", "dicembre"];
+
+/** "5–9 luglio", "28 luglio – 1 agosto", "7 settembre". */
+export function compactDateRange(firstIso: string, lastIso: string): string {
+  const a = new Date(firstIso + "T00:00:00Z");
+  const b = new Date(lastIso + "T00:00:00Z");
+  const ma = MONTHS_IT[a.getUTCMonth()];
+  const mb = MONTHS_IT[b.getUTCMonth()];
+  if (firstIso === lastIso) return `${a.getUTCDate()} ${ma}`;
+  if (ma === mb && a.getUTCFullYear() === b.getUTCFullYear()) return `${a.getUTCDate()}–${b.getUTCDate()} ${ma}`;
+  return `${a.getUTCDate()} ${ma} – ${b.getUTCDate()} ${mb}`;
+}
+
+function bookingWhen(b: HomeInboxBookingInput): string {
+  if (b.partnerDecision === "partial" && (b.totalDayCount ?? 0) > 0) {
+    const total = b.totalDayCount ?? 0;
+    const accepted = b.acceptedDayCount ?? 0;
+    return `${accepted} ${accepted === 1 ? "giorno" : "giorni"} su ${total}`;
+  }
+  if (b.firstDate && b.lastDate) return compactDateRange(b.firstDate, b.lastDate);
+  return b.weeksLabel.trim();
+}
+
 function bookingDetail(b: HomeInboxBookingInput): string {
   const who = joinNames(b.kidNames);
-  const when = b.weeksLabel.trim();
+  const when = bookingWhen(b);
   const tail = [who, when].filter(Boolean).join(", ");
   return tail ? `${b.activityName} · ${tail}` : b.activityName;
 }
@@ -100,7 +134,10 @@ const MOMENT_VERB: Record<Moment, string> = { andata: "accompagna", ritorno: "ri
 
 export function buildHomeInbox(input: HomeInboxInput): HomeInboxResult {
   const items: HomeInboxItem[] = [];
-  const active = input.bookings.filter((b) => b.status !== "cancelled");
+  const today = input.todayIso;
+  const active = input.bookings.filter(
+    (b) => b.status !== "cancelled" && !(today && b.lastDate && b.lastDate < today)
+  );
 
   for (const b of active.filter((x) => x.partnerDecision === "rejected")) {
     items.push({

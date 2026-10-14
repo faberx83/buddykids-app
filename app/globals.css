@@ -9,17 +9,25 @@
 html,
 body {
   height: 100%;
+  height: 100dvh; /* vedi nota su body sotto */
   background: #fdfcfa;
   color: #1a1d2e;
 }
 
 body {
   min-height: 100vh;
+  /* 14/10/2026 (segnalazione live, Android/Chrome): 100vh è l'altezza con
+     la barra indirizzi NASCOSTA, quindi con la barra visibile il documento
+     era più alto dello schermo e scorreva insieme alla bottom nav di
+     .app-shell ("la barra sotto sparisce e scorre"). dvh = schermo
+     realmente visibile; 100vh resta come ripiego. */
+  min-height: 100dvh;
 }
 
 /* app "page shell" background — mimics the soft gradient behind the phone mockup on desktop */
 .app-backdrop {
   min-height: 100vh;
+  min-height: 100dvh; /* vedi nota su body */
   background: linear-gradient(135deg, #fdfcfa 0%, #f5f2ff 100%);
   display: flex;
   justify-content: center;

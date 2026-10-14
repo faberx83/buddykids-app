@@ -243,7 +243,10 @@ export default async function NextgenLayout({ children }: { children: React.Reac
                 lib/nextgen/floating-controls.ts per la ROOT CAUSE completa e
                 BetaFeedbackButton.tsx/NotificationCenter.tsx per il
                 consumo. */}
-            <NextgenScrollArea className="no-scrollbar flex-1 overflow-y-auto pb-40">{children}</NextgenScrollArea>
+            {/* overscroll-y-contain (14/10/2026): arrivati in cima o in fondo,
+                lo scroll non passa più alla pagina intera (che su Android
+                spostava la bottom nav insieme alla barra del browser). */}
+            <NextgenScrollArea className="no-scrollbar flex-1 overflow-y-auto overscroll-y-contain pb-40">{children}</NextgenScrollArea>
             {/* Estensione 31/08/2026 (Fabrizio): pallini "Prenotazioni"/"Profilo"
                 contestualizzati, stessa lista `notifications` già calcolata
                 sopra per la campanella — zero nuove query, vedi

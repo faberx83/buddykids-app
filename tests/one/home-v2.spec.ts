@@ -1,7 +1,7 @@
 import fs from "fs";
 import path from "path";
 import { test, expect } from "@playwright/test";
-import { buildHomeInbox, selectUrgentTodayAlert, HOME_INBOX_VISIBLE_MAX, HOME_INBOX_PRIORITY } from "../../lib/nextgen/home-inbox";
+import { buildHomeInbox, selectUrgentTodayAlert, HOME_INBOX_VISIBLE_MAX, HOME_INBOX_PRIORITY, compactDateRange } from "../../lib/nextgen/home-inbox";
 import { buildTodayAgenda, summarizeDayCoordination, parseHoursRange, joinPeople } from "../../lib/nextgen/today-agenda";
 import { buildSeasonSummary, computeWeekState, periodTitleForSeason } from "../../lib/nextgen/season-summary";
 import { findNextSchoolClosure } from "../../lib/school-calendar/next-closure";
@@ -341,5 +341,75 @@ test.describe("HOME-V2 — flag, ripiego e release", () => {
   test("HV2-25: nessuna migration e Planner non toccato da questa fase", () => {
     const src = read("app/nextgen/home-v2-data.ts");
     expect(src).not.toMatch(/\.insert\(|\.update\(|\.upsert\(|\.delete\(/);
+  });
+});
+
+// ─── Correzioni dopo la prima verifica dal vivo (14/10/2026) ─────────────
+test.describe("HOME-V2 — correzioni verifica live 14/10", () => {
+  test("HV2-26: le prenotazioni già concluse non entrano in 'Da fare'", () => {
+    const res = buildHomeInbox({
+      ...emptyInbox,
+      todayIso: "2026-10-14",
+      bookings: [
+        booking({ id: "old", partnerDecision: "partial", firstDate: "2026-09-07", lastDate: "2026-09-11" }),
+        booking({ id: "now", partnerDecision: "partial", firstDate: "2026-10-12", lastDate: "2026-10-16" }),
+        booking({ id: "next", partnerDecision: "rejected", firstDate: "2027-06-14", lastDate: "2027-06-18" }),
+      ],
+    });
+    expect(res.all.map((i) => i.id)).toEqual(["booking_rejected:next", "booking_partial:now"]);
+  });
+
+  test("HV2-27: dettaglio compatto come nel design ('3 giorni su 5', '5–9 luglio')", () => {
+    const res = buildHomeInbox({
+      ...emptyInbox,
+      bookings: [
+        booking({ id: "p", partnerDecision: "partial", activityName: "Arte in Gioco", kidNames: ["Sofia"], acceptedDayCount: 3, totalDayCount: 5, weeksLabel: "7 set, 8 set, 9 set, 10 set, 11 set" }),
+        booking({ id: "r", partnerDecision: "rejected", activityName: "Camp Natura", kidNames: ["Giulia"], firstDate: "2027-07-05", lastDate: "2027-07-09" }),
+      ],
+    });
+    const byId = Object.fromEntries(res.all.map((i) => [i.id, i.detail]));
+    expect(byId["booking_partial:p"]).toBe("Arte in Gioco · Sofia, 3 giorni su 5");
+    expect(byId["booking_rejected:r"]).toBe("Camp Natura · Giulia, 5–9 luglio");
+    expect(compactDateRange("2027-07-28", "2027-08-01")).toBe("28 luglio – 1 agosto");
+    expect(compactDateRange("2026-12-07", "2026-12-07")).toBe("7 dicembre");
+  });
+
+  test("HV2-28: settimane passate non organizzate non sono 'da organizzare'; periodo concluso nascosto", () => {
+    const wk = (index: number, start: string, end: string, covered: string[]) => ({
+      index, startDate: start, endDate: end, dateRange: `${start}`, dismissed: false,
+      awaitingPartnerConfirmation: false, coveredKidIds: covered, missingCoordinationSlots: 0,
+    });
+    const weeks = [
+      wk(1, "2026-06-01", "2026-06-05", []),
+      wk(2, "2026-06-08", "2026-06-12", ["l"]),
+      wk(3, "2026-09-07", "2026-09-11", []),
+    ];
+    const mid = buildSeasonSummary({ title: "Estate 2026", kidIds: ["l"], todayIso: "2026-06-10", isNewFamily: false, weeks });
+    expect(mid.cells.map((c) => c.state)).toEqual(["past", "organized", "to_organize"]);
+    expect(mid.toOrganizeCount).toBe(1);
+    expect(mid.neededCount).toBe(2);
+    expect(mid.isOver).toBe(false);
+    const after = buildSeasonSummary({ title: "Estate 2026", kidIds: ["l"], todayIso: "2026-10-14", isNewFamily: false, weeks });
+    expect(after.isOver).toBe(true);
+    expect(after.toOrganizeCount).toBe(0);
+    expect(read("app/nextgen/home-v2-data.ts")).toContain('summary.isOver && summary.state !== "welcome" ? null : summary');
+  });
+
+  test("HV2-29: colori e superfici del design V2.1 (sfondo caldo, link #5B4FB0, mesi abbreviati)", () => {
+    const v2 = read("app/nextgen/HomeDashboardV2Client.tsx");
+    expect(v2).toContain("bg-trama-page");
+    expect(v2).toContain("text-[#5B4FB0]");
+    expect(v2).toContain("text-[#4A3F9E]"); // "Più tardi"
+    expect(read("components/nextgen/SeasonSummaryCard.tsx")).toContain("m.span >= 3 ? m.label : m.label.slice(0, 3)");
+  });
+
+  test("HV2-30: bottom nav ferma e niente spazio vuoto in fondo", () => {
+    const css = read("app/globals.css");
+    expect(css).toMatch(/body \{[\s\S]*?min-height: 100dvh;/);
+    expect(css).toMatch(/\.app-backdrop \{[\s\S]*?min-height: 100dvh;/);
+    expect(read("app/nextgen/layout.tsx")).toContain("overflow-y-auto overscroll-y-contain pb-40");
+    const v2 = read("app/nextgen/HomeDashboardV2Client.tsx");
+    expect(v2).toContain("-mb-40");
+    expect(v2).toContain("pb-24");
   });
 });

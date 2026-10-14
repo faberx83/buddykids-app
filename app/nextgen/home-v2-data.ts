@@ -99,6 +99,16 @@ function pickRecommendations(activities: Activity[], kids: Kid[], max: number) {
   return out.slice(0, max).map((r) => ({ activity: r.activity, kidName: r.kidName }));
 }
 
+/** Primo e ultimo giorno prenotato: settimane intere o giorni spot. */
+function bookingSpan(b: { weeks: { startDate: string; endDate: string }[]; dayDates: string[] }): {
+  firstDate: string | null;
+  lastDate: string | null;
+} {
+  const starts = [...b.weeks.map((w) => w.startDate), ...b.dayDates].sort();
+  const ends = [...b.weeks.map((w) => w.endDate), ...b.dayDates].sort();
+  return { firstDate: starts[0] ?? null, lastDate: ends[ends.length - 1] ?? null };
+}
+
 export async function loadHomeV2Props({
   userId,
   fullName,
@@ -217,7 +227,11 @@ export async function loadHomeV2Props({
       activityName: b.activityName,
       kidNames: b.kidNames,
       weeksLabel: b.weeksLabel,
+      ...bookingSpan(b),
+      acceptedDayCount: b.acceptedDayCount,
+      totalDayCount: b.totalDayCount,
     })),
+    todayIso,
     upcomingCoordination:
       soon.length > 0
         ? {
@@ -315,7 +329,10 @@ export async function loadHomeV2Props({
     urgentAlert,
     inboxInput,
     todayCheckins,
-    summary,
+    // Periodo interamente trascorso (es. l'estate vista a ottobre): niente
+    // riepilogo, invece di "14 settimane da organizzare" già passate. Lo
+    // stato di benvenuto resta, perché non dipende dalle date.
+    summary: summary.isOver && summary.state !== "welcome" ? null : summary,
     welcome,
     attentionAction,
     notStartedAction: { label: "Inizia a pianificare", href: "/nextgen/planner" },

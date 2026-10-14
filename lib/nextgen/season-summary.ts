@@ -16,7 +16,10 @@
 // Il titolo del periodo è un parametro: oggi "Estate AAAA" (unico periodo
 // per cui esistono dati), domani "Le prossime settimane" o altro.
 
-export type PeriodWeekState = "organized" | "to_complete" | "to_organize" | "not_needed";
+/** "past": settimana già trascorsa e non organizzata — non chiede più
+ *  un'azione, quindi non conta tra le "da organizzare" (segnalazione live
+ *  14/10/2026). Le settimane passate organizzate restano "organized". */
+export type PeriodWeekState = "organized" | "to_complete" | "to_organize" | "not_needed" | "past";
 
 export interface SeasonSummaryWeekInput {
   index: number;
@@ -56,6 +59,9 @@ export interface SeasonSummaryModel {
   toOrganizeCount: number;
   /** Prima settimana futura che chiede un'azione: prima le libere, poi le incomplete. */
   firstAttention: { index: number; startDate: string; dateRange: string; state: "to_complete" | "to_organize" } | null;
+  /** Tutte le settimane del periodo sono già trascorse (es. l'estate vista a
+   *  ottobre): la Home non mostra il riepilogo. */
+  isOver: boolean;
 }
 
 const MONTHS_IT = [
@@ -99,11 +105,15 @@ export function buildSeasonSummary(input: {
   isNewFamily: boolean;
 }): SeasonSummaryModel {
   const weeks = input.weeks.slice().sort((a, b) => a.index - b.index);
-  const cells: SeasonSummaryCell[] = weeks.map((w) => ({
-    index: w.index,
-    state: computeWeekState(w, input.kidIds),
-    dateRange: w.dateRange,
-  }));
+  const cells: SeasonSummaryCell[] = weeks.map((w) => {
+    const base = computeWeekState(w, input.kidIds);
+    const isPast = w.endDate < input.todayIso;
+    return {
+      index: w.index,
+      state: isPast && (base === "to_organize" || base === "to_complete") ? "past" : base,
+      dateRange: w.dateRange,
+    };
+  });
 
   const months: SeasonSummaryMonth[] = [];
   for (const w of weeks) {
@@ -117,7 +127,7 @@ export function buildSeasonSummary(input: {
   const organizedCount = count("organized");
   const toCompleteCount = count("to_complete");
   const toOrganizeCount = count("to_organize");
-  const neededCount = cells.length - count("not_needed");
+  const neededCount = cells.length - count("not_needed") - count("past");
 
   const future = weeks
     .map((w, i) => ({ w, state: cells[i].state }))
@@ -144,5 +154,6 @@ export function buildSeasonSummary(input: {
     toCompleteCount,
     toOrganizeCount,
     firstAttention,
+    isOver: weeks.length > 0 && weeks[weeks.length - 1].endDate < input.todayIso,
   };
 }

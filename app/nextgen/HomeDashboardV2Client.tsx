@@ -125,7 +125,7 @@ export default function HomeDashboardV2Client({
   urgentAlert: UrgentTodayAlert | null;
   inboxInput: Omit<HomeInboxInput, "pushInactive">;
   todayCheckins: TodayCheckin[];
-  summary: SeasonSummaryModel;
+  summary: SeasonSummaryModel | null;
   welcome: SeasonSummaryWelcome | null;
   attentionAction: SeasonSummaryAction | null;
   notStartedAction: SeasonSummaryAction | null;
@@ -205,7 +205,12 @@ export default function HomeDashboardV2Client({
     agenda.length === 0 ? "nessun impegno oggi" : agenda.length === 1 ? "1 impegno oggi" : `${agenda.length} impegni oggi`;
 
   return (
-    <div className="flex flex-col gap-[26px] px-5 pb-7 pt-[18px]">
+    // Sfondo caldo del design V2.1 (#FDFCFA, card bianche con ombra) e spazio
+    // in fondo calibrato: -mb-40 annulla il pb-40 generico del layout
+    // NEXTGEN (pensato per campanella + chat flottanti; in Home V2 la
+    // campanella sta nell'intestazione) e pb-24 lascia libero solo il
+    // pulsante "Segnala un problema". Segnalazione live 14/10/2026.
+    <div className="-mb-40 flex flex-col gap-[26px] bg-trama-page px-5 pb-24 pt-[18px]">
       {/* 1. INTESTAZIONE */}
       <header className="flex items-center justify-between gap-3">
         <div className="flex min-w-0 items-center gap-2.5">
@@ -263,7 +268,7 @@ export default function HomeDashboardV2Client({
           <h2 id="oggi-h" className="font-poppins text-[22px] font-semibold text-ink">
             Oggi
           </h2>
-          <Link href={weekHref} className="flex min-h-[32px] items-center text-[13.5px] font-semibold text-trama-violet">
+          <Link href={weekHref} className="flex min-h-[32px] items-center text-[13.5px] font-semibold text-[#5B4FB0]">
             Apri settimana
           </Link>
         </div>
@@ -276,7 +281,7 @@ export default function HomeDashboardV2Client({
             <div className="flex min-w-0 flex-col gap-0.5">
               <span className="text-[14px] font-semibold text-ink">Niente in programma oggi</span>
               {externalPlannerItemsEnabled ? (
-                <Link href={NEW_EXTERNAL_ITEM_HREF} className="text-[13px] font-semibold text-trama-violet">
+                <Link href={NEW_EXTERNAL_ITEM_HREF} className="text-[13px] font-semibold text-[#5B4FB0]">
                   Aggiungi un impegno
                 </Link>
               ) : (
@@ -318,7 +323,7 @@ export default function HomeDashboardV2Client({
               <div className="flex flex-col gap-2.5 rounded-b-[20px] bg-[#FBFAF7] px-4 pb-3.5 pt-3">
                 <div className="flex items-center justify-between">
                   <span className="text-[12px] font-semibold text-ink-2">Chi accompagna oggi</span>
-                  <Link href={weekHref} className="flex min-h-[32px] items-center text-[13px] font-bold text-trama-violet">
+                  <Link href={weekHref} className="flex min-h-[32px] items-center text-[13px] font-bold text-[#5B4FB0]">
                     Assegna
                   </Link>
                 </div>
@@ -342,7 +347,7 @@ export default function HomeDashboardV2Client({
               <button
                 type="button"
                 onClick={() => setShowAllTodo((v) => !v)}
-                className="flex min-h-[32px] items-center text-[13.5px] font-semibold text-trama-violet"
+                className="flex min-h-[32px] items-center text-[13.5px] font-semibold text-[#5B4FB0]"
               >
                 {showAllTodo ? "Mostra meno" : `Vedi tutte (${inbox.all.length})`}
               </button>
@@ -357,12 +362,14 @@ export default function HomeDashboardV2Client({
       )}
 
       {/* 5. RIEPILOGO DEL PERIODO */}
-      <SeasonSummaryCard
-        model={summary}
-        welcome={welcome}
-        attentionAction={attentionAction}
-        notStartedAction={notStartedAction}
-      />
+      {summary && (
+        <SeasonSummaryCard
+          model={summary}
+          welcome={welcome}
+          attentionAction={attentionAction}
+          notStartedAction={notStartedAction}
+        />
+      )}
 
       {/* 6. PROSSIMA CHIUSURA */}
       {nextClosure && !closureLater && (
@@ -407,7 +414,7 @@ export default function HomeDashboardV2Client({
                 safeSet(CLOSURE_LATER_KEY_PREFIX + nextClosure.startDate, String(Date.now()));
                 setClosureLater(true);
               }}
-              className="flex min-h-[42px] items-center rounded-full px-3 text-[13.5px] font-semibold text-[#4B5563]"
+              className="flex min-h-[42px] items-center rounded-full px-3 text-[13.5px] font-semibold text-[#4A3F9E]"
             >
               Più tardi
             </button>
@@ -422,7 +429,7 @@ export default function HomeDashboardV2Client({
             <h2 id="sugg-h" className={sectionTitle}>
               {recommendationsTitle}
             </h2>
-            <Link href="/nextgen/search" className="flex min-h-[32px] items-center text-[13.5px] font-semibold text-trama-violet">
+            <Link href="/nextgen/search" className="flex min-h-[32px] items-center text-[13.5px] font-semibold text-[#5B4FB0]">
               Altre idee
             </Link>
           </div>
@@ -543,7 +550,7 @@ function TodoRow({ item, onPush, pushBusy }: { item: HomeInboxItem; onPush: () =
     push_inactive: "ti-bell-ringing",
   };
   const tone = item.kind === "booking_rejected" ? "bg-[#FCEDEC] text-[#B3261E]" : "bg-[#F1F3F6] text-trama-navy";
-  const cta = "flex min-h-[44px] flex-shrink-0 items-center px-0.5 text-[13.5px] font-bold text-trama-violet";
+  const cta = "flex min-h-[44px] flex-shrink-0 items-center px-0.5 text-[13.5px] font-bold text-[#5B4FB0]";
   return (
     <li className="flex items-center gap-3 border-b border-[#ECEEF2] py-3">
       <span className={`flex h-[34px] w-[34px] flex-shrink-0 items-center justify-center rounded-full ${tone}`}>

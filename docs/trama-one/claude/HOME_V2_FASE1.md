@@ -57,3 +57,25 @@ Con il flag acceso per `internal-preview` e l'account `+testparent`:
 - [ ] riepilogo coerente con il Planner (stesse settimane);
 - [ ] prossima chiusura (se la scuola è indicata): 7–8 dicembre a Milano;
 - [ ] spegnendo il flag torna la Home attuale.
+
+## Correzioni dopo la prima verifica dal vivo (14/10/2026)
+Segnalazioni di Fabrizio sul telefono (Android, Chrome):
+- **Bottom nav che scorre via**: il documento era alto 100vh (barra
+  indirizzi nascosta) e scorreva insieme alla nav. Ora `html`/`body`/
+  `.app-backdrop` usano 100dvh e l'area di scorrimento NEXTGEN ha
+  `overscroll-y-contain`. Vale per tutte le pagine genitore NEXTGEN.
+- **Troppo spazio vuoto in fondo**: la Home V2 annulla il `pb-40` generico
+  del layout e lascia solo lo spazio per "Segnala un problema".
+- **Colori**: sfondo caldo `#FDFCFA` con card bianche, link `#5B4FB0`,
+  "Più tardi" `#4A3F9E`, come nel design V2.1.
+- **Da fare**: niente prenotazioni già concluse (una conferma parziale di
+  settembre compariva a ottobre); dettaglio compatto come nel design
+  ("Sofia, 3 giorni su 5", "Giulia, 5–9 luglio") invece dell'elenco dei giorni.
+- **Riepilogo**: le settimane passate non organizzate non contano più come
+  "da organizzare"; se il periodo è tutto trascorso (l'estate vista a
+  ottobre) il riepilogo non compare. Mesi con 1–2 settimane abbreviati
+  ("set") invece di troncati.
+- Il pulsante "Torna a V1" in alto a destra è il commutatore per gli
+  account di test nel browser: non compare agli utenti né nell'app installata.
+
+Test: HV2-26…HV2-30 in `tests/one/home-v2.spec.ts`.

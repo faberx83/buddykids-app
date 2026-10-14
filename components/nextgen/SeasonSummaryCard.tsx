@@ -30,6 +30,7 @@ const CELL_CLASS: Record<PeriodWeekState, string> = {
   to_complete: "bg-[#F6B84B]",
   to_organize: "border-2 border-dashed border-[#8B93A1]",
   not_needed: "bg-[#EEF0F4]",
+  past: "bg-[#EEF0F4]",
 };
 
 const CELL_LABEL: Record<PeriodWeekState, string> = {
@@ -37,6 +38,7 @@ const CELL_LABEL: Record<PeriodWeekState, string> = {
   to_complete: "da completare",
   to_organize: "da organizzare",
   not_needed: "non serve",
+  past: "passata",
 };
 
 function WeekStrip({ model }: { model: SeasonSummaryModel }) {
@@ -59,7 +61,8 @@ function WeekStrip({ model }: { model: SeasonSummaryModel }) {
       >
         {model.months.map((m) => (
           <span key={m.label} className="truncate">
-            {m.label}
+            {/* mesi con 1–2 settimane: abbreviati ("set"), non troncati ("sette…") */}
+            {m.span >= 3 ? m.label : m.label.slice(0, 3)}
           </span>
         ))}
       </div>
