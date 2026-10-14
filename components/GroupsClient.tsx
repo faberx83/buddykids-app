@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import GroupCard from "@/components/GroupCard";
 import TramaThread from "@/components/nextgen/TramaThread";
+import { monogramFor, threadColorFor } from "@/components/nextgen/ActivityVisual";
 import {
   createGroupAction,
   joinGroupAction,
@@ -70,8 +71,8 @@ export default function GroupsClient({
   nextgen?: boolean | "v2";
 }) {
   const router = useRouter();
-  const accentBg = nextgen ? "bg-trama-violet" : "bg-sky";
-  const accentFocus = nextgen ? "focus:border-trama-violet" : "focus:border-sky";
+  const accentBg = nextgen === "v2" ? "bg-trama-primary" : nextgen ? "bg-trama-violet" : "bg-sky";
+  const accentFocus = nextgen === "v2" ? "focus:border-trama-primary" : nextgen ? "focus:border-trama-violet" : "focus:border-sky";
   const accentLight = nextgen ? "bg-trama-lilac/20" : "bg-sky-light/40";
   const accentBorder = nextgen ? "border-trama-lilac/40" : "border-[#E3F0FB]";
   const titleCls = nextgen ? "font-poppins text-lg font-bold text-ink" : "text-lg font-bold text-ink";
@@ -192,20 +193,26 @@ export default function GroupsClient({
       {active === 0 && (
         <>
           <div
-            className={v2 ? "mx-5 mb-3 mt-4 flex items-center gap-3 rounded-[20px] bg-white p-4 shadow-[0_1px_2px_rgba(23,42,77,0.06),0_6px_20px_rgba(23,42,77,0.06)]" : "mx-5 my-3 flex items-center gap-3 rounded-lg p-3.5"}
+            className={v2 ? "mx-5 mb-3 mt-4 flex items-center gap-3 rounded-2xl border border-trama-line bg-white p-4" : "mx-5 my-3 flex items-center gap-3 rounded-lg p-3.5"}
             style={v2 ? undefined : { background: "linear-gradient(120deg,#E8F6FD,#E3F9F5)" }}
           >
-            <div className="text-[34px]">🤝</div>
+            {v2 ? (
+              <span className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-[12px] bg-trama-primary-soft text-trama-primary" aria-hidden="true">
+                <i className="ti ti-users-group text-[22px]" />
+              </span>
+            ) : (
+              <div className="text-[34px]">🤝</div>
+            )}
             <div>
-              <div className={v2 ? "text-[15px] font-semibold text-ink" : "text-sm font-bold text-ink"}>Andiamo Insieme</div>
-              <div className={v2 ? "mt-0.5 text-[13px] text-ink-2" : "mt-0.5 text-xs text-ink-2"}>
-                Crea un gruppo e ottieni sconti con gli amici
+              <div className={v2 ? "text-[15px] font-semibold text-ink" : "text-sm font-bold text-ink"}>{v2 ? "Andiamo insieme" : "Andiamo Insieme"}</div>
+              <div className={v2 ? "mt-0.5 text-[13px] leading-snug text-ink-2" : "mt-0.5 text-xs text-ink-2"}>
+                {v2 ? "Prenotate con altre famiglie: sconto di gruppo e passaggi condivisi." : "Crea un gruppo e ottieni sconti con gli amici"}
               </div>
             </div>
             {!showNew && (
               <button
                 onClick={() => setShowNew(true)}
-                className={`ml-auto whitespace-nowrap ${v2 ? "min-h-[40px] rounded-full px-4 text-[13px]" : "rounded-md px-3 py-2 text-xs"} ${accentBg} font-bold text-white`}
+                className={`ml-auto whitespace-nowrap ${v2 ? "min-h-[44px] rounded-[12px] px-4 text-[13.5px]" : "rounded-md px-3 py-2 text-xs"} ${accentBg} font-bold text-white`}
               >
                 + Nuovo
               </button>
@@ -292,7 +299,7 @@ function ScopriTab({
   nextgen?: boolean | "v2";
   detailQuery?: string;
 }) {
-  const accentBg = nextgen ? "bg-trama-violet" : "bg-sky";
+  const accentBg = nextgen === "v2" ? "bg-trama-primary" : nextgen ? "bg-trama-violet" : "bg-sky";
   const router = useRouter();
   const [groups, setGroups] = useState(initialPublicGroups);
   const [joiningId, setJoiningId] = useState<string | null>(null);
@@ -326,14 +333,24 @@ function ScopriTab({
       {groups.map((g) => (
         <div
           key={g.id}
-          className={nextgen === "v2" ? "mb-3 flex items-center gap-3 rounded-[20px] bg-white p-4 shadow-[0_1px_2px_rgba(23,42,77,0.06),0_6px_20px_rgba(23,42,77,0.06)]" : "mb-3 flex items-center gap-3 rounded-xl border border-[#E8EBF0] bg-white p-3.5"}
+          className={nextgen === "v2" ? "mb-3 flex items-center gap-3 rounded-2xl border border-trama-line bg-white p-4" : "mb-3 flex items-center gap-3 rounded-[12px] border border-[#E8EBF0] bg-white p-3.5"}
         >
-          <div
-            className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-lg text-xl"
-            style={{ background: g.gradient }}
-          >
-            {g.emoji}
-          </div>
+          {nextgen === "v2" ? (
+            <span
+              className="relative flex h-11 w-11 flex-shrink-0 items-center justify-center overflow-hidden rounded-[12px] border border-trama-line bg-[#F4F1EA] font-poppins text-[15px] font-semibold text-trama-navy/80"
+              aria-hidden="true"
+            >
+              <span className="absolute inset-x-0 top-0 h-[3px]" style={{ background: threadColorFor(g.name) }} />
+              {monogramFor(g.name)}
+            </span>
+          ) : (
+            <div
+              className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-lg text-xl"
+              style={{ background: g.gradient }}
+            >
+              {g.emoji}
+            </div>
+          )}
           <div className="min-w-0 flex-1">
             <div className="truncate text-sm font-bold text-ink">{g.name}</div>
             <div className="mt-0.5 truncate text-xs text-ink-2">
@@ -346,7 +363,7 @@ function ScopriTab({
           <button
             onClick={() => handleJoin(g.id)}
             disabled={joiningId === g.id}
-            className={`flex-shrink-0 whitespace-nowrap ${nextgen === "v2" ? "min-h-[40px] rounded-full px-4 text-[13px]" : "rounded-md px-3 py-2 text-xs"} ${accentBg} font-bold text-white disabled:opacity-60`}
+            className={`flex-shrink-0 whitespace-nowrap ${nextgen === "v2" ? "min-h-[44px] rounded-[12px] px-4 text-[13.5px]" : "rounded-md px-3 py-2 text-xs"} ${accentBg} font-bold text-white disabled:opacity-60`}
           >
             {joiningId === g.id ? "Un momento…" : "Unisciti"}
           </button>
@@ -370,7 +387,7 @@ function InvitiTab({
   nextgen?: boolean | "v2";
   detailQuery?: string;
 }) {
-  const accentBg = nextgen ? "bg-trama-violet" : "bg-sky";
+  const accentBg = nextgen === "v2" ? "bg-trama-primary" : nextgen ? "bg-trama-violet" : "bg-sky";
   const router = useRouter();
   const [invites, setInvites] = useState(initialInvites);
   const [busyId, setBusyId] = useState<string | null>(null);
@@ -412,7 +429,7 @@ function InvitiTab({
   return (
     <div className="px-5 pt-3">
       {invites.map((inv) => (
-        <div key={inv.id} className={nextgen === "v2" ? "mb-3 rounded-[20px] bg-white p-4 shadow-[0_1px_2px_rgba(23,42,77,0.06),0_6px_20px_rgba(23,42,77,0.06)]" : "mb-3 rounded-xl border border-[#E8EBF0] bg-white p-3.5"}>
+        <div key={inv.id} className={nextgen === "v2" ? "mb-3 rounded-2xl border border-trama-line bg-white p-4" : "mb-3 rounded-[12px] border border-[#E8EBF0] bg-white p-3.5"}>
           <div className="text-sm font-bold text-ink">{inv.groupName}</div>
           <div className="mt-0.5 text-xs text-ink-2">
             {inv.inviterName ? `${inv.inviterName} ti ha invitato` : "Sei stato invitato"}
@@ -429,7 +446,7 @@ function InvitiTab({
             <button
               onClick={() => handleAccept(inv.id)}
               disabled={busyId === inv.id}
-              className={`${nextgen === "v2" ? "min-h-[40px] rounded-full px-4 text-[13px]" : "rounded-md px-3.5 py-2 text-xs"} ${accentBg} font-bold text-white disabled:opacity-60`}
+              className={`${nextgen === "v2" ? "min-h-[44px] rounded-[12px] px-4 text-[13.5px]" : "rounded-md px-3.5 py-2 text-xs"} ${accentBg} font-bold text-white disabled:opacity-60`}
             >
               {busyId === inv.id ? "Un momento…" : "Accetta"}
             </button>
@@ -438,7 +455,7 @@ function InvitiTab({
               disabled={busyId === inv.id}
               className={
                 nextgen === "v2"
-                  ? "min-h-[40px] rounded-full border border-[#E3E6EC] bg-white px-4 text-[13px] font-semibold text-trama-navy disabled:opacity-60"
+                  ? "min-h-[44px] rounded-[12px] border border-[#D9DDE5] bg-white px-4 text-[13.5px] font-semibold text-trama-primary disabled:opacity-60"
                   : "rounded-md border border-[#E8EBF0] px-3.5 py-2 text-xs font-semibold text-ink disabled:opacity-60"
               }
             >

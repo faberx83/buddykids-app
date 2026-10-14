@@ -12,6 +12,7 @@ import { useState } from "react";
 import Link from "next/link";
 import type { Activity } from "@/lib/types";
 import { toggleFavoriteAction } from "@/app/actions/favorites";
+import ActivityVisual from "@/components/nextgen/ActivityVisual";
 
 export default function DiscoverResultCard({
   activity,
@@ -46,19 +47,13 @@ export default function DiscoverResultCard({
 
   return (
     <article
-      className={`relative mb-3 flex flex-col overflow-hidden rounded-[20px] bg-white ${
-        raised ? "shadow-[0_1px_2px_rgba(23,42,77,0.06),0_6px_20px_rgba(23,42,77,0.06)]" : "border border-[#ECEEF2]"
-      }`}
+      className={`relative mb-3 flex flex-col overflow-hidden rounded-2xl border bg-white ${raised ? "border-[#DCD8CF]" : "border-trama-line"}`}
     >
       <Link href={href} data-spotlight="activity_card" className="flex flex-col text-ink">
-        <span
-          className="relative flex h-[120px] items-center justify-center bg-cover bg-center text-6xl"
-          style={activity.coverImageUrl ? { backgroundImage: `url(${activity.coverImageUrl})` } : { background: activity.imgGradient }}
-          aria-hidden="true"
-        >
-          {!activity.coverImageUrl && activity.emoji}
+        {/* POLISH V2: foto vera se c'è, altrimenti monogramma + filo TRAMA (niente emoji gigante). */}
+        <ActivityVisual title={activity.name} imageUrl={activity.coverImageUrl} className="h-[120px]">
           <span className="absolute left-3 top-3 rounded-full bg-white px-2.5 py-1 text-[11.5px] font-bold text-[#146B4F]">Partner TRAMA</span>
-        </span>
+        </ActivityVisual>
         <span className="flex flex-col gap-1.5 px-4 pb-[15px] pt-[13px]">
           <span className="text-[16px] font-semibold leading-snug">{activity.name}</span>
           {meta && <span className="text-[13px] text-ink-2">{meta}</span>}
@@ -68,7 +63,7 @@ export default function DiscoverResultCard({
                 <span
                   key={r}
                   className={`rounded-full px-2.5 py-[3px] text-[12px] font-semibold ${
-                    i === 0 && r.startsWith("Posti liberi") ? "bg-[#E6F6F0] text-[#146B4F]" : r.startsWith("Adatto") || r.startsWith("Piace") ? "bg-[#F4F2FC] text-[#4A3F9E]" : "bg-[#F1F3F6] text-[#374151]"
+                    i === 0 && r.startsWith("Posti liberi") ? "bg-[#E6F6F0] text-[#146B4F]" : r.startsWith("Adatto") || r.startsWith("Piace") ? "bg-trama-accent-soft text-trama-accent-ink" : "bg-[#F1F3F6] text-[#374151]"
                   }`}
                 >
                   {r}
@@ -80,7 +75,7 @@ export default function DiscoverResultCard({
             <span className="text-[15px] font-bold text-trama-navy">
               €{activity.pricePerWeek} <span className="text-[12.5px] font-medium text-ink-2">a settimana</span>
             </span>
-            <span className="flex min-h-[40px] items-center rounded-full bg-trama-violet px-4 text-[13.5px] font-bold text-white">Vedi</span>
+            <span className="flex min-h-[44px] items-center rounded-[12px] bg-trama-primary px-4 text-[14px] font-bold text-white">Vedi</span>
           </span>
         </span>
       </Link>
@@ -97,9 +92,9 @@ export default function DiscoverResultCard({
             });
           }
         }}
-        className="absolute right-2.5 top-2.5 flex h-10 w-10 items-center justify-center rounded-full bg-white text-trama-navy active:scale-95"
+        className="absolute right-2 top-2 flex h-11 w-11 items-center justify-center rounded-full bg-white text-trama-navy active:scale-95"
       >
-        <i className={`ti ${fav ? "ti-bookmark-filled text-trama-violet" : "ti-bookmark"} text-[19px]`} aria-hidden="true" />
+        <i className={`ti ${fav ? "ti-bookmark-filled text-trama-primary" : "ti-bookmark"} text-[19px]`} aria-hidden="true" />
       </button>
     </article>
   );

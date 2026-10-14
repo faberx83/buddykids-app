@@ -492,8 +492,9 @@ function AccessGate({
   if (usingRealAuth) {
     return (
       <div className="flex min-h-screen flex-col items-center justify-center gap-4 bg-bg px-6 text-center">
-        <div className="flex h-16 w-16 items-center justify-center rounded-full bg-orange-light text-3xl">
-          🔒
+        {/* POLISH V2 (14/10/2026): icona di sistema al posto dell'emoji. */}
+        <div className="flex h-16 w-16 items-center justify-center rounded-full bg-[#F1F3F6] text-trama-navy" aria-hidden="true">
+          <i className="ti ti-lock text-[30px]" />
         </div>
         <div className="text-lg font-bold text-ink">Accesso non autorizzato</div>
         <p className="max-w-sm text-sm text-ink-2">
@@ -509,8 +510,8 @@ function AccessGate({
 
   return (
     <div className="flex min-h-screen flex-col items-center justify-center gap-4 bg-bg px-6 text-center">
-      <div className="flex h-16 w-16 items-center justify-center rounded-full bg-orange-light text-3xl">
-        🔒
+      <div className="flex h-16 w-16 items-center justify-center rounded-full bg-[#F1F3F6] text-trama-navy" aria-hidden="true">
+        <i className="ti ti-lock text-[30px]" />
       </div>
       <div className="text-lg font-bold text-ink">Accesso riservato</div>
       <p className="max-w-sm text-sm text-ink-2">

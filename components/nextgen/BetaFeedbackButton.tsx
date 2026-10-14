@@ -103,8 +103,11 @@ function containerBounds(el: HTMLElement | null): { width: number; height: numbe
 
 export default function BetaFeedbackButton({
   appSource = "genitori",
+  hideFab = false,
 }: {
   appSource?: "genitori" | "gestore";
+  /** POLISH V2 (14/10/2026): con la nuova barra niente pulsante flottante; il pannello si apre da Profilo → "Aiutaci a migliorare TRAMA". */
+  hideFab?: boolean;
 } = {}) {
   const pathname = usePathname();
   // TRAMA BETA v1.1.1 (FINAL FUNCTIONAL + UI CONSISTENCY FIXES, punto 7) —
@@ -288,6 +291,7 @@ export default function BetaFeedbackButton({
 
   return (
     <>
+      {!hideFab && (
       <button
         ref={buttonRef}
         type="button"
@@ -312,6 +316,7 @@ export default function BetaFeedbackButton({
       >
         <i className="ti ti-message-report text-[22px]" />
       </button>
+      )}
 
       {open && (
         <div className="fixed inset-0 z-[80] flex items-end justify-center bg-black/40 px-4 pb-6 sm:items-center">

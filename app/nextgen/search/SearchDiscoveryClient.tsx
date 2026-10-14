@@ -10,6 +10,7 @@ import { categories } from "@/lib/mock-data";
 import { getSeasonWeekRanges, isoDate, formatShortRange, SeasonWeekRange } from "@/lib/season-weeks";
 import ActivityCard from "@/components/ActivityCard";
 import DiscoverResultCard from "@/components/nextgen/DiscoverResultCard";
+import { mapFocusPoints } from "@/lib/nextgen/map-focus";
 import TramaThread from "@/components/nextgen/TramaThread";
 import { activityOpenIn, discoveryOpenIn, periodForWeek, type DiscoverPeriod } from "@/lib/nextgen/discover-v2";
 import PageHeader from "@/components/PageHeader";
@@ -469,7 +470,7 @@ export default function SearchDiscoveryClient({
   // classi restano quelle di prima.
   const panelBox = (extra = "") =>
     v2
-      ? `mb-3 rounded-[20px] bg-white p-4 shadow-[0_1px_2px_rgba(23,42,77,0.06),0_6px_20px_rgba(23,42,77,0.06)] ${extra}`
+      ? `mb-3 rounded-2xl border border-trama-line bg-white p-4 ${extra}`
       : `mb-3 ${extra} rounded-lg border border-[#E8EBF0] bg-bg p-3`;
   const panelTitle = v2 ? "mb-2.5 text-[13px] font-semibold text-ink" : "mb-2 text-xs font-semibold text-ink-2";
   const panelChip = v2
@@ -1024,6 +1025,20 @@ export default function SearchDiscoveryClient({
             }
       ),
     [discoveryMapItems, proposedLeadIds, curatedFavoriteIdsSet]
+  );
+
+  // POLISH V2 (14/10/2026): in V2 la vista iniziale della mappa si centra
+  // sui risultati vicini (posizione della famiglia o gruppo più fitto), non
+  // su tutta l'Italia quando i risultati sono sparsi (lib/nextgen/map-focus.ts).
+  const mapFocus = useMemo(
+    () =>
+      v2
+        ? mapFocusPoints(
+            mapMarkerItems.map((i) => [i.lat, i.lng] as [number, number]),
+            geo ? [geo.lat, geo.lng] : null
+          )
+        : undefined,
+    [v2, mapMarkerItems, geo]
   );
 
   // §13 "MAP COUNT / MISSING GEO": il count generale (totalResultsCount,
@@ -1923,7 +1938,11 @@ export default function SearchDiscoveryClient({
                 <button
                   type="button"
                   onClick={() => setViewMode("lista")}
-                  className="rounded-full bg-trama-violet px-4 py-2 text-xs font-semibold text-white active:scale-95"
+                  className={
+                    v2
+                      ? "min-h-[44px] rounded-[12px] bg-trama-primary px-4 text-[14px] font-bold text-white active:bg-trama-primary-press"
+                      : "rounded-full bg-trama-violet px-4 py-2 text-xs font-semibold text-white active:scale-95"
+                  }
                 >
                   Torna alla lista
                 </button>
@@ -1950,6 +1969,7 @@ export default function SearchDiscoveryClient({
                   initialViewState={mapViewState ?? undefined}
                   skipInitialFit={hadRestoredMapView}
                   onViewStateChange={(center, zoom) => setMapViewState({ center, zoom })}
+                  fitPoints={mapFocus}
                 />
                 {/* TRAMA — DISCOVERY LIVE UX BUGFIX (22/09/2026), §2 "LEGEND
                     — STABLE". PRIMA: condizionata alla presenza di almeno un
@@ -1979,7 +1999,15 @@ export default function SearchDiscoveryClient({
                 {/* §13 "MAP COUNT / MISSING GEO": microcopy esplicita invece
                     di un conteggio generico silenzioso quando Lista e Mappa
                     divergono. */}
-                {activityResultsCount > 0 && mappedActivitiesCount < activityResultsCount && (
+                {/* POLISH V2: un solo messaggio utile, niente conteggi di debug. */}
+                {v2 && activityResultsCount > 0 && mappedActivitiesCount < activityResultsCount && (
+                  <p className="pt-2 text-center text-[12.5px] text-ink-2">
+                    {activityResultsCount - mappedActivitiesCount === 1
+                      ? "1 attività non ha ancora una posizione precisa. La trovi in Elenco."
+                      : `${activityResultsCount - mappedActivitiesCount} attività non hanno ancora una posizione precisa. Le trovi in Elenco.`}
+                  </p>
+                )}
+                {!v2 && activityResultsCount > 0 && mappedActivitiesCount < activityResultsCount && (
                   <p className="pt-2 text-center text-[11px] text-ink-3">
                     {mappedActivitiesCount} di {activityResultsCount} attività visibili sulla mappa —{" "}
                     {activityResultsCount - mappedActivitiesCount}{" "}
@@ -1993,7 +2021,7 @@ export default function SearchDiscoveryClient({
                     solo il caso Municipio 7). Mai confusa con il count
                     principale sopra: quello parla di ATTIVITÀ, questo di
                     SEDI/marker. */}
-                {mapMarkersCount > mappedActivitiesCount && (
+                {!v2 && mapMarkersCount > mappedActivitiesCount && (
                   <p className="pt-1 text-center text-[10.5px] text-ink-3">
                     {mapMarkersCount} sedi sulla mappa — alcune attività hanno più di un punto.
                   </p>
@@ -2067,7 +2095,7 @@ export default function SearchDiscoveryClient({
             type="button"
             onClick={() => setRadarOpen(true)}
             data-testid="radar-add-discovery-cta"
-            className="mt-2 flex w-full items-center gap-3 rounded-2xl bg-[#F6F4EF] px-3.5 py-3 text-left text-ink active:scale-[0.99]"
+            className="mt-2 flex min-h-[60px] w-full items-center gap-3 rounded-2xl border border-trama-line bg-[#F8F6F1] px-3.5 py-3 text-left text-ink active:scale-[0.99]"
           >
             <span className="flex h-[34px] w-[34px] items-center justify-center rounded-[10px] bg-white text-trama-navy">
               <i className="ti ti-plus text-[18px]" aria-hidden="true" />

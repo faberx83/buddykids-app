@@ -39,6 +39,17 @@ const config: Config = {
           "error-light": "#FFEBE8",
           card: "#F7F9FC",
           page: "#FDFCFA",
+          // POLISH V2 (14/10/2026, "NAVY + OFF-WHITE + FILI TRAMA"): nomi
+          // semantici per le superfici V2. primary = navy (CTA, +, nav
+          // attiva, selezioni); accent = viola, declassato a dettaglio;
+          // line = bordo sottile caldo che sostituisce le ombre delle card.
+          primary: "#172A4D",
+          "primary-press": "#0F1E3A",
+          "primary-soft": "#E9EDF4",
+          accent: "#6F63C5",
+          "accent-ink": "#4A3F9E",
+          "accent-soft": "#F1EFFA",
+          line: "#E9E6DF",
         },
       },
       fontFamily: {

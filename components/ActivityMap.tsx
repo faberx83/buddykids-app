@@ -228,6 +228,7 @@ export default function ActivityMap({
   initialViewState,
   skipInitialFit,
   onViewStateChange,
+  fitPoints,
 }: {
   items: MapItem[];
   userPosition?: { lat: number; lng: number };
@@ -248,6 +249,8 @@ export default function ActivityMap({
   // comporta esattamente come prima.
   initialViewState?: { center: [number, number]; zoom: number };
   skipInitialFit?: boolean;
+  /** POLISH V2 (14/10/2026): punti su cui centrare la vista (es. solo i risultati vicini); assente = tutti i segnaposto. */
+  fitPoints?: [number, number][];
   onViewStateChange?: (center: [number, number], zoom: number) => void;
 }) {
   // FIX (24/09/2026, vedi commento su UserPositionFocus sopra): `points`
@@ -257,7 +260,23 @@ export default function ActivityMap({
   // parte da <UserPositionFocus /> qui sotto.
   const points = useMemo<[number, number][]>(() => items.map((it) => [it.lat, it.lng]), [items]);
 
-  const center = initialViewState?.center ?? points[0] ?? MILAN_FALLBACK;
+  // POLISH V2 (14/10/2026): gestori del tocco STABILI per segnaposto. Prima
+  // ogni render creava un oggetto nuovo e react-leaflet toglieva e
+  // rimetteva l'ascoltatore su ogni marker a ogni selezione; ora cambiano
+  // solo se cambia l'elenco dei segnaposto.
+  const onSelectRef = useRef(onSelect);
+  useEffect(() => {
+    onSelectRef.current = onSelect;
+  });
+  const itemIdsKey = items.map((it) => it.id).join("|");
+  const clickHandlers = useMemo(() => {
+    const out: Record<string, { click: () => void }> = {};
+    for (const id of itemIdsKey.split("|")) out[id] = { click: () => onSelectRef.current?.(id) };
+    return out;
+  }, [itemIdsKey]);
+
+  const focus = fitPoints && fitPoints.length > 0 ? fitPoints : points;
+  const center = initialViewState?.center ?? focus[0] ?? MILAN_FALLBACK;
   const zoom = initialViewState?.zoom ?? 12;
 
   return (
@@ -304,7 +323,7 @@ export default function ActivityMap({
           referrerPolicy="origin"
           maxZoom={19}
         />
-        <FitBounds points={points} skip={skipInitialFit} />
+        <FitBounds points={focus} skip={skipInitialFit} />
         {userPosition && <UserPositionFocus position={[userPosition.lat, userPosition.lng]} />}
         {onViewStateChange && <ViewStateReporter onChange={onViewStateChange} />}
         {items.map((it) =>
@@ -324,7 +343,7 @@ export default function ActivityMap({
               key={it.id}
               position={[it.lat, it.lng]}
               {...(selectedId === it.id ? { icon: selectedIcon } : {})}
-              eventHandlers={{ click: () => onSelect(it.id) }}
+              eventHandlers={clickHandlers[it.id]}
             />
           ) : (
             <Marker

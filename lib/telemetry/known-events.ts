@@ -145,6 +145,7 @@ export const KNOWN_PRODUCT_EVENTS = [
   "announcement_read", // Novità segnata come letta (detail = announcement id)
   "announcement_voted", // 👍/👎 su una Novità "In arrivo" (detail = `${id}:up|down|none`)
   "feedback_opened", // apertura del pannello feedback (detail = sorgente)
+  "planner_subview_error", // POLISH V2 (14/10/2026): Mappa/Gruppi del Planner V2 non caricati (detail = sottovista + errore, max 60)
   "feedback_submitted", // invio feedback (detail = categoria)
   // TRAMA — RADAR / COMMUNITY DISCOVERY (12/10/2026), brief §23. `detail` =
   // nome dell'analizzatore o id del contenuto, mai testo dell'utente.

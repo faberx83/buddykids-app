@@ -54,6 +54,7 @@ import {
   buildWeekModel,
   mondayOfIso,
   weekStatusParts,
+  itemsInWeek,
   type WeekDayModel,
 } from "@/lib/nextgen/planner-week";
 import { buildSeasonRows, coverageByKid, type SeasonFilter, type SeasonRow } from "@/lib/nextgen/planner-season";
@@ -75,6 +76,7 @@ import PlannerCalendarExportCard from "@/components/nextgen/PlannerCalendarExpor
 import ExternalPlannerItemsSection from "@/components/nextgen/ExternalPlannerItemsSection";
 import { useNextgenToast } from "@/components/nextgen/NextgenToastProvider";
 import { useGlobalActionProgress } from "@/components/GlobalActionProgress";
+import { recordBetaSignalAction } from "@/app/actions/beta-signals";
 
 type View = "settimana" | "stagione";
 export interface HolidayPeriodRow {
@@ -91,7 +93,8 @@ type Panel = "mappa" | "gruppi" | "mese" | "budget" | "esporta" | "chi" | { assi
 const KID_DOTS = ["#6F63C5", "#F6A623", "#2DBA8C", "#4DAFEF"];
 const WEEKDAY_NAME: Record<Weekday, string> = { lun: "lunedì", mar: "martedì", mer: "mercoledì", gio: "giovedì", ven: "venerdì" };
 
-const cardShadow = "shadow-[0_1px_2px_rgba(23,42,77,0.06),0_6px_20px_rgba(23,42,77,0.06)]";
+// POLISH V2 (14/10/2026): bordo navy leggero per evidenziare oggi, niente ombra morbida.
+const cardShadow = "border border-trama-primary/25";
 
 const STATE_CHIP: Record<PeriodWeekState, { label: string; className: string } | null> = {
   organized: { label: "Organizzata", className: "bg-[#E6F6F0] text-[#146B4F]" },
@@ -127,6 +130,7 @@ export default function PlannerV2Client({
   groups,
   savedCount,
   navV2Enabled,
+  showDiagnostics = false,
   calendarExportEnabled,
   calendarExportItems,
 }: {
@@ -155,6 +159,7 @@ export default function PlannerV2Client({
   groups: GroupItem[];
   savedCount: number;
   navV2Enabled: boolean;
+  showDiagnostics?: boolean;
   calendarExportEnabled: boolean;
   calendarExportItems: PlannerCalendarItemForIcs[];
 }) {
@@ -298,7 +303,12 @@ export default function PlannerV2Client({
           </button>
           <h1 className="flex-1 font-poppins text-[22px] font-semibold text-ink">{panel === "mappa" ? "Mappa" : "Gruppi"}</h1>
         </header>
-        <SafeBoundary fallback={(error) => <SubviewError error={error} onBack={() => setPanel(null)} />}>
+        <SafeBoundary
+          name={panel}
+          fallback={(error, retry) => (
+            <SubviewError error={error} what={panel === "mappa" ? "la mappa" : "i gruppi"} showDiagnostics={showDiagnostics} onRetry={retry} onBack={() => setPanel(null)} />
+          )}
+        >
           {panel === "mappa" ? (
             <PlannerMapView pins={mapPins} addresses={addresses} />
           ) : (
@@ -334,7 +344,7 @@ export default function PlannerV2Client({
         {!navV2Enabled && externalEnabled && (
           <Link
             href={NEW_EXTERNAL_ITEM_HREF}
-            className="flex h-[42px] items-center gap-1.5 rounded-full bg-trama-violet pl-3 pr-4 text-[14px] font-bold text-white active:scale-[0.98]"
+            className="flex h-[44px] items-center gap-1.5 rounded-[12px] bg-trama-primary pl-3 pr-4 text-[14px] font-bold text-white active:bg-trama-primary-press"
           >
             <i className="ti ti-plus text-[18px]" aria-hidden="true" />
             Aggiungi
@@ -444,7 +454,14 @@ export default function PlannerV2Client({
       {/* Impegni aggiunti a mano: elenco, modifica, nuovo (componente esistente). */}
       {externalEnabled && view === "settimana" && (
         <section aria-label="I tuoi impegni" className="mt-2">
-          <ExternalPlannerItemsSection items={externalItems} kids={kids} />
+          {/* POLISH V2: solo gli impegni di questa settimana (gli altri restano nelle loro settimane). */}
+          <ExternalPlannerItemsSection
+            items={itemsInWeek(externalItems, monday)}
+            kids={kids}
+            title="Aggiunti da te, questa settimana"
+            emptyText="Nessun impegno aggiunto per questa settimana. Usa + per aggiungerne uno."
+            v2
+          />
         </section>
       )}
 
@@ -565,7 +582,7 @@ function WeekView({
           {week.relativeLabel ? (
             <span className="text-[12.5px] text-ink-2">{week.relativeLabel}</span>
           ) : showToday ? (
-            <button type="button" onClick={onToday} className="self-start text-[12.5px] font-semibold text-[#5B4FB0]">
+            <button type="button" onClick={onToday} className="self-start text-[12.5px] font-semibold text-trama-accent-ink">
               Torna a questa settimana
             </button>
           ) : null}
@@ -602,9 +619,9 @@ function WeekView({
         <button
           type="button"
           onClick={onWho}
-          className="flex items-center gap-3 rounded-2xl border border-[#ECEEF2] bg-white px-3.5 py-3 text-left active:scale-[0.99]"
+          className="flex items-center gap-3 rounded-2xl border border-trama-line bg-white px-3.5 py-3 text-left active:scale-[0.99]"
         >
-          <span className="flex h-[34px] w-[34px] flex-shrink-0 items-center justify-center rounded-[10px] bg-[#F4F2FC] text-trama-violet">
+          <span className="flex h-[34px] w-[34px] flex-shrink-0 items-center justify-center rounded-[10px] bg-trama-primary-soft text-trama-primary">
             <i className="ti ti-car text-[18px]" aria-hidden="true" />
           </span>
           <span className="flex min-w-0 flex-1 flex-col gap-px">
@@ -613,7 +630,7 @@ function WeekView({
               {status.missing ?? "Accompagnamenti della settimana decisi"}
             </span>
           </span>
-          <span className="text-[13px] font-bold text-[#5B4FB0]">{status.missing ? "Assegna" : "Vedi"}</span>
+          <span className="text-[13px] font-bold text-trama-accent-ink">{status.missing ? "Assegna" : "Vedi"}</span>
         </button>
       )}
 
@@ -732,7 +749,7 @@ function DaySection({
         {day.isToday && <TodayChip />}
         {closure}
       </div>
-      <div className={`flex flex-col rounded-[20px] bg-white ${day.isToday ? cardShadow : "border border-[#ECEEF2]"}`}>
+      <div className={`flex flex-col rounded-2xl bg-white ${day.isToday ? cardShadow : "border border-trama-line"}`}>
         {day.entries.map((e, i) => (
           <AgendaItemRow key={e.id} entry={e} orderedKidIds={kidOrder} divider={i < day.entries.length - 1 || day.coordination.mode !== "none"} />
         ))}
@@ -748,7 +765,7 @@ function DaySection({
 }
 
 function TodayChip() {
-  return <span className="rounded-full bg-trama-violet px-2 py-0.5 text-[11px] font-bold text-white">Oggi</span>;
+  return <span className="rounded-full bg-trama-primary px-2 py-0.5 text-[11px] font-bold text-white">Oggi</span>;
 }
 
 // ─── Stagione ───────────────────────────────────────────────────────────
@@ -834,7 +851,7 @@ function SeasonView({
           <h2 id="ponti-h" className="mt-1 font-poppins text-[17px] font-semibold text-ink">
             Chiusure della scuola
           </h2>
-          <div className="flex flex-col rounded-[20px] border border-[#ECEEF2] bg-white">
+          <div className="flex flex-col rounded-2xl border border-trama-line bg-white">
             {holidayPeriods.map((p, i) => {
               const chip = STATE_CHIP[p.state];
               const kidsHome = p.kidIds.map(nameOf).filter(Boolean);
@@ -853,7 +870,7 @@ function SeasonView({
                     {p.state !== "organized" && (
                       <Link
                         href={`/nextgen/search?week=${mondayOfIso(p.startDate)}`}
-                        className="flex min-h-[38px] items-center rounded-full bg-trama-violet px-3.5 text-[13px] font-bold text-white active:scale-[0.98]"
+                        className="flex min-h-[44px] items-center rounded-[12px] border border-[#D9DDE5] bg-white px-3.5 text-[13px] font-bold text-trama-primary active:bg-black/[0.03]"
                       >
                         Trova attività
                       </Link>
@@ -861,7 +878,7 @@ function SeasonView({
                     <button
                       type="button"
                       onClick={() => onOpenWeek(p.startDate)}
-                      className="flex min-h-[38px] items-center rounded-full px-3 text-[13px] font-semibold text-[#4A3F9E]"
+                      className="flex min-h-[44px] items-center rounded-[12px] px-3 text-[13px] font-semibold text-trama-accent-ink"
                     >
                       {p.state === "organized" ? "Vedi la settimana" : "Apri la settimana"}
                     </button>
@@ -881,7 +898,7 @@ function SeasonView({
           type="button"
           aria-expanded={showPastSummer}
           onClick={() => setShowPastSummer((v) => !v)}
-          className="mt-1 flex items-center justify-between rounded-2xl border border-[#ECEEF2] bg-white px-4 py-3 text-left text-[13.5px] font-semibold text-ink"
+          className="mt-1 flex items-center justify-between rounded-2xl border border-trama-line bg-white px-4 py-3 text-left text-[13.5px] font-semibold text-ink"
         >
           {summer.title} · conclusa
           <i className={`ti ${showPastSummer ? "ti-chevron-up" : "ti-chevron-down"} text-[16px] text-ink-2`} aria-hidden="true" />
@@ -935,7 +952,7 @@ function SeasonView({
         groups.map((g) => (
           <section key={g.label} aria-label={g.label} className="flex flex-col gap-2">
             <h3 className="mt-1 text-[12px] font-bold uppercase tracking-wide text-ink-3">{g.label}</h3>
-            <div className="flex flex-col rounded-[20px] border border-[#ECEEF2] bg-white">
+            <div className="flex flex-col rounded-2xl border border-trama-line bg-white">
               {g.rows.map((r, i) => (
                 <SeasonWeekRow
                   key={r.startDate}
@@ -957,7 +974,7 @@ function SeasonView({
         <button
           type="button"
           onClick={onBudget}
-          className="mt-1 flex items-center gap-3 rounded-2xl border border-[#ECEEF2] bg-white px-4 py-3 text-left active:scale-[0.99]"
+          className="mt-1 flex items-center gap-3 rounded-2xl border border-trama-line bg-white px-4 py-3 text-left active:scale-[0.99]"
         >
           <i className="ti ti-wallet text-[20px] text-trama-navy" aria-hidden="true" />
           <span className="flex flex-1 flex-col">
@@ -966,7 +983,7 @@ function SeasonView({
               {budget.totalSpent.toLocaleString("it-IT", { style: "currency", currency: "EUR", maximumFractionDigits: 0 })}
             </span>
           </span>
-          <span className="text-[13px] font-semibold text-[#5B4FB0]">Vedi dettaglio</span>
+          <span className="text-[13px] font-semibold text-trama-accent-ink">Vedi dettaglio</span>
         </button>
       )}
     </>
@@ -1014,7 +1031,7 @@ function SeasonWeekRow({
           {row.state === "to_organize" && (
             <Link
               href={`/nextgen/search?week=${row.startDate}`}
-              className="flex min-h-[38px] items-center rounded-full bg-trama-violet px-3.5 text-[13px] font-bold text-white active:scale-[0.98]"
+              className="flex min-h-[44px] items-center rounded-[12px] border border-[#D9DDE5] bg-white px-3.5 text-[13px] font-bold text-trama-primary active:bg-black/[0.03]"
             >
               Trova attività
             </Link>
@@ -1022,7 +1039,7 @@ function SeasonWeekRow({
           <button
             type="button"
             onClick={() => onToggleDismissed(row.state !== "not_needed")}
-            className="flex min-h-[38px] items-center rounded-full px-3 text-[13px] font-semibold text-[#4A3F9E]"
+            className="flex min-h-[44px] items-center rounded-[12px] px-3 text-[13px] font-semibold text-trama-accent-ink"
           >
             {row.state === "not_needed" ? "Ripristina" : "Non serve"}
           </button>
@@ -1128,7 +1145,7 @@ function MonthSheet({
             type="button"
             onClick={() => onPick(r.mondayIso)}
             aria-label={`Apri la settimana dal ${Number(r.mondayIso.slice(8, 10))}`}
-            className={`grid grid-cols-7 rounded-xl py-1.5 ${r.mondayIso === selectedMonday ? "bg-[#F4F2FC]" : "active:bg-black/[0.03]"}`}
+            className={`grid grid-cols-7 rounded-[12px] py-1.5 ${r.mondayIso === selectedMonday ? "bg-trama-primary-soft" : "active:bg-black/[0.03]"}`}
           >
             {r.cells.map((c) => (
               <span key={c.dateIso} className="flex flex-col items-center gap-1">
@@ -1304,7 +1321,7 @@ function AssignSheet({
                         placeholder="Es. Zio Marco"
                         className="min-h-[40px] flex-1 rounded-xl border border-[#E3E6EC] px-3 text-[14px]"
                       />
-                      <button type="submit" className="min-h-[40px] rounded-xl bg-trama-violet px-4 text-[13px] font-bold text-white">
+                      <button type="submit" className="min-h-[44px] rounded-[12px] bg-trama-primary px-4 text-[13px] font-bold text-white active:bg-trama-primary-press">
                         Salva
                       </button>
                     </form>
@@ -1314,7 +1331,7 @@ function AssignSheet({
             })}
           </div>
         ))}
-        <button type="button" onClick={onClose} className="min-h-[46px] rounded-full bg-trama-navy text-[14px] font-bold text-white">
+        <button type="button" onClick={onClose} className="min-h-[48px] rounded-[12px] bg-trama-primary text-[14px] font-bold text-white active:bg-trama-primary-press">
           Fatto
         </button>
       </div>
@@ -1392,7 +1409,7 @@ function WeekWhoSheet({
   return (
     <Sheet title={`Chi fa cosa · ${week.label}`} onClose={onClose} tall>
       <div className="flex flex-col gap-5">
-        <section aria-label="Giorno per giorno" className="flex flex-col rounded-[18px] border border-[#ECEEF2]">
+        <section aria-label="Giorno per giorno" className="flex flex-col rounded-[18px] border border-trama-line">
           {days.map((d, i) => (
             <button
               key={d.dateIso}
@@ -1404,7 +1421,7 @@ function WeekWhoSheet({
               <span className="flex items-center justify-between">
                 <span className="text-[13.5px] font-bold text-trama-navy">{d.label}</span>
                 {!d.isPast && (
-                  <span className="text-[12.5px] font-bold text-[#5B4FB0]">{d.coordination.missingCount > 0 ? "Assegna" : "Modifica"}</span>
+                  <span className="text-[12.5px] font-bold text-trama-accent-ink">{d.coordination.missingCount > 0 ? "Assegna" : "Modifica"}</span>
                 )}
               </span>
               <CoordinationTable coordination={d.coordination} kidOrder={kidOrder} />
@@ -1439,7 +1456,7 @@ function WeekWhoSheet({
           </section>
         )}
 
-        <button type="button" onClick={onClose} className="min-h-[46px] rounded-full bg-trama-navy text-[14px] font-bold text-white">
+        <button type="button" onClick={onClose} className="min-h-[48px] rounded-[12px] bg-trama-primary text-[14px] font-bold text-white active:bg-trama-primary-press">
           Fatto
         </button>
       </div>
@@ -1451,13 +1468,19 @@ function WeekWhoSheet({
 
 /** Un errore in un componente esistente (es. la mappa) non deve far cadere
  *  tutto il Planner: si mostra un messaggio e si torna indietro. */
-class SafeBoundary extends Component<{ fallback: (error: unknown) => ReactNode; children: ReactNode }, { error: unknown }> {
-  state = { error: null as unknown };
+class SafeBoundary extends Component<
+  { name: string; fallback: (error: unknown, retry: () => void) => ReactNode; children: ReactNode },
+  { error: unknown; attempt: number }
+> {
+  state = { error: null as unknown, attempt: 0 };
   static getDerivedStateFromError(error: unknown) {
     return { error: error ?? new Error("errore sconosciuto") };
   }
   componentDidCatch(error: unknown) {
     console.error("[PlannerV2] sottovista non caricata", error);
+    // POLISH V2 (14/10/2026): traccia nella telemetria esistente (product_events), mai bloccante.
+    const short = error instanceof Error ? `${error.name}: ${error.message}` : String(error);
+    void recordBetaSignalAction("planner_subview_error", `${this.props.name} ${short}`.slice(0, 60)).catch(() => {});
     // Dopo un nuovo deploy il telefono può avere ancora la vecchia versione
     // dell'app: il pezzo di codice della mappa non esiste più (ChunkLoadError).
     // Si ricarica la pagina una volta sola.
@@ -1474,11 +1497,27 @@ class SafeBoundary extends Component<{ fallback: (error: unknown) => ReactNode; 
     }
   }
   render() {
-    return this.state.error ? this.props.fallback(this.state.error) : this.props.children;
+    if (this.state.error) {
+      return this.props.fallback(this.state.error, () => this.setState((s) => ({ error: null, attempt: s.attempt + 1 })));
+    }
+    // key = tentativo: "Riprova" rimonta da zero la sottovista (mappa nuova).
+    return <div key={this.state.attempt}>{this.props.children}</div>;
   }
 }
 
-function SubviewError({ error, onBack }: { error: unknown; onBack: () => void }) {
+function SubviewError({
+  error,
+  what,
+  showDiagnostics,
+  onRetry,
+  onBack,
+}: {
+  error: unknown;
+  what: string;
+  showDiagnostics: boolean;
+  onRetry: () => void;
+  onBack: () => void;
+}) {
   // 14/10/2026: anche le prime righe dello stack (funzione che ha sbagliato),
   // per trovare la causa se l'errore si ripresenta.
   const where =
@@ -1491,16 +1530,21 @@ function SubviewError({ error, onBack }: { error: unknown; onBack: () => void })
       : "";
   const detail = error instanceof Error ? `${error.name}: ${error.message}${where ? ` · ${where}` : ""}` : String(error);
   return (
-    <div className="flex flex-col items-start gap-3 rounded-2xl border border-dashed border-[#D6DAE3] bg-white p-5">
-      <span className="text-[14px] font-semibold text-ink">Questa parte non si è caricata</span>
-      <span className="text-[13px] text-ink-2">Riprova tra poco. Il resto del Planner funziona normalmente.</span>
-      {/* Anteprima interna: il dettaglio tecnico serve a capire la causa. */}
-      <code className="max-w-full break-words rounded-lg bg-[#F6F4EF] px-2 py-1 text-[11px] text-[#4B5563]">{detail.slice(0, 360)}</code>
+    <div role="alert" className="flex flex-col items-start gap-3 rounded-2xl border border-trama-line bg-white p-5">
+      <span className="flex items-center gap-2 text-[15px] font-semibold text-ink">
+        <i className="ti ti-map-off text-[20px] text-ink-2" aria-hidden="true" />
+        Non siamo riusciti a caricare {what}.
+      </span>
+      <span className="text-[13.5px] text-ink-2">Il resto del Planner funziona normalmente.</span>
+      {/* Solo per l'Admin piattaforma: il dettaglio tecnico serve a capire la causa. Pilot e Tutti non lo vedono. */}
+      {showDiagnostics && (
+        <code className="max-w-full break-words rounded-lg bg-[#F6F4EF] px-2 py-1 text-[11px] text-[#4B5563]">{detail.slice(0, 360)}</code>
+      )}
       <div className="flex gap-2">
-        <button type="button" onClick={() => window.location.reload()} className="min-h-[40px] rounded-full bg-trama-navy px-4 text-[13px] font-bold text-white">
+        <button type="button" onClick={onRetry} className="min-h-[44px] rounded-[12px] bg-trama-primary px-4 text-[14px] font-bold text-white active:bg-trama-primary-press">
           Riprova
         </button>
-        <button type="button" onClick={onBack} className="min-h-[40px] rounded-full px-3 text-[13px] font-semibold text-[#4A3F9E]">
+        <button type="button" onClick={onBack} className="min-h-[44px] rounded-[12px] px-3 text-[14px] font-semibold text-trama-accent-ink">
           Torna al Planner
         </button>
       </div>

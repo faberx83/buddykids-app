@@ -334,7 +334,8 @@ test.describe("HOME-V2 — flag, ripiego e release", () => {
 
   test("HV2-24: una sola campanella: il pulsante flottante si nasconde solo con quella della Home V2", () => {
     const nc = read("components/nextgen/NotificationCenter.tsx");
-    expect(nc).toContain("{!headerBellPresent && (");
+    // Polish V2 (14/10/2026): con la nuova barra il flottante non c'è proprio (hideFloatingBell).
+    expect(nc).toContain("{!headerBellPresent && !hideFloatingBell && (");
     expect(nc).toContain("HEADER_BELL_EVENT");
     const v2 = read("app/nextgen/HomeDashboardV2Client.tsx");
     expect(v2).toContain("announceHeaderBell(true)");
@@ -399,11 +400,12 @@ test.describe("HOME-V2 — correzioni verifica live 14/10", () => {
     expect(read("app/nextgen/home-v2-data.ts")).toContain('summary.isOver && summary.state !== "welcome" ? holidaySummary : summary');
   });
 
-  test("HV2-29: colori e superfici del design V2.1 (sfondo caldo, link #5B4FB0, mesi abbreviati)", () => {
+  test("HV2-29: colori e superfici del design V2 (sfondo caldo, link accento, mesi abbreviati)", () => {
     const v2 = read("app/nextgen/HomeDashboardV2Client.tsx");
     expect(v2).toContain("bg-trama-page");
-    expect(v2).toContain("text-[#5B4FB0]");
-    expect(v2).toContain("text-[#4A3F9E]"); // "Più tardi"
+    // Polish V2 (14/10/2026): i link usano il token accento (#4A3F9E) al posto di #5B4FB0 scritto a mano.
+    expect(v2).toContain("text-trama-accent-ink");
+    expect(v2).not.toContain("text-[#5B4FB0]");
     expect(read("components/nextgen/SeasonSummaryCard.tsx")).toContain("m.span >= 3 ? m.label : m.label.slice(0, 3)");
   });
 

@@ -5,7 +5,6 @@
 // dà il testo: niente segnaposto visibili agli utenti.
 
 import Link from "next/link";
-import TramaThread from "@/components/nextgen/TramaThread";
 
 const STEPS = [
   { title: "Mettete in fila le settimane", body: "Quello che i figli fanno già, anche fuori da TRAMA." },
@@ -30,7 +29,6 @@ export default function CosETramaPage() {
       <div className="flex flex-col items-start gap-3">
         <img src="/brand/trama-logo-mark.png" alt="TRAMA" className="h-12 w-auto" />
         <h1 className="font-poppins text-[26px] font-semibold leading-tight text-ink">Cos&apos;è TRAMA</h1>
-        <TramaThread className="-mt-1" />
         <p className="text-[15px] leading-relaxed text-[#374151]">
           Il posto dove una famiglia tiene insieme le settimane dei figli: scuola, attività, centri estivi e chi
           accompagna chi.
@@ -39,7 +37,7 @@ export default function CosETramaPage() {
 
       <section
         aria-labelledby="come-h"
-        className="flex flex-col gap-3.5 rounded-[20px] bg-white p-[18px] shadow-[0_1px_2px_rgba(23,42,77,0.06),0_6px_20px_rgba(23,42,77,0.06)]"
+        className="flex flex-col gap-3.5 rounded-2xl border border-trama-line bg-white p-[18px]"
       >
         <h2 id="come-h" className="font-poppins text-[17px] font-semibold text-ink">
           Come funziona
@@ -47,7 +45,7 @@ export default function CosETramaPage() {
         <ol className="flex flex-col gap-3.5">
           {STEPS.map((s, i) => (
             <li key={s.title} className="flex items-start gap-3">
-              <span className="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-full bg-[#ECE8F8] text-[13px] font-bold text-[#4A3F9E]">
+              <span className="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-full bg-trama-primary-soft text-[13px] font-bold text-trama-primary">
                 {i + 1}
               </span>
               <span className="flex flex-col gap-0.5">
@@ -59,8 +57,8 @@ export default function CosETramaPage() {
         </ol>
       </section>
 
-      <nav aria-label="Informazioni" className="flex flex-col rounded-[20px] border border-[#ECEEF2] bg-white">
-        <Link href="/nextgen/profile" className="flex min-h-[50px] items-center justify-between border-b border-[#F0F2F5] px-4 text-[14px] font-semibold text-[#5B4FB0]">
+      <nav aria-label="Informazioni" className="flex flex-col rounded-2xl border border-trama-line bg-white">
+        <Link href="/nextgen/profile" className="flex min-h-[50px] items-center justify-between border-b border-[#F0F2F5] px-4 text-[14px] font-semibold text-trama-accent-ink">
           Scrivici da &quot;Aiutaci a migliorare TRAMA&quot;
           <i className="ti ti-chevron-right text-[16px] text-ink-3" aria-hidden="true" />
         </Link>

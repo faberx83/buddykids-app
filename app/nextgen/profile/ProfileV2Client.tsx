@@ -45,7 +45,7 @@ function Row({ item, last }: { item: ProfileRowItem; last: boolean }) {
       {item.soon ? (
         <span className="rounded-full bg-[#F1F3F6] px-2.5 py-1 text-[11.5px] font-semibold text-ink-2">Presto</span>
       ) : item.badge && item.badge > 0 ? (
-        <span className="flex h-6 min-w-6 items-center justify-center rounded-full bg-trama-coral px-1.5 text-[12px] font-bold text-white">{item.badge}</span>
+        <span className="flex h-6 min-w-6 items-center justify-center rounded-full bg-trama-primary px-1.5 text-[12px] font-bold text-white">{item.badge}</span>
       ) : (
         <i className="ti ti-chevron-right text-[18px] text-[#B4BAC5]" aria-hidden="true" />
       )}
@@ -69,7 +69,8 @@ function Row({ item, last }: { item: ProfileRowItem; last: boolean }) {
   );
 }
 
-const CARD = "rounded-[20px] bg-white shadow-[0_1px_2px_rgba(23,42,77,0.06),0_6px_20px_rgba(23,42,77,0.06)]";
+// POLISH V2 (14/10/2026): card con bordo sottile, niente ombra morbida.
+const CARD = "rounded-2xl border border-trama-line bg-white";
 
 export default function ProfileV2Client({
   fullName,
@@ -173,7 +174,7 @@ export default function ProfileV2Client({
       ))}
 
       <LogoutButton
-        className="flex min-h-[48px] w-full items-center justify-center gap-2 rounded-full border border-[#F3D3CF] bg-white text-[14.5px] font-bold text-[#B3261E] active:scale-[0.99]"
+        className="flex min-h-[48px] w-full items-center justify-center gap-2 rounded-[12px] border border-[#F3D3CF] bg-white text-[14.5px] font-bold text-[#B3261E] active:bg-black/[0.03]"
       />
     </div>
   );

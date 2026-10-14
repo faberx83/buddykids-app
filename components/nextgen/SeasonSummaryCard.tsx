@@ -93,7 +93,8 @@ export default function SeasonSummaryCard({
   /** Contenuto dello stato welcome (obbligatorio se model.state === "welcome"). */
   welcome?: SeasonSummaryWelcome | null;
 }) {
-  const shell = "flex flex-col gap-3.5 rounded-[20px] bg-white p-[18px] shadow-[0_1px_2px_rgba(23,42,77,0.06),0_6px_20px_rgba(23,42,77,0.06)]";
+  // POLISH V2 (14/10/2026): bordo sottile, niente ombra morbida.
+  const shell = "flex flex-col gap-3.5 rounded-2xl border border-trama-line bg-white p-[18px]";
 
   if (model.state === "welcome" && welcome) {
     return (
@@ -127,7 +128,7 @@ export default function SeasonSummaryCard({
         </ol>
         <Link
           href={welcome.cta.href}
-          className="flex min-h-[48px] items-center justify-center rounded-full bg-trama-violet px-5 text-[14.5px] font-bold text-white active:scale-[0.98]"
+          className="flex min-h-[48px] items-center justify-center rounded-[12px] bg-trama-primary px-5 text-[14.5px] font-bold text-white active:bg-trama-primary-press"
         >
           {welcome.cta.label}
         </Link>
@@ -156,7 +157,7 @@ export default function SeasonSummaryCard({
         {notStartedAction && (
           <Link
             href={notStartedAction.href}
-            className="flex min-h-[44px] items-center justify-center rounded-full bg-trama-violet px-5 text-[14px] font-bold text-white active:scale-[0.98]"
+            className="flex min-h-[44px] items-center justify-center rounded-[12px] bg-trama-primary px-5 text-[14px] font-bold text-white active:bg-trama-primary-press"
           >
             {notStartedAction.label}
           </Link>
@@ -210,7 +211,7 @@ export default function SeasonSummaryCard({
           </div>
           <Link
             href={attentionAction.href}
-            className="flex min-h-[42px] flex-shrink-0 items-center rounded-full bg-trama-violet px-4 text-[13.5px] font-bold text-white active:scale-[0.97]"
+            className="flex min-h-[44px] flex-shrink-0 items-center rounded-[12px] border border-[#D9DDE5] bg-white px-4 text-[13.5px] font-bold text-trama-primary active:bg-black/[0.03]"
           >
             {attentionAction.label}
           </Link>

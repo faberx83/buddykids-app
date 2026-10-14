@@ -85,7 +85,7 @@ export default function DayCoordinationBlock({
   const [open, setOpen] = useState(false);
   if (coordination.mode === "none") return null;
 
-  const assignCta = "flex min-h-[32px] items-center text-[13px] font-bold text-[#5B4FB0]";
+  const assignCta = "flex min-h-[44px] items-center px-1 text-[13px] font-bold text-trama-accent-ink";
   const assign = onAssign ? (
     <button type="button" onClick={onAssign} className={assignCta}>
       {coordination.mode === "compact" ? "Modifica" : "Assegna"}

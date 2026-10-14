@@ -11,7 +11,7 @@ import { isSupabaseConfigured } from "@/lib/supabase/env";
 import { persistProductEvent } from "@/lib/telemetry/events";
 import { generateCorrelationId } from "@/lib/telemetry/correlation";
 
-const CLIENT_SIGNALS = ["feedback_opened", "novita_opened"] as const;
+const CLIENT_SIGNALS = ["feedback_opened", "novita_opened", "planner_subview_error"] as const;
 export type ClientBetaSignal = (typeof CLIENT_SIGNALS)[number];
 
 export async function recordBetaSignalAction(event: ClientBetaSignal, detail?: string): Promise<void> {

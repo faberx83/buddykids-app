@@ -211,7 +211,8 @@ test.describe("TRAMA — V2: card Scoperte, pannelli filtro, segno TRAMA [no bro
     for (const p of ["components/nextgen/DiscoveryLeadCard.tsx", "components/nextgen/CommunityDiscoveryCard.tsx"]) {
       const src = read(p);
       expect(src).toContain("v2 = false,");
-      expect(src).toContain('rounded-[20px] border border-[#ECEEF2]');
+      // Polish V2 (14/10/2026): raggio 16 e bordo sottile.
+      expect(src).toContain("rounded-2xl border border-trama-line");
       expect(src).toContain('aria-label={fav ? "Togli dai salvati" : "Salva"}');
       // la versione attuale resta com'era (hero 140px)
       expect(src).toContain("h-[140px]");
@@ -233,16 +234,18 @@ test.describe("TRAMA — V2: card Scoperte, pannelli filtro, segno TRAMA [no bro
     expect(src).toContain('aria-hidden="true"');
   });
 
-  test("SPV2-19 segno TRAMA sotto i titoli di Home, Planner, Scopri, Prenotazioni, Cos'è TRAMA", () => {
+  test("SPV2-19 segno TRAMA sotto i titoli di Home, Planner, Scopri, Prenotazioni", () => {
     for (const p of [
       "app/nextgen/HomeDashboardV2Client.tsx",
       "app/nextgen/planner/PlannerV2Client.tsx",
       "app/nextgen/search/SearchDiscoveryClient.tsx",
       "app/nextgen/prenotazioni/PrenotazioniV2Client.tsx",
-      "app/nextgen/trama/page.tsx",
     ]) {
       expect(read(p)).toContain("<TramaThread");
     }
+    // Polish V2 (14/10/2026): in "Cos'è TRAMA" una sola firma, il logo grande; niente fili in più.
+    expect(read("app/nextgen/trama/page.tsx")).not.toContain("<TramaThread");
+    expect(read("app/nextgen/trama/page.tsx")).toContain("/brand/trama-logo-mark.png");
   });
 
   test("SPV2-20 nelle intestazioni condivise (PageHeader) il segno compare solo con la nuova barra accesa", () => {

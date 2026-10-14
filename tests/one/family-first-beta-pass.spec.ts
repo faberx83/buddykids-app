@@ -301,7 +301,8 @@ test.describe("Telemetria beta, flag e deploy da shell [no browser]", () => {
       expect(KNOWN_PRODUCT_EVENTS as readonly string[], e).toContain(e);
     }
     const signals = read("../../app/actions/beta-signals.ts");
-    expect(signals).toContain('const CLIENT_SIGNALS = ["feedback_opened", "novita_opened"] as const;');
+    // Polish V2 (14/10/2026): whitelist estesa con "planner_subview_error" (Mappa/Gruppi del Planner V2 non caricati).
+    expect(signals).toContain('const CLIENT_SIGNALS = ["feedback_opened", "novita_opened", "planner_subview_error"] as const;');
   });
 
   test("FFB-25: script flag — solo i 2 flag, solo la coorte beta", () => {

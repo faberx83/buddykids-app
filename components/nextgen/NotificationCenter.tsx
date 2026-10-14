@@ -87,9 +87,12 @@ const PRIORITY_COLOR: Record<NotificationItem["priority"], string> = {
 export default function NotificationCenter({
   initialNotifications,
   scope = "parent",
+  hideFloatingBell = false,
 }: {
   initialNotifications: NotificationItem[];
   scope?: "parent" | "partner";
+  /** POLISH V2 (14/10/2026): con la nuova barra le notifiche si aprono solo dalla campanella della Home. */
+  hideFloatingBell?: boolean;
 }) {
   const router = useRouter();
   const pathname = usePathname();
@@ -221,7 +224,7 @@ export default function NotificationCenter({
     <>
       {/* HOME V2: con la campanella nell'intestazione presente, niente
           pulsante flottante (il dialog resta questo, invariato). */}
-      {!headerBellPresent && (
+      {!headerBellPresent && !hideFloatingBell && (
       <button
         ref={bellRef}
         type="button"

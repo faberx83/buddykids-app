@@ -114,12 +114,14 @@ export default function NextgenBottomNav({
           className="flex flex-1 flex-col items-center gap-[3px] active:scale-90"
         >
           <span className="relative">
-            <i className={`ti ${item.icon} text-[22px] transition-colors ${active ? "text-trama-violet" : "text-ink-3"}`} />
+            {/* POLISH V2 (14/10/2026): attivo = navy primario + trattino sopra (non solo colore). */}
+            {active && <span aria-hidden="true" className="absolute -top-2 left-1/2 h-[3px] w-5 -translate-x-1/2 rounded-full bg-trama-primary" />}
+            <i className={`ti ${item.icon} text-[22px] transition-colors ${active ? "text-trama-primary" : "text-ink-3"}`} />
             {showDot && (
               <span aria-hidden="true" className="absolute -right-0.5 -top-0.5 h-2 w-2 rounded-full bg-trama-orange ring-2 ring-white" />
             )}
           </span>
-          <span className={`font-poppins text-[10px] font-medium transition-colors ${active ? "text-trama-violet" : "text-ink-3"}`}>
+          <span className={`font-poppins text-[10px] transition-colors ${active ? "font-semibold text-trama-primary" : "font-medium text-ink-3"}`}>
             {item.label}
           </span>
         </Link>
@@ -141,13 +143,13 @@ export default function NextgenBottomNav({
             className="-mt-7 flex flex-1 flex-col items-center gap-1 active:scale-95"
           >
             <span
-              className={`flex h-14 w-14 items-center justify-center rounded-full text-white shadow-[0_6px_16px_rgba(111,99,197,0.35),0_0_0_5px_#FFFFFF] transition-colors ${
-                addOpen ? "bg-trama-navy" : "bg-trama-violet"
+              className={`flex h-14 w-14 items-center justify-center rounded-full text-white shadow-[0_6px_16px_rgba(23,42,77,0.28),0_0_0_5px_#FFFFFF] transition-colors ${
+                addOpen ? "bg-trama-primary-press" : "bg-trama-primary"
               }`}
             >
               <i className={`ti ${addOpen ? "ti-x" : "ti-plus"} text-[26px]`} aria-hidden="true" />
             </span>
-            <span className={`font-poppins text-[10px] font-semibold ${addOpen ? "text-trama-navy" : "text-[#4A3F9E]"}`}>
+            <span className="font-poppins text-[10px] font-semibold text-trama-primary">
               {addOpen ? "Chiudi" : "Aggiungi"}
             </span>
           </button>

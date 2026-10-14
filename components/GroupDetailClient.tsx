@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import TramaThread from "@/components/nextgen/TramaThread";
+import { monogramFor, threadColorFor } from "@/components/nextgen/ActivityVisual";
 import { GroupDetail, CarpoolLeg } from "@/lib/types";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
 import { discountForGroupSize, GROUP_DISCOUNT_TIERS } from "@/lib/groups";
@@ -52,11 +53,11 @@ function groupLook(nextgen: GroupLook) {
   const v2 = nextgen === "v2";
   return {
     v2,
-    card: v2 ? "mb-4 rounded-[20px] bg-white p-4 shadow-[0_1px_2px_rgba(23,42,77,0.06),0_6px_20px_rgba(23,42,77,0.06)]" : "mb-4 rounded-lg border border-[#E8EBF0] bg-white p-3.5",
-    cardFlush: v2 ? "mb-4 overflow-hidden rounded-[20px] bg-white shadow-[0_1px_2px_rgba(23,42,77,0.06),0_6px_20px_rgba(23,42,77,0.06)]" : "mb-4 rounded-lg border border-[#E8EBF0] bg-white",
-    btnShape: v2 ? "min-h-[44px] rounded-full" : "rounded-md",
+    card: v2 ? "mb-4 rounded-2xl border border-trama-line bg-white p-4" : "mb-4 rounded-lg border border-[#E8EBF0] bg-white p-3.5",
+    cardFlush: v2 ? "mb-4 overflow-hidden rounded-2xl border border-trama-line bg-white" : "mb-4 rounded-lg border border-[#E8EBF0] bg-white",
+    btnShape: v2 ? "min-h-[44px] rounded-[12px]" : "rounded-md",
     btnSecondary: v2
-      ? "min-h-[44px] rounded-full border border-[#E3E6EC] bg-white px-4 text-[13px] font-semibold text-trama-navy"
+      ? "min-h-[44px] rounded-[12px] border border-[#D9DDE5] bg-white px-4 text-[13px] font-semibold text-trama-primary"
       : "rounded-md border border-[#E8EBF0] px-3.5 py-2 text-xs font-semibold text-ink",
     titleCls: v2
       ? "font-poppins text-[17px] font-semibold text-ink"
@@ -130,7 +131,7 @@ function InviteButton({
       onClick={share}
       className={
         v2
-          ? "flex min-h-[44px] w-full items-center justify-center gap-2 rounded-full bg-trama-violet px-4 text-[14px] font-bold text-white active:scale-[0.99]"
+          ? "flex min-h-[48px] w-full items-center justify-center gap-2 rounded-[12px] bg-trama-primary px-4 text-[14.5px] font-bold text-white active:bg-trama-primary-press"
           : "ml-auto flex flex-shrink-0 items-center gap-1.5 rounded-md bg-white/80 px-3 py-2 text-xs font-bold text-ink"
       }
     >
@@ -160,7 +161,7 @@ function VisibilityAndInviteBlock({
   nextgen: GroupLook;
 }) {
   const router = useRouter();
-  const accentBg = nextgen ? "bg-trama-violet" : "bg-sky";
+  const accentBg = nextgen === "v2" ? "bg-trama-primary" : nextgen ? "bg-trama-violet" : "bg-sky";
   const accentFocus = nextgen ? "focus:border-trama-violet" : "focus:border-sky";
   const { titleCls, card: cardCls, btnShape } = groupLook(nextgen);
   const [togglingPublic, setTogglingPublic] = useState(false);
@@ -307,11 +308,11 @@ export default function GroupDetailClient({
           </header>
           <div className="mt-2 flex items-start gap-3">
             <span
-              className="flex h-14 w-14 flex-shrink-0 items-center justify-center rounded-[16px] text-[30px]"
-              style={{ background: detail.gradient }}
+              className="relative flex h-14 w-14 flex-shrink-0 items-center justify-center overflow-hidden rounded-[12px] border border-trama-line bg-[#F4F1EA] font-poppins text-[20px] font-semibold text-trama-navy/80"
               aria-hidden="true"
             >
-              {detail.emoji}
+              <span className="absolute inset-x-0 top-0 h-1" style={{ background: threadColorFor(detail.name) }} />
+              {monogramFor(detail.name)}
             </span>
             <div className="min-w-0 flex-1">
               <h1 className="font-poppins text-[24px] font-semibold leading-tight text-ink">{detail.name}</h1>
@@ -351,7 +352,14 @@ export default function GroupDetailClient({
                 tab === t ? "bg-white font-bold text-trama-navy shadow-[0_1px_3px_rgba(23,42,77,0.12)]" : "font-semibold text-[#4B5563]"
               }`}
             >
-              {t === "gruppo" ? "Bambini & Richiesta" : "🚗 Accompagnamento"}
+              {t === "gruppo" ? (
+                "Bambini e richiesta"
+              ) : (
+                <span className="inline-flex items-center gap-1.5">
+                  <i className="ti ti-car text-[16px]" aria-hidden="true" />
+                  Accompagnamento
+                </span>
+              )}
             </button>
           ))}
         </div>
@@ -436,10 +444,10 @@ function GruppoTab({
   nextgen: GroupLook;
 }) {
   const router = useRouter();
-  const accentBg = nextgen ? "bg-trama-violet" : "bg-sky";
-  const accentText = nextgen ? "text-trama-violet" : "text-sky";
+  const accentBg = nextgen === "v2" ? "bg-trama-primary" : nextgen ? "bg-trama-violet" : "bg-sky";
+  const accentText = nextgen === "v2" ? "text-trama-accent-ink" : nextgen ? "text-trama-violet" : "text-sky";
   const accentFocus = nextgen ? "focus:border-trama-violet" : "focus:border-sky";
-  const accentLight = nextgen ? "bg-trama-lilac/20" : "bg-sky-light";
+  const accentLight = nextgen === "v2" ? "bg-trama-primary-soft" : nextgen ? "bg-trama-lilac/20" : "bg-sky-light";
   const { titleCls, card: cardCls, cardFlush: cardFlushCls, btnShape, btnSecondary } = groupLook(nextgen);
   const [pickingActivity, setPickingActivity] = useState(false);
   const [selectedActivity, setSelectedActivity] = useState(activityOptions[0]?.dbId || "");
@@ -780,9 +788,9 @@ function StatusPill({ status }: { status: "pending" | "accepted" | "rejected" })
 // ─────────────────────────────────────────────
 function AccompagnamentoTab({ detail, nextgen }: { detail: GroupDetail; nextgen: GroupLook }) {
   const router = useRouter();
-  const accentBg = nextgen ? "bg-trama-violet" : "bg-sky";
+  const accentBg = nextgen === "v2" ? "bg-trama-primary" : nextgen ? "bg-trama-violet" : "bg-sky";
   const accentFocus = nextgen ? "focus:border-trama-violet" : "focus:border-sky";
-  const accentLight = nextgen ? "bg-trama-lilac/20" : "bg-sky-light";
+  const accentLight = nextgen === "v2" ? "bg-trama-primary-soft" : nextgen ? "bg-trama-lilac/20" : "bg-sky-light";
   const { titleCls, card: cardCls, cardFlush: cardFlushCls, btnShape, btnSecondary } = groupLook(nextgen);
   const myOffer = detail.carpoolOffers.find((o) => o.isOwn);
   const myRequest = detail.carpoolRequests.find((r) => r.isOwn);
@@ -812,7 +820,7 @@ function AccompagnamentoTab({ detail, nextgen }: { detail: GroupDetail; nextgen:
 
       {/* Offerta auto */}
       <div className={cardCls}>
-        <div className={`mb-2 ${titleCls}`}>🚙 La tua offerta auto</div>
+        <div className={`mb-2 ${titleCls}`}>{nextgen === "v2" ? "La tua offerta di passaggio" : "🚙 La tua offerta auto"}</div>
         <div className="mb-2 grid grid-cols-2 gap-2">
           <div>
             <label className="mb-1 block text-xs font-semibold text-ink-2">Posti disponibili</label>
@@ -883,7 +891,7 @@ function AccompagnamentoTab({ detail, nextgen }: { detail: GroupDetail; nextgen:
 
       {/* Richiesta passaggio */}
       <div className={cardCls}>
-        <div className={`mb-2 ${titleCls}`}>🙋 Hai bisogno di un passaggio?</div>
+        <div className={`mb-2 ${titleCls}`}>{nextgen === "v2" ? "Hai bisogno di un passaggio?" : "🙋 Hai bisogno di un passaggio?"}</div>
         <div className="mb-2 grid grid-cols-2 gap-2">
           <div>
             <label className="mb-1 block text-xs font-semibold text-ink-2">Bambini</label>
@@ -956,7 +964,7 @@ function AccompagnamentoTab({ detail, nextgen }: { detail: GroupDetail; nextgen:
             {myMatches.map((o) => (
               <div key={o.id} className="flex items-center gap-2.5 px-3.5 py-2.5">
                 <div className={`flex h-8 w-8 items-center justify-center rounded-full ${accentLight} text-sm`}>
-                  🚗
+                  {nextgen === "v2" ? <i className="ti ti-car text-[16px] text-trama-primary" aria-hidden="true" /> : "🚗"}
                 </div>
                 <div className="min-w-0 flex-1">
                   <div className="text-sm font-semibold text-ink">{o.parentLabel}</div>
