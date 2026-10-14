@@ -21,7 +21,7 @@ import { getKidClosureIntervalsForParent } from "@/lib/data/school-calendar";
 import { getUnifiedFavoritesForParent } from "@/lib/data/favorites";
 import { getPlannerCalendarItemsForParent, type PlannerCalendarItem } from "@/lib/planner/calendar-items";
 import { computeBudgetSummary } from "@/lib/nextgen/planner-insights";
-import { buildCoverage, buildHolidaySummary, closureState, listClosurePeriods, weekdaysBetween } from "@/lib/nextgen/holiday-summary";
+import { buildCoverage, buildHolidaySummary, closureState, holidayPeriodsInRange, listClosurePeriods, weekdaysBetween } from "@/lib/nextgen/holiday-summary";
 import { countSavedNotInPlanner, type SavedItemInput } from "@/lib/nextgen/planner-season";
 import { resolveFeatureFlagVisibility } from "@/lib/feature-flags/resolve";
 import { generateCorrelationId } from "@/lib/telemetry/correlation";
@@ -112,12 +112,19 @@ export async function loadPlannerV2Props({
     bookings: bookings.map((b) => ({ status: b.status, partnerDecision: b.partnerDecision, kidIds: b.kidIds, weeks: b.weeks, dayDates: b.dayDates })),
     externalItems,
   });
-  const holidaySummary = schoolEnabled
-    ? buildHolidaySummary({
-        periods: listClosurePeriods(closureData.closuresByKid, todayIso).map((p) => ({ ...p, state: closureState(p, coverage) })),
-        todayIso,
-      })
-    : null;
+  const closurePeriods = schoolEnabled
+    ? listClosurePeriods(closureData.closuresByKid, todayIso).map((p) => ({ ...p, state: closureState(p, coverage) }))
+    : [];
+  const holidaySummary = schoolEnabled ? buildHolidaySummary({ periods: closurePeriods, todayIso }) : null;
+  // Le stesse chiusure, una per riga, con le azioni (Stagione a estate finita).
+  const holidayPeriods = holidayPeriodsInRange(closurePeriods, todayIso).map((p) => ({
+    startDate: p.startDate,
+    endDate: p.endDate,
+    labels: p.labels,
+    kidIds: p.kidIds,
+    weekdayCount: p.weekdayCount,
+    state: p.state,
+  }));
 
   // Salvati: preferiti con una data possibile, non ancora prenotati né nel Planner.
   const saved: SavedItemInput[] = favorites.map((f): SavedItemInput =>
@@ -175,6 +182,7 @@ export async function loadPlannerV2Props({
     familyPeople,
     closureLabelsByDate,
     holidaySummary,
+    holidayPeriods,
     summerWeeks: planner.weeks,
     budget: computeBudgetSummary(bookings, activities),
     seasonBudgetTarget: profile.seasonBudgetTarget,

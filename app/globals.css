@@ -64,6 +64,29 @@ body {
   position: relative;
 }
 
+/* 14/10/2026 — "la barra sotto continua a scorrere" (terza segnalazione,
+   Android). Le unità vh/svh/dvh inseguono la barra indirizzi del browser e
+   lasciano sempre qualche caso in cui il DOCUMENTO scorre (e con lui la
+   bottom nav). Soluzione strutturale: sul telefono .app-shell è FISSO sulla
+   finestra visibile (top/bottom 0, nessuna altezza in vh) e la pagina non
+   ha più contenuto che possa scorrere; scorre solo l'area interna
+   (overflow-y-auto). Oltre i 640px resta il "telefono" centrato di prima. */
+@media (max-width: 639.98px) {
+  .app-shell {
+    position: fixed;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: auto;
+    margin: 0 auto;
+  }
+}
+html:has(.app-shell),
+body:has(.app-shell) {
+  overflow: hidden;
+}
+
 @media (min-width: 640px) {
   .app-shell {
     height: calc(100vh - 64px);

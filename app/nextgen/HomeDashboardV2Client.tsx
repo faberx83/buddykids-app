@@ -64,6 +64,12 @@ function longDate(iso: string): string {
   return `${p.weekday} ${p.day} ${p.month}`;
 }
 
+function greetingFor(iso: string): string {
+  const p = parts(iso);
+  const day = p.weekday.toLowerCase();
+  return `${day === "domenica" ? "Buona" : "Buon"} ${day} · ${p.day} ${p.month}`;
+}
+
 function closureTitle(c: HomeV2NextClosure): string {
   if (c.startDate === c.endDate) return `${longDate(c.startDate)} · Scuola chiusa`;
   const a = parts(c.startDate);
@@ -200,9 +206,9 @@ export default function HomeDashboardV2Client({
     if (safeGet(CLOSURE_LATER_KEY_PREFIX + nextClosure.startDate)) setClosureLater(true);
   }, [nextClosure]);
 
-  const todayLabel = longDate(todayIso);
-  const agendaCountLabel =
-    agenda.length === 0 ? "nessun impegno oggi" : agenda.length === 1 ? "1 impegno oggi" : `${agenda.length} impegni oggi`;
+  // "Buon mercoledì · 14 ottobre" (14/10, richiesta di Fabrizio): il numero
+  // di impegni non serve qui, lo dice già la sezione Oggi subito sotto.
+  const todayGreeting = greetingFor(todayIso);
 
   return (
     // Sfondo caldo del design V2.1 (#FDFCFA, card bianche con ombra) e spazio
@@ -232,7 +238,7 @@ export default function HomeDashboardV2Client({
               Ciao{firstName ? ` ${firstName}` : ""}
             </h1>
             <span className="text-[13px] text-ink-2">
-              {todayLabel} · {agendaCountLabel}
+              {todayGreeting}
             </span>
           </div>
         </div>

@@ -190,6 +190,15 @@ export function buildCoverage(input: {
   return out;
 }
 
+/** "7–8 dicembre", "23 dicembre – 6 gennaio", "7 dicembre". */
+export function closureRangeLabel(startIso: string, endIso: string): string {
+  const a = new Date(startIso + "T00:00:00Z");
+  const b = new Date(endIso + "T00:00:00Z");
+  if (startIso === endIso) return `${a.getUTCDate()} ${MONTHS_IT[a.getUTCMonth()]}`;
+  if (a.getUTCMonth() === b.getUTCMonth()) return `${a.getUTCDate()}–${b.getUTCDate()} ${MONTHS_IT[b.getUTCMonth()]}`;
+  return `${a.getUTCDate()} ${MONTHS_IT[a.getUTCMonth()]} – ${b.getUTCDate()} ${MONTHS_IT[b.getUTCMonth()]}`;
+}
+
 function shortDate(iso: string): string {
   const d = new Date(iso + "T00:00:00Z");
   return `${d.getUTCDate()} ${MONTHS_IT[d.getUTCMonth()].slice(0, 3)}`;
@@ -230,6 +239,9 @@ export function buildHolidaySummary(input: {
   }
 
   const count = (s: ClosureState) => inRange.filter((p) => p.state === s).length;
+  // Prima chiusura che chiede ancora qualcosa: il Planner la usa per
+  // "Organizza" (in Home c'è già la card "Prossima chiusura").
+  const firstOpen = inRange.find((p) => p.state !== "organized" && p.endDate >= input.todayIso) ?? null;
   return {
     state: "progress",
     title: "Ponti e vacanze",
@@ -241,7 +253,20 @@ export function buildHolidaySummary(input: {
     neededCount: inRange.length,
     toCompleteCount: count("to_complete"),
     toOrganizeCount: count("to_organize"),
-    firstAttention: null,
+    firstAttention: firstOpen
+      ? {
+          index: inRange.indexOf(firstOpen),
+          startDate: firstOpen.startDate,
+          dateRange: closureRangeLabel(firstOpen.startDate, firstOpen.endDate),
+          state: firstOpen.state === "to_complete" ? "to_complete" : "to_organize",
+        }
+      : null,
     isOver: false,
   };
+}
+
+/** Le chiusure mostrate nel riepilogo (entro l'orizzonte), con il loro stato. */
+export function holidayPeriodsInRange(periods: ClosurePeriodWithState[], todayIso: string): ClosurePeriodWithState[] {
+  const horizon = holidayHorizon(periods, todayIso);
+  return periods.filter((p) => p.startDate <= horizon);
 }

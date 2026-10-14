@@ -11,6 +11,7 @@ import {
   mondayOfIso,
 } from "../../lib/nextgen/planner-week";
 import { buildSeasonRows, coverageByKid, countSavedNotInPlanner } from "../../lib/nextgen/planner-season";
+import { buildHolidaySummary, closureRangeLabel } from "../../lib/nextgen/holiday-summary";
 import { FEATURE_FLAG_REGISTRY } from "../../lib/feature-flags/registry";
 import { FEATURE_CATALOG } from "../../lib/feature-registry/catalog";
 import { RELEASE_CATALOG } from "../../lib/releases/catalog";
@@ -215,5 +216,50 @@ test.describe("PLANNER-V2 — flag, ripiego e release", () => {
     for (const f of ["app/nextgen/planner/planner-v2-data.ts"]) {
       expect(read(f)).not.toMatch(/\.insert\(|\.update\(|\.upsert\(|\.delete\(/);
     }
+  });
+});
+
+// ─── Correzioni dopo la verifica dal vivo (14/10/2026, pomeriggio) ───────
+test.describe("PLANNER-V2 — correzioni verifica live 14/10", () => {
+  test("PV2-17: Mappa e Gruppi come pagina interna, con rete di sicurezza", () => {
+    const src = read("app/nextgen/planner/PlannerV2Client.tsx");
+    expect(src).toContain('if (panel === "mappa" || panel === "gruppi")');
+    expect(src).toContain("class SafeBoundary extends Component");
+    expect(src).toMatch(/<SafeBoundary[\s\S]*<PlannerMapView/);
+    expect(src).not.toMatch(/<Sheet title="Mappa"/);
+  });
+
+  test("PV2-18: 'Chi fa cosa' nella Settimana, giorno per giorno e uguale per tutta la settimana", () => {
+    const src = read("app/nextgen/planner/PlannerV2Client.tsx");
+    expect(src).toContain("Chi fa cosa");
+    expect(src).toContain("function WeekWhoSheet(");
+    expect(src).toContain("setWeekBulkResponsibilityAction(");
+    expect(src).toContain("Uguale per tutta la settimana");
+  });
+
+  test("PV2-19: a estate finita la Stagione elenca le chiusure con le azioni", () => {
+    const src = read("app/nextgen/planner/PlannerV2Client.tsx");
+    expect(src).toContain("Chiusure della scuola");
+    expect(src).toMatch(/Trova attività[\s\S]*Apri la settimana/);
+    expect(read("app/nextgen/planner/planner-v2-data.ts")).toContain("holidayPeriodsInRange(closurePeriods, todayIso)");
+    const p = (start: string, end: string, state: "organized" | "to_organize") => ({
+      startDate: start, endDate: end, labels: ["x"], kidIds: ["g"], weekdaysByKid: { g: [start] }, weekdayCount: 2, state,
+    });
+    const m = buildHolidaySummary({ todayIso: "2026-10-14", periods: [p("2026-11-02", "2026-11-02", "organized"), p("2026-12-07", "2026-12-08", "to_organize")] });
+    expect(m?.firstAttention?.startDate).toBe("2026-12-07");
+    expect(m?.firstAttention?.dateRange).toBe("7–8 dicembre");
+    expect(closureRangeLabel("2026-12-23", "2027-01-06")).toBe("23 dicembre – 6 gennaio");
+  });
+
+  test("PV2-20: sul telefono la cornice dell'app è fissa: la pagina non scorre, la barra resta ferma", () => {
+    const css = read("app/globals.css");
+    expect(css).toMatch(/@media \(max-width: 639\.98px\) \{\s*\.app-shell \{\s*position: fixed;/);
+    expect(css).toMatch(/html:has\(\.app-shell\),\s*body:has\(\.app-shell\) \{\s*overflow: hidden;/);
+  });
+
+  test("PV2-21: saluto della Home senza conteggio degli impegni", () => {
+    const src = read("app/nextgen/HomeDashboardV2Client.tsx");
+    expect(src).toContain('day === "domenica" ? "Buona" : "Buon"');
+    expect(src).not.toContain("nessun impegno oggi");
   });
 });

@@ -68,3 +68,24 @@ Con le due release in Anteprima interna e l'account `+testparent`:
 - [ ] spegnendo i flag tornano Planner e barra attuali.
 
 Test: `tests/one/planner-v2.spec.ts` (PV2-01…16).
+
+## Correzioni dopo la verifica dal vivo (14/10/2026, pomeriggio)
+- **Barra che scorre**: sul telefono la cornice dell'app è ora fissa sulla
+  finestra visibile (`position: fixed`, top/bottom 0) e la pagina non può più
+  scorrere: scorre solo l'area interna. Vale per tutte le schermate con la
+  cornice telefono (famiglie, LEGACY compresa). Verificato in emulazione
+  Pixel 5: altezza documento = finestra, la barra non si muove.
+- **Mappa** ("This page couldn't load"): Mappa e Gruppi ora sono una pagina
+  interna del Planner (come nel Planner attuale) invece di un pannello, con
+  una rete di sicurezza: se un componente esistente fallisce compare un
+  messaggio, non cade la pagina.
+- **Chi fa cosa**: nella Settimana una riga "Chi fa cosa" apre la settimana
+  intera giorno per giorno (tocca un giorno per assegnare) e "Uguale per tutta
+  la settimana" per Porta e Ritira.
+- **Ponti e vacanze nel Planner**: a estate finita la Stagione elenca le
+  chiusure ("Chiusure della scuola") con Trova attività e Apri la settimana;
+  l'estate passata è richiudibile ("Estate AAAA · conclusa").
+- **Saluto della Home**: "Buon mercoledì · 14 ottobre" al posto di data +
+  numero di impegni (già detto dalla sezione Oggi).
+
+Test: PV2-17…21.
