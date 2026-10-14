@@ -46,3 +46,6 @@ TRAMA_UX_UI_WRITTEN_EVIDENCE_*.zip
 
 # Patch di Claude scritte direttamente nel repo (lette e archiviate da deploy.sh)
 .trama-inbox/
+
+# Profilo Chromium dello script scripts/screenshots-v2.mjs (contiene il login).
+.screens-profile
