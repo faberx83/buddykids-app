@@ -34,6 +34,7 @@ import {
   ReleaseLadderButtonKind,
 } from "@/lib/releases/visibility";
 import { setFeatureVisibilityAction, promoteAllEligibleReleaseFeaturesAction } from "@/app/actions/releases";
+import ReleaseMatrix from "./ReleaseMatrix";
 
 const TARGET_AUDIENCE_LABEL: Record<string, string> = {
   parent: "Famiglie",
@@ -252,9 +253,21 @@ export default function ReleaseAdminSection({ initialReleases }: { initialReleas
           altre della stessa release.
         </p>
       </div>
-      {initialReleases.map((release) => (
-        <ReleaseCard key={release.id} release={release} />
-      ))}
+      {/* 14/10/2026: prima la tabella (una riga per funzionalità, spunte per
+          pubblico); le card con limiti noti, note e "Promuovi tutte" restano
+          sotto, chiuse. */}
+      <ReleaseMatrix releases={initialReleases} />
+      <details className="group">
+        <summary className="cursor-pointer list-none text-xs font-semibold text-trama-violet">
+          <span className="group-open:hidden">Mostra dettagli per release (limiti noti, note)</span>
+          <span className="hidden group-open:inline">Nascondi dettagli per release</span>
+        </summary>
+        <div className="mt-3">
+          {initialReleases.map((release) => (
+            <ReleaseCard key={release.id} release={release} />
+          ))}
+        </div>
+      </details>
     </div>
   );
 }

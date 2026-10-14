@@ -158,3 +158,47 @@ export function ladderButtonsForVisibility(visibility: SimpleFlagVisibility): Re
       ];
   }
 }
+
+// TRAMA — RELEASE: TABELLA (14/10/2026, richiesta Fabrizio: "una tabella con
+// le feature per riga e in colonna le spunte su cosa è abilitato e dove").
+// Le tre colonne sono CUMULATIVE, esattamente come gli override reali
+// (computeScopeOverrideTargetsForVisibility): "Pilot" accende anche
+// l'Anteprima interna, "Tutti" accende anche Pilot e Anteprima. Nessuno stato
+// nuovo: la tabella è solo un altro modo di leggere e scrivere lo stesso
+// SimpleFlagVisibility.
+export type ReleaseMatrixColumn = Exclude<SimpleFlagVisibility, "disabled">;
+
+export const RELEASE_MATRIX_COLUMNS: { key: ReleaseMatrixColumn; label: string }[] = [
+  { key: "internal_preview", label: "Anteprima interna" },
+  { key: "pilot", label: "Pilot" },
+  { key: "global", label: "Tutti" },
+];
+
+const MATRIX_RANK: Record<SimpleFlagVisibility, number> = { disabled: 0, internal_preview: 1, pilot: 2, global: 3 };
+const RANK_TO_VISIBILITY: SimpleFlagVisibility[] = ["disabled", "internal_preview", "pilot", "global"];
+
+/** true se la feature è visibile al pubblico di quella colonna (spunta). */
+export function isVisibleInColumn(visibility: SimpleFlagVisibility, column: ReleaseMatrixColumn): boolean {
+  return MATRIX_RANK[visibility] >= MATRIX_RANK[column];
+}
+
+/**
+ * Cosa fa un click sulla casella:
+ *   - casella vuota  → la feature arriva fino a quella colonna (es. da
+ *     Anteprima a "Tutti" accende anche Pilot);
+ *   - casella spuntata → la feature si ferma alla colonna precedente (es.
+ *     togliere "Pilot" la riporta ad Anteprima interna; togliere
+ *     "Anteprima interna" la spegne del tutto).
+ */
+export function matrixClickTarget(visibility: SimpleFlagVisibility, column: ReleaseMatrixColumn): SimpleFlagVisibility {
+  return isVisibleInColumn(visibility, column) ? RANK_TO_VISIBILITY[MATRIX_RANK[column] - 1] : column;
+}
+
+/** Frase per la conferma del click, in parole semplici. */
+export function matrixClickConfirmText(featureLabel: string, from: SimpleFlagVisibility, to: SimpleFlagVisibility): string {
+  if (to === "disabled") return `Spegnere "${featureLabel}" per tutti?`;
+  const where = RELEASE_VISIBILITY_LABEL[to];
+  return MATRIX_RANK[to] > MATRIX_RANK[from]
+    ? `Accendere "${featureLabel}" fino a: ${where}?`
+    : `Riportare "${featureLabel}" a: ${where}?`;
+}
