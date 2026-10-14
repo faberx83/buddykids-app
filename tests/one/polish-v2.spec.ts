@@ -150,6 +150,18 @@ test.describe("TRAMA — Polish V2 [no browser]", () => {
   });
 });
 
+test.describe("TRAMA — Mappa del Planner: niente distanza finta [no browser]", () => {
+  test("PO-13 tolti i 'km · min (stimato)' generati dall'id: percorso e tempi reali da 'Avvia navigazione'", () => {
+    const src = read("components/nextgen/PlannerMapView.tsx");
+    expect(src).not.toContain("estimateDistance");
+    expect(src).not.toContain("(stimato)");
+    expect(src).not.toContain("distanza stimata");
+    expect(src).toContain("Avvia navigazione");
+    expect(src).toContain('{hasCoords ? "Vedi sulla mappa" : "Indirizzo non disponibile"}');
+    expect(fs.existsSync(path.join(__dirname, "../..", "lib/nextgen/planner-map-estimate.ts"))).toBe(false);
+  });
+});
+
 test.describe("TRAMA — Polish V2: forma dei pulsanti [no browser]", () => {
   test("PO-11 pulsanti navy con raggio 12 vero (nel tema TRAMA rounded-xl = 28px, cioè quasi una pillola)", () => {
     for (const f of [

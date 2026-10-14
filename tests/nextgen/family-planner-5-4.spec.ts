@@ -27,8 +27,12 @@ test.describe("NEXTGEN - Family Planner Sprint 5.4 (Mappa/Promemoria)", () => {
       test.skip(true, "Nessuna attività prenotata per l'account di test.");
     }
     await expect(list).toBeVisible();
-    await expect(page.getByText("distanza stimata")).toBeVisible();
-    await expect(page.getByText(/km · \d+ min|Indirizzo non disponibile/).first()).toBeVisible();
+    // 14/10/2026: tolta la distanza "stimata" finta (numero segnaposto, non
+    // reale). Ogni riga dice se l'attività è sulla mappa; percorso e tempi
+    // reali arrivano da Maps con "Avvia navigazione".
+    await expect(page.getByText("distanza stimata")).toHaveCount(0);
+    await expect(page.getByText(/km · \d+ min/)).toHaveCount(0);
+    await expect(page.getByText(/Vedi sulla mappa|Indirizzo non disponibile/).first()).toBeVisible();
   });
 
   // BUGFIX (segnalato da Fabrizio: "la mappa restituisce 'This page couldn't
