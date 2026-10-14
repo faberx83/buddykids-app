@@ -59,6 +59,7 @@ export default async function NextgenProfilePage({
   let classicFallbackEnabled = false;
   let navV2Enabled = false; // Nuova barra (14/10): riga "Cos'è TRAMA"
   let profileV2Enabled = false; // Profilo V2 (14/10), release "nav-v2"
+  let onboardingV2Enabled = false; // Onboarding V2 (14/10): "Rivedi l'introduzione"
   if (isSupabaseConfigured) {
     const supabase = await createClient();
     const {
@@ -103,6 +104,13 @@ export default async function NextgenProfilePage({
         tenant: "family",
         correlationId: generateCorrelationId(),
       }).catch(() => false); // ripiego: Profilo attuale
+      onboardingV2Enabled = await resolveFeatureFlag({
+        flagName: "ONBOARDING_V2_ENABLED",
+        userId: user.id,
+        role: (profileRow?.role as string) ?? "parent",
+        tenant: "family",
+        correlationId: generateCorrelationId(),
+      }).catch(() => false);
     }
   }
 
@@ -124,6 +132,7 @@ export default async function NextgenProfilePage({
         schoolProfiles={schoolProfiles}
         residenceCity={residenceCity}
         classicFallbackEnabled={classicFallbackEnabled}
+        onboardingV2Enabled={onboardingV2Enabled}
       />
     );
   }

@@ -24,6 +24,7 @@ import {
   updateExternalPlannerItemAction,
   deleteExternalPlannerItemAction,
 } from "@/app/actions/external-planner-items";
+import { markFirstUsefulAction } from "@/lib/nextgen/first-action";
 import { useNextgenToast } from "@/components/nextgen/NextgenToastProvider";
 
 const KIND_LABEL: Record<ExternalPlannerItemKind, string> = {
@@ -325,6 +326,7 @@ export default function ExternalPlannerItemsSection({
     if (!result.error) {
       setMode("idle");
       showToast("Impegno aggiunto al Planner.");
+      markFirstUsefulAction("impegno");
     }
     return result;
   }

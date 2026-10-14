@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { FIRST_ACTION_EVENT, hasDoneFirstUsefulAction } from "@/lib/nextgen/first-action";
 import { usePathname } from "next/navigation";
 
 // Banner "Installa l'app" per Android/Chrome/Edge: cattura l'evento
@@ -73,11 +74,20 @@ export default function InstallPrompt({
   // registrazioni SW indipendenti, necessarie perché Chrome riconosca le due
   // app come installabili separatamente.
   swScope = "/",
+  // TRAMA — ONBOARDING V2 (14/10/2026): con ONBOARDING_V2_ENABLED l'invito
+  // compare solo dopo la prima azione utile (lib/nextgen/first-action.ts),
+  // non al primo accesso. Default false: comportamento di prima.
+  waitForFirstAction = false,
+  // Stile V2 (icona al posto dell'emoji, pulsante navy a raggio 12, sopra la
+  // nuova barra). Default false: aspetto di prima.
+  v2 = false,
 }: {
   appName: string;
   themeColor: string;
   routeExclude?: string;
   swScope?: string;
+  waitForFirstAction?: boolean;
+  v2?: boolean;
 }) {
   // Nessuno stato "dismissed" separato: il banner parte nascosto di default
   // (deferredEvent null, showIosHint false) e viene mostrato SOLO se
@@ -91,6 +101,16 @@ export default function InstallPrompt({
   const excluded = Boolean((routeExclude && pathname?.startsWith(routeExclude)) || pathname?.startsWith("/share"));
   const [deferredEvent, setDeferredEvent] = useState<BeforeInstallPromptEvent | null>(null);
   const [showIosHint, setShowIosHint] = useState(false);
+  const [firstActionDone, setFirstActionDone] = useState(!waitForFirstAction);
+
+  useEffect(() => {
+    if (!waitForFirstAction) return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- localStorage esiste solo nel browser
+    if (hasDoneFirstUsefulAction()) setFirstActionDone(true);
+    const onFirstAction = () => setFirstActionDone(true);
+    window.addEventListener(FIRST_ACTION_EVENT, onFirstAction);
+    return () => window.removeEventListener(FIRST_ACTION_EVENT, onFirstAction);
+  }, [waitForFirstAction]);
 
   useEffect(() => {
     if (excluded) return; // rotta gestita da un'altra istanza (vedi routeExclude)
@@ -128,6 +148,42 @@ export default function InstallPrompt({
   }
 
   if (excluded || (!deferredEvent && !showIosHint)) return null;
+  if (!firstActionDone) return null;
+
+  if (v2) {
+    return (
+      <div className="fixed inset-x-4 bottom-[104px] z-50 flex items-center gap-3 rounded-2xl border border-trama-line bg-white p-4 shadow-[0_8px_24px_rgba(23,42,77,0.12)] md:inset-x-auto md:bottom-6 md:right-6 md:w-80">
+        <span aria-hidden="true" className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-[12px] bg-trama-primary-soft text-trama-primary">
+          <i className="ti ti-device-mobile text-[22px]" />
+        </span>
+        <div className="min-w-0 flex-1">
+          <p className="text-sm font-bold text-ink">Aggiungi {appName} alla schermata Home</p>
+          <p className="text-xs text-ink-2">
+            {showIosHint
+              ? <>Tocca <i className="ti ti-share-2" /> Condividi, poi &quot;Aggiungi alla schermata Home&quot;.</>
+              : "La apri come un'app, senza cercarla nel browser."}
+          </p>
+        </div>
+        <div className="flex flex-shrink-0 flex-col items-end gap-1">
+          {deferredEvent && (
+            <button
+              onClick={async () => {
+                await deferredEvent.prompt();
+                await deferredEvent.userChoice;
+                dismiss();
+              }}
+              className="min-h-[40px] rounded-[12px] bg-trama-primary px-3.5 text-xs font-bold text-white active:bg-trama-primary-press"
+            >
+              Aggiungi
+            </button>
+          )}
+          <button onClick={dismiss} className="min-h-[32px] px-1 text-[12px] font-semibold text-ink-2">
+            Non ora
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="fixed inset-x-4 bottom-20 z-50 flex items-center gap-3 rounded-lg border border-[#E8EBF0] bg-white p-4 shadow-lg md:inset-x-auto md:bottom-6 md:right-6 md:w-80">

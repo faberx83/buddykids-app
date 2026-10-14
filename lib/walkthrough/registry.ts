@@ -288,6 +288,20 @@ export const WALKTHROUGH_REGISTRY: Record<string, WalkthroughDefinition> = {
       },
     ],
   },
+  // TRAMA — ONBOARDING V2 (14/10/2026), dietro ONBOARDING_V2_ENABLED. Chiave
+  // NUOVA apposta: chi aveva completato o saltato "family_first_onboarding"
+  // vede la nuova versione una volta. Stesso step sentinella "carousel".
+  family_onboarding_v2: {
+    key: "family_onboarding_v2",
+    title: "Benvenuto in TRAMA",
+    steps: [
+      {
+        key: "carousel",
+        title: "Onboarding V2 famiglie",
+        description: "Tre schermate di benvenuto, poi figli e scuola.",
+      },
+    ],
+  },
   // FINAL PRE-FREEZE WAVE (sez. 19-22, 08/09/2026) — controparte Partner di
   // parent_beta_onboarding sopra, stesso identico pattern (un solo step
   // sentinella "carousel", zero nuova migration, stessa infrastruttura

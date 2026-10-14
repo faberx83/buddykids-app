@@ -16,6 +16,7 @@ import { ComingSoonBadge } from "@/components/StatusBadge";
 import { buildFamilyTiers, familyDiscountAmount } from "@/lib/family-discount";
 import { calculateDayBookingCost, dayPrice } from "@/lib/day-pricing";
 import type { EligibleInviteDiscount } from "@/lib/data/invites";
+import { markFirstUsefulAction } from "@/lib/nextgen/first-action";
 
 const paymentMethodMap: Record<string, "card" | "apple_pay" | "bank_transfer"> = {
   card: "card",
@@ -347,6 +348,7 @@ export default function BookingClient({
       return;
     }
 
+    markFirstUsefulAction("prenotazione");
     router.push(`/booking/${activity.id}/success?bookingId=${result.bookingId}`);
   };
 

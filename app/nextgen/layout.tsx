@@ -14,6 +14,10 @@ import { getWalkthroughProgress, WalkthroughProgressSummary } from "@/lib/walkth
 import ParentSpotlight from "@/components/spotlight/ParentSpotlight";
 import OnboardingCarousel from "@/components/nextgen/OnboardingCarousel";
 import { PARENT_ONBOARDING_TUTORIAL_KEY } from "@/lib/nextgen/onboarding-slides";
+// TRAMA — ONBOARDING V2 (14/10/2026), dietro ONBOARDING_V2_ENABLED.
+import OnboardingV2, { type OnboardingV2Kid } from "@/components/nextgen/OnboardingV2";
+import { ONBOARDING_V2_TUTORIAL_KEY } from "@/lib/nextgen/onboarding-v2";
+import { getKidsForUser } from "@/lib/data/kids";
 import NotificationCenter from "@/components/nextgen/NotificationCenter";
 import NextgenAuthRedirect from "@/components/nextgen/NextgenAuthRedirect";
 import { getParentNotifications } from "@/lib/data/notifications";
@@ -134,6 +138,15 @@ export default async function NextgenLayout({ children }: { children: React.Reac
   // flag degli impegni decide se il + offre "Un impegno".
   let navV2Enabled = false;
   let addItemEnabled = false;
+  // TRAMA — ONBOARDING V2 (14/10/2026): con il flag acceso l'onboarding V2
+  // prende il posto del carousel attuale (chiave tutorial nuova). I dati dei
+  // figli e della scuola si leggono SOLO se l'onboarding sta per comparire.
+  let onboardingV2Enabled = false;
+  let onboardingV2Progress: WalkthroughProgressSummary | null = null;
+  let onboardingV2Kids: OnboardingV2Kid[] = [];
+  let onboardingV2SchoolEnabled = false;
+  let onboardingV2KidIdsWithoutSchool: string[] = [];
+  let onboardingV2City: string | null = null;
 
   if (isSupabaseConfigured) {
     const supabase = await createClient();
@@ -219,12 +232,54 @@ export default async function NextgenLayout({ children }: { children: React.Reac
     // una volta al prossimo accesso. Center admin esclusi come prima (hanno
     // il proprio carousel Partner).
     if (enabled && (realRole === "parent" || realRole === "platform_admin")) {
-      onboardingProgress = await getWalkthroughProgress(user.id, PARENT_ONBOARDING_TUTORIAL_KEY);
+      onboardingV2Enabled = await resolveFeatureFlag({
+        flagName: "ONBOARDING_V2_ENABLED",
+        userId: user.id,
+        role: realRole,
+        tenant: "family",
+        correlationId: generateCorrelationId(),
+      }).catch(() => false); // ripiego: onboarding attuale
+      if (onboardingV2Enabled) {
+        onboardingV2Progress = await getWalkthroughProgress(user.id, ONBOARDING_V2_TUTORIAL_KEY);
+        if (onboardingV2Progress?.currentStepKey) {
+          try {
+            const [kids, schoolEnabled, profileRow] = await Promise.all([
+              getKidsForUser(),
+              resolveFeatureFlag({
+                flagName: "SCHOOL_CALENDAR_INTELLIGENCE_ENABLED",
+                userId: user.id,
+                role: realRole,
+                tenant: "family",
+                correlationId: generateCorrelationId(),
+              }).catch(() => false),
+              supabase.from("profiles").select("city").eq("id", user.id).single(),
+            ]);
+            onboardingV2Kids = kids.map((k) => ({ id: k.id, name: k.name, age: k.birthDate ? k.age : null }));
+            onboardingV2SchoolEnabled = schoolEnabled;
+            onboardingV2City = (profileRow.data?.city as string | null) ?? null;
+            if (schoolEnabled && kids.length > 0) {
+              const { data: schoolRows } = await supabase
+                .from("kid_school_profiles")
+                .select("kid_id")
+                .eq("parent_id", user.id)
+                .in("kid_id", kids.map((k) => k.id));
+              const withSchool = new Set((schoolRows ?? []).map((r) => r.kid_id as string));
+              onboardingV2KidIdsWithoutSchool = kids.map((k) => k.id).filter((id) => !withSchool.has(id));
+            }
+          } catch {
+            // Dati di contorno non disponibili: l'onboarding parte comunque
+            // (figli da inserire, scuola saltata).
+          }
+        }
+      } else {
+        onboardingProgress = await getWalkthroughProgress(user.id, PARENT_ONBOARDING_TUTORIAL_KEY);
+      }
       // Sequenza richiesta: il carousel di benvenuto precede il tour
       // Spotlight in-context — non recuperare/montare quest'ultimo finché il
       // carousel non risulta completato o saltato (currentStepKey null),
       // per non sovrapporre due overlay nella stessissima prima sessione.
-      if (!onboardingProgress || onboardingProgress.currentStepKey === null) {
+      const welcome = onboardingV2Enabled ? onboardingV2Progress : onboardingProgress;
+      if (!welcome || welcome.currentStepKey === null) {
         spotlightProgress = await getWalkthroughProgress(user.id, "discover_book_parent");
       }
     } else if (enabled) {
@@ -292,7 +347,17 @@ export default async function NextgenLayout({ children }: { children: React.Reac
           {/* POLISH V2 (14/10/2026): con la nuova barra un solo elemento flottante, il +. */}
           <BetaFeedbackButton hideFab={navV2Enabled} />
           <ParentSpotlight progress={spotlightProgress} />
-          <OnboardingCarousel progress={onboardingProgress} />
+          {onboardingV2Enabled ? (
+            <OnboardingV2
+              progress={onboardingV2Progress}
+              kids={onboardingV2Kids}
+              schoolCalendarEnabled={onboardingV2SchoolEnabled}
+              kidIdsWithoutSchool={onboardingV2KidIdsWithoutSchool}
+              residenceCity={onboardingV2City}
+            />
+          ) : (
+            <OnboardingCarousel progress={onboardingProgress} />
+          )}
           {isParentUser && <NotificationCenter initialNotifications={notifications} hideFloatingBell={navV2Enabled} />}
           {/* BUILD_INFO_BUBBLE */}
           <BuildInfoBubble label={buildInfoLabel} />
@@ -308,7 +373,15 @@ export default async function NextgenLayout({ children }: { children: React.Reac
           uno scope diverso da quello di LEGACY ("/"), altrimenti Chrome
           unifica le due app sotto un'unica identità installata (vedi
           commento in components/InstallPrompt.tsx). */}
-      <InstallPrompt appName="TRAMA" themeColor="#6F63C5" swScope="/nextgen" />
+      {/* ONBOARDING V2 (14/10/2026): con il flag l'invito arriva dopo la
+          prima azione utile, nello stile V2. */}
+      <InstallPrompt
+        appName="TRAMA"
+        themeColor={onboardingV2Enabled ? "#172A4D" : "#6F63C5"}
+        swScope="/nextgen"
+        waitForFirstAction={onboardingV2Enabled}
+        v2={onboardingV2Enabled}
+      />
     </PhoneShell>
   );
 }

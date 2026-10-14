@@ -182,6 +182,19 @@ export const RELEASE_CATALOG: ReleaseCatalogEntry[] = [
     ],
     notes: "Creata il 14/10/2026. Ripiego: flag spento = pagine attuali.",
   },
+  {
+    // TRAMA — ONBOARDING V2 (14/10/2026).
+    id: "onboarding-v2",
+    label: "TRAMA — Onboarding V2",
+    shortDescription: "Benvenuto animato in tre schermate, poi figli e scuola, poi la Home.",
+    targetAudience: ["parent"],
+    featureKeys: ["onboarding_v2"],
+    knownLimitations: [
+      "onboarding_v2: il passo 'Chi vi aiuta' non c'è (si fa dal + o dal Profilo); la scuola si imposta per tutti i figli insieme.",
+    ],
+    notes:
+      "Creata il 14/10/2026. Si vede una volta per account (chiave family_onboarding_v2). Ripiego: flag spento = onboarding attuale.",
+  },
 ];
 
 export function getReleaseCatalog(): ReleaseCatalogEntry[] {

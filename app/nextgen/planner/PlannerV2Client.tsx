@@ -77,6 +77,7 @@ import ExternalPlannerItemsSection from "@/components/nextgen/ExternalPlannerIte
 import { useNextgenToast } from "@/components/nextgen/NextgenToastProvider";
 import { useGlobalActionProgress } from "@/components/GlobalActionProgress";
 import { recordBetaSignalAction } from "@/app/actions/beta-signals";
+import { markFirstUsefulAction } from "@/lib/nextgen/first-action";
 
 type View = "settimana" | "stagione";
 export interface HolidayPeriodRow {
@@ -1223,6 +1224,7 @@ function AssignSheet({
       }
       const res = await setResponsibilityAction(kidId, mondayIso, weekday!, moment, opt.value, label ?? opt.label, opt.familyPersonId);
       if (res.error) return showToast(res.error);
+      markFirstUsefulAction("chi_porta");
       onChange([
         ...rest,
         {
