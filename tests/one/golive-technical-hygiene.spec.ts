@@ -66,7 +66,12 @@ test.describe("Risorse statiche senza CDN di terze parti [no browser]", () => {
     for (const img of ["marker-icon-2x.png", "marker-icon.png", "marker-shadow.png"]) {
       expect(map).toContain(`from "leaflet/dist/images/${img}";`);
     }
-    expect(map).toContain("iconUrl: markerIcon.src,");
+    // 14/10/2026: l'immagine importata può arrivare come stringa o come
+    // { src } — assetUrl() accetta entrambe (prima `.src` dava iconUrl vuoto
+    // e la mappa del Planner cadeva con "iconUrl not set in Icon options").
+    expect(map).toContain("iconUrl: markerIconUrl,");
+    expect(map).toContain("const markerIconUrl = assetUrl(markerIcon);");
+    expect(map).not.toContain("markerIcon.src");
   });
 });
 

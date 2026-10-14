@@ -132,6 +132,16 @@ test.describe("TRAMA — Polish V2 [no browser]", () => {
     expect(read("components/ActivityMap.tsx")).toContain("eventHandlers={clickHandlers[it.id]}");
   });
 
+  test("PO-12 Mappa del Planner: ogni segnaposto ha un'icona disegnata (causa vera: 'iconUrl not set in Icon options')", () => {
+    const map = read("components/ActivityMap.tsx");
+    // ramo del Planner (onSelect): mai l'icona immagine di default
+    expect(map).toContain("icon={selectedId === it.id ? selectedIcon : plannerPinIcon}");
+    expect(map).not.toContain("{...(selectedId === it.id ? { icon: selectedIcon } : {})}");
+    expect(map).toContain("const plannerPinIcon = L.divIcon({");
+    // l'indirizzo dell'immagine di default si ricava da qualunque forma d'import
+    expect(map).toContain("function assetUrl(mod: unknown): string | undefined {");
+  });
+
   test("PO-10 componenti condivisi con Legacy e Gestori: il ramo attuale resta quello di prima", () => {
     expect(read("components/GroupDetailClient.tsx")).toContain(': nextgen ? "bg-trama-violet" : "bg-sky";');
     expect(read("components/GroupsClient.tsx")).toContain(': nextgen ? "bg-trama-violet" : "bg-sky";');

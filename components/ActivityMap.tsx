@@ -15,11 +15,28 @@ import markerShadow from "leaflet/dist/images/marker-shadow.png";
 // statiche: Next li serve dal nostro dominio.
 // GO-LIVE · COMPLIANCE (09/10/2026): prima arrivavano da unpkg (CDN di
 // terze parti, IP del visitatore inviato fuori). Stesse immagini, 1.9.4.
+// MAPPA DEL PLANNER (14/10/2026, causa vera trovata nella telemetria
+// planner_subview_error: "iconUrl not set in Icon options"): in produzione
+// l'import dell'immagine non arrivava come oggetto con `.src`, quindi l'icona
+// di default restava senza indirizzo e il primo segnaposto faceva cadere la
+// mappa (il vecchio "_leaflet_events" era la conseguenza: icona mai creata,
+// poi tolta). assetUrl() accetta tutte le forme (stringa, { src }, { default }).
+// Scopri non se ne accorgeva perché usa solo icone disegnate (divIcon).
+function assetUrl(mod: unknown): string | undefined {
+  if (typeof mod === "string") return mod;
+  if (mod && typeof mod === "object") {
+    const m = mod as { src?: unknown; default?: unknown };
+    if (typeof m.src === "string") return m.src;
+    if (m.default !== undefined) return assetUrl(m.default);
+  }
+  return undefined;
+}
+const markerIconUrl = assetUrl(markerIcon);
 delete (L.Icon.Default.prototype as unknown as { _getIconUrl?: unknown })._getIconUrl;
 L.Icon.Default.mergeOptions({
-  iconRetinaUrl: markerIcon2x.src,
-  iconUrl: markerIcon.src,
-  shadowUrl: markerShadow.src,
+  iconRetinaUrl: assetUrl(markerIcon2x) ?? markerIconUrl,
+  iconUrl: markerIconUrl,
+  shadowUrl: assetUrl(markerShadow),
 });
 
 // TRAMA — MAPPA DEL PLANNER (14/10/2026, errore live in anteprima interna:
@@ -57,11 +74,20 @@ const userIcon = L.divIcon({
 // Leaflet. Usato SOLO quando viene passato `selectedId` (opt-in, vedi sotto):
 // LEGACY Cerca non passa questa prop, quindi il suo comportamento resta
 // identico a prima.
+// MAPPA DEL PLANNER (14/10/2026): navy come il resto del Planner V2, e un
+// segnaposto disegnato anche per quelli NON selezionati — la mappa del
+// Planner non dipende più dall'immagine del marker di default.
 const selectedIcon = L.divIcon({
   className: "",
-  html: '<div style="width:26px;height:26px;border-radius:9999px;background:#6F63C5;border:3px solid white;box-shadow:0 2px 8px rgba(0,0,0,0.35)"></div>',
+  html: '<div style="width:26px;height:26px;border-radius:9999px;background:#172A4D;border:3px solid white;box-shadow:0 0 0 4px rgba(23,42,77,0.18),0 2px 8px rgba(0,0,0,0.35)"></div>',
   iconSize: [26, 26],
   iconAnchor: [13, 13],
+});
+const plannerPinIcon = L.divIcon({
+  className: "",
+  html: '<div style="width:18px;height:18px;border-radius:9999px;background:#172A4D;border:3px solid white;box-shadow:0 1px 5px rgba(0,0,0,0.35)"></div>',
+  iconSize: [18, 18],
+  iconAnchor: [9, 9],
 });
 
 // TRAMA — DISCOVERY MAP + POLISH (21/09/2026), §3-4 del prompt "TRE STATI
@@ -342,7 +368,7 @@ export default function ActivityMap({
             <Marker
               key={it.id}
               position={[it.lat, it.lng]}
-              {...(selectedId === it.id ? { icon: selectedIcon } : {})}
+              icon={selectedId === it.id ? selectedIcon : plannerPinIcon}
               eventHandlers={clickHandlers[it.id]}
             />
           ) : (
