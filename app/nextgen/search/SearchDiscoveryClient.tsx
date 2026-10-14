@@ -475,7 +475,7 @@ export default function SearchDiscoveryClient({
   const panelChip = v2
     ? "rounded-full border px-3.5 py-2 text-[13px] font-semibold transition-colors active:scale-95"
     : "rounded-full border-[1.5px] px-3 py-1.5 text-xs font-medium transition-colors active:scale-95";
-  const panelChipOff = v2 ? "border-[#E3E6EC] bg-white text-ink" : panelChipOff;
+  const panelChipOff = v2 ? "border-[#E3E6EC] bg-white text-ink" : "border-[#E8EBF0] bg-white text-ink-2";
   const panelInput = v2
     ? "min-h-[44px] w-full rounded-[12px] border border-[#E3E6EC] bg-white px-3 text-[15px] outline-none focus:border-trama-violet"
     : "w-full rounded-md border border-[#E8EBF0] bg-white px-3 py-2 text-sm outline-none focus:border-trama-violet";
