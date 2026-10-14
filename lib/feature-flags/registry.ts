@@ -272,6 +272,23 @@ export const FEATURE_FLAG_REGISTRY = {
     defaultValue: false,
     allowedScopes: ["global", "environment", "user", "role", "cohort"],
   },
+  // TRAMA — SCOPRI E PRENOTAZIONI V2 (14/10/2026), stessa release.
+  BOOKINGS_V2_ENABLED: {
+    name: "BOOKINGS_V2_ENABLED",
+    description:
+      "Abilita la pagina Prenotazioni V2: In arrivo / Passate, Da sistemare, prenotazioni per mese, prenotazione " +
+      "aperta con stato spiegato e azioni (Scrivi al centro, Modifica, Annulla). Default false: pagina attuale.",
+    defaultValue: false,
+    allowedScopes: ["global", "environment", "user", "role", "cohort"],
+  },
+  DISCOVER_V2_ENABLED: {
+    name: "DISCOVER_V2_ENABLED",
+    description:
+      "Abilita Scopri V2: 'Per quando' (prossima chiusura, vacanze, dopo scuola, estate), filtri ridotti, " +
+      "card con motivi chiari, Elenco/Mappa. Default false: Scopri attuale.",
+    defaultValue: false,
+    allowedScopes: ["global", "environment", "user", "role", "cohort"],
+  },
 } as const satisfies Record<string, FeatureFlagDefinition>;
 
 export type KnownFeatureFlagName = keyof typeof FEATURE_FLAG_REGISTRY;

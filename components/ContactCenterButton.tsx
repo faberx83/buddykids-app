@@ -10,7 +10,17 @@ import { isSupabaseConfigured } from "@/lib/supabase/env";
 // risposta torna visibile al genitore in "Le mie richieste" (/richieste,
 // vedi ProfileSettingsSection/menu profilo). Ticketing semplice: un
 // messaggio, una risposta — non una chat multi-turno.
-export default function ContactCenterButton({ activityDbId }: { activityDbId?: string }) {
+// className/label (14/10/2026, Prenotazioni V2): stesso flusso, aspetto
+// del pulsante scelto da chi lo usa. Senza, resta identico a prima.
+export default function ContactCenterButton({
+  activityDbId,
+  className,
+  label,
+}: {
+  activityDbId?: string;
+  className?: string;
+  label?: string;
+}) {
   const [open, setOpen] = useState(false);
   const [message, setMessage] = useState("");
   const [sending, setSending] = useState(false);
@@ -51,10 +61,10 @@ export default function ContactCenterButton({ activityDbId }: { activityDbId?: s
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="flex items-center gap-1.5 text-xs font-semibold text-sky"
+        className={className ?? "flex items-center gap-1.5 text-xs font-semibold text-sky"}
       >
         <i className="ti ti-message-circle-2 text-sm" />
-        Contatta il gestore
+        {label ?? "Contatta il gestore"}
       </button>
 
       {open && (

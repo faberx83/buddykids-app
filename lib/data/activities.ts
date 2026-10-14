@@ -340,6 +340,36 @@ export async function getActivityAvailabilityByWeek(seasonYear: number): Promise
 // attività, invece di una query per attività — evita N+1), ma qui basta un
 // Set di id (nessun bisogno di raggruppare per data: il filtro è un
 // semplice "ha almeno un giorno prenotabile aperto", non una data precisa).
+// TRAMA — SCOPRI V2 (14/10/2026): intervalli aperti per attività (settimane
+// con posti e giorni singoli prenotabili), per il filtro "Per quando" su
+// qualunque periodo (ponti, vacanze, prossime settimane), non solo le
+// settimane estive. Stesse tabelle e stessi criteri di
+// getActivityAvailabilityByWeek, sola lettura.
+export async function getActivityOpenRanges(): Promise<Record<string, { start: string; end: string }[]>> {
+  if (!isSupabaseConfigured) return {};
+  const supabase = await createClient();
+  const [{ data: weekRows, error: weekError }, { data: dayRows, error: dayError }] = await Promise.all([
+    supabase.from("activity_weeks").select("activity_id, start_date, end_date").gt("spots_left", 0),
+    supabase
+      .from("activity_days")
+      .select("activity_id, date")
+      .eq("is_open", true)
+      .eq("single_day_bookable", true)
+      .gt("spots_left", 0),
+  ]);
+  const out: Record<string, { start: string; end: string }[]> = {};
+  const push = (id: string, start: string, end: string) => {
+    (out[id] ??= []).push({ start, end });
+  };
+  if (!weekError && weekRows) {
+    for (const row of weekRows as { activity_id: string; start_date: string; end_date: string }[]) push(row.activity_id, row.start_date, row.end_date);
+  }
+  if (!dayError && dayRows) {
+    for (const row of dayRows as { activity_id: string; date: string }[]) push(row.activity_id, row.date, row.date);
+  }
+  return out;
+}
+
 export async function getActivitiesWithOpenDaySpots(): Promise<Set<string>> {
   if (!isSupabaseConfigured) return new Set(); // demo: nessuna attività ha un dbId da confrontare
 

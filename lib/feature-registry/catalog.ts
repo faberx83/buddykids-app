@@ -817,6 +817,52 @@ export const FEATURE_CATALOG: FeatureCatalogEntry[] = [
     riskLevel: "medium",
     releaseEligible: true,
   },
+  {
+    // TRAMA — PRENOTAZIONI V2 (14/10/2026, tavole "TRAMA Scopri e Prenotazioni V2").
+    key: "bookings_v2",
+    label: "Prenotazioni V2 — elenco per mese e prenotazione aperta",
+    area: "parent",
+    status: "INTERNAL_PREVIEW",
+    flagName: "BOOKINGS_V2_ENABLED",
+    description:
+      "Prenotazioni famiglie nello stile V2.1: riepilogo in una riga, In arrivo / Passate, Da sistemare (stesse " +
+      "parole del Da fare in Home), prenotazioni per mese con data, stato, figli e prezzo; prenotazione aperta con " +
+      "stato spiegato, riepilogo, chi accompagna, Scrivi al centro, Modifica, Scheda attività, Annulla. La copertura " +
+      "delle settimane resta nel Planner.",
+    sourceFiles: [
+      "app/nextgen/prenotazioni/page.tsx",
+      "app/nextgen/prenotazioni/PrenotazioniV2Client.tsx",
+      "lib/nextgen/bookings-v2.ts",
+    ],
+    note: "Riusa cancelBookingAction, ContactCenterButton, le pagine di modifica e la scheda attività.",
+    riskLevel: "medium",
+    releaseEligible: true,
+  },
+  {
+    // TRAMA — SCOPRI V2 (14/10/2026, tavole "TRAMA Scopri e Prenotazioni V2").
+    // ADAPT di SearchDiscoveryClient (prop discoverV2): stessi filtri, stessa
+    // mappa, stessa telemetria; cambia la presentazione e si aggiunge "Per quando".
+    key: "discover_v2",
+    label: "Scopri V2 — Per quando, filtri ridotti, card con motivi",
+    area: "parent",
+    status: "INTERNAL_PREVIEW",
+    flagName: "DISCOVER_V2_ENABLED",
+    description:
+      "Scopri nello stile V2.1: titolo e Elenco/Mappa in alto, ricerca, 'Per quando' (prossime chiusure della " +
+      "scuola, prossime 4 settimane, estate) che filtra Partner, Scoperte TRAMA e community per data, 'Per chi' e " +
+      "'Filtri · N' (i filtri esistenti in un solo pulsante), card Partner con motivi chiari al posto del Match %, " +
+      "'Mandalo a TRAMA' in fondo.",
+    sourceFiles: [
+      "app/nextgen/search/page.tsx",
+      "app/nextgen/search/SearchDiscoveryClient.tsx",
+      "components/nextgen/DiscoverResultCard.tsx",
+      "lib/nextgen/discover-v2.ts",
+      "lib/data/activities.ts",
+    ],
+    note: "Le card Scoperte TRAMA e community restano quelle attuali in questa fase.",
+    riskLevel: "medium",
+    releaseEligible: true,
+  },
 ];
 
 export function getFeatureCatalog(): FeatureCatalogEntry[] {

@@ -9,6 +9,8 @@ import { readStoredGeo, writeStoredGeo, clearStoredGeo, haversineKm } from "@/li
 import { categories } from "@/lib/mock-data";
 import { getSeasonWeekRanges, isoDate, formatShortRange, SeasonWeekRange } from "@/lib/season-weeks";
 import ActivityCard from "@/components/ActivityCard";
+import DiscoverResultCard from "@/components/nextgen/DiscoverResultCard";
+import { activityOpenIn, discoveryOpenIn, periodForWeek, type DiscoverPeriod } from "@/lib/nextgen/discover-v2";
 import PageHeader from "@/components/PageHeader";
 import { ProductStatusChip } from "@/components/ProductStatusChip";
 import Link from "next/link";
@@ -260,6 +262,7 @@ export default function SearchDiscoveryClient({
   radarEnabled = false,
   communityDiscoveries = [],
   communityIdsInPlanner = [],
+  discoverV2 = null,
 }: {
   activities: Activity[];
   kids: Kid[];
@@ -317,6 +320,10 @@ export default function SearchDiscoveryClient({
   // delle settimane per-attività coi dati seed di demo). Calcolato
   // server-side in page.tsx, stesso pattern di app/nextgen/planner/page.tsx.
   todayIso: string;
+  // TRAMA — SCOPRI V2 (14/10/2026): null = Scopri attuale, invariato. Con
+  // DISCOVER_V2_ENABLED: "Per quando" (periodi + intervalli aperti per
+  // attività) e la presentazione delle tavole V2.
+  discoverV2?: { periods: DiscoverPeriod[]; activityRanges: Record<string, { start: string; end: string }[]> } | null;
 }) {
   // TRAMA ONE — Sezione 8 (Chiusura P0 Parent, Context Object): questa
   // pagina riceveva già un deep-link `?kid=<id>` da lib/nextgen/missions.ts
@@ -451,6 +458,27 @@ export default function SearchDiscoveryClient({
     return candidates.filter((c) => validStarts.has(c));
   });
 
+  // TRAMA — SCOPRI V2 (14/10/2026): "Per quando". Un ?week= che non è una
+  // settimana estiva (es. "Trova attività" su un ponte dal Planner) diventa
+  // un periodo a sé, già selezionato.
+  const v2 = discoverV2;
+  const [extraPeriod] = useState<DiscoverPeriod | null>(() => {
+    if (!v2) return null;
+    const weekParam = searchParams.get("week");
+    if (!weekParam || !/^\d{4}-\d{2}-\d{2}$/.test(weekParam)) return null;
+    const isSummerWeek = getSeasonWeekRanges(seasonYear).some((r) => isoDate(r.start) === weekParam);
+    return isSummerWeek ? null : periodForWeek(weekParam);
+  });
+  const periods = useMemo(() => (v2 ? [...(extraPeriod ? [extraPeriod] : []), ...v2.periods] : []), [v2, extraPeriod]);
+  const [periodKey, setPeriodKey] = useState<string | null>(() => {
+    if (!v2) return null;
+    if (extraPeriod) return extraPeriod.key;
+    const per = searchParams.get("per");
+    return per && v2.periods.some((p) => p.key === per) ? per : null;
+  });
+  const activePeriod = useMemo(() => periods.find((p) => p.key === periodKey) ?? null, [periods, periodKey]);
+  const [showFiltersV2, setShowFiltersV2] = useState(false);
+
   // TRAMA — REAL DISCOVERY PILOT (16/09/2026), §14 del report ("School
   // Calendar → Discovery"). Nessuna settimana selezionata → tutti i record
   // restano (un record senza data scelta non è mai incompatibile). Con una
@@ -563,6 +591,10 @@ export default function SearchDiscoveryClient({
     if (selectedTagIds.length > 0) params.set("tags", selectedTagIds.join(","));
     if (selectedCoverageModes.length > 0) params.set("cov", selectedCoverageModes[0]);
     if (onlyDaySpots) params.set("spot", "1");
+    if (activePeriod) {
+      if (activePeriod.kind === "week") params.set("week", activePeriod.start);
+      else params.set("per", activePeriod.key);
+    }
     const enabledServices = (Object.keys(services) as (keyof ServiceFilters)[]).filter((k) => services[k]);
     if (enabledServices.length > 0) params.set("svc", enabledServices.join(","));
     // Il viewport mappa ha senso solo mentre si è in vista Mappa — evita di
@@ -608,6 +640,7 @@ export default function SearchDiscoveryClient({
     onlyDaySpots,
     services,
     mapViewState,
+    activePeriod,
   ]);
 
   const compatibleRealDiscoveryLeads = useMemo(() => {
@@ -638,6 +671,7 @@ export default function SearchDiscoveryClient({
       // (UNKNOWN passa sempre) — vedi commento sulla funzione in
       // lib/discovery/real-dataset.ts per la motivazione completa.
       if (!isDiscoveryLeadCompatibleWithCoverage(lead, { selectedCoverageModes, onlyDaySpots })) return false;
+      if (activePeriod && !discoveryOpenIn(lead, activePeriod)) return false;
       return true;
     });
 
@@ -654,6 +688,7 @@ export default function SearchDiscoveryClient({
     query,
     selectedCoverageModes,
     onlyDaySpots,
+    activePeriod,
   ]);
 
   // TRAMA — RADAR (13/10/2026): stessi filtri della lista, stessa regola
@@ -667,7 +702,7 @@ export default function SearchDiscoveryClient({
       .map((start) => ranges.find((r) => isoDate(r.start) === start))
       .filter((r): r is SeasonWeekRange => Boolean(r))
       .map((r) => ({ start: isoDate(r.start), end: isoDate(r.end) }));
-    return filterCommunityDiscoveries(communityDiscoveries, {
+    const list = filterCommunityDiscoveries(communityDiscoveries, {
       minAge,
       maxAge,
       maxPrice,
@@ -677,7 +712,8 @@ export default function SearchDiscoveryClient({
       selectedWeekRanges,
       coverageFilterActive: selectedCoverageModes.length > 0 || onlyDaySpots,
     });
-  }, [communityDiscoveries, seasonYear, selectedWeekStarts, minAge, maxAge, maxPrice, zone, query, selectedTagIds, selectedCoverageModes, onlyDaySpots]);
+    return activePeriod ? list.filter((d) => discoveryOpenIn(d, activePeriod)) : list;
+  }, [communityDiscoveries, seasonYear, selectedWeekStarts, minAge, maxAge, maxPrice, zone, query, selectedTagIds, selectedCoverageModes, onlyDaySpots, activePeriod]);
   const communityIdsInPlannerSet = useMemo(() => new Set(communityIdsInPlanner), [communityIdsInPlanner]);
   // Contenuto condiviso da un'altra app (Android share_target, vedi
   // public/manifest-nextgen.json): letto UNA volta all'apertura, così la
@@ -875,6 +911,7 @@ export default function SearchDiscoveryClient({
         !selectedCoverageModes.some((m) => isCoverageModeCompatibleWithFilter((a.bookingMode ?? "mixed") as CoverageMode, m))
       )
         return false;
+      if (activePeriod && (!a.dbId || !activityOpenIn(v2?.activityRanges[a.dbId], activePeriod))) return false;
       return true;
     });
   }, [
@@ -891,6 +928,8 @@ export default function SearchDiscoveryClient({
     onlyDaySpots,
     daySpotsSet,
     selectedCoverageModes,
+    activePeriod,
+    v2,
   ]);
 
   const matches = useMemo(
@@ -1033,7 +1072,28 @@ export default function SearchDiscoveryClient({
     return result.kind === "partner" ? result.match.activity.id : `curated-${result.lead.id}`;
   }
 
-  function renderDiscoveryResult(result: DiscoveryResult) {
+  function renderDiscoveryResult(result: DiscoveryResult, index = 0) {
+    if (result.kind === "partner" && v2) {
+      const a = result.match.activity;
+      const km = geo && a.lat !== undefined && a.lng !== undefined ? haversineKm(geo.lat, geo.lng, a.lat, a.lng) : null;
+      const reasons = [
+        ...(activePeriod ? [`Posti liberi · ${activePeriod.label}`] : []),
+        ...result.match.reasons.filter((r) => !(activePeriod && r.startsWith("Libera nella"))),
+        ...(a.mealOption === "included" ? ["Pranzo incluso"] : []),
+      ].slice(0, 3);
+      return (
+        <DiscoverResultCard
+          key={resultKey(result)}
+          activity={a}
+          reasons={reasons}
+          distanceKm={km}
+          correlationId={searchCorrelationId}
+          weekStarts={selectedWeekStarts}
+          initialFavorite={!!a.dbId && favoriteIdsSet.has(a.dbId)}
+          raised={index === 0}
+        />
+      );
+    }
     if (result.kind === "partner") {
       return (
         <ResultCard
@@ -1136,13 +1196,40 @@ export default function SearchDiscoveryClient({
   ];
 
   return (
-    <div className="flex min-h-screen flex-col">
+    <div className={v2 ? "-mb-40 flex min-h-[calc(100%+10rem)] flex-col bg-trama-page pb-24" : "flex min-h-screen flex-col"}>
       {/* TRAMA — BACK NAVIGATION PROGRESS FIX (15/09/2026): backHref invece
           di onBack — vedi ProfileNextgenClient.tsx per la spiegazione
           completa. `router` locale (usato solo qui) rimosso perché non più
           necessario. */}
-      <PageHeader title="Scopri attività" backHref="/nextgen" showBrandIcon />
-      <div className="px-5 py-4">
+      {!v2 && <PageHeader title="Scopri attività" backHref="/nextgen" showBrandIcon />}
+      <div className={v2 ? "px-5 pt-[18px]" : "px-5 py-4"}>
+        {/* TRAMA — SCOPRI V2: scheda principale (niente freccia), Elenco/Mappa in alto. */}
+        {v2 && (
+          <header className="mb-4 flex items-center gap-2.5">
+            <h1 className="flex-1 font-poppins text-[24px] font-semibold text-ink">Scopri</h1>
+            <div role="tablist" aria-label="Vista" className="grid grid-cols-2 gap-[3px] rounded-xl bg-[#EEF0F4] p-[3px]">
+              {(
+                [
+                  ["lista", "Elenco"],
+                  ["mappa", "Mappa"],
+                ] as const
+              ).map(([mode, label]) => (
+                <button
+                  key={mode}
+                  type="button"
+                  role="tab"
+                  aria-selected={viewMode === mode}
+                  onClick={() => setViewMode(mode)}
+                  className={`min-h-[36px] rounded-[9px] px-3 text-[13px] ${
+                    viewMode === mode ? "bg-white font-bold text-trama-navy shadow-[0_1px_3px_rgba(23,42,77,0.12)]" : "font-semibold text-[#4B5563]"
+                  }`}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+          </header>
+        )}
         {/* TRAMA — FINAL BETA CHROME CLEANUP (15/09/2026): ProductStatusChip
             sostituisce NextgenBadge — vedi HomeDashboardClient.tsx per la
             spiegazione completa.
@@ -1153,7 +1240,7 @@ export default function SearchDiscoveryClient({
             di Planner/Calendar Export (anyResolvedViaInternalPreview). Per
             un utente a cui il flag risolve false (o via override globale/
             pilot, non cohort:internal-preview) resta false come prima. */}
-        <ProductStatusChip internal={realDiscoveryBadgeVisible} />
+        {!v2 && <ProductStatusChip internal={realDiscoveryBadgeVisible} />}
         {/* RESTYLE INTRO HEADER — "PILL COMPATTA" (Opzione B, scelta da
             Fabrizio su 3 mockup: Attuale / Opzione A lineare / Opzione B
             pill). La DecorativeIntroCard (card grande, due cerchi
@@ -1164,16 +1251,21 @@ export default function SearchDiscoveryClient({
             Planner/Community (vedi PlannerClient.tsx). Nessun wrapper
             DecorativeIntroCard: la pill non ha bisogno dei cerchi
             decorativi. */}
+        {!v2 && (
         <div className="mb-3 inline-flex items-center gap-1.5 rounded-full bg-trama-violet/10 px-3 py-1.5">
           <i className="ti ti-sparkles text-[14px] text-trama-violet" />
           <span className="text-[12.5px] font-medium text-[#3C3489]">
             Selezionate per voi{uncoveredWeekLabel ? ` — priorità a chi è libero in ${uncoveredWeekLabel}` : ""}
           </span>
         </div>
+        )}
 
         {/* TRAMA — RADAR (13/10/2026): ingresso unico per mandare a TRAMA
             una scoperta trovata fuori (volantino, link, testo). Solo con
             RADAR_ENABLED risolto true lato server. */}
+        {/* Scopri V2: questo ingresso scende in fondo all'elenco (sotto). */}
+        {!v2 && (
+        <>
         {radarEnabled && (
           <button
             type="button"
@@ -1189,6 +1281,8 @@ export default function SearchDiscoveryClient({
               <span className="block text-[12px] text-ink-2">Hai visto un volantino o un post? Mandalo a TRAMA</span>
             </span>
           </button>
+        )}
+        </>
         )}
 
         {contextualAnnouncement && (
@@ -1216,18 +1310,24 @@ export default function SearchDiscoveryClient({
             data-spotlight/className di prima). La X tocca SOLO `query`:
             nessun altro filtro (Date/Copertura/Età/Zona/Tipo attività) viene
             mai toccato da questo bottone. */}
-        <div className="relative mb-3">
+        <div className={v2 ? "relative mb-4" : "relative mb-3"}>
+          {v2 && <i className="ti ti-search pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-[18px] text-ink-2" aria-hidden="true" />}
           <input
             value={query}
             onChange={(e) => setQuery(e.target.value)}
+            aria-label="Cerca"
             placeholder="Cerca per nome…"
             // TRAMA ONE Parent Spotlight sprint (24/08/2026) — target reale
             // dello step "search_activity" (discover_book_parent, vedi
             // lib/walkthrough/registry.ts).
             data-spotlight="search_bar"
-            className={`w-full rounded-xl border border-[#E8EBF0] bg-white px-3.5 py-2.5 text-sm outline-none focus:border-trama-violet ${
-              query ? "pr-9" : ""
-            }`}
+            className={
+              v2
+                ? `min-h-[48px] w-full rounded-[14px] border border-[#E3E6EC] bg-white pl-10 pr-3.5 text-[15px] outline-none focus:border-trama-violet ${query ? "pr-9" : ""}`
+                : `w-full rounded-xl border border-[#E8EBF0] bg-white px-3.5 py-2.5 text-sm outline-none focus:border-trama-violet ${
+                    query ? "pr-9" : ""
+                  }`
+            }
           />
           {query && (
             <button
@@ -1251,6 +1351,66 @@ export default function SearchDiscoveryClient({
             comparsa come gli altri, primo della riga scorrevole, che scala a
             qualunque numero di figli invece di allargare la riga con un
             pulsante per ciascuno. */}
+        {v2 && periods.length > 0 && (
+          <div className="mb-4 flex flex-col gap-2">
+            <span className="text-[12px] font-semibold text-ink-2">Per quando</span>
+            <div className="no-scrollbar -mr-5 flex gap-2 overflow-x-auto pr-5" role="group" aria-label="Per quando">
+              {periods.map((p) => {
+                const on = periodKey === p.key;
+                return (
+                  <button
+                    key={p.key}
+                    type="button"
+                    aria-pressed={on}
+                    onClick={() => setPeriodKey(on ? null : p.key)}
+                    className={`flex min-h-[38px] flex-shrink-0 items-center gap-1.5 rounded-full px-3.5 text-[13px] font-semibold ${
+                      on ? "bg-trama-navy text-white" : "border border-[#E3E6EC] bg-white text-ink"
+                    }`}
+                  >
+                    {p.kind === "closure" && <i className="ti ti-school text-[15px]" aria-hidden="true" />}
+                    {p.label}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* SCOPRI V2: per chi + "Filtri · N" che apre la riga dei filtri esistenti. */}
+        {v2 && (
+          <div className="mb-3 flex items-center gap-2">
+            {kids.length > 0 && (
+              <button
+                type="button"
+                onClick={() => setOpenPanel((prev) => (prev === "bambini" ? null : "bambini"))}
+                aria-expanded={openPanel === "bambini"}
+                className="flex min-h-[38px] items-center gap-[7px] rounded-full border border-[#E3E6EC] bg-white pl-1.5 pr-3 text-[13px] font-semibold text-ink"
+              >
+                <span className="flex h-[26px] w-[26px] items-center justify-center rounded-full bg-[#ECE8F8] text-[11px] font-bold text-[#4A3F9E]">
+                  {(selectedKidId ? kids.find((k) => k.id === selectedKidId)?.name : kids[0]?.name)?.charAt(0).toUpperCase() ?? "?"}
+                </span>
+                {selectedKidId
+                  ? `Per ${kids.find((k) => k.id === selectedKidId)?.name ?? ""}`
+                  : kids.length === 1
+                    ? `Per ${kids[0].name}`
+                    : "Per tutti i figli"}
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={() => setShowFiltersV2((v) => !v)}
+              aria-expanded={showFiltersV2}
+              className={`flex min-h-[38px] items-center gap-1.5 rounded-full px-3 text-[13px] font-semibold ${
+                showFiltersV2 ? "bg-trama-navy text-white" : "border border-[#E3E6EC] bg-white text-ink"
+              }`}
+            >
+              <i className="ti ti-adjustments-horizontal text-[16px]" aria-hidden="true" />
+              {activeFiltersCount > 0 ? `Filtri · ${activeFiltersCount}` : "Filtri"}
+            </button>
+          </div>
+        )}
+
+        {(!v2 || showFiltersV2) && (
         <div className="mb-1 flex items-center gap-2">
           <div className="no-scrollbar flex min-w-0 flex-1 items-center gap-2 overflow-x-auto pb-1">
             {filters.map((f) => (
@@ -1348,6 +1508,7 @@ export default function SearchDiscoveryClient({
             </button>
           )}
         </div>
+        )}
 
         {/* SPRINT 3 correttivo — pannello "Bambini": singola selezione (il
             punteggio/ordinamento resta legato a un bambino alla volta, come
@@ -1680,7 +1841,15 @@ export default function SearchDiscoveryClient({
             filtro è aperto, non un bordo fisso sempre presente. */}
         {openPanel !== null && <div data-testid="filter-results-divider" className="mb-3 border-t border-[#E8EBF0]" />}
 
-        <div className="mb-3 flex items-center justify-between">
+        {v2 && (
+          <div className="mb-3 mt-1 flex items-baseline justify-between gap-3">
+            <h2 className="font-poppins text-[17px] font-semibold text-ink">{activePeriod ? activePeriod.title : "Selezionate per voi"}</h2>
+            <span className="flex-shrink-0 text-[12.5px] text-ink-2">
+              {totalResultsCount === 1 ? "1 risultato" : `${totalResultsCount} risultati`}
+            </span>
+          </div>
+        )}
+        <div className={v2 ? "hidden" : "mb-3 flex items-center justify-between"}>
           {/* TRAMA — DISCOVERY UNIFICATION (21/09/2026), §3 "COUNT UNICO":
               Partner + Curated, mai un count separato per le Scoperte
               TRAMA. */}
@@ -1866,6 +2035,24 @@ export default function SearchDiscoveryClient({
           </div>
         ) : (
           <div className="flex flex-col gap-1">{unifiedResults.map(renderDiscoveryResult)}</div>
+        )}
+
+        {/* SCOPRI V2: "Mandalo a TRAMA" compatto, in fondo all'elenco. */}
+        {v2 && radarEnabled && viewMode === "lista" && (
+          <button
+            type="button"
+            onClick={() => setRadarOpen(true)}
+            data-testid="radar-add-discovery-cta"
+            className="mt-2 flex w-full items-center gap-3 rounded-2xl bg-[#F6F4EF] px-3.5 py-3 text-left text-ink active:scale-[0.99]"
+          >
+            <span className="flex h-[34px] w-[34px] items-center justify-center rounded-[10px] bg-white text-trama-navy">
+              <i className="ti ti-plus text-[18px]" aria-hidden="true" />
+            </span>
+            <span className="flex min-w-0 flex-1 flex-col gap-px">
+              <span className="text-[14px] font-semibold">Hai visto qualcosa che qui non c&apos;è?</span>
+              <span className="text-[12.5px] text-[#4B5563]">Mandalo a TRAMA: un volantino, un post, un link</span>
+            </span>
+          </button>
         )}
       </div>
       {/* TRAMA — DISCOVERY LIVE UX BUGFIX (22/09/2026), §6. Montato UNA sola

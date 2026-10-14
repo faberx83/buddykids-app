@@ -167,6 +167,19 @@ export const RELEASE_CATALOG: ReleaseCatalogEntry[] = [
     ],
     notes: "Creata il 14/10/2026. Ripiego: flag spento = barra attuale con Profilo.",
   },
+  {
+    // TRAMA — SCOPRI E PRENOTAZIONI V2 (14/10/2026).
+    id: "scopri-prenotazioni-v2",
+    label: "TRAMA — Scopri e Prenotazioni V2",
+    shortDescription: "Scopri e Prenotazioni nello stile della nuova Home e del nuovo Planner.",
+    targetAudience: ["parent"],
+    featureKeys: ["bookings_v2", "discover_v2"],
+    knownLimitations: [
+      "bookings_v2: i servizi extra (pranzo, navetta) non sono ancora nel riepilogo della prenotazione aperta.",
+      "discover_v2: le card delle Scoperte TRAMA e community restano quelle attuali; 'Per quando' sulle chiusure richiede il calendario scolastico attivo.",
+    ],
+    notes: "Creata il 14/10/2026. Ripiego: flag spento = pagine attuali.",
+  },
 ];
 
 export function getReleaseCatalog(): ReleaseCatalogEntry[] {

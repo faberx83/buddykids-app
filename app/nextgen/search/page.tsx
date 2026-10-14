@@ -39,6 +39,11 @@ import { getCuratedLeadIdsInPlanner, getCommunityDiscoveryIdsInPlanner } from "@
 // lette SOLO se il flag risolve true per questo utente.
 import { getVisibleCommunityDiscoveries } from "@/lib/data/radar";
 import type { CommunityDiscoveryRecord } from "@/lib/radar/community";
+import { getActivityOpenRanges } from "@/lib/data/activities";
+import { getKidClosureIntervalsForParent } from "@/lib/data/school-calendar";
+import { listClosurePeriods } from "@/lib/nextgen/holiday-summary";
+import { buildDiscoverPeriods, type DiscoverPeriod } from "@/lib/nextgen/discover-v2";
+import { getSeasonWeekRanges, isoDate } from "@/lib/season-weeks";
 
 // SPRINT 2 (NEXTGEN) — "Ricerca e scoperta": ordinamento intelligente sopra
 // il contesto del genitore. Nessuna nuova query: riusa getActivities/
@@ -97,6 +102,8 @@ export default async function NextgenSearchPage() {
   let radarEnabled = false;
   let communityDiscoveries: CommunityDiscoveryRecord[] = [];
   let communityIdsInPlanner: string[] = [];
+  // TRAMA — SCOPRI V2 (14/10/2026): null = Scopri attuale, invariato.
+  let discoverV2: { periods: DiscoverPeriod[]; activityRanges: Record<string, { start: string; end: string }[]> } | null = null;
   if (isSupabaseConfigured) {
     const supabase = await createClient();
     const {
@@ -107,7 +114,7 @@ export default async function NextgenSearchPage() {
       const { data: profileRow } = await supabase.from("profiles").select("role").eq("id", user.id).single();
       role = (profileRow?.role as string) ?? "parent";
     }
-    const [realDiscoveryDetail, externalPlannerItemsDetail, radarDetail] = await Promise.all([
+    const [realDiscoveryDetail, externalPlannerItemsDetail, radarDetail, discoverV2Detail, schoolDetail] = await Promise.all([
       resolveFeatureFlagVisibility({
         flagName: "REAL_DISCOVERY_DATASET_ENABLED",
         userId: user?.id ?? null,
@@ -129,7 +136,47 @@ export default async function NextgenSearchPage() {
         tenant: "family",
         correlationId: generateCorrelationId(),
       }),
+      resolveFeatureFlagVisibility({
+        flagName: "DISCOVER_V2_ENABLED",
+        userId: user?.id ?? null,
+        role,
+        tenant: "family",
+        correlationId: generateCorrelationId(),
+      }).catch(() => ({ enabled: false })),
+      resolveFeatureFlagVisibility({
+        flagName: "SCHOOL_CALENDAR_INTELLIGENCE_ENABLED",
+        userId: user?.id ?? null,
+        role,
+        tenant: "family",
+        correlationId: generateCorrelationId(),
+      }).catch(() => ({ enabled: false })),
     ]);
+    if (user && discoverV2Detail.enabled) {
+      try {
+        const [activityRanges, closureData] = await Promise.all([
+          getActivityOpenRanges(),
+          schoolDetail.enabled
+            ? getKidClosureIntervalsForParent(kids.map((k) => k.id)).catch(() => ({ hasAnySchoolProfile: false, closuresByKid: [] }))
+            : Promise.resolve({ hasAnySchoolProfile: false, closuresByKid: [] }),
+        ]);
+        const seasonRanges = getSeasonWeekRanges(seasonYear);
+        const summer =
+          seasonRanges.length > 0
+            ? { start: isoDate(seasonRanges[0].start), end: isoDate(seasonRanges[seasonRanges.length - 1].end) }
+            : null;
+        discoverV2 = {
+          activityRanges,
+          periods: buildDiscoverPeriods({
+            todayIso,
+            closures: listClosurePeriods(closureData.closuresByKid, todayIso),
+            summer,
+            summerYear: summer ? seasonYear : null,
+          }),
+        };
+      } catch {
+        discoverV2 = null; // ripiego: Scopri attuale
+      }
+    }
     // Il Radar richiede un utente autenticato (invio contenuti, preferiti).
     radarEnabled = Boolean(user) && radarDetail.enabled;
     if (radarEnabled) {
@@ -184,6 +231,7 @@ export default async function NextgenSearchPage() {
       radarEnabled={radarEnabled}
       communityDiscoveries={communityDiscoveries}
       communityIdsInPlanner={communityIdsInPlanner}
+      discoverV2={discoverV2}
       contextualAnnouncement={
         contextualAnnouncement
           ? {
