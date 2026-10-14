@@ -18,6 +18,8 @@ import { PARENT_ONBOARDING_TUTORIAL_KEY } from "@/lib/nextgen/onboarding-slides"
 import OnboardingV2, { type OnboardingV2Kid } from "@/components/nextgen/OnboardingV2";
 import { ONBOARDING_V2_TUTORIAL_KEY } from "@/lib/nextgen/onboarding-v2";
 import { getKidsForUser } from "@/lib/data/kids";
+// Profilo da ogni sezione (14/10/2026): avatar in alto a destra con la nuova barra.
+import { ProfileChipProvider } from "@/components/nextgen/ProfileChip";
 import NotificationCenter from "@/components/nextgen/NotificationCenter";
 import NextgenAuthRedirect from "@/components/nextgen/NextgenAuthRedirect";
 import { getParentNotifications } from "@/lib/data/notifications";
@@ -147,6 +149,8 @@ export default async function NextgenLayout({ children }: { children: React.Reac
   let onboardingV2SchoolEnabled = false;
   let onboardingV2KidIdsWithoutSchool: string[] = [];
   let onboardingV2City: string | null = null;
+  let profileFirstName: string | null = null;
+  let profileAvatarUrl: string | null = null;
 
   if (isSupabaseConfigured) {
     const supabase = await createClient();
@@ -167,10 +171,12 @@ export default async function NextgenLayout({ children }: { children: React.Reac
 
     const { data: profile } = await supabase
       .from("profiles")
-      .select("role")
+      .select("role, full_name, avatar_url")
       .eq("id", user.id)
       .single();
     const realRole = (profile?.role as Role) ?? "parent";
+    profileFirstName = ((profile?.full_name as string | null) ?? "").trim().split(" ")[0] || null;
+    profileAvatarUrl = (profile?.avatar_url as string | null) ?? null;
 
     if (realRole === "parent") {
       isParentUser = true;
@@ -329,7 +335,11 @@ export default async function NextgenLayout({ children }: { children: React.Reac
             {/* overscroll-y-contain (14/10/2026): arrivati in cima o in fondo,
                 lo scroll non passa più alla pagina intera (che su Android
                 spostava la bottom nav insieme alla barra del browser). */}
-            <NextgenScrollArea className="no-scrollbar flex-1 overflow-y-auto overscroll-y-contain pb-40">{children}</NextgenScrollArea>
+            <NextgenScrollArea className="no-scrollbar flex-1 overflow-y-auto overscroll-y-contain pb-40">
+              <ProfileChipProvider value={{ enabled: navV2Enabled, firstName: profileFirstName, avatarUrl: profileAvatarUrl }}>
+                {children}
+              </ProfileChipProvider>
+            </NextgenScrollArea>
             {/* Estensione 31/08/2026 (Fabrizio): pallini "Prenotazioni"/"Profilo"
                 contestualizzati, stessa lista `notifications` già calcolata
                 sopra per la campanella — zero nuove query, vedi

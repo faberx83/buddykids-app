@@ -288,24 +288,12 @@ body:has(.app-shell) {
 }
 
 /* TRAMA — ONBOARDING V2 (14/10/2026, components/nextgen/OnboardingV2.tsx).
-   La card d'esempio fluttua leggermente inclinata, le notifiche "escono" con
-   un piccolo rimbalzo e una sfocatura che si scioglie. Solo dentro varianti
-   motion-safe: con prefers-reduced-motion niente movimento. */
-@keyframes trama-onb2-tilt {
-  0%, 100% { transform: rotateY(-7deg) rotateX(4deg) translateY(0); }
-  50% { transform: rotateY(-3deg) rotateX(2deg) translateY(-8px); }
-}
-@keyframes trama-onb2-pop {
-  from { opacity: 0; transform: translateY(14px) scale(0.85); filter: blur(4px); }
-  to { opacity: 1; transform: none; filter: none; }
-}
+   Le schermate "perché" riusano le animazioni qui sopra (telefono che
+   fluttua e ruota, card che escono, testo con blur), come la versione
+   precedente; i passi figli/scuola entrano con questa. Solo motion-safe. */
 @keyframes trama-onb2-in {
   from { opacity: 0; transform: translateY(10px); filter: blur(3px); }
   to { opacity: 1; transform: none; filter: none; }
-}
-@keyframes trama-onb2-thread {
-  from { transform: scaleX(0); }
-  to { transform: scaleX(1); }
 }
 
 /* TRAMA — segno del marchio sotto i titoli (components/nextgen/TramaThread.tsx).
