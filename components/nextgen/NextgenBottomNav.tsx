@@ -92,10 +92,13 @@ export default function NextgenBottomNav({
   notifications = [],
   variant = "classic",
   addItemEnabled = false,
+  radarEnabled = false,
 }: {
   notifications?: NotificationItem[];
   variant?: "classic" | "v2";
   addItemEnabled?: boolean;
+  /** RADAR (14/10/2026): "Una scoperta" nel foglio del +. */
+  radarEnabled?: boolean;
 }) {
   const pathname = usePathname();
   const { hasUnseenBookingResponse, hasUnseenOther } = useNavBadges(notifications);
@@ -155,7 +158,7 @@ export default function NextgenBottomNav({
           </button>
           {V2_RIGHT.map(renderItem)}
         </div>
-        <AddSheet open={addOpen} onClose={() => setAddOpen(false)} addItemEnabled={addItemEnabled} />
+        <AddSheet open={addOpen} onClose={() => setAddOpen(false)} addItemEnabled={addItemEnabled} radarEnabled={radarEnabled} />
       </>
     );
   }

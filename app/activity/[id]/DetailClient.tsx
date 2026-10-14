@@ -17,6 +17,10 @@ import { isSupabaseConfigured } from "@/lib/supabase/env";
 import { calculateDayBookingCost, dayPrice, meetsMinDaysRequirement } from "@/lib/day-pricing";
 import FamilyPreviewBar from "./FamilyPreviewBar";
 import { FAMILY_PREVIEW_RETURN_HREF } from "@/lib/center/family-preview";
+// SCHEDA ATTIVITÀ V2 (14/10/2026): presentazione V2, stessa logica di questo file.
+import ActivityDetailV2 from "@/components/nextgen/ActivityDetailV2";
+import { activityDetailReasons, includedServices } from "@/lib/nextgen/activity-detail-v2";
+import { markFirstUsefulAction } from "@/lib/nextgen/first-action";
 
 const weekdayLabels = ["lunedì", "martedì", "mercoledì", "giovedì", "venerdì"];
 const weekdayShort = ["Lun", "Mar", "Mer", "Gio", "Ven", "Sab", "Dom"];
@@ -33,6 +37,8 @@ export default function DetailClient({
   activityAvailable = true,
   realSpotsLeft = undefined,
   partnerPreview = false,
+  v2 = false,
+  reasonKids = [],
 }: {
   activity: Activity;
   promotions: Promotion[];
@@ -111,6 +117,10 @@ export default function DetailClient({
   // disattivate, così l'anteprima non crea mai dati finti. false = pagina
   // pubblica invariata.
   partnerPreview?: boolean;
+  /** SCHEDA ATTIVITÀ V2 (DISCOVER_V2_ENABLED, mai in anteprima Partner): disegna ActivityDetailV2. */
+  v2?: boolean;
+  /** Figli del genitore (nome, età, interessi) per "Perché fa per voi" — solo V2. */
+  reasonKids?: { name: string; age: number; interests?: string[] }[];
 }) {
   const accentBg = nextgen ? "bg-trama-violet" : "bg-sky";
   const accentText = nextgen ? "text-trama-violet" : "text-sky";
@@ -274,6 +284,56 @@ export default function DetailClient({
     ...(activity.galleryUrls ?? []),
   ];
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
+  const reasonsV2 = useMemo(() => (v2 ? activityDetailReasons(activity, reasonKids) : []), [v2, activity, reasonKids]);
+
+  if (v2 && !partnerPreview) {
+    return (
+      <ActivityDetailV2
+        activity={activity}
+        reasons={reasonsV2}
+        services={includedServices(activity)}
+        fav={fav}
+        onToggleFav={() => {
+          const next = !fav;
+          setFav(next);
+          if (activity.dbId && isSupabaseConfigured) {
+            toggleFavoriteAction(activity.dbId, next).then((result) => {
+              if (result.error) setFav(!next);
+              else if (next) markFirstUsefulAction("salvata");
+            });
+          }
+        }}
+        onBack={() => {
+          if (window.history.length > 1) router.back();
+          else router.push("/nextgen/search");
+        }}
+        coverImageUrl={activity.coverImageUrl}
+        galleryUrls={activity.galleryUrls ?? []}
+        onOpenImage={(url) => setLightboxIndex(Math.max(0, carouselImages.indexOf(url)))}
+        lightbox={
+          lightboxIndex !== null ? (
+            <ImageLightbox images={carouselImages} initialIndex={lightboxIndex} onClose={() => setLightboxIndex(null)} />
+          ) : null
+        }
+        activePromotions={activePromotions}
+        certifications={certifications}
+        showDaySelection={showDaySelection}
+        filterWeekCount={filterWeekRanges.length}
+        onClearWeekFilter={() => router.replace(`/activity/${activity.id}`)}
+        noDaysInFilter={filterWeekRanges.length > 0 && bookableDays.length === 0}
+        dayWeekGroups={dayWeekGroups}
+        bookedDayDecisions={bookedDayDecisions}
+        selectedDayDates={selectedDayDates}
+        onToggleDay={toggleDay}
+        daysCost={daysCost}
+        meetsMinDays={meetsMinDays}
+        activityAvailable={activityAvailable}
+        realSpotsLeft={realSpotsLeft}
+        existingBooking={existingBooking}
+        bookingHref={bookingHref}
+      />
+    );
+  }
 
   return (
     <div className="flex h-full min-h-screen flex-col sm:min-h-0 sm:flex-1">

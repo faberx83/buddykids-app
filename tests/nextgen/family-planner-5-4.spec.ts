@@ -135,7 +135,7 @@ test.describe("NEXTGEN - Family Planner Sprint 5.4 (Mappa/Promemoria)", () => {
     await expect(page.getByRole("link", { name: "Apri scheda" })).toHaveCount(0);
   });
 
-  test("TC-N102 - Vista Mappa: 'Avvia navigazione' compare solo se l'attività ha un indirizzo salvato", async ({
+  test("TC-N102 - Vista Mappa: 'Avvia navigazione' compare per ogni attività sulla mappa (indirizzo o coordinate)", async ({
     page,
   }) => {
     test.skip(!isRealDeployment, "Richiede un deploy con Supabase configurato e un account genitore di test con almeno una prenotazione attiva con indirizzo.");
@@ -149,10 +149,11 @@ test.describe("NEXTGEN - Family Planner Sprint 5.4 (Mappa/Promemoria)", () => {
     }
     await firstRow.click();
 
+    // 14/10/2026: la riga è cliccabile solo se l'attività ha coordinate, e con
+    // le coordinate "Avvia navigazione" c'è sempre (anche senza indirizzo
+    // scritto, ripiego sulle coordinate) — quindi ora deve comparire.
     const navigateLink = page.getByRole("link", { name: "Avvia navigazione" });
-    if (!(await navigateLink.isVisible().catch(() => false))) {
-      test.skip(true, "L'attività selezionata non ha un indirizzo salvato nell'account di test.");
-    }
+    await expect(navigateLink).toBeVisible();
     await expect(navigateLink).toHaveAttribute("href", /google\.com\/maps/);
   });
 

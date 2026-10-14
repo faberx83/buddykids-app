@@ -13,6 +13,7 @@ import PhoneShell from "@/components/PhoneShell";
 import DetailClient from "./DetailClient";
 import { getCenterContext } from "@/lib/data/center-admin";
 import { resolveFamilyPreview, FAMILY_PREVIEW_PARAM } from "@/lib/center/family-preview";
+import { getKidsForUser } from "@/lib/data/kids";
 
 export default async function ActivityDetailPage({
   params,
@@ -55,6 +56,10 @@ export default async function ActivityDetailPage({
   // non c'è un utente autenticato risolviamo semplicemente a false invece di
   // forzare un login, che sarebbe un cambio di comportamento e non solo di stile.
   let nextgen = false;
+  // SCHEDA ATTIVITÀ V2 (14/10/2026): stessa release di Scopri V2
+  // (DISCOVER_V2_ENABLED), fail-closed; mai in anteprima Partner.
+  let v2 = false;
+  let reasonKids: { name: string; age: number; interests?: string[] }[] = [];
   // PLANNER BETA v1.1 (Wave 4, punto 22 "Activity Detail booking-aware") —
   // segnalazione: "Home → Prossimo appuntamento → Activity Detail" mostrava
   // ancora 'Prenota ora' anche per un'attività già prenotata (semanticamente
@@ -104,6 +109,20 @@ export default async function ActivityDetailPage({
         getMyBookingsForParent(),
       ]);
       nextgen = flagResult;
+      if (nextgen && !partnerPreview) {
+        v2 = await resolveFeatureFlag({
+          flagName: "DISCOVER_V2_ENABLED",
+          userId: user.id,
+          role: "parent",
+          tenant: "family",
+          correlationId: generateCorrelationId(),
+        }).catch(() => false);
+        if (v2) {
+          reasonKids = await getKidsForUser()
+            .then((kids) => kids.map((k) => ({ name: k.name, age: k.age, interests: k.interests })))
+            .catch(() => []);
+        }
+      }
       // getMyBookingsForParent() è già ordinata per created_at desc: .find
       // restituisce quindi la prenotazione ATTIVA più recente per questa
       // attività se il genitore ne ha più di una (es. bambini diversi in
@@ -197,6 +216,8 @@ export default async function ActivityDetailPage({
         days={days}
         bookedDayDecisions={Object.fromEntries(bookedDayDecisions)}
         nextgen={nextgen}
+        v2={v2}
+        reasonKids={reasonKids}
         existingBooking={existingBooking}
         activityAvailable={activityAvailable}
         realSpotsLeft={realSpotsLeft}
