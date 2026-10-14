@@ -6,6 +6,7 @@ import { resolveFeatureFlag } from "@/lib/feature-flags/resolve";
 import { generateCorrelationId } from "@/lib/telemetry/correlation";
 import { getTutorialDefinition } from "@/lib/walkthrough/registry";
 import { PARENT_ONBOARDING_TUTORIAL_KEY } from "@/lib/nextgen/onboarding-slides";
+import { ONBOARDING_V2_TUTORIAL_KEY } from "@/lib/nextgen/onboarding-v2";
 import { Role } from "@/lib/types";
 
 // TRAMA ONE (24/08/2026) — guscio NEXTGEN-native per "Preferenze", stesso
@@ -25,6 +26,8 @@ import { Role } from "@/lib/types";
 // vedrà mai (flag off) sarebbe solo rumore, non un errore.
 export default async function NextgenPreferenzePage() {
   let showReplay = false;
+  // ONBOARDING V2 (14/10/2026): con il flag acceso si riavvia la versione nuova.
+  let onboardingV2Enabled = false;
   if (isSupabaseConfigured) {
     const supabase = await createClient();
     const {
@@ -44,9 +47,18 @@ export default async function NextgenPreferenzePage() {
           tenant: "family",
           correlationId: generateCorrelationId(),
         }));
+      if (showReplay) {
+        onboardingV2Enabled = await resolveFeatureFlag({
+          flagName: "ONBOARDING_V2_ENABLED",
+          userId: user.id,
+          role: realRole,
+          tenant: "family",
+          correlationId: generateCorrelationId(),
+        }).catch(() => false);
+      }
     }
   }
-  const carousel = getTutorialDefinition(PARENT_ONBOARDING_TUTORIAL_KEY);
+  const carousel = getTutorialDefinition(onboardingV2Enabled ? ONBOARDING_V2_TUTORIAL_KEY : PARENT_ONBOARDING_TUTORIAL_KEY);
   const tour = getTutorialDefinition("discover_book_parent");
 
   return (

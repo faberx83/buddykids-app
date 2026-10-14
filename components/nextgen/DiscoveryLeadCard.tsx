@@ -54,6 +54,7 @@ import { toggleCuratedFavoriteAction } from "@/app/actions/curated-favorites";
 // proposeDiscoveryLeadInviteAction sopra.
 import { addCuratedLeadToPlannerAction } from "@/app/actions/external-planner-items";
 import type { Kid } from "@/lib/types";
+import { markFirstUsefulAction } from "@/lib/nextgen/first-action";
 import ActivityVisual from "@/components/nextgen/ActivityVisual";
 
 const CATEGORY_LABELS: Record<DiscoveryLeadRecord["category"], string> = {
@@ -208,6 +209,7 @@ export default function DiscoveryLeadCard({
     }
     setPlanState("done");
     showToast("Aggiunto al Planner.");
+    markFirstUsefulAction("nel_planner");
   }
 
   // TRAMA — REAL DISCOVERY PILOT · COMPLETION PASS (17/09/2026). Un solo

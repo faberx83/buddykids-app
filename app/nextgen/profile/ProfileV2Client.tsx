@@ -30,6 +30,8 @@ import type { Kid } from "@/lib/types";
 import type { KidSchoolProfileSummary } from "@/lib/data/school-calendar";
 
 import { PROFILE_TINT as TINT, profileV2Sections, type ProfileRowItem } from "@/lib/nextgen/profile-v2";
+import { restartWalkthroughAction } from "@/app/actions/walkthrough";
+import { ONBOARDING_V2_TUTORIAL_KEY } from "@/lib/nextgen/onboarding-v2";
 
 function Row({ item, last }: { item: ProfileRowItem; last: boolean }) {
   const t = TINT[item.tint];
@@ -88,6 +90,7 @@ export default function ProfileV2Client({
   schoolProfiles,
   residenceCity,
   classicFallbackEnabled,
+  onboardingV2Enabled = false,
 }: {
   fullName: string;
   email: string;
@@ -104,6 +107,8 @@ export default function ProfileV2Client({
   schoolProfiles: Record<string, KidSchoolProfileSummary>;
   residenceCity: string | null;
   classicFallbackEnabled: boolean;
+  /** ONBOARDING V2 (14/10/2026): mostra "Rivedi l'introduzione". */
+  onboardingV2Enabled?: boolean;
 }) {
   const router = useRouter();
   const sections = profileV2Sections({
@@ -115,6 +120,14 @@ export default function ProfileV2Client({
       writeVersionPreference("legacy");
       router.push("/");
     },
+    onReplayIntro: onboardingV2Enabled
+      ? () => {
+          // Azzera il percorso: al refresh il layout rimonta l'onboarding da capo.
+          void restartWalkthroughAction(ONBOARDING_V2_TUTORIAL_KEY).then((res) => {
+            if (!res.error) router.refresh();
+          });
+        }
+      : undefined,
   });
 
   return (

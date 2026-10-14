@@ -34,6 +34,8 @@ export function profileV2Sections(input: {
   classicFallbackEnabled: boolean;
   onFeedback: () => void;
   onClassic: () => void;
+  /** ONBOARDING V2 (14/10/2026): presente solo con ONBOARDING_V2_ENABLED. */
+  onReplayIntro?: () => void;
 }): { title: string; items: ProfileRowItem[] }[] {
   return [
     {
@@ -61,6 +63,9 @@ export function profileV2Sections(input: {
       items: [
         { key: "impostazioni", icon: "ti-settings", tint: "navy", title: "Impostazioni", subtitle: "Sicurezza, preferenze, privacy", href: "/nextgen/profile/impostazioni" },
         { key: "trama", icon: "ti-info-circle", tint: "navy", title: "Cos'è TRAMA", subtitle: "Come funziona, contatti, privacy", href: "/nextgen/trama" },
+        ...(input.onReplayIntro
+          ? [{ key: "introduzione", icon: "ti-player-play", tint: "navy" as ProfileTint, title: "Rivedi l'introduzione", subtitle: "Le schermate di benvenuto, figli e scuola", onClick: input.onReplayIntro }]
+          : []),
         { key: "feedback", icon: "ti-bulb", tint: "navy", title: "Aiutaci a migliorare TRAMA", subtitle: "Un'idea, un problema, qualcosa che manca", onClick: input.onFeedback },
         { key: "segnalazioni", icon: "ti-message-report", tint: "navy", title: "Le mie segnalazioni", subtitle: "Cosa hai inviato durante la beta", href: "/nextgen/profile/segnalazioni" },
         ...(input.classicFallbackEnabled

@@ -865,6 +865,31 @@ export const FEATURE_CATALOG: FeatureCatalogEntry[] = [
     releaseEligible: true,
   },
   {
+    // TRAMA — ONBOARDING V2 (14/10/2026, piano unito approvato da Fabrizio:
+    // tre schermate "perché" + figli + scuola + Home). ADAPT: stesso motore
+    // tutorial_progress e stesse Server Action (walkthrough, kids,
+    // school-calendar); nuova chiave family_onboarding_v2, nessuna migration.
+    key: "onboarding_v2",
+    label: "Onboarding V2 — tre schermate, figli, scuola",
+    area: "parent",
+    status: "INTERNAL_PREVIEW",
+    flagName: "ONBOARDING_V2_ENABLED",
+    description:
+      "Benvenuto animato in tre schermate (Tutto in un posto; Anche se il centro non è su TRAMA; Non solo cosa, anche " +
+      "chi), poi 'Inizia a organizzare': i figli, la scuola ('Lo faccio dopo') e la Home. L'invito ad aggiungere TRAMA " +
+      "alla schermata Home arriva dopo la prima azione utile. 'Rivedi l'introduzione' nel Profilo.",
+    sourceFiles: [
+      "components/nextgen/OnboardingV2.tsx",
+      "lib/nextgen/onboarding-v2.ts",
+      "lib/nextgen/first-action.ts",
+      "app/nextgen/layout.tsx",
+      "components/InstallPrompt.tsx",
+    ],
+    note: "Si vede una volta per account con il flag acceso, anche da chi aveva già visto l'onboarding attuale. Legacy invariato.",
+    riskLevel: "low",
+    releaseEligible: true,
+  },
+  {
     // TRAMA — PRENOTAZIONI V2 (14/10/2026, tavole "TRAMA Scopri e Prenotazioni V2").
     key: "bookings_v2",
     label: "Prenotazioni V2 — elenco per mese e prenotazione aperta",

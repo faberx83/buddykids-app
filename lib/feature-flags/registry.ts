@@ -290,6 +290,16 @@ export const FEATURE_FLAG_REGISTRY = {
     defaultValue: false,
     allowedScopes: ["global", "environment", "user", "role", "cohort"],
   },
+  // TRAMA — ONBOARDING V2 (14/10/2026), release "onboarding-v2".
+  ONBOARDING_V2_ENABLED: {
+    name: "ONBOARDING_V2_ENABLED",
+    description:
+      "Abilita l'onboarding V2 delle famiglie: tre schermate animate (tutto in un posto, anche fuori da TRAMA, chi " +
+      "porta e chi riprende), poi figli e scuola, poi la Home. Si vede una volta (chiave family_onboarding_v2). " +
+      "Default false: onboarding attuale.",
+    defaultValue: false,
+    allowedScopes: ["global", "environment", "user", "role", "cohort"],
+  },
   // TRAMA — SCOPRI E PRENOTAZIONI V2 (14/10/2026), stessa release.
   BOOKINGS_V2_ENABLED: {
     name: "BOOKINGS_V2_ENABLED",

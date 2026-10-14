@@ -27,6 +27,7 @@ import {
   type CommunityDiscoveryRecord,
 } from "@/lib/radar/community";
 import type { Kid } from "@/lib/types";
+import { markFirstUsefulAction } from "@/lib/nextgen/first-action";
 
 function Row({ icon, label, children }: { icon: string; label: string; children: React.ReactNode }) {
   return (
@@ -107,6 +108,7 @@ export default function CommunityDiscoveryDetailClient({
     }
     setPlanState("done");
     showToast("Aggiunta al Planner, tra le cose da organizzare.");
+    markFirstUsefulAction("nel_planner");
   }
 
   return (

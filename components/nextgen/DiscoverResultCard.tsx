@@ -12,6 +12,7 @@ import { useState } from "react";
 import Link from "next/link";
 import type { Activity } from "@/lib/types";
 import { toggleFavoriteAction } from "@/app/actions/favorites";
+import { markFirstUsefulAction } from "@/lib/nextgen/first-action";
 import ActivityVisual from "@/components/nextgen/ActivityVisual";
 
 export default function DiscoverResultCard({
@@ -89,6 +90,7 @@ export default function DiscoverResultCard({
           if (activity.dbId) {
             toggleFavoriteAction(activity.dbId, next).then((result) => {
               if (result.error) setFav(!next);
+              else if (next) markFirstUsefulAction("salvata");
             });
           }
         }}
