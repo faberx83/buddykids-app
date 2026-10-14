@@ -31,6 +31,7 @@ const CELL_CLASS: Record<PeriodWeekState, string> = {
   to_organize: "border-2 border-dashed border-[#8B93A1]",
   not_needed: "bg-[#EEF0F4]",
   past: "bg-[#EEF0F4]",
+  school: "bg-[#EEF0F4]",
 };
 
 const CELL_LABEL: Record<PeriodWeekState, string> = {
@@ -39,6 +40,7 @@ const CELL_LABEL: Record<PeriodWeekState, string> = {
   to_organize: "da organizzare",
   not_needed: "non serve",
   past: "passata",
+  school: "scuola",
 };
 
 function WeekStrip({ model }: { model: SeasonSummaryModel }) {
@@ -52,7 +54,14 @@ function WeekStrip({ model }: { model: SeasonSummaryModel }) {
         style={{ gridTemplateColumns: `repeat(${Math.max(model.cells.length, 1)}, minmax(0, 1fr))` }}
       >
         {model.cells.map((c) => (
-          <span key={c.index} className={`h-[26px] rounded-md ${CELL_CLASS[c.state]}`} />
+          <span key={c.index} className={`flex h-[26px] items-center justify-center rounded-md ${CELL_CLASS[c.state]}`}>
+            {c.closure && (
+              <i
+                className={`ti ti-school text-[13px] ${c.state === "organized" ? "text-white" : "text-[#4B5563]"}`}
+                aria-hidden="true"
+              />
+            )}
+          </span>
         ))}
       </div>
       <div
@@ -164,7 +173,7 @@ export default function SeasonSummaryCard({
         <span className="font-poppins text-[30px] font-semibold leading-none text-trama-navy">
           {model.organizedCount} di {model.neededCount}
         </span>
-        <span className="text-[14px] text-[#374151]">settimane organizzate</span>
+        <span className="text-[14px] text-[#374151]">{model.unitLabel ?? "settimane organizzate"}</span>
       </div>
       <WeekStrip model={model} />
       <div className="flex flex-wrap gap-x-3.5 gap-y-1 text-[12px] text-[#4B5563]">
@@ -182,6 +191,12 @@ export default function SeasonSummaryCard({
           <span className="flex items-center gap-1.5">
             <span className="h-2.5 w-2.5 rounded-[3px] border-[1.5px] border-dashed border-[#8B93A1]" aria-hidden="true" />
             Da organizzare · {model.toOrganizeCount}
+          </span>
+        )}
+        {model.cells.some((c) => c.state === "school") && (
+          <span className="flex items-center gap-1.5">
+            <span className="h-2.5 w-2.5 rounded-[3px] bg-[#EEF0F4]" aria-hidden="true" />
+            Scuola
           </span>
         )}
       </div>

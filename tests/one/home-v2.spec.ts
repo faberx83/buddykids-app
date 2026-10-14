@@ -5,6 +5,7 @@ import { buildHomeInbox, selectUrgentTodayAlert, HOME_INBOX_VISIBLE_MAX, HOME_IN
 import { buildTodayAgenda, summarizeDayCoordination, parseHoursRange, joinPeople } from "../../lib/nextgen/today-agenda";
 import { buildSeasonSummary, computeWeekState, periodTitleForSeason } from "../../lib/nextgen/season-summary";
 import { findNextSchoolClosure } from "../../lib/school-calendar/next-closure";
+import { listClosurePeriods, closureState, buildCoverage, buildHolidaySummary, holidayHorizon } from "../../lib/nextgen/holiday-summary";
 import { FEATURE_FLAG_REGISTRY } from "../../lib/feature-flags/registry";
 import { FEATURE_CATALOG } from "../../lib/feature-registry/catalog";
 import { RELEASE_CATALOG } from "../../lib/releases/catalog";
@@ -394,7 +395,8 @@ test.describe("HOME-V2 — correzioni verifica live 14/10", () => {
     const after = buildSeasonSummary({ title: "Estate 2026", kidIds: ["l"], todayIso: "2026-10-14", isNewFamily: false, weeks });
     expect(after.isOver).toBe(true);
     expect(after.toOrganizeCount).toBe(0);
-    expect(read("app/nextgen/home-v2-data.ts")).toContain('summary.isOver && summary.state !== "welcome" ? null : summary');
+    // a estate finita il riepilogo passa a "Ponti e vacanze" (HV2-35)
+    expect(read("app/nextgen/home-v2-data.ts")).toContain('summary.isOver && summary.state !== "welcome" ? holidaySummary : summary');
   });
 
   test("HV2-29: colori e superfici del design V2.1 (sfondo caldo, link #5B4FB0, mesi abbreviati)", () => {
@@ -423,4 +425,80 @@ test("HV2-31: niente 'Torna a V1' nell'area NEXTGEN (richiesta del 14/10)", () =
   const src = read("components/VersionToggle.tsx");
   const hidden = src.match(/const HIDDEN_PREFIXES = \[([^\]]*)\]/)?.[1] ?? "";
   expect(hidden).toContain('"/nextgen"');
+});
+
+// ─── Ponti e vacanze (14/10/2026, decisione di Fabrizio) ─────────────────
+test.describe("HOME-V2 — riepilogo Ponti e vacanze", () => {
+  const closures = [
+    { kidId: "l", closures: [
+      { startDate: "2026-07-01", endDate: "2026-09-10", kind: "summer_break" as const, label: "Estate" },
+      { startDate: "2026-11-01", endDate: "2026-11-01", kind: "holiday" as const, label: "Ognissanti" }, // domenica
+      { startDate: "2026-12-07", endDate: "2026-12-07", kind: "holiday" as const, label: "Sant'Ambrogio" },
+      { startDate: "2026-12-08", endDate: "2026-12-08", kind: "holiday" as const, label: "Immacolata" },
+      { startDate: "2026-12-23", endDate: "2027-01-06", kind: "holiday" as const, label: "Vacanze di Natale" },
+    ] },
+    { kidId: "m", closures: [{ startDate: "2026-12-07", endDate: "2026-12-08", kind: "holiday" as const, label: "Ponte" }] },
+  ];
+  const today = "2026-10-14";
+
+  test("HV2-32: chiusure future unite tra figli, estate e soli weekend esclusi", () => {
+    const periods = listClosurePeriods(closures as never, today);
+    expect(periods.map((p) => [p.startDate, p.endDate])).toEqual([
+      ["2026-12-07", "2026-12-08"],
+      ["2026-12-23", "2027-01-06"],
+    ]);
+    expect(periods[0].kidIds.sort()).toEqual(["l", "m"]);
+    expect(periods[0].labels).toEqual(["Sant'Ambrogio", "Ponte", "Immacolata"]); // in ordine di inizio
+    expect(periods[1].weekdayCount).toBe(11); // 23 dic – 6 gen, festivi compresi nel calendario
+    expect(holidayHorizon(periods, today)).toBe("2027-01-06");
+  });
+
+  test("HV2-33: organizzata solo se ogni figlio a casa è coperto ogni giorno feriale", () => {
+    const [ponte] = listClosurePeriods(closures as never, today);
+    const both = buildCoverage({
+      bookings: [{ status: "confirmed", partnerDecision: "accepted", kidIds: ["l", "m"], weeks: [], dayDates: ["2026-12-07", "2026-12-08"] }],
+      externalItems: [],
+    });
+    expect(closureState(ponte, both)).toBe("organized");
+    const onlyL = buildCoverage({
+      bookings: [],
+      externalItems: [{ startDate: "2026-12-07", endDate: "2026-12-08", allDay: true, startTime: null, endTime: null, kidIds: ["l"] }],
+    });
+    expect(closureState(ponte, onlyL)).toBe("to_complete");
+    const swim = buildCoverage({
+      bookings: [{ status: "confirmed", partnerDecision: "rejected", kidIds: ["l", "m"], weeks: [], dayDates: ["2026-12-07"] }],
+      externalItems: [{ startDate: "2026-12-07", endDate: "2026-12-08", allDay: false, startTime: "17:00", endTime: "18:00", kidIds: [] }],
+    });
+    expect(closureState(ponte, swim)).toBe("to_organize"); // rifiutata e un'ora di nuoto non bastano
+    const camp = buildCoverage({
+      bookings: [],
+      externalItems: [{ startDate: "2026-12-07", endDate: "2026-12-08", allDay: false, startTime: "08:30", endTime: "16:30", kidIds: [] }],
+    });
+    expect(closureState(ponte, camp)).toBe("organized"); // kidIds vuoto = tutta la famiglia
+  });
+
+  test("HV2-34: settimane di scuola grigie, chiusure colorate con icona, conteggio sulle chiusure", () => {
+    const periods = listClosurePeriods(closures as never, today);
+    const m = buildHolidaySummary({ todayIso: today, periods: [{ ...periods[0], state: "organized" }, { ...periods[1], state: "to_organize" }] });
+    expect(m).not.toBeNull();
+    expect(m!.title).toBe("Ponti e vacanze");
+    expect(m!.rangeLabel).toBe("fino al 6 gen");
+    expect(m!.organizedCount).toBe(1);
+    expect(m!.neededCount).toBe(2);
+    expect(m!.unitLabel).toBe("chiusure organizzate");
+    const closureCells = m!.cells.filter((c) => c.closure);
+    expect(closureCells.map((c) => c.state)).toEqual(["organized", "to_organize", "to_organize", "to_organize"]);
+    expect(m!.cells.filter((c) => !c.closure).every((c) => c.state === "school")).toBe(true);
+    expect(m!.cells[0].dateRange).toBe("12 ott – 16 ott");
+    expect(buildHolidaySummary({ todayIso: today, periods: [] })).toBeNull();
+  });
+
+  test("HV2-35: Home a estate finita → Ponti e vacanze; Prossima chiusura = prima non organizzata", () => {
+    const src = read("app/nextgen/home-v2-data.ts");
+    expect(src).toContain('closurePeriods.find((p) => p.startDate > todayIso && p.state !== "organized")');
+    expect(src).toMatch(/schoolEnabled \? buildHolidaySummary/);
+    const card = read("components/nextgen/SeasonSummaryCard.tsx");
+    expect(card).toContain('model.unitLabel ?? "settimane organizzate"');
+    expect(card).toContain("ti-school");
+  });
 });

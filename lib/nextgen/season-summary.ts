@@ -19,7 +19,9 @@
 /** "past": settimana già trascorsa e non organizzata — non chiede più
  *  un'azione, quindi non conta tra le "da organizzare" (segnalazione live
  *  14/10/2026). Le settimane passate organizzate restano "organized". */
-export type PeriodWeekState = "organized" | "to_complete" | "to_organize" | "not_needed" | "past";
+export type PeriodWeekState = "organized" | "to_complete" | "to_organize" | "not_needed" | "past" | "school";
+// "school": settimana normale di scuola nel riepilogo "Ponti e vacanze"
+// (lib/nextgen/holiday-summary.ts) — non chiede niente, non conta.
 
 export interface SeasonSummaryWeekInput {
   index: number;
@@ -38,6 +40,8 @@ export interface SeasonSummaryCell {
   index: number;
   state: PeriodWeekState;
   dateRange: string;
+  /** Settimana con una chiusura scolastica (icona nella cella). */
+  closure?: boolean;
 }
 
 export interface SeasonSummaryMonth {
@@ -51,6 +55,8 @@ export interface SeasonSummaryModel {
   state: SeasonSummaryState;
   title: string;
   rangeLabel: string;
+  /** Cosa si conta: "settimane organizzate" (default) o "chiusure organizzate". */
+  unitLabel?: string;
   cells: SeasonSummaryCell[];
   months: SeasonSummaryMonth[];
   organizedCount: number;

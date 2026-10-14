@@ -757,6 +757,7 @@ export const FEATURE_CATALOG: FeatureCatalogEntry[] = [
       "lib/nextgen/home-inbox.ts",
       "lib/nextgen/today-agenda.ts",
       "lib/nextgen/season-summary.ts",
+      "lib/nextgen/holiday-summary.ts",
       "lib/school-calendar/next-closure.ts",
       "lib/nextgen/notification-bridge.ts",
     ],

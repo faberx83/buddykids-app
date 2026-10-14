@@ -3,7 +3,7 @@
 // acceso. Nessuna nuova tabella, nessuna scrittura: orchestra funzioni di
 // lettura già esistenti (stesse usate dalla Home attuale e dal Planner) e
 // la logica pura di lib/nextgen/{home-inbox,today-agenda,season-summary}.ts
-// e lib/school-calendar/next-closure.ts.
+// e lib/nextgen/holiday-summary.ts (ponti e vacanze, prossima chiusura).
 //
 // Fetch in più rispetto alla Home attuale (solo qui, mai nella Home
 // attuale): impegni esterni (solo con EXTERNAL_PLANNER_ITEMS_ENABLED),
@@ -28,7 +28,7 @@ import { computeCoordinationGap, computeRolesToCover } from "@/lib/nextgen/week-
 import { buildTodayAgenda, summarizeDayCoordination, type DayCoordinationSlotInput } from "@/lib/nextgen/today-agenda";
 import { selectUrgentTodayAlert, type HomeInboxInput } from "@/lib/nextgen/home-inbox";
 import { buildSeasonSummary, periodTitleForSeason } from "@/lib/nextgen/season-summary";
-import { findNextSchoolClosure } from "@/lib/school-calendar/next-closure";
+import { buildCoverage, buildHolidaySummary, closureState, listClosurePeriods } from "@/lib/nextgen/holiday-summary";
 import { NEW_EXTERNAL_ITEM_HREF } from "@/lib/planner/new-external-item-link";
 import type { Activity, Kid, GroupInviteItem } from "@/lib/types";
 import type { ExternalPlannerItem } from "@/lib/data/external-planner-items";
@@ -277,7 +277,26 @@ export async function loadHomeV2Props({
   const closureData = schoolEnabled
     ? await getKidClosureIntervalsForParent(kidIds).catch(() => ({ hasAnySchoolProfile: false, closuresByKid: [] }))
     : { hasAnySchoolProfile: false, closuresByKid: [] };
-  const closure = schoolEnabled ? findNextSchoolClosure(closureData.closuresByKid, todayIso) : null;
+  // Chiusure dei prossimi mesi con il loro stato (organizzata / da
+  // completare / da organizzare) — lib/nextgen/holiday-summary.ts.
+  const coverage = buildCoverage({
+    bookings: bookings.map((b) => ({
+      status: b.status,
+      partnerDecision: b.partnerDecision,
+      kidIds: b.kidIds,
+      weeks: b.weeks,
+      dayDates: b.dayDates,
+    })),
+    externalItems,
+  });
+  const closurePeriods = schoolEnabled
+    ? listClosurePeriods(closureData.closuresByKid, todayIso).map((p) => ({ ...p, state: closureState(p, coverage) }))
+    : [];
+  // "Prossima chiusura" = la prima futura NON ancora organizzata (14/10:
+  // una chiusura già coperta non deve più chiedere "Organizza").
+  const closure = closurePeriods.find((p) => p.startDate > todayIso && p.state !== "organized") ?? null;
+  // Fuori stagione estiva il riepilogo diventa "Ponti e vacanze".
+  const holidaySummary = schoolEnabled ? buildHolidaySummary({ periods: closurePeriods, todayIso }) : null;
 
   const welcome =
     summary.state === "welcome"
@@ -329,10 +348,11 @@ export async function loadHomeV2Props({
     urgentAlert,
     inboxInput,
     todayCheckins,
-    // Periodo interamente trascorso (es. l'estate vista a ottobre): niente
-    // riepilogo, invece di "14 settimane da organizzare" già passate. Lo
-    // stato di benvenuto resta, perché non dipende dalle date.
-    summary: summary.isOver && summary.state !== "welcome" ? null : summary,
+    // Estate interamente trascorsa (es. vista a ottobre): al posto di "14
+    // settimane da organizzare" già passate, il riepilogo "Ponti e vacanze"
+    // dei prossimi mesi di scuola (o niente, senza calendario scolastico).
+    // Lo stato di benvenuto resta, perché non dipende dalle date.
+    summary: summary.isOver && summary.state !== "welcome" ? holidaySummary : summary,
     welcome,
     attentionAction,
     notStartedAction: { label: "Inizia a pianificare", href: "/nextgen/planner" },

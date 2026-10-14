@@ -79,3 +79,19 @@ Segnalazioni di Fabrizio sul telefono (Android, Chrome):
   account di test nel browser: non compare agli utenti né nell'app installata.
 
 Test: HV2-26…HV2-30 in `tests/one/home-v2.spec.ts`.
+
+## Ponti e vacanze (14/10/2026, decisione di Fabrizio)
+A estate finita il riepilogo diventa **"Ponti e vacanze"** (`lib/nextgen/holiday-summary.ts`),
+solo con `SCHOOL_CALENDAR_INTELLIGENCE_ENABLED` e la scuola indicata:
+- periodo: dalla settimana corrente alla fine della prima vacanza lunga
+  (≥ 5 giorni feriali, di solito Natale) entro 120 giorni, altrimenti 90 giorni;
+- settimane di scuola grigie e fuori dal conteggio; le settimane con una
+  chiusura hanno l'icona della scuola e il colore della chiusura;
+- una chiusura è **organizzata** se ogni figlio a casa è coperto ogni giorno
+  feriale da una prenotazione non rifiutata o da un impegno che occupa la
+  giornata (tutto il giorno o almeno 4 ore); **da completare** se in parte;
+  **da organizzare** se per niente;
+- conteggio: "X di Y chiusure organizzate";
+- la card **Prossima chiusura** mostra la prima chiusura futura non ancora
+  organizzata (se sono tutte coperte, non compare).
+Test HV2-32…35.
