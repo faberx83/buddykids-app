@@ -61,6 +61,21 @@ export default function OnboardingCarousel({ progress }: { progress: Walkthrough
   const startedRef = useRef(false);
   const focusedOnceRef = useRef(false);
 
+  // "Rivedi introduzione" (14/10/2026): il componente vive nel layout e non si
+  // smonta cambiando pagina; quando il percorso torna da vedere si riparte.
+  const [wasVisible, setWasVisible] = useState(visible);
+  if (visible !== wasVisible) {
+    setWasVisible(visible);
+    if (visible) {
+      setDismissed(false);
+      setSlideIndex(0);
+      setDirection(1);
+    }
+  }
+  useEffect(() => {
+    if (!visible) startedRef.current = false;
+  }, [visible]);
+
   const show = visible && !dismissed;
   const slide = ONBOARDING_SLIDES[slideIndex];
   const isLast = slideIndex === ONBOARDING_SLIDES.length - 1;

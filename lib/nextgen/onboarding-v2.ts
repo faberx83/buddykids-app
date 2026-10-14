@@ -26,17 +26,22 @@ export interface OnboardingV2Pop {
   tone: "navy" | "green" | "amber" | "coral";
   title: string;
   subtitle?: string;
+  /** Da che lato del telefono esce la card. */
   side: "left" | "right";
-  /** Bordo della card da cui esce: sopra o sotto (mai sopra il contenuto). */
-  edge: "top" | "bottom";
+  /** Posizione verticale nel palco, in percentuale. */
+  top: number;
 }
 
 export interface OnboardingV2Slide {
   key: OnboardingV2Visual;
   eyebrow: string;
   title: string;
+  /** Parte del titolo evidenziata (deve comparire in `title`). */
+  highlight: string;
   body: string;
   ctaLabel: string;
+  /** Inclinazione del telefono (gradi) per questa schermata: ruota tra una e l'altra. */
+  tilt: { y: number; x: number };
   pops: [OnboardingV2Pop, OnboardingV2Pop];
 }
 
@@ -45,33 +50,39 @@ export const ONBOARDING_V2_SLIDES: OnboardingV2Slide[] = [
     key: "oggi",
     eyebrow: "Benvenuto in TRAMA",
     title: "Tutto quello che fanno i tuoi figli, in un posto.",
+    highlight: "in un posto.",
     body: "Scuola, sport, centri estivi e impegni di famiglia: una sola settimana da guardare.",
     ctaLabel: "Continua",
+    tilt: { y: -14, x: 6 },
     pops: [
-      { icon: "ti-plus", tone: "green", title: "Calcio · mar 17:00", subtitle: "aggiunto da te", side: "right", edge: "top" },
-      { icon: "ti-circle-check", tone: "navy", title: "Settimana organizzata", side: "left", edge: "bottom" },
+      { icon: "ti-plus", tone: "green", title: "Calcio · mar 17:00", subtitle: "aggiunto da te", side: "right", top: 16 },
+      { icon: "ti-circle-check", tone: "navy", title: "Settimana organizzata", side: "left", top: 66 },
     ],
   },
   {
     key: "fuori",
     eyebrow: "Organizza",
     title: "Anche se il centro non è su TRAMA.",
+    highlight: "non è su TRAMA.",
     body: "Il corso di calcio, la piscina, il dentista: li aggiungi tu in pochi secondi e stanno nel Planner con il resto.",
     ctaLabel: "Continua",
+    tilt: { y: 12, x: 5 },
     pops: [
-      { icon: "ti-pencil-plus", tone: "green", title: "Aggiunto da te", subtitle: "in 10 secondi", side: "right", edge: "top" },
-      { icon: "ti-calendar-check", tone: "navy", title: "Nel Planner di martedì", side: "left", edge: "bottom" },
+      { icon: "ti-pencil-plus", tone: "green", title: "Aggiunto da te", subtitle: "in 10 secondi", side: "left", top: 42 },
+      { icon: "ti-calendar-check", tone: "navy", title: "Nel Planner", subtitle: "martedì 17:00", side: "right", top: 72 },
     ],
   },
   {
     key: "chi",
     eyebrow: "Coordina",
     title: "Non solo cosa. Anche chi.",
+    highlight: "Anche chi.",
     body: "Chi porta e chi riprende, giorno per giorno: tu, l'altro genitore, i nonni o la tata. Se manca qualcuno, TRAMA te lo dice.",
     ctaLabel: "Inizia a organizzare",
+    tilt: { y: -8, x: 4 },
     pops: [
-      { icon: "ti-user-plus", tone: "navy", title: "Nonna Rita", subtitle: "tra chi vi aiuta", side: "right", edge: "top" },
-      { icon: "ti-check", tone: "green", title: "Riprende Nonna Rita", subtitle: "Lino · 18:00", side: "left", edge: "bottom" },
+      { icon: "ti-alert-circle", tone: "amber", title: "Manca chi riprende", subtitle: "Lino · gio 18:00", side: "right", top: 14 },
+      { icon: "ti-check", tone: "green", title: "Riprende Nonna Rita", subtitle: "risolto", side: "left", top: 68 },
     ],
   },
 ];
@@ -80,7 +91,7 @@ export const ONBOARDING_V2_SLIDES: OnboardingV2Slide[] = [
 export const ONBOARDING_V2_DEMO = {
   oggi: {
     heading: "Oggi",
-    date: "mercoledì 14 ottobre",
+    date: "mer 14 ottobre",
     items: [
       { time: "16:45", name: "Nuoto", meta: "Sofia · Piscina Demo", tone: "#2DBA8C" },
       { time: "17:00", name: "Ginnastica", meta: "Lino · Palestra Demo", tone: "#F6A623", who: "Porta tu · Riprende Marco" },

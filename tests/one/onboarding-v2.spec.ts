@@ -34,7 +34,12 @@ test.describe("TRAMA — Onboarding V2 [no browser]", () => {
       "Non solo cosa. Anche chi.",
     ]);
     expect(ONBOARDING_V2_SLIDES.map((s) => s.ctaLabel)).toEqual(["Continua", "Continua", "Inizia a organizzare"]);
-    for (const s of ONBOARDING_V2_SLIDES) expect(s.pops).toHaveLength(2);
+    for (const s of ONBOARDING_V2_SLIDES) {
+      expect(s.pops).toHaveLength(2);
+      expect(s.title).toContain(s.highlight);
+    }
+    // il telefono ruota da una schermata all'altra
+    expect(new Set(ONBOARDING_V2_SLIDES.map((s) => `${s.tilt.y}/${s.tilt.x}`)).size).toBe(3);
   });
 
   test("OV2-02 chiave tutorial NUOVA (si vede una volta anche da chi ha visto l'attuale), registrata con lo step sentinella", () => {
@@ -98,9 +103,15 @@ test.describe("TRAMA — Onboarding V2 [no browser]", () => {
     expect(src).toContain("rounded-[12px] bg-trama-primary");
     expect(src).not.toContain("bg-trama-violet");
     expect(src).not.toMatch(/rounded-full bg-trama-primary/);
-    // animazioni solo in motion-safe
-    expect(src).toContain("motion-safe:animate-[trama-onb2-tilt");
-    expect(read("app/globals.css")).toContain("@keyframes trama-onb2-pop");
+    // stile dinamico della versione precedente (scelta di Fabrizio, 14/10):
+    // telefono che fluttua e ruota a ogni schermata, card che escono dal
+    // telefono, testo con blur — sempre solo in motion-safe
+    expect(src).toContain("motion-safe:animate-[trama-onb-float_2.8s_ease-in-out_infinite]");
+    expect(src).toContain("rotateY(${slide.tilt.y}deg) rotateX(${slide.tilt.x}deg)");
+    expect(src).toContain("motion-safe:animate-[trama-onb-pop-left");
+    expect(src).toContain("motion-safe:animate-[trama-onb-screen");
+    expect(src).toContain("motion-reduce:!transform-none");
+    expect(read("app/globals.css")).toContain("@keyframes trama-onb2-in");
   });
 
   test("OV2-08 layout: con il flag l'onboarding V2 prende il posto del carousel; senza, resta quello attuale", () => {
@@ -144,5 +155,31 @@ test.describe("TRAMA — Onboarding V2 [no browser]", () => {
     expect(read("app/nextgen/profile/impostazioni/preferenze/page.tsx")).toContain(
       "getTutorialDefinition(onboardingV2Enabled ? ONBOARDING_V2_TUTORIAL_KEY : PARENT_ONBOARDING_TUTORIAL_KEY)"
     );
+  });
+  test("OV2-11 'Rivedi l'introduzione' funziona: niente delete (manca la policy RLS), passi rimessi a not_started; il componente riparte da capo", () => {
+    const actions = read("app/actions/walkthrough.ts");
+    const restart = actions.slice(actions.indexOf("export async function restartWalkthroughAction"));
+    expect(restart).not.toContain(".delete()");
+    expect(restart).toContain('upsertStep(supabase, user.id, tutorialKey, step.key, "not_started")');
+    for (const f of ["components/nextgen/OnboardingV2.tsx", "components/nextgen/OnboardingCarousel.tsx"]) {
+      const src = read(f);
+      expect(src, f).toContain("if (visible !== wasVisible) {");
+      expect(src, f).toContain("setDismissed(false);");
+    }
+  });
+
+  test("OV2-12 Profilo raggiungibile da Planner, Scopri e Prenotazioni (solo con la nuova barra)", () => {
+    const chip = read("components/nextgen/ProfileChip.tsx");
+    expect(chip).toContain('href="/nextgen/profile"');
+    expect(chip).toContain("if (!enabled) return null;");
+    const layout = read("app/nextgen/layout.tsx");
+    expect(layout).toContain("<ProfileChipProvider value={{ enabled: navV2Enabled, firstName: profileFirstName, avatarUrl: profileAvatarUrl }}>");
+    for (const f of [
+      "app/nextgen/planner/PlannerV2Client.tsx",
+      "app/nextgen/search/SearchDiscoveryClient.tsx",
+      "app/nextgen/prenotazioni/PrenotazioniV2Client.tsx",
+    ]) {
+      expect(read(f), f).toContain("<ProfileChip />");
+    }
   });
 });

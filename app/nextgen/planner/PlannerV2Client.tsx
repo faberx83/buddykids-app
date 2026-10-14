@@ -78,6 +78,7 @@ import { useNextgenToast } from "@/components/nextgen/NextgenToastProvider";
 import { useGlobalActionProgress } from "@/components/GlobalActionProgress";
 import { recordBetaSignalAction } from "@/app/actions/beta-signals";
 import { markFirstUsefulAction } from "@/lib/nextgen/first-action";
+import ProfileChip from "@/components/nextgen/ProfileChip";
 
 type View = "settimana" | "stagione";
 export interface HolidayPeriodRow {
@@ -342,6 +343,7 @@ export default function PlannerV2Client({
         </div>
         <HeaderTool icon="ti-map-2" label="Mappa" onClick={() => setPanel("mappa")} />
         <HeaderTool icon="ti-users-group" label="Gruppi" onClick={() => setPanel("gruppi")} />
+        <ProfileChip />
         {!navV2Enabled && externalEnabled && (
           <Link
             href={NEW_EXTERNAL_ITEM_HREF}

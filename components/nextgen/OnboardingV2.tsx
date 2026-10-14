@@ -91,6 +91,26 @@ export default function OnboardingV2({
   const dialogRef = useRef<HTMLDivElement>(null);
   const startedRef = useRef(false);
 
+  // "Rivedi l'introduzione" (14/10, secondo motivo per cui non ripartiva):
+  // questo componente vive nel layout e non si smonta cambiando pagina, quindi
+  // dopo la prima chiusura `dismissed` restava true. Quando il percorso torna
+  // da vedere (visible passa da false a true) si riparte da capo.
+  const [wasVisible, setWasVisible] = useState(visible);
+  if (visible !== wasVisible) {
+    setWasVisible(visible);
+    if (visible) {
+      setDismissed(false);
+      setPhase("perche");
+      setSlideIndex(0);
+      setDirection(1);
+      setLocalKids(kids);
+      setAddedKidIds([]);
+    }
+  }
+  useEffect(() => {
+    if (!visible) startedRef.current = false;
+  }, [visible]);
+
   const show = visible && !dismissed;
   const kidsWithoutSchoolCount = kidIdsWithoutSchool.length + addedKidIds.length;
   const askSchool = shouldAskSchool({ schoolCalendarEnabled, kidsCount: localKids.length, kidsWithoutSchoolCount });
@@ -243,18 +263,15 @@ export default function OnboardingV2({
 // 1-3 · Le schermate "perché"
 // ————————————————————————————————————————————————————————————————————————
 
-function ThreadMark({ animate }: { animate: boolean }) {
-  const widths = [16, 10, 13, 8];
+function TitleWithHighlight({ title, highlight }: { title: string; highlight: string }) {
+  const at = title.indexOf(highlight);
+  if (at < 0) return <>{title}</>;
   return (
-    <span aria-hidden="true" className="flex gap-[3px]">
-      {THREAD.map((c, i) => (
-        <span
-          key={c}
-          className={`h-1 origin-left rounded-[2px] ${animate ? "motion-safe:animate-[trama-onb2-thread_0.5s_ease-out_both]" : ""}`}
-          style={{ width: widths[i], background: c, animationDelay: `${0.15 + i * 0.1}s` }}
-        />
-      ))}
-    </span>
+    <>
+      {title.slice(0, at)}
+      <span className="text-trama-accent">{highlight}</span>
+      {title.slice(at + highlight.length)}
+    </>
   );
 }
 
@@ -280,182 +297,231 @@ function WhySlides({
       : "motion-safe:animate-[trama-onb-text-prev_0.55s_cubic-bezier(0.22,1,0.36,1)_both]";
 
   return (
-    <div className="flex min-h-full flex-col gap-5 px-6 pb-[calc(24px+env(safe-area-inset-bottom,0px))] pt-[calc(12px+env(safe-area-inset-top,0px))]">
-      <header className="flex items-center justify-between">
-        <div className="flex gap-1.5" role="group" aria-label="Schermate">
-          {ONBOARDING_V2_SLIDES.map((s, i) => (
-            <button
-              key={s.key}
-              type="button"
-              onClick={() => onGoTo(i)}
-              aria-label={`Schermata ${i + 1} di ${ONBOARDING_V2_SLIDES.length}`}
-              aria-current={i === index ? "step" : undefined}
-              className="flex h-11 items-center"
-            >
-              <span
-                className={`block h-1.5 rounded-full motion-safe:transition-all motion-safe:duration-300 ${
-                  i === index ? "w-[22px] bg-trama-primary" : "w-1.5 bg-[#D6DAE3]"
-                }`}
-              />
-            </button>
-          ))}
-        </div>
+    <div className="relative isolate flex min-h-full flex-col overflow-hidden">
+      {/* Aloni appena accennati dietro il telefono (come la versione precedente) */}
+      <div aria-hidden="true" className="pointer-events-none absolute -left-[20%] top-[6%] -z-10 h-[300px] w-[300px] rounded-full bg-trama-accent opacity-10 blur-[70px]" />
+      <div aria-hidden="true" className="pointer-events-none absolute -right-[25%] top-[26%] -z-10 h-[240px] w-[240px] rounded-full bg-trama-green opacity-[0.08] blur-[70px]" />
+
+      {/* Barra alta: marchio, Salta */}
+      <div className="flex items-center justify-between px-5 pt-[calc(10px+env(safe-area-inset-top,0px))]">
+        {/* eslint-disable-next-line @next/next/no-img-element -- stesso logo statico di app/nextgen/trama/page.tsx */}
+        <img src="/brand/trama-logo-mark.png" alt="TRAMA" className="h-8 w-auto" />
         <button
           type="button"
           onClick={onSkip}
-          className="flex min-h-[44px] items-center px-1 text-[14px] font-semibold text-ink-2 active:opacity-70"
+          className="flex min-h-[44px] items-center px-1.5 text-[14px] font-semibold text-ink-2 active:opacity-70"
         >
           Salta
         </button>
-      </header>
-
-      <div key={`copy-${slide.key}`} className={`flex flex-col gap-3 ${index === 0 ? "" : "pt-6"} ${textAnim}`}>
-        {index === 0 && (
-          // eslint-disable-next-line @next/next/no-img-element -- stesso logo statico di app/nextgen/trama/page.tsx
-          <img src="/brand/trama-logo-mark.png" alt="TRAMA" className="h-auto w-14" />
-        )}
-        <span className="text-[13px] font-semibold tracking-[0.02em] text-ink-3">{slide.eyebrow}</span>
-        <h2 id="onboarding-v2-title" className="text-balance font-poppins text-[clamp(25px,7vw,28px)] font-semibold leading-[1.18] text-ink">
-          {slide.title}
-        </h2>
-        <ThreadMark animate />
-        <p aria-live="polite" className="text-[15px] leading-relaxed text-ink-2">
-          {slide.body}
-        </p>
       </div>
 
-      <div key={`stage-${slide.key}`} aria-hidden="true" className="relative mx-1 mb-3 mt-2 [perspective:900px]">
-        <div className="motion-safe:animate-[trama-onb2-in_0.6s_ease-out_both]">
-          <div className="[transform-style:preserve-3d] motion-safe:animate-[trama-onb2-tilt_6s_ease-in-out_infinite]">
-            <DemoCard visual={slide.key} />
+      {/* Palco: telefono 3D che fluttua e ruota a ogni schermata, card che escono */}
+      <div className="relative grid min-h-[300px] flex-1 place-items-center" aria-hidden="true">
+        <div className="relative z-[1] [perspective:1100px] motion-safe:animate-[trama-onb-float_2.8s_ease-in-out_infinite]">
+          <div
+            className="relative aspect-[9/18.5] max-h-[44dvh] w-[clamp(160px,46vw,200px)] rounded-[34px] bg-[#1B1F2B] p-1.5 shadow-[0_0_0_1px_#2B3142,0_28px_50px_rgba(23,42,77,0.18),0_8px_18px_rgba(23,42,77,0.10)] motion-safe:transition-transform motion-safe:duration-[900ms] motion-safe:ease-[cubic-bezier(0.65,0,0.35,1)] motion-reduce:!transform-none"
+            style={{ transform: `rotateY(${slide.tilt.y}deg) rotateX(${slide.tilt.x}deg)` }}
+          >
+            <div className="absolute left-1/2 top-[11px] z-[3] h-4 w-[60px] -translate-x-1/2 rounded-xl bg-[#1B1F2B]" />
+            <div className="relative h-full overflow-hidden rounded-[29px] bg-trama-page">
+              <div
+                key={slide.key}
+                className="absolute inset-0 flex flex-col gap-1.5 px-2.5 pb-2.5 pt-8 motion-safe:animate-[trama-onb-screen_0.5s_cubic-bezier(0.22,1,0.36,1)_both]"
+              >
+                <div className="absolute left-4 right-4 top-[11px] flex justify-between text-[7.5px] text-ink-3">
+                  <span>9:41</span>
+                  <span>●●● ▮</span>
+                </div>
+                <PhoneScreen visual={slide.key} />
+              </div>
+            </div>
           </div>
         </div>
-        <Pop pop={slide.pops[0]} delayMs={500} />
-        <Pop pop={slide.pops[1]} delayMs={900} />
+        {slide.pops.map((pop, i) => (
+          <PopCard key={`${slide.key}-${i}`} pop={pop} delayMs={350 + i * 140} />
+        ))}
       </div>
 
-      <div className="flex-1" />
+      {/* Testo */}
+      <div key={`copy-${slide.key}`} className={`px-6 ${textAnim}`}>
+        <div className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-[0.16em] text-trama-accent-ink">
+          <span aria-hidden="true" className="flex gap-[3px]">
+            {THREAD.map((c, i) => (
+              <span key={c} className="h-[3px] rounded-full" style={{ width: [12, 7, 10, 6][i], background: c }} />
+            ))}
+          </span>
+          {slide.eyebrow}
+        </div>
+        <h2
+          id="onboarding-v2-title"
+          className="my-2.5 text-balance font-poppins text-[clamp(25px,7vw,30px)] font-bold leading-[1.1] tracking-[-0.02em] text-trama-navy"
+        >
+          <TitleWithHighlight title={slide.title} highlight={slide.highlight} />
+        </h2>
+        <p className="max-w-[36ch] text-[15px] leading-relaxed text-ink-2">{slide.body}</p>
+      </div>
 
-      <div className="flex gap-2.5">
-        {index > 0 && (
-          <button
-            type="button"
-            onClick={onBack}
-            aria-label="Indietro"
-            className="flex min-h-[52px] w-[52px] flex-shrink-0 items-center justify-center rounded-[12px] border border-[#D9DDE5] bg-white text-trama-primary active:bg-black/[0.03]"
-          >
-            <i className="ti ti-chevron-left text-[20px]" aria-hidden="true" />
+      {/* Controlli */}
+      <div className="flex flex-col gap-4 px-6 pb-[calc(20px+env(safe-area-inset-bottom,0px))] pt-5">
+        <div className="flex items-center gap-2.5">
+          <span aria-live="polite" className="text-[11px] font-bold tabular-nums tracking-[0.08em] text-ink-3">
+            {index + 1}/{ONBOARDING_V2_SLIDES.length}
+          </span>
+          <div className="flex gap-1.5" role="group" aria-label="Schermate">
+            {ONBOARDING_V2_SLIDES.map((s, i) => (
+              <button
+                key={s.key}
+                type="button"
+                onClick={() => onGoTo(i)}
+                aria-label={`Schermata ${i + 1} di ${ONBOARDING_V2_SLIDES.length}`}
+                aria-current={i === index ? "step" : undefined}
+                className="flex h-6 items-center"
+              >
+                <span
+                  className={`block h-1 rounded-full motion-safe:transition-all motion-safe:duration-300 ${
+                    i === index ? "w-[30px] bg-trama-primary" : "w-[18px] bg-[#E6E8F0]"
+                  }`}
+                />
+              </button>
+            ))}
+          </div>
+        </div>
+        <div className="flex gap-2.5">
+          {index > 0 && (
+            <button
+              type="button"
+              onClick={onBack}
+              aria-label="Indietro"
+              className="flex min-h-[52px] w-[52px] flex-shrink-0 items-center justify-center rounded-[12px] border border-[#D9DDE5] bg-white text-trama-primary active:scale-[0.97]"
+            >
+              <i className="ti ti-chevron-left text-[20px]" aria-hidden="true" />
+            </button>
+          )}
+          <button type="button" onClick={onNext} className={`${CTA_PRIMARY} shadow-[0_10px_22px_rgba(23,42,77,0.22)] active:scale-[0.97]`}>
+            {slide.ctaLabel}
           </button>
-        )}
-        <button type="button" onClick={onNext} className={CTA_PRIMARY}>
-          {slide.ctaLabel}
-        </button>
+        </div>
       </div>
     </div>
   );
 }
 
 const POP_TONE: Record<OnboardingV2Pop["tone"], string> = {
-  navy: "text-trama-primary",
-  green: "text-[#1F9A72]",
-  amber: "text-[#B87400]",
-  coral: "text-[#D9483B]",
+  navy: "bg-trama-primary-soft text-trama-primary",
+  green: "bg-[#E6F6F0] text-[#1F9A72]",
+  amber: "bg-[#FFF3DF] text-[#B86E00]",
+  coral: "bg-[#FFEFEC] text-[#D9483B]",
 };
 
-function Pop({ pop, delayMs }: { pop: OnboardingV2Pop; delayMs: number }) {
+/** Card che "esce" dal telefono verso sinistra o destra (keyframes trama-onb-pop-*). */
+function PopCard({ pop, delayMs }: { pop: OnboardingV2Pop; delayMs: number }) {
   return (
-    <span
-      className={`absolute z-[2] flex max-w-[78%] items-center gap-2 rounded-[14px] bg-white px-3 py-2 text-[12.5px] font-semibold text-ink shadow-[0_8px_24px_rgba(23,42,77,0.16)] motion-safe:animate-[trama-onb2-pop_0.7s_cubic-bezier(0.2,0.9,0.3,1.25)_both] ${
-        pop.side === "left" ? "-left-2" : "-right-2"
-      } ${pop.edge === "top" ? "-top-3" : "-bottom-4"}`}
-      style={{ animationDelay: `${delayMs}ms` }}
+    <div
+      className={`absolute z-[2] flex max-w-[64%] items-center gap-2 rounded-[14px] border border-[#E6E8F0] bg-white px-[11px] py-2 text-[11.5px] text-trama-navy shadow-[0_14px_30px_rgba(23,42,77,0.12),0_2px_6px_rgba(23,42,77,0.06)] ${
+        pop.side === "left"
+          ? "left-4 motion-safe:animate-[trama-onb-pop-left_0.7s_cubic-bezier(0.34,1.56,0.64,1)_both]"
+          : "right-4 motion-safe:animate-[trama-onb-pop-right_0.7s_cubic-bezier(0.34,1.56,0.64,1)_both]"
+      }`}
+      style={{ top: `${pop.top}%`, animationDelay: `${delayMs}ms` }}
     >
-      <i className={`ti ${pop.icon} text-[15px] ${POP_TONE[pop.tone]}`} />
-      <span className="truncate">
-        {pop.title}
-        {pop.subtitle && <span className="font-normal text-ink-3"> {pop.subtitle}</span>}
+      <span className={`flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-lg text-[13px] ${POP_TONE[pop.tone]}`}>
+        <i className={`ti ${pop.icon}`} />
       </span>
-    </span>
+      <span className="min-w-0">
+        <b className="block font-bold">{pop.title}</b>
+        {pop.subtitle && <small className="block text-[10px] text-ink-3">{pop.subtitle}</small>}
+      </span>
+    </div>
   );
 }
 
-function DemoCard({ visual }: { visual: OnboardingV2Visual }) {
-  const shell = "flex flex-col gap-3 rounded-2xl border border-trama-line bg-white p-4 shadow-[0_6px_20px_rgba(23,42,77,0.06)]";
+/** Schermate in miniatura dentro il telefono — dati demo fittizi, mai dati reali. */
+function PhoneScreen({ visual }: { visual: OnboardingV2Visual }) {
+  const head = (sub: string, title: string) => (
+    <>
+      <div className="text-[7.5px] font-bold uppercase tracking-[0.1em] text-trama-accent-ink">{sub}</div>
+      <div className="font-poppins text-[12px] font-bold text-trama-navy">{title}</div>
+    </>
+  );
   if (visual === "oggi") {
     const d = ONBOARDING_V2_DEMO.oggi;
     return (
-      <section className={shell}>
-        <div className="flex items-baseline justify-between">
-          <span className="font-poppins text-[17px] font-semibold text-ink">{d.heading}</span>
-          <span className="text-[12.5px] text-ink-3">{d.date}</span>
-        </div>
+      <>
+        {head(d.date, d.heading)}
         {d.items.map((it) => (
-          <div key={it.name} className="flex items-center gap-3">
-            <span className="w-11 text-[13px] font-bold tabular-nums text-trama-primary">{it.time}</span>
-            <span className="h-9 w-1 rounded-sm" style={{ background: it.tone }} />
-            <span className="flex min-w-0 flex-col">
-              <span className="text-[14.5px] font-semibold text-ink">{it.name}</span>
-              <span className="text-[12.5px] text-ink-3">{it.meta}</span>
-            </span>
+          <div key={it.name} className="flex gap-1.5 rounded-[9px] border border-[#E6E8F0] bg-white px-[7px] py-1.5">
+            <span className="w-[3px] flex-shrink-0 rounded-full" style={{ background: it.tone }} />
+            <div className="min-w-0">
+              <div className="text-[7px] font-bold tabular-nums text-trama-primary">{it.time}</div>
+              <div className="text-[8.5px] font-bold text-trama-navy">{it.name}</div>
+              <div className="text-[6.5px] text-ink-3">{it.meta}</div>
+            </div>
           </div>
         ))}
-        <div className="flex items-center gap-2 border-t border-[#F0F2F5] pt-3 text-[13px] text-ink-2">
-          <i className="ti ti-check text-[17px] text-[#1F9A72]" />
+        <div className="flex items-center gap-1 rounded-[9px] bg-[#E6F6F0] px-[7px] py-1.5 text-[7px] font-semibold text-[#146B4F]">
+          <i className="ti ti-check text-[8px]" />
           {d.items[1].who}
         </div>
-      </section>
+        <div className="flex gap-1.5 rounded-[9px] border border-dashed border-[#C9CFDA] bg-white px-[7px] py-1.5">
+          <span className="w-[3px] flex-shrink-0 rounded-full bg-[#F66B5E]" />
+          <div>
+            <div className="text-[7px] tabular-nums text-ink-3">Sabato</div>
+            <div className="text-[8.5px] font-bold text-trama-navy">Festa di Sofia</div>
+          </div>
+        </div>
+      </>
     );
   }
   if (visual === "fuori") {
     const d = ONBOARDING_V2_DEMO.fuori;
     return (
-      <section className={shell}>
-        <span className="font-poppins text-[17px] font-semibold text-ink">{d.heading}</span>
-        <div className="flex flex-col">
+      <>
+        {head("Aggiungi", d.heading)}
+        <div className="flex flex-col rounded-[10px] border border-[#E6E8F0] bg-white px-[7px] py-1">
           {d.fields.map((f, i) => (
-            <div key={f.label} className={`flex items-center justify-between py-2 text-[13.5px] ${i > 0 ? "border-t border-[#F0F2F5]" : ""}`}>
-              <span className="text-ink-3">{f.label}</span>
-              <span className="font-semibold text-ink">{f.value}</span>
+            <div key={f.label} className={`flex items-center justify-between gap-1 py-[5px] ${i > 0 ? "border-t border-[#F0F2F5]" : ""}`}>
+              <span className="text-[6.5px] text-ink-3">{f.label}</span>
+              <span className="truncate text-[7.5px] font-bold text-trama-navy">{f.value}</span>
             </div>
           ))}
         </div>
-        <span className="flex min-h-[40px] items-center justify-center rounded-[12px] bg-trama-primary text-[13.5px] font-bold text-white">{d.cta}</span>
-      </section>
+        <div className="rounded-[7px] bg-trama-primary p-1.5 text-center text-[7.5px] font-bold text-white">{d.cta}</div>
+        <div className="mt-0.5 text-[6.5px] text-ink-3">Anche corsi, visite e feste: tutto nel Planner.</div>
+      </>
     );
   }
   const d = ONBOARDING_V2_DEMO.chi;
   return (
-    <section className={shell}>
-      <div className="flex items-baseline justify-between">
-        <span className="font-poppins text-[17px] font-semibold text-ink">{d.heading}</span>
-        <span className="text-[12.5px] text-ink-3">chi accompagna</span>
-      </div>
-      <div className="grid grid-cols-[64px_1fr_1fr] gap-2 text-[12px] font-semibold text-ink-3">
+    <>
+      {head("Chi accompagna", d.heading)}
+      <div className="grid grid-cols-[34px_1fr_1fr] gap-1 text-[6.5px] font-semibold uppercase tracking-[0.06em] text-ink-3">
         <span />
         <span>Porta</span>
         <span>Riprende</span>
       </div>
-      {d.rows.map((r, i) => (
-        <div key={r.kid} className="grid grid-cols-[64px_1fr_1fr] items-center gap-2">
-          <span className="flex items-center gap-1.5 text-[14px] font-semibold text-ink">
-            <span className={`flex h-6 w-6 items-center justify-center rounded-full text-[11px] font-bold ${i === 0 ? "bg-[#ECE8F8] text-[#4A3F9E]" : "bg-[#FFF0E6] text-[#8A3B12]"}`}>
-              {r.kid[0]}
-            </span>
-            {r.kid}
-          </span>
-          <span className="rounded-[10px] bg-[#E6F6F0] px-2.5 py-2 text-[13px] font-semibold text-[#146B4F]">{r.porta}</span>
+      {d.rows.map((r) => (
+        <div key={r.kid} className="grid grid-cols-[34px_1fr_1fr] items-center gap-1">
+          <span className="text-[8px] font-bold text-trama-navy">{r.kid}</span>
+          <span className="rounded-md bg-[#E6F6F0] px-1 py-[5px] text-[7.5px] font-semibold text-[#146B4F]">{r.porta}</span>
           {r.riprende ? (
-            <span className="rounded-[10px] bg-[#E6F6F0] px-2.5 py-2 text-[13px] font-semibold text-[#146B4F]">{r.riprende}</span>
+            <span className="rounded-md bg-[#E6F6F0] px-1 py-[5px] text-[7.5px] font-semibold text-[#146B4F]">{r.riprende}</span>
           ) : (
-            <span className="rounded-[10px] border-[1.5px] border-dashed border-[#F6B84B] bg-[#FFF8EB] px-2.5 py-[7px] text-[13px] font-bold text-[#7A4500]">Chi riprende?</span>
+            <span className="rounded-md border border-dashed border-[#F6B84B] bg-[#FFF8EB] px-1 py-[4px] text-[7.5px] font-bold text-[#7A4500]">Chi?</span>
           )}
         </div>
       ))}
-      <div className="flex items-center gap-2 rounded-[12px] bg-[#FFF8EB] px-3 py-2.5 text-[13px] text-[#5C3600]">
-        <i className="ti ti-alert-circle text-[17px] text-[#9A5A00]" />
-        Manca chi riprende {d.rows[0].kid} alle 18:00
+      <div className="flex items-center gap-1 rounded-[9px] bg-[#FFF8EB] px-[7px] py-1.5 text-[7px] text-[#5C3600]">
+        <i className="ti ti-alert-circle text-[8px]" />
+        Manca chi riprende {d.rows[0].kid}
       </div>
-    </section>
+      <div className="flex gap-1">
+        {["Tu", "Marco", "Nonna Rita", "Tata"].map((h) => (
+          <span key={h} className="rounded-full border border-[#E6E8F0] bg-white px-1.5 py-[3px] text-[6.5px] font-semibold text-trama-navy">
+            {h}
+          </span>
+        ))}
+      </div>
+    </>
   );
 }
 

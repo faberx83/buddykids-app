@@ -71,6 +71,7 @@ import DiscoveryProposeInviteDialog from "@/components/nextgen/DiscoveryProposeI
 import AnnouncementCallout from "@/components/nextgen/AnnouncementCallout";
 import type { MapItem } from "@/components/ActivityMap";
 import { useSetNextgenHideFloatingControls } from "@/components/nextgen/NextgenScrollActivity";
+import ProfileChip from "@/components/nextgen/ProfileChip";
 
 // Leaflet usa `window`, quindi la mappa va caricata solo lato client — stesso
 // pattern già usato in LEGACY (app/(main)/search/SearchClient.tsx) e nel
@@ -1265,6 +1266,7 @@ export default function SearchDiscoveryClient({
                 </button>
               ))}
             </div>
+            <ProfileChip />
           </header>
         )}
         {/* TRAMA — FINAL BETA CHROME CLEANUP (15/09/2026): ProductStatusChip

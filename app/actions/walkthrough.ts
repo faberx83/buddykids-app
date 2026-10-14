@@ -161,12 +161,19 @@ export async function restartWalkthroughAction(tutorialKey: string): Promise<{ e
   const { supabase, user } = await requireUser();
   if (!user) return { error: "Non autenticato" };
 
-  const { error } = await supabase
-    .from("tutorial_progress")
-    .delete()
-    .eq("user_id", user.id)
-    .eq("tutorial_key", tutorialKey);
-  if (error) return { error: error.message };
+  // ONBOARDING V2 (14/10/2026) — causa vera di "Rivedi l'introduzione non
+  // funziona": tutorial_progress ha policy RLS per SELECT/INSERT/UPDATE ma
+  // NON per DELETE, quindi la delete di prima non toglieva nessuna riga e
+  // non dava errore (0 righe, nessun messaggio): il percorso restava
+  // "completato" e il riavvio non succedeva mai, per nessun percorso.
+  // Ora si rimette ogni passo a "not_started" con lo stesso upsert usato da
+  // start/complete/skip (consentito dalla policy di UPDATE): per
+  // getWalkthroughProgress un passo "not_started" è di nuovo quello
+  // corrente. Nessuna migration.
+  for (const step of definition.steps) {
+    const { error } = await upsertStep(supabase, user.id, tutorialKey, step.key, "not_started");
+    if (error) return { error: error.message };
+  }
   await persistProductEvent(
     {
       event: "walkthrough_restarted",
