@@ -123,8 +123,11 @@ export default function HomeDashboardV2Client({
   externalPlannerItemsEnabled,
   activitiesAreMockFallback,
   navV2Enabled = false,
+  avatarUrl = null,
 }: {
   firstName: string | null;
+  /** Foto del profilo (14/10/2026, richiesta Fabrizio): se c'è, l'avatar la mostra al posto dell'iniziale. */
+  avatarUrl?: string | null;
   todayIso: string;
   weekStartIso: string;
   kids: { id: string; name: string }[];
@@ -227,9 +230,14 @@ export default function HomeDashboardV2Client({
             <Link
               href="/nextgen/profile"
               aria-label="Profilo e impostazioni"
-              className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-full bg-[#ECE8F8] font-poppins text-[17px] font-semibold text-[#4A3F9E] active:scale-95"
+              className="flex h-11 w-11 flex-shrink-0 items-center justify-center overflow-hidden rounded-full bg-[#ECE8F8] font-poppins text-[17px] font-semibold text-[#4A3F9E] active:scale-95"
             >
-              {(firstName?.trim()[0] ?? "").toUpperCase() || <i className="ti ti-user text-[20px]" aria-hidden="true" />}
+              {avatarUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={avatarUrl} alt="" className="h-full w-full object-cover" />
+              ) : (
+                (firstName?.trim()[0] ?? "").toUpperCase() || <i className="ti ti-user text-[20px]" aria-hidden="true" />
+              )}
             </Link>
           ) : (
             <img src="/brand/trama-logo-mark.png" alt="" aria-hidden="true" className="h-[25px] w-auto flex-shrink-0" />

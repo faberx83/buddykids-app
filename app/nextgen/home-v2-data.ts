@@ -342,6 +342,7 @@ export async function loadHomeV2Props({
 
   return {
     firstName: fullName?.split(" ")[0] ?? null,
+    avatarUrl: profile.avatarUrl ?? null,
     todayIso,
     weekStartIso,
     kids: kidList,

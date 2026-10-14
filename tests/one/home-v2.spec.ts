@@ -502,3 +502,13 @@ test.describe("HOME-V2 — riepilogo Ponti e vacanze", () => {
     expect(card).toContain("ti-school");
   });
 });
+
+test.describe("TRAMA — Home V2: foto del profilo nell'avatar [no browser]", () => {
+  test("HV2-36 l'avatar mostra la foto del profilo se c'è, altrimenti l'iniziale", () => {
+    const src = fs.readFileSync(path.join(__dirname, "../../app/nextgen/HomeDashboardV2Client.tsx"), "utf-8");
+    expect(src).toContain('<img src={avatarUrl} alt="" className="h-full w-full object-cover" />');
+    expect(src).toContain("(firstName?.trim()[0] ?? \"\").toUpperCase()");
+    const data = fs.readFileSync(path.join(__dirname, "../../app/nextgen/home-v2-data.ts"), "utf-8");
+    expect(data).toContain("avatarUrl: profile.avatarUrl ?? null,");
+  });
+});
