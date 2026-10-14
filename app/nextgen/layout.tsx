@@ -289,10 +289,11 @@ export default async function NextgenLayout({ children }: { children: React.Reac
               sola volta cosi copre ogni pagina genitore NEXTGEN (il componente
               stesso si nasconde su /nextgen/admin e /nextgen/center, vedi
               BetaFeedbackButton.tsx). */}
-          <BetaFeedbackButton />
+          {/* POLISH V2 (14/10/2026): con la nuova barra un solo elemento flottante, il +. */}
+          <BetaFeedbackButton hideFab={navV2Enabled} />
           <ParentSpotlight progress={spotlightProgress} />
           <OnboardingCarousel progress={onboardingProgress} />
-          {isParentUser && <NotificationCenter initialNotifications={notifications} />}
+          {isParentUser && <NotificationCenter initialNotifications={notifications} hideFloatingBell={navV2Enabled} />}
           {/* BUILD_INFO_BUBBLE */}
           <BuildInfoBubble label={buildInfoLabel} />
         </NextgenScrollActivityProvider>

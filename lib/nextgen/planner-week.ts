@@ -252,3 +252,14 @@ export function buildMonthModel(input: {
   }
   return { label: `${MONTHS_IT[month]} ${d.getUTCFullYear()}`, firstIso: first, prevFirstIso: prev, nextFirstIso: next, rows };
 }
+
+/**
+ * POLISH V2 (14/10/2026): gli impegni aggiunti a mano che toccano la
+ * settimana di `mondayIso` (lunedì–domenica). La vista Settimana risponde
+ * solo a "cosa succede in questa settimana?": gli impegni di altre date non
+ * la allungano più. Nessun dato cambiato, solo presentazione.
+ */
+export function itemsInWeek<T extends { startDate: string; endDate: string | null }>(items: T[], mondayIso: string): T[] {
+  const sunday = addDaysIso(mondayIso, 6);
+  return items.filter((i) => i.startDate <= sunday && (i.endDate ?? i.startDate) >= mondayIso);
+}

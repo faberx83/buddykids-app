@@ -54,6 +54,7 @@ import { toggleCuratedFavoriteAction } from "@/app/actions/curated-favorites";
 // proposeDiscoveryLeadInviteAction sopra.
 import { addCuratedLeadToPlannerAction } from "@/app/actions/external-planner-items";
 import type { Kid } from "@/lib/types";
+import ActivityVisual from "@/components/nextgen/ActivityVisual";
 
 const CATEGORY_LABELS: Record<DiscoveryLeadRecord["category"], string> = {
   educativo: "Educativo",
@@ -71,6 +72,14 @@ const CATEGORY_EMOJI: Record<DiscoveryLeadRecord["category"], string> = {
   sportivo: "⚽",
   multisport: "🏅",
   artistico: "🎭",
+};
+
+// POLISH V2 (14/10/2026): in V2 la categoria è un'icona, non un'emoji grande.
+const CATEGORY_ICON: Record<DiscoveryLeadRecord["category"], string> = {
+  educativo: "ti-book",
+  sportivo: "ti-ball-football",
+  multisport: "ti-run",
+  artistico: "ti-palette",
 };
 
 function formatDateRange(startDate: string | null, endDate: string | null): string | null {
@@ -242,16 +251,33 @@ export default function DiscoveryLeadCard({
     showToast("Proposta inviata — abbiamo registrato il tuo interesse.");
   }
 
+  // POLISH V2 (14/10/2026): in V2 pulsanti alti 44, navy per l'azione principale.
+  const btn = v2
+    ? {
+        // a tutta larghezza: "Aggiungi al Planner" non va mai a capo; le azioni secondarie sotto
+        primary: "flex min-h-[44px] basis-full items-center justify-center whitespace-nowrap rounded-[12px] bg-trama-primary px-3 text-center text-[14px] font-bold text-white active:bg-trama-primary-press",
+        secondary: "flex min-h-[44px] flex-1 items-center justify-center whitespace-nowrap rounded-[12px] border border-[#D9DDE5] bg-white px-3 text-center text-[13.5px] font-semibold text-trama-primary active:bg-black/[0.03]",
+        icon: "flex h-11 w-11 shrink-0 items-center justify-center rounded-[12px] border border-[#D9DDE5] text-trama-primary",
+        link: "flex min-h-[44px] flex-1 items-center justify-center gap-1 rounded-[12px] border border-[#D9DDE5] px-3 text-center text-[13.5px] font-semibold text-trama-primary",
+        formSecondary: "flex min-h-[44px] flex-1 items-center justify-center rounded-[12px] border border-[#D9DDE5] px-3 text-[13.5px] font-semibold text-trama-primary disabled:opacity-50",
+        formPrimary: "flex min-h-[44px] flex-1 items-center justify-center rounded-[12px] bg-trama-primary px-3 text-[13.5px] font-bold text-white active:bg-trama-primary-press disabled:opacity-50",
+      }
+    : {
+        primary: "flex-1 rounded-full bg-trama-violet px-3 py-2 text-center text-[12px] font-semibold text-white active:scale-[0.98]",
+        secondary: "shrink-0 rounded-full border border-[#E8EBF0] px-3 py-2 text-center text-[12px] font-semibold text-ink-2 active:scale-[0.98]",
+        icon: "flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-[#E8EBF0] text-ink-2",
+        link: "flex flex-1 items-center justify-center gap-1 rounded-full border border-[#E8EBF0] px-3 py-2 text-center text-[12px] font-semibold text-ink-2",
+        formSecondary: "flex-1 rounded-full border border-[#E8EBF0] px-3 py-2 text-[12px] font-semibold text-ink-2 disabled:opacity-60",
+        formPrimary: "flex-1 rounded-full bg-trama-violet px-3 py-2 text-[12px] font-semibold text-white active:scale-[0.98] disabled:opacity-60",
+      };
+
   return (
-    <div className={v2 ? "mb-3 overflow-hidden rounded-[20px] border border-[#ECEEF2] bg-white" : "mb-3 overflow-hidden rounded-lg border border-[#F0F2F5] bg-white"}>
+    <div className={v2 ? "mb-3 overflow-hidden rounded-2xl border border-trama-line bg-white" : "mb-3 overflow-hidden rounded-lg border border-[#F0F2F5] bg-white"}>
       {/* SCOPRI V2: fascia 120px, provenienza in alto a sinistra come
           "Partner TRAMA" nella card Partner, categoria in basso, Salva. */}
       {v2 && (
-        <div className="relative flex h-[120px] items-center justify-center bg-[linear-gradient(135deg,#F3F0FF,#EDE9FE)]">
-          <span className="text-6xl opacity-40" aria-hidden>
-            {CATEGORY_EMOJI[lead.category]}
-          </span>
-          <span className="absolute left-3 top-3 rounded-full bg-white px-2.5 py-1 text-[11.5px] font-bold text-[#4A3F9E]">Scoperta TRAMA</span>
+        <ActivityVisual title={lead.activityTitle} icon={CATEGORY_ICON[lead.category]} className="h-[120px]">
+          <span className="absolute left-3 top-3 rounded-full bg-white px-2.5 py-1 text-[11.5px] font-bold text-trama-accent-ink">Scoperta TRAMA</span>
           <span className="absolute bottom-2.5 left-3 rounded-full bg-white/90 px-2.5 py-1 text-[11.5px] font-semibold text-ink-2">
             {CATEGORY_LABELS[lead.category]}
           </span>
@@ -260,11 +286,11 @@ export default function DiscoveryLeadCard({
             onClick={handleToggleFavorite}
             aria-label={fav ? "Togli dai salvati" : "Salva"}
             aria-pressed={fav}
-            className="absolute right-2.5 top-2.5 flex h-10 w-10 items-center justify-center rounded-full bg-white text-trama-navy active:scale-95"
+            className="absolute right-2 top-2 flex h-11 w-11 items-center justify-center rounded-full bg-white text-trama-navy active:scale-95"
           >
-            <i className={`ti ${fav ? "ti-bookmark-filled text-trama-violet" : "ti-bookmark"} text-[19px]`} aria-hidden="true" />
+            <i className={`ti ${fav ? "ti-bookmark-filled text-trama-primary" : "ti-bookmark"} text-[19px]`} aria-hidden="true" />
           </button>
-        </div>
+        </ActivityVisual>
       )}
       {/* TRAMA — DISCOVERY MAP + POLISH (21/09/2026), §15 "CARD POLISH —
           LIST": hero portata a 140px (stessa altezza esatta dell'hero foto/
@@ -388,12 +414,12 @@ export default function DiscoveryLeadCard({
             testo (non più solo icona per il Planner). Senza Planner
             (flag spento o nessun bambino) la riga resta quella di prima. */}
         {invitable && proposeState !== "confirm" && proposeState !== "submitting" && planState !== "confirm" && planState !== "submitting" && (
-          <div className="flex items-center gap-2">
+          <div className={v2 ? "flex flex-wrap items-center gap-2" : "flex items-center gap-2"}>
             {canAddToPlanner && (
               <button
                 type="button"
                 onClick={() => setPlanState("confirm")}
-                className="flex-1 rounded-full bg-trama-violet px-3 py-2 text-center text-[12px] font-semibold text-white active:scale-[0.98]"
+                className={btn.primary}
               >
                 Aggiungi al Planner
               </button>
@@ -417,8 +443,8 @@ export default function DiscoveryLeadCard({
                 onClick={() => setProposeState("confirm")}
                 className={
                   canAddToPlanner
-                    ? "shrink-0 rounded-full border border-[#E8EBF0] px-3 py-2 text-center text-[12px] font-semibold text-ink-2 active:scale-[0.98]"
-                    : "flex-1 rounded-full bg-trama-violet px-3 py-2 text-center text-[12px] font-semibold text-white active:scale-[0.98]"
+                    ? btn.secondary
+                    : btn.primary
                 }
               >
                 Proponi invito
@@ -431,7 +457,7 @@ export default function DiscoveryLeadCard({
               onClick={handleExternalClick}
               aria-label={secondaryLabel}
               title={secondaryLabel}
-              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-[#E8EBF0] text-ink-2"
+              className={btn.icon}
             >
               <i className="ti ti-external-link text-[15px]" />
             </a>
@@ -451,12 +477,12 @@ export default function DiscoveryLeadCard({
         {!invitable && planState !== "confirm" && planState !== "submitting" && (
           <>
             <p className="mb-1.5 text-[10.5px] text-ink-3">Il centro non è ancora su TRAMA: puoi comunque salvarla e organizzarla.</p>
-            <div className="flex items-center gap-2">
+            <div className={v2 ? "flex flex-wrap items-center gap-2" : "flex items-center gap-2"}>
               {plannerEnabled && planState !== "done" && kids.length > 0 && (
                 <button
                   type="button"
                   onClick={() => setPlanState("confirm")}
-                  className="flex-1 rounded-full bg-trama-violet px-3 py-2 text-center text-[12px] font-semibold text-white active:scale-[0.98]"
+                  className={btn.primary}
                 >
                   Aggiungi al Planner
                 </button>
@@ -468,8 +494,8 @@ export default function DiscoveryLeadCard({
                 onClick={handleExternalClick}
                 className={
                   plannerEnabled && planState !== "done" && kids.length > 0
-                    ? "flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-[#E8EBF0] text-ink-2"
-                    : "flex flex-1 items-center justify-center gap-1 rounded-full border border-[#E8EBF0] px-3 py-2 text-center text-[12px] font-semibold text-ink-2"
+                    ? btn.icon
+                    : btn.link
                 }
                 aria-label={secondaryLabel}
                 title={secondaryLabel}
@@ -559,7 +585,7 @@ export default function DiscoveryLeadCard({
                   setPlanError(null);
                   setPlanKidIds([]);
                 }}
-                className="flex-1 rounded-full border border-[#E8EBF0] px-3 py-2 text-[12px] font-semibold text-ink-2 disabled:opacity-60"
+                className={btn.formSecondary}
               >
                 Annulla
               </button>
@@ -567,7 +593,7 @@ export default function DiscoveryLeadCard({
                 type="button"
                 disabled={planState === "submitting"}
                 onClick={handleConfirmAddToPlanner}
-                className="flex-1 rounded-full bg-trama-violet px-3 py-2 text-[12px] font-semibold text-white active:scale-[0.98] disabled:opacity-60"
+                className={btn.formPrimary}
               >
                 {planState === "submitting" ? "Aggiungo…" : "Aggiungi"}
               </button>
@@ -593,7 +619,7 @@ export default function DiscoveryLeadCard({
                   setProposeState("idle");
                   setProposeError(null);
                 }}
-                className="flex-1 rounded-full border border-[#E8EBF0] px-3 py-2 text-[12px] font-semibold text-ink-2 disabled:opacity-60"
+                className={btn.formSecondary}
               >
                 Annulla
               </button>
@@ -601,7 +627,7 @@ export default function DiscoveryLeadCard({
                 type="button"
                 disabled={proposeState === "submitting"}
                 onClick={handleConfirmPropose}
-                className="flex-1 rounded-full bg-trama-violet px-3 py-2 text-[12px] font-semibold text-white active:scale-[0.98] disabled:opacity-60"
+                className={btn.formPrimary}
               >
                 {proposeState === "submitting" ? "Invio…" : "Sì, proponilo"}
               </button>

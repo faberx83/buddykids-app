@@ -13,6 +13,7 @@
 import Link from "next/link";
 import { useState } from "react";
 import { toggleCuratedFavoriteAction } from "@/app/actions/curated-favorites";
+import ActivityVisual from "@/components/nextgen/ActivityVisual";
 import {
   COMMUNITY_BADGE_LABEL,
   communityCategoryEmoji,
@@ -55,15 +56,12 @@ export default function CommunityDiscoveryCard({
 
   return (
     <div
-      className={v2 ? "mb-3 overflow-hidden rounded-[20px] border border-[#ECEEF2] bg-white" : "mb-3 overflow-hidden rounded-lg border border-[#F0F2F5] bg-white"}
+      className={v2 ? "mb-3 overflow-hidden rounded-2xl border border-trama-line bg-white" : "mb-3 overflow-hidden rounded-lg border border-[#F0F2F5] bg-white"}
       data-testid="community-discovery-card"
     >
       {v2 ? (
-        <div className="relative flex h-[120px] items-center justify-center bg-[linear-gradient(135deg,#FFF4E8,#FFE9D6)]">
+        <ActivityVisual title={discovery.title} icon="ti-users-group" className="h-[120px]">
           <Link href={href} className="absolute inset-0" aria-label={`Apri ${discovery.title}`} />
-          <span className="pointer-events-none text-6xl opacity-40" aria-hidden>
-            {communityCategoryEmoji(discovery.category)}
-          </span>
           <span className="pointer-events-none absolute left-3 top-3 flex items-center gap-1 rounded-full bg-white px-2.5 py-1 text-[11.5px] font-bold text-[#8A4B00]">
             <i className="ti ti-users-group text-[13px]" aria-hidden />
             {COMMUNITY_BADGE_LABEL}
@@ -76,11 +74,11 @@ export default function CommunityDiscoveryCard({
             onClick={handleToggleFavorite}
             aria-label={fav ? "Togli dai salvati" : "Salva"}
             aria-pressed={fav}
-            className="absolute right-2.5 top-2.5 z-[2] flex h-10 w-10 items-center justify-center rounded-full bg-white text-trama-navy active:scale-95"
+            className="absolute right-2 top-2 z-[2] flex h-11 w-11 items-center justify-center rounded-full bg-white text-trama-navy active:scale-95"
           >
-            <i className={`ti ${fav ? "ti-bookmark-filled text-trama-violet" : "ti-bookmark"} text-[19px]`} aria-hidden="true" />
+            <i className={`ti ${fav ? "ti-bookmark-filled text-trama-primary" : "ti-bookmark"} text-[19px]`} aria-hidden="true" />
           </button>
-        </div>
+        </ActivityVisual>
       ) : (
       <div className="relative flex h-[140px] items-center justify-center bg-[linear-gradient(135deg,#FFF4E8,#FFE9D6)]">
         <Link href={href} className="absolute inset-0" aria-label={`Apri ${discovery.title}`} />
@@ -142,7 +140,7 @@ export default function CommunityDiscoveryCard({
           {inPlanner ? (
             <span className="rounded-full bg-green-light px-2.5 py-1 text-[11px] font-semibold text-[#2d8f52]">✓ Nel Planner</span>
           ) : v2 ? (
-            <span className="flex min-h-[40px] items-center rounded-full bg-trama-violet px-4 text-[13.5px] font-bold text-white">Vedi</span>
+            <span className="flex min-h-[44px] items-center rounded-[12px] bg-trama-primary px-4 text-[14px] font-bold text-white">Vedi</span>
           ) : (
             <span className="text-[12px] font-semibold text-trama-violet">Vedi scheda →</span>
           )}

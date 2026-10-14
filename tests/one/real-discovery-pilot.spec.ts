@@ -1229,8 +1229,13 @@ test.describe("DISCOVERY FINAL UX PASS — map fit / initial view (statico sul s
     const source = readSource("../../components/ActivityMap.tsx");
     const block = source.slice(source.indexOf("function FitBounds"), source.indexOf("export default function ActivityMap"));
     expect(block).not.toMatch(/markerKind/);
-    expect(source).toContain("<FitBounds points={points} skip={skipInitialFit} />");
+    // Polish V2 (14/10/2026): la vista può restringersi a `fitPoints` (risultati
+    // VICINI, scelti per distanza in lib/nextgen/map-focus.ts, mai per tipo);
+    // senza fitPoints restano TUTTI i punti di `items`, come prima.
+    expect(source).toContain("<FitBounds points={focus} skip={skipInitialFit} />");
+    expect(source).toContain("const focus = fitPoints && fitPoints.length > 0 ? fitPoints : points;");
     expect(source).toContain("items.map((it) => [it.lat, it.lng])");
+    expect(readSource("../../lib/nextgen/map-focus.ts")).not.toMatch(/markerKind/);
   });
 
   test("UX-15: un solo marker → zoom fisso ragionevole (13), non uno zoom massimo/eccessivo", () => {

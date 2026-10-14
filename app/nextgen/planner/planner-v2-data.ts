@@ -192,6 +192,8 @@ export async function loadPlannerV2Props({
     groups,
     savedCount,
     navV2Enabled,
+    // POLISH V2 (14/10/2026): il dettaglio tecnico degli errori lo vede solo l'Admin piattaforma.
+    showDiagnostics: role === "platform_admin",
     calendarExportEnabled: exportEnabled,
     calendarExportItems,
   };

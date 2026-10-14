@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { CommunityItem, CommunityRole, GroupItem } from "@/lib/types";
+import { monogramFor, threadColorFor } from "@/components/nextgen/ActivityVisual";
 
 // SPRINT 5.6 (NEXTGEN) — riempie l'ultima scheda del Planner ancora "in
 // arrivo" (Organizzazione/Budget/Calendario/Mappa/Famiglia fatte nelle fasi
@@ -23,15 +24,32 @@ const ROLE_LABEL: Record<CommunityRole, string> = {
   membro: "Membro",
 };
 
+/** POLISH V2: monogramma con filo TRAMA al posto dell'emoji. */
+function RowMark({ title }: { title: string }) {
+  return (
+    <span
+      className="relative flex h-10 w-10 flex-shrink-0 items-center justify-center overflow-hidden rounded-[12px] border border-trama-line bg-[#F4F1EA] font-poppins text-[14px] font-semibold text-trama-navy/80"
+      aria-hidden="true"
+    >
+      <span className="absolute inset-x-0 top-0 h-[3px]" style={{ background: threadColorFor(title) }} />
+      {monogramFor(title)}
+    </span>
+  );
+}
+
 function CommunityCard({ community, v2 = false }: { community: CommunityItem; v2?: boolean }) {
   return (
     <Link
       href={`/nextgen/community/${community.id}`}
       className={v2 ? "flex min-h-[64px] items-center gap-3 px-4 py-3 active:bg-black/[0.03]" : "flex items-center gap-3 rounded-2xl bg-white p-3.5 active:bg-black/[0.06]"}
     >
-      <span className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-trama-lilac/20 text-lg">
-        {community.emoji}
-      </span>
+      {v2 ? (
+        <RowMark title={community.name} />
+      ) : (
+        <span className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-trama-lilac/20 text-lg">
+          {community.emoji}
+        </span>
+      )}
       <div className="min-w-0 flex-1">
         <div className={v2 ? "truncate text-[15px] font-semibold text-ink" : "truncate text-[13.5px] font-bold text-ink"}>{community.name}</div>
         <div className={`mt-0.5 flex items-center gap-1.5 text-ink-2 ${v2 ? "text-[13px]" : "text-[11.5px]"}`}>
@@ -57,12 +75,16 @@ function GroupCard({ group, v2 = false }: { group: GroupItem; v2?: boolean }) {
       href={`/nextgen/groups/${group.id}?from=planner-gruppi`}
       className={v2 ? "flex min-h-[64px] items-center gap-3 px-4 py-3 active:bg-black/[0.03]" : "flex items-center gap-3 rounded-2xl bg-white p-3.5 active:bg-black/[0.06]"}
     >
-      <span
-        className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full text-lg"
-        style={{ background: group.gradient }}
-      >
-        {group.emoji}
-      </span>
+      {v2 ? (
+        <RowMark title={group.name} />
+      ) : (
+        <span
+          className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full text-lg"
+          style={{ background: group.gradient }}
+        >
+          {group.emoji}
+        </span>
+      )}
       <div className="min-w-0 flex-1">
         <div className={v2 ? "truncate text-[15px] font-semibold text-ink" : "truncate text-[13.5px] font-bold text-ink"}>{group.name}</div>
         <div className={`mt-0.5 truncate text-ink-2 ${v2 ? "text-[13px]" : "text-[11.5px]"}`}>
@@ -85,9 +107,9 @@ export default function PlannerGroupsView({
   v2?: boolean;
 }) {
   if (v2) {
-    const card = "overflow-hidden rounded-[20px] bg-white shadow-[0_1px_2px_rgba(23,42,77,0.06),0_6px_20px_rgba(23,42,77,0.06)] divide-y divide-[#F0F2F5]";
+    const card = "overflow-hidden rounded-2xl border border-trama-line bg-white divide-y divide-[#F0F2F5]";
     const empty = "rounded-[20px] border border-dashed border-[#D6DAE3] bg-white p-4 text-[13px] leading-snug text-ink-2";
-    const link = "flex min-h-[40px] items-center text-[14px] font-semibold text-[#5B4FB0]";
+    const link = "flex min-h-[44px] items-center text-[14px] font-semibold text-trama-accent-ink";
     return (
       <div className="flex flex-col gap-6">
         <section className="flex flex-col gap-2.5">

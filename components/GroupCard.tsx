@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { GroupItem } from "@/lib/types";
 import { pillClasses } from "@/lib/colors";
+import ActivityVisual from "@/components/nextgen/ActivityVisual";
 
 // TRAMA ONE (24/08/2026) — basePath opzionale (default "/groups") per essere
 // riusato anche dal guscio NEXTGEN-native app/nextgen/groups, che deve
@@ -34,10 +35,20 @@ export default function GroupCard({
       href={`${basePath}/${group.id}${detailQuery}`}
       className={
         v2
-          ? "mx-5 mb-3 block overflow-hidden rounded-[20px] bg-white shadow-[0_1px_2px_rgba(23,42,77,0.06),0_6px_20px_rgba(23,42,77,0.06)] active:scale-[0.99]"
+          ? "mx-5 mb-3 block overflow-hidden rounded-2xl border border-trama-line bg-white active:scale-[0.99]"
           : "mx-5 mb-3 block cursor-pointer overflow-hidden rounded-lg border border-[#F0F2F5] bg-white transition-transform hover:scale-[0.98]"
       }
     >
+      {v2 ? (
+        // POLISH V2 (14/10/2026): monogramma + filo TRAMA al posto dell'emoji grande.
+        <ActivityVisual title={group.name} className="h-[72px]">
+          {group.discountLabel.startsWith("Sconto") && (
+            <span className="absolute right-2.5 top-2.5 rounded-full bg-white px-2.5 py-0.5 text-[11px] font-bold text-[#146B4F]">
+              {group.discountLabel.replace("Sconto ", "-")}
+            </span>
+          )}
+        </ActivityVisual>
+      ) : (
       <div
         className="relative flex h-[84px] items-center justify-center text-[44px]"
         style={{ background: group.gradient }}
@@ -47,6 +58,7 @@ export default function GroupCard({
           {group.discountLabel.startsWith("Sconto") ? group.discountLabel.replace("Sconto ", "-") : ""}
         </div>
       </div>
+      )}
       <div className={v2 ? "px-4 pb-[15px] pt-[13px]" : "p-3"}>
         <div className={v2 ? "mb-1 text-[16px] font-semibold text-ink" : "mb-1 text-sm font-bold text-ink"}>{group.name}</div>
         <div className={`mb-2.5 flex items-center gap-1.5 text-ink-2 ${v2 ? "text-[13px]" : "text-xs"}`}>
@@ -83,7 +95,7 @@ export default function GroupCard({
           <span
             className={
               v2
-                ? "flex min-h-[40px] items-center gap-1 rounded-full bg-trama-violet px-4 text-[13px] font-bold text-white"
+                ? "flex min-h-[44px] items-center gap-1 rounded-[12px] bg-trama-primary px-4 text-[13.5px] font-bold text-white"
                 : `flex items-center gap-1 rounded-md ${accentBg} px-3.5 py-1.5 text-xs font-semibold ${accentText}`
             }
           >

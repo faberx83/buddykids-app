@@ -28,6 +28,7 @@ import { isPushSupported, enablePushNotifications, hasBrowserPushSubscription } 
 import { updatePreferencesAction } from "@/app/actions/profile";
 import AgendaItemRow from "@/components/nextgen/AgendaItemRow";
 import TramaThread from "@/components/nextgen/TramaThread";
+import ActivityVisual from "@/components/nextgen/ActivityVisual";
 import DayCoordinationBlock from "@/components/nextgen/DayCoordination";
 import SeasonSummaryCard, { type SeasonSummaryAction, type SeasonSummaryWelcome } from "@/components/nextgen/SeasonSummaryCard";
 import NextgenCheckinCard from "@/components/nextgen/NextgenCheckinCard";
@@ -101,7 +102,8 @@ function safeSet(key: string, value: string): void {
 }
 
 const sectionTitle = "font-poppins text-[17px] font-semibold text-ink";
-const cardShadow = "shadow-[0_1px_2px_rgba(23,42,77,0.06),0_6px_20px_rgba(23,42,77,0.06)]";
+// POLISH V2 (14/10/2026): card con bordo sottile, niente ombra morbida.
+const cardShadow = "border border-trama-line";
 
 export default function HomeDashboardV2Client({
   firstName,
@@ -296,20 +298,20 @@ export default function HomeDashboardV2Client({
           <h2 id="oggi-h" className="font-poppins text-[22px] font-semibold text-ink">
             Oggi
           </h2>
-          <Link href={weekHref} className="flex min-h-[32px] items-center text-[13.5px] font-semibold text-[#5B4FB0]">
+          <Link href={weekHref} className="flex min-h-[32px] items-center text-[13.5px] font-semibold text-trama-accent-ink">
             Apri settimana
           </Link>
         </div>
 
         {agenda.length === 0 ? (
-          <div className="flex items-center gap-3.5 rounded-[20px] border-[1.5px] border-dashed border-[#D6DAE3] px-4 py-4">
+          <div className="flex items-center gap-3.5 rounded-2xl border-[1.5px] border-dashed border-[#D6DAE3] px-4 py-4">
             <span className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-[#F6F4EF] text-trama-navy">
               <i className="ti ti-calendar text-[20px]" aria-hidden="true" />
             </span>
             <div className="flex min-w-0 flex-col gap-0.5">
               <span className="text-[14px] font-semibold text-ink">Niente in programma oggi</span>
               {externalPlannerItemsEnabled ? (
-                <Link href={NEW_EXTERNAL_ITEM_HREF} className="text-[13px] font-semibold text-[#5B4FB0]">
+                <Link href={NEW_EXTERNAL_ITEM_HREF} className="text-[13px] font-semibold text-trama-accent-ink">
                   Aggiungi un impegno
                 </Link>
               ) : (
@@ -318,7 +320,7 @@ export default function HomeDashboardV2Client({
             </div>
           </div>
         ) : (
-          <div className={`flex flex-col rounded-[20px] bg-white ${cardShadow}`}>
+          <div className={`flex flex-col rounded-2xl bg-white ${cardShadow}`}>
             {agenda.map((entry, i) => (
               <AgendaItemRow
                 key={entry.id}
@@ -352,7 +354,7 @@ export default function HomeDashboardV2Client({
               <button
                 type="button"
                 onClick={() => setShowAllTodo((v) => !v)}
-                className="flex min-h-[32px] items-center text-[13.5px] font-semibold text-[#5B4FB0]"
+                className="flex min-h-[32px] items-center text-[13.5px] font-semibold text-trama-accent-ink"
               >
                 {showAllTodo ? "Mostra meno" : `Vedi tutte (${inbox.all.length})`}
               </button>
@@ -378,14 +380,14 @@ export default function HomeDashboardV2Client({
 
       {/* 6. PROSSIMA CHIUSURA */}
       {nextClosure && !closureLater && (
-        <section aria-labelledby="chiusura-h" className="flex flex-col gap-3.5 rounded-[20px] bg-[#F6F4EF] p-4">
+        <section aria-labelledby="chiusura-h" className="flex flex-col gap-3 rounded-2xl border border-trama-line bg-[#F8F6F1] p-4">
           <div className="flex items-center gap-2 text-[#4B5563]">
             <i className="ti ti-school text-[16px]" aria-hidden="true" />
             <span className="text-[13px] font-semibold">Prossima chiusura</span>
           </div>
           <div className="flex items-center gap-3.5">
-            <div className="flex w-[54px] flex-shrink-0 flex-col items-center rounded-[14px] bg-white pb-2 pt-[7px]">
-              <span className="text-[10.5px] font-bold tracking-wide text-trama-violet">
+            <div className="flex w-[54px] flex-shrink-0 flex-col items-center rounded-[12px] border border-trama-line bg-white pb-2 pt-[7px]">
+              <span className="text-[10.5px] font-bold tracking-wide text-trama-coral">
                 {parts(nextClosure.startDate).weekday.slice(0, 3).toUpperCase()}
               </span>
               <span className="font-poppins text-[22px] font-semibold leading-tight text-trama-navy">
@@ -409,7 +411,7 @@ export default function HomeDashboardV2Client({
           <div className="flex gap-2">
             <Link
               href={`/nextgen/planner?mode=calendario&week=${mondayOf(nextClosure.startDate)}`}
-              className="flex min-h-[42px] items-center rounded-full bg-trama-navy px-[18px] text-[13.5px] font-bold text-white"
+              className="flex min-h-[44px] items-center rounded-[12px] bg-trama-primary px-[18px] text-[14px] font-bold text-white active:bg-trama-primary-press"
             >
               Organizza
             </Link>
@@ -419,7 +421,7 @@ export default function HomeDashboardV2Client({
                 safeSet(CLOSURE_LATER_KEY_PREFIX + nextClosure.startDate, String(Date.now()));
                 setClosureLater(true);
               }}
-              className="flex min-h-[42px] items-center rounded-full px-3 text-[13.5px] font-semibold text-[#4A3F9E]"
+              className="flex min-h-[44px] items-center rounded-[12px] px-3 text-[14px] font-semibold text-trama-accent-ink"
             >
               Più tardi
             </button>
@@ -434,7 +436,7 @@ export default function HomeDashboardV2Client({
             <h2 id="sugg-h" className={sectionTitle}>
               {recommendationsTitle}
             </h2>
-            <Link href="/nextgen/search" className="flex min-h-[32px] items-center text-[13.5px] font-semibold text-[#5B4FB0]">
+            <Link href="/nextgen/search" className="flex min-h-[32px] items-center text-[13.5px] font-semibold text-trama-accent-ink">
               Altre idee
             </Link>
           </div>
@@ -443,19 +445,9 @@ export default function HomeDashboardV2Client({
               <Link
                 key={r.activity.id}
                 href={`/activity/${r.activity.id}`}
-                className="flex w-[218px] flex-shrink-0 flex-col overflow-hidden rounded-[18px] border border-[#ECEEF2] bg-white active:scale-[0.99]"
+                className="flex w-[218px] flex-shrink-0 flex-col overflow-hidden rounded-2xl border border-trama-line bg-white active:scale-[0.99]"
               >
-                <div
-                  className="flex h-[78px] items-center justify-center bg-cover bg-center text-[30px]"
-                  style={
-                    r.activity.coverImageUrl
-                      ? { backgroundImage: `url(${r.activity.coverImageUrl})` }
-                      : { background: r.activity.imgGradient }
-                  }
-                  aria-hidden="true"
-                >
-                  {!r.activity.coverImageUrl && r.activity.emoji}
-                </div>
+                <ActivityVisual title={r.activity.name} imageUrl={r.activity.coverImageUrl} className="h-[78px]" />
                 <div className="flex flex-col gap-[3px] px-3 pb-3 pt-[11px]">
                   <span className="text-[14px] font-semibold leading-snug text-ink">{r.activity.name}</span>
                   <span className="text-[12.5px] text-ink-2">
@@ -501,7 +493,7 @@ function TodoRow({ item, onPush, pushBusy }: { item: HomeInboxItem; onPush: () =
     push_inactive: "ti-bell-ringing",
   };
   const tone = item.kind === "booking_rejected" ? "bg-[#FCEDEC] text-[#B3261E]" : "bg-[#F1F3F6] text-trama-navy";
-  const cta = "flex min-h-[44px] flex-shrink-0 items-center px-0.5 text-[13.5px] font-bold text-[#5B4FB0]";
+  const cta = "flex min-h-[44px] flex-shrink-0 items-center px-0.5 text-[13.5px] font-bold text-trama-accent-ink";
   return (
     <li className="flex items-center gap-3 border-b border-[#ECEEF2] py-3">
       <span className={`flex h-[34px] w-[34px] flex-shrink-0 items-center justify-center rounded-full ${tone}`}>
@@ -528,9 +520,9 @@ function QuickAction({ href, icon, label }: { href: string; icon: string; label:
   return (
     <Link
       href={href}
-      className="flex min-h-[64px] flex-col items-center justify-center gap-[5px] rounded-2xl border border-[#ECEEF2] bg-white px-1 text-center text-[12.5px] font-semibold leading-tight text-trama-navy active:scale-[0.98]"
+      className="flex min-h-[64px] flex-col items-center justify-center gap-[5px] rounded-[12px] border border-trama-line bg-white px-1 text-center text-[12.5px] font-semibold leading-tight text-trama-navy active:scale-[0.98]"
     >
-      <i className={`ti ${icon} text-[20px] text-trama-violet`} aria-hidden="true" />
+      <i className={`ti ${icon} text-[20px] text-trama-navy`} aria-hidden="true" />
       {label}
     </Link>
   );

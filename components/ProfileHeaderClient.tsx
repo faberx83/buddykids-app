@@ -70,9 +70,14 @@ export default function ProfileHeaderClient({
   /** PROFILO V2 (14/10/2026): avatar e "Modifica" nello stile di Home V2. Default: invariato. */
   v2?: boolean;
 }) {
-  const accentBorder = accent === "violet" ? "focus:border-trama-violet" : "focus:border-sky";
-  const accentActive = accent === "violet" ? "border-trama-violet bg-trama-violet text-white" : "border-sky bg-sky text-white";
-  const accentBg = accent === "violet" ? "bg-trama-violet" : "bg-sky";
+  // POLISH V2 (14/10/2026): in V2 le azioni sono navy, il viola resta accento.
+  const accentBorder = v2 ? "focus:border-trama-primary" : accent === "violet" ? "focus:border-trama-violet" : "focus:border-sky";
+  const accentActive = v2
+    ? "border-trama-primary bg-trama-primary text-white"
+    : accent === "violet"
+      ? "border-trama-violet bg-trama-violet text-white"
+      : "border-sky bg-sky text-white";
+  const accentBg = v2 ? "bg-trama-primary" : accent === "violet" ? "bg-trama-violet" : "bg-sky";
   const [editing, setEditing] = useState(Boolean(autoOpenEdit));
   const [fullName, setFullName] = useState(initialFullName);
   const [parentRole, setParentRole] = useState<ParentRole | "">(initialParentRole ?? "");
@@ -180,7 +185,7 @@ export default function ProfileHeaderClient({
           onClick={() => setEditing((e) => !e)}
           className={
             v2
-              ? "ml-auto flex min-h-[38px] flex-shrink-0 items-center rounded-full border border-[#E3E6EC] bg-white px-3.5 text-[13px] font-semibold text-trama-navy"
+              ? "ml-auto flex min-h-[44px] flex-shrink-0 items-center rounded-[12px] border border-[#D9DDE5] bg-white px-3.5 text-[13.5px] font-semibold text-trama-primary"
               : "ml-auto flex-shrink-0 rounded-sm border border-[#E8EBF0] bg-white px-3 py-1.5 text-xs font-medium text-ink"
           }
         >

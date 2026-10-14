@@ -42,10 +42,11 @@ const TONE: Record<BookingTone, string> = {
   green: "bg-[#E6F6F0] text-[#146B4F]",
   amber: "bg-[#FFF4E0] text-[#7A4500]",
   red: "bg-[#FCEDEC] text-[#B3261E]",
-  violet: "bg-[#F4F2FC] text-[#4A3F9E]",
+  violet: "bg-trama-accent-soft text-trama-accent-ink",
   gray: "bg-[#EEF0F4] text-[#4B5563]",
 };
-const cardShadow = "shadow-[0_1px_2px_rgba(23,42,77,0.06),0_6px_20px_rgba(23,42,77,0.06)]";
+// POLISH V2 (14/10/2026): bordo un po' più marcato per la prossima prenotazione, niente ombra morbida.
+const cardShadow = "border border-[#DCD8CF]";
 
 export default function PrenotazioniV2Client({
   todayIso,
@@ -152,7 +153,7 @@ export default function PrenotazioniV2Client({
                 {t.kind === "rejected" ? (
                   <Link
                     href={t.firstDate ? `/nextgen/search?week=${mondayOfIso(t.firstDate)}` : "/nextgen/search"}
-                    className="flex min-h-[44px] flex-shrink-0 items-center px-0.5 text-[13.5px] font-bold text-[#5B4FB0]"
+                    className="flex min-h-[44px] flex-shrink-0 items-center px-0.5 text-[13.5px] font-bold text-trama-accent-ink"
                   >
                     {t.ctaLabel}
                   </Link>
@@ -160,7 +161,7 @@ export default function PrenotazioniV2Client({
                   <button
                     type="button"
                     onClick={() => setOpenId(t.bookingId)}
-                    className="flex min-h-[44px] flex-shrink-0 items-center px-0.5 text-[13.5px] font-bold text-[#5B4FB0]"
+                    className="flex min-h-[44px] flex-shrink-0 items-center px-0.5 text-[13.5px] font-bold text-trama-accent-ink"
                   >
                     {t.ctaLabel}
                   </button>
@@ -172,12 +173,12 @@ export default function PrenotazioniV2Client({
       )}
 
       {groups.length === 0 ? (
-        <div className="flex flex-col items-start gap-3 rounded-[20px] border-[1.5px] border-dashed border-[#D6DAE3] p-5">
+        <div className="flex flex-col items-start gap-3 rounded-2xl border-[1.5px] border-dashed border-[#D6DAE3] p-5">
           <span className="text-[14px] font-semibold text-ink">
             {tab === "upcoming" ? "Nessuna prenotazione in arrivo" : "Ancora nessuna prenotazione passata"}
           </span>
           {tab === "upcoming" && (
-            <Link href="/nextgen/search" className="text-[13.5px] font-semibold text-[#5B4FB0]">
+            <Link href="/nextgen/search" className="text-[13.5px] font-semibold text-trama-accent-ink">
               Scopri le attività
             </Link>
           )}
@@ -226,14 +227,14 @@ function BookingRow({
     <button
       type="button"
       onClick={onOpen}
-      className={`flex gap-3 rounded-[20px] bg-white px-4 py-3.5 text-left active:scale-[0.99] ${raised ? cardShadow : "border border-[#ECEEF2]"} ${
+      className={`flex gap-3 rounded-2xl bg-white px-4 py-3.5 text-left active:scale-[0.99] ${raised ? cardShadow : "border border-trama-line"} ${
         b.status === "cancelled" ? "opacity-70" : ""
       }`}
     >
       <span className="flex w-[52px] flex-shrink-0 flex-col items-center rounded-[14px] bg-[#F6F4EF] pb-[7px] pt-1.5">
         {tile ? (
           <>
-            <span className="text-[10.5px] font-bold text-trama-violet">{tile.wd}</span>
+            <span className="text-[10.5px] font-bold text-trama-coral">{tile.wd}</span>
             <span className="font-poppins text-[20px] font-semibold leading-tight text-trama-navy">{tile.day}</span>
             <span className="text-[10.5px] font-semibold text-ink-2">{tile.month}</span>
           </>
@@ -332,7 +333,7 @@ function BookingDetail({
         </div>
       )}
 
-      <section aria-label="Riepilogo" className={`flex flex-col rounded-[20px] bg-white ${cardShadow}`}>
+      <section aria-label="Riepilogo" className="flex flex-col rounded-2xl border border-trama-line bg-white">
         <Row label="Quando">
           {bookingWhen(b) || "—"}
           {range && <span className="block font-normal text-ink-2">{`${range.start} – ${range.end}`}</span>}
@@ -357,16 +358,16 @@ function BookingDetail({
       {active && future && (
         <Link
           href={`/nextgen/planner?mode=calendario&week=${mondayOfIso(nextDay)}`}
-          className="flex items-center gap-3 rounded-2xl border border-[#ECEEF2] bg-white px-3.5 py-3 text-ink active:scale-[0.99]"
+          className="flex items-center gap-3 rounded-2xl border border-trama-line bg-white px-3.5 py-3 text-ink active:scale-[0.99]"
         >
-          <span className="flex h-[34px] w-[34px] items-center justify-center rounded-[10px] bg-[#F4F2FC] text-trama-violet">
+          <span className="flex h-[34px] w-[34px] items-center justify-center rounded-[10px] bg-trama-primary-soft text-trama-primary">
             <i className="ti ti-car text-[18px]" aria-hidden="true" />
           </span>
           <span className="flex min-w-0 flex-1 flex-col gap-px">
             <span className="text-[14px] font-semibold">Chi accompagna</span>
             <span className="text-[12.5px] text-ink-2">Chi porta e chi ritira, giorno per giorno</span>
           </span>
-          <span className="text-[13px] font-bold text-[#5B4FB0]">Apri</span>
+          <span className="text-[13px] font-bold text-trama-accent-ink">Apri</span>
         </Link>
       )}
 
@@ -375,21 +376,21 @@ function BookingDetail({
           <ContactCenterButton
             activityDbId={b.activityDbId}
             label="Scrivi al centro"
-            className="flex min-h-[48px] w-full items-center justify-center gap-2 rounded-full bg-trama-navy text-[14.5px] font-bold text-white active:scale-[0.99]"
+            className="flex min-h-[48px] w-full items-center justify-center gap-2 rounded-[12px] bg-trama-primary text-[14.5px] font-bold text-white active:bg-trama-primary-press"
           />
         )}
         <div className={`grid gap-2 ${b.canCancelOrModify ? "grid-cols-2" : "grid-cols-1"}`}>
           {b.canCancelOrModify && (
             <Link
               href={`/prenotazioni/${b.id}/modifica`}
-              className="flex min-h-[46px] items-center justify-center rounded-[14px] border border-[#E3E6EC] bg-white text-[13.5px] font-semibold text-trama-navy"
+              className="flex min-h-[46px] items-center justify-center rounded-[12px] border border-[#D9DDE5] bg-white text-[13.5px] font-semibold text-trama-primary"
             >
               Modifica
             </Link>
           )}
           <Link
             href={`/activity/${b.activityId}`}
-            className="flex min-h-[46px] items-center justify-center rounded-[14px] border border-[#E3E6EC] bg-white text-[13.5px] font-semibold text-trama-navy"
+            className="flex min-h-[46px] items-center justify-center rounded-[12px] border border-[#D9DDE5] bg-white text-[13.5px] font-semibold text-trama-primary"
           >
             Scheda attività
           </Link>
@@ -399,10 +400,10 @@ function BookingDetail({
             confirming ? (
               <div className="flex items-center justify-center gap-3 py-2 text-[13.5px]">
                 <span className="font-semibold text-ink">Annullare la prenotazione?</span>
-                <button type="button" disabled={cancelling} onClick={cancel} className="min-h-[40px] font-bold text-[#B3261E] disabled:opacity-50">
+                <button type="button" disabled={cancelling} onClick={cancel} className="min-h-[44px] px-2 font-bold text-[#B3261E] disabled:opacity-50">
                   {cancelling ? "Annullo…" : "Sì, annulla"}
                 </button>
-                <button type="button" onClick={() => setConfirming(false)} className="min-h-[40px] text-ink-2">
+                <button type="button" onClick={() => setConfirming(false)} className="min-h-[44px] px-2 text-ink-2">
                   No
                 </button>
               </div>

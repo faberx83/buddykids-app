@@ -97,11 +97,11 @@ export default function AddSheet({
             ref={i === 0 ? firstLinkRef : undefined}
             href={o.href}
             onClick={onClose}
-            className={`flex items-center gap-3.5 rounded-2xl p-3 text-ink active:scale-[0.99] ${o.primary ? "bg-[#F4F2FC]" : ""}`}
+            className={`flex min-h-[64px] items-center gap-3.5 rounded-[12px] p-3 text-ink active:scale-[0.99] ${o.primary ? "bg-trama-primary-soft" : ""}`}
           >
             <span
               className={`flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-[14px] ${
-                o.primary ? "bg-trama-violet text-white" : "bg-[#F1F3F6] text-trama-navy"
+                o.primary ? "bg-trama-primary text-white" : "bg-[#F1F3F6] text-trama-navy"
               }`}
             >
               <i className={`ti ${o.icon} text-[22px]`} aria-hidden="true" />

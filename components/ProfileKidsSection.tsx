@@ -64,9 +64,14 @@ export default function ProfileKidsSection({
 }) {
   const router = useRouter();
   const { start: startProgress, complete: completeProgress } = useGlobalActionProgress();
-  const accentText = accent === "violet" ? "text-trama-violet" : "text-sky";
-  const accentActive = accent === "violet" ? "border-trama-violet bg-trama-violet text-white" : "border-sky bg-sky text-white";
-  const accentBg = accent === "violet" ? "bg-trama-violet" : "bg-sky";
+  // POLISH V2 (14/10/2026): in V2 le azioni sono navy, il viola resta accento.
+  const accentText = v2 ? "text-trama-accent-ink" : accent === "violet" ? "text-trama-violet" : "text-sky";
+  const accentActive = v2
+    ? "border-trama-primary bg-trama-primary text-white"
+    : accent === "violet"
+      ? "border-trama-violet bg-trama-violet text-white"
+      : "border-sky bg-sky text-white";
+  const accentBg = v2 ? "bg-trama-primary" : accent === "violet" ? "bg-trama-violet" : "bg-sky";
   const [kids, setKids] = useState<Kid[]>(initialKids);
   const [showAddKid, setShowAddKid] = useState(Boolean(autoOpenAddKid));
   const [editingKidId, setEditingKidId] = useState<string | null>(null);
@@ -226,7 +231,7 @@ export default function ProfileKidsSection({
         {!showAddKid && (
           <span
             onClick={() => setShowAddKid(true)}
-            className={v2 ? "flex min-h-[40px] cursor-pointer items-center text-[14px] font-semibold text-[#5B4FB0]" : `cursor-pointer text-[13px] font-medium ${accentText}`}
+            className={v2 ? "flex min-h-[40px] cursor-pointer items-center text-[14px] font-semibold text-trama-accent-ink" : `cursor-pointer text-[13px] font-medium ${accentText}`}
           >
             + Aggiungi
           </span>
@@ -244,7 +249,7 @@ export default function ProfileKidsSection({
           key={k.id}
           className={
             v2
-              ? "mb-2.5 rounded-[20px] bg-white p-4 shadow-[0_1px_2px_rgba(23,42,77,0.06),0_6px_20px_rgba(23,42,77,0.06)]"
+              ? "mb-2.5 rounded-2xl border border-trama-line bg-white p-4"
               : "mb-2.5 rounded-lg border border-[#F0F2F5] bg-white p-3.5 transition-all hover:shadow-md"
           }
         >

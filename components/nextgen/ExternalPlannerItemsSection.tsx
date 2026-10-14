@@ -251,7 +251,20 @@ function ItemForm({
   );
 }
 
-export default function ExternalPlannerItemsSection({ items, kids }: { items: ExternalPlannerItem[]; kids: Kid[] }) {
+export default function ExternalPlannerItemsSection({
+  items,
+  kids,
+  title = "I tuoi impegni",
+  emptyText,
+  v2 = false,
+}: {
+  items: ExternalPlannerItem[];
+  kids: Kid[];
+  /** POLISH V2 (14/10/2026): titolo e testo vuoto della vista Settimana; default invariati. */
+  title?: string;
+  emptyText?: string;
+  v2?: boolean;
+}) {
   const showToast = useNextgenToast();
   const [mode, setMode] = useState<"idle" | "creating" | { editing: string }>("idle");
   // FAMILY-FIRST BETA PASS (07/10/2026): arrivando da "Aggiungilo al tuo
@@ -356,12 +369,16 @@ export default function ExternalPlannerItemsSection({ items, kids }: { items: Ex
   return (
     <div id="impegni" className="mb-4 scroll-mt-20">
       <div className="mb-2.5 flex items-center justify-between">
-        <div className="font-poppins text-sm font-bold text-ink">I tuoi impegni</div>
+        <div className={v2 ? "font-poppins text-[17px] font-semibold text-ink" : "font-poppins text-sm font-bold text-ink"}>{title}</div>
         {mode === "idle" && (
           <button
             type="button"
             onClick={() => setMode("creating")}
-            className="flex items-center gap-1 rounded-full bg-trama-violet px-3 py-1.5 text-[12px] font-semibold text-white active:scale-[0.98]"
+            className={
+              v2
+                ? "flex min-h-[44px] items-center gap-1 rounded-[12px] border border-[#D9DDE5] bg-white px-3 text-[13px] font-semibold text-trama-primary active:bg-black/[0.03]"
+                : "flex items-center gap-1 rounded-full bg-trama-violet px-3 py-1.5 text-[12px] font-semibold text-white active:scale-[0.98]"
+            }
           >
             <i className="ti ti-plus text-[13px]" />
             Aggiungi impegno
@@ -373,7 +390,8 @@ export default function ExternalPlannerItemsSection({ items, kids }: { items: Ex
 
       {sorted.length === 0 && mode === "idle" && (
         <p className="rounded-xl border border-dashed border-[#E8EBF0] p-3 text-[12px] text-ink-3">
-          Aggiungi tutto quello che riguarda i tuoi figli, anche se non è su TRAMA: sport, musica, scuola, una festa, una visita, un impegno di famiglia.
+          {emptyText ??
+            "Aggiungi tutto quello che riguarda i tuoi figli, anche se non è su TRAMA: sport, musica, scuola, una festa, una visita, un impegno di famiglia."}
         </p>
       )}
 
