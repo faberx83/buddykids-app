@@ -7,8 +7,9 @@
 // tempo di percorrenza dagli indirizzi di famiglia (lib/data/addresses.ts),
 // perché quegli indirizzi sono testo libero SENZA coordinate (Sprint 5.3,
 // nessuna geocodifica) — calcolarla per davvero richiede un'API di mappe a
-// pagamento non ancora configurata. Vedi lib/nextgen/planner-map-estimate.ts
-// per il valore stubbato e la sua etichetta "stimato" ben visibile in UI.
+// pagamento non ancora configurata. 14/10/2026: il valore stubbato
+// (lib/nextgen/planner-map-estimate.ts) è stato tolto su richiesta di Fabrizio
+// — percorso e tempi reali li dà Maps con "Avvia navigazione".
 //
 // Interrogazione ISOLATA e ADDITIVA (stesso approccio di lib/data/plan-
 // shares.ts/addresses.ts): non riusa lib/data/my-bookings.ts perché qui

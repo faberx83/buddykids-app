@@ -8,7 +8,6 @@ import dynamic from "next/dynamic";
 // risolto per ADDRESS_KIND_LABELS/RESPONSIBLE_OPTIONS (vedi
 // lib/nextgen/address-kinds.ts).
 import type { PlannerMapPin } from "@/lib/data/planner-map";
-import { estimateDistance } from "@/lib/nextgen/planner-map-estimate";
 import Link from "next/link";
 import { ADDRESS_KIND_LABELS, ParentAddress } from "@/lib/nextgen/address-kinds";
 
@@ -80,7 +79,12 @@ export default function PlannerMapView({ pins, addresses }: { pins: PlannerMapPi
 
   const mappable = pins.filter((p) => p.lat !== null && p.lng !== null);
   const selected = pins.find((p) => p.activityDbId === selectedId) ?? null;
-  const selectedEstimate = selected && selected.lat !== null ? estimateDistance(selected.activityDbId) : null;
+  // 14/10/2026 (Fabrizio: "non capisco i 15 km 29 min da dove li calcoli"):
+  // tolta la distanza/tempo "stimati" — era un numero segnaposto generato
+  // dall'id dell'attività (Sprint 5.4), non una distanza vera dagli indirizzi
+  // di famiglia (testo libero, senza coordinate). Percorso e tempi reali li dà
+  // Maps con "Avvia navigazione". Il calcolo vero arriverà quando gli
+  // indirizzi avranno coordinate.
 
   return (
     <div className="flex flex-col gap-3">
@@ -99,7 +103,7 @@ export default function PlannerMapView({ pins, addresses }: { pins: PlannerMapPi
 
       {selected ? (
         /* SPRINT CORRETTIVO — scheda sintetica del pin selezionato: nome,
-           indirizzo, distanza stimata, "Apri scheda" + "Avvia navigazione".
+           indirizzo, "Apri scheda" + "Avvia navigazione" (percorso e tempi veri in Maps).
            "✕" per tornare alla lista di tutte le attività. */
         <div className="rounded-2xl bg-white p-4">
           <div className="mb-2 flex items-start justify-between gap-2">
@@ -121,13 +125,6 @@ export default function PlannerMapView({ pins, addresses }: { pins: PlannerMapPi
               <i className="ti ti-x text-[18px]" />
             </button>
           </div>
-          {selectedEstimate && (
-            <div className="mb-3 flex items-center gap-1.5 text-[11.5px] font-semibold text-ink-2">
-              <i className="ti ti-walk text-[14px]" />
-              ~{selectedEstimate.km} km · {selectedEstimate.minutes} min
-              <span className="text-[10px] font-normal text-ink-3">(stimato)</span>
-            </div>
-          )}
           {/* SPRINT 4 correttivo — selettore "Parti da": stesso pattern pill
               già usato in Promemoria, qui applicato all'itinerario che
               "Avvia navigazione" apre in Maps. Compare solo se c'è almeno un
@@ -178,12 +175,10 @@ export default function PlannerMapView({ pins, addresses }: { pins: PlannerMapPi
         <div className="rounded-2xl bg-white p-4">
           <div className="mb-2.5 flex items-center justify-between">
             <div className="font-poppins text-[13px] font-bold text-ink">Le tue attività</div>
-            <span className="text-[10px] font-semibold text-ink-3">distanza stimata</span>
           </div>
           <div className="flex flex-col gap-2">
             {pins.map((p) => {
               const hasCoords = p.lat !== null && p.lng !== null;
-              const estimate = hasCoords ? estimateDistance(p.activityDbId) : null;
               return (
                 <button
                   key={p.activityDbId}
@@ -201,15 +196,15 @@ export default function PlannerMapView({ pins, addresses }: { pins: PlannerMapPi
                     )}
                   </div>
                   <div className="flex-shrink-0 text-right text-[10.5px] font-semibold text-ink-2">
-                    {estimate ? `~${estimate.km} km · ${estimate.minutes} min` : "Indirizzo non disponibile"}
+                    {hasCoords ? "Vedi sulla mappa" : "Indirizzo non disponibile"}
                   </div>
                 </button>
               );
             })}
           </div>
           <p className="mt-2.5 text-[10.5px] text-ink-3">
-            Le distanze sono una stima: il calcolo reale dai tuoi indirizzi di famiglia arriverà in un prossimo
-            aggiornamento.
+            Tocca un&apos;attività e poi &quot;Avvia navigazione&quot;: Maps ti dà percorso e tempi reali dal punto di
+            partenza che scegli.
           </p>
         </div>
       )}
