@@ -147,9 +147,10 @@ export const RELEASE_CATALOG: ReleaseCatalogEntry[] = [
     label: "TRAMA — Planner V2",
     shortDescription: "Planner famiglie con le viste Settimana e Stagione; Mappa, Gruppi e Mese come strumenti secondari.",
     targetAudience: ["parent"],
-    featureKeys: ["planner_v2"],
+    featureKeys: ["planner_v2", "groups_v2"],
     knownLimitations: [
       "planner_v2: la Stagione mostra le settimane estive già calcolate; la Settimana qualunque settimana. Gli impegni aggiunti a mano non contano nella copertura (regola attuale).",
+      "groups_v2: le pagine Community (elenco e dettaglio) restano quelle attuali.",
     ],
     notes:
       "Creata il 14/10/2026. Ripiego: con il flag spento, o se la lettura del flag fallisce, resta il Planner attuale.",
@@ -161,9 +162,10 @@ export const RELEASE_CATALOG: ReleaseCatalogEntry[] = [
     label: "TRAMA — Nuova barra",
     shortDescription: "Barra in basso con il pulsante + al centro; il Profilo si apre dall'avatar in Home.",
     targetAudience: ["parent"],
-    featureKeys: ["nav_v2"],
+    featureKeys: ["nav_v2", "profile_v2"],
     knownLimitations: [
       "nav_v2: va accesa insieme a Home V2 (l'avatar del Profilo sta nella sua intestazione).",
+      "profile_v2: le sottopagine del Profilo restano quelle attuali (solo l'intestazione prende il segno TRAMA).",
     ],
     notes: "Creata il 14/10/2026. Ripiego: flag spento = barra attuale con Profilo.",
   },

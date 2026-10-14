@@ -23,18 +23,18 @@ const ROLE_LABEL: Record<CommunityRole, string> = {
   membro: "Membro",
 };
 
-function CommunityCard({ community }: { community: CommunityItem }) {
+function CommunityCard({ community, v2 = false }: { community: CommunityItem; v2?: boolean }) {
   return (
     <Link
       href={`/nextgen/community/${community.id}`}
-      className="flex items-center gap-3 rounded-2xl bg-white p-3.5 active:bg-black/[0.06]"
+      className={v2 ? "flex min-h-[64px] items-center gap-3 px-4 py-3 active:bg-black/[0.03]" : "flex items-center gap-3 rounded-2xl bg-white p-3.5 active:bg-black/[0.06]"}
     >
       <span className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-trama-lilac/20 text-lg">
         {community.emoji}
       </span>
       <div className="min-w-0 flex-1">
-        <div className="truncate text-[13.5px] font-bold text-ink">{community.name}</div>
-        <div className="mt-0.5 flex items-center gap-1.5 text-[11.5px] text-ink-2">
+        <div className={v2 ? "truncate text-[15px] font-semibold text-ink" : "truncate text-[13.5px] font-bold text-ink"}>{community.name}</div>
+        <div className={`mt-0.5 flex items-center gap-1.5 text-ink-2 ${v2 ? "text-[13px]" : "text-[11.5px]"}`}>
           <span>{community.membersCount} famigli{community.membersCount === 1 ? "a" : "e"}</span>
           <span>·</span>
           <span>{ROLE_LABEL[community.myRole]}</span>
@@ -51,9 +51,12 @@ function CommunityCard({ community }: { community: CommunityItem }) {
   );
 }
 
-function GroupCard({ group }: { group: GroupItem }) {
+function GroupCard({ group, v2 = false }: { group: GroupItem; v2?: boolean }) {
   return (
-    <Link href={`/nextgen/groups/${group.id}?from=planner-gruppi`} className="flex items-center gap-3 rounded-2xl bg-white p-3.5 active:bg-black/[0.06]">
+    <Link
+      href={`/nextgen/groups/${group.id}?from=planner-gruppi`}
+      className={v2 ? "flex min-h-[64px] items-center gap-3 px-4 py-3 active:bg-black/[0.03]" : "flex items-center gap-3 rounded-2xl bg-white p-3.5 active:bg-black/[0.06]"}
+    >
       <span
         className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full text-lg"
         style={{ background: group.gradient }}
@@ -61,8 +64,8 @@ function GroupCard({ group }: { group: GroupItem }) {
         {group.emoji}
       </span>
       <div className="min-w-0 flex-1">
-        <div className="truncate text-[13.5px] font-bold text-ink">{group.name}</div>
-        <div className="mt-0.5 truncate text-[11.5px] text-ink-2">
+        <div className={v2 ? "truncate text-[15px] font-semibold text-ink" : "truncate text-[13.5px] font-bold text-ink"}>{group.name}</div>
+        <div className={`mt-0.5 truncate text-ink-2 ${v2 ? "text-[13px]" : "text-[11.5px]"}`}>
           {group.totalFamilies} famigli{group.totalFamilies === 1 ? "a" : "e"} · {group.discountLabel}
         </div>
       </div>
@@ -74,10 +77,60 @@ function GroupCard({ group }: { group: GroupItem }) {
 export default function PlannerGroupsView({
   communities,
   groups,
+  v2 = false,
 }: {
   communities: CommunityItem[];
   groups: GroupItem[];
+  /** PLANNER V2 / GRUPPI V2 (14/10/2026): sezioni come Profilo V2 — titolo Poppins, una card bianca con le righe. */
+  v2?: boolean;
 }) {
+  if (v2) {
+    const card = "overflow-hidden rounded-[20px] bg-white shadow-[0_1px_2px_rgba(23,42,77,0.06),0_6px_20px_rgba(23,42,77,0.06)] divide-y divide-[#F0F2F5]";
+    const empty = "rounded-[20px] border border-dashed border-[#D6DAE3] bg-white p-4 text-[13px] leading-snug text-ink-2";
+    const link = "flex min-h-[40px] items-center text-[14px] font-semibold text-[#5B4FB0]";
+    return (
+      <div className="flex flex-col gap-6">
+        <section className="flex flex-col gap-2.5">
+          <div className="flex items-center justify-between">
+            <h2 className="font-poppins text-[18px] font-semibold text-ink">I tuoi gruppi</h2>
+            <Link href="/nextgen/groups?from=planner-gruppi" className={link}>
+              {groups.length > 0 ? "Vedi tutti" : "Crea un gruppo"}
+            </Link>
+          </div>
+          {groups.length > 0 ? (
+            <div className={card}>
+              {groups.map((g) => (
+                <GroupCard key={g.id} group={g} v2 />
+              ))}
+            </div>
+          ) : (
+            <p className={empty}>
+              Nessun gruppo attivo. Un gruppo nasce da una prenotazione condivisa (sconto, passaggi) o da una proposta
+              di una community.
+            </p>
+          )}
+        </section>
+        <section className="flex flex-col gap-2.5">
+          <div className="flex items-center justify-between">
+            <h2 className="font-poppins text-[18px] font-semibold text-ink">Le tue community</h2>
+            <Link href="/nextgen/community" className={link}>
+              {communities.length > 0 ? "Vedi tutte" : "Crea o entra"}
+            </Link>
+          </div>
+          {communities.length > 0 ? (
+            <div className={card}>
+              {communities.map((c) => (
+                <CommunityCard key={c.id} community={c} v2 />
+              ))}
+            </div>
+          ) : (
+            <p className={empty}>Non fai ancora parte di una community: servono per proporre attività ad altre famiglie.</p>
+          )}
+        </section>
+      </div>
+    );
+  }
+
   return (
     <div className="flex flex-col gap-5">
       <div>

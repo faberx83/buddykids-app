@@ -302,7 +302,7 @@ export default function PlannerV2Client({
           {panel === "mappa" ? (
             <PlannerMapView pins={mapPins} addresses={addresses} />
           ) : (
-            <PlannerGroupsView communities={communities} groups={groups} />
+            <PlannerGroupsView communities={communities} groups={groups} v2 />
           )}
         </SafeBoundary>
       </div>
@@ -1479,13 +1479,23 @@ class SafeBoundary extends Component<{ fallback: (error: unknown) => ReactNode; 
 }
 
 function SubviewError({ error, onBack }: { error: unknown; onBack: () => void }) {
-  const detail = error instanceof Error ? `${error.name}: ${error.message}` : String(error);
+  // 14/10/2026: anche le prime righe dello stack (funzione che ha sbagliato),
+  // per trovare la causa se l'errore si ripresenta.
+  const where =
+    error instanceof Error && error.stack
+      ? error.stack
+          .split("\n")
+          .slice(1, 4)
+          .map((l) => l.trim().replace(/^at /, "").replace(/\(?https?:\/\/[^)]*\/([^/)]+)\)?/g, "$1"))
+          .join(" ← ")
+      : "";
+  const detail = error instanceof Error ? `${error.name}: ${error.message}${where ? ` · ${where}` : ""}` : String(error);
   return (
     <div className="flex flex-col items-start gap-3 rounded-2xl border border-dashed border-[#D6DAE3] bg-white p-5">
       <span className="text-[14px] font-semibold text-ink">Questa parte non si è caricata</span>
       <span className="text-[13px] text-ink-2">Riprova tra poco. Il resto del Planner funziona normalmente.</span>
       {/* Anteprima interna: il dettaglio tecnico serve a capire la causa. */}
-      <code className="max-w-full break-words rounded-lg bg-[#F6F4EF] px-2 py-1 text-[11px] text-[#4B5563]">{detail.slice(0, 220)}</code>
+      <code className="max-w-full break-words rounded-lg bg-[#F6F4EF] px-2 py-1 text-[11px] text-[#4B5563]">{detail.slice(0, 360)}</code>
       <div className="flex gap-2">
         <button type="button" onClick={() => window.location.reload()} className="min-h-[40px] rounded-full bg-trama-navy px-4 text-[13px] font-bold text-white">
           Riprova

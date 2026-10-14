@@ -5,6 +5,7 @@ import { getActivities } from "@/lib/data/activities";
 import { getParentProfile } from "@/lib/data/profile";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
 import { resolveGroupDetailBackHref } from "@/lib/nextgen/groups-back-nav";
+import { groupsV2Enabled } from "@/lib/nextgen/groups-v2-flag";
 
 // TRAMA ONE (24/08/2026) — guscio NEXTGEN-native per il dettaglio Gruppo,
 // stesso pattern di app/nextgen/prenotazioni (task #524): stessa identica
@@ -36,7 +37,7 @@ export default async function NextgenGroupDetailPage({
 }) {
   const { id } = await params;
   const { from } = await searchParams;
-  const [detail, parentProfile] = await Promise.all([getGroupDetail(id), getParentProfile()]);
+  const [detail, parentProfile, v2] = await Promise.all([getGroupDetail(id), getParentProfile(), groupsV2Enabled()]);
   if (!detail) notFound();
 
   const activityOptions =
@@ -55,7 +56,7 @@ export default async function NextgenGroupDetailPage({
       activityOptions={activityOptions}
       inviterName={inviterName}
       backHref={backHref}
-      nextgen
+      nextgen={v2 ? "v2" : true}
     />
   );
 }

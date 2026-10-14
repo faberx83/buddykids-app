@@ -1,4 +1,5 @@
 import ProfileNextgenClient from "./ProfileNextgenClient";
+import ProfileV2Client from "./ProfileV2Client";
 import { getKidsForUser } from "@/lib/data/kids";
 import { getParentProfile } from "@/lib/data/profile";
 import { getUnreadRepliesCountForParent } from "@/lib/data/inquiries";
@@ -57,6 +58,7 @@ export default async function NextgenProfilePage({
   // "acceso".
   let classicFallbackEnabled = false;
   let navV2Enabled = false; // Nuova barra (14/10): riga "Cos'è TRAMA"
+  let profileV2Enabled = false; // Profilo V2 (14/10), release "nav-v2"
   if (isSupabaseConfigured) {
     const supabase = await createClient();
     const {
@@ -94,7 +96,36 @@ export default async function NextgenProfilePage({
         tenant: "family",
         correlationId: generateCorrelationId(),
       }).catch(() => false);
+      profileV2Enabled = await resolveFeatureFlag({
+        flagName: "PROFILE_V2_ENABLED",
+        userId: user.id,
+        role: (profileRow?.role as string) ?? "parent",
+        tenant: "family",
+        correlationId: generateCorrelationId(),
+      }).catch(() => false); // ripiego: Profilo attuale
     }
+  }
+
+  if (profileV2Enabled) {
+    return (
+      <ProfileV2Client
+        fullName={profile.fullName}
+        email={profile.email}
+        parentRole={profile.parentRole}
+        avatarUrl={profile.avatarUrl}
+        phone={profile.phone}
+        dateOfBirth={profile.dateOfBirth}
+        gender={profile.gender}
+        kids={kids}
+        unreadReplies={unreadReplies}
+        autoOpenEdit={params.complete === "1"}
+        autoOpenAddKid={params.addKid === "1"}
+        schoolCalendarEnabled={schoolCalendarEnabled}
+        schoolProfiles={schoolProfiles}
+        residenceCity={residenceCity}
+        classicFallbackEnabled={classicFallbackEnabled}
+      />
+    );
   }
 
   return (

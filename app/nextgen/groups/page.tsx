@@ -1,5 +1,6 @@
 import GroupsClient from "@/components/GroupsClient";
 import { getGroupsForUser, getPublicGroups, getMyGroupInvites } from "@/lib/data/groups";
+import { groupsV2Enabled } from "@/lib/nextgen/groups-v2-flag";
 
 // TRAMA ONE (24/08/2026) — guscio NEXTGEN-native per "Gruppi & Community",
 // stesso pattern di app/nextgen/prenotazioni (task #524): chiude il gap più
@@ -33,11 +34,12 @@ export default async function NextgenGroupsPage({
   // ricade sul backHref statico "/nextgen/planner" passato sotto.
   searchParams: Promise<{ tab?: string; from?: string }>;
 }) {
-  const [groups, publicGroups, invites, params] = await Promise.all([
+  const [groups, publicGroups, invites, params, v2] = await Promise.all([
     getGroupsForUser(),
     getPublicGroups(),
     getMyGroupInvites(),
     searchParams,
+    groupsV2Enabled(),
   ]);
   return (
     <GroupsClient
@@ -49,7 +51,7 @@ export default async function NextgenGroupsPage({
       backContext={params.from}
       showBrandIcon
       initialTab={params.tab === "inviti" ? 2 : undefined}
-      nextgen
+      nextgen={v2 ? "v2" : true}
     />
   );
 }

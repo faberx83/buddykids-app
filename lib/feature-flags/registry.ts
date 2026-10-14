@@ -272,6 +272,24 @@ export const FEATURE_FLAG_REGISTRY = {
     defaultValue: false,
     allowedScopes: ["global", "environment", "user", "role", "cohort"],
   },
+  // TRAMA — GRUPPI V2 (14/10/2026), release "planner-v2" (la scheda Gruppi sta nel Planner).
+  GROUPS_V2_ENABLED: {
+    name: "GROUPS_V2_ENABLED",
+    description:
+      "Abilita Gruppi V2: elenco gruppi e dettaglio gruppo nello stile V2 (intestazione con segno TRAMA, schede a " +
+      "pillola, card bianche, bottoni alti). Default false: pagine attuali.",
+    defaultValue: false,
+    allowedScopes: ["global", "environment", "user", "role", "cohort"],
+  },
+  // TRAMA — PROFILO V2 (14/10/2026), release "nav-v2" (il Profilo si apre dall'avatar).
+  PROFILE_V2_ENABLED: {
+    name: "PROFILE_V2_ENABLED",
+    description:
+      "Abilita il Profilo V2: avatar e figli in alto, voci raggruppate in Famiglia / Le tue attività / App, " +
+      "segno TRAMA sotto il titolo. Default false: Profilo attuale.",
+    defaultValue: false,
+    allowedScopes: ["global", "environment", "user", "role", "cohort"],
+  },
   // TRAMA — SCOPRI E PRENOTAZIONI V2 (14/10/2026), stessa release.
   BOOKINGS_V2_ENABLED: {
     name: "BOOKINGS_V2_ENABLED",

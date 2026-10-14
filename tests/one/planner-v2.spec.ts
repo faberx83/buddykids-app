@@ -190,8 +190,10 @@ test.describe("PLANNER-V2 — flag, ripiego e release", () => {
     const nav = FEATURE_CATALOG.find((f) => f.key === "nav_v2");
     expect(planner?.releaseEligible).toBe(true);
     expect(nav?.releaseEligible).toBe(true);
-    expect(RELEASE_CATALOG.find((r) => r.id === "planner-v2")?.featureKeys).toEqual(["planner_v2"]);
-    expect(RELEASE_CATALOG.find((r) => r.id === "nav-v2")?.featureKeys).toEqual(["nav_v2"]);
+    // 14/10/2026: nella stessa release anche Gruppi V2 (la scheda Gruppi sta nel Planner).
+    expect(RELEASE_CATALOG.find((r) => r.id === "planner-v2")?.featureKeys).toEqual(["planner_v2", "groups_v2"]);
+    // 14/10/2026: nella stessa release anche il Profilo V2 (si apre dall'avatar).
+    expect(RELEASE_CATALOG.find((r) => r.id === "nav-v2")?.featureKeys).toEqual(["nav_v2", "profile_v2"]);
   });
 
   test("PV2-14: Planner attuale come ripiego (flag spento o errore)", () => {

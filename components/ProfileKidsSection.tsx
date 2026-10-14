@@ -49,6 +49,7 @@ export default function ProfileKidsSection({
   schoolCalendarEnabled = false,
   schoolProfiles = {},
   residenceCity = null,
+  v2 = false,
 }: {
   initialKids: Kid[];
   autoOpenAddKid?: boolean;
@@ -58,6 +59,8 @@ export default function ProfileKidsSection({
   schoolCalendarEnabled?: boolean;
   schoolProfiles?: Record<string, KidSchoolProfileSummary>;
   residenceCity?: string | null;
+  /** PROFILO V2 (14/10/2026): titolo e card nello stile V2. Default: invariato. */
+  v2?: boolean;
 }) {
   const router = useRouter();
   const { start: startProgress, complete: completeProgress } = useGlobalActionProgress();
@@ -215,13 +218,15 @@ export default function ProfileKidsSection({
   }
 
   return (
-    <div className="px-5 pt-4">
-      <div className="mb-3 flex items-center justify-between">
-        <span className="text-[15px] font-bold text-ink">I miei bambini</span>
+    <div className={v2 ? "" : "px-5 pt-4"}>
+      <div className={v2 ? "mb-2.5 flex items-center justify-between" : "mb-3 flex items-center justify-between"}>
+        <span className={v2 ? "font-poppins text-[18px] font-semibold text-ink" : "text-[15px] font-bold text-ink"}>
+          {v2 ? "I tuoi figli" : "I miei bambini"}
+        </span>
         {!showAddKid && (
           <span
             onClick={() => setShowAddKid(true)}
-            className={`cursor-pointer text-[13px] font-medium ${accentText}`}
+            className={v2 ? "flex min-h-[40px] cursor-pointer items-center text-[14px] font-semibold text-[#5B4FB0]" : `cursor-pointer text-[13px] font-medium ${accentText}`}
           >
             + Aggiungi
           </span>
@@ -237,7 +242,11 @@ export default function ProfileKidsSection({
       {kids.map((k) => (
         <div
           key={k.id}
-          className="mb-2.5 rounded-lg border border-[#F0F2F5] bg-white p-3.5 transition-all hover:shadow-md"
+          className={
+            v2
+              ? "mb-2.5 rounded-[20px] bg-white p-4 shadow-[0_1px_2px_rgba(23,42,77,0.06),0_6px_20px_rgba(23,42,77,0.06)]"
+              : "mb-2.5 rounded-lg border border-[#F0F2F5] bg-white p-3.5 transition-all hover:shadow-md"
+          }
         >
           <div className="flex items-center gap-3">
             <div onClick={(e) => e.stopPropagation()}>
@@ -258,8 +267,8 @@ export default function ProfileKidsSection({
             </div>
             <div onClick={() => startEditing(k)} className="flex flex-1 cursor-pointer items-center gap-3">
             <div className="flex-1">
-              <div className="text-sm font-bold text-ink">{k.name}</div>
-              <div className="mb-1 text-xs text-ink-2">
+              <div className={v2 ? "text-[16px] font-semibold text-ink" : "text-sm font-bold text-ink"}>{k.name}</div>
+              <div className={v2 ? "mb-1 text-[13px] text-ink-2" : "mb-1 text-xs text-ink-2"}>
                 {k.age} anni{k.grade ? ` · ${k.grade}` : ""}
               </div>
               {k.interests && k.interests.length > 0 ? (
@@ -267,7 +276,7 @@ export default function ProfileKidsSection({
                   {k.interests.map((int) => (
                     <span
                       key={int}
-                      className="rounded-full bg-bg px-2 py-0.5 text-[10px] font-medium text-ink-2"
+                      className={v2 ? "rounded-full bg-[#F1F3F6] px-2.5 py-[3px] text-[12px] font-semibold text-[#374151]" : "rounded-full bg-bg px-2 py-0.5 text-[10px] font-medium text-ink-2"}
                     >
                       {int}
                     </span>

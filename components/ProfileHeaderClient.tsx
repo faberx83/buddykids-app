@@ -42,6 +42,7 @@ export default function ProfileHeaderClient({
   showPersonalDetails = true,
   showBusinessRole = false,
   accent = "sky",
+  v2 = false,
 }: {
   initialFullName: string;
   initialParentRole: ParentRole | null;
@@ -66,6 +67,8 @@ export default function ProfileHeaderClient({
   // profilo genitore LEGACY (/profile) e "Il mio account" del gestore
   // (/center/account) restano identici a prima.
   accent?: "sky" | "violet";
+  /** PROFILO V2 (14/10/2026): avatar e "Modifica" nello stile di Home V2. Default: invariato. */
+  v2?: boolean;
 }) {
   const accentBorder = accent === "violet" ? "focus:border-trama-violet" : "focus:border-sky";
   const accentActive = accent === "violet" ? "border-trama-violet bg-trama-violet text-white" : "border-sky bg-sky text-white";
@@ -145,38 +148,48 @@ export default function ProfileHeaderClient({
 
   return (
     <>
-      <div className="mb-[18px] flex items-center gap-3.5">
+      <div className={v2 ? "flex items-center gap-3.5" : "mb-[18px] flex items-center gap-3.5"}>
         <AvatarUploadButton
           folder="avatars"
           currentUrl={avatarUrl}
           onUploaded={handleAvatarUploaded}
           size={62}
           fallback={
-            <div
-              className="flex h-full w-full items-center justify-center text-xl font-bold text-white"
-              style={{ background: "linear-gradient(135deg,#4DAFEF,#3ECFB2)" }}
-            >
-              {initials}
-            </div>
+            v2 ? (
+              <div className="flex h-full w-full items-center justify-center bg-[#ECE8F8] font-poppins text-[22px] font-semibold text-[#4A3F9E]">
+                {initials}
+              </div>
+            ) : (
+              <div
+                className="flex h-full w-full items-center justify-center text-xl font-bold text-white"
+                style={{ background: "linear-gradient(135deg,#4DAFEF,#3ECFB2)" }}
+              >
+                {initials}
+              </div>
+            )
           }
         />
         <div className="min-w-0 flex-1">
-          <div className="text-lg font-bold text-ink">{displayName}</div>
-          <div className="mt-0.5 text-xs text-ink-2">
+          <div className={v2 ? "font-poppins text-[19px] font-semibold leading-tight text-ink" : "text-lg font-bold text-ink"}>{displayName}</div>
+          <div className={v2 ? "mt-0.5 truncate text-[13px] text-ink-2" : "mt-0.5 text-xs text-ink-2"}>
             {email}
             {savedRole && ` · ${roleLabels[savedRole]}`}
           </div>
         </div>
         <button
           onClick={() => setEditing((e) => !e)}
-          className="ml-auto flex-shrink-0 rounded-sm border border-[#E8EBF0] bg-white px-3 py-1.5 text-xs font-medium text-ink"
+          className={
+            v2
+              ? "ml-auto flex min-h-[38px] flex-shrink-0 items-center rounded-full border border-[#E3E6EC] bg-white px-3.5 text-[13px] font-semibold text-trama-navy"
+              : "ml-auto flex-shrink-0 rounded-sm border border-[#E8EBF0] bg-white px-3 py-1.5 text-xs font-medium text-ink"
+          }
         >
           {editing ? "Chiudi" : "Modifica"}
         </button>
       </div>
 
       {editing && (
-        <div className="mb-4 rounded-lg bg-white p-3.5">
+        <div className={v2 ? "mt-4 rounded-[14px] bg-[#F7F8FA] p-3.5" : "mb-4 rounded-lg bg-white p-3.5"}>
           <label className="mb-1.5 flex items-center gap-1.5 text-xs font-semibold text-ink-2">
             Nome e cognome
             {missingName && <span className={`font-bold ${highlightText}`}>· manca questo</span>}

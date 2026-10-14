@@ -17,7 +17,8 @@ export default function GroupCard({
 }: {
   group: GroupItem;
   basePath?: string;
-  nextgen?: boolean;
+  /** "v2" (GROUPS_V2_ENABLED, 14/10/2026): card 20px con ombra leggera, testi più grandi. */
+  nextgen?: boolean | "v2";
   // TRAMA BETA v1.1.1 (FINAL FUNCTIONAL + UI CONSISTENCY FIXES, punto 4-5) —
   // suffisso query string opzionale (es. "?from=planner-gruppi") propagato
   // da GroupsClient quando la lista è stata raggiunta da Planner/Gruppi, cosi
@@ -27,10 +28,15 @@ export default function GroupCard({
 }) {
   const accentBg = nextgen ? "bg-trama-lilac/20" : "bg-sky-light";
   const accentText = nextgen ? "text-trama-violet" : "text-sky";
+  const v2 = nextgen === "v2";
   return (
     <Link
       href={`${basePath}/${group.id}${detailQuery}`}
-      className="mx-5 mb-3 block cursor-pointer overflow-hidden rounded-lg border border-[#F0F2F5] bg-white transition-transform hover:scale-[0.98]"
+      className={
+        v2
+          ? "mx-5 mb-3 block overflow-hidden rounded-[20px] bg-white shadow-[0_1px_2px_rgba(23,42,77,0.06),0_6px_20px_rgba(23,42,77,0.06)] active:scale-[0.99]"
+          : "mx-5 mb-3 block cursor-pointer overflow-hidden rounded-lg border border-[#F0F2F5] bg-white transition-transform hover:scale-[0.98]"
+      }
     >
       <div
         className="relative flex h-[84px] items-center justify-center text-[44px]"
@@ -41,9 +47,9 @@ export default function GroupCard({
           {group.discountLabel.startsWith("Sconto") ? group.discountLabel.replace("Sconto ", "-") : ""}
         </div>
       </div>
-      <div className="p-3">
-        <div className="mb-1 text-sm font-bold text-ink">{group.name}</div>
-        <div className="mb-2.5 flex items-center gap-1.5 text-xs text-ink-2">
+      <div className={v2 ? "px-4 pb-[15px] pt-[13px]" : "p-3"}>
+        <div className={v2 ? "mb-1 text-[16px] font-semibold text-ink" : "mb-1 text-sm font-bold text-ink"}>{group.name}</div>
+        <div className={`mb-2.5 flex items-center gap-1.5 text-ink-2 ${v2 ? "text-[13px]" : "text-xs"}`}>
           <i className="ti ti-map-pin" />
           {group.location}
           {group.dateRange ? ` · ${group.dateRange}` : ""}
@@ -74,7 +80,13 @@ export default function GroupCard({
             <i className={`ti ${group.discountBadgeColor === "green" ? "ti-tag" : "ti-users"} text-xs`} />
             {group.discountLabel}
           </div>
-          <span className={`flex items-center gap-1 rounded-md ${accentBg} px-3.5 py-1.5 text-xs font-semibold ${accentText}`}>
+          <span
+            className={
+              v2
+                ? "flex min-h-[40px] items-center gap-1 rounded-full bg-trama-violet px-4 text-[13px] font-bold text-white"
+                : `flex items-center gap-1 rounded-md ${accentBg} px-3.5 py-1.5 text-xs font-semibold ${accentText}`
+            }
+          >
             Apri gruppo
             <i className="ti ti-chevron-right text-xs" />
           </span>

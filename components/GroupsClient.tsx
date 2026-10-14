@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import GroupCard from "@/components/GroupCard";
+import TramaThread from "@/components/nextgen/TramaThread";
 import {
   createGroupAction,
   joinGroupAction,
@@ -65,7 +66,8 @@ export default function GroupsClient({
   // di far scoprire la tab al genitore a tentativi. Opt-in, default assente
   // (comportamento invariato: parte sempre da "I miei gruppi" come prima).
   initialTab?: number;
-  nextgen?: boolean;
+  /** "v2" (GROUPS_V2_ENABLED, 14/10/2026): stile V2 — intestazione, schede a pillola, card 20px. */
+  nextgen?: boolean | "v2";
 }) {
   const router = useRouter();
   const accentBg = nextgen ? "bg-trama-violet" : "bg-sky";
@@ -97,8 +99,52 @@ export default function GroupsClient({
     router.push(`${basePath}/${result.group.id}${detailQuery}`);
   }
 
+  const v2 = nextgen === "v2";
+
   return (
-    <div className="animate-fade-in">
+    <div className={v2 ? "-mb-40 flex min-h-[calc(100%+10rem)] flex-col bg-trama-page pb-24" : "animate-fade-in"}>
+      {v2 && (
+        <div className="px-5 pt-3.5">
+          <header className="flex items-center gap-1">
+            {resolvedBackHref && (
+              <button
+                type="button"
+                onClick={() => router.push(resolvedBackHref)}
+                aria-label="Indietro"
+                className="-ml-2.5 flex h-11 w-11 items-center justify-center rounded-full text-[22px] text-ink active:bg-black/[0.04]"
+              >
+                <i className="ti ti-arrow-left" aria-hidden="true" />
+              </button>
+            )}
+            <div className="flex flex-col">
+              <h1 className="font-poppins text-[24px] font-semibold leading-tight text-ink">Gruppi</h1>
+              <TramaThread className="mt-1.5" />
+            </div>
+          </header>
+          <div role="tablist" aria-label="Gruppi" className="mt-4 grid grid-cols-3 gap-1 rounded-full bg-[#EEF0F4] p-1">
+            {tabs.map((t, i) => (
+              <button
+                key={t}
+                type="button"
+                role="tab"
+                aria-selected={active === i}
+                onClick={() => setActive(i)}
+                className={`flex min-h-[40px] items-center justify-center gap-1 rounded-full text-[13.5px] ${
+                  active === i ? "bg-white font-bold text-trama-navy shadow-[0_1px_3px_rgba(23,42,77,0.12)]" : "font-semibold text-[#4B5563]"
+                }`}
+              >
+                {t}
+                {i === 2 && initialInvites.length > 0 && (
+                  <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-trama-coral px-1.5 text-[11px] font-bold text-white">
+                    {initialInvites.length}
+                  </span>
+                )}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+      {!v2 && (
       <div className="flex-shrink-0 border-b border-[#F0F2F5] bg-white px-5 py-3.5">
         <div className="mb-3 flex items-center gap-3">
           {resolvedBackHref && (
@@ -141,24 +187,25 @@ export default function GroupsClient({
           ))}
         </div>
       </div>
+      )}
 
       {active === 0 && (
         <>
           <div
-            className="mx-5 my-3 flex items-center gap-3 rounded-lg p-3.5"
-            style={{ background: "linear-gradient(120deg,#E8F6FD,#E3F9F5)" }}
+            className={v2 ? "mx-5 mb-3 mt-4 flex items-center gap-3 rounded-[20px] bg-white p-4 shadow-[0_1px_2px_rgba(23,42,77,0.06),0_6px_20px_rgba(23,42,77,0.06)]" : "mx-5 my-3 flex items-center gap-3 rounded-lg p-3.5"}
+            style={v2 ? undefined : { background: "linear-gradient(120deg,#E8F6FD,#E3F9F5)" }}
           >
             <div className="text-[34px]">🤝</div>
             <div>
-              <div className="text-sm font-bold text-ink">Andiamo Insieme</div>
-              <div className="mt-0.5 text-xs text-ink-2">
+              <div className={v2 ? "text-[15px] font-semibold text-ink" : "text-sm font-bold text-ink"}>Andiamo Insieme</div>
+              <div className={v2 ? "mt-0.5 text-[13px] text-ink-2" : "mt-0.5 text-xs text-ink-2"}>
                 Crea un gruppo e ottieni sconti con gli amici
               </div>
             </div>
             {!showNew && (
               <button
                 onClick={() => setShowNew(true)}
-                className={`ml-auto whitespace-nowrap rounded-md ${accentBg} px-3 py-2 text-xs font-bold text-white`}
+                className={`ml-auto whitespace-nowrap ${v2 ? "min-h-[40px] rounded-full px-4 text-[13px]" : "rounded-md px-3 py-2 text-xs"} ${accentBg} font-bold text-white`}
               >
                 + Nuovo
               </button>
@@ -242,7 +289,7 @@ function ScopriTab({
 }: {
   initialPublicGroups: PublicGroupItem[];
   basePath?: string;
-  nextgen?: boolean;
+  nextgen?: boolean | "v2";
   detailQuery?: string;
 }) {
   const accentBg = nextgen ? "bg-trama-violet" : "bg-sky";
@@ -279,7 +326,7 @@ function ScopriTab({
       {groups.map((g) => (
         <div
           key={g.id}
-          className="mb-3 flex items-center gap-3 rounded-xl border border-[#E8EBF0] bg-white p-3.5"
+          className={nextgen === "v2" ? "mb-3 flex items-center gap-3 rounded-[20px] bg-white p-4 shadow-[0_1px_2px_rgba(23,42,77,0.06),0_6px_20px_rgba(23,42,77,0.06)]" : "mb-3 flex items-center gap-3 rounded-xl border border-[#E8EBF0] bg-white p-3.5"}
         >
           <div
             className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-lg text-xl"
@@ -299,7 +346,7 @@ function ScopriTab({
           <button
             onClick={() => handleJoin(g.id)}
             disabled={joiningId === g.id}
-            className={`flex-shrink-0 whitespace-nowrap rounded-md ${accentBg} px-3 py-2 text-xs font-bold text-white disabled:opacity-60`}
+            className={`flex-shrink-0 whitespace-nowrap ${nextgen === "v2" ? "min-h-[40px] rounded-full px-4 text-[13px]" : "rounded-md px-3 py-2 text-xs"} ${accentBg} font-bold text-white disabled:opacity-60`}
           >
             {joiningId === g.id ? "Un momento…" : "Unisciti"}
           </button>
@@ -320,7 +367,7 @@ function InvitiTab({
 }: {
   initialInvites: GroupInviteItem[];
   basePath?: string;
-  nextgen?: boolean;
+  nextgen?: boolean | "v2";
   detailQuery?: string;
 }) {
   const accentBg = nextgen ? "bg-trama-violet" : "bg-sky";
@@ -365,7 +412,7 @@ function InvitiTab({
   return (
     <div className="px-5 pt-3">
       {invites.map((inv) => (
-        <div key={inv.id} className="mb-3 rounded-xl border border-[#E8EBF0] bg-white p-3.5">
+        <div key={inv.id} className={nextgen === "v2" ? "mb-3 rounded-[20px] bg-white p-4 shadow-[0_1px_2px_rgba(23,42,77,0.06),0_6px_20px_rgba(23,42,77,0.06)]" : "mb-3 rounded-xl border border-[#E8EBF0] bg-white p-3.5"}>
           <div className="text-sm font-bold text-ink">{inv.groupName}</div>
           <div className="mt-0.5 text-xs text-ink-2">
             {inv.inviterName ? `${inv.inviterName} ti ha invitato` : "Sei stato invitato"}
@@ -382,14 +429,18 @@ function InvitiTab({
             <button
               onClick={() => handleAccept(inv.id)}
               disabled={busyId === inv.id}
-              className={`rounded-md ${accentBg} px-3.5 py-2 text-xs font-bold text-white disabled:opacity-60`}
+              className={`${nextgen === "v2" ? "min-h-[40px] rounded-full px-4 text-[13px]" : "rounded-md px-3.5 py-2 text-xs"} ${accentBg} font-bold text-white disabled:opacity-60`}
             >
               {busyId === inv.id ? "Un momento…" : "Accetta"}
             </button>
             <button
               onClick={() => handleDecline(inv.id)}
               disabled={busyId === inv.id}
-              className="rounded-md border border-[#E8EBF0] px-3.5 py-2 text-xs font-semibold text-ink disabled:opacity-60"
+              className={
+                nextgen === "v2"
+                  ? "min-h-[40px] rounded-full border border-[#E3E6EC] bg-white px-4 text-[13px] font-semibold text-trama-navy disabled:opacity-60"
+                  : "rounded-md border border-[#E8EBF0] px-3.5 py-2 text-xs font-semibold text-ink disabled:opacity-60"
+              }
             >
               Rifiuta
             </button>

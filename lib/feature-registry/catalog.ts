@@ -818,6 +818,53 @@ export const FEATURE_CATALOG: FeatureCatalogEntry[] = [
     releaseEligible: true,
   },
   {
+    // TRAMA — GRUPPI V2 (14/10/2026, "allinea anche scheda e dettaglio
+    // dell'area GRUPPI al nuovo stile"). ADAPT: stessi componenti
+    // (GroupsClient, GroupDetailClient, GroupCard) con nextgen="v2".
+    key: "groups_v2",
+    label: "Gruppi V2 — elenco e dettaglio nel nuovo stile",
+    area: "parent",
+    status: "INTERNAL_PREVIEW",
+    flagName: "GROUPS_V2_ENABLED",
+    description:
+      "Elenco gruppi (I miei gruppi / Scopri / Inviti) e dettaglio gruppo (Bambini & Richiesta, Accompagnamento) " +
+      "nello stile V2: stessi dati, stesse azioni (crea, unisciti, invita, richiesta al centro, passaggi).",
+    sourceFiles: [
+      "app/nextgen/groups/page.tsx",
+      "app/nextgen/groups/[id]/page.tsx",
+      "components/GroupsClient.tsx",
+      "components/GroupDetailClient.tsx",
+      "components/GroupCard.tsx",
+      "lib/nextgen/groups-v2-flag.ts",
+    ],
+    note: "La scheda Gruppi dentro il Planner V2 prende lo stesso stile con il Planner V2. Legacy invariato.",
+    riskLevel: "low",
+    releaseEligible: true,
+  },
+  {
+    // TRAMA — PROFILO V2 (14/10/2026, approvato da Fabrizio senza tavole: è una
+    // lista). ADAPT: stessa pagina /nextgen/profile, stessi dati e componenti
+    // (ProfileHeaderClient, ProfileKidsSection con prop v2), nuova impaginazione.
+    key: "profile_v2",
+    label: "Profilo V2 — figli in alto, voci raggruppate",
+    area: "parent",
+    status: "INTERNAL_PREVIEW",
+    flagName: "PROFILE_V2_ENABLED",
+    description:
+      "Profilo nello stile V2: avatar con nome e Modifica, i tuoi figli, poi tre gruppi (Famiglia; Le tue attività; " +
+      "App) con le stesse destinazioni di oggi, Esci in fondo. Tolte le voci doppie: 'Le mie prenotazioni' (è nella " +
+      "barra) e 'Preferiti' diventa 'Salvati'.",
+    sourceFiles: [
+      "app/nextgen/profile/page.tsx",
+      "app/nextgen/profile/ProfileV2Client.tsx",
+      "components/ProfileHeaderClient.tsx",
+      "components/ProfileKidsSection.tsx",
+    ],
+    note: "Le sottopagine (Impostazioni, Famiglia, Segnalazioni) restano quelle attuali, con il segno TRAMA nell'intestazione.",
+    riskLevel: "low",
+    releaseEligible: true,
+  },
+  {
     // TRAMA — PRENOTAZIONI V2 (14/10/2026, tavole "TRAMA Scopri e Prenotazioni V2").
     key: "bookings_v2",
     label: "Prenotazioni V2 — elenco per mese e prenotazione aperta",
