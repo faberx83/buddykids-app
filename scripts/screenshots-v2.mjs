@@ -32,11 +32,6 @@ const stamp = `${d.getFullYear()}${two(d.getMonth() + 1)}${two(d.getDate())}-${t
 const OUT = path.join("logs", `screens-${stamp}`);
 fs.mkdirSync(OUT, { recursive: true });
 
-function waitEnter(question) {
-  const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
-  return new Promise((resolve) => rl.question(question, () => (rl.close(), resolve())));
-}
-
 const context = await chromium.launchPersistentContext(".screens-profile", {
   headless: process.env.SCREEN_HEADLESS === "1",
   viewport: { width: 390, height: 844 },
@@ -91,11 +86,20 @@ async function visit(url, name, title) {
 // 1) Login, se serve.
 await page.goto(BASE + "/nextgen", { waitUntil: "domcontentloaded" });
 await settle();
-if (/\/auth\/|login/.test(page.url())) {
-  await waitEnter("🔐 Fai il login nella finestra di Chromium, apri la Home e poi premi Invio qui… ");
+if (/\/auth\/|login/.test(page.url()) || !page.url().includes("/nextgen")) {
+  // Si riparte da soli appena la finestra arriva nell'app dopo il login
+  // (oppure premendo Invio qui, se si preferisce).
+  console.log("🔐 Fai il login nella finestra di Chromium: la cattura parte da sola appena entri nell'app (o premi Invio qui).");
+  const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
+  await Promise.race([
+    new Promise((resolve) => rl.once("line", resolve)),
+    page.waitForURL((u) => u.pathname.startsWith("/nextgen"), { timeout: 15 * 60 * 1000 }).catch(() => {}),
+  ]);
+  rl.close();
   await page.goto(BASE + "/nextgen", { waitUntil: "domcontentloaded" });
   await settle();
 }
+console.log("📸 Cattura in corso: non toccare la finestra per circa un minuto…");
 
 // 2) Pagine.
 await shoot("home", "Home V2");
