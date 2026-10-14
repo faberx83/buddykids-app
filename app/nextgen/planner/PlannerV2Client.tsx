@@ -297,7 +297,7 @@ export default function PlannerV2Client({
           </button>
           <h1 className="flex-1 font-poppins text-[22px] font-semibold text-ink">{panel === "mappa" ? "Mappa" : "Gruppi"}</h1>
         </header>
-        <SafeBoundary fallback={<SubviewError onBack={() => setPanel(null)} />}>
+        <SafeBoundary fallback={(error) => <SubviewError error={error} onBack={() => setPanel(null)} />}>
           {panel === "mappa" ? (
             <PlannerMapView pins={mapPins} addresses={addresses} />
           ) : (
@@ -1435,27 +1435,49 @@ function WeekWhoSheet({
 
 /** Un errore in un componente esistente (es. la mappa) non deve far cadere
  *  tutto il Planner: si mostra un messaggio e si torna indietro. */
-class SafeBoundary extends Component<{ fallback: ReactNode; children: ReactNode }, { failed: boolean }> {
-  state = { failed: false };
-  static getDerivedStateFromError() {
-    return { failed: true };
+class SafeBoundary extends Component<{ fallback: (error: unknown) => ReactNode; children: ReactNode }, { error: unknown }> {
+  state = { error: null as unknown };
+  static getDerivedStateFromError(error: unknown) {
+    return { error: error ?? new Error("errore sconosciuto") };
   }
   componentDidCatch(error: unknown) {
     console.error("[PlannerV2] sottovista non caricata", error);
+    // Dopo un nuovo deploy il telefono può avere ancora la vecchia versione
+    // dell'app: il pezzo di codice della mappa non esiste più (ChunkLoadError).
+    // Si ricarica la pagina una volta sola.
+    const msg = error instanceof Error ? `${error.name} ${error.message}` : String(error);
+    if (/ChunkLoadError|Loading chunk|dynamically imported module/i.test(msg)) {
+      try {
+        if (!window.sessionStorage.getItem("trama_chunk_reload")) {
+          window.sessionStorage.setItem("trama_chunk_reload", "1");
+          window.location.reload();
+        }
+      } catch {
+        // mai bloccante
+      }
+    }
   }
   render() {
-    return this.state.failed ? this.props.fallback : this.props.children;
+    return this.state.error ? this.props.fallback(this.state.error) : this.props.children;
   }
 }
 
-function SubviewError({ onBack }: { onBack: () => void }) {
+function SubviewError({ error, onBack }: { error: unknown; onBack: () => void }) {
+  const detail = error instanceof Error ? `${error.name}: ${error.message}` : String(error);
   return (
     <div className="flex flex-col items-start gap-3 rounded-2xl border border-dashed border-[#D6DAE3] bg-white p-5">
       <span className="text-[14px] font-semibold text-ink">Questa parte non si è caricata</span>
       <span className="text-[13px] text-ink-2">Riprova tra poco. Il resto del Planner funziona normalmente.</span>
-      <button type="button" onClick={onBack} className="min-h-[40px] rounded-full bg-trama-navy px-4 text-[13px] font-bold text-white">
-        Torna al Planner
-      </button>
+      {/* Anteprima interna: il dettaglio tecnico serve a capire la causa. */}
+      <code className="max-w-full break-words rounded-lg bg-[#F6F4EF] px-2 py-1 text-[11px] text-[#4B5563]">{detail.slice(0, 220)}</code>
+      <div className="flex gap-2">
+        <button type="button" onClick={() => window.location.reload()} className="min-h-[40px] rounded-full bg-trama-navy px-4 text-[13px] font-bold text-white">
+          Riprova
+        </button>
+        <button type="button" onClick={onBack} className="min-h-[40px] rounded-full px-3 text-[13px] font-semibold text-[#4A3F9E]">
+          Torna al Planner
+        </button>
+      </div>
     </div>
   );
 }
