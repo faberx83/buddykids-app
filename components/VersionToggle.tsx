@@ -64,7 +64,13 @@ function isStandaloneDisplay(): boolean {
 // freccia indietro verso "/nextgen" nell'header (stessa destinazione di
 // uno dei due versi di questo toggle), quindi il pulsante flottante è sia
 // ridondante sia in conflitto visivo su viewport stretti — aggiunto qui.
-const HIDDEN_PREFIXES = ["/center", "/admin", "/nextgen/center", "/nextgen/admin", "/auth", "/share", "/activity", "/one"];
+//
+// Richiesta di Fabrizio (14/10/2026, verifica Home V2): "Togli il pulsante
+// torna a V1". Tutta l'area NEXTGEN ("/nextgen", che include già
+// /nextgen/center e /nextgen/admin) è esclusa: niente pulsante e niente
+// redirect automatico verso "/" da una preferenza "legacy" salvata in
+// passato. Su "/" (LEGACY) resta "Passa a NextGen" per gli account di test.
+const HIDDEN_PREFIXES = ["/center", "/admin", "/nextgen", "/auth", "/share", "/activity", "/one"];
 
 // Richiesta di Fabrizio (27/08): il toggle non deve più essere visibile per
 // utenti esterni/beta tester — resta attivo SOLO per le sue utenze di test

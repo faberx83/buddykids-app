@@ -23,17 +23,15 @@ test.describe("Versione LEGACY/NEXTGEN - Toggle", () => {
     await expect(page).toHaveURL(/\/nextgen$/);
   });
 
-  test("TC-N29 - Il toggle su /nextgen porta a LEGACY e ricorda la scelta", async ({ page }) => {
+  // Richiesta di Fabrizio (14/10/2026): "Torna a V1" tolto da NEXTGEN.
+  // Prima TC-N29 verificava il ritorno a LEGACY da /nextgen.
+  test("TC-N29 - Su /nextgen non c'è più 'Torna a V1' e non si viene rimandati a LEGACY", async ({ page }) => {
     test.skip(!isRealDeployment, "Richiede un deploy con Supabase configurato e l'account genitore di test.");
     await loginAs(page, "parent");
     await page.goto("/nextgen");
 
-    await expect(page.getByRole("button", { name: "Torna a V1" })).toBeVisible();
-    await page.getByRole("button", { name: "Torna a V1" }).click();
-    await expect(page).toHaveURL(/^https?:\/\/[^/]+\/$/);
-
-    await page.goto("/nextgen");
-    await expect(page).toHaveURL(/^https?:\/\/[^/]+\/$/);
+    await expect(page.getByRole("button", { name: /Passa a NextGen|Torna a V1/ })).toHaveCount(0);
+    await expect(page).toHaveURL(/\/nextgen$/);
   });
 
   test("TC-N30 - Il toggle non appare nei portali Gestore/Admin (LEGACY e NEXTGEN)", async ({ page }) => {

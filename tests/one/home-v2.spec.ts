@@ -413,3 +413,9 @@ test.describe("HOME-V2 — correzioni verifica live 14/10", () => {
     expect(v2).toContain("pb-24");
   });
 });
+
+test("HV2-31: niente 'Torna a V1' nell'area NEXTGEN (richiesta del 14/10)", () => {
+  const src = read("components/VersionToggle.tsx");
+  const hidden = src.match(/const HIDDEN_PREFIXES = \[([^\]]*)\]/)?.[1] ?? "";
+  expect(hidden).toContain('"/nextgen"');
+});
