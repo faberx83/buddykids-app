@@ -235,7 +235,7 @@ export default function HomeDashboardV2Client({
             <img src="/brand/trama-logo-mark.png" alt="" aria-hidden="true" className="h-[25px] w-auto flex-shrink-0" />
           )}
           <div className="flex min-w-0 flex-col">
-            <h1 className="font-poppins text-[19px] font-semibold leading-tight text-ink">
+            <h1 className="font-poppins text-[24px] font-semibold leading-tight text-ink">
               Ciao{firstName ? ` ${firstName}` : ""}
             </h1>
             <TramaThread className="my-1" />

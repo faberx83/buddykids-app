@@ -22,6 +22,28 @@ L.Icon.Default.mergeOptions({
   shadowUrl: markerShadow.src,
 });
 
+// TRAMA — MAPPA DEL PLANNER (14/10/2026, errore live in anteprima interna:
+// "TypeError: Cannot read properties of undefined (reading '_leaflet_events')").
+// In Leaflet 1.9.4 l'unico punto in cui un marker legge quella proprietà su un
+// elemento che può mancare è Marker._removeIcon → DomEvent.off(this._icon, ...)
+// (opzione autoPanOnFocus, attiva di default): se un marker viene tolto dalla
+// mappa prima di aver creato la sua icona (montaggio/smontaggio ravvicinati
+// di react-leaflet), this._icon è ancora undefined e la mappa intera cade.
+// Senza icona non c'è niente da togliere: si esce in silenzio, il resto di
+// _removeIcon (DOM, target interattivo) non serve.
+const markerProto = L.Marker.prototype as unknown as { _removeIcon: () => void; _icon?: HTMLElement | null };
+if (!(markerProto as { __tramaSafeRemoveIcon?: boolean }).__tramaSafeRemoveIcon) {
+  const originalRemoveIcon = markerProto._removeIcon;
+  markerProto._removeIcon = function (this: { _icon?: HTMLElement | null }) {
+    if (!this._icon) {
+      this._icon = null;
+      return;
+    }
+    return originalRemoveIcon.call(this);
+  };
+  (markerProto as { __tramaSafeRemoveIcon?: boolean }).__tramaSafeRemoveIcon = true;
+}
+
 const userIcon = L.divIcon({
   className: "",
   html: '<div style="width:16px;height:16px;border-radius:9999px;background:#4DAFEF;border:3px solid white;box-shadow:0 1px 4px rgba(0,0,0,0.45)"></div>',
