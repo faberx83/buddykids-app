@@ -210,7 +210,9 @@ export default function HomeDashboardV2Client({
     // NEXTGEN (pensato per campanella + chat flottanti; in Home V2 la
     // campanella sta nell'intestazione) e pb-24 lascia libero solo il
     // pulsante "Segnala un problema". Segnalazione live 14/10/2026.
-    <div className="-mb-40 flex flex-col gap-[26px] bg-trama-page px-5 pb-24 pt-[18px]">
+    // min-h: lo sfondo arriva fino alla bottom nav anche quando la pagina è
+    // corta (+10rem compensa il pb-40 del layout, escluso dal 100%).
+    <div className="-mb-40 flex min-h-[calc(100%+10rem)] flex-col gap-[26px] bg-trama-page px-5 pb-24 pt-[18px]">
       {/* 1. INTESTAZIONE */}
       <header className="flex items-center justify-between gap-3">
         <div className="flex min-w-0 items-center gap-2.5">
@@ -470,7 +472,9 @@ export default function HomeDashboardV2Client({
         {externalPlannerItemsEnabled && (
           <QuickAction href={NEW_EXTERNAL_ITEM_HREF} icon="ti-calendar-plus" label="Aggiungi impegno" />
         )}
-        <QuickAction href="/nextgen/search" icon="ti-search" label="Cerca attività" />
+        {/* "Scopri attività" (non "Cerca"): stessa parola della scheda Scopri e
+            della pagina in cui porta — segnalazione di Fabrizio 14/10. */}
+        <QuickAction href="/nextgen/search" icon="ti-search" label="Scopri attività" />
         <QuickAction href="/nextgen/planner?mode=calendario" icon="ti-share" label="Condividi piano" />
       </section>
     </div>

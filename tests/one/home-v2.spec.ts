@@ -243,7 +243,9 @@ test.describe("HOME-V2 — riepilogo del periodo", () => {
     expect(m.state).toBe("welcome");
     const card = read("components/nextgen/SeasonSummaryCard.tsx");
     expect(card).toContain("Iniziamo a costruire il vostro piano");
-    expect(read("app/nextgen/HomeDashboardV2Client.tsx")).not.toMatch(/Organizzata al|0%/);
+    // "0%" come testo per l'utente; esclusi i valori CSS tipo "100%" (falso
+    // positivo emerso il 14/10 con min-h-[calc(100%+10rem)]).
+    expect(read("app/nextgen/HomeDashboardV2Client.tsx")).not.toMatch(/Organizzata al|(?<![0-9])0%/);
   });
 
   test("HV2-16: periodo non ancora iniziato → stato neutro, non un fallimento", () => {
@@ -411,6 +413,9 @@ test.describe("HOME-V2 — correzioni verifica live 14/10", () => {
     const v2 = read("app/nextgen/HomeDashboardV2Client.tsx");
     expect(v2).toContain("-mb-40");
     expect(v2).toContain("pb-24");
+    expect(v2).toContain("min-h-[calc(100%+10rem)]"); // sfondo fino alla nav
+    expect(v2).toContain('label="Scopri attività"');
+    expect(v2).not.toContain('label="Cerca attività"');
   });
 });
 
