@@ -210,3 +210,11 @@ con `tests/fixtures/booking-flow.ts` (pending local verification).
 Giro giornaliero dentro il cron esistente travel-reminders (Hobby: niente cron nuovi); traccia
 `family_reminders_cron_run` in product_events. Da accendere da Admin → Feature Flags → Release.
 Test: `tests/one/family-reminders.spec.ts` (FR-01..05).
+
+### 15/10 sera — Profilo (risposte "Si a tutto")
+
+- FATTO: indietro = cronologia + ripresa dello scorrimento (lib/nextgen/in-app-history.ts); riga "Classe e scuola" nel Profilo.
+- FATTO: "La tua famiglia" (/nextgen/profile/famiglia, PROFILE_V2): figli, genitori (invito senza "Crea famiglia"),
+  chi vi aiuta (family_people), luoghi. Test FV2-01..04.
+- IN CODA (approvato, dopo consensi/dominio/catalogo): Messaggi ai centri come conversazione — nuova tabella
+  messaggi (migrazione additiva, applicata da Fabrizio), primi messaggi = domanda + risposta esistenti, lato centro incluso.
