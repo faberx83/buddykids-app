@@ -97,7 +97,7 @@ test.describe("deploy.sh — [0/5] un solo comando [no browser]", () => {
     const sqlStep = pos("# 0d) SQL in produzione");
     expect(sqlStep).toBeLessThan(pos('echo "[1/5] 🔎 Verifica di sicurezza'));
     expect(sqlStep).toBeLessThan(pos('echo "[2/5] 📤 Pubblico su GitHub'));
-    expect(sqlStep).toBeLessThan(pos("npx vercel --prod"));
+    expect(sqlStep).toBeLessThan(pos("npx --yes vercel --prod"));
   });
 
   test("DOC-10: override espliciti documentati e ONLY_SITEMAP intercettato prima di tutto", () => {
@@ -114,5 +114,19 @@ test.describe("deploy.sh — [0/5] un solo comando [no browser]", () => {
     );
     expect(m40).not.toMatch(/^-- STATO: PREPARATA, NON APPLICATA/m);
     expect(m40).toContain("STATO: APPLICATA in produzione il 09/10/2026");
+  });
+});
+
+test.describe("deploy.sh — Vercel senza domande nascoste (15/10/2026)", () => {
+  test("DOC-VY-01: ogni chiamata a Vercel usa npx --yes (niente 'Ok to proceed?' invisibile)", () => {
+    const script = fs.readFileSync(path.join(__dirname, "../..", "deploy.sh"), "utf-8");
+    const code = script
+      .split("\n")
+      .filter((l) => !l.trim().startsWith("#") && !l.includes("echo "))
+      .join("\n");
+    expect(code).not.toMatch(/npx vercel /);
+    expect(code).toContain("npx --yes vercel whoami");
+    expect(code).toContain("npx --yes vercel --prod");
+    expect(script).toContain("Controllo l'accesso a Vercel");
   });
 });

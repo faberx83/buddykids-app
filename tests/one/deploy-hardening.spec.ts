@@ -25,7 +25,7 @@ test.describe("TRAMA — deploy.sh: guardia HEAD-vs-push [no browser, static]", 
   test("12b. ri-verifica HEAD immediatamente prima di 'vercel --prod', non altrove", () => {
     const pushedShaIndex = deployScript.indexOf('PUSHED_SHA="$(git rev-parse HEAD)"');
     const currentHeadCheckIndex = deployScript.indexOf('CURRENT_HEAD_BEFORE_DEPLOY="$(git rev-parse HEAD)"');
-    const vercelProdIndex = deployScript.indexOf("npx vercel --prod");
+    const vercelProdIndex = deployScript.indexOf("npx --yes vercel --prod");
 
     expect(pushedShaIndex).toBeGreaterThan(-1);
     expect(currentHeadCheckIndex).toBeGreaterThan(-1);

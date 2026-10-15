@@ -696,15 +696,20 @@ echo "[3/5] 🚀 Pubblico in produzione su Vercel..."
 # Accesso a Vercel (13/10/2026): se la sessione della CLI è scaduta o assente,
 # "vercel --prod" risponde "Not authorized". Qui lo verifichiamo prima e, se
 # serve, apriamo l'accesso nel browser (una volta sola, poi resta salvato).
-if ! npx vercel whoami >/dev/null 2>&1; then
+# 15/10/2026: deploy fermo qui senza messaggi. "npx vercel" senza --yes,
+# quando lo strumento non è già scaricato, chiede "Ok to proceed? (y)" — ma
+# con l'output nascosto la domanda non si vedeva e lo script sembrava bloccato.
+# --yes scarica senza chiedere; il messaggio sotto dice cosa sta succedendo.
+echo "   Controllo l'accesso a Vercel (se serve scarico lo strumento: qualche secondo)..."
+if ! npx --yes vercel whoami >/dev/null 2>&1; then
   echo "🔑 Vercel chiede di accedere di nuovo: si apre il browser, conferma con il tuo account (faberx83)."
-  if ! npx vercel login; then
+  if ! npx --yes vercel login; then
     echo "🛑 Accesso a Vercel non completato. Rilancia 'bash deploy.sh' quando vuoi: riparte da qui."
     exit 1
   fi
   echo "✅ Accesso a Vercel fatto."
 fi
-if ! npx vercel --prod; then
+if ! npx --yes vercel --prod; then
   echo ""
   echo "🛑 Pubblicazione su Vercel non riuscita. Database e GitHub sono già a posto:"
   echo "   rilanciando 'bash deploy.sh' riparte da qui, senza ripetere nulla."
@@ -718,8 +723,8 @@ echo ""
 echo "[4/5] 🔗 Riallineo gli alias (partner/admin) all'ultimo deploy..."
 ALIAS_PARTNER_OK=1
 ALIAS_ADMIN_OK=1
-npx vercel alias set buddykids-app.vercel.app buddykids-partner.vercel.app >/dev/null || ALIAS_PARTNER_OK=0
-npx vercel alias set buddykids-app.vercel.app buddykids-admin.vercel.app >/dev/null || ALIAS_ADMIN_OK=0
+npx --yes vercel alias set buddykids-app.vercel.app buddykids-partner.vercel.app >/dev/null || ALIAS_PARTNER_OK=0
+npx --yes vercel alias set buddykids-app.vercel.app buddykids-admin.vercel.app >/dev/null || ALIAS_ADMIN_OK=0
 
 if [ "$ALIAS_PARTNER_OK" = "1" ] && [ "$ALIAS_ADMIN_OK" = "1" ]; then
   echo "✅ Alias partner + admin: OK"
