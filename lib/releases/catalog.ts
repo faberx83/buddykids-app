@@ -195,6 +195,18 @@ export const RELEASE_CATALOG: ReleaseCatalogEntry[] = [
     notes:
       "Creata il 14/10/2026. Si vede una volta per account (chiave family_onboarding_v2). Ripiego: flag spento = onboarding attuale.",
   },
+  {
+    // TRAMA — PROMEMORIA PER LE FAMIGLIE (15/10/2026).
+    id: "promemoria-famiglie",
+    label: "TRAMA — Promemoria famiglie",
+    shortDescription: "Notifiche: chi accompagna domani, scuola chiusa in arrivo, nuove proposte in Classe e scuola.",
+    targetAudience: ["parent"],
+    featureKeys: ["family_reminders_push"],
+    knownLimitations: [
+      "family_reminders_push: un solo giro al giorno (piano Vercel Hobby), nel tardo pomeriggio; sabato e domenica non hanno Porta/Ritira; le chiusure richiedono la scuola impostata e il calendario scolastico acceso.",
+    ],
+    notes: "Creata il 15/10/2026. Ripiego: flag spento = nessuna di queste notifiche (le altre restano come prima).",
+  },
 ];
 
 export function getReleaseCatalog(): ReleaseCatalogEntry[] {

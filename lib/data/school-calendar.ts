@@ -426,15 +426,24 @@ export interface KidClosureIntervals {
 }
 
 export async function getKidClosureIntervalsForParent(
-  kidIds: string[]
+  kidIds: string[],
+  // 15/10/2026 — promemoria serali (lib/data/family-reminders.ts, cron):
+  // stessa lettura per un genitore indicato, con il client di servizio.
+  // Senza ctx: genitore loggato, comportamento di sempre.
+  ctx?: { client: Awaited<ReturnType<typeof createClient>>; userId: string }
 ): Promise<{ hasAnySchoolProfile: boolean; closuresByKid: KidClosureIntervals[] }> {
   const empty = { hasAnySchoolProfile: false, closuresByKid: [] as KidClosureIntervals[] };
   if (!isSupabaseConfigured || kidIds.length === 0) return empty;
 
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  let supabase: Awaited<ReturnType<typeof createClient>>;
+  let user: { id: string } | null;
+  if (ctx) {
+    supabase = ctx.client;
+    user = { id: ctx.userId };
+  } else {
+    supabase = await createClient();
+    user = (await supabase.auth.getUser()).data.user;
+  }
   if (!user) return empty;
 
   const { data: profileRows, error: profileError } = await supabase

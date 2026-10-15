@@ -201,3 +201,12 @@ Problemi, in ordine:
 
 Test: `tests/one/beta-richiesta-classe.spec.ts` (BR-01..04, CS-01..03, FH-01); test live adattati ai due flussi
 con `tests/fixtures/booking-flow.ts` (pending local verification).
+
+### Notifiche aggiunte (15/10 sera) — release "Promemoria famiglie" (FAMILY_REMINDERS_PUSH_ENABLED)
+
+- "Domani: chi accompagna?" — la sera prima, se manca Porta/Ritira (prenotazioni + impegni a mano, lun–ven).
+- "Scuola chiusa tra una settimana" / "dopodomani" — chiusura non organizzata per qualche figlio.
+- "Nuova proposta in <Classe e scuola>" — alle altre famiglie del gruppo.
+Giro giornaliero dentro il cron esistente travel-reminders (Hobby: niente cron nuovi); traccia
+`family_reminders_cron_run` in product_events. Da accendere da Admin → Feature Flags → Release.
+Test: `tests/one/family-reminders.spec.ts` (FR-01..05).

@@ -890,6 +890,31 @@ export const FEATURE_CATALOG: FeatureCatalogEntry[] = [
     releaseEligible: true,
   },
   {
+    // TRAMA — PROMEMORIA PER LE FAMIGLIE (15/10/2026). NEW (nessuna notifica
+    // esistente copriva l'anno scolastico): riusa sendPushToUser, il cron
+    // giornaliero di travel-reminders e la regola Porta/Ritira del Planner V2.
+    key: "family_reminders_push",
+    label: "Promemoria famiglie — chi accompagna domani, chiusure, proposte",
+    area: "parent",
+    status: "INTERNAL_PREVIEW",
+    flagName: "FAMILY_REMINDERS_PUSH_ENABLED",
+    description:
+      "Notifiche sul telefono: la sera prima 'Domani: chi accompagna?' (prenotazioni e impegni a mano, lun-ven); " +
+      "'Scuola chiusa tra una settimana' e 'dopodomani' se per qualche figlio non c'è niente; 'Nuova proposta' in " +
+      "Classe e scuola per le altre famiglie del gruppo.",
+    sourceFiles: [
+      "lib/nextgen/family-reminders.ts",
+      "lib/data/family-reminders.ts",
+      "app/api/cron/travel-reminders/route.ts",
+      "app/actions/communities.ts",
+    ],
+    note:
+      "Un giro al giorno (cron Vercel Hobby, ~17:00 ora legale / ~16:00 ora solare). Solo genitori con un telefono " +
+      "registrato; rispetta 'Notifiche push' del Profilo. Ogni esecuzione lascia family_reminders_cron_run in product_events.",
+    riskLevel: "medium",
+    releaseEligible: true,
+  },
+  {
     // TRAMA — PRENOTAZIONI V2 (14/10/2026, tavole "TRAMA Scopri e Prenotazioni V2").
     key: "bookings_v2",
     label: "Prenotazioni V2 — elenco per mese e prenotazione aperta",

@@ -162,6 +162,12 @@ export const KNOWN_PRODUCT_EVENTS = [
   "radar_user_corrected_extraction",
   "radar_favorite_after_import",
   "radar_planner_after_import",
+  // TRAMA — PROMEMORIA SERALI (15/10/2026): un conteggio per esecuzione del
+  // cron (mai id di genitori o figli), scritto col client di servizio da
+  // lib/data/family-reminders.ts — stesso schema di checkin_push_cron_run.
+  "family_reminders_cron_run",
+  // Proposta in "Classe e scuola": quante famiglie avvisate (solo il numero).
+  "class_proposal_push_sent",
 ] as const;
 
 export type KnownProductEvent = (typeof KNOWN_PRODUCT_EVENTS)[number];

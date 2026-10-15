@@ -8,6 +8,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
 import { revalidatePath } from "next/cache";
+import { notifyClassProposal } from "@/lib/data/family-reminders";
 
 // Stessi caratteri di app/actions/invites.ts (niente 0/O/1/I, ambigui da
 // leggere/dettare a voce quando il codice viene condiviso a mano).
@@ -123,6 +124,10 @@ export async function proposeActivityAction(
     note: note.trim() || null,
   });
   if (error) return { error: error.message };
+
+  // 15/10/2026 — avvisa le altre famiglie di "Classe e scuola" (solo con
+  // FAMILY_REMINDERS_PUSH_ENABLED per destinatario). Mai bloccante.
+  await notifyClassProposal({ communityId, activityDbId, proposerId: user.id });
 
   revalidatePath(`/nextgen/community/${communityId}`);
   return {};

@@ -4,6 +4,7 @@ import { getActiveTravelReminders, parentHasActivityToday, markTravelReminderSen
 import { isReminderDue } from "@/lib/travel-reminders/trigger";
 import { sendPushToUser } from "@/lib/push/send";
 import { ADDRESS_KIND_LABELS, AddressKind } from "@/lib/nextgen/address-kinds";
+import { runFamilyReminders } from "@/lib/data/family-reminders";
 
 // Promemoria di partenza — endpoint chiamato dal cron di Vercel (vedi
 // vercel.json), MAI dal browser. Segnalazione Fabrizio
@@ -121,8 +122,15 @@ export async function GET(req: NextRequest) {
     sent++;
   }
 
+  // 15/10/2026 — promemoria serali per le famiglie (lib/data/family-reminders.ts):
+  // stesso giro giornaliero (piano Hobby: un cron al giorno), dietro
+  // FAMILY_REMINDERS_PUSH_ENABLED per genitore. Un errore lì non tocca i
+  // promemoria di partenza già inviati sopra.
+  const family = await runFamilyReminders(service, dateIso).catch(() => ({ parents: 0, enabled: 0, sent: 0, failed: true }));
+
   return NextResponse.json({
     ok: true,
+    family,
     processed: reminders.length,
     sent,
     skippedAlreadySent,

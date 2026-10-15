@@ -300,6 +300,16 @@ export const FEATURE_FLAG_REGISTRY = {
     defaultValue: false,
     allowedScopes: ["global", "environment", "user", "role", "cohort"],
   },
+  // TRAMA — PROMEMORIA PER LE FAMIGLIE (15/10/2026), release "promemoria-famiglie".
+  FAMILY_REMINDERS_PUSH_ENABLED: {
+    name: "FAMILY_REMINDERS_PUSH_ENABLED",
+    description:
+      "Abilita tre notifiche per le famiglie: la sera prima 'Domani: chi accompagna?' se manca chi porta o ritira; " +
+      "'Scuola chiusa tra una settimana / dopodomani' se una chiusura non è organizzata; 'Nuova proposta' quando " +
+      "qualcuno propone un'attività in Classe e scuola. Default false: nessuna di queste notifiche.",
+    defaultValue: false,
+    allowedScopes: ["global", "environment", "user", "role", "cohort"],
+  },
   // TRAMA — SCOPRI E PRENOTAZIONI V2 (14/10/2026), stessa release.
   BOOKINGS_V2_ENABLED: {
     name: "BOOKINGS_V2_ENABLED",
