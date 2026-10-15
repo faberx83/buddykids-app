@@ -4,7 +4,7 @@
 import fs from "fs";
 import path from "path";
 import { test, expect } from "@playwright/test";
-import { coordinationDaysForWeek } from "../../lib/nextgen/planner-week";
+import { coordinationDaysForWeek, dayCoordinationSlots } from "../../lib/nextgen/planner-week";
 
 const read = (p: string) => fs.readFileSync(path.join(__dirname, "../..", p), "utf-8");
 const MON = "2026-10-12";
@@ -53,5 +53,34 @@ test.describe("TRAMA — Chi accompagna sugli impegni [no browser]", () => {
     expect(read("lib/nextgen/planner-week.ts")).toContain(
       "coordinationDaysForWeek(input.bookings, input.externalItems, monday, input.kidNameById)"
     );
+  });
+
+  test("CA-04 Home: Porta/Ritira di un giorno tutto l'anno (ottobre), impegni a mano inclusi, weekend no", () => {
+    const base = {
+      bookings: [booking],
+      externalItems: [{ startDate: "2026-10-13", endDate: "2026-10-13", kidIds: ["s"] }],
+      responsibilities: [
+        { kidId: "s", weekStartDate: MON, weekday: "mar" as const, moment: "andata" as const, responsible: "io" as const, responsibleLabel: null },
+      ],
+      kidNameById: names,
+      labelFor: () => "Papà",
+    };
+    expect(dayCoordinationSlots({ ...base, dateIso: "2026-10-13" })).toEqual([
+      { kidId: "s", kidName: "Sofia", moment: "andata", label: "Papà" },
+      { kidId: "s", kidName: "Sofia", moment: "ritorno", label: null },
+    ]);
+    expect(dayCoordinationSlots({ ...base, dateIso: "2026-10-14" }).map((x) => x.kidName)).toEqual(["Giulia", "Giulia"]);
+    expect(dayCoordinationSlots({ ...base, dateIso: "2026-10-12" })).toEqual([]); // lunedì: niente
+    expect(dayCoordinationSlots({ ...base, dateIso: "2026-10-17" })).toEqual([]); // sabato
+  });
+
+  test("CA-05 Home V2: 'Oggi' e 'Da fare' usano la regola del Planner, non più solo l'estate", () => {
+    const src = read("app/nextgen/home-v2-data.ts");
+    expect(src).not.toContain("getTodayResponsibilities");
+    expect(src).not.toContain("computeCoordinationGap");
+    expect(src).toContain("dayCoordinationSlots({ ...coordinationInput, dateIso: todayIso })");
+    expect(src).toContain("dayCoordinationSlots({ ...coordinationInput, dateIso: date })");
+    // la Home attuale (senza V2) resta com'era
+    expect(read("app/nextgen/page.tsx")).toContain("getKidsBookedDaysForWeek");
   });
 });

@@ -110,6 +110,36 @@ export function coordinationDaysForWeek(
   return Array.from(byKid.entries()).map(([kidId, v]) => ({ kidId, kidName: v.kidName, dates: Array.from(v.dates).sort() }));
 }
 
+/**
+ * Porta/Ritira di UN giorno (15/10/2026, Home V2 "Oggi" e "Da fare"): stessa
+ * regola del Planner V2 — tutto l'anno (lunedì della settimana come
+ * week_start_date), prenotazioni + impegni del Planner, solo lun–ven.
+ * Sabato/domenica → nessuno slot.
+ */
+export function dayCoordinationSlots(input: {
+  dateIso: string;
+  bookings: Pick<AgendaBookingInput, "status" | "kidIds" | "kidNames" | "weeks" | "dayDates">[];
+  externalItems: Pick<AgendaExternalInput, "startDate" | "endDate" | "kidIds">[];
+  responsibilities: WeekResponsibility[];
+  kidNameById: Record<string, string>;
+  labelFor: (r: WeekResponsibility) => string;
+}): DayCoordinationSlotInput[] {
+  const monday = mondayOfIso(input.dateIso);
+  const weekday = WEEKDAYS.find((wd) => addDaysIso(monday, wd.dayOffset) === input.dateIso)?.value;
+  if (!weekday) return [];
+  const slots: DayCoordinationSlotInput[] = [];
+  for (const kid of coordinationDaysForWeek(input.bookings, input.externalItems, monday, input.kidNameById)) {
+    if (!kid.dates.includes(input.dateIso)) continue;
+    for (const mo of MOMENTS) {
+      const r = input.responsibilities.find(
+        (x) => x.kidId === kid.kidId && x.weekStartDate === monday && x.weekday === weekday && x.moment === mo.value
+      );
+      slots.push({ kidId: kid.kidId, kidName: kid.kidName, moment: mo.value, label: r ? input.labelFor(r) || null : null });
+    }
+  }
+  return slots;
+}
+
 export interface WeekDayModel {
   dateIso: string;
   /** "Martedì 13" */

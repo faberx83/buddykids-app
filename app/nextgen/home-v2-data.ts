@@ -15,7 +15,7 @@ import { getMyBookingsForParent } from "@/lib/data/my-bookings";
 import { getKidsForUser } from "@/lib/data/kids";
 import { getActivities, isMockActivitiesArray } from "@/lib/data/activities";
 import { getTodayCheckinsForParent } from "@/lib/data/checkin";
-import { getTodayResponsibilities, getResponsibilitiesForParent, getKidsBookedDaysForWeek } from "@/lib/data/responsibilities";
+import { getResponsibilitiesForParent, getKidsBookedDaysForWeek } from "@/lib/data/responsibilities";
 import { isParentProfileIncomplete, getParentProfile } from "@/lib/data/profile";
 import { getMyGroupInvites } from "@/lib/data/groups";
 import { getExternalPlannerItemsForParent } from "@/lib/data/external-planner-items";
@@ -24,7 +24,8 @@ import { computeMatchesForKid } from "@/lib/matching";
 import { resolveFeatureFlagVisibility } from "@/lib/feature-flags/resolve";
 import { generateCorrelationId } from "@/lib/telemetry/correlation";
 import { WEEKDAYS, resolveResponsibleDisplay } from "@/lib/nextgen/responsibility-options";
-import { computeCoordinationGap, computeRolesToCover } from "@/lib/nextgen/week-roles";
+import { computeRolesToCover } from "@/lib/nextgen/week-roles";
+import { dayCoordinationSlots } from "@/lib/nextgen/planner-week";
 import { buildTodayAgenda, summarizeDayCoordination, type DayCoordinationSlotInput } from "@/lib/nextgen/today-agenda";
 import { selectUrgentTodayAlert, type HomeInboxInput } from "@/lib/nextgen/home-inbox";
 import { buildSeasonSummary, periodTitleForSeason } from "@/lib/nextgen/season-summary";
@@ -141,7 +142,6 @@ export async function loadHomeV2Props({
     kids,
     activities,
     todayCheckins,
-    todayResponsibilities,
     profileIncomplete,
     profile,
     responsibilities,
@@ -153,7 +153,6 @@ export async function loadHomeV2Props({
     getKidsForUser(),
     getActivities(),
     getTodayCheckinsForParent(),
-    getTodayResponsibilities(),
     isParentProfileIncomplete(),
     getParentProfile(),
     getResponsibilitiesForParent(),
@@ -202,12 +201,24 @@ export async function loadHomeV2Props({
     kidNameById,
   });
 
-  const slots: DayCoordinationSlotInput[] = todayResponsibilities.map((e) => ({
-    kidId: e.kidId,
-    kidName: e.kidName,
-    moment: e.moment,
-    label: e.responsible ? resolveResponsibleDisplay(e, profile.parentRole).label || null : null,
-  }));
+  // 15/10/2026 (Fabrizio: "Si confermo"): Porta/Ritira di oggi con la STESSA
+  // regola del Planner V2 — tutto l'anno (prima solo nelle settimane
+  // dell'estate: a ottobre il blocco non compariva mai) e anche per gli
+  // impegni aggiunti a mano. Solo lun–ven, come week_responsibilities.
+  const coordinationInput = {
+    bookings: bookings.map((b) => ({
+      status: b.status,
+      kidIds: b.kidIds,
+      kidNames: b.kidNames,
+      weeks: b.weeks,
+      dayDates: b.dayDates,
+    })),
+    externalItems: externalItems.map((i) => ({ startDate: i.startDate, endDate: i.endDate, kidIds: i.kidIds })),
+    responsibilities,
+    kidNameById,
+    labelFor: (r: (typeof responsibilities)[number]) => resolveResponsibleDisplay(r, profile.parentRole).label,
+  };
+  const slots: DayCoordinationSlotInput[] = dayCoordinationSlots({ ...coordinationInput, dateIso: todayIso });
   const coordination = summarizeDayCoordination(slots);
   const urgentAlert = selectUrgentTodayAlert(
     slots.map((s) => ({ ...s, date: todayIso })),
@@ -216,11 +227,14 @@ export async function loadHomeV2Props({
   );
 
   // ── Da fare ──
-  const gap = computeCoordinationGap(planner.weeks, bookedDays, responsibilities, todayIso);
-  const soonLimit = addDaysIso(todayIso, 7);
-  const soon = gap.missing
-    .filter((m) => m.date > todayIso && m.date <= soonLimit)
-    .sort((a, b) => a.date.localeCompare(b.date));
+  // Prossimi 7 giorni, stessa regola di "Oggi" (prima: solo settimane estive).
+  const soon: { kidName: string; moment: (typeof slots)[number]["moment"]; date: string }[] = [];
+  for (let i = 1; i <= 7; i += 1) {
+    const date = addDaysIso(todayIso, i);
+    for (const s of dayCoordinationSlots({ ...coordinationInput, dateIso: date })) {
+      if (s.label === null) soon.push({ kidName: s.kidName, moment: s.moment, date });
+    }
+  }
   const inboxInput: Omit<HomeInboxInput, "pushInactive"> = {
     bookings: bookings.map((b) => ({
       id: b.id,
