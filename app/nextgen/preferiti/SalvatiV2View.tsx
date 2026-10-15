@@ -8,6 +8,7 @@
 // (getUnifiedFavoritesForParent). Fuori da V2 resta PreferitiView.
 
 import { useRouter } from "next/navigation";
+import { goBackInApp } from "@/lib/nextgen/in-app-history";
 import Link from "next/link";
 import type { Kid } from "@/lib/types";
 import type { UnifiedFavoriteItem } from "@/lib/discovery/unified-favorites";
@@ -34,8 +35,7 @@ export default function SalvatiV2View({
         <button
           type="button"
           onClick={() => {
-            if (window.history.length > 1) router.back();
-            else router.push("/nextgen/profile");
+            goBackInApp(router, "/nextgen/profile");
           }}
           aria-label="Indietro"
           className="-ml-2.5 flex h-11 w-11 items-center justify-center rounded-full text-[22px] text-ink active:bg-black/[0.04]"

@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useGlobalActionProgress } from "@/components/GlobalActionProgress";
 import TramaThread from "@/components/nextgen/TramaThread";
 import { useNavV2 } from "@/components/nextgen/ProfileChip";
+import { goBackInApp } from "@/lib/nextgen/in-app-history";
 
 export default function PageHeader({
   title,
@@ -55,6 +56,13 @@ export default function PageHeader({
       return;
     }
     runNavigation();
+    // 15/10/2026: nell'area famiglie V2 la freccia torna da dove si è venuti
+    // (cronologia); backHref resta il ripiego quando dietro non c'è niente
+    // dell'app (link da notifica, pagina ricaricata).
+    if (navV2 || v2) {
+      goBackInApp(router, backHref ?? "/nextgen");
+      return;
+    }
     if (backHref) router.push(backHref);
     else router.back();
   };

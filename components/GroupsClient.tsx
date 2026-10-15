@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { goBackInApp } from "@/lib/nextgen/in-app-history";
 import GroupCard from "@/components/GroupCard";
 import TramaThread from "@/components/nextgen/TramaThread";
 import { monogramFor, threadColorFor } from "@/components/nextgen/ActivityVisual";
@@ -110,7 +111,8 @@ export default function GroupsClient({
             {resolvedBackHref && (
               <button
                 type="button"
-                onClick={() => router.push(resolvedBackHref)}
+                // 15/10/2026: da Profilo torna al Profilo, dal Planner al Planner (cronologia).
+                onClick={() => goBackInApp(router, resolvedBackHref)}
                 aria-label="Indietro"
                 className="-ml-2.5 flex h-11 w-11 items-center justify-center rounded-full text-[22px] text-ink active:bg-black/[0.04]"
               >

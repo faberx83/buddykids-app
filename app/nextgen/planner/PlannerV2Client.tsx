@@ -26,6 +26,7 @@
 import { Component, useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { goBackInApp } from "@/lib/nextgen/in-app-history";
 import type { Kid, CommunityItem, GroupItem } from "@/lib/types";
 import type { SeasonWeek } from "@/lib/data/planner";
 import type { ExternalPlannerItem } from "@/lib/data/external-planner-items";
@@ -362,8 +363,7 @@ export default function PlannerV2Client({
         <button
           type="button"
           onClick={() => {
-            if (window.history.length > 1) router.back();
-            else router.push("/nextgen");
+            goBackInApp(router, "/nextgen");
           }}
           aria-label="Indietro"
           className="-ml-2.5 flex h-11 w-11 items-center justify-center rounded-full text-[22px] text-ink active:bg-black/[0.04]"

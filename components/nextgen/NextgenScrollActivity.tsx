@@ -1,6 +1,8 @@
 "use client";
 
 import { createContext, useContext, useEffect, useRef, useState } from "react";
+import { usePathname } from "next/navigation";
+import { consumeBackOnMount, noteNavigation, scrollKey } from "@/lib/nextgen/in-app-history";
 
 // TRAMA BETA v1.1.1 — FINAL FUNCTIONAL + UI CONSISTENCY FIXES (punto 7).
 // Vedi lib/nextgen/floating-controls.ts per la ROOT CAUSE ANALYSIS completa
@@ -98,10 +100,76 @@ export function useSetNextgenHideFloatingControls(): (hidden: boolean) => void {
 // Piccolo wrapper per il div scrollabile condiviso: stessa identica resa di
 // prima (classi invariate, passate dal chiamante), solo con l'onScroll
 // collegato al Provider qui sopra.
+//
+// 15/10/2026 — "tornando indietro la pagina riparte da dove ero" (Fabrizio,
+// per tutta l'app). Lo scorrimento delle pagine famiglie avviene QUI, non
+// nella finestra: il ripristino automatico del browser/Next non lo vede,
+// quindi si salva la posizione per indirizzo (sessionStorage) e la si
+// rimette quando si torna indietro. Tiene anche il conto delle pagine
+// visitate per la freccia "indietro" (lib/nextgen/in-app-history.ts).
 export function NextgenScrollArea({ className, children }: { className: string; children: React.ReactNode }) {
   const notifyScroll = useNotifyNextgenScroll();
+  const pathname = usePathname();
+  const ref = useRef<HTMLDivElement | null>(null);
+  const frame = useRef<number | null>(null);
+
+  const firstRender = useRef(true);
+  useEffect(() => {
+    // Prima pagina montata: non cambia il conteggio delle pagine, ma se ci si
+    // arriva con "indietro" (es. dalla scheda attività a Scopri) si ripristina
+    // comunque la posizione.
+    let wasBack: boolean;
+    if (firstRender.current) {
+      firstRender.current = false;
+      wasBack = consumeBackOnMount(window.location.href);
+    } else {
+      wasBack = noteNavigation(window.location.href).wasBack;
+    }
+    if (!wasBack) return;
+    let target = 0;
+    try {
+      target = Number(sessionStorage.getItem(scrollKey(window.location.pathname, window.location.search)) ?? 0);
+    } catch {
+      return;
+    }
+    if (!target) return;
+    // Il contenuto può arrivare un attimo dopo (dati dal server): si riprova
+    // finché la pagina è abbastanza lunga, al massimo per ~2 secondi.
+    let tries = 0;
+    let timer: ReturnType<typeof setTimeout> | null = null;
+    const apply = () => {
+      const el = ref.current;
+      if (!el) return;
+      if (el.scrollHeight - el.clientHeight >= target || tries >= 40) {
+        el.scrollTop = target;
+        return;
+      }
+      tries += 1;
+      timer = setTimeout(apply, 50);
+    };
+    apply();
+    return () => {
+      if (timer) clearTimeout(timer);
+    };
+  }, [pathname]);
+
+  function onScroll() {
+    notifyScroll();
+    if (frame.current !== null) return;
+    frame.current = requestAnimationFrame(() => {
+      frame.current = null;
+      const el = ref.current;
+      if (!el) return;
+      try {
+        sessionStorage.setItem(scrollKey(window.location.pathname, window.location.search), String(Math.round(el.scrollTop)));
+      } catch {
+        // modalità privata o spazio pieno: niente ripristino, nessun errore
+      }
+    });
+  }
+
   return (
-    <div className={className} onScroll={notifyScroll}>
+    <div ref={ref} className={className} onScroll={onScroll}>
       {children}
     </div>
   );

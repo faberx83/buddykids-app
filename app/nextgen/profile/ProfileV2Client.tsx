@@ -19,6 +19,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { goBackInApp } from "@/lib/nextgen/in-app-history";
 import ProfileHeaderClient from "@/components/ProfileHeaderClient";
 import ProfileKidsSection from "@/components/ProfileKidsSection";
 import LogoutButton from "@/components/LogoutButton";
@@ -136,8 +137,7 @@ export default function ProfileV2Client({
         <button
           type="button"
           onClick={() => {
-            if (window.history.length > 1) router.back();
-            else router.push("/nextgen");
+            goBackInApp(router, "/nextgen");
           }}
           aria-label="Indietro"
           className="-ml-2.5 flex h-11 w-11 items-center justify-center rounded-full text-[22px] text-ink active:bg-black/[0.04]"
