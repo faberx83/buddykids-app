@@ -41,6 +41,7 @@ export default function BookingClient({
   inviteDiscount,
   days = [],
   nextgen = false,
+  v2 = false,
 }: {
   activity: Activity;
   weeks: Week[];
@@ -62,6 +63,18 @@ export default function BookingClient({
   // resolveHomeHref() in .../success/page.tsx) e passato qui. Default false:
   // nessun impatto sul call site quando il flag risolve a false.
   nextgen?: boolean;
+  // TRAMA — RICHIESTA SENZA PAGAMENTO (15/10/2026, Fabrizio: "Nessun
+  // pagamento, è una beta fake"). Con BOOKINGS_V2_ENABLED (risolto in
+  // page.tsx) il flusso diventa una RICHIESTA al centro in 2 passi:
+  //   1. "Quando" — settimane (o giorni scelti) + servizi extra;
+  //   2. "Chi partecipa" — bambini + riepilogo + "Invia la richiesta".
+  // Niente passo Pagamento, niente carta finta "4242", niente "Conferma e
+  // paga": stessa azione createBookingAction, stessi controlli (conflitti,
+  // settimane, bambini). Il centro risponde dalla sua Inbox (partner_decision
+  // resta "pending" finché non decide), quindi "Richiesta" è la parola vera.
+  // Stile: data-nav-v2 sulla radice riusa il ponte colori di globals.css
+  // (viola → blu notte). Legacy e TRAMA ONE senza V2: invariati.
+  v2?: boolean;
 }) {
   const accentBg = nextgen ? "bg-trama-violet" : "bg-sky";
   const accentText = nextgen ? "text-trama-violet" : "text-sky";
@@ -250,12 +263,20 @@ export default function BookingClient({
   // Sequenza di step dinamica: "Servizi" compare SOLO se hasAnyService, così
   // un'attività senza nessun servizio extra ha lo stesso wizard a 3 step di
   // sempre (nessun cambiamento visibile per chi non ne ha bisogno).
-  const stepSequence = hasAnyService
-    ? (["weeks", "services", "kids", "payment"] as const)
-    : (["weeks", "kids", "payment"] as const);
-  const stepLabels = hasAnyService
-    ? ["Settimane", "Servizi", "Bambini", "Pagamento"]
-    : ["Settimane", "Bambini", "Pagamento"];
+  // V2 (richiesta senza pagamento): sempre 2 passi — i servizi stanno nel
+  // primo ("Quando"), il riepilogo nel secondo ("Chi partecipa").
+  const stepSequence: readonly ("weeks" | "services" | "kids" | "payment")[] = v2
+    ? (["weeks", "kids"] as const)
+    : hasAnyService
+      ? (["weeks", "services", "kids", "payment"] as const)
+      : (["weeks", "kids", "payment"] as const);
+  const stepLabels = v2
+    ? ["Quando", "Chi partecipa"]
+    : hasAnyService
+      ? ["Settimane", "Servizi", "Bambini", "Pagamento"]
+      : ["Settimane", "Bambini", "Pagamento"];
+  const familyDiscountLabel = v2 ? "Sconto famiglia" : "Sconto famiglia 👨‍👩‍👧‍👦";
+  const inviteDiscountLabel = (percent: number) => (v2 ? `Sconto invito (-${percent}%)` : `Sconto invito 🎁 (-${percent}%)`);
   const totalSteps = stepSequence.length;
   const currentStepKind = stepSequence[Math.min(step, totalSteps) - 1];
 
@@ -419,8 +440,8 @@ export default function BookingClient({
   }
 
   return (
-    <div className="flex h-full min-h-screen flex-col sm:min-h-0 sm:flex-1">
-      <PageHeader title="Prenota il tuo posto" onBack={handleBack} />
+    <div className="flex h-full min-h-screen flex-col sm:min-h-0 sm:flex-1" data-nav-v2={v2 ? "" : undefined}>
+      <PageHeader title={v2 ? "Richiedi un posto" : "Prenota il tuo posto"} onBack={handleBack} v2={v2} />
       <StepIndicator step={step} labels={stepLabels} nextgen={nextgen} />
 
       <div ref={scrollRef} className="no-scrollbar flex-1 overflow-y-auto px-5 py-[18px]">
@@ -456,11 +477,11 @@ export default function BookingClient({
                 value={`€${subtotal}`}
               />
               {familyDiscount > 0 && (
-                <Row label="Sconto famiglia 👨‍👩‍👧‍👦" value={`-€${familyDiscount}`} valueClass="text-green" />
+                <Row label={familyDiscountLabel} value={`-€${familyDiscount}`} valueClass="text-green" />
               )}
               {inviteDiscountAmount > 0 && (
                 <Row
-                  label={`Sconto invito 🎁 (-${inviteDiscount!.percent}%)`}
+                  label={inviteDiscountLabel(inviteDiscount!.percent)}
                   value={`-€${inviteDiscountAmount}`}
                   valueClass="text-green"
                 />
@@ -527,6 +548,7 @@ export default function BookingClient({
                   selected={selectedWeeks.includes(w.id)}
                   onToggle={() => toggleWeek(w)}
                   alreadyBooked={bookedWeekIds.has(w.id)}
+                  v2={v2}
                 />
               ))}
             </div>
@@ -546,10 +568,10 @@ export default function BookingClient({
                 <Row label="Sconto multi-settimana" value={`-€${weekDiscount}`} valueClass="text-green" />
               )}
               {familyDiscount > 0 && (
-                <Row label="Sconto famiglia 👨‍👩‍👧‍👦" value={`-€${familyDiscount}`} valueClass="text-green" />
+                <Row label={familyDiscountLabel} value={`-€${familyDiscount}`} valueClass="text-green" />
               )}
               {inviteDiscountAmount > 0 && (
-                <Row label={`Sconto invito 🎁 (-${inviteDiscount!.percent}%)`} value={`-€${inviteDiscountAmount}`} valueClass="text-green" />
+                <Row label={inviteDiscountLabel(inviteDiscount!.percent)} value={`-€${inviteDiscountAmount}`} valueClass="text-green" />
               )}
               <Row
                 label="Totale stimato"
@@ -561,8 +583,8 @@ export default function BookingClient({
           </div>
         )}
 
-        {currentStepKind === "services" && (
-          <div>
+        {(currentStepKind === "services" || (v2 && currentStepKind === "weeks" && hasAnyService && hasBookableWeeks)) && (
+          <div className={v2 ? "mt-6" : undefined}>
             <div className={`mb-1 ${titleCls}`}>Servizi extra</div>
             <div className="mb-4 text-[13px] text-ink-2">
               Scegli solo quelli che ti servono — il costo si somma al totale
@@ -634,7 +656,7 @@ export default function BookingClient({
         {currentStepKind === "kids" && (
           <div>
             <div className={`mb-1 ${titleCls}`}>Chi partecipa?</div>
-            <div className="mb-4 text-[13px] text-ink-2">Seleziona bambini e aggiungi amici</div>
+            <div className="mb-4 text-[13px] text-ink-2">{v2 ? "Scegli per chi è la richiesta" : "Seleziona bambini e aggiungi amici"}</div>
             <div className="mb-2.5 text-[13px] font-bold text-ink">I tuoi bambini</div>
             {kids.length === 0 && !showAddKid && (
               <p className="mb-2.5 text-xs text-ink-2">
@@ -669,6 +691,27 @@ export default function BookingClient({
                 Aggiungi bambino
               </div>
             )}
+            {v2 && (
+              <RequestSummaryV2
+                lines={[
+                  {
+                    label: dayBookingMode
+                      ? `${activity.name} (${selectedDayRows.length} giorn${selectedDayRows.length === 1 ? "o" : "i"})`
+                      : `${activity.name} (${nWeeks} sett.)`,
+                    value: `€${subtotal}`,
+                  },
+                  ...(preServiceCost > 0 ? [{ label: "Ingresso anticipato", value: `€${preServiceCost}` }] : []),
+                  ...(postServiceCost > 0 ? [{ label: "Uscita posticipata", value: `€${postServiceCost}` }] : []),
+                  ...(mealCost > 0 ? [{ label: "Mensa", value: `€${mealCost}` }] : []),
+                  ...(shuttleCost > 0 ? [{ label: "Navetta", value: `€${shuttleCost}` }] : []),
+                  ...(groupDiscount > 0 ? [{ label: "Sconti", value: `-€${groupDiscount}`, green: true }] : []),
+                ]}
+                kidNames={kidNames}
+                total={total}
+              />
+            )}
+            {!v2 && (
+            <>
             <div className="mb-1.5 mt-4 flex items-center gap-1.5 text-[13px] font-bold text-ink">
               Andiamo Insieme 🤝
               <ComingSoonBadge />
@@ -684,6 +727,8 @@ export default function BookingClient({
               </div>
               <i className={`ti ti-share ml-auto text-lg ${accentText}`} />
             </div>
+            </>
+            )}
           </div>
         )}
 
@@ -744,10 +789,10 @@ export default function BookingClient({
                 <Row label="Sconto multi-settimana" value={`-€${weekDiscount}`} valueClass="text-green" />
               )}
               {familyDiscount > 0 && (
-                <Row label="Sconto famiglia 👨‍👩‍👧‍👦" value={`-€${familyDiscount}`} valueClass="text-green" />
+                <Row label={familyDiscountLabel} value={`-€${familyDiscount}`} valueClass="text-green" />
               )}
               {inviteDiscountAmount > 0 && (
-                <Row label={`Sconto invito 🎁 (-${inviteDiscount!.percent}%)`} value={`-€${inviteDiscountAmount}`} valueClass="text-green" />
+                <Row label={inviteDiscountLabel(inviteDiscount!.percent)} value={`-€${inviteDiscountAmount}`} valueClass="text-green" />
               )}
               <Row label="Totale" value={`€${total}`} total nextgen={nextgen} />
             </div>
@@ -829,9 +874,19 @@ export default function BookingClient({
             (currentStepKind === "weeks" && !dayBookingMode && selectedWeeks.length === 0) ||
             (currentStepKind === "kids" && selectedKids.length === 0)
           }
-          className={`w-full rounded-lg ${accentBg} py-[15px] text-[15px] font-bold text-white transition-colors ${accentHoverBg} disabled:cursor-not-allowed disabled:opacity-60`}
+          className={
+            v2
+              ? "min-h-[52px] w-full rounded-[12px] bg-trama-primary py-[15px] text-[16px] font-semibold text-white active:bg-trama-primary-press disabled:cursor-not-allowed disabled:opacity-60"
+              : `w-full rounded-lg ${accentBg} py-[15px] text-[15px] font-bold text-white transition-colors ${accentHoverBg} disabled:cursor-not-allowed disabled:opacity-60`
+          }
         >
-          {submitting ? "Attendere…" : currentStepKind === "payment" ? "Conferma e paga" : "Continua"}
+          {submitting
+            ? "Attendere…"
+            : v2 && step === totalSteps
+              ? "Invia la richiesta al centro"
+              : currentStepKind === "payment"
+                ? "Conferma e paga"
+                : "Continua"}
         </button>
       </div>
     </div>
@@ -896,6 +951,42 @@ function ServiceToggleRow({
         </div>
       </div>
     </button>
+  );
+}
+
+// V2 — riepilogo della richiesta (passo "Chi partecipa"): cosa, per chi,
+// quanto costa indicativamente, e la frase che chiarisce che non si paga ora.
+function RequestSummaryV2({
+  lines,
+  kidNames,
+  total,
+}: {
+  lines: { label: string; value: string; green?: boolean }[];
+  kidNames: string[];
+  total: number;
+}) {
+  return (
+    <div className="mt-6 rounded-2xl border border-trama-line bg-white p-4">
+      <div className="mb-2 font-poppins text-[16px] font-semibold text-ink">Riepilogo della richiesta</div>
+      {lines.map((l) => (
+        <div key={l.label} className="flex justify-between gap-3 py-1 text-[13.5px] text-ink-2">
+          <span className="min-w-0">{l.label}</span>
+          <span className={l.green ? "font-semibold text-green" : "font-semibold text-ink"}>{l.value}</span>
+        </div>
+      ))}
+      <div className="flex justify-between gap-3 py-1 text-[13.5px] text-ink-2">
+        <span>Per</span>
+        <span className="text-right font-semibold text-ink">{kidNames.length > 0 ? kidNames.join(", ") : "—"}</span>
+      </div>
+      <div className="mt-2 flex justify-between border-t border-trama-line pt-2.5 text-[15px] font-semibold text-ink">
+        <span>Costo indicativo</span>
+        <span>€{total}</span>
+      </div>
+      <p className="mt-2.5 text-[12.5px] leading-snug text-ink-2">
+        Nessun pagamento adesso: il centro riceve la richiesta e ti risponde. Se accetta, i dettagli li concordi
+        direttamente con lui.
+      </p>
+    </div>
   );
 }
 

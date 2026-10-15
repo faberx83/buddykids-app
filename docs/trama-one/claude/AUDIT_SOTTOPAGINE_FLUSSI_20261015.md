@@ -178,3 +178,22 @@ Problemi, in ordine:
 
 ---
 *Correzioni di questo giro: ramo `claude/sottopagine-v2`. Test: `tests/one/sottopagine-v2.spec.ts` (SP-01..04).*
+
+---
+
+## Aggiornamento 15/10 pomeriggio — risposte di Fabrizio ai 5 dubbi
+
+1. **"Nessun pagamento, è una beta fake"** → FATTO (dietro BOOKINGS_V2_ENABLED, release già esistente).
+   `/booking/[id]` diventa "Richiedi un posto" in 2 passi (Quando: settimane + servizi; Chi partecipa: bambini +
+   riepilogo con "Costo indicativo" e "Nessun pagamento adesso") e pulsante "Invia la richiesta al centro".
+   Conferma: "Richiesta inviata" → "Vai a Prenotazioni" / "Torna alla Home". Stessa createBookingAction: il
+   centro risponde dalla Inbox (partner_decision "pending" → "In attesa del centro" in Prenotazioni V2).
+   Legacy e TRAMA ONE senza V2 invariati (passo Pagamento simulato).
+2. **Pagina di accesso** → da rispiegare: è unica per tutti (anche Legacy), il flag non si conosce prima del login.
+3. **"Chi accompagna" sugli impegni aggiunti a mano** → utile: da definire (cambia la regola del Planner), non fatto.
+4. **"Classe e scuola"** → FATTO con la nuova barra (elenco, dettaglio, Planner → Gruppi). Stesse tabelle e rotte.
+   Testi in `lib/nextgen/classe-scuola-copy.ts`. "Segnalato dalla community" del Radar non toccato.
+5. **Feedback in Home** → FATTO: riga "Dicci cosa ne pensi" in fondo alla Home V2 (stesso pannello, fonte "home").
+
+Test: `tests/one/beta-richiesta-classe.spec.ts` (BR-01..04, CS-01..03, FH-01); test live adattati ai due flussi
+con `tests/fixtures/booking-flow.ts` (pending local verification).

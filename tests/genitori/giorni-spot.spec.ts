@@ -1,5 +1,6 @@
 import { test, expect } from "../fixtures/roles";
 import { loginAs, isRealDeployment } from "../fixtures/roles";
+import { submitBookingFromKidsStep } from "../fixtures/booking-flow";
 
 // TRAMA ONE Build Sprint 3 — "Giorni spot": selezione di giorni singoli
 // (invece della settimana intera) nella scheda attività, con calcolo prezzo
@@ -91,12 +92,10 @@ test.describe("Genitori - Giorni spot", () => {
     if (!(await kidRow.isVisible().catch(() => false))) {
       test.skip(true, "Bambino di test non trovato: esegui STEP 6 di supabase/seed-test-data.sql.");
     }
-    await page.getByRole("button", { name: "Continua" }).click();
-
     // "Pagamento" da solo è ambiguo (compare sia nello StepIndicator sia nel
-    // titolo dello step): il sottotitolo è univoco nella pagina.
-    await expect(page.getByText("Scegli il metodo di pagamento")).toBeVisible();
-    await page.getByRole("button", { name: "Conferma e paga" }).click();
+    // titolo dello step): il sottotitolo è univoco nella pagina — controllato
+    // dentro submitBookingFromKidsStep (flusso senza V2).
+    await submitBookingFromKidsStep(page);
 
     await page.waitForURL(/\/booking\/.*\/success/);
   });
@@ -139,9 +138,7 @@ test.describe("Genitori - Giorni spot", () => {
     if (!(await kidRow.isVisible().catch(() => false))) {
       test.skip(true, "Bambino di test non trovato: esegui STEP 6 di supabase/seed-test-data.sql.");
     }
-    await page.getByRole("button", { name: "Continua" }).click();
-    await expect(page.getByText("Scegli il metodo di pagamento")).toBeVisible();
-    await page.getByRole("button", { name: "Conferma e paga" }).click();
+    await submitBookingFromKidsStep(page);
     await page.waitForURL(/\/booking\/.*\/success/);
 
     // Vai a "Le mie prenotazioni" e apri "Modifica" sulla prenotazione appena

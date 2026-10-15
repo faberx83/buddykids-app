@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { CommunityItem, CommunityRole, GroupItem } from "@/lib/types";
 import { monogramFor, threadColorFor } from "@/components/nextgen/ActivityVisual";
+import { CLASSE_SCUOLA_COPY } from "@/lib/nextgen/classe-scuola-copy";
 
 // SPRINT 5.6 (NEXTGEN) — riempie l'ultima scheda del Planner ancora "in
 // arrivo" (Organizzazione/Budget/Calendario/Mappa/Famiglia fatte nelle fasi
@@ -127,14 +128,14 @@ export default function PlannerGroupsView({
             </div>
           ) : (
             <p className={empty}>
-              Nessun gruppo attivo. Un gruppo nasce da una prenotazione condivisa (sconto, passaggi) o da una proposta
-              di una community.
+              Nessun gruppo attivo. Un gruppo nasce da una prenotazione condivisa (sconto, passaggi) o da{" "}
+              {CLASSE_SCUOLA_COPY.groupsEmptyOrigin}.
             </p>
           )}
         </section>
         <section className="flex flex-col gap-2.5">
           <div className="flex items-center justify-between">
-            <h2 className="font-poppins text-[18px] font-semibold text-ink">Le tue community</h2>
+            <h2 className="font-poppins text-[18px] font-semibold text-ink">{CLASSE_SCUOLA_COPY.sectionTitle}</h2>
             <Link href="/nextgen/community" className={link}>
               {communities.length > 0 ? "Vedi tutte" : "Crea o entra"}
             </Link>
@@ -146,7 +147,7 @@ export default function PlannerGroupsView({
               ))}
             </div>
           ) : (
-            <p className={empty}>Non fai ancora parte di una community: servono per proporre attività ad altre famiglie.</p>
+            <p className={empty}>{CLASSE_SCUOLA_COPY.plannerEmpty}</p>
           )}
         </section>
       </div>

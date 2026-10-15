@@ -5,7 +5,8 @@
 
 export const OPEN_BETA_FEEDBACK_EVENT = "trama:open-beta-feedback";
 
-export type FeedbackOpenSource = "floating" | "profilo" | "novita";
+// 15/10/2026: "home" = riga "Dicci cosa ne pensi" in fondo alla Home V2.
+export type FeedbackOpenSource = "floating" | "profilo" | "novita" | "home";
 
 export function openBetaFeedback(source: FeedbackOpenSource): void {
   if (typeof window === "undefined") return;

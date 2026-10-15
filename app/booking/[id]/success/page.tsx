@@ -6,7 +6,7 @@ import PhoneShell from "@/components/PhoneShell";
 import BookingSuccessActions from "@/components/BookingSuccessActions";
 import { createClient } from "@/lib/supabase/server";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
-import { resolveFeatureFlag } from "@/lib/feature-flags/resolve";
+import { resolveFeatureFlag, resolveFeatureFlagVisibility } from "@/lib/feature-flags/resolve";
 import { generateCorrelationId } from "@/lib/telemetry/correlation";
 
 // FIX (FINAL MICRO-PILOT LIVE ACCEPTANCE, 01/09/2026 — segnalazione di
@@ -33,6 +33,31 @@ async function resolveHomeHref(): Promise<string> {
   return enabled ? "/nextgen" : "/";
 }
 
+// 15/10/2026 — richiesta senza pagamento (Fabrizio: "Nessun pagamento, è una
+// beta fake"): con BOOKINGS_V2_ENABLED la conferma diventa "Richiesta
+// inviata" — niente "Totale pagato", niente "ufficialmente iscritto", niente
+// emoji. Stesso flag e stesso fail-closed di app/booking/[id]/page.tsx.
+async function resolveRequestV2(): Promise<boolean> {
+  if (!isSupabaseConfigured) return false;
+  try {
+    const supabase = await createClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) return false;
+    const r = await resolveFeatureFlagVisibility({
+      flagName: "BOOKINGS_V2_ENABLED",
+      userId: user.id,
+      role: "parent",
+      tenant: "family",
+      correlationId: generateCorrelationId(),
+    });
+    return r.enabled;
+  } catch {
+    return false;
+  }
+}
+
 export default async function BookingSuccessPage({
   params,
   searchParams,
@@ -55,6 +80,56 @@ export default async function BookingSuccessPage({
   const nextgen = homeHref === "/nextgen";
   const accentBg = nextgen ? "bg-trama-violet" : "bg-sky";
   const accentHoverBg = nextgen ? "hover:bg-[#594F9E]" : "hover:bg-[#3A9FDC]";
+  const requestV2 = nextgen && (await resolveRequestV2());
+
+  if (requestV2) {
+    return (
+      <PhoneShell>
+        <div
+          data-nav-v2=""
+          className="flex h-full min-h-screen flex-col justify-center px-6 py-8 sm:min-h-0 sm:flex-1"
+        >
+          <div className="mb-5 flex h-16 w-16 items-center justify-center rounded-full bg-trama-accent-soft text-trama-accent-ink">
+            <i className="ti ti-send text-[30px]" aria-hidden="true" />
+          </div>
+          <h1 className="mb-2 font-poppins text-[26px] font-semibold leading-tight text-ink">Richiesta inviata</h1>
+          <p className="mb-6 text-[15px] leading-relaxed text-ink-2">
+            {summary ? `${summary.kidNames} · ${activity.name}. ` : `${activity.name}. `}
+            Il centro la vede adesso: ti avvisiamo appena risponde. Intanto la trovi in Prenotazioni come “In attesa
+            del centro”.
+          </p>
+          {summary && (
+            <div className="mb-6 w-full rounded-2xl border border-trama-line bg-white px-4 py-3">
+              <SRow label="Attività" value={activity.name} />
+              <SRow label="Per" value={summary.kidNames} />
+              <SRow label="Quando" value={summary.weeksLabel} />
+              {summary.preServiceIncluded && <SRow label="Ingresso anticipato" value="Richiesto" />}
+              {summary.postServiceIncluded && <SRow label="Uscita posticipata" value="Richiesta" />}
+              {summary.mealIncluded && <SRow label="Mensa" value="Richiesta" />}
+              {summary.shuttleIncluded && <SRow label="Navetta" value="Richiesta" />}
+              <div className="mt-2 flex justify-between border-t border-trama-line pt-2.5 text-[13.5px]">
+                <span className="font-semibold text-ink">Costo indicativo</span>
+                <span className="font-semibold text-ink">€{summary.totalAmount}</span>
+              </div>
+              <p className="pt-2 text-[12.5px] leading-snug text-ink-3">Nessun pagamento adesso.</p>
+            </div>
+          )}
+          <Link
+            href="/nextgen/prenotazioni"
+            className="mb-2.5 flex min-h-[52px] w-full items-center justify-center rounded-[12px] bg-trama-primary text-[16px] font-semibold text-white active:bg-trama-primary-press"
+          >
+            Vai a Prenotazioni
+          </Link>
+          <Link
+            href="/nextgen"
+            className="flex min-h-[52px] w-full items-center justify-center rounded-[12px] border border-trama-line bg-white text-[16px] font-semibold text-ink active:bg-black/[0.04]"
+          >
+            Torna alla Home
+          </Link>
+        </div>
+      </PhoneShell>
+    );
+  }
 
   return (
     <PhoneShell>

@@ -1,5 +1,6 @@
 import { test, expect } from "../fixtures/roles";
 import { gotoAsRole, loginAs, isRealDeployment } from "../fixtures/roles";
+import { submitBookingFromKidsStep } from "../fixtures/booking-flow";
 
 // Area: Genitori - Prenotazione
 // Generato da BuddyKids_Test_Case.xlsx - 11 casi.
@@ -181,17 +182,19 @@ test.describe("Genitori - Prenotazione", () => {
     // Step 2 - Chi partecipa: seleziona il primo bambino disponibile.
     await expect(page.getByText("Chi partecipa?")).toBeVisible();
     await page.locator("label, button").filter({ hasText: /.+/ }).first().click().catch(() => {});
-    await page.getByRole("button", { name: "Continua" }).click();
 
-    // Step 3 - conferma.
-    await page.getByRole("button", { name: "Conferma e paga" }).click();
+    // Step 3 - conferma (o invio della richiesta, con BOOKINGS_V2).
+    const flow = await submitBookingFromKidsStep(page);
     await expect(page).toHaveURL(/\/success/, { timeout: 15_000 });
+    // Con V2 la conferma è "Richiesta inviata" e la riga si chiama "Quando".
+    const weeksLabel = flow === "richiesta-v2" ? "Quando" : "Settimane";
 
     // NOTA: se la precondizione (bambino selezionabile) non è disponibile, il
     // test si ferma prima con uno skip esplicito invece di fallire in modo
     // poco chiaro sullo step 2 — vedi i controlli sopra.
-    await expect(page.getByText("Settimane")).toBeVisible();
-    const weeksRow = page.locator("span", { hasText: "Settimane" }).locator("xpath=following-sibling::span").first();
+    if (flow === "richiesta-v2") await expect(page.getByText("Richiesta inviata")).toBeVisible();
+    await expect(page.getByText(weeksLabel, { exact: true })).toBeVisible();
+    const weeksRow = page.locator("span", { hasText: weeksLabel }).locator("xpath=following-sibling::span").first();
     await expect(weeksRow).not.toHaveText("--");
     await expect(weeksRow).not.toHaveText("");
   });
@@ -217,9 +220,18 @@ test.describe("Genitori - Prenotazione", () => {
     await page.getByRole("button", { name: "Continua" }).click();
     await skipServicesStepIfPresent(page);
     await page.locator("label, button").filter({ hasText: /.+/ }).first().click().catch(() => {});
-    await page.getByRole("button", { name: "Continua" }).click();
-    await page.getByRole("button", { name: "Conferma e paga" }).click();
+    const flow = await submitBookingFromKidsStep(page);
     await expect(page).toHaveURL(/\/success/, { timeout: 15_000 });
+
+    // Con BOOKINGS_V2 (richiesta senza pagamento, 15/10/2026) la conferma non
+    // offre "Condividi"/"Aggiungi al calendario": la richiesta non è ancora
+    // accettata dal centro. Verifichiamo le uscite previste e ci fermiamo qui.
+    if (flow === "richiesta-v2") {
+      await expect(page.getByText("Richiesta inviata")).toBeVisible();
+      await expect(page.getByRole("link", { name: "Vai a Prenotazioni" })).toBeVisible();
+      await expect(page.getByRole("link", { name: "Aggiungi al calendario" })).toHaveCount(0);
+      return;
+    }
 
     // "Aggiungi al calendario" è un <a> con href data:text/calendar (.ics) —
     // deve essere abilitato (non il bottone disabled di fallback).

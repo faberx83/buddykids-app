@@ -11,6 +11,9 @@ import {
   withdrawInterestAction,
   spawnGroupFromProposalAction,
 } from "@/app/actions/communities";
+import PageHeader from "@/components/PageHeader";
+import { useNavV2 } from "@/components/nextgen/ProfileChip";
+import { CLASSE_SCUOLA_COPY as V2_COPY } from "@/lib/nextgen/classe-scuola-copy";
 import { useNextgenToast } from "@/components/nextgen/NextgenToastProvider";
 
 // SPRINT 4 (NEXTGEN) — Dettaglio Community. Sezioni: membri/ruoli, "Le
@@ -33,6 +36,9 @@ export default function CommunityDetailClient({
 }) {
   const router = useRouter();
   const showToast = useNextgenToast();
+  // 15/10/2026: con la nuova barra è "Classe e scuola" (vedi
+  // lib/nextgen/classe-scuola-copy.ts); intestazione V2, niente emoji.
+  const v2 = useNavV2();
   const [proposals, setProposals] = useState(detail.proposals);
   const [showProposeForm, setShowProposeForm] = useState(false);
   const [selectedActivityId, setSelectedActivityId] = useState("");
@@ -58,7 +64,7 @@ export default function CommunityDetailClient({
       setError(res.error);
       return;
     }
-    showToast("Proposta condivisa con la community!");
+    showToast(v2 ? V2_COPY.toastProposed : "Proposta condivisa con la community!");
     setShowProposeForm(false);
     setSelectedActivityId("");
     setNote("");
@@ -96,7 +102,15 @@ export default function CommunityDetailClient({
   }
 
   return (
-    <div className="flex flex-col gap-6 px-5 py-6">
+    <div className={v2 ? "flex flex-col" : "flex flex-col gap-6 px-5 py-6"}>
+      {v2 && (
+        <>
+          <PageHeader title={detail.name} showBrandIcon />
+          {detail.description && <p className="px-5 pt-2 text-[14px] leading-snug text-ink-2">{detail.description}</p>}
+        </>
+      )}
+      <div className={v2 ? "flex flex-col gap-6 px-5 pb-8 pt-4" : "contents"}>
+      {!v2 && (
       <div className="flex items-center gap-3">
         <div className="flex h-14 w-14 flex-shrink-0 items-center justify-center rounded-2xl bg-bg text-3xl">
           {detail.emoji}
@@ -109,6 +123,7 @@ export default function CommunityDetailClient({
           {detail.description && <p className="truncate text-[13px] text-ink-3">{detail.description}</p>}
         </div>
       </div>
+      )}
 
       {/* Invito — link o codice, come richiesto ("invito tramite link o QR";
           il codice testuale è la base condivisibile anche via QR in futuro). */}
@@ -143,7 +158,7 @@ export default function CommunityDetailClient({
       {/* Le attività della community */}
       <div>
         <div className="mb-3 flex items-center justify-between">
-          <div className="font-poppins text-[21px] font-semibold text-ink">Le attività della community</div>
+          <div className="font-poppins text-[21px] font-semibold text-ink">{v2 ? V2_COPY.proposalsTitle : "Le attività della community"}</div>
           <button
             type="button"
             onClick={() => setShowProposeForm((v) => !v)}
@@ -244,6 +259,7 @@ export default function CommunityDetailClient({
             ))}
           </div>
         )}
+      </div>
       </div>
     </div>
   );

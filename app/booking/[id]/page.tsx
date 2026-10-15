@@ -6,7 +6,7 @@ import { getEligibleInviteDiscount } from "@/lib/data/invites";
 import { getActivityDays } from "@/lib/data/activity-days";
 import { createClient } from "@/lib/supabase/server";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
-import { resolveFeatureFlag } from "@/lib/feature-flags/resolve";
+import { resolveFeatureFlag, resolveFeatureFlagVisibility } from "@/lib/feature-flags/resolve";
 import { generateCorrelationId } from "@/lib/telemetry/correlation";
 import PhoneShell from "@/components/PhoneShell";
 import BookingClient from "./BookingClient";
@@ -38,6 +38,10 @@ export default async function BookingPage({
   // resolveHomeHref() in app/booking/[id]/success/page.tsx, invece che dalla
   // route (che qui non distingue i due profili).
   let nextgen = false;
+  // 15/10/2026 — richiesta senza pagamento (vedi BookingClient, prop v2):
+  // stessa visibilità di Prenotazioni V2 (BOOKINGS_V2_ENABLED), solo dentro
+  // TRAMA ONE. Fail-closed: qualunque errore → flusso di prima.
+  let v2 = false;
   if (isSupabaseConfigured) {
     const supabase = await createClient();
     const {
@@ -51,6 +55,17 @@ export default async function BookingPage({
       tenant: "family",
       correlationId: generateCorrelationId(),
     });
+    if (nextgen) {
+      v2 = await resolveFeatureFlagVisibility({
+        flagName: "BOOKINGS_V2_ENABLED",
+        userId: user.id,
+        role: "parent",
+        tenant: "family",
+        correlationId: generateCorrelationId(),
+      })
+        .then((r) => r.enabled)
+        .catch(() => false);
+    }
   }
 
   const activity = await getActivityBySlug(id);
@@ -82,6 +97,7 @@ export default async function BookingPage({
         inviteDiscount={inviteDiscount}
         days={days}
         nextgen={nextgen}
+        v2={v2}
       />
     </PhoneShell>
   );

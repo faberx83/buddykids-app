@@ -15,7 +15,8 @@ test.describe("TRAMA — Sottopagine V2 [no browser]", () => {
   test("SP-01 PageHeader: intestazione V2 solo con la nuova barra e solo per le pagine famiglie (showBrandIcon)", () => {
     const src = read("components/PageHeader.tsx");
     expect(src).toContain("const navV2 = useNavV2();");
-    expect(src).toContain("if (navV2 && showBrandIcon) {");
+    // 15/10 pomeriggio: forzabile anche con v2 (flusso di richiesta /booking, fuori da /nextgen)
+    expect(src).toContain("if ((navV2 && showBrandIcon) || v2) {");
     expect(src).toContain("font-poppins text-[24px] font-semibold");
     // ramo di prima invariato per Legacy, Gestore e prenotazione
     expect(src).toContain("border-b border-[#F0F2F5] bg-white px-5 py-3.5");

@@ -41,7 +41,7 @@ export function betaFeedbackCategoryLabel(value: BetaFeedbackCategory | null | u
 // versione build (vedi app/actions/beta-feedback.ts).
 export interface BetaFeedbackClientContext {
   route?: string;
-  source?: "floating" | "profilo" | "novita";
+  source?: "floating" | "profilo" | "novita" | "home";
   viewport?: string;
   standalone?: boolean;
   language?: string;
@@ -59,7 +59,8 @@ export function sanitizeBetaFeedbackClientContext(input: unknown): BetaFeedbackC
     const v = raw[key];
     if (typeof v === "string" && v.trim()) out[key] = v.trim().slice(0, CONTEXT_STRING_LIMITS[key]);
   }
-  if (raw.source === "floating" || raw.source === "profilo" || raw.source === "novita") out.source = raw.source;
+  if (raw.source === "floating" || raw.source === "profilo" || raw.source === "novita" || raw.source === "home")
+    out.source = raw.source;
   if (typeof raw.standalone === "boolean") out.standalone = raw.standalone;
   return out;
 }

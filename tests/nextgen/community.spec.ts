@@ -30,7 +30,9 @@ test.describe("NEXTGEN - Community (Sprint 4)", () => {
     await loginAs(page, "parent");
     await page.goto("/nextgen/community");
 
-    await page.getByRole("button", { name: "Crea community" }).click();
+    // 15/10/2026: con la nuova barra (NAV_V2) la pagina si chiama "Classe e
+    // scuola" e il pulsante è "Crea nuova" (lib/nextgen/classe-scuola-copy.ts).
+    await page.getByRole("button", { name: /^(Crea community|Crea nuova)$/ }).click();
     const uniqueName = `Community di test ${Date.now()}`;
     await page.getByPlaceholder(/Nome/).fill(uniqueName);
     await page.getByRole("button", { name: "Crea" }).click();
@@ -62,7 +64,7 @@ test.describe("NEXTGEN - Community (Sprint 4)", () => {
     await page.locator("select").selectOption({ index: 1 });
     await page.getByRole("button", { name: "Condividi proposta" }).click();
 
-    await expect(page.getByText("Le attività della community")).toBeVisible();
+    await expect(page.getByText(/^(Le attività della community|Attività proposte)$/)).toBeVisible();
     // Con più proposte accumulate da run precedenti (community di test mai
     // svuotata tra un run e l'altro) ci sono più bottoni "Mi interessa" in
     // pagina — strict mode violation trovata nel run reale del 28/07 (Gate C
@@ -113,8 +115,10 @@ test.describe("NEXTGEN - Community (Sprint 4)", () => {
     await loginAs(page, "parent");
     await page.goto("/nextgen/community");
 
-    const createButton = page.getByRole("button", { name: "Crea community" });
-    await expect(createButton).toHaveClass(/bg-trama-violet/);
+    // 15/10/2026: con la nuova barra (NAV_V2) la pagina si chiama "Classe e
+    // scuola" e il pulsante è "Crea nuova" (lib/nextgen/classe-scuola-copy.ts).
+    const createButton = page.getByRole("button", { name: /^(Crea community|Crea nuova)$/ });
+    await expect(createButton).toHaveClass(/bg-trama-violet|bg-trama-primary/);
     await expect(createButton).not.toHaveClass(/bg-ink\b/);
   });
 });

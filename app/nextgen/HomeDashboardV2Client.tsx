@@ -33,6 +33,7 @@ import DayCoordinationBlock from "@/components/nextgen/DayCoordination";
 import SeasonSummaryCard, { type SeasonSummaryAction, type SeasonSummaryWelcome } from "@/components/nextgen/SeasonSummaryCard";
 import NextgenCheckinCard from "@/components/nextgen/NextgenCheckinCard";
 import MockDataBanner from "@/components/MockDataBanner";
+import { openBetaFeedback } from "@/lib/nextgen/feedback-open";
 
 export interface HomeV2NextClosure {
   startDate: string;
@@ -473,6 +474,25 @@ export default function HomeDashboardV2Client({
         <QuickAction href="/nextgen/search" icon="ti-search" label="Scopri attività" />
         <QuickAction href="/nextgen/planner?mode=calendario" icon="ti-share" label="Condividi piano" />
       </section>
+
+      {/* 9. BETA — "Dicci cosa ne pensi" (15/10/2026, sì di Fabrizio al
+          dubbio 5). Con la nuova barra il pulsante flottante del feedback è
+          nascosto (hideFab): da qui si apre lo stesso pannello di Profilo e
+          Novità, senza un secondo pannello. */}
+      <button
+        type="button"
+        onClick={() => openBetaFeedback("home")}
+        className="flex min-h-[64px] w-full items-center gap-3 rounded-2xl border border-trama-line bg-white px-4 py-3 text-left active:bg-black/[0.04]"
+      >
+        <span className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-trama-accent-soft text-trama-accent-ink">
+          <i className="ti ti-message-heart text-[20px]" aria-hidden="true" />
+        </span>
+        <span className="flex min-w-0 flex-1 flex-col gap-px">
+          <span className="text-[15px] font-semibold text-ink">Dicci cosa ne pensi</span>
+          <span className="text-[12.5px] leading-snug text-ink-2">TRAMA è in prova: ogni parere ci aiuta a migliorarla.</span>
+        </span>
+        <i className="ti ti-chevron-right flex-shrink-0 text-[18px] text-ink-3" aria-hidden="true" />
+      </button>
     </div>
   );
 }

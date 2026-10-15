@@ -10,6 +10,7 @@ export default function PageHeader({
   backHref,
   onBack,
   showBrandIcon,
+  v2 = false,
 }: {
   title: string;
   backHref?: string;
@@ -28,6 +29,10 @@ export default function PageHeader({
   // schermate passa questa prop, quindi il loro aspetto resta invariato.
   // Solo le pagine NEXTGEN genitore la passano esplicitamente.
   showBrandIcon?: boolean;
+  // 15/10/2026: forza l'intestazione V2 fuori dall'area /nextgen (es. il
+  // flusso di richiesta /booking/[id] con BOOKINGS_V2_ENABLED, che non è
+  // dentro il layout NEXTGEN e quindi non vede useNavV2()). Default false.
+  v2?: boolean;
 }) {
   const router = useRouter();
   // TRAMA — GLOBAL ACTION PROGRESS · LIVE FIX (15/09/2026, §6 "PROGRAMMATIC
@@ -53,7 +58,7 @@ export default function PageHeader({
     if (backHref) router.push(backHref);
     else router.back();
   };
-  if (navV2 && showBrandIcon) {
+  if ((navV2 && showBrandIcon) || v2) {
     return (
       <div className="flex flex-shrink-0 items-center gap-1 px-5 pb-1 pt-[14px]">
         <button

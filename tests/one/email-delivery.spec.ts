@@ -1,5 +1,6 @@
 import { createClient } from "@supabase/supabase-js";
 import { expect, isRealDeployment, loginAs, test } from "../fixtures/roles";
+import { submitBookingFromKidsStep } from "../fixtures/booking-flow";
 
 // TRAMA ONE Build Sprint 6 (backlog vincolante P2, "email fire-and-forget",
 // SPRINT_GOVERNANCE.md riga 151, DEC-49) — prima di questo sprint
@@ -86,9 +87,7 @@ async function createRealWeeklyBooking(page: import("@playwright/test").Page) {
     .first()
     .click()
     .catch(() => {});
-  await page.getByRole("button", { name: "Continua" }).click();
-
-  await page.getByRole("button", { name: "Conferma e paga" }).click();
+  await submitBookingFromKidsStep(page);
   await expect(page).toHaveURL(/\/success/, { timeout: 15_000 });
 }
 

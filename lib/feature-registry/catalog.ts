@@ -900,11 +900,15 @@ export const FEATURE_CATALOG: FeatureCatalogEntry[] = [
       "Prenotazioni famiglie nello stile V2.1: riepilogo in una riga, In arrivo / Passate, Da sistemare (stesse " +
       "parole del Da fare in Home), prenotazioni per mese con data, stato, figli e prezzo; prenotazione aperta con " +
       "stato spiegato, riepilogo, chi accompagna, Scrivi al centro, Modifica, Scheda attività, Annulla. La copertura " +
-      "delle settimane resta nel Planner.",
+      "delle settimane resta nel Planner. Dal 15/10/2026 anche il flusso /booking/[id] diventa una richiesta " +
+      "al centro in 2 passi (Quando, Chi partecipa) senza pagamento, con conferma \"Richiesta inviata\".",
     sourceFiles: [
       "app/nextgen/prenotazioni/page.tsx",
       "app/nextgen/prenotazioni/PrenotazioniV2Client.tsx",
       "lib/nextgen/bookings-v2.ts",
+      "app/booking/[id]/page.tsx",
+      "app/booking/[id]/BookingClient.tsx",
+      "app/booking/[id]/success/page.tsx",
     ],
     note: "Riusa cancelBookingAction, ContactCenterButton, le pagine di modifica e la scheda attività.",
     riskLevel: "medium",

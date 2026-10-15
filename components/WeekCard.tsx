@@ -8,6 +8,7 @@ export default function WeekCard({
   selected,
   onToggle,
   alreadyBooked,
+  v2 = false,
 }: {
   week: Week;
   selected: boolean;
@@ -16,6 +17,9 @@ export default function WeekCard({
   // genitore per questa stessa attività — non deve essere ri-selezionabile
   // (eviteremmo una doppia prenotazione della stessa settimana/campus).
   alreadyBooked?: boolean;
+  // 15/10/2026 — richiesta V2 (BookingClient v2): settimana scelta in blu
+  // notte invece dell'azzurro Legacy. Solo colori: testi invariati.
+  v2?: boolean;
 }) {
   // "Non offerta qui": l'attività non copre questa settimana della stagione
   // (mostrata comunque, per restare allineati alla griglia di 13 settimane
@@ -65,14 +69,16 @@ export default function WeekCard({
       // `selected`, che è quello vero.
       className={`relative cursor-pointer rounded-md border-[1.5px] p-3 transition-colors ${
         selected
-          ? "border-sky bg-sky-light ring-2 ring-sky/30"
+          ? v2
+            ? "border-trama-primary bg-trama-primary-soft ring-2 ring-trama-primary/20"
+            : "border-sky bg-sky-light ring-2 ring-sky/30"
           : low
           ? "border-yellow bg-yellow-light"
           : "border-[#E8EBF0] bg-white"
       }`}
     >
       {selected && (
-        <div className="absolute -right-1.5 -top-1.5 flex h-5 w-5 items-center justify-center rounded-full bg-sky text-white shadow-[0_1px_4px_rgba(0,0,0,0.2)]">
+        <div className={`absolute -right-1.5 -top-1.5 flex h-5 w-5 items-center justify-center rounded-full ${v2 ? "bg-trama-primary" : "bg-sky"} text-white shadow-[0_1px_4px_rgba(0,0,0,0.2)]`}>
           <i className="ti ti-check text-[12px]" />
         </div>
       )}
@@ -82,7 +88,7 @@ export default function WeekCard({
       </div>
       <div
         className={`mt-1 text-[11px] font-medium ${
-          selected ? "text-sky" : low ? "text-[#9a6b00]" : "text-green"
+          selected ? (v2 ? "text-trama-primary" : "text-sky") : low ? "text-[#9a6b00]" : "text-green"
         }`}
       >
         {selected ? "✓ Selezionata" : low ? `⚡ ultimi ${week.spots}` : `✓ ${week.spots} posti`}
