@@ -43,26 +43,51 @@ const CELL_LABEL: Record<PeriodWeekState, string> = {
   school: "scuola",
 };
 
-function WeekStrip({ model }: { model: SeasonSummaryModel }) {
+function WeekStrip({
+  model,
+  weekHref,
+  onWeekClick,
+}: {
+  model: SeasonSummaryModel;
+  weekHref?: (weekStartIso: string) => string;
+  onWeekClick?: (weekStartIso: string) => void;
+}) {
   const description = model.cells.map((c) => `${c.dateRange}: ${CELL_LABEL[c.state]}`).join("; ");
+  // 15/10/2026 (Fabrizio: "cliccando sulla settimana di interesse mi porti a
+  // gestire quella settimana"): con weekHref/onWeekClick ogni cella che non è
+  // solo scuola apre quella settimana nel Planner.
+  const interactive = Boolean(weekHref || onWeekClick);
+  const cellClass = (c: SeasonSummaryModel["cells"][number]) => `flex h-[30px] items-center justify-center rounded-md ${CELL_CLASS[c.state]}`;
+  const icon = (c: SeasonSummaryModel["cells"][number]) =>
+    c.closure ? <i className={`ti ti-school text-[13px] ${c.state === "organized" ? "text-white" : "text-[#4B5563]"}`} aria-hidden="true" /> : null;
   return (
     <div className="flex flex-col gap-1.5">
       <div
-        role="img"
+        role={interactive ? "group" : "img"}
         aria-label={`Settimane del periodo — ${description}`}
         className="grid gap-1"
         style={{ gridTemplateColumns: `repeat(${Math.max(model.cells.length, 1)}, minmax(0, 1fr))` }}
       >
-        {model.cells.map((c) => (
-          <span key={c.index} className={`flex h-[26px] items-center justify-center rounded-md ${CELL_CLASS[c.state]}`}>
-            {c.closure && (
-              <i
-                className={`ti ti-school text-[13px] ${c.state === "organized" ? "text-white" : "text-[#4B5563]"}`}
-                aria-hidden="true"
-              />
-            )}
-          </span>
-        ))}
+        {model.cells.map((c) => {
+          const tappable = interactive && c.weekStart && c.state !== "school";
+          if (!tappable) {
+            return (
+              <span key={c.index} className={cellClass(c)}>
+                {icon(c)}
+              </span>
+            );
+          }
+          const label = `Apri la settimana ${c.dateRange}: ${CELL_LABEL[c.state]}`;
+          return weekHref ? (
+            <Link key={c.index} href={weekHref(c.weekStart!)} aria-label={label} className={`${cellClass(c)} active:scale-95`}>
+              {icon(c)}
+            </Link>
+          ) : (
+            <button key={c.index} type="button" onClick={() => onWeekClick!(c.weekStart!)} aria-label={label} className={`${cellClass(c)} active:scale-95`}>
+              {icon(c)}
+            </button>
+          );
+        })}
       </div>
       <div
         className="grid text-[11.5px] text-ink-2"
@@ -84,8 +109,14 @@ export default function SeasonSummaryCard({
   attentionAction,
   notStartedAction,
   welcome,
+  weekHref,
+  onWeekClick,
 }: {
   model: SeasonSummaryModel;
+  /** 15/10/2026: celle della striscia toccabili (Home → link al Planner). */
+  weekHref?: (weekStartIso: string) => string;
+  /** 15/10/2026: celle della striscia toccabili (Planner → apre la settimana). */
+  onWeekClick?: (weekStartIso: string) => void;
   /** CTA sulla prima settimana che chiede un'azione (stato progress). */
   attentionAction?: SeasonSummaryAction | null;
   /** CTA dello stato not_started. */
@@ -153,7 +184,7 @@ export default function SeasonSummaryCard({
           {model.neededCount === 1 ? "1 settimana" : `${model.neededCount} settimane`} ancora da pianificare.
           <span className="text-ink-2"> Aggiungi ciò che fate già o cerca un'attività.</span>
         </p>
-        <WeekStrip model={model} />
+        <WeekStrip model={model} weekHref={weekHref} onWeekClick={onWeekClick} />
         {notStartedAction && (
           <Link
             href={notStartedAction.href}
@@ -176,7 +207,7 @@ export default function SeasonSummaryCard({
         </span>
         <span className="text-[14px] text-[#374151]">{model.unitLabel ?? "settimane organizzate"}</span>
       </div>
-      <WeekStrip model={model} />
+      <WeekStrip model={model} weekHref={weekHref} onWeekClick={onWeekClick} />
       <div className="flex flex-wrap gap-x-3.5 gap-y-1 text-[12px] text-[#4B5563]">
         <span className="flex items-center gap-1.5">
           <span className="h-2.5 w-2.5 rounded-[3px] bg-trama-green" aria-hidden="true" />

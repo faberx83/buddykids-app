@@ -584,6 +584,9 @@ function KidsStep({
   const [formOpen, setFormOpen] = useState(kids.length === 0);
   const [name, setName] = useState("");
   const [birthDate, setBirthDate] = useState("");
+  // 15/10/2026 (Fabrizio: "se aggiungo un figlio dal carosello non mi chiede il
+  // genere"): stessa scelta facoltativa di AddKidForm (KidGender).
+  const [gender, setGender] = useState<"F" | "M" | "altro" | "">("");
   const [interests, setInterests] = useState<string[]>([]);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -606,7 +609,7 @@ function KidsStep({
     if (declarationRequired && !declarationAccepted) return setError("Conferma la dichiarazione per continuare.");
     setSaving(true);
     try {
-      const res = await addKidAction(name, birthDate, undefined, interests, declarationAccepted);
+      const res = await addKidAction(name, birthDate, gender || undefined, interests, declarationAccepted);
       if (res.error || !res.kid) {
         setError(res.error || "Non siamo riusciti a salvare. Riprova.");
         return;
@@ -615,6 +618,7 @@ function KidsStep({
       setName("");
       setBirthDate("");
       setInterests([]);
+      setGender("");
       setDeclarationAccepted(false);
       setFormOpen(false);
     } catch {
@@ -667,7 +671,33 @@ function KidsStep({
           </label>
           <fieldset className="flex flex-col gap-2">
             <legend className="mb-2 text-[13px] font-semibold text-ink-2">
-              Cosa {name.trim() ? `piace a ${name.trim()}` : "gli piace"}? <span className="font-normal text-ink-3">(facoltativo)</span>
+              È… <span className="font-normal text-ink-3">(facoltativo)</span>
+            </legend>
+            <div className="flex flex-wrap gap-1.5">
+              {(
+                [
+                  ["F", "Una bambina"],
+                  ["M", "Un bambino"],
+                  ["", "Preferisco non dirlo"],
+                ] as const
+              ).map(([value, label]) => (
+                <button
+                  key={label}
+                  type="button"
+                  aria-pressed={gender === value}
+                  onClick={() => setGender(value)}
+                  className={`min-h-[40px] rounded-full border px-3.5 text-[13px] font-semibold ${
+                    gender === value ? "border-trama-primary bg-trama-primary text-white" : "border-[#E3E6EC] bg-white text-ink"
+                  }`}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+          </fieldset>
+          <fieldset className="flex flex-col gap-2">
+            <legend className="mb-2 text-[13px] font-semibold text-ink-2">
+              Cosa {name.trim() ? `piace a ${name.trim()}` : gender === "F" ? "le piace" : "gli piace"}? <span className="font-normal text-ink-3">(facoltativo)</span>
             </legend>
             <div className="flex flex-wrap gap-1.5">
               {ONBOARDING_V2_INTERESTS.map((opt) => {

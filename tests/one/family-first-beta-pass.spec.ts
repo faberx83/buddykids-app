@@ -250,7 +250,11 @@ test.describe("Scopri, Planner, Home — family-first [no browser]", () => {
     expect(wantsNewExternalItem("?nuovo=altro")).toBe(false);
     expect(wantsNewExternalItem("")).toBe(false);
     const section = read("../../components/nextgen/ExternalPlannerItemsSection.tsx");
-    expect(section).toContain("if (!wantsNewExternalItem(window.location.search)) return;");
+    // 15/10/2026: il modulo si apre anche quando "?nuovo=impegno" arriva
+    // mentre si è già nel Planner (dal + della barra), non solo al caricamento.
+    expect(section).toContain('const wantsNew = wantsNewExternalItem(`?${searchParams?.toString() ?? ""}`);');
+    expect(section).toContain("if (!wantsNew) return;");
+    expect(section).toContain('setMode("creating");');
     expect(section).toContain('id="impegni"');
   });
 

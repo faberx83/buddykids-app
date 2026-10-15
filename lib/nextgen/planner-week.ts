@@ -263,3 +263,29 @@ export function itemsInWeek<T extends { startDate: string; endDate: string | nul
   const sunday = addDaysIso(mondayIso, 6);
   return items.filter((i) => i.startDate <= sunday && (i.endDate ?? i.startDate) >= mondayIso);
 }
+
+/**
+ * 15/10/2026 (Fabrizio: "spiegami pallini e perché 'da completare'… come lo
+ * vedo semplicemente?"): per ogni figlio, i giorni feriali di scuola chiusa
+ * (non passati) in cui non ha ancora niente nel Planner. È il motivo per cui
+ * la settimana risulta "Da completare" o "Da organizzare".
+ */
+export function uncoveredClosureDays(
+  days: { dateIso: string; label: string; isPast: boolean; isWeekend: boolean; kidIds: string[]; closureLabels: string[] }[],
+  kids: { id: string; name: string }[]
+): { kidId: string; kidName: string; dayLabels: string[] }[] {
+  const closureDays = days.filter((d) => d.closureLabels.length > 0 && !d.isPast && !d.isWeekend);
+  return kids
+    .map((k) => ({
+      kidId: k.id,
+      kidName: k.name,
+      dayLabels: closureDays.filter((d) => !d.kidIds.includes(k.id)).map((d) => d.label.toLowerCase()),
+    }))
+    .filter((r) => r.dayLabels.length > 0);
+}
+
+/** "lunedì 7 e martedì 8" / "lunedì 7, martedì 8 e mercoledì 9". */
+export function joinItalian(items: string[]): string {
+  if (items.length <= 1) return items[0] ?? "";
+  return `${items.slice(0, -1).join(", ")} e ${items[items.length - 1]}`;
+}

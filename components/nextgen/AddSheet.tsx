@@ -12,7 +12,9 @@
 
 import { useEffect, useRef } from "react";
 import Link from "next/link";
-import { NEW_EXTERNAL_ITEM_HREF } from "@/lib/planner/new-external-item-link";
+import { usePathname, useSearchParams } from "next/navigation";
+import { newExternalItemHref } from "@/lib/planner/new-external-item-link";
+import { useCloseOnBack } from "@/lib/nextgen/use-close-on-back";
 
 function mondayOfTodayRome(): string {
   const parts = new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Rome", year: "numeric", month: "2-digit", day: "2-digit" })
@@ -36,6 +38,13 @@ export default function AddSheet({
   radarEnabled?: boolean;
 }) {
   const firstLinkRef = useRef<HTMLAnchorElement | null>(null);
+  // 15/10/2026: dal Planner, "Un impegno" parte dalla settimana che si sta
+  // guardando (il Planner la tiene in ?week=).
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const plannerWeek = pathname?.startsWith("/nextgen/planner") ? searchParams?.get("week") : null;
+  // 15/10/2026: "Indietro" chiude il foglio (prima si chiudeva solo con la X).
+  const { closeThenNavigate } = useCloseOnBack(open, onClose);
   useEffect(() => {
     if (!open) return;
     firstLinkRef.current?.focus();
@@ -52,7 +61,7 @@ export default function AddSheet({
     ...(addItemEnabled
       ? [
           {
-            href: NEW_EXTERNAL_ITEM_HREF,
+            href: newExternalItemHref(plannerWeek),
             icon: "ti-calendar-plus",
             title: "Un impegno",
             detail: "Nuoto, inglese, un campus: anche se il centro non è su TRAMA",
@@ -110,7 +119,10 @@ export default function AddSheet({
             key={o.title}
             ref={i === 0 ? firstLinkRef : undefined}
             href={o.href}
-            onClick={onClose}
+            onClick={(e) => {
+              e.preventDefault();
+              closeThenNavigate(o.href);
+            }}
             className={`flex min-h-[64px] items-center gap-3.5 rounded-[12px] p-3 text-ink active:scale-[0.99] ${o.primary ? "bg-trama-primary-soft" : ""}`}
           >
             <span

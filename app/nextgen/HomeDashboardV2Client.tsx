@@ -375,6 +375,7 @@ export default function HomeDashboardV2Client({
           welcome={welcome}
           attentionAction={attentionAction}
           notStartedAction={notStartedAction}
+          weekHref={(week) => `/nextgen/planner?week=${week}`}
         />
       )}
 
