@@ -37,14 +37,13 @@ export default function ResetPasswordPage() {
   return (
     <PhoneShell>
       <div className="flex min-h-screen flex-col items-center justify-center px-8 py-10 sm:min-h-0 sm:flex-1">
-        <div
-          className="mb-5 flex h-16 w-16 items-center justify-center rounded-full text-3xl font-bold text-white"
-          style={{ background: "linear-gradient(135deg,#4DAFEF,#3ECFB2)" }}
-        >
-          BK
-        </div>
-        <h1 className="mb-1 text-xl font-bold text-ink">Imposta una nuova password</h1>
-        <p className="mb-7 text-sm text-ink-2">Scegli una nuova password per il tuo account</p>
+        {/* 15/10/2026 — via il vecchio cerchio "BK" (BuddyKids): segno TRAMA
+            blu notte (pagina comune a famiglie e centri, regola di brand:
+            colorato solo lato genitore) e stessi campi/pulsante della pagina
+            di accesso V2. */}
+        <img src="/brand/trama-logo-mark-navy.png" alt="" aria-hidden="true" className="mb-5 h-14 w-auto" />
+        <h1 className="mb-1 font-poppins text-[22px] font-semibold text-ink">Imposta una nuova password</h1>
+        <p className="mb-7 text-[15px] text-ink-2">Scegli una nuova password per il tuo account</p>
 
         {done ? (
           <p className="text-sm font-medium text-green">Password aggiornata! Ti reindirizziamo…</p>
@@ -58,7 +57,7 @@ export default function ResetPasswordPage() {
                 minLength={6}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="w-full rounded-lg border-[1.5px] border-[#E8EBF0] bg-[#F4F6FA] px-4 py-3 pr-11 text-sm outline-none focus:border-sky"
+                className="min-h-[52px] w-full rounded-[12px] border-[1.5px] border-trama-line bg-white px-4 py-3 pr-11 text-[16px] outline-none focus:border-trama-primary"
                 placeholder="••••••••"
               />
               <button
@@ -74,7 +73,7 @@ export default function ResetPasswordPage() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full rounded-lg bg-sky py-3.5 text-sm font-bold text-white transition-colors hover:bg-[#3A9FDC] disabled:opacity-60"
+              className="min-h-[52px] w-full rounded-[12px] bg-trama-primary py-3.5 text-[16px] font-semibold text-white active:bg-trama-primary-press disabled:opacity-60"
             >
               {loading ? "Salvo…" : "Salva nuova password"}
             </button>

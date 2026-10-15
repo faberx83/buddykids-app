@@ -237,9 +237,15 @@ export default function LoginForm({
   const labelClass = isFamily
     ? "sr-only"
     : `mb-1.5 block text-xs font-semibold ${isAdmin ? "text-navy-text2" : "text-ink-2"}`;
-  const inputClass = `mb-3 w-full border-[1.5px] px-4 py-3 text-sm outline-none ${
+  // ACCESSO NEI COLORI V2 (15/10/2026, Fabrizio: "si cambia" — per tutte le
+  // famiglie, anche Legacy: la pagina è unica e il flag non si conosce prima
+  // del login). Solo il ramo famiglia: Partner e Admin invariati. Campi da
+  // 52px con testo a 16px (niente zoom automatico su iPhone), raggio 12,
+  // pulsante blu notte, link in viola scuro. Testi ed etichette invariati.
+  const familyLink = "#4A3F9E";
+  const inputClass = `mb-3 w-full border-[1.5px] px-4 py-3 ${isFamily ? "text-[16px]" : "text-sm"} outline-none ${
     isFamily
-      ? "rounded-full border-trama-navy/15 bg-white"
+      ? "min-h-[52px] rounded-[12px] border-trama-line bg-white focus:border-trama-primary"
       : isAdmin
       ? "rounded-lg border-navy-3 bg-navy-2 text-white placeholder:text-navy-text2"
       : "rounded-lg border-[#E8EBF0] bg-[#F4F6FA]"
@@ -275,7 +281,7 @@ export default function LoginForm({
               Riaggiunta qui, stessa animazione fade-up delle altre righe
               del tenant famiglia. */}
           <p
-            className={`text-sm text-ink-2 ${animateHeader ? "trama-fade-up" : ""}`}
+            className={`mb-5 text-[15px] text-ink-2 ${animateHeader ? "trama-fade-up" : ""}`}
             style={animateHeader ? { animationDelay: "2.1s" } : undefined}
           >
             {heading}
@@ -323,7 +329,7 @@ export default function LoginForm({
         <form onSubmit={handleSubmit} className="w-full">
             {mode === "signup" && invitePreview && (
               <div
-                className={`mb-4 rounded-lg px-3.5 py-3 text-xs font-medium ${
+                className={`mb-4 px-3.5 py-3 text-xs font-medium ${isFamily ? "rounded-[12px]" : "rounded-lg"} ${
                   invitePreview.valid ? "bg-green-light text-[#2d8f52]" : "bg-orange-light text-trama-orange"
                 }`}
               >
@@ -338,8 +344,8 @@ export default function LoginForm({
                 che il link che ha ricevuto è stato riconosciuto. */}
             {mode === "signup" && betaParam && betaInvitePreview && (
               <div
-                className={`mb-4 rounded-lg px-3.5 py-3 text-xs font-medium ${
-                  betaInvitePreview.valid ? "bg-trama-lilac/25 text-trama-violet" : "bg-orange-light text-trama-orange"
+                className={`mb-4 rounded-[12px] px-3.5 py-3 text-[13px] font-medium ${
+                  betaInvitePreview.valid ? "bg-trama-accent-soft text-trama-accent-ink" : "bg-orange-light text-trama-orange"
                 }`}
               >
                 {betaInvitePreview.valid
@@ -427,7 +433,11 @@ export default function LoginForm({
                   setError(null);
                   setMessage(null);
                 }}
-                className={`mb-4 text-xs font-medium ${isAdmin ? "text-navy-text2" : "text-ink-3"}`}
+                className={
+                  isFamily
+                    ? "mb-3 flex min-h-[44px] items-center text-[14px] font-semibold text-trama-accent-ink"
+                    : `mb-4 text-xs font-medium ${isAdmin ? "text-navy-text2" : "text-ink-3"}`
+                }
               >
                 Password dimenticata?
               </button>
@@ -458,11 +468,11 @@ export default function LoginForm({
                       />
                       <span>
                         Accetto i{" "}
-                        <Link href="/terms" target="_blank" className="underline" style={{ color: themeColor }}>
+                        <Link href="/terms" target="_blank" className="underline" style={{ color: isFamily ? familyLink : themeColor }}>
                           Termini di Servizio
                         </Link>
                         . Leggi anche la{" "}
-                        <Link href="/privacy" target="_blank" className="underline" style={{ color: themeColor }}>
+                        <Link href="/privacy" target="_blank" className="underline" style={{ color: isFamily ? familyLink : themeColor }}>
                           Informativa Privacy
                         </Link>
                         .
@@ -488,9 +498,11 @@ export default function LoginForm({
             <button
               type="submit"
               disabled={loading}
-              className={`w-full py-3.5 text-sm font-bold text-white transition-opacity hover:opacity-90 disabled:opacity-60 ${
-                isFamily ? "rounded-full bg-trama-violet" : "rounded-lg"
-              }`}
+              className={
+                isFamily
+                  ? "min-h-[52px] w-full rounded-[12px] bg-trama-primary py-3.5 text-[16px] font-semibold text-white active:bg-trama-primary-press disabled:opacity-60"
+                  : "w-full rounded-lg py-3.5 text-sm font-bold text-white transition-opacity hover:opacity-90 disabled:opacity-60"
+              }
               style={{ background: isFamily ? undefined : themeColor }}
             >
               {loading
@@ -527,7 +539,11 @@ export default function LoginForm({
                   setError(null);
                   setMessage(null);
                 }}
-                className={`mt-5 w-full text-center text-xs font-medium ${isFamily ? "text-trama-violet" : ""}`}
+                className={
+                  isFamily
+                    ? "mt-4 flex min-h-[44px] w-full items-center justify-center text-[14px] font-semibold text-trama-accent-ink"
+                    : "mt-5 w-full text-center text-xs font-medium"
+                }
                 style={{ color: isFamily ? undefined : themeColor }}
               >
                 {mode === "login" ? "Non hai un account? Registrati" : "Hai già un account? Accedi"}
@@ -540,7 +556,11 @@ export default function LoginForm({
                 setError(null);
                 setMessage(null);
               }}
-              className={`mt-5 w-full text-center text-xs font-medium ${isFamily ? "text-trama-violet" : ""}`}
+              className={
+                  isFamily
+                    ? "mt-4 flex min-h-[44px] w-full items-center justify-center text-[14px] font-semibold text-trama-accent-ink"
+                    : "mt-5 w-full text-center text-xs font-medium"
+                }
               style={{ color: isFamily ? undefined : themeColor }}
             >
               Torna al login

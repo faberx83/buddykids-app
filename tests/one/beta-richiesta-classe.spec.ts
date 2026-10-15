@@ -111,3 +111,28 @@ test.describe("TRAMA — Feedback dalla Home V2 [no browser]", () => {
     expect(sanitizeBetaFeedbackClientContext({ source: "altro" }).source).toBeUndefined();
   });
 });
+
+test.describe("TRAMA — Accesso nei colori V2 (punto 2: \"si cambia\") [no browser]", () => {
+  test("LG-01 ramo famiglia: campi 52px testo 16px, pulsante blu notte, link viola scuro; Partner/Admin invariati", () => {
+    const f = read("app/auth/login/LoginForm.tsx");
+    expect(f).toContain('"min-h-[52px] rounded-[12px] border-trama-line bg-white focus:border-trama-primary"');
+    expect(f).toContain('${isFamily ? "text-[16px]" : "text-sm"}');
+    expect(f).toContain("min-h-[52px] w-full rounded-[12px] bg-trama-primary");
+    expect(f).not.toContain("rounded-full bg-trama-violet");
+    expect(f).toContain('style={{ color: isFamily ? familyLink : themeColor }}');
+    // Partner e Admin: stessi stili di prima
+    expect(f).toContain('"rounded-lg border-navy-3 bg-navy-2 text-white placeholder:text-navy-text2"');
+    expect(f).toContain('"w-full rounded-lg py-3.5 text-sm font-bold text-white transition-opacity hover:opacity-90 disabled:opacity-60"');
+    // etichette e testi invariati (li usano i test live e i lettori di schermo)
+    for (const t of ["Password dimenticata?", "Non hai un account? Registrati", "Hai già un account? Accedi", 'htmlFor="login-email"']) {
+      expect(f).toContain(t);
+    }
+  });
+
+  test("LG-02 nuova password: niente più cerchio 'BK', segno TRAMA e stessi controlli dell'accesso", () => {
+    const r = read("app/auth/reset-password/page.tsx");
+    expect(r).not.toMatch(/>\s*BK\s*</);
+    expect(r).toContain("/brand/trama-logo-mark-navy.png");
+    expect(r).toContain("rounded-[12px] bg-trama-primary");
+  });
+});
