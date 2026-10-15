@@ -142,7 +142,7 @@ export default function PlannerV2Client({
   todayIso: string;
   initialView: View;
   initialWeek: string | null;
-  initialPanel: "mappa" | "gruppi" | null;
+  initialPanel: "mappa" | "gruppi" | "chi" | null;
   kids: Kid[];
   bookings: AgendaBookingInput[];
   hoursByActivityDbId: Record<string, string | undefined>;
@@ -203,7 +203,7 @@ export default function PlannerV2Client({
   const [kidFilter, setKidFilter] = useState<string | null>(null);
   const [panel, setPanel] = useState<Panel>(initialPanel);
   // 15/10/2026: "Indietro" da Mappa o Gruppi torna al Planner (non esce dalla pagina).
-  useCloseOnBack((panel === "mappa" || panel === "gruppi") && !initialPanel, () => setPanel(null));
+  useCloseOnBack((panel === "mappa" || panel === "gruppi") && initialPanel !== "mappa" && initialPanel !== "gruppi", () => setPanel(null));
   const [responsibilities, setResponsibilities] = useState<WeekResponsibility[]>(initialResponsibilities);
   const [dismissedOverrides, setDismissedOverrides] = useState<Record<string, boolean>>({});
   const [seasonFilter, setSeasonFilter] = useState<SeasonFilter>("all");

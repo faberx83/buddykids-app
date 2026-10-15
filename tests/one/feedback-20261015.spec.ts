@@ -26,7 +26,8 @@ test.describe("TRAMA — feedback 15/10 [no browser]", () => {
     expect(read("components/nextgen/DiscoverFiltersSheet.tsx")).toContain("useCloseOnBack(open, onClose)");
     const planner = read("app/nextgen/planner/PlannerV2Client.tsx");
     expect(planner).toContain("useCloseOnBack(true, onClose)");
-    expect(planner).toContain('useCloseOnBack((panel === "mappa" || panel === "gruppi") && !initialPanel');
+    // aperti con un tocco (non da un link diretto ?panel=mappa|gruppi): Indietro torna al Planner
+    expect(planner).toContain('useCloseOnBack((panel === "mappa" || panel === "gruppi") && initialPanel !== "mappa" && initialPanel !== "gruppi"');
   });
 
   test("FB15-02 onboarding: genere facoltativo passato ad addKidAction", () => {

@@ -70,7 +70,9 @@ export default function AddSheet({
         ]
       : []),
     {
-      href: `/nextgen/planner?mode=calendario&week=${mondayOfTodayRome()}`,
+      // 15/10/2026: apre davvero il foglio "Chi fa cosa" (prima portava al
+      // Planner senza aprire niente), nella settimana che si sta guardando.
+      href: `/nextgen/planner?week=${plannerWeek ?? mondayOfTodayRome()}&panel=chi`,
       icon: "ti-car",
       title: "Chi accompagna",
       detail: "Chi porta e chi ritira, giorno per giorno",

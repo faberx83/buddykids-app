@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useGlobalActionProgress } from "@/components/GlobalActionProgress";
 import TramaThread from "@/components/nextgen/TramaThread";
+import { useNavV2 } from "@/components/nextgen/ProfileChip";
 
 export default function PageHeader({
   title,
@@ -37,6 +38,39 @@ export default function PageHeader({
   // fuori da /nextgen (LEGACY, Gestore): il hook no-op quando nessun
   // GlobalActionProgressProvider è montato sopra nell'albero.
   const { runNavigation } = useGlobalActionProgress();
+  // SOTTOPAGINE V2 (15/10/2026): nell'area famiglie con la nuova barra le
+  // sottopagine (Famiglia, Indirizzi, Promemoria, Impostazioni, Presenze,
+  // Messaggi, Novità…) prendono la stessa intestazione delle pagine V2:
+  // niente barra bianca con bordo né logo, freccia da 44px, titolo Poppins 24
+  // e segno TRAMA. Fuori da lì (Legacy, Gestore, prenotazione) invariato.
+  const navV2 = useNavV2();
+  const goBack = () => {
+    if (onBack) {
+      onBack();
+      return;
+    }
+    runNavigation();
+    if (backHref) router.push(backHref);
+    else router.back();
+  };
+  if (navV2 && showBrandIcon) {
+    return (
+      <div className="flex flex-shrink-0 items-center gap-1 px-5 pb-1 pt-[14px]">
+        <button
+          type="button"
+          onClick={goBack}
+          aria-label="Indietro"
+          className="-ml-2.5 flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-full text-[22px] text-ink active:bg-black/[0.04]"
+        >
+          <i className="ti ti-arrow-left" aria-hidden="true" />
+        </button>
+        <div className="flex min-w-0 flex-col">
+          <h1 className="truncate font-poppins text-[24px] font-semibold leading-tight text-ink">{title}</h1>
+          <TramaThread className="mt-1.5" />
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-shrink-0 items-center gap-3 border-b border-[#F0F2F5] bg-white px-5 py-3.5">

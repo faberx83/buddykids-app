@@ -44,7 +44,7 @@ export function profileV2Sections(input: {
         { key: "famiglia", icon: "ti-users", tint: "violet", title: "Famiglia", subtitle: "Invita l'altro genitore, condividete tutto", href: "/nextgen/planner/famiglia" },
         { key: "gruppi", icon: "ti-users-group", tint: "violet", title: "Gruppi", subtitle: "Altri genitori della classe e delle attività", href: "/nextgen/groups" },
         { key: "indirizzi", icon: "ti-map-pin", tint: "violet", title: "Indirizzi", subtitle: "Casa, lavoro e altri punti di partenza", href: "/nextgen/planner/indirizzi" },
-        { key: "condivisione", icon: "ti-share", tint: "violet", title: "Condivisione piano", subtitle: "Un link di sola lettura per settimana o mese", href: "/nextgen/planner?mode=calendario" },
+        { key: "condivisione", icon: "ti-share", tint: "violet", title: "Condivisione piano", subtitle: "Nel Planner: \"Condividi settimana\", un link di sola lettura", href: "/nextgen/planner?mode=calendario" },
         { key: "promemoria", icon: "ti-bell", tint: "violet", title: "Promemoria e avvisi", subtitle: "Avvisami prima di partire", href: "/nextgen/planner/promemoria" },
       ],
     },

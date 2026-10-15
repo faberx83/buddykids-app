@@ -305,3 +305,29 @@ body:has(.app-shell) {
 [data-nav-v2] .trama-thread-auto {
   display: flex;
 }
+
+/* TRAMA — PONTE V2 PER LE SOTTOPAGINE (15/10/2026). Nell'area famiglie con la
+   nuova barra (app/nextgen/layout.tsx mette data-nav-v2) le pagine non ancora
+   ridisegnate (Famiglia, Indirizzi, Promemoria, Impostazioni, Presenze,
+   Messaggi, Novità, Community, il modulo "Un impegno"…) usano ancora il viola
+   per pulsanti e selezioni. Qui, SOLO in quell'area, il viola pieno diventa il
+   blu notte primario e il testo viola l'accento leggibile (#4A3F9E); le tinte
+   chiare (bg-trama-violet/10…) restano. Le pagine V2 non usano trama-violet
+   (controllato in tests/one/polish-v2.spec.ts), quindi non cambiano. Legacy,
+   Gestori e Admin non hanno data-nav-v2: invariati. Per tornare indietro basta
+   togliere questo blocco. */
+[data-nav-v2] {
+  background-color: #fdfcfa;
+}
+[data-nav-v2] .bg-trama-violet {
+  background-color: #172a4d;
+}
+[data-nav-v2] .text-trama-violet {
+  color: #4a3f9e;
+}
+[data-nav-v2] .border-trama-violet {
+  border-color: #172a4d;
+}
+[data-nav-v2] .hover\:bg-trama-violet:hover {
+  background-color: #172a4d;
+}

@@ -153,7 +153,10 @@ export async function loadPlannerV2Props({
       ? "mappa"
       : searchParams.panel === "gruppi" || searchParams.mode === "gruppi"
         ? "gruppi"
-        : null;
+        : // 15/10/2026: "Chi accompagna" dal + apre direttamente il foglio della settimana.
+          searchParams.panel === "chi"
+          ? "chi"
+          : null;
 
   return {
     todayIso,

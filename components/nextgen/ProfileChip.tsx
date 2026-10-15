@@ -20,6 +20,14 @@ interface ProfileChipData {
 
 const ProfileChipContext = createContext<ProfileChipData>({ enabled: false, firstName: null, avatarUrl: null });
 
+/**
+ * 15/10/2026: true dentro l'area famiglie NEXTGEN con la nuova barra accesa.
+ * Usato anche da PageHeader per l'intestazione V2 delle sottopagine.
+ */
+export function useNavV2(): boolean {
+  return useContext(ProfileChipContext).enabled;
+}
+
 export function ProfileChipProvider({ value, children }: { value: ProfileChipData; children: React.ReactNode }) {
   return <ProfileChipContext.Provider value={value}>{children}</ProfileChipContext.Provider>;
 }
