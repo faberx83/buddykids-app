@@ -16,6 +16,7 @@
 // Planner (Timeline, Missioni, Promemoria — stesso registro linguistico).
 
 import { useEffect, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { wantsNewExternalItem } from "@/lib/planner/new-external-item-link";
 import type { Kid } from "@/lib/types";
 import type { ExternalPlannerItem, ExternalPlannerItemInput, ExternalPlannerItemKind } from "@/lib/data/external-planner-items";
@@ -42,8 +43,8 @@ function formatDateRangeIt(startDate: string, endDate: string): string {
   return startDate === endDate ? fmt(startDate) : `${fmt(startDate)} – ${fmt(endDate)}`;
 }
 
-function emptyInput(): ExternalPlannerItemInput {
-  const today = new Date().toISOString().slice(0, 10);
+function emptyInput(defaultDate?: string): ExternalPlannerItemInput {
+  const today = defaultDate && /^\d{4}-\d{2}-\d{2}$/.test(defaultDate) ? defaultDate : new Date().toISOString().slice(0, 10);
   return {
     kind: "commitment",
     title: "",
@@ -258,9 +259,12 @@ export default function ExternalPlannerItemsSection({
   title = "I tuoi impegni",
   emptyText,
   v2 = false,
+  defaultDate,
 }: {
   items: ExternalPlannerItem[];
   kids: Kid[];
+  /** 15/10/2026: data proposta per un nuovo impegno (la settimana aperta nel Planner). */
+  defaultDate?: string;
   /** POLISH V2 (14/10/2026): titolo e testo vuoto della vista Settimana; default invariati. */
   title?: string;
   emptyText?: string;
@@ -272,11 +276,15 @@ export default function ExternalPlannerItemsSection({
   // Planner" (Scopri senza risultati / Home) il modulo è già aperto.
   // window.location (non useSearchParams): nessun Suspense boundary da
   // aggiungere alla pagina Planner.
+  // 15/10/2026: reagisce anche quando "?nuovo=impegno" arriva mentre si è già
+  // nel Planner (dal + della barra), non solo al primo caricamento.
+  const searchParams = useSearchParams();
+  const wantsNew = wantsNewExternalItem(`?${searchParams?.toString() ?? ""}`);
   useEffect(() => {
-    if (!wantsNewExternalItem(window.location.search)) return;
+    if (!wantsNew) return;
     setMode("creating");
     document.getElementById("impegni")?.scrollIntoView({ behavior: "smooth", block: "start" });
-  }, []);
+  }, [wantsNew]);
   const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
   // TRAMA — DELETE UX · OPTIMISTIC REMOVAL (28/09/2026, live UX fix).
   //
@@ -388,7 +396,7 @@ export default function ExternalPlannerItemsSection({
         )}
       </div>
 
-      {mode === "creating" && <ItemForm kids={kids} initial={emptyInput()} onCancel={() => setMode("idle")} onSaved={handleCreate} />}
+      {mode === "creating" && <ItemForm key={defaultDate ?? "oggi"} kids={kids} initial={emptyInput(defaultDate)} onCancel={() => setMode("idle")} onSaved={handleCreate} />}
 
       {sorted.length === 0 && mode === "idle" && (
         <p className="rounded-xl border border-dashed border-[#E8EBF0] p-3 text-[12px] text-ink-3">

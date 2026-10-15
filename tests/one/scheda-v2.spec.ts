@@ -13,7 +13,7 @@ import {
   uniqueLabels,
 } from "../../lib/nextgen/activity-detail-v2";
 import { activities } from "../../lib/mock-data";
-import { AGE_PRESETS, PRICE_PRESETS, SERVICE_OPTIONS } from "../../components/nextgen/DiscoverFiltersSheet";
+import { AGE_PRESETS, PRICE_PRESETS, SERVICE_OPTIONS } from "../../lib/nextgen/discover-filters";
 import { FEATURE_CATALOG } from "../../lib/feature-registry/catalog";
 
 const read = (p: string) => fs.readFileSync(path.join(__dirname, "../..", p), "utf-8");

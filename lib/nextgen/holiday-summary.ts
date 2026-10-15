@@ -231,7 +231,7 @@ export function buildHolidaySummary(input: {
       const worst = touching.reduce((w, p) => (SEVERITY[p.state] > SEVERITY[w] ? p.state : w), "organized" as ClosureState);
       state = worst;
     }
-    cells.push({ index: index++, state, dateRange: `${shortDate(monday)} – ${shortDate(friday)}`, closure: touching.length > 0 });
+    cells.push({ index: index++, state, dateRange: `${shortDate(monday)} – ${shortDate(friday)}`, closure: touching.length > 0, weekStart: monday });
     const label = MONTHS_IT[Number(monday.slice(5, 7)) - 1];
     const last = months[months.length - 1];
     if (last && last.label === label) last.span += 1;

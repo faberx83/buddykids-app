@@ -933,6 +933,7 @@ export const FEATURE_CATALOG: FeatureCatalogEntry[] = [
       "components/nextgen/DiscoverFiltersSheet.tsx",
       "components/nextgen/ActivityDetailV2.tsx",
       "app/activity/[id]/page.tsx",
+      "app/nextgen/preferiti/SalvatiV2View.tsx",
       "lib/nextgen/discover-v2.ts",
       "lib/nextgen/activity-detail-v2.ts",
       "lib/data/activities.ts",

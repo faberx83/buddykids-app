@@ -42,6 +42,8 @@ export interface SeasonSummaryCell {
   dateRange: string;
   /** Settimana con una chiusura scolastica (icona nella cella). */
   closure?: boolean;
+  /** Lunedì della settimana (ISO): toccando la cella si apre quella settimana nel Planner (15/10/2026). */
+  weekStart?: string;
 }
 
 export interface SeasonSummaryMonth {
@@ -118,6 +120,7 @@ export function buildSeasonSummary(input: {
       index: w.index,
       state: isPast && (base === "to_organize" || base === "to_complete") ? "past" : base,
       dateRange: w.dateRange,
+      weekStart: w.startDate,
     };
   });
 

@@ -55,13 +55,16 @@ import {
   mondayOfIso,
   weekStatusParts,
   itemsInWeek,
+  uncoveredClosureDays,
+  joinItalian,
   type WeekDayModel,
 } from "@/lib/nextgen/planner-week";
 import { buildSeasonRows, coverageByKid, type SeasonFilter, type SeasonRow } from "@/lib/nextgen/planner-season";
 import { buildSeasonSummary, periodTitleForSeason, type PeriodWeekState, type SeasonSummaryModel } from "@/lib/nextgen/season-summary";
 import { computeRolesToCover } from "@/lib/nextgen/week-roles";
 import { closureRangeLabel } from "@/lib/nextgen/holiday-summary";
-import { NEW_EXTERNAL_ITEM_HREF } from "@/lib/planner/new-external-item-link";
+import { defaultDateForWeek, newExternalItemHref } from "@/lib/planner/new-external-item-link";
+import { useCloseOnBack } from "@/lib/nextgen/use-close-on-back";
 import { setResponsibilityAction, clearResponsibilityAction, setWeekBulkResponsibilityAction } from "@/app/actions/responsibilities";
 import { toggleWeekDismissedAction } from "@/app/actions/profile";
 import { createPlanShareAction } from "@/app/actions/plan-shares";
@@ -171,8 +174,36 @@ export default function PlannerV2Client({
 
   const [view, setView] = useState<View>(initialView);
   const [monday, setMonday] = useState<string>(mondayOfIso(initialWeek ?? todayIso));
+  // 15/10/2026: la settimana aperta resta nell'indirizzo (?week=), senza
+  // ricaricare: così il + della barra ("Un impegno") la conosce e un
+  // ricaricamento riapre la stessa settimana.
+  useEffect(() => {
+    // Leggermente in ritardo: se nello stesso tocco si chiude un foglio
+    // (es. Mese → scelta settimana), prima si toglie la sua voce dalla
+    // cronologia, poi si aggiorna l'indirizzo della voce giusta.
+    const sync = () => {
+      try {
+        const url = new URL(window.location.href);
+        if (!url.pathname.startsWith("/nextgen/planner")) return; // si è già usciti dal Planner
+        if (url.searchParams.get("week") === monday) return;
+        url.searchParams.set("week", monday);
+        window.history.replaceState(window.history.state, "", url.toString());
+      } catch {
+        // ambienti senza history: nessun effetto
+      }
+    };
+    const t = window.setTimeout(sync, 150);
+    const onPop = () => window.setTimeout(sync, 150);
+    window.addEventListener("popstate", onPop);
+    return () => {
+      window.clearTimeout(t);
+      window.removeEventListener("popstate", onPop);
+    };
+  }, [monday]);
   const [kidFilter, setKidFilter] = useState<string | null>(null);
   const [panel, setPanel] = useState<Panel>(initialPanel);
+  // 15/10/2026: "Indietro" da Mappa o Gruppi torna al Planner (non esce dalla pagina).
+  useCloseOnBack((panel === "mappa" || panel === "gruppi") && !initialPanel, () => setPanel(null));
   const [responsibilities, setResponsibilities] = useState<WeekResponsibility[]>(initialResponsibilities);
   const [dismissedOverrides, setDismissedOverrides] = useState<Record<string, boolean>>({});
   const [seasonFilter, setSeasonFilter] = useState<SeasonFilter>("all");
@@ -346,7 +377,7 @@ export default function PlannerV2Client({
         <ProfileChip />
         {!navV2Enabled && externalEnabled && (
           <Link
-            href={NEW_EXTERNAL_ITEM_HREF}
+            href={newExternalItemHref(monday)}
             className="flex h-[44px] items-center gap-1.5 rounded-[12px] bg-trama-primary pl-3 pr-4 text-[14px] font-bold text-white active:bg-trama-primary-press"
           >
             <i className="ti ti-plus text-[18px]" aria-hidden="true" />
@@ -426,6 +457,7 @@ export default function PlannerV2Client({
         <WeekView
           week={week}
           kidOrder={kidOrder}
+          kidList={kids.map((k) => ({ id: k.id, name: k.name }))}
           onPrev={() => setMonday(week.prevMondayIso)}
           onNext={() => setMonday(week.nextMondayIso)}
           onToday={() => setMonday(mondayOfIso(todayIso))}
@@ -464,6 +496,7 @@ export default function PlannerV2Client({
             title="Aggiunti da te, questa settimana"
             emptyText="Nessun impegno aggiunto per questa settimana. Usa + per aggiungerne uno."
             v2
+            defaultDate={defaultDateForWeek(monday, todayIso)}
           />
         </section>
       )}
@@ -552,6 +585,7 @@ function HeaderTool({ icon, label, onClick }: { icon: string; label: string; onC
 function WeekView({
   week,
   kidOrder,
+  kidList,
   onPrev,
   onNext,
   onToday,
@@ -564,6 +598,8 @@ function WeekView({
 }: {
   week: ReturnType<typeof buildWeekModel>;
   kidOrder: string[];
+  /** 15/10/2026: per la legenda dei pallini e "chi resta scoperto". */
+  kidList: { id: string; name: string }[];
   onPrev: () => void;
   onNext: () => void;
   onToday: () => void;
@@ -665,6 +701,42 @@ function WeekView({
           </button>
         ))}
       </div>
+
+      {/* LEGENDA DEI PALLINI + CHI RESTA SCOPERTO (15/10/2026, "spiegami
+          pallini gialli e grigi e perché da completare"). Un colore per figlio
+          (stesso ordine degli avatar), grigio = scuola chiusa. */}
+      {(week.days.some((d) => d.closureLabels.length > 0 || d.kidIds.length > 0) || kidList.length > 1) && (
+        <div className="-mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-[12px] text-ink-2">
+          {kidList.map((k) => (
+            <span key={k.id} className="flex items-center gap-1.5">
+              <span aria-hidden="true" className="h-2 w-2 rounded-full" style={{ background: KID_DOTS[Math.max(kidOrder.indexOf(k.id), 0) % KID_DOTS.length] }} />
+              {k.name}
+            </span>
+          ))}
+          {week.days.some((d) => d.closureLabels.length > 0) && (
+            <span className="flex items-center gap-1.5">
+              <span aria-hidden="true" className="h-2 w-2 rounded-full bg-[#8B93A1]" />
+              Scuola chiusa
+            </span>
+          )}
+        </div>
+      )}
+      {(() => {
+        const uncovered = uncoveredClosureDays(week.days, kidList);
+        if (uncovered.length === 0) return null;
+        return (
+          <div className="flex items-start gap-2.5 rounded-[12px] bg-[#FFF8EB] px-3.5 py-3 text-[13px] text-[#5C3600]">
+            <i className="ti ti-school mt-px text-[17px] text-[#9A5A00]" aria-hidden="true" />
+            <span className="flex flex-col gap-0.5">
+              {uncovered.map((u) => (
+                <span key={u.kidId}>
+                  Scuola chiusa {joinItalian(u.dayLabels)}: per <b className="font-semibold">{u.kidName}</b> non c&apos;è ancora niente.
+                </span>
+              ))}
+            </span>
+          </div>
+        );
+      })()}
 
       {/* AGENDA */}
       <div className="mt-1 flex flex-col gap-[22px]">
@@ -845,7 +917,7 @@ function SeasonView({
 
   return (
     <>
-      <SeasonSummaryCard model={summary} />
+      <SeasonSummaryCard model={summary} onWeekClick={onOpenWeek} />
 
       {/* A estate finita: ponti e vacanze uno per riga, con le azioni
           (segnalazione live 14/10: "da organizzare" ma nessuna azione). */}
@@ -1055,6 +1127,7 @@ function SeasonWeekRow({
 // ─── Pannelli ───────────────────────────────────────────────────────────
 
 function Sheet({ title, onClose, children, tall = false }: { title: string; onClose: () => void; children: ReactNode; tall?: boolean }) {
+  useCloseOnBack(true, onClose); // 15/10/2026: "Indietro" chiude il foglio
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
       if (e.key === "Escape") onClose();
@@ -1170,7 +1243,20 @@ function MonthSheet({
           </button>
         ))}
       </div>
-      <p className="pt-3 text-[12px] text-ink-2">Tocca una riga per aprire quella settimana.</p>
+      {/* 15/10/2026: legenda dei pallini anche nel Mese. */}
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-1 pt-3 text-[12px] text-ink-2">
+        {kidOrder.map((id, i) => (
+          <span key={id} className="flex items-center gap-1.5">
+            <span aria-hidden="true" className="h-2 w-2 rounded-full" style={{ background: KID_DOTS[i % KID_DOTS.length] }} />
+            {kidNameById[id]}
+          </span>
+        ))}
+        <span className="flex items-center gap-1.5">
+          <span aria-hidden="true" className="h-2 w-2 rounded-full bg-[#8B93A1]" />
+          Scuola chiusa
+        </span>
+      </div>
+      <p className="pt-2 text-[12px] text-ink-2">Tocca una riga per aprire quella settimana.</p>
     </Sheet>
   );
 }
