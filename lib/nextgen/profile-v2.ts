@@ -1,4 +1,5 @@
 // TRAMA — PROFILO V2 (14/10/2026). Logica pura del Profilo V2: le voci,
+import { familySummaryLine } from "@/lib/nextgen/family-page-v2";
 // raggruppate in Famiglia / Le tue attività / App, con le stesse
 // destinazioni del Profilo attuale. Nessuna query.
 // Usata da app/nextgen/profile/ProfileV2Client.tsx, testata in
@@ -31,6 +32,8 @@ export interface ProfileRowItem {
 /** Le voci del Profilo V2, raggruppate. */
 export function profileV2Sections(input: {
   unreadReplies: number;
+  /** 15/10/2026: nomi dei figli per la riga "La tua famiglia". */
+  kidNames?: string[];
   classicFallbackEnabled: boolean;
   onFeedback: () => void;
   onClassic: () => void;
@@ -41,11 +44,19 @@ export function profileV2Sections(input: {
     {
       title: "Famiglia",
       items: [
-        { key: "famiglia", icon: "ti-users", tint: "violet", title: "Famiglia", subtitle: "Invita l'altro genitore, condividete tutto", href: "/nextgen/planner/famiglia" },
+        // 15/10/2026 — "La tua famiglia": figli, genitori, chi vi aiuta, luoghi in una pagina
+        // (prima: figli qui nel Profilo, "Famiglia" che apriva "Crea famiglia", Indirizzi a parte).
+        {
+          key: "famiglia",
+          icon: "ti-users",
+          tint: "violet",
+          title: "La tua famiglia",
+          subtitle: input.kidNames && input.kidNames.length > 0 ? `${familySummaryLine(input.kidNames)} · genitori, aiuti, luoghi` : "Aggiungi i tuoi figli",
+          href: "/nextgen/profile/famiglia",
+        },
         // 15/10/2026: "Gruppi" e "Classe e scuola" sono due cose diverse (vedi lib/nextgen/classe-scuola-copy.ts).
         { key: "gruppi", icon: "ti-users-group", tint: "violet", title: "Gruppi", subtitle: "Famiglie che si iscrivono insieme a un'attività", href: "/nextgen/groups" },
         { key: "classe", icon: "ti-school", tint: "violet", title: "Classe e scuola", subtitle: "I genitori della classe: proposte di attività", href: "/nextgen/community" },
-        { key: "indirizzi", icon: "ti-map-pin", tint: "violet", title: "Indirizzi", subtitle: "Casa, lavoro e altri punti di partenza", href: "/nextgen/planner/indirizzi" },
         { key: "condivisione", icon: "ti-share", tint: "violet", title: "Condivisione piano", subtitle: "Nel Planner: \"Condividi settimana\", un link di sola lettura", href: "/nextgen/planner?mode=calendario" },
         { key: "promemoria", icon: "ti-bell", tint: "violet", title: "Promemoria e avvisi", subtitle: "Avvisami prima di partire", href: "/nextgen/planner/promemoria" },
       ],

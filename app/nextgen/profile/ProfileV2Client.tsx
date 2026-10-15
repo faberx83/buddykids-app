@@ -21,14 +21,12 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { goBackInApp } from "@/lib/nextgen/in-app-history";
 import ProfileHeaderClient from "@/components/ProfileHeaderClient";
-import ProfileKidsSection from "@/components/ProfileKidsSection";
 import LogoutButton from "@/components/LogoutButton";
 import TramaThread from "@/components/nextgen/TramaThread";
 import { openBetaFeedback } from "@/lib/nextgen/feedback-open";
 import { writeVersionPreference } from "@/lib/version-preference";
 import type { ParentRole, Gender } from "@/lib/data/profile";
 import type { Kid } from "@/lib/types";
-import type { KidSchoolProfileSummary } from "@/lib/data/school-calendar";
 
 import { PROFILE_TINT as TINT, profileV2Sections, type ProfileRowItem } from "@/lib/nextgen/profile-v2";
 import { restartWalkthroughAction } from "@/app/actions/walkthrough";
@@ -86,10 +84,6 @@ export default function ProfileV2Client({
   kids,
   unreadReplies,
   autoOpenEdit,
-  autoOpenAddKid,
-  schoolCalendarEnabled,
-  schoolProfiles,
-  residenceCity,
   classicFallbackEnabled,
   onboardingV2Enabled = false,
 }: {
@@ -103,10 +97,6 @@ export default function ProfileV2Client({
   kids: Kid[];
   unreadReplies: number;
   autoOpenEdit: boolean;
-  autoOpenAddKid: boolean;
-  schoolCalendarEnabled: boolean;
-  schoolProfiles: Record<string, KidSchoolProfileSummary>;
-  residenceCity: string | null;
   classicFallbackEnabled: boolean;
   /** ONBOARDING V2 (14/10/2026): mostra "Rivedi l'introduzione". */
   onboardingV2Enabled?: boolean;
@@ -114,6 +104,7 @@ export default function ProfileV2Client({
   const router = useRouter();
   const sections = profileV2Sections({
     unreadReplies,
+    kidNames: kids.map((k) => k.name),
     classicFallbackEnabled,
     onFeedback: () => openBetaFeedback("profilo"),
     onClassic: () => {
@@ -165,15 +156,8 @@ export default function ProfileV2Client({
         />
       </section>
 
-      <ProfileKidsSection
-        initialKids={kids}
-        autoOpenAddKid={autoOpenAddKid}
-        accent="violet"
-        schoolCalendarEnabled={schoolCalendarEnabled}
-        schoolProfiles={schoolProfiles}
-        residenceCity={residenceCity}
-        v2
-      />
+      {/* 15/10/2026: i figli stanno in "La tua famiglia" (/nextgen/profile/famiglia),
+          con genitori, chi vi aiuta e luoghi — qui la riga che ci porta. */}
 
       {sections.map((s) => (
         <section key={s.title} aria-label={s.title} className="flex flex-col gap-2.5">

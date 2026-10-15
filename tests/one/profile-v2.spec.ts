@@ -22,9 +22,10 @@ test.describe("TRAMA — Profilo V2 [no browser]", () => {
     const items = profileV2Sections({ unreadReplies: 0, classicFallbackEnabled: false, onFeedback: noop, onClassic: noop }).flatMap((x) => x.items);
     const hrefs = items.map((i) => i.href).filter(Boolean);
     for (const h of [
-      "/nextgen/planner/famiglia",
+      // 15/10/2026: Famiglia e Indirizzi confluiscono in "La tua famiglia"
+      "/nextgen/profile/famiglia",
       "/nextgen/groups",
-      "/nextgen/planner/indirizzi",
+      "/nextgen/community",
       "/nextgen/planner?mode=calendario",
       "/nextgen/planner/promemoria",
       "/nextgen/preferiti",
@@ -77,8 +78,10 @@ test.describe("TRAMA — Profilo V2 [no browser]", () => {
   test("PRV2-07 riusa intestazione e figli esistenti con la variante v2 (default invariato per Legacy e Gestore)", () => {
     const client = read("app/nextgen/profile/ProfileV2Client.tsx");
     expect(client).toContain("<ProfileHeaderClient");
-    expect(client).toContain("<ProfileKidsSection");
-    expect(client.match(/\n\s+v2\n/g)?.length).toBe(2);
+    // 15/10/2026: i figli (ProfileKidsSection v2) stanno in "La tua famiglia"
+    expect(client).not.toContain("<ProfileKidsSection");
+    expect(read("app/nextgen/profile/famiglia/FamigliaV2Client.tsx")).toContain("<ProfileKidsSection");
+    expect(client.match(/\n\s+v2\n/g)?.length).toBe(1);
     expect(client).toContain("<TramaThread");
     expect(read("components/ProfileHeaderClient.tsx")).toContain("  v2 = false,");
     expect(read("components/ProfileKidsSection.tsx")).toContain("  v2 = false,");

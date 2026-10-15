@@ -1,3 +1,4 @@
+import { redirect } from "next/navigation";
 import ProfileNextgenClient from "./ProfileNextgenClient";
 import ProfileV2Client from "./ProfileV2Client";
 import { getKidsForUser } from "@/lib/data/kids";
@@ -115,6 +116,9 @@ export default async function NextgenProfilePage({
   }
 
   if (profileV2Enabled) {
+    // 15/10/2026: i figli si aggiungono in "La tua famiglia" — i link di
+    // Home/onboarding con ?addKid=1 arrivano lì con il modulo già aperto.
+    if (params.addKid === "1") redirect("/nextgen/profile/famiglia?addKid=1");
     return (
       <ProfileV2Client
         fullName={profile.fullName}
@@ -127,10 +131,6 @@ export default async function NextgenProfilePage({
         kids={kids}
         unreadReplies={unreadReplies}
         autoOpenEdit={params.complete === "1"}
-        autoOpenAddKid={params.addKid === "1"}
-        schoolCalendarEnabled={schoolCalendarEnabled}
-        schoolProfiles={schoolProfiles}
-        residenceCity={residenceCity}
         classicFallbackEnabled={classicFallbackEnabled}
         onboardingV2Enabled={onboardingV2Enabled}
       />

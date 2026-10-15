@@ -13,6 +13,7 @@ import { revalidatePath } from "next/cache";
 import { headers } from "next/headers";
 import { sendEmail, isEmailConfigured } from "@/lib/email";
 import { familyHost } from "@/lib/tenant";
+import { defaultFamilyName } from "@/lib/nextgen/family-page-v2";
 
 // Stessi caratteri di app/actions/communities.ts (niente 0/O/1/I, ambigui da
 // leggere/dettare a voce quando il codice viene condiviso a mano, es. col
@@ -237,6 +238,29 @@ export async function inviteToFamilyAction(email: string): Promise<InviteToFamil
 
   revalidatePath(PLANNER_FAMILY_PATH);
   return { emailSent, link };
+}
+
+// TRAMA — "LA TUA FAMIGLIA" (15/10/2026): invitare l'altro genitore senza il
+// passaggio "Crea famiglia". Se il genitore non è ancora in un gruppo
+// famiglia, lo si crea in automatico (nome dal cognome), poi stesso invito
+// di inviteToFamilyAction (email + link da mandare a mano).
+export async function inviteCoParentAction(email: string): Promise<InviteToFamilyResult> {
+  if (!isSupabaseConfigured) return { error: "Supabase non configurato" };
+  const { supabase, user } = await requireUser();
+  if (!user) return { error: "Non autenticato" };
+  const { data: membership } = await supabase
+    .from("family_members")
+    .select("family_id")
+    .eq("parent_id", user.id)
+    .maybeSingle();
+  if (!membership) {
+    const { data: profile } = await supabase.from("profiles").select("full_name").eq("id", user.id).maybeSingle();
+    const created = await createFamilyAction(defaultFamilyName(profile?.full_name as string | null));
+    if (created.error) return { error: created.error };
+  }
+  const res = await inviteToFamilyAction(email);
+  revalidatePath("/nextgen/profile/famiglia");
+  return res;
 }
 
 export interface FamilyInvitePreview {

@@ -859,8 +859,15 @@ export const FEATURE_CATALOG: FeatureCatalogEntry[] = [
       "app/nextgen/profile/ProfileV2Client.tsx",
       "components/ProfileHeaderClient.tsx",
       "components/ProfileKidsSection.tsx",
+      "app/nextgen/profile/famiglia/page.tsx",
+      "app/nextgen/profile/famiglia/FamigliaV2Client.tsx",
+      "app/actions/family-people.ts",
+      "lib/nextgen/family-page-v2.ts",
     ],
-    note: "Le sottopagine (Impostazioni, Famiglia, Segnalazioni) restano quelle attuali, con il segno TRAMA nell'intestazione.",
+    note:
+      "Dal 15/10/2026 'La tua famiglia' (/nextgen/profile/famiglia): figli, genitori (invito senza 'Crea famiglia'), chi vi " +
+      "aiuta (persone di Chi accompagna: aggiungi, rinomina, togli), luoghi. Senza il flag resta il vecchio hub. Le altre " +
+      "sottopagine (Impostazioni, Segnalazioni) restano quelle attuali, con il segno TRAMA nell'intestazione.",
     riskLevel: "low",
     releaseEligible: true,
   },
