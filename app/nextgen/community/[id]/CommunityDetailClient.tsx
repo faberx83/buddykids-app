@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { CommunityDetail, CommunityRole } from "@/lib/types";
@@ -12,6 +12,7 @@ import {
   spawnGroupFromProposalAction,
 } from "@/app/actions/communities";
 import PageHeader from "@/components/PageHeader";
+import RowMark from "@/components/nextgen/RowMark";
 import { useNavV2 } from "@/components/nextgen/ProfileChip";
 import { CLASSE_SCUOLA_COPY as V2_COPY } from "@/lib/nextgen/classe-scuola-copy";
 import { useNextgenToast } from "@/components/nextgen/NextgenToastProvider";
@@ -40,6 +41,11 @@ export default function CommunityDetailClient({
   // lib/nextgen/classe-scuola-copy.ts); intestazione V2, niente emoji.
   const v2 = useNavV2();
   const [proposals, setProposals] = useState(detail.proposals);
+  // 15/10/2026 (Fabrizio: "ho creato la proposta, non si è aggiornata la
+  // pagina"): lo stato locale partiva da detail.proposals e non seguiva più
+  // i dati nuovi dopo router.refresh(). Ora si riallinea ogni volta che il
+  // server manda l'elenco aggiornato.
+  useEffect(() => setProposals(detail.proposals), [detail.proposals]);
   const [showProposeForm, setShowProposeForm] = useState(false);
   const [selectedActivityId, setSelectedActivityId] = useState("");
   const [note, setNote] = useState("");
@@ -130,7 +136,11 @@ export default function CommunityDetailClient({
       <button
         type="button"
         onClick={copyCode}
-        className="nextgen-warm-shadow flex items-center justify-between rounded-[20px] bg-white p-4 text-left active:bg-black/[0.06]"
+        className={
+          v2
+            ? "flex min-h-[64px] items-center justify-between rounded-2xl border border-trama-line bg-white p-4 text-left active:bg-black/[0.03]"
+            : "nextgen-warm-shadow flex items-center justify-between rounded-[20px] bg-white p-4 text-left active:bg-black/[0.06]"
+        }
       >
         <div>
           <div className="text-[11px] font-bold uppercase tracking-wide text-ink-3">Codice invito</div>
@@ -144,25 +154,47 @@ export default function CommunityDetailClient({
 
       {/* Membri */}
       <div>
-        <div className="mb-3 font-poppins text-[21px] font-semibold text-ink">Famiglie ({detail.members.length})</div>
-        <div className="flex flex-col gap-2">
-          {detail.members.map((m) => (
-            <div key={m.parentId} className="flex items-center justify-between rounded-2xl bg-bg px-4 py-2.5">
-              <span className="text-sm font-semibold text-ink">{m.label}</span>
-              <span className="text-[11px] font-bold uppercase tracking-wide text-ink-3">{ROLE_LABEL[m.role]}</span>
-            </div>
-          ))}
+        <div className={v2 ? "mb-2.5 font-poppins text-[18px] font-semibold text-ink" : "mb-3 font-poppins text-[21px] font-semibold text-ink"}>
+          Famiglie ({detail.members.length})
         </div>
+        {v2 ? (
+          <ul className="divide-y divide-[#F0F2F5] rounded-2xl border border-trama-line bg-white">
+            {detail.members.map((m) => (
+              <li key={m.parentId} className="flex min-h-[56px] items-center gap-3 px-4 py-2.5">
+                <span className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full bg-trama-primary-soft font-poppins text-[15px] font-semibold text-trama-primary">
+                  {(m.label.trim()[0] ?? "?").toUpperCase()}
+                </span>
+                <span className="min-w-0 flex-1 truncate text-[15px] font-semibold text-ink">{m.label}</span>
+                <span className="text-[12.5px] text-ink-2">{ROLE_LABEL[m.role]}</span>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <div className="flex flex-col gap-2">
+            {detail.members.map((m) => (
+              <div key={m.parentId} className="flex items-center justify-between rounded-2xl bg-bg px-4 py-2.5">
+                <span className="text-sm font-semibold text-ink">{m.label}</span>
+                <span className="text-[11px] font-bold uppercase tracking-wide text-ink-3">{ROLE_LABEL[m.role]}</span>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Le attività della community */}
       <div>
         <div className="mb-3 flex items-center justify-between">
-          <div className="font-poppins text-[21px] font-semibold text-ink">{v2 ? V2_COPY.proposalsTitle : "Le attività della community"}</div>
+          <div className={v2 ? "font-poppins text-[18px] font-semibold text-ink" : "font-poppins text-[21px] font-semibold text-ink"}>
+            {v2 ? V2_COPY.proposalsTitle : "Le attività della community"}
+          </div>
           <button
             type="button"
             onClick={() => setShowProposeForm((v) => !v)}
-            className="text-sm font-semibold text-trama-violet active:bg-black/[0.04]"
+            className={
+              v2
+                ? "flex min-h-[44px] items-center text-[14px] font-semibold text-trama-accent-ink"
+                : "text-sm font-semibold text-trama-violet active:bg-black/[0.04]"
+            }
           >
             <i className="ti ti-plus mr-1" />
             Proponi
@@ -170,11 +202,11 @@ export default function CommunityDetailClient({
         </div>
 
         {showProposeForm && (
-          <div className="nextgen-warm-shadow mb-3 flex flex-col gap-3 rounded-[20px] bg-white p-4">
+          <div className={v2 ? "mb-3 flex flex-col gap-3 rounded-2xl border border-trama-line bg-white p-4" : "nextgen-warm-shadow mb-3 flex flex-col gap-3 rounded-[20px] bg-white p-4"}>
             <select
               value={selectedActivityId}
               onChange={(e) => setSelectedActivityId(e.target.value)}
-              className="rounded-xl border border-[#E8EBF0] px-3.5 py-2.5 text-sm"
+              className={v2 ? "min-h-[48px] w-full rounded-[12px] border border-trama-line bg-white px-3.5 text-[16px] outline-none focus:border-trama-primary" : "rounded-xl border border-[#E8EBF0] px-3.5 py-2.5 text-sm"}
             >
               <option value="">Scegli un&apos;attività…</option>
               {bookableActivities.map((a) => (
@@ -188,14 +220,14 @@ export default function CommunityDetailClient({
               onChange={(e) => setNote(e.target.value)}
               placeholder="Perché la proponi? (opzionale)"
               rows={2}
-              className="resize-none rounded-xl border border-[#E8EBF0] px-3.5 py-2.5 text-sm"
+              className={v2 ? "w-full resize-none rounded-[12px] border border-trama-line bg-white px-3.5 py-3 text-[16px] outline-none focus:border-trama-primary" : "resize-none rounded-xl border border-[#E8EBF0] px-3.5 py-2.5 text-sm"}
             />
             {error && <div className="text-[13px] font-medium text-red-500">{error}</div>}
             <button
               type="button"
               disabled={busyPropose}
               onClick={handlePropose}
-              className="rounded-full bg-trama-violet px-4 py-2.5 text-sm font-bold text-white active:scale-[0.97] disabled:opacity-50"
+              className={v2 ? "min-h-[48px] rounded-[12px] bg-trama-primary px-4 text-[15px] font-semibold text-white active:bg-trama-primary-press disabled:opacity-50" : "rounded-full bg-trama-violet px-4 py-2.5 text-sm font-bold text-white active:scale-[0.97] disabled:opacity-50"}
             >
               {busyPropose ? "Invio…" : "Condividi proposta"}
             </button>
@@ -203,20 +235,30 @@ export default function CommunityDetailClient({
         )}
 
         {proposals.length === 0 ? (
-          <div className="rounded-[20px] bg-bg p-5 text-center text-sm text-ink-2">
+          <div
+            className={
+              v2
+                ? "rounded-[20px] border border-dashed border-[#D6DAE3] bg-white p-4 text-[14px] leading-snug text-ink-2"
+                : "rounded-[20px] bg-bg p-5 text-center text-sm text-ink-2"
+            }
+          >
             Ancora nessuna proposta. Suggerisci un&apos;attività da fare insieme.
           </div>
         ) : (
           <div className="flex flex-col gap-3">
             {proposals.map((p) => (
-              <div key={p.id} className="nextgen-warm-shadow rounded-[20px] bg-white p-4">
+              <div key={p.id} className={v2 ? "rounded-2xl border border-trama-line bg-white p-4" : "nextgen-warm-shadow rounded-[20px] bg-white p-4"}>
                 <div className="flex items-start gap-3">
-                  <div
-                    className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-xl text-xl"
-                    style={{ background: p.activityGradient }}
-                  >
-                    {p.activityEmoji}
-                  </div>
+                  {v2 ? (
+                    <RowMark title={p.activityName} size={44} />
+                  ) : (
+                    <div
+                      className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-xl text-xl"
+                      style={{ background: p.activityGradient }}
+                    >
+                      {p.activityEmoji}
+                    </div>
+                  )}
                   <div className="min-w-0 flex-1">
                     <Link href={`/activity/${p.activitySlug}`} className="block truncate text-base font-semibold text-ink active:bg-black/[0.04]">
                       {p.activityName}
@@ -231,9 +273,16 @@ export default function CommunityDetailClient({
                     type="button"
                     disabled={busyProposalId === p.id}
                     onClick={() => toggleInterest(p.id, p.iAmInterested)}
-                    className={`flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[12.5px] font-bold active:scale-95 disabled:opacity-50 ${
-                      p.iAmInterested ? "bg-trama-violet text-white" : "bg-bg text-ink-2"
-                    }`}
+                    aria-pressed={p.iAmInterested}
+                    className={
+                      v2
+                        ? `flex min-h-[40px] items-center gap-1.5 rounded-full border px-3.5 text-[13px] font-semibold disabled:opacity-50 ${
+                            p.iAmInterested ? "border-trama-primary bg-trama-primary text-white" : "border-[#E3E6EC] bg-white text-ink"
+                          }`
+                        : `flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[12.5px] font-bold active:scale-95 disabled:opacity-50 ${
+                            p.iAmInterested ? "bg-trama-violet text-white" : "bg-bg text-ink-2"
+                          }`
+                    }
                   >
                     <i className={`ti ${p.iAmInterested ? "ti-heart-filled" : "ti-heart"} text-[14px]`} />
                     {p.iAmInterested ? "Interessato" : "Mi interessa"} · {p.interestCount}
@@ -248,10 +297,14 @@ export default function CommunityDetailClient({
                       type="button"
                       disabled={busyProposalId === p.id}
                       onClick={() => handleSpawnGroup(p.id)}
-                      className="ml-auto flex items-center gap-1 rounded-full bg-trama-violet px-3 py-1.5 text-[12px] font-bold text-white active:scale-[0.97] disabled:opacity-50"
+                      className={
+                        v2
+                          ? "ml-auto flex min-h-[40px] items-center gap-1 rounded-[12px] bg-trama-primary px-3.5 text-[13px] font-semibold text-white active:bg-trama-primary-press disabled:opacity-50"
+                          : "ml-auto flex items-center gap-1 rounded-full bg-trama-violet px-3 py-1.5 text-[12px] font-bold text-white active:scale-[0.97] disabled:opacity-50"
+                      }
                     >
                       <i className="ti ti-users-group text-[13px]" />
-                      Genera Gruppo
+                      {v2 ? "Crea un gruppo" : "Genera Gruppo"}
                     </button>
                   )}
                 </div>

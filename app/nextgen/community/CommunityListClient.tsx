@@ -8,6 +8,7 @@ import { createCommunityAction, joinCommunityByCodeAction } from "@/app/actions/
 import { useNextgenToast } from "@/components/nextgen/NextgenToastProvider";
 import DecorativeIntroCard from "@/components/nextgen/DecorativeIntroCard";
 import PageHeader from "@/components/PageHeader";
+import RowMark from "@/components/nextgen/RowMark";
 import { useNavV2 } from "@/components/nextgen/ProfileChip";
 import { CLASSE_SCUOLA_COPY as V2_COPY } from "@/lib/nextgen/classe-scuola-copy";
 
@@ -126,20 +127,20 @@ export default function CommunityListClient({ initialCommunities }: { initialCom
       )}
 
       {mode === "create" && (
-        <div className="nextgen-warm-shadow flex flex-col gap-3 rounded-[20px] bg-white p-5">
+        <div className={v2 ? "flex flex-col gap-3 rounded-2xl border border-trama-line bg-white p-4" : "nextgen-warm-shadow flex flex-col gap-3 rounded-[20px] bg-white p-5"}>
           <div className="text-base font-semibold text-ink">{v2 ? V2_COPY.createTitle : "Crea una nuova community"}</div>
           <input
             value={name}
             onChange={(e) => setName(e.target.value)}
             placeholder={v2 ? V2_COPY.namePlaceholder : "Nome (es. Famiglie del quartiere)"}
-            className="rounded-xl border border-[#E8EBF0] px-3.5 py-2.5 text-sm"
+            className={v2 ? "min-h-[48px] w-full rounded-[12px] border border-trama-line bg-white px-3.5 text-[16px] outline-none focus:border-trama-primary" : "rounded-xl border border-[#E8EBF0] px-3.5 py-2.5 text-sm"}
           />
           <textarea
             value={description}
             onChange={(e) => setDescription(e.target.value)}
             placeholder="Descrizione (opzionale)"
             rows={2}
-            className="resize-none rounded-xl border border-[#E8EBF0] px-3.5 py-2.5 text-sm"
+            className={v2 ? "w-full resize-none rounded-[12px] border border-trama-line bg-white px-3.5 py-3 text-[16px] outline-none focus:border-trama-primary" : "resize-none rounded-xl border border-[#E8EBF0] px-3.5 py-2.5 text-sm"}
           />
           {error && <div className="text-[13px] font-medium text-red-500">{error}</div>}
           <div className="flex gap-2">
@@ -147,14 +148,14 @@ export default function CommunityListClient({ initialCommunities }: { initialCom
               type="button"
               disabled={busy}
               onClick={handleCreate}
-              className="flex-1 rounded-full bg-trama-violet px-4 py-2.5 text-sm font-bold text-white active:scale-[0.97] disabled:opacity-50"
+              className={v2 ? "min-h-[48px] flex-1 rounded-[12px] bg-trama-primary px-4 text-[15px] font-semibold text-white active:bg-trama-primary-press disabled:opacity-50" : "flex-1 rounded-full bg-trama-violet px-4 py-2.5 text-sm font-bold text-white active:scale-[0.97] disabled:opacity-50"}
             >
               {busy ? "Creazione…" : "Crea"}
             </button>
             <button
               type="button"
               onClick={() => setMode("none")}
-              className="rounded-full bg-bg px-4 py-2.5 text-sm font-semibold text-ink-2 active:brightness-95"
+              className={v2 ? "min-h-[48px] rounded-[12px] border border-trama-line bg-white px-4 text-[15px] font-semibold text-ink" : "rounded-full bg-bg px-4 py-2.5 text-sm font-semibold text-ink-2 active:brightness-95"}
             >
               Annulla
             </button>
@@ -163,13 +164,13 @@ export default function CommunityListClient({ initialCommunities }: { initialCom
       )}
 
       {mode === "join" && (
-        <div className="nextgen-warm-shadow flex flex-col gap-3 rounded-[20px] bg-white p-5">
+        <div className={v2 ? "flex flex-col gap-3 rounded-2xl border border-trama-line bg-white p-4" : "nextgen-warm-shadow flex flex-col gap-3 rounded-[20px] bg-white p-5"}>
           <div className="text-base font-semibold text-ink">Entra con un codice invito</div>
           <input
             value={code}
             onChange={(e) => setCode(e.target.value.toUpperCase())}
             placeholder="Es. BK7X9K"
-            className="rounded-xl border border-[#E8EBF0] px-3.5 py-2.5 text-sm uppercase tracking-wide"
+            className={v2 ? "min-h-[48px] w-full rounded-[12px] border border-trama-line bg-white px-3.5 text-[16px] outline-none focus:border-trama-primary uppercase tracking-wide" : "rounded-xl border border-[#E8EBF0] px-3.5 py-2.5 text-sm uppercase tracking-wide"}
           />
           {error && <div className="text-[13px] font-medium text-red-500">{error}</div>}
           <div className="flex gap-2">
@@ -177,14 +178,14 @@ export default function CommunityListClient({ initialCommunities }: { initialCom
               type="button"
               disabled={busy}
               onClick={handleJoin}
-              className="flex-1 rounded-full bg-trama-violet px-4 py-2.5 text-sm font-bold text-white active:scale-[0.97] disabled:opacity-50"
+              className={v2 ? "min-h-[48px] flex-1 rounded-[12px] bg-trama-primary px-4 text-[15px] font-semibold text-white active:bg-trama-primary-press disabled:opacity-50" : "flex-1 rounded-full bg-trama-violet px-4 py-2.5 text-sm font-bold text-white active:scale-[0.97] disabled:opacity-50"}
             >
               {busy ? "Verifica…" : "Entra"}
             </button>
             <button
               type="button"
               onClick={() => setMode("none")}
-              className="rounded-full bg-bg px-4 py-2.5 text-sm font-semibold text-ink-2 active:brightness-95"
+              className={v2 ? "min-h-[48px] rounded-[12px] border border-trama-line bg-white px-4 text-[15px] font-semibold text-ink" : "rounded-full bg-bg px-4 py-2.5 text-sm font-semibold text-ink-2 active:brightness-95"}
             >
               Annulla
             </button>
@@ -216,9 +217,13 @@ export default function CommunityListClient({ initialCommunities }: { initialCom
                   : "nextgen-warm-shadow flex items-center gap-3 rounded-[20px] bg-white p-4 active:bg-black/[0.06]"
               }
             >
-              <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-2xl bg-bg text-2xl">
-                {c.emoji}
-              </div>
+              {v2 ? (
+                <RowMark title={c.name} size={44} />
+              ) : (
+                <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-2xl bg-bg text-2xl">
+                  {c.emoji}
+                </div>
+              )}
               <div className="min-w-0 flex-1">
                 <div className="truncate text-base font-semibold text-ink">{c.name}</div>
                 <div className="text-[13px] text-ink-3">
@@ -226,7 +231,13 @@ export default function CommunityListClient({ initialCommunities }: { initialCom
                 </div>
               </div>
               {c.activeProposalsCount > 0 && (
-                <span className="flex-shrink-0 rounded-full bg-trama-lilac/20 px-2.5 py-1 text-[11px] font-bold text-trama-violet">
+                <span
+                  className={
+                    v2
+                      ? "flex-shrink-0 rounded-full bg-trama-accent-soft px-2.5 py-1 text-[12px] font-semibold text-trama-accent-ink"
+                      : "flex-shrink-0 rounded-full bg-trama-lilac/20 px-2.5 py-1 text-[11px] font-bold text-trama-violet"
+                  }
+                >
                   {c.activeProposalsCount} {c.activeProposalsCount === 1 ? "proposta" : "proposte"}
                 </span>
               )}

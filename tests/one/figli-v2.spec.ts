@@ -46,3 +46,16 @@ test.describe("TRAMA — Figli V2 [no browser]", () => {
     expect(read("components/nextgen/OnboardingV2.tsx")).toContain("interestIcon(opt.value)");
   });
 });
+
+test.describe("TRAMA — Classe e scuola nello stile V2 [no browser]", () => {
+  test("FG-04 niente emoji: monogramma nelle righe e nelle proposte; la proposta nuova compare subito", () => {
+    const list = read("app/nextgen/community/CommunityListClient.tsx");
+    expect(list).toContain("<RowMark title={c.name} size={44} />");
+    const detail = read("app/nextgen/community/[id]/CommunityDetailClient.tsx");
+    expect(detail).toContain("<RowMark title={p.activityName} size={44} />");
+    expect(detail).toContain("useEffect(() => setProposals(detail.proposals), [detail.proposals]);");
+    // Legacy invariato
+    expect(detail).toContain("{p.activityEmoji}");
+    expect(read("components/nextgen/PlannerGroupsView.tsx")).toContain('import RowMark from "@/components/nextgen/RowMark";');
+  });
+});

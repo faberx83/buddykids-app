@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { CommunityItem, CommunityRole, GroupItem } from "@/lib/types";
-import { monogramFor, threadColorFor } from "@/components/nextgen/ActivityVisual";
+import RowMark from "@/components/nextgen/RowMark";
 import { CLASSE_SCUOLA_COPY } from "@/lib/nextgen/classe-scuola-copy";
 
 // SPRINT 5.6 (NEXTGEN) — riempie l'ultima scheda del Planner ancora "in
@@ -26,18 +26,6 @@ const ROLE_LABEL: Record<CommunityRole, string> = {
 };
 
 /** POLISH V2: monogramma con filo TRAMA al posto dell'emoji. */
-function RowMark({ title }: { title: string }) {
-  return (
-    <span
-      className="relative flex h-10 w-10 flex-shrink-0 items-center justify-center overflow-hidden rounded-[12px] border border-trama-line bg-[#F4F1EA] font-poppins text-[14px] font-semibold text-trama-navy/80"
-      aria-hidden="true"
-    >
-      <span className="absolute inset-x-0 top-0 h-[3px]" style={{ background: threadColorFor(title) }} />
-      {monogramFor(title)}
-    </span>
-  );
-}
-
 function CommunityCard({ community, v2 = false }: { community: CommunityItem; v2?: boolean }) {
   return (
     <Link
