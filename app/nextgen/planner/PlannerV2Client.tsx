@@ -34,7 +34,7 @@ import type { ParentAddress } from "@/lib/nextgen/address-kinds";
 import type { ParentRole } from "@/lib/data/profile";
 import type { BudgetSummary } from "@/lib/nextgen/planner-insights";
 import type { PlannerCalendarItemForIcs } from "@/lib/ics";
-import type { AgendaBookingInput } from "@/lib/nextgen/today-agenda";
+import type { AgendaBookingInput, AgendaExternalInput } from "@/lib/nextgen/today-agenda";
 import { buildTodayAgenda } from "@/lib/nextgen/today-agenda";
 import {
   MOMENTS,
@@ -49,7 +49,7 @@ import {
 } from "@/lib/nextgen/responsibility-options";
 import {
   addDaysIso,
-  bookedDaysForWeek,
+  coordinationDaysForWeek,
   buildMonthModel,
   buildWeekModel,
   mondayOfIso,
@@ -266,11 +266,13 @@ export default function PlannerV2Client({
   const missingSlotsByStart = useMemo(() => {
     const out: Record<string, number> = {};
     for (const w of weeks) {
-      const booked = bookedDaysForWeek(bookings, w.startDate).filter((k) => kidFilter === null || k.kidId === kidFilter);
+      const booked = coordinationDaysForWeek(bookings, agendaExternal, w.startDate, kidNameById).filter(
+        (k) => kidFilter === null || k.kidId === kidFilter
+      );
       out[w.startDate] = computeRolesToCover(w.startDate, booked, responsibilities).missingSlots;
     }
     return out;
-  }, [weeks, bookings, responsibilities, kidFilter]);
+  }, [weeks, bookings, agendaExternal, kidNameById, responsibilities, kidFilter]);
 
   // ── Azioni ──
   async function toggleDismissed(row: SeasonRow, next: boolean) {
@@ -537,6 +539,8 @@ export default function PlannerV2Client({
           kidOrder={kidOrder}
           options={resolveResponsibleOptions(parentRole, familyPeople)}
           bookings={bookings}
+          externalItems={agendaExternal}
+          kidNameById={kidNameById}
           kidFilter={kidFilter}
           responsibilities={responsibilities}
           onChange={setResponsibilities}
@@ -555,6 +559,8 @@ export default function PlannerV2Client({
           options={resolveResponsibleOptions(parentRole, familyPeople)}
           responsibilities={responsibilities}
           bookings={bookings}
+          externalItems={agendaExternal}
+          kidNameById={kidNameById}
           kidFilter={kidFilter}
           onChange={setResponsibilities}
           onClose={() => {
@@ -1268,6 +1274,8 @@ function AssignSheet({
   options,
   responsibilities,
   bookings,
+  externalItems,
+  kidNameById,
   kidFilter,
   onChange,
   onClose,
@@ -1278,6 +1286,8 @@ function AssignSheet({
   options: ResponsibleOption[];
   responsibilities: WeekResponsibility[];
   bookings: AgendaBookingInput[];
+  externalItems: AgendaExternalInput[];
+  kidNameById: Record<string, string>;
   kidFilter: string | null;
   onChange: (next: WeekResponsibility[]) => void;
   onClose: () => void;
@@ -1289,7 +1299,7 @@ function AssignSheet({
   if (!day) return null;
   const weekday = WEEKDAYS.find((w) => addDaysIso(mondayIso, w.dayOffset) === day.dateIso)?.value ?? null;
   if (!weekday) return null;
-  const kidsToday = bookedDaysForWeek(bookings, mondayIso).filter(
+  const kidsToday = coordinationDaysForWeek(bookings, externalItems, mondayIso, kidNameById).filter(
     (k) => k.dates.includes(day.dateIso) && (kidFilter === null || k.kidId === kidFilter)
   );
 
@@ -1437,6 +1447,8 @@ function WeekWhoSheet({
   kidOrder,
   options,
   bookings,
+  externalItems,
+  kidNameById,
   kidFilter,
   responsibilities,
   onChange,
@@ -1448,6 +1460,8 @@ function WeekWhoSheet({
   kidOrder: string[];
   options: ResponsibleOption[];
   bookings: AgendaBookingInput[];
+  externalItems: AgendaExternalInput[];
+  kidNameById: Record<string, string>;
   kidFilter: string | null;
   responsibilities: WeekResponsibility[];
   onChange: (next: WeekResponsibility[]) => void;
@@ -1456,7 +1470,9 @@ function WeekWhoSheet({
 }) {
   const showToast = useNextgenToast();
   const [busy, setBusy] = useState<Moment | null>(null);
-  const kidsThisWeek = bookedDaysForWeek(bookings, mondayIso).filter((k) => kidFilter === null || k.kidId === kidFilter);
+  const kidsThisWeek = coordinationDaysForWeek(bookings, externalItems, mondayIso, kidNameById).filter(
+    (k) => kidFilter === null || k.kidId === kidFilter
+  );
   const days = week.days.filter((d) => d.coordination.mode !== "none");
   const quick = options.filter((o) => !(o.value === "altro" && !o.familyPersonId));
 

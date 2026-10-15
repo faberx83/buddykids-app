@@ -75,19 +75,29 @@ test.describe("PLANNER-V2 — Settimana", () => {
 
   test("PV2-02: coordinamento per giorno — compatto se deciso, esteso se manca qualcuno", () => {
     const w = week();
-    expect(w.days[1].coordination.mode).toBe("compact");
-    expect(w.days[1].coordination.people).toEqual(["Papà", "Mamma"]);
+    // Giulia (prenotazione) da sola: martedì è tutto deciso → compatto
+    expect(week("g").days[1].coordination.mode).toBe("compact");
+    expect(week("g").days[1].coordination.people).toEqual(["Papà", "Mamma"]);
+    // 15/10/2026 (Fabrizio: "Chi accompagna" anche per gli impegni aggiunti a
+    // mano, "sì, feriali"): martedì c'è anche il Nuoto di Sofia, ancora da
+    // assegnare → esteso
+    expect(w.days[1].coordination.mode).toBe("detailed");
     expect(w.days[2].coordination.mode).toBe("detailed");
+    // sabato (Festa di Sofia): i weekend restano fuori, week_responsibilities conosce solo lun–ven
     expect(w.days[5].coordination.mode).toBe("none");
-    // da oggi in poi: mer, gio, ven × andata/ritorno = 6 (lunedì è passato e non conta)
-    expect(w.missingCount).toBe(6);
-    expect(weekStatusParts(w)).toEqual({ entries: "7 impegni", missing: "6 passaggi da assegnare" });
+    // da oggi in poi: Nuoto di Sofia martedì (2) + Giulia mer, gio, ven × andata/ritorno (6) = 8
+    expect(w.missingCount).toBe(8);
+    expect(weekStatusParts(w)).toEqual({ entries: "7 impegni", missing: "8 passaggi da assegnare" });
   });
 
   test("PV2-03: filtro per figlio", () => {
     const w = week("s");
     expect(w.days[1].entries.map((e) => e.title)).toEqual(["Nuoto"]);
-    expect(w.days[1].coordination.mode).toBe("none"); // Sofia non ha prenotazioni TRAMA
+    // Sofia non ha prenotazioni TRAMA ma ha il Nuoto aggiunto a mano: dal
+    // 15/10/2026 anche quello si organizza (Porta / Ritira)
+    expect(w.days[1].coordination.mode).toBe("detailed");
+    expect(w.days[1].coordination.missingCount).toBe(2);
+    expect(w.days[2].coordination.mode).toBe("none"); // mercoledì Sofia non ha niente
   });
 
   test("PV2-04: prenotazioni annullate fuori dai giorni prenotati", () => {

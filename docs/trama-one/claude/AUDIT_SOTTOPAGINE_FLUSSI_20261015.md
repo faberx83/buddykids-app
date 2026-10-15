@@ -190,7 +190,11 @@ Problemi, in ordine:
    centro risponde dalla Inbox (partner_decision "pending" → "In attesa del centro" in Prenotazioni V2).
    Legacy e TRAMA ONE senza V2 invariati (passo Pagamento simulato).
 2. **Pagina di accesso** → da rispiegare: è unica per tutti (anche Legacy), il flag non si conosce prima del login.
-3. **"Chi accompagna" sugli impegni aggiunti a mano** → utile: da definire (cambia la regola del Planner), non fatto.
+2. *(poi)* **"Si cambia"** → FATTO: accesso e "nuova password" nei colori V2 per tutte le famiglie (Partner/Admin invariati).
+3. **"Chi accompagna" sugli impegni aggiunti a mano** → FATTO, solo feriali ("Si feriali"): `coordinationDaysForWeek`
+   in `lib/nextgen/planner-week.ts` unisce prenotazioni e impegni del Planner (settimana, "Chi fa cosa", singolo giorno,
+   stagione). Weekend esclusi: week_responsibilities conosce solo lun–ven (servirebbe una migrazione). La Home
+   (getTodayResponsibilities, legata alla stagione estiva) non è cambiata.
 4. **"Classe e scuola"** → FATTO con la nuova barra (elenco, dettaglio, Planner → Gruppi). Stesse tabelle e rotte.
    Testi in `lib/nextgen/classe-scuola-copy.ts`. "Segnalato dalla community" del Radar non toccato.
 5. **Feedback in Home** → FATTO: riga "Dicci cosa ne pensi" in fondo alla Home V2 (stesso pannello, fonte "home").

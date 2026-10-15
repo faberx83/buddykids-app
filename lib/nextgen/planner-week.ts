@@ -78,6 +78,38 @@ export function bookedDaysForWeek(
   return Array.from(byKid.entries()).map(([kidId, v]) => ({ kidId, kidName: v.kidName, dates: Array.from(v.dates).sort() }));
 }
 
+/**
+ * Giorni feriali in cui ogni figlio va accompagnato/ritirato (15/10/2026,
+ * Fabrizio: "Chi accompagna" anche per gli impegni aggiunti a mano — "sì,
+ * feriali"). Unisce le prenotazioni (bookedDaysForWeek) e gli impegni del
+ * Planner (aggiunti a mano o Scoperte) con almeno un figlio: un impegno conta
+ * in ogni giorno feriale tra startDate ed endDate, la stessa regola
+ * dell'agenda (buildTodayAgenda). Sabato e domenica restano fuori:
+ * week_responsibilities conosce solo lun–ven (servirebbe una migrazione).
+ */
+export function coordinationDaysForWeek(
+  bookings: Pick<AgendaBookingInput, "status" | "kidIds" | "kidNames" | "weeks" | "dayDates">[],
+  externalItems: Pick<AgendaExternalInput, "startDate" | "endDate" | "kidIds">[],
+  mondayIso: string,
+  kidNameById: Record<string, string>
+): { kidId: string; kidName: string; dates: string[] }[] {
+  const weekdays = WEEKDAYS.map((wd) => addDaysIso(mondayIso, wd.dayOffset));
+  const byKid = new Map<string, { kidName: string; dates: Set<string> }>();
+  for (const k of bookedDaysForWeek(bookings, mondayIso)) byKid.set(k.kidId, { kidName: k.kidName, dates: new Set(k.dates) });
+  for (const item of externalItems) {
+    const covered = weekdays.filter((iso) => item.startDate <= iso && iso <= item.endDate);
+    if (covered.length === 0) continue;
+    for (const kidId of item.kidIds) {
+      const name = byKid.get(kidId)?.kidName || kidNameById[kidId];
+      if (!name) continue; // figlio non (più) in famiglia: niente passaggio da organizzare
+      const entry = byKid.get(kidId) ?? { kidName: name, dates: new Set<string>() };
+      for (const d of covered) entry.dates.add(d);
+      byKid.set(kidId, entry);
+    }
+  }
+  return Array.from(byKid.entries()).map(([kidId, v]) => ({ kidId, kidName: v.kidName, dates: Array.from(v.dates).sort() }));
+}
+
 export interface WeekDayModel {
   dateIso: string;
   /** "Martedì 13" */
@@ -123,7 +155,7 @@ export function buildWeekModel(input: {
   closureLabelsByDate?: Record<string, string[]>;
 }): WeekModel {
   const monday = input.mondayIso;
-  const booked = bookedDaysForWeek(input.bookings, monday).filter(
+  const booked = coordinationDaysForWeek(input.bookings, input.externalItems, monday, input.kidNameById).filter(
     (k) => input.kidFilter === null || k.kidId === input.kidFilter
   );
   const respByKey = new Map<string, WeekResponsibility>();
