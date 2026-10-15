@@ -174,6 +174,16 @@ export interface InviteToFamilyResult {
   // poter mandare l'invito anche a mano, es. su WhatsApp, invece di dipendere
   // solo dalla consegna dell'email.
   link?: string;
+  // 15/10/2026: quando l'invito per email non è disponibile (tabella
+  // family_invites non ancora creata), si invita col codice della famiglia:
+  // il link porta alla pagina "La tua famiglia" con il codice già pronto.
+  inviteCode?: string;
+}
+
+/** Tabella mancante (migrazione non ancora applicata): PostgREST PGRST205 / Postgres 42P01. */
+function isMissingTableError(err: { code?: string; message?: string } | null | undefined): boolean {
+  if (!err) return false;
+  return err.code === "PGRST205" || err.code === "42P01" || /schema cache|does not exist/i.test(err.message ?? "");
 }
 
 export async function inviteToFamilyAction(email: string): Promise<InviteToFamilyResult> {
@@ -212,7 +222,20 @@ export async function inviteToFamilyAction(email: string): Promise<InviteToFamil
     })
     .select("id")
     .single();
-  if (error || !invite) return { error: error?.message || "Errore nella creazione dell'invito" };
+  if (error && isMissingTableError(error)) {
+    // Ripiego: invito con il codice della famiglia (stessa adesione di
+    // joinFamilyByCodeAction), mai un messaggio tecnico in inglese a schermo.
+    const { data: fam } = await supabase.from("families").select("invite_code").eq("id", membership.family_id).single();
+    if (!fam?.invite_code) return { error: "Non sono riuscito a preparare l'invito, riprova" };
+    const origin = await buildOrigin();
+    const joinPath = `/nextgen/profile/famiglia?code=${fam.invite_code}`;
+    return {
+      emailSent: false,
+      inviteCode: fam.invite_code as string,
+      link: `${origin}/auth/login?next=${encodeURIComponent(joinPath)}`,
+    };
+  }
+  if (error || !invite) return { error: "Non sono riuscito a preparare l'invito, riprova" };
 
   const origin = await buildOrigin();
   const acceptPath = `/nextgen/planner/famiglia?accept=${token}`;

@@ -11,6 +11,7 @@ import { ITALIAN_REGIONS } from "@/lib/school-calendar/regions";
 import { useGlobalActionProgress } from "@/components/GlobalActionProgress";
 import { Kid, KidGender } from "@/lib/types";
 import { categories as interestOptions } from "@/lib/mock-data";
+import { interestIcon, isKidInterestOption } from "@/lib/nextgen/kid-visual";
 
 export default function AddKidForm({
   onAdded,
@@ -23,12 +24,18 @@ export default function AddKidForm({
   // capability (§30: "utente normale: profilo bambino invariato").
   schoolCalendarEnabled = false,
   residenceCity = null,
+  v2 = false,
 }: {
   onAdded: (kid: Kid) => void;
   onCancel: () => void;
   schoolCalendarEnabled?: boolean;
   residenceCity?: string | null;
+  /** 15/10/2026 — stile V2 (Profilo V2 / La tua famiglia): campi alti, interessi con icona, niente emoji. */
+  v2?: boolean;
 }) {
+  const inputCls = v2
+    ? "min-h-[48px] rounded-[12px] border border-trama-line bg-white px-3.5 text-[16px] outline-none focus:border-trama-primary"
+    : "rounded-md border border-[#E8EBF0] bg-white px-3 py-2 text-sm outline-none focus:border-sky";
   const [name, setName] = useState("");
   const [birthDate, setBirthDate] = useState("");
   const [gender, setGender] = useState<KidGender | "">("");
@@ -91,13 +98,13 @@ export default function AddKidForm({
   }
 
   return (
-    <div className="rounded-md border-[1.5px] border-[#E3F0FB] bg-sky-light/40 p-3">
+    <div className={v2 ? "rounded-2xl border border-trama-line bg-white p-4" : "rounded-md border-[1.5px] border-[#E3F0FB] bg-sky-light/40 p-3"}>
       <div className="mb-2 grid grid-cols-2 gap-2">
         <input
           value={name}
           onChange={(e) => setName(e.target.value)}
           placeholder="Nome"
-          className="col-span-2 rounded-md border border-[#E8EBF0] bg-white px-3 py-2 text-sm outline-none focus:border-sky"
+          className={`col-span-2 ${inputCls}`}
         />
         <label className="text-[11px] text-ink-2">
           Data di nascita
@@ -105,7 +112,7 @@ export default function AddKidForm({
             type="date"
             value={birthDate}
             onChange={(e) => setBirthDate(e.target.value)}
-            className="mt-1 w-full rounded-md border border-[#E8EBF0] bg-white px-3 py-2 text-sm outline-none focus:border-sky"
+            className={`mt-1 w-full ${inputCls}`}
           />
         </label>
         <label className="text-[11px] text-ink-2">
@@ -113,7 +120,7 @@ export default function AddKidForm({
           <select
             value={gender}
             onChange={(e) => setGender(e.target.value as KidGender | "")}
-            className="mt-1 w-full rounded-md border border-[#E8EBF0] bg-white px-3 py-2 text-sm outline-none focus:border-sky"
+            className={`mt-1 w-full ${inputCls}`}
           >
             <option value="">Preferisco non dire</option>
             <option value="F">Femmina</option>
@@ -128,19 +135,35 @@ export default function AddKidForm({
           Interessi (opzionale) — usati per suggerire le attività più adatte in Home
         </div>
         <div className="flex flex-wrap gap-1.5">
-          {interestOptions.map((c) => {
+          {interestOptions.filter((c) => !v2 || isKidInterestOption(c.id)).map((c) => {
             const value = `${c.emoji} ${c.label}`;
             const active = interests.includes(value);
             return (
               <button
                 key={c.id}
                 type="button"
+                aria-pressed={active}
                 onClick={() => toggleInterest(value)}
-                className={`rounded-full border px-2.5 py-1 text-[11px] font-medium transition-colors ${
-                  active ? "border-sky bg-sky text-white" : "border-[#E8EBF0] bg-white text-ink-2"
-                }`}
+                className={
+                  v2
+                    ? `flex min-h-[40px] items-center gap-1.5 rounded-full border px-3.5 text-[13px] font-semibold ${
+                        active ? "border-trama-primary bg-trama-primary text-white" : "border-[#E3E6EC] bg-white text-ink"
+                      }`
+                    : `rounded-full border px-2.5 py-1 text-[11px] font-medium transition-colors ${
+                        active ? "border-sky bg-sky text-white" : "border-[#E8EBF0] bg-white text-ink-2"
+                      }`
+                }
               >
-                {c.emoji} {c.label}
+                {v2 ? (
+                  <>
+                    <i className={`ti ${interestIcon(c.label)} text-[16px]`} aria-hidden="true" />
+                    {c.label}
+                  </>
+                ) : (
+                  <>
+                    {c.emoji} {c.label}
+                  </>
+                )}
               </button>
             );
           })}
@@ -187,7 +210,7 @@ export default function AddKidForm({
             <select
               value={schoolRegion}
               onChange={(e) => setSchoolRegion(e.target.value)}
-              className="h-11 rounded-md border border-[#E8EBF0] bg-white px-3 text-sm outline-none focus:border-sky"
+              className={v2 ? "min-h-[48px] rounded-[12px] border border-trama-line bg-white px-3 text-[16px] outline-none focus:border-trama-primary" : "h-11 rounded-md border border-[#E8EBF0] bg-white px-3 text-sm outline-none focus:border-sky"}
             >
               <option value="">Regione…</option>
               {ITALIAN_REGIONS.map((r) => (
@@ -200,7 +223,7 @@ export default function AddKidForm({
               value={schoolComune}
               onChange={(e) => setSchoolComune(e.target.value)}
               placeholder="Comune della scuola"
-              className="h-11 rounded-md border border-[#E8EBF0] bg-white px-3 text-sm outline-none focus:border-sky"
+              className={v2 ? "min-h-[48px] rounded-[12px] border border-trama-line bg-white px-3 text-[16px] outline-none focus:border-trama-primary" : "h-11 rounded-md border border-[#E8EBF0] bg-white px-3 text-sm outline-none focus:border-sky"}
             />
           </div>
           {residenceCity && (
@@ -221,14 +244,22 @@ export default function AddKidForm({
           type="button"
           onClick={handleSave}
           disabled={saving}
-          className="rounded-md bg-sky px-4 py-2 text-xs font-bold text-white disabled:opacity-60"
+          className={
+            v2
+              ? "min-h-[48px] rounded-[12px] bg-trama-primary px-5 text-[15px] font-semibold text-white active:bg-trama-primary-press disabled:opacity-60"
+              : "rounded-md bg-sky px-4 py-2 text-xs font-bold text-white disabled:opacity-60"
+          }
         >
           {saving ? "Salvo…" : "Salva bambino"}
         </button>
         <button
           type="button"
           onClick={onCancel}
-          className="rounded-md border border-[#E8EBF0] px-4 py-2 text-xs font-semibold text-ink"
+          className={
+            v2
+              ? "min-h-[48px] rounded-[12px] border border-trama-line bg-white px-5 text-[15px] font-semibold text-ink"
+              : "rounded-md border border-[#E8EBF0] px-4 py-2 text-xs font-semibold text-ink"
+          }
         >
           Annulla
         </button>

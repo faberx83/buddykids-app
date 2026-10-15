@@ -17,6 +17,8 @@ import { isSupabaseConfigured } from "@/lib/supabase/env";
 // GlobalActionProgressProvider non è ancora montato, §29): start/complete
 // diventano no-op senza errore, vedi GlobalActionProgress.tsx.
 import { useGlobalActionProgress } from "@/components/GlobalActionProgress";
+import { KID_TONES } from "@/components/nextgen/AgendaItemRow";
+import { interestIcon, interestLabel, isKidInterestOption, kidInitial } from "@/lib/nextgen/kid-visual";
 
 // Duplicata volutamente da lib/data/kids.ts#ageFromBirthDate (stesso
 // principio già usato per KIDS_AVATARS_BUCKET in app/actions/kids.ts):
@@ -72,6 +74,13 @@ export default function ProfileKidsSection({
       ? "border-trama-violet bg-trama-violet text-white"
       : "border-sky bg-sky text-white";
   const accentBg = v2 ? "bg-trama-primary" : accent === "violet" ? "bg-trama-violet" : "bg-sky";
+  // 15/10/2026 — figli nello stile V2: campi alti, pulsanti a raggio 12.
+  const inputCls = v2
+    ? "min-h-[48px] rounded-[12px] border border-trama-line bg-white px-3.5 text-[16px] outline-none focus:border-trama-primary"
+    : "rounded-md border border-[#E8EBF0] bg-white px-3 py-2 text-sm outline-none focus:border-sky";
+  const saveBtn = v2
+    ? "min-h-[44px] rounded-[12px] px-4 text-[14px] font-semibold"
+    : "rounded-md px-4 py-2 text-xs font-bold";
   const [kids, setKids] = useState<Kid[]>(initialKids);
   const [showAddKid, setShowAddKid] = useState(Boolean(autoOpenAddKid));
   const [editingKidId, setEditingKidId] = useState<string | null>(null);
@@ -260,13 +269,25 @@ export default function ProfileKidsSection({
                 currentUrl={k.avatarUrl}
                 onUploaded={(url) => handleAvatarUploaded(k.id, url)}
                 size={50}
+                badgeClassName={v2 ? "bg-trama-primary" : undefined}
                 fallback={
-                  <div
-                    className="flex h-full w-full items-center justify-center text-2xl"
-                    style={{ background: k.color }}
-                  >
-                    {k.emoji}
-                  </div>
+                  v2 ? (
+                    // Niente faccina: iniziale sulla tinta del figlio (come in Home e Planner).
+                    <div
+                      className={`flex h-full w-full items-center justify-center font-poppins text-[20px] font-semibold ${
+                        KID_TONES[kids.indexOf(k) % KID_TONES.length].bg
+                      } ${KID_TONES[kids.indexOf(k) % KID_TONES.length].text}`}
+                    >
+                      {kidInitial(k.name)}
+                    </div>
+                  ) : (
+                    <div
+                      className="flex h-full w-full items-center justify-center text-2xl"
+                      style={{ background: k.color }}
+                    >
+                      {k.emoji}
+                    </div>
+                  )
                 }
               />
             </div>
@@ -281,9 +302,16 @@ export default function ProfileKidsSection({
                   {k.interests.map((int) => (
                     <span
                       key={int}
-                      className={v2 ? "rounded-full bg-[#F1F3F6] px-2.5 py-[3px] text-[12px] font-semibold text-[#374151]" : "rounded-full bg-bg px-2 py-0.5 text-[10px] font-medium text-ink-2"}
+                      className={v2 ? "flex items-center gap-1 rounded-full bg-[#F1F3F6] px-2.5 py-[3px] text-[12px] font-semibold text-[#374151]" : "rounded-full bg-bg px-2 py-0.5 text-[10px] font-medium text-ink-2"}
                     >
-                      {int}
+                      {v2 ? (
+                        <>
+                          <i className={`ti ${interestIcon(int)} text-[14px]`} aria-hidden="true" />
+                          {interestLabel(int)}
+                        </>
+                      ) : (
+                        int
+                      )}
                     </span>
                   ))}
                 </div>
@@ -306,7 +334,7 @@ export default function ProfileKidsSection({
                   value={editName}
                   onChange={(e) => setEditName(e.target.value)}
                   placeholder="Nome"
-                  className="col-span-2 rounded-md border border-[#E8EBF0] bg-white px-3 py-2 text-sm outline-none focus:border-sky"
+                  className={`col-span-2 ${inputCls}`}
                 />
                 <label className="text-[11px] text-ink-2">
                   Data di nascita
@@ -314,7 +342,7 @@ export default function ProfileKidsSection({
                     type="date"
                     value={editBirthDate}
                     onChange={(e) => setEditBirthDate(e.target.value)}
-                    className="mt-1 w-full rounded-md border border-[#E8EBF0] bg-white px-3 py-2 text-sm outline-none focus:border-sky"
+                    className={`mt-1 w-full ${inputCls}`}
                   />
                 </label>
                 <label className="text-[11px] text-ink-2">
@@ -322,7 +350,7 @@ export default function ProfileKidsSection({
                   <select
                     value={editGender}
                     onChange={(e) => setEditGender(e.target.value as KidGender | "")}
-                    className="mt-1 w-full rounded-md border border-[#E8EBF0] bg-white px-3 py-2 text-sm outline-none focus:border-sky"
+                    className={`mt-1 w-full ${inputCls}`}
                   >
                     <option value="">Preferisco non dire</option>
                     <option value="F">Femmina</option>
@@ -336,7 +364,7 @@ export default function ProfileKidsSection({
                 type="button"
                 onClick={() => saveDetails(k.id)}
                 disabled={savingDetails}
-                className={`mb-3 rounded-md ${accentBg} px-4 py-2 text-xs font-bold text-white disabled:opacity-60`}
+                className={`mb-3 ${saveBtn} ${accentBg} text-white disabled:opacity-60`}
               >
                 {savingDetails ? "Salvo…" : "Salva dati"}
               </button>
@@ -345,19 +373,35 @@ export default function ProfileKidsSection({
                 Interessi — usati per suggerire le attività più adatte in Home
               </div>
               <div className="mb-2.5 flex flex-wrap gap-1.5">
-                {interestOptions.map((c) => {
+                {interestOptions.filter((c) => !v2 || isKidInterestOption(c.id)).map((c) => {
                   const value = `${c.emoji} ${c.label}`;
                   const active = (k.interests ?? []).includes(value);
                   return (
                     <button
                       key={c.id}
                       type="button"
+                      aria-pressed={active}
                       onClick={() => toggleInterestFor(k.id, value)}
-                      className={`rounded-full border px-2.5 py-1 text-[11px] font-medium transition-colors ${
-                        active ? accentActive : "border-[#E8EBF0] bg-white text-ink-2"
-                      }`}
+                      className={
+                        v2
+                          ? `flex min-h-[40px] items-center gap-1.5 rounded-full border px-3.5 text-[13px] font-semibold ${
+                              active ? "border-trama-primary bg-trama-primary text-white" : "border-[#E3E6EC] bg-white text-ink"
+                            }`
+                          : `rounded-full border px-2.5 py-1 text-[11px] font-medium transition-colors ${
+                              active ? accentActive : "border-[#E8EBF0] bg-white text-ink-2"
+                            }`
+                      }
                     >
-                      {c.emoji} {c.label}
+                      {v2 ? (
+                        <>
+                          <i className={`ti ${interestIcon(c.label)} text-[16px]`} aria-hidden="true" />
+                          {c.label}
+                        </>
+                      ) : (
+                        <>
+                          {c.emoji} {c.label}
+                        </>
+                      )}
                     </button>
                   );
                 })}
@@ -366,7 +410,7 @@ export default function ProfileKidsSection({
                 type="button"
                 onClick={() => saveInterests(k.id)}
                 disabled={savingInterests}
-                className={`rounded-md ${accentBg} px-4 py-2 text-xs font-bold text-white disabled:opacity-60`}
+                className={`${saveBtn} ${accentBg} text-white disabled:opacity-60`}
               >
                 {savingInterests ? "Salvo…" : "Salva"}
               </button>
@@ -489,6 +533,7 @@ export default function ProfileKidsSection({
           onCancel={() => setShowAddKid(false)}
           schoolCalendarEnabled={schoolCalendarEnabled}
           residenceCity={residenceCity}
+          v2={v2}
         />
       )}
     </div>

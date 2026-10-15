@@ -21,6 +21,7 @@ export default function AvatarUploadButton({
   fallback,
   size = 50,
   disabled,
+  badgeClassName = "bg-sky",
 }: {
   folder: string;
   currentUrl?: string | null;
@@ -28,6 +29,8 @@ export default function AvatarUploadButton({
   fallback: React.ReactNode; // emoji/iniziali mostrate quando non c'è ancora una foto
   size?: number;
   disabled?: boolean;
+  /** 15/10/2026 — colore del bollino fotocamera (V2: blu notte). Default invariato. */
+  badgeClassName?: string;
 }) {
   const wrapperRef = useRef<HTMLDivElement>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
@@ -114,7 +117,7 @@ export default function AvatarUploadButton({
         disabled={disabled || uploading}
         onClick={toggleMenu}
         aria-label="Cambia foto"
-        className="absolute bottom-0 right-0 flex h-5 w-5 items-center justify-center rounded-full border-2 border-white bg-sky text-white disabled:opacity-60"
+        className={`absolute bottom-0 right-0 flex h-5 w-5 items-center justify-center rounded-full border-2 border-white ${badgeClassName} text-white disabled:opacity-60`}
       >
         <i className={`ti ${uploading ? "ti-loader-2 animate-spin" : "ti-camera"} text-[11px]`} />
       </button>

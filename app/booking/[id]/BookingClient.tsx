@@ -670,6 +670,8 @@ export default function BookingClient({
                 selected={selectedKids.includes(k.id)}
                 onToggle={() => toggleKid(k.id)}
                 nextgen={nextgen}
+                v2={v2}
+                toneIndex={kids.indexOf(k)}
               />
             ))}
 
@@ -681,11 +683,12 @@ export default function BookingClient({
                   setShowAddKid(false);
                 }}
                 onCancel={() => setShowAddKid(false)}
+                v2={v2}
               />
             ) : (
               <div
                 onClick={() => setShowAddKid(true)}
-                className={`flex cursor-pointer items-center gap-2.5 rounded-md border-[1.5px] border-dashed border-[#C5CDD8] p-3 text-[13px] font-medium text-ink-2 transition-colors ${accentHoverBorder} ${accentHoverText}`}
+                className={`flex cursor-pointer items-center gap-2.5 border-[1.5px] border-dashed border-[#C5CDD8] p-3 text-[13px] font-medium text-ink-2 transition-colors ${v2 ? "min-h-[56px] rounded-2xl" : "rounded-md"} ${accentHoverBorder} ${accentHoverText}`}
               >
                 <i className="ti ti-plus text-xl" />
                 Aggiungi bambino

@@ -56,6 +56,7 @@ import { addCuratedLeadToPlannerAction } from "@/app/actions/external-planner-it
 import type { Kid } from "@/lib/types";
 import { markFirstUsefulAction } from "@/lib/nextgen/first-action";
 import ActivityVisual from "@/components/nextgen/ActivityVisual";
+import KidName from "@/components/nextgen/KidName";
 
 const CATEGORY_LABELS: Record<DiscoveryLeadRecord["category"], string> = {
   educativo: "Educativo",
@@ -573,7 +574,7 @@ export default function DiscoveryLeadCard({
                     planKidIds.includes(kid.id) ? "bg-trama-violet text-white" : "border border-[#E8EBF0] text-ink-2"
                   }`}
                 >
-                  {kid.emoji} {kid.name}
+                  <KidName kid={kid} />
                 </button>
               ))}
             </div>

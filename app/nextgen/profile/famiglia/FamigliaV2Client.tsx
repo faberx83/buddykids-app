@@ -46,6 +46,7 @@ export default function FamigliaV2Client({
   myEmail,
   people,
   addresses,
+  initialJoinCode = null,
 }: {
   kids: Kid[];
   autoOpenAddKid: boolean;
@@ -57,6 +58,8 @@ export default function FamigliaV2Client({
   myEmail: string;
   people: FamilyPerson[];
   addresses: ParentAddress[];
+  /** Arrivati dal link d'invito con ?code=: il codice è già pronto da confermare. */
+  initialJoinCode?: string | null;
 }) {
   return (
     <div className="flex flex-col pb-10">
@@ -74,7 +77,7 @@ export default function FamigliaV2Client({
           residenceCity={residenceCity}
           v2
         />
-        <ParentsBlock family={family} myName={myName} myEmail={myEmail} />
+        <ParentsBlock family={family} myName={myName} myEmail={myEmail} initialJoinCode={initialJoinCode} />
         <HelpersBlock people={people} />
         <PlacesBlock addresses={addresses} />
       </div>
@@ -84,15 +87,26 @@ export default function FamigliaV2Client({
 
 // ─── Genitori ───────────────────────────────────────────────────────────
 
-function ParentsBlock({ family, myName, myEmail }: { family: Family | null; myName: string; myEmail: string }) {
+function ParentsBlock({
+  family,
+  myName,
+  myEmail,
+  initialJoinCode,
+}: {
+  family: Family | null;
+  myName: string;
+  myEmail: string;
+  initialJoinCode: string | null;
+}) {
   const router = useRouter();
   const showToast = useNextgenToast();
   const [email, setEmail] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [link, setLink] = useState<string | null>(null);
-  const [showCode, setShowCode] = useState(false);
-  const [code, setCode] = useState("");
+  const [linkCode, setLinkCode] = useState<string | null>(null);
+  const [showCode, setShowCode] = useState(Boolean(initialJoinCode));
+  const [code, setCode] = useState(initialJoinCode ?? "");
 
   const others = (family?.members ?? []).filter((m) => !m.isMe);
   const canInvite = !family || family.myRole === "creatore" || family.myRole === "admin";
@@ -109,13 +123,16 @@ function ParentsBlock({ family, myName, myEmail }: { family: Family | null; myNa
     }
     setEmail("");
     setLink(res.link ?? null);
+    setLinkCode(res.inviteCode ?? null);
     showToast(res.emailSent ? "Invito inviato per email" : "Invito pronto: mandagli il link");
     router.refresh();
   }
 
   async function shareLink() {
     if (!link) return;
-    const text = `Ti invito su TRAMA per organizzare insieme le attività dei bambini: ${link}`;
+    const text = linkCode
+      ? `Ti invito su TRAMA per organizzare insieme le attività dei bambini. Apri il link e conferma il codice ${linkCode}: ${link}`
+      : `Ti invito su TRAMA per organizzare insieme le attività dei bambini: ${link}`;
     try {
       if (navigator.share) {
         await navigator.share({ title: "TRAMA", text });
@@ -193,10 +210,17 @@ function ParentsBlock({ family, myName, myEmail }: { family: Family | null; myNa
         </form>
       )}
       {link && (
-        <button type="button" onClick={shareLink} className={LINK}>
-          <i className="ti ti-share mr-1.5" aria-hidden="true" />
-          Manda il link anche su WhatsApp
-        </button>
+        <div className="flex flex-col gap-1">
+          {linkCode && (
+            <p className="text-[13px] leading-snug text-ink-2">
+              Mandagli il link: entrerà nella vostra famiglia con il codice <b className="tracking-wide text-ink">{linkCode}</b>.
+            </p>
+          )}
+          <button type="button" onClick={shareLink} className={LINK}>
+            <i className="ti ti-share mr-1.5" aria-hidden="true" />
+            {linkCode ? "Manda il link su WhatsApp" : "Manda il link anche su WhatsApp"}
+          </button>
+        </div>
       )}
       {error && <p className="text-[13px] font-medium text-[#B3261E]">{error}</p>}
 

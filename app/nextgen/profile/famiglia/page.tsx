@@ -23,7 +23,7 @@ import { getParentProfile } from "@/lib/data/profile";
 export default async function FamigliaHubPage({
   searchParams,
 }: {
-  searchParams: Promise<{ addKid?: string }>;
+  searchParams: Promise<{ addKid?: string; code?: string }>;
 }) {
   if (!isSupabaseConfigured) return <FamigliaHubClient />;
   const supabase = await createClient();
@@ -54,6 +54,7 @@ export default async function FamigliaHubPage({
     <FamigliaV2Client
       kids={kids}
       autoOpenAddKid={params.addKid === "1"}
+      initialJoinCode={!family && params.code ? params.code.toUpperCase().slice(0, 12) : null}
       schoolCalendarEnabled={schoolCalendarEnabled}
       schoolProfiles={schoolProfiles}
       residenceCity={(profileRow.data?.city as string | undefined) ?? null}

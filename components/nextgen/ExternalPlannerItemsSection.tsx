@@ -27,6 +27,7 @@ import {
 } from "@/app/actions/external-planner-items";
 import { markFirstUsefulAction } from "@/lib/nextgen/first-action";
 import { useNextgenToast } from "@/components/nextgen/NextgenToastProvider";
+import KidName from "@/components/nextgen/KidName";
 
 const KIND_LABEL: Record<ExternalPlannerItemKind, string> = {
   activity: "Attività organizzata",
@@ -223,7 +224,7 @@ function ItemForm({
                 form.kidIds.includes(kid.id) ? "bg-trama-violet text-white" : "border border-[#E8EBF0] text-ink-2"
               }`}
             >
-              {kid.emoji} {kid.name}
+              <KidName kid={kid} />
             </button>
           ))}
         </div>
@@ -466,7 +467,7 @@ export default function ExternalPlannerItemsSection({
                     <div className="mt-1.5 flex flex-wrap gap-1">
                       {itemKids.map((k) => (
                         <span key={k.id} className="rounded-full bg-[#F4F6FA] px-2 py-0.5 text-[10.5px] font-semibold text-ink-2">
-                          {k.emoji} {k.name}
+                          <KidName kid={k} />
                         </span>
                       ))}
                     </div>

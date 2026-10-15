@@ -44,6 +44,7 @@ import { addKidAction } from "@/app/actions/kids";
 import { isParentalDeclarationGateEnabledAction } from "@/app/actions/legal";
 import { setSchoolContextForFamilyAction } from "@/app/actions/school-calendar";
 import { ITALIAN_REGIONS } from "@/lib/school-calendar/regions";
+import { interestIcon } from "@/lib/nextgen/kid-visual";
 
 export interface OnboardingV2Kid {
   id: string;
@@ -708,10 +709,11 @@ function KidsStep({
                     type="button"
                     aria-pressed={on}
                     onClick={() => setInterests((prev) => (on ? prev.filter((v) => v !== opt.value) : [...prev, opt.value]))}
-                    className={`min-h-[40px] rounded-full border px-3.5 text-[13px] font-semibold ${
+                    className={`flex min-h-[40px] items-center gap-1.5 rounded-full border px-3.5 text-[13px] font-semibold ${
                       on ? "border-trama-primary bg-trama-primary text-white" : "border-[#E3E6EC] bg-white text-ink"
                     }`}
                   >
+                    <i className={`ti ${interestIcon(opt.value)} text-[16px]`} aria-hidden="true" />
                     {opt.label}
                   </button>
                 );
