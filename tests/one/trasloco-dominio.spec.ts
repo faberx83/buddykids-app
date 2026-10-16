@@ -198,3 +198,26 @@ test.describe("TRAMA — Genitori modificabili [no browser]", () => {
     expect(c).toContain("const url = shortInviteUrl(familyOriginFromLocation(window.location), token);");
   });
 });
+
+test.describe("TRAMA — V1 spenta ma tenuta lì [no browser]", () => {
+  test("V1-01 la vecchia Home porta chi è collegato su /nextgen; /?v1=1 e ?denied restano", () => {
+    const home = read("app/(main)/page.tsx");
+    expect(home).toContain('if (isSupabaseConfigured && !denied && v1 !== "1") {');
+    expect(home).toContain('if (user) redirect("/nextgen");');
+    expect(read("components/VersionToggle.tsx")).toContain('get("v1") === "1") return;');
+  });
+
+  test("V1-02 dopo il login, ?next=/ non conta come destinazione scelta", () => {
+    const f = read("app/auth/login/LoginForm.tsx");
+    expect(f).toContain('const explicitNext = next && next !== "/" ? next : null;');
+    expect(f).toContain("explicitNext || (tenant === \"family\"");
+  });
+
+  test("V1-03 i test della vecchia Home la aprono con /?v1=1", () => {
+    for (const p of ["tests/genitori/home.spec.ts", "tests/genitori/home-planner.spec.ts", "tests/gestore/attendance.spec.ts"]) {
+      const s = read(p);
+      expect(s, p).toContain('await page.goto("/?v1=1");');
+      expect(s, p).not.toContain('await page.goto("/");');
+    }
+  });
+});

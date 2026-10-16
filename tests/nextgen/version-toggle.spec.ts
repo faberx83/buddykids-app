@@ -12,7 +12,8 @@ test.describe("Versione LEGACY/NEXTGEN - Toggle", () => {
   test("TC-N28 - Il toggle su '/' porta a NEXTGEN e ricorda la scelta", async ({ page }) => {
     test.skip(!isRealDeployment, "Richiede un deploy con Supabase configurato e l'account genitore di test.");
     await loginAs(page, "parent");
-    await page.goto("/");
+    // 16/10/2026: la vecchia Home è spenta (porta a /nextgen); resta su /?v1=1.
+    await page.goto("/?v1=1");
 
     await expect(page.getByRole("button", { name: "Passa a NextGen" })).toBeVisible();
     await page.getByRole("button", { name: "Passa a NextGen" }).click();

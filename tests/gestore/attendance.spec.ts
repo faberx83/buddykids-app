@@ -141,7 +141,7 @@ test.describe("Gestore - Registro presenze", () => {
 
     // 1) Genitore: risponde "Siamo in ritardo" dalla Home.
     await loginAs(page, "parent");
-    await page.goto("/");
+    await page.goto("/?v1=1"); // V1 spenta ma raggiungibile (16/10/2026)
     const promptVisible = await page
       .getByText(/è arrivato\/a a/)
       .first()
@@ -242,7 +242,7 @@ test.describe("Gestore - Registro presenze", () => {
 
     // 1) Genitore: fa un check-in (se disponibile oggi).
     await loginAs(page, "parent");
-    await page.goto("/");
+    await page.goto("/?v1=1"); // V1 spenta ma raggiungibile (16/10/2026)
     const promptVisible = await page
       .getByText(/è arrivato\/a a/)
       .first()

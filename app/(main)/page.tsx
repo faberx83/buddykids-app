@@ -15,6 +15,7 @@ import { getTodayCheckinsForParent } from "@/lib/data/checkin";
 import { getSeasonYear } from "@/lib/data/season-year";
 import { getFavoriteActivityIds } from "@/lib/data/favorites";
 import { createClient } from "@/lib/supabase/server";
+import { redirect } from "next/navigation";
 
 async function getDisplayIdentity() {
   if (!isSupabaseConfigured) {
@@ -51,9 +52,25 @@ async function getDisplayIdentity() {
 export default async function HomePage({
   searchParams,
 }: {
-  searchParams: Promise<{ denied?: string }>;
+  searchParams: Promise<{ denied?: string; v1?: string }>;
 }) {
-  const { denied } = await searchParams;
+  const { denied, v1 } = await searchParams;
+
+  // 16/10/2026 — V1 "spenta ma tenuta lì" (Fabrizio: "mi torna indietro su
+  // v1… possiamo spegnerla ma tenerla lì"). Chi è collegato e apre la vecchia
+  // Home finisce sulla Home di oggi (/nextgen): succedeva dopo il login con
+  // ?next=/ e, per l'account platform_admin, a ogni accesso (la regola di
+  // lib/auth/default-landing.ts manda su /nextgen solo i genitori della beta).
+  // Il codice V1 resta: le pagine interne ancora usate da NextGen funzionano
+  // come prima e /?v1=1 mostra la vecchia Home a chi vuole vederla.
+  // ?denied=... (portale sbagliato) resta qui per mostrare il suo avviso.
+  if (isSupabaseConfigured && !denied && v1 !== "1") {
+    const supabase = await createClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (user) redirect("/nextgen");
+  }
   const [
     activities,
     { displayName, initials, avatarUrl },

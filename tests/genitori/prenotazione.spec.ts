@@ -397,7 +397,7 @@ test.describe("Genitori - Prenotazione", () => {
   test("TC-189 - Home 'Già prenotato per [bambino]' apre Le mie prenotazioni filtrata su quel bambino", async ({ page }) => {
     test.skip(!isRealDeployment, "Richiede un deploy con Supabase configurato e l'account genitore di test.");
     await loginAs(page, "parent");
-    await page.goto("/");
+    await page.goto("/?v1=1"); // V1 spenta ma raggiungibile (16/10/2026)
     await page.getByText("Per bambino").click().catch(() => {});
 
     const bookedLink = page.locator("a[href^='/prenotazioni?kid=']").first();

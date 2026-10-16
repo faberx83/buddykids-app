@@ -10,7 +10,7 @@ test.describe("Genitori - Home", () => {
   test.beforeEach(async ({ page }) => {
     test.skip(!isRealDeployment, "Richiede un deploy con Supabase configurato e l'account genitore di test.");
     await loginAs(page, "parent");
-    await page.goto("/");
+    await page.goto("/?v1=1"); // V1 spenta ma raggiungibile (16/10/2026)
   });
 
   // Segnalazione di Fabrizio: "dopo il click però dovrebbero chiudersi in
@@ -170,7 +170,7 @@ test.describe("Genitori - Home", () => {
   test("TC-151 - rispondere al check-in salva subito e persiste dopo reload", async ({ page }) => {
     test.skip(!isRealDeployment, "Richiede un deploy con Supabase configurato e l'account genitore di test.");
     await loginAs(page, "parent");
-    await page.goto("/");
+    await page.goto("/?v1=1"); // V1 spenta ma raggiungibile (16/10/2026)
 
     const expanded = await ensureCheckinPromptExpanded(page);
     test.skip(
@@ -204,7 +204,7 @@ test.describe("Genitori - Home", () => {
   }) => {
     test.skip(!isRealDeployment, "Richiede un deploy con Supabase configurato e l'account genitore di test.");
     await loginAs(page, "parent");
-    await page.goto("/");
+    await page.goto("/?v1=1"); // V1 spenta ma raggiungibile (16/10/2026)
 
     const expanded = await ensureCheckinPromptExpanded(page);
     test.skip(
@@ -242,7 +242,7 @@ test.describe("Genitori - Home", () => {
   test("TC-167 - La card di check-in mostra la foto/copertina e la settimana in corso", async ({ page }) => {
     test.skip(!isRealDeployment, "Richiede un deploy con Supabase configurato e l'account genitore di test.");
     await loginAs(page, "parent");
-    await page.goto("/");
+    await page.goto("/?v1=1"); // V1 spenta ma raggiungibile (16/10/2026)
 
     const expanded = await ensureCheckinPromptExpanded(page);
     test.skip(

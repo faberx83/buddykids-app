@@ -104,6 +104,7 @@ export default function VersionToggle() {
     if (hidden || !allowed) return;
     if (pathname !== "/" && pathname !== "/nextgen") return; // solo le due home, mai su pagine interne
     if (isStandaloneDisplay()) return; // icona installata: identità fissa, mai reindirizzata
+    if (new URLSearchParams(window.location.search).get("v1") === "1") return; // V1 chiesta apposta (16/10/2026)
 
     const preferred = readVersionPreference();
     if (preferred && preferred !== currentVersion) {

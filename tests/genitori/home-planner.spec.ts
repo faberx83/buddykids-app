@@ -14,7 +14,7 @@ import { test, expect, loginAs } from "../fixtures/roles";
 test.describe("Genitori - Home (Planner/Per Bambino)", () => {
   test.beforeEach(async ({ page }) => {
     await loginAs(page, "parent");
-    await page.goto("/");
+    await page.goto("/?v1=1"); // V1 spenta ma raggiungibile (16/10/2026)
   });
 
   // Priorita: Alta | Precondizioni: Almeno un bambino con profilo completo; app collegata a Supabase

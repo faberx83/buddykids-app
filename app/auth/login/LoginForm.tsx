@@ -143,8 +143,11 @@ export default function LoginForm({
       // (VersionToggle.tsx non è più un modo disponibile per un beta tester
       // esterno di raggiungerci da solo). Solo tenant "family": Partner/Admin
       // non hanno un equivalente NextGen, nessuna chiamata in più per loro.
+      // 16/10/2026: "?next=/" (la vecchia Home) non conta come destinazione
+      // scelta — altrimenti un genitore della beta finiva su V1.
+      const explicitNext = next && next !== "/" ? next : null;
       const destination =
-        next || (tenant === "family" && data.user?.id ? await getPostLoginDestinationAction(data.user.id) : null) || "/";
+        explicitNext || (tenant === "family" && data.user?.id ? await getPostLoginDestinationAction(data.user.id) : null) || "/";
       router.push(destination);
       router.refresh();
     } else {

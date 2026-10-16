@@ -23,7 +23,7 @@ test.describe("NEXTGEN - Onboarding neo-genitore (parità con LEGACY)", () => {
     test.skip(!isRealDeployment, "Richiede un deploy con Supabase configurato e l'account genitore di test.");
     await loginAs(page, "parent");
 
-    await page.goto("/");
+    await page.goto("/?v1=1"); // V1 spenta ma raggiungibile (16/10/2026)
     const legacyPromptVisible = await page
       .getByText("Completa il tuo profilo")
       .isVisible()
