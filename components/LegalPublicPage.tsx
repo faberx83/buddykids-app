@@ -2,6 +2,7 @@ import { resolvePublishedDocumentForPublicRoute } from "@/lib/legal/gate";
 import { isDraftLegalVersion, legalTextFor } from "@/lib/legal/texts";
 import { legalTextSha256 } from "@/lib/legal/text-integrity";
 import LegalDocumentView from "@/components/LegalDocumentView";
+import PageHeader from "@/components/PageHeader";
 import type { LegalDocumentType } from "@/lib/legal/consent";
 
 // TRAMA — pagine pubbliche /privacy e /terms (16/10/2026, pacchetto 2).
@@ -9,15 +10,27 @@ import type { LegalDocumentType } from "@/lib/legal/consent";
 // testo esiste nel codice (lib/legal/texts.ts) e la sua impronta sha256
 // coincide con quella registrata: altrimenti "Documento in preparazione".
 // Nessun login richiesto (route escluse dal gate di autenticazione).
-export default async function LegalPublicPage({ type, title }: { type: LegalDocumentType; title: string }) {
+// 16/10/2026: variante "app" per leggerli DENTRO l'app (Profilo → Privacy e
+// account, Cos'è TRAMA): intestazione con freccia indietro e barra in basso,
+// senza uscire dall'app installata.
+export default async function LegalPublicPage({
+  type,
+  title,
+  variant = "public",
+}: {
+  type: LegalDocumentType;
+  title: string;
+  variant?: "public" | "app";
+}) {
   const doc = await resolvePublishedDocumentForPublicRoute(type);
   const text = doc ? legalTextFor(type, doc.version) : null;
   const verified = Boolean(doc && text && doc.sha256 && legalTextSha256(text) === doc.sha256);
 
   return (
-    <div className="min-h-screen bg-trama-page px-5 py-8">
-      <div className="mx-auto flex max-w-2xl flex-col gap-4">
-        <img src="/brand/trama-logo-mark.png" alt="TRAMA" className="h-9 w-auto self-start" />
+    <div className={variant === "app" ? "flex flex-col pb-10" : "min-h-screen bg-trama-page px-5 py-8"}>
+      {variant === "app" && <PageHeader title={title} backHref="/nextgen/profile" showBrandIcon />}
+      <div className={variant === "app" ? "mx-auto flex w-full max-w-2xl flex-col gap-4 px-5 pt-3" : "mx-auto flex max-w-2xl flex-col gap-4"}>
+        {variant === "public" && <img src="/brand/trama-logo-mark.png" alt="TRAMA" className="h-9 w-auto self-start" />}
         {!doc || !verified || !text ? (
           <>
             <h1 className="font-poppins text-[26px] font-semibold leading-tight text-ink">{title}</h1>

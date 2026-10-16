@@ -88,3 +88,18 @@ test.describe("TRAMA — Testi legali [no browser]", () => {
     expect(read("lib/feature-flags/resolve.ts")).toContain("...extraCohortKeys.filter(Boolean)");
   });
 });
+
+test.describe("TRAMA — Informative dentro l'app [no browser]", () => {
+  test("LT-08 Privacy e Termini leggibili dall'app (Profilo → Privacy e account, Cos'è TRAMA)", () => {
+    expect(read("app/nextgen/informative/privacy/page.tsx")).toContain('variant="app"');
+    expect(read("app/nextgen/informative/termini/page.tsx")).toContain('variant="app"');
+    expect(read("components/PrivacyView.tsx")).toContain('"/nextgen/informative/privacy"');
+    expect(read("app/nextgen/trama/page.tsx")).toContain('href="/nextgen/informative/termini"');
+    // beta senza pagamenti: niente "Metodi di pagamento" nelle Impostazioni V2
+    expect(read("app/nextgen/profile/impostazioni/ImpostazioniHubClient.tsx")).not.toContain("Metodi di pagamento");
+  });
+
+  test("LT-09 Home: l'avviso 'mancano accompagnamenti' solo quando il blocco di oggi finisce fuori schermo", () => {
+    expect(read("app/nextgen/HomeDashboardV2Client.tsx")).toContain("{urgentAlert && agenda.length > 3 && (");
+  });
+});

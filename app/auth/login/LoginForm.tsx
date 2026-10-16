@@ -8,6 +8,7 @@ import { isSupabaseConfigured } from "@/lib/supabase/env";
 import PhoneShell from "@/components/PhoneShell";
 import TramaLoginHeader from "@/components/TramaLoginHeader";
 import { friendlyAuthError } from "@/lib/auth-errors";
+import { checkEmail } from "@/lib/auth/email-check";
 import { getInvitePreviewAction } from "@/app/actions/invites";
 import { getBetaInvitePreviewAction, BetaInvitePreview } from "@/app/actions/beta-invites";
 import { getPostLoginDestinationAction } from "@/app/actions/navigation";
@@ -66,6 +67,7 @@ export default function LoginForm({
   const betaParam = searchParams.get("beta");
   const [mode, setMode] = useState<Mode>(inviteParam || betaParam || modeParam === "signup" ? "signup" : "login");
   const [email, setEmail] = useState(searchParams.get("email") || "");
+  const [emailSuggestion, setEmailSuggestion] = useState<string | null>(null);
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [inviteCode, setInviteCode] = useState(inviteParam || "");
@@ -98,6 +100,17 @@ export default function LoginForm({
     e.preventDefault();
     setError(null);
     setMessage(null);
+    setEmailSuggestion(null);
+
+    // 16/10/2026 — formato email controllato prima di chiamare Supabase
+    // (lib/auth/email-check.ts): "nome@gmail" o "gmail.con" non partono.
+    const emailCheck = checkEmail(email);
+    if (!emailCheck.ok) {
+      setError(emailCheck.message);
+      setEmailSuggestion(emailCheck.suggestion ?? null);
+      return;
+    }
+    const cleanEmail = emailCheck.email;
 
     if (!isSupabaseConfigured) {
       setError(
@@ -110,7 +123,7 @@ export default function LoginForm({
     const supabase = createClient();
 
     if (mode === "reset") {
-      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      const { error } = await supabase.auth.resetPasswordForEmail(cleanEmail, {
         redirectTo: `${window.location.origin}/auth/callback?next=/auth/reset-password`,
       });
       setLoading(false);
@@ -120,7 +133,7 @@ export default function LoginForm({
     }
 
     if (mode === "login") {
-      const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+      const { data, error } = await supabase.auth.signInWithPassword({ email: cleanEmail, password });
       setLoading(false);
       if (error) return setError(friendlyAuthError(error.message));
       // BUGFIX (Fabrizio, 30/08: "Maria sembra sia entrata nella versione
@@ -164,7 +177,7 @@ export default function LoginForm({
       if (betaParam?.trim()) metadata.beta_invite_code = betaParam.trim();
 
       const { data, error } = await supabase.auth.signUp({
-        email,
+        email: cleanEmail,
         password,
         options: {
           emailRedirectTo: callbackUrl,
@@ -380,6 +393,11 @@ export default function LoginForm({
             <input
               id="login-email"
               type="email"
+              inputMode="email"
+              autoComplete="email"
+              autoCapitalize="none"
+              autoCorrect="off"
+              spellCheck={false}
               required
               value={email}
               onChange={(e) => setEmail(e.target.value)}
@@ -492,7 +510,24 @@ export default function LoginForm({
               </div>
             )}
 
-            {error && <p className="mb-3 text-xs font-medium text-orange">{error}</p>}
+            {error && <p className={isFamily ? "mb-3 text-[13.5px] font-medium text-[#B3261E]" : "mb-3 text-xs font-medium text-orange"}>{error}</p>}
+            {emailSuggestion && (
+              <button
+                type="button"
+                onClick={() => {
+                  setEmail(emailSuggestion);
+                  setEmailSuggestion(null);
+                  setError(null);
+                }}
+                className={
+                  isFamily
+                    ? "mb-3 flex min-h-[44px] items-center text-[14px] font-semibold text-trama-accent-ink"
+                    : "mb-3 text-xs font-semibold underline"
+                }
+              >
+                Usa {emailSuggestion}
+              </button>
+            )}
             {message && <p className="mb-3 text-xs font-medium text-green">{message}</p>}
 
             <button

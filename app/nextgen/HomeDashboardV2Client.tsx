@@ -279,8 +279,11 @@ export default function HomeDashboardV2Client({
 
       <MockDataBanner visible={activitiesAreMockFallback} />
 
-      {/* 2. ALERT — solo un problema operativo di OGGI */}
-      {urgentAlert && (
+      {/* 2. ALERT — solo un problema operativo di OGGI. 16/10/2026 (Fabrizio:
+          "non è ridondante?"): con pochi impegni il blocco "Chi accompagna
+          oggi" è subito sotto e dice la stessa cosa; l'avviso resta solo
+          quando la giornata è lunga e quel blocco finisce fuori schermo. */}
+      {urgentAlert && agenda.length > 3 && (
         <div role="status" className="-mb-2 flex items-center gap-3 rounded-2xl bg-[#FFF4E0] py-2.5 pl-3.5 pr-2.5">
           <i className="ti ti-car text-[20px] text-[#9A5A00]" aria-hidden="true" />
           <span className="flex-1 text-[13.5px] font-medium leading-snug text-[#5C3600]">{urgentAlert.text}</span>

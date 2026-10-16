@@ -62,12 +62,12 @@ export default function CosETramaPage() {
           Scrivici da &quot;Aiutaci a migliorare TRAMA&quot;
           <i className="ti ti-chevron-right text-[16px] text-ink-3" aria-hidden="true" />
         </Link>
-        <Link href="/privacy" className="flex min-h-[50px] items-center justify-between border-b border-[#F0F2F5] px-4 text-[14px] font-semibold text-ink">
-          Privacy
+        <Link href="/nextgen/informative/privacy" className="flex min-h-[50px] items-center justify-between border-b border-[#F0F2F5] px-4 text-[14px] font-semibold text-ink">
+          Informativa privacy
           <i className="ti ti-chevron-right text-[16px] text-ink-3" aria-hidden="true" />
         </Link>
-        <Link href="/terms" className="flex min-h-[50px] items-center justify-between px-4 text-[14px] font-semibold text-ink">
-          Termini del servizio
+        <Link href="/nextgen/informative/termini" className="flex min-h-[50px] items-center justify-between px-4 text-[14px] font-semibold text-ink">
+          Termini di servizio
           <i className="ti ti-chevron-right text-[16px] text-ink-3" aria-hidden="true" />
         </Link>
       </nav>

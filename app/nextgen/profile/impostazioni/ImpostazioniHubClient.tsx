@@ -32,19 +32,12 @@ export default function ImpostazioniHubClient() {
           subtitle="Lingua, tema, notifiche"
         />
         <HubCard
-          icon="ti-credit-card"
-          iconBg="#E8F9EE"
-          iconColor="#52C87A"
-          title="Metodi di pagamento"
-          comingSoon
-        />
-        <HubCard
           href="/nextgen/profile/impostazioni/privacy"
           icon="ti-lock"
           iconBg="#FCE8EC"
           iconColor="#D6497A"
           title="Privacy e account"
-          subtitle="Consenso, disattivazione"
+          subtitle="Consensi, informativa, chiusura account"
         />
       </div>
     </div>
