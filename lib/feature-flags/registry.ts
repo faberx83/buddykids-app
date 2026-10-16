@@ -300,6 +300,15 @@ export const FEATURE_FLAG_REGISTRY = {
     defaultValue: false,
     allowedScopes: ["global", "environment", "user", "role", "cohort"],
   },
+  // TRAMA — TRASLOCO SU tramapp.it (16/10/2026), release "trasloco-tramapp".
+  DOMAIN_MOVE_TRAMAPP_ENABLED: {
+    name: "DOMAIN_MOVE_TRAMAPP_ENABLED",
+    description:
+      "Chi apre i vecchi indirizzi *.vercel.app viene portato su tramapp.it (partner. e admin. per i portali) " +
+      "restando collegato, senza rifare il login. Default false: i vecchi indirizzi funzionano come prima.",
+    defaultValue: false,
+    allowedScopes: ["global", "environment", "user", "role", "cohort"],
+  },
   // TRAMA — PROMEMORIA PER LE FAMIGLIE (15/10/2026), release "promemoria-famiglie".
   FAMILY_REMINDERS_PUSH_ENABLED: {
     name: "FAMILY_REMINDERS_PUSH_ENABLED",

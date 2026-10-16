@@ -5,6 +5,8 @@
 //                       aggiunta, modifica, scuola);
 //   2. Genitori       — tu, l'altro genitore, inviti in attesa; "Invita" crea
 //                       il gruppo famiglia da solo (inviteCoParentAction);
+//                       chi l'ha creata può togliere un genitore e annullare
+//                       o rimandare un invito (16/10/2026);
 //   3. Chi vi aiuta   — nonni e tata sono già scelte fisse; qui le altre
 //                       persone (family_people): aggiungi, rinomina, togli;
 //   4. Luoghi         — casa, lavoro… (riepilogo, si gestiscono in Indirizzi).
@@ -17,7 +19,14 @@ import { useRouter } from "next/navigation";
 import PageHeader from "@/components/PageHeader";
 import ProfileKidsSection from "@/components/ProfileKidsSection";
 import { useNextgenToast } from "@/components/nextgen/NextgenToastProvider";
-import { inviteCoParentAction, joinFamilyByCodeAction, leaveFamilyAction } from "@/app/actions/family";
+import {
+  cancelFamilyInviteAction,
+  inviteCoParentAction,
+  joinFamilyByCodeAction,
+  leaveFamilyAction,
+  removeFamilyMemberAction,
+} from "@/app/actions/family";
+import { familyOriginFromLocation, shortInviteUrl } from "@/lib/public-links";
 import { addFamilyPersonAction, removeFamilyPersonAction, renameFamilyPersonAction } from "@/app/actions/family-people";
 import { ADDRESS_KIND_LABELS, type ParentAddress } from "@/lib/nextgen/address-kinds";
 import type { Family } from "@/lib/nextgen/family-roles";
@@ -30,6 +39,8 @@ const H2 = "font-poppins text-[18px] font-semibold text-ink";
 const INPUT = "min-h-[48px] min-w-0 flex-1 rounded-[12px] border border-trama-line bg-white px-3.5 text-[16px] outline-none focus:border-trama-primary";
 const PRIMARY = "min-h-[48px] flex-shrink-0 rounded-[12px] bg-trama-primary px-4 text-[15px] font-semibold text-white active:bg-trama-primary-press disabled:opacity-60";
 const LINK = "flex min-h-[44px] items-center text-[14px] font-semibold text-trama-accent-ink";
+const ROW_ACTION = "min-h-[44px] px-2 text-[13.5px] font-semibold text-trama-accent-ink";
+const ROW_ACTION_MUTED = "min-h-[44px] px-2 text-[13.5px] font-semibold text-ink-3 disabled:opacity-60";
 
 function initials(name: string): string {
   return (name.trim()[0] ?? "?").toUpperCase();
@@ -161,6 +172,43 @@ function ParentsBlock({
     router.refresh();
   }
 
+  // 16/10/2026 — lista genitori modificabile: chi ha creato la famiglia può
+  // togliere un altro genitore e annullare (o rimandare) un invito.
+  async function removeMember(parentId: string, name: string) {
+    if (!window.confirm(`Togliere ${name} dalla famiglia? Non vedrà più il vostro Planner e voi non vedrete più i suoi figli.`)) return;
+    setBusy(true);
+    const res = await removeFamilyMemberAction(parentId);
+    setBusy(false);
+    if (res.error) return showToast(res.error);
+    showToast(`${name} non è più nella famiglia`);
+    router.refresh();
+  }
+
+  async function cancelInvite(inviteId: string, invitedEmail: string) {
+    if (!window.confirm(`Annullare l'invito a ${invitedEmail}? Il link che ha ricevuto non funzionerà più.`)) return;
+    setBusy(true);
+    const res = await cancelFamilyInviteAction(inviteId);
+    setBusy(false);
+    if (res.error) return showToast(res.error);
+    showToast("Invito annullato");
+    router.refresh();
+  }
+
+  async function resendInvite(token: string) {
+    const url = shortInviteUrl(familyOriginFromLocation(window.location), token);
+    const text = `Ti invito su TRAMA per organizzare insieme le attività dei bambini: ${url}`;
+    try {
+      if (navigator.share) {
+        await navigator.share({ title: "TRAMA", text });
+        return;
+      }
+      await navigator.clipboard.writeText(url);
+      showToast("Link copiato");
+    } catch {
+      // condivisione annullata: niente da fare
+    }
+  }
+
   async function leave() {
     if (!window.confirm("Uscire dalla famiglia? Non vedrai più il piano condiviso con l'altro genitore.")) return;
     const res = await leaveFamilyAction();
@@ -178,11 +226,49 @@ function ParentsBlock({
       </h2>
       <ul className={`${CARD} divide-y divide-[#F0F2F5]`}>
         <PersonRow name={myName || "Tu"} detail={`Tu · ${myEmail}`} />
-        {others.map((m) => (
-          <PersonRow key={m.parentId} name={m.fullName || m.email || "Genitore"} detail={m.email ?? "Nella tua famiglia"} />
-        ))}
+        {others.map((m) => {
+          const name = m.fullName || m.email || "Genitore";
+          const removable = canInvite && m.role !== "creatore";
+          return (
+            <PersonRow key={m.parentId} name={name} detail={m.email ?? "Nella tua famiglia"}>
+              {removable && (
+                <button
+                  type="button"
+                  disabled={busy}
+                  onClick={() => removeMember(m.parentId, name)}
+                  className={ROW_ACTION_MUTED}
+                  aria-label={`Togli ${name} dalla famiglia`}
+                >
+                  Togli
+                </button>
+              )}
+            </PersonRow>
+          );
+        })}
         {(family?.pendingInvites ?? []).map((i) => (
-          <PersonRow key={i.id} name={i.invitedEmail} detail="Invito inviato, in attesa" muted />
+          <PersonRow key={i.id} name={i.invitedEmail} detail="Invito inviato, in attesa" muted>
+            {canInvite && (
+              <>
+                <button
+                  type="button"
+                  onClick={() => resendInvite(i.token)}
+                  className={ROW_ACTION}
+                  aria-label={`Rimanda il link a ${i.invitedEmail}`}
+                >
+                  Rimanda
+                </button>
+                <button
+                  type="button"
+                  disabled={busy}
+                  onClick={() => cancelInvite(i.id, i.invitedEmail)}
+                  className={ROW_ACTION_MUTED}
+                  aria-label={`Annulla l'invito a ${i.invitedEmail}`}
+                >
+                  Annulla
+                </button>
+              </>
+            )}
+          </PersonRow>
         ))}
       </ul>
 
@@ -258,7 +344,17 @@ function ParentsBlock({
   );
 }
 
-function PersonRow({ name, detail, muted = false }: { name: string; detail: string; muted?: boolean }) {
+function PersonRow({
+  name,
+  detail,
+  muted = false,
+  children,
+}: {
+  name: string;
+  detail: string;
+  muted?: boolean;
+  children?: React.ReactNode;
+}) {
   return (
     <li className="flex min-h-[64px] items-center gap-3 px-4 py-3">
       <span
@@ -268,10 +364,11 @@ function PersonRow({ name, detail, muted = false }: { name: string; detail: stri
       >
         {initials(name)}
       </span>
-      <span className="flex min-w-0 flex-col">
+      <span className="flex min-w-0 flex-1 flex-col">
         <span className={`truncate text-[15px] font-semibold ${muted ? "text-ink-2" : "text-ink"}`}>{name}</span>
         <span className="truncate text-[12.5px] text-ink-2">{detail}</span>
       </span>
+      {children && <span className="flex flex-shrink-0 items-center">{children}</span>}
     </li>
   );
 }

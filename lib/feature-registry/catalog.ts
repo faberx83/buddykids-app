@@ -925,6 +925,34 @@ export const FEATURE_CATALOG: FeatureCatalogEntry[] = [
     releaseEligible: true,
   },
   {
+    // TRAMA — TRASLOCO SU tramapp.it (16/10/2026). NEW: prima non esisteva un
+    // dominio proprio (solo alias *.vercel.app). Riusa proxy.ts (stesso punto
+    // che già smista i tenant) e la sessione Supabase esistente: nessun nuovo
+    // login, nessuna nuova tabella.
+    key: "domain_move_tramapp",
+    label: "Trasloco su tramapp.it — dai vecchi indirizzi al nuovo, restando collegati",
+    area: "cross_tenant",
+    status: "INTERNAL_PREVIEW",
+    flagName: "DOMAIN_MOVE_TRAMAPP_ENABLED",
+    description:
+      "Chi apre buddykids-app / buddykids-partner / buddykids-admin .vercel.app viene portato su tramapp.it, " +
+      "partner.tramapp.it, admin.tramapp.it alla stessa pagina, senza rifare il login.",
+    sourceFiles: [
+      "lib/domain-move.ts",
+      "lib/domain-move-server.ts",
+      "proxy.ts",
+      "app/auth/trasloco/avvio/route.ts",
+      "app/auth/trasloco/page.tsx",
+      "app/actions/domain-move.ts",
+    ],
+    note:
+      "Ai livelli Interno e Pilot vale solo per chi è collegato e fa parte della coorte; chi non è collegato viene " +
+      "spostato solo con la release a tutti. Le notifiche sul telefono vanno riattivate sul nuovo indirizzo; l'app " +
+      "installata conviene reinstallarla da tramapp.it. Ogni passaggio lascia domain_move_handoff in product_events.",
+    riskLevel: "medium",
+    releaseEligible: true,
+  },
+  {
     // TRAMA — PRENOTAZIONI V2 (14/10/2026, tavole "TRAMA Scopri e Prenotazioni V2").
     key: "bookings_v2",
     label: "Prenotazioni V2 — elenco per mese e prenotazione aperta",

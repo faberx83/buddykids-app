@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
 import { revalidatePath } from "next/cache";
 import { headers } from "next/headers";
+import { familyHost } from "@/lib/tenant";
 
 const PLANNER_PATH = "/nextgen/planner";
 
@@ -44,7 +45,8 @@ export async function createPlanShareAction(
   revalidatePath(PLANNER_PATH);
 
   const headerList = await headers();
-  const host = headerList.get("host") || "";
+  // 16/10/2026: in produzione il link condiviso è sempre su tramapp.it.
+  const host = familyHost(headerList.get("host") || "");
   const proto = headerList.get("x-forwarded-proto") || "https";
   const url = host ? `${proto}://${host}/share/planner/${token}` : `/share/planner/${token}`;
 

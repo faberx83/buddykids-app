@@ -14,6 +14,7 @@ import {
 } from "@/app/actions/family";
 import { useNextgenToast } from "@/components/nextgen/NextgenToastProvider";
 import PageHeader from "@/components/PageHeader";
+import { familyOriginFromLocation, shortInviteUrl } from "@/lib/public-links";
 
 // SPRINT 5.5 (NEXTGEN) — Profilo Famiglia multi-genitore: crea/entra in una
 // famiglia con un secondo genitore (account separato), tramite codice invito
@@ -196,9 +197,9 @@ function NoFamilyView({ onCreated }: { onCreated: (f: Family) => void }) {
 // Ricostruisce lo stesso link generato lato server (inviteToFamilyAction) a
 // partire dal solo token — usato per "Copia link" sugli inviti già creati,
 // senza dover richiamare il server. Stesso path di app/actions/family.ts.
+// 16/10/2026: link corto su tramapp.it (vedi lib/public-links.ts).
 function buildFamilyInviteLink(token: string): string {
-  const acceptPath = `/nextgen/planner/famiglia?accept=${token}`;
-  return `${window.location.origin}/auth/login?next=${encodeURIComponent(acceptPath)}`;
+  return shortInviteUrl(familyOriginFromLocation(window.location), token);
 }
 
 async function copyLink(link: string, showToast: (msg: string) => void, onCopied?: () => void) {

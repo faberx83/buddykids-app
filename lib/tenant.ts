@@ -2,6 +2,8 @@
 // proxy.ts che da app/layout.tsx per leggere l'hostname e servire il
 // manifest/tema corretto).
 
+import { CANONICAL_FAMILY_HOST, productionFamilyOrigin } from "@/lib/public-links";
+
 export type Tenant = "family" | "partner" | "admin";
 
 // Hostname "alias" espliciti, in aggiunta al pattern partner./admin.<dominio>.
@@ -43,7 +45,13 @@ export function tenantForHost(hostname: string): Tenant {
 // se configurata, altrimenti si toglie il prefisso partner./admin.),
 // estratta qui in modo che sia riusabile anche fuori da un NextRequest (le
 // server action non ne hanno uno, solo headers()).
+//
+// 16/10/2026 — TRASLOCO SU tramapp.it: in produzione (vecchio o nuovo
+// indirizzo) i link verso le famiglie puntano SEMPRE a tramapp.it, anche se
+// NEXT_PUBLIC_MAIN_HOST dice ancora buddykids-app.vercel.app. Locale e
+// anteprime: comportamento di prima. Vedi lib/public-links.ts.
 export function familyHost(rawHost: string): string {
+  if (productionFamilyOrigin(rawHost)) return CANONICAL_FAMILY_HOST;
   const configuredMainHost = process.env.NEXT_PUBLIC_MAIN_HOST;
   return configuredMainHost || rawHost.replace(/^partner\.|^admin\./, "");
 }

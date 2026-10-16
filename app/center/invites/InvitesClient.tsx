@@ -4,6 +4,7 @@ import { useRef, useState } from "react";
 import { DemoBadge } from "@/components/StatusBadge";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
 import { InviteItem, InviteStatus } from "@/lib/data/invites";
+import { familyOriginFromLocation } from "@/lib/public-links";
 import {
   createInviteAction,
   createInvitesBulkAction,
@@ -150,7 +151,8 @@ export default function InvitesClient({
   }
 
   function copyLink(code: string) {
-    const link = `${window.location.origin}/auth/login?invite=${code}`;
+    // 16/10/2026: sempre l'indirizzo delle famiglie (tramapp.it), mai partner.
+    const link = `${familyOriginFromLocation(window.location)}/auth/login?invite=${code}`;
     navigator.clipboard?.writeText(link);
   }
 

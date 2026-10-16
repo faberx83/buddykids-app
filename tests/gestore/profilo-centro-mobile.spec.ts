@@ -251,7 +251,7 @@ test.describe("Gestore - Il mio centro - anteprima famiglia", () => {
   // Questo test gira SUL HOST PARTNER, dove il bug si manifestava.
   test("PCM-10 - host Partner: click CTA → anteprima (mai 404), ritorno a Il mio centro", async ({ browser, playwright }) => {
     test.skip(!isRealDeployment, "Serve l'host Partner reale (alias buddykids-partner.vercel.app impostato da deploy.sh).");
-    const partnerBaseURL = process.env.TEST_PARTNER_BASE_URL || "https://buddykids-partner.vercel.app";
+    const partnerBaseURL = process.env.TEST_PARTNER_BASE_URL || "https://partner.tramapp.it";
 
     // anonimo sull'host Partner: la scheda pubblica risponde 200, non 404
     const anon = await playwright.request.newContext({ baseURL: partnerBaseURL });

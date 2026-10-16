@@ -9,6 +9,7 @@ import { GroupDetail, CarpoolLeg } from "@/lib/types";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
 import { discountForGroupSize, GROUP_DISCOUNT_TIERS } from "@/lib/groups";
 import { buildCarpoolMatches } from "@/lib/carpool";
+import { familyOriginFromLocation } from "@/lib/public-links";
 import {
   setGroupActivityAction,
   addKidToGroupAction,
@@ -111,7 +112,7 @@ function InviteButton({
   const [copied, setCopied] = useState(false);
 
   async function share() {
-    const url = `${window.location.origin}/groups/join/${groupId}`;
+    const url = `${familyOriginFromLocation(window.location)}/groups/join/${groupId}`;
     const text = buildInviteText(inviterName, groupName, activityName, centerName);
     try {
       if (navigator.share) {

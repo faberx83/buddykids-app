@@ -2,6 +2,13 @@ import { NextResponse, type NextRequest } from "next/server";
 import { updateSession, getRequestRole, getRequestUserId } from "@/lib/supabase/middleware";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
 import { tenantForHost, TENANT_CONFIG, familyHost } from "@/lib/tenant";
+import {
+  canonicalHostForLegacy,
+  isMoveCandidate,
+  MOVE_DONE_COOKIE,
+  MOVE_SKIP_COOKIE,
+  MOVE_START_PATH,
+} from "@/lib/domain-move";
 
 // ─────────────────────────────────────────────────────────────────
 // Multi-tenant a sottodomini:
@@ -71,6 +78,39 @@ export async function proxy(request: NextRequest) {
     return NextResponse.rewrite(new URL(TENANT_CONFIG[tenant].manifest, request.url));
   }
 
+  // 1b) TRASLOCO SU tramapp.it (16/10/2026) — solo sui vecchi indirizzi
+  // *.vercel.app e solo per l'apertura di una pagina: chi ha già traslocato
+  // va dritto al nuovo indirizzo; gli altri passano da /auth/trasloco/avvio,
+  // che controlla la release "trasloco-tramapp" e porta con sé il login.
+  // Release spenta → quella route rimette un cookie per un'ora e qui non si
+  // ripassa: tutto come prima. Vedi lib/domain-move.ts.
+  const legacyTarget = canonicalHostForLegacy(hostname);
+  if (
+    legacyTarget &&
+    isMoveCandidate({
+      method: request.method,
+      pathname,
+      fetchDest: request.headers.get("sec-fetch-dest"),
+      accept: request.headers.get("accept"),
+      rsc: request.headers.get("rsc"),
+      prefetch:
+        Boolean(request.headers.get("next-router-prefetch")) ||
+        request.headers.get("purpose") === "prefetch" ||
+        request.headers.get("sec-purpose")?.includes("prefetch") === true,
+    })
+  ) {
+    const wanted = `${pathname}${request.nextUrl.search || ""}`;
+    if (request.cookies.get(MOVE_DONE_COOKIE)?.value === "done") {
+      return NextResponse.redirect(`https://${legacyTarget}${wanted}`, 307);
+    }
+    if (request.cookies.get(MOVE_SKIP_COOKIE)?.value !== "1") {
+      const start = request.nextUrl.clone();
+      start.pathname = MOVE_START_PATH;
+      start.search = `?next=${encodeURIComponent(wanted)}`;
+      return NextResponse.redirect(start, 307);
+    }
+  }
+
   // 2) Rinfresca sempre la sessione Supabase (comportamento preesistente,
   // invariato per il dominio famiglie).
   const sessionResponse = await updateSession(request);
@@ -132,6 +172,9 @@ export async function proxy(request: NextRequest) {
       !pathname.startsWith("/privacy") &&
       !pathname.startsWith("/terms") &&
       !pathname.startsWith("/activity") &&
+      // 16/10/2026 — link corti degli inviti (app/i/[key]): decidono loro se
+      // serve il login, conservando la pagina d'arrivo.
+      !pathname.startsWith("/i/") &&
       pathname !== "/sw.js"
     ) {
       const userId = await getRequestUserId(request);

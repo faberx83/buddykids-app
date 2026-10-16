@@ -168,6 +168,9 @@ export const KNOWN_PRODUCT_EVENTS = [
   "family_reminders_cron_run",
   // Proposta in "Classe e scuola": quante famiglie avvisate (solo il numero).
   "class_proposal_push_sent",
+  // TRAMA — TRASLOCO SU tramapp.it (16/10/2026): un utente portato dal vecchio
+  // indirizzo al nuovo con il login. `detail` = il nuovo indirizzo, mai l'utente.
+  "domain_move_handoff",
 ] as const;
 
 export type KnownProductEvent = (typeof KNOWN_PRODUCT_EVENTS)[number];

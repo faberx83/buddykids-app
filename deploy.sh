@@ -146,7 +146,7 @@ notify_deploy() {
     return 0
   fi
 
-  local target="${TEST_BASE_URL:-https://buddykids-app.vercel.app}"
+  local target="${TEST_BASE_URL:-https://tramapp.it}"
   local url="${target}/internal/deploy-notify"
   local qs="secret=$(urlencode "$DEPLOY_NOTIFY_SECRET")&status=${status}"
   [ -n "${CURRENT_BRANCH:-}" ] && qs="${qs}&branch=$(urlencode "$CURRENT_BRANCH")"
@@ -213,7 +213,7 @@ fi
 # altrimenti l'URL di produzione corrente — mai hardcoded incondizionatamente.
 # ────────────────────────────────────────────────────────────────
 if [ -n "$ONLY_SITEMAP" ]; then
-  SITEMAP_TARGET="${TEST_BASE_URL:-https://buddykids-app.vercel.app}"
+  SITEMAP_TARGET="${TEST_BASE_URL:-https://tramapp.it}"
   echo "🗺️  ONLY_SITEMAP impostato: genero SOLO la sitemap contro $SITEMAP_TARGET, nessun deploy production."
   echo ""
   bash test-deploy.sh "$SITEMAP_TARGET"
@@ -720,7 +720,11 @@ if ! npx --yes vercel --prod; then
 fi
 
 echo ""
-echo "[4/5] 🔗 Riallineo gli alias (partner/admin) all'ultimo deploy..."
+# 16/10/2026 — dominio vero: tramapp.it, partner.tramapp.it e admin.tramapp.it
+# sono domini del progetto Vercel e seguono da soli ogni deploy di produzione.
+# I vecchi alias *.vercel.app restano riallineati qui sotto: servono a chi
+# apre ancora i vecchi indirizzi (release "trasloco-tramapp", vedi proxy.ts).
+echo "[4/5] 🔗 Riallineo i vecchi alias (partner/admin .vercel.app) all'ultimo deploy..."
 ALIAS_PARTNER_OK=1
 ALIAS_ADMIN_OK=1
 npx --yes vercel alias set buddykids-app.vercel.app buddykids-partner.vercel.app >/dev/null || ALIAS_PARTNER_OK=0
@@ -734,7 +738,7 @@ else
 fi
 
 echo ""
-echo "✅ Deploy pubblicato: https://buddykids-app.vercel.app (+ alias partner/admin)"
+echo "✅ Deploy pubblicato: https://tramapp.it (+ partner.tramapp.it, admin.tramapp.it e i vecchi indirizzi .vercel.app)"
 
 if [ -n "$SKIP_TESTS" ]; then
   echo ""
@@ -753,7 +757,7 @@ elif [ "$RUN_E2E" = "1" ]; then
   TEST_SCOPE="${TEST_SCOPE:-critical}"
   echo ""
   echo "[5/5] 🧪 RUN_E2E=1: eseguo cleanup dati test + suite Playwright live contro produzione (TEST_SCOPE=$TEST_SCOPE — usa RUN_E2E=1 TEST_SCOPE=all bash deploy.sh per la suite intera)..."
-  TEST_SCOPE="$TEST_SCOPE" bash test-deploy.sh https://buddykids-app.vercel.app
+  TEST_SCOPE="$TEST_SCOPE" bash test-deploy.sh https://tramapp.it
 else
   # RUN_E2E opt-in (vedi commento in testa al file): default ora "spento" —
   # nessun cleanup/seed di dati di test, nessuna chiamata Supabase

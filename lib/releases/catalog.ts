@@ -223,6 +223,21 @@ export const RELEASE_CATALOG: ReleaseCatalogEntry[] = [
     ],
     notes: "Creata il 16/10/2026. Ripiego: flag spento = registrazione come prima, senza caselle.",
   },
+  {
+    // TRAMA — TRASLOCO SU tramapp.it (16/10/2026).
+    id: "trasloco-tramapp",
+    label: "TRAMA — Trasloco su tramapp.it",
+    shortDescription:
+      "Chi apre i vecchi indirizzi .vercel.app finisce su tramapp.it (o partner./admin.) alla stessa pagina, già collegato.",
+    targetAudience: ["parent", "partner", "admin"],
+    featureKeys: ["domain_move_tramapp"],
+    knownLimitations: [
+      "domain_move_tramapp: a Interno e Pilot si sposta solo chi è collegato e nella coorte; chi apre il vecchio indirizzo senza essere collegato resta lì finché la release non è a tutti.",
+      "Le notifiche sul telefono sono legate all'indirizzo: sul nuovo vanno riattivate. L'app installata sulla schermata Home conviene reinstallarla da tramapp.it.",
+      "Accendere solo dopo aver aggiunto https://tramapp.it/** (e partner., admin.) tra i Redirect URLs di Supabase.",
+    ],
+    notes: "Creata il 16/10/2026. Ripiego: flag spento = i vecchi indirizzi funzionano come prima (al massimo un controllo all'ora, invisibile).",
+  },
 ];
 
 export function getReleaseCatalog(): ReleaseCatalogEntry[] {

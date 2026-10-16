@@ -51,9 +51,9 @@ type TargetResult = {
   mermaidFile: string;
 };
 
-const DEFAULT_BASE_URL = "https://buddykids-app.vercel.app";
-const DEFAULT_PARTNER_URL = "https://buddykids-partner.vercel.app";
-const DEFAULT_ADMIN_URL = "https://buddykids-admin.vercel.app";
+const DEFAULT_BASE_URL = "https://tramapp.it";
+const DEFAULT_PARTNER_URL = "https://partner.tramapp.it";
+const DEFAULT_ADMIN_URL = "https://admin.tramapp.it";
 
 function firstEnv(...names: string[]): string | undefined {
   for (const name of names) {

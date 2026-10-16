@@ -9,6 +9,7 @@ import { getPublicGroups, getMyGroupInvites } from "@/lib/data/groups";
 import { revalidatePath } from "next/cache";
 import { headers } from "next/headers";
 import { sendEmail, isEmailConfigured } from "@/lib/email";
+import { familyHost } from "@/lib/tenant";
 // Wave 1 "Pilot Observability" (audit TRAMA_PILOT_ARCHITECTURE_REVIEW.md
 // sez.9/sez.11) — conteggi aggregati di adozione Gruppi/Carpool, MAI un
 // identificativo utente nel payload (context serve solo a evitare una
@@ -234,7 +235,8 @@ export async function inviteToGroupAction(groupId: string, email: string): Promi
   if (error || !invite) return { error: error?.message || "Errore nella creazione dell'invito" };
 
   const h = await headers();
-  const host = h.get("host") || "localhost:3000";
+  // 16/10/2026: indirizzo delle famiglie (tramapp.it in produzione), vedi familyHost().
+  const host = familyHost(h.get("host") || "localhost:3000");
   const proto = h.get("x-forwarded-proto") || (host.startsWith("localhost") ? "http" : "https");
   const link = `${proto}://${host}/auth/login?next=${encodeURIComponent("/groups")}`;
 

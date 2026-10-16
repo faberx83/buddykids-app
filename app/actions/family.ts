@@ -8,12 +8,14 @@
 // restano invariati e solo-proprietario.
 
 import { createClient } from "@/lib/supabase/server";
+import { createServiceClient } from "@/lib/supabase/service";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
 import { revalidatePath } from "next/cache";
 import { headers } from "next/headers";
 import { sendEmail, isEmailConfigured } from "@/lib/email";
 import { familyHost } from "@/lib/tenant";
 import { defaultFamilyName } from "@/lib/nextgen/family-page-v2";
+import { newShortInviteToken, shortInviteUrl } from "@/lib/public-links";
 
 // Stessi caratteri di app/actions/communities.ts (niente 0/O/1/I, ambigui da
 // leggere/dettare a voce quando il codice viene condiviso a mano, es. col
@@ -211,7 +213,9 @@ export async function inviteToFamilyAction(email: string): Promise<InviteToFamil
   const { data: family } = await supabase.from("families").select("name").eq("id", membership.family_id).single();
   const { data: profile } = await supabase.from("profiles").select("full_name").eq("id", user.id).maybeSingle();
 
-  const token = crypto.randomUUID();
+  // 16/10/2026 — token corto (12 caratteri) per un link leggibile:
+  // https://tramapp.it/i/<token> (vedi lib/public-links.ts e app/i/[key]).
+  const token = newShortInviteToken();
   const { data: invite, error } = await supabase
     .from("family_invites")
     .insert({
@@ -228,18 +232,16 @@ export async function inviteToFamilyAction(email: string): Promise<InviteToFamil
     const { data: fam } = await supabase.from("families").select("invite_code").eq("id", membership.family_id).single();
     if (!fam?.invite_code) return { error: "Non sono riuscito a preparare l'invito, riprova" };
     const origin = await buildOrigin();
-    const joinPath = `/nextgen/profile/famiglia?code=${fam.invite_code}`;
     return {
       emailSent: false,
       inviteCode: fam.invite_code as string,
-      link: `${origin}/auth/login?next=${encodeURIComponent(joinPath)}`,
+      link: shortInviteUrl(origin, fam.invite_code as string),
     };
   }
   if (error || !invite) return { error: "Non sono riuscito a preparare l'invito, riprova" };
 
   const origin = await buildOrigin();
-  const acceptPath = `/nextgen/planner/famiglia?accept=${token}`;
-  const link = `${origin}/auth/login?next=${encodeURIComponent(acceptPath)}`;
+  const link = shortInviteUrl(origin, token);
 
   let emailSent = false;
   if (isEmailConfigured) {
@@ -261,6 +263,78 @@ export async function inviteToFamilyAction(email: string): Promise<InviteToFamil
 
   revalidatePath(PLANNER_FAMILY_PATH);
   return { emailSent, link };
+}
+
+// TRAMA — "LA TUA FAMIGLIA" (16/10/2026, Fabrizio: "la lista dei genitori deve
+// essere modificabile, se voglio eliminare uno come faccio?"). Chi ha creato
+// la famiglia (o un admin) può togliere un altro genitore e annullare un
+// invito in attesa. Le policy RLS di family_members permettono di togliere
+// solo sé stessi, quindi l'operazione passa dal client di servizio DOPO aver
+// controllato qui, con il client dell'utente, che: chi chiede è creatore o
+// admin; la persona è nella SUA famiglia; non è sé stesso; non è il creatore.
+// (Alternativa valutata: nuove policy RLS → serviva una migrazione; questa
+// strada non tocca il database. Stesso schema già usato in groups.ts.)
+// I figli e le prenotazioni restano di chi li ha inseriti: chi viene tolto
+// non vede più il Planner condiviso, chi resta non vede più i suoi figli.
+
+async function requireFamilyAdmin() {
+  const { supabase, user } = await requireUser();
+  if (!user) return { error: "Non autenticato" as const };
+  const { data: membership } = await supabase
+    .from("family_members")
+    .select("family_id, role")
+    .eq("parent_id", user.id)
+    .maybeSingle();
+  if (!membership) return { error: "Non fai parte di una famiglia" as const };
+  if (membership.role !== "creatore" && membership.role !== "admin") {
+    return { error: "Solo chi ha creato la famiglia può farlo" as const };
+  }
+  return { user, familyId: membership.family_id as string };
+}
+
+export async function removeFamilyMemberAction(parentId: string): Promise<{ error?: string }> {
+  if (!isSupabaseConfigured) return { error: "Supabase non configurato" };
+  const ctx = await requireFamilyAdmin();
+  if ("error" in ctx) return { error: ctx.error };
+  if (!parentId || parentId === ctx.user.id) return { error: "Per uscire tu, usa \"Esci dalla famiglia\"" };
+
+  const service = createServiceClient();
+  if (!service) return { error: "Non sono riuscito a togliere il genitore, riprova" };
+  const { data: target } = await service
+    .from("family_members")
+    .select("role")
+    .eq("family_id", ctx.familyId)
+    .eq("parent_id", parentId)
+    .maybeSingle();
+  if (!target) return { error: "Questa persona non è più nella tua famiglia" };
+  if (target.role === "creatore") return { error: "Non puoi togliere chi ha creato la famiglia" };
+
+  const { error } = await service.from("family_members").delete().eq("family_id", ctx.familyId).eq("parent_id", parentId);
+  if (error) return { error: "Non sono riuscito a togliere il genitore, riprova" };
+  revalidatePath("/nextgen/profile/famiglia");
+  revalidatePath(PLANNER_FAMILY_PATH);
+  return {};
+}
+
+export async function cancelFamilyInviteAction(inviteId: string): Promise<{ error?: string }> {
+  if (!isSupabaseConfigured) return { error: "Supabase non configurato" };
+  const ctx = await requireFamilyAdmin();
+  if ("error" in ctx) return { error: ctx.error };
+
+  const service = createServiceClient();
+  if (!service) return { error: "Non sono riuscito ad annullare l'invito, riprova" };
+  const { data, error } = await service
+    .from("family_invites")
+    .update({ status: "expired" })
+    .eq("id", inviteId)
+    .eq("family_id", ctx.familyId)
+    .in("status", ["pending", "sent"])
+    .select("id");
+  if (error) return { error: "Non sono riuscito ad annullare l'invito, riprova" };
+  if (!data || data.length === 0) return { error: "Questo invito non è più in attesa" };
+  revalidatePath("/nextgen/profile/famiglia");
+  revalidatePath(PLANNER_FAMILY_PATH);
+  return {};
 }
 
 // TRAMA — "LA TUA FAMIGLIA" (15/10/2026): invitare l'altro genitore senza il

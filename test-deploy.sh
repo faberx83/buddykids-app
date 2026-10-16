@@ -45,7 +45,7 @@
 #  4. SITEMAP_OPEN_BROWSER=1 controlla l'apertura del browser, con fallback
 #     esplicito se "open" non è disponibile (compatibilità headless/non-macOS).
 
-BASE_URL="${1:-https://buddykids-app.vercel.app}"
+BASE_URL="${1:-https://tramapp.it}"
 
 if [ -f .env.test ]; then
   set -a
