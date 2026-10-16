@@ -18,20 +18,26 @@ const SRC: Record<"color" | "navy" | "white", string> = {
   white: "/brand/trama-logo-mark-white.png",
 };
 
+// v6 (16/10/2026) — Fabrizio: "vuoi mettere il logo che fa qualche
+// animazione? E utilizzarlo su pagine che si stanno caricando?". Stesso logo
+// pieno, nuova animazione "si tesse" (.trama-weave in globals.css: maschera
+// in diagonale che lo svela, poi sfuma). Usato da tutte le schermate di
+// caricamento (famiglie V1 e V2, Partner, Admin, trasloco di dominio).
+// role="status" + testo nascosto: chi usa un lettore di schermo sente
+// "Caricamento".
 export default function TramaSpinner({
   size = 160,
   tone = "color",
+  label = "Caricamento",
 }: {
   size?: number;
   tone?: "color" | "navy" | "white";
+  label?: string;
 }) {
   return (
-    <img
-      src={SRC[tone]}
-      alt=""
-      aria-hidden="true"
-      className="trama-spinner"
-      style={{ width: size, height: "auto" }}
-    />
+    <span role="status" className="inline-flex flex-col items-center" data-testid="trama-loader">
+      <img src={SRC[tone]} alt="" aria-hidden="true" className="trama-weave" style={{ width: size, height: "auto" }} />
+      <span className="sr-only">{label}</span>
+    </span>
   );
 }

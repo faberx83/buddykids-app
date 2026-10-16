@@ -221,3 +221,30 @@ test.describe("TRAMA — V1 spenta ma tenuta lì [no browser]", () => {
     }
   });
 });
+
+test.describe("TRAMA — Caricamento col logo [no browser]", () => {
+  test("V1-04 il proxy porta da / a /nextgen prima di disegnare la vecchia Home", () => {
+    const proxy = read("proxy.ts");
+    expect(proxy).toContain('pathname === "/" &&\n        request.nextUrl.searchParams.get("v1") !== "1" &&');
+    expect(proxy).toContain('home.pathname = "/nextgen";');
+    expect(read("app/auth/login/LoginForm.tsx")).toContain(
+      'router.push(tenant === "family" && destination === "/" ? "/nextgen" : destination);'
+    );
+  });
+
+  test("LD-01 logo animato in tutte le schermate di caricamento, fermo con 'riduci movimento'", () => {
+    const css = read("app/globals.css");
+    expect(css).toContain("@keyframes tramaWeave {");
+    expect(css).toMatch(/@media \(prefers-reduced-motion: reduce\) \{\n  \.trama-weave \{\n    animation: none;/);
+    const spinner = read("components/TramaSpinner.tsx");
+    expect(spinner).toContain('className="trama-weave"');
+    expect(spinner).toContain('role="status"');
+    for (const p of ["app/nextgen/loading.tsx", "app/(main)/loading.tsx", "app/center/loading.tsx", "app/admin/loading.tsx", "app/auth/trasloco/page.tsx"]) {
+      expect(read(p), p).toContain("<TramaSpinner");
+    }
+    // il logo di caricamento non sovrascrive la posizione salvata per "indietro"
+    expect(read("components/nextgen/NextgenScrollActivity.tsx")).toContain(
+      `if (el.querySelector('[data-testid="trama-loader"]')) return;`
+    );
+  });
+});

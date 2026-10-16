@@ -160,6 +160,10 @@ export function NextgenScrollArea({ className, children }: { className: string; 
       frame.current = null;
       const el = ref.current;
       if (!el) return;
+      // 16/10/2026: mentre si vede il logo di caricamento (app/nextgen/loading.tsx)
+      // la pagina è corta e il browser riporta lo scroll a 0: non è una
+      // posizione scelta dall'utente, non va ricordata.
+      if (el.querySelector('[data-testid="trama-loader"]')) return;
       try {
         sessionStorage.setItem(scrollKey(window.location.pathname, window.location.search), String(Math.round(el.scrollTop)));
       } catch {

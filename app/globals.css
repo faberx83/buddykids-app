@@ -259,6 +259,48 @@ body:has(.app-shell) {
   animation: tramaZoomFade 1.6s ease-in-out infinite;
 }
 
+/* TRAMA — caricamento col logo che "si tesse" (16/10/2026, Fabrizio: "vuoi
+   mettere il logo che fa qualche animazione? E utilizzarlo su pagine che si
+   stanno caricando?"). Il logo PIENO (stessa immagine di sempre, niente fili
+   ridisegnati: i tentativi vettoriali del 3bis venivano "rotti") viene
+   svelato da una maschera che scorre in diagonale, resta un attimo e sfuma.
+   components/TramaSpinner.tsx. Con prefers-reduced-motion: logo fermo. */
+@keyframes tramaWeave {
+  0% {
+    -webkit-mask-position: 100% 100%;
+    mask-position: 100% 100%;
+    opacity: 1;
+    transform: scale(0.96);
+  }
+  55%,
+  82% {
+    -webkit-mask-position: 0 0;
+    mask-position: 0 0;
+    opacity: 1;
+    transform: scale(1);
+  }
+  100% {
+    -webkit-mask-position: 0 0;
+    mask-position: 0 0;
+    opacity: 0;
+    transform: scale(1.03);
+  }
+}
+.trama-weave {
+  -webkit-mask-image: linear-gradient(60deg, #000 0%, #000 40%, transparent 60%, transparent 100%);
+  mask-image: linear-gradient(60deg, #000 0%, #000 40%, transparent 60%, transparent 100%);
+  -webkit-mask-size: 300% 300%;
+  mask-size: 300% 300%;
+  animation: tramaWeave 2s cubic-bezier(0.45, 0, 0.25, 1) infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .trama-weave {
+    animation: none;
+    -webkit-mask-image: none;
+    mask-image: none;
+  }
+}
+
 /* TRAMA — Onboarding famiglie (FAMILY-FIRST BETA PASS, 07/10/2026).
    Animazioni del carousel (components/nextgen/OnboardingCarousel.tsx), usate
    solo dentro varianti motion-safe: con prefers-reduced-motion non partono. */

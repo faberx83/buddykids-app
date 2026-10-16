@@ -148,7 +148,8 @@ export default function LoginForm({
       const explicitNext = next && next !== "/" ? next : null;
       const destination =
         explicitNext || (tenant === "family" && data.user?.id ? await getPostLoginDestinationAction(data.user.id) : null) || "/";
-      router.push(destination);
+      // V1 spenta (16/10/2026): per le famiglie la Home è /nextgen, niente giro dalla vecchia.
+      router.push(tenant === "family" && destination === "/" ? "/nextgen" : destination);
       router.refresh();
     } else {
       // PRE-MICRO-PILOT CLOSURE GATE (task #568) — fail-closed: con il gate

@@ -185,6 +185,21 @@ export async function proxy(request: NextRequest) {
         loginUrl.search = `?next=${encodeURIComponent(nextPath)}`;
         return copyCookies(sessionResponse, NextResponse.redirect(loginUrl));
       }
+      // 16/10/2026 — V1 spenta ma tenuta lì: la vecchia Home ("/") porta alla
+      // Home di oggi già qui, PRIMA di disegnare qualcosa (prima si vedeva un
+      // attimo la cornice vuota della V1). /?v1=1 e ?denied=... restano sulla
+      // vecchia Home (stessa regola di app/(main)/page.tsx, che resta come
+      // rete di sicurezza).
+      if (
+        pathname === "/" &&
+        request.nextUrl.searchParams.get("v1") !== "1" &&
+        !request.nextUrl.searchParams.has("denied")
+      ) {
+        const home = request.nextUrl.clone();
+        home.pathname = "/nextgen";
+        home.search = "";
+        return copyCookies(sessionResponse, NextResponse.redirect(home));
+      }
     }
     return sessionResponse;
   }
