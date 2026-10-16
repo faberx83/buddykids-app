@@ -45,6 +45,7 @@ import { isParentalDeclarationGateEnabledAction } from "@/app/actions/legal";
 import { setSchoolContextForFamilyAction } from "@/app/actions/school-calendar";
 import { ITALIAN_REGIONS } from "@/lib/school-calendar/regions";
 import { interestIcon } from "@/lib/nextgen/kid-visual";
+import ParentalDeclarationText from "@/components/legal/ParentalDeclarationText";
 
 export interface OnboardingV2Kid {
   id: string;
@@ -728,10 +729,7 @@ function KidsStep({
                 onChange={(e) => setDeclarationAccepted(e.target.checked)}
                 className="mt-0.5 h-4 w-4"
               />
-              <span>
-                Dichiaro di essere titolare della responsabilità genitoriale su {name.trim() || "questo bambino"} e autorizzo il
-                trattamento dei suoi dati per l&apos;uso del servizio.
-              </span>
+              <ParentalDeclarationText kidName={name} />
             </label>
           )}
           {error && (

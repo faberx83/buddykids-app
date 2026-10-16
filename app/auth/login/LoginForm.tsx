@@ -469,11 +469,11 @@ export default function LoginForm({
                       <span>
                         Accetto i{" "}
                         <Link href="/terms" target="_blank" className="underline" style={{ color: isFamily ? familyLink : themeColor }}>
-                          Termini di Servizio
+                          Termini di servizio
                         </Link>
-                        . Leggi anche la{" "}
+                        . Leggi anche l&apos;
                         <Link href="/privacy" target="_blank" className="underline" style={{ color: isFamily ? familyLink : themeColor }}>
-                          Informativa Privacy
+                          Informativa privacy
                         </Link>
                         .
                       </span>

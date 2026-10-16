@@ -155,13 +155,15 @@ test.describe("Legal Gate — regressione live, gate OFF (LEGAL-09..14)", () => 
     // Nessun documento PUBLISHED esiste oggi in produzione (verificato nel
     // POST-CHECK migration_27) — deve mostrare lo stato controllato, mai un
     // 404 né un testo inventato.
-    await expect(page.getByText(/documento in preparazione|versione/i)).toBeVisible();
+    // 16/10/2026: con i testi pubblicati la parola "versione" compare più volte (riga in alto + testo).
+    await expect(page.getByText(/documento in preparazione|versione/i).first()).toBeVisible();
   });
 
   test("LEGAL-10 - /privacy raggiungibile senza login, mostra stato controllato", async ({ page }) => {
     await page.goto("/privacy");
     await expect(page.getByRole("heading", { name: "Informativa Privacy" })).toBeVisible();
-    await expect(page.getByText(/documento in preparazione|versione/i)).toBeVisible();
+    // 16/10/2026: con i testi pubblicati la parola "versione" compare più volte (riga in alto + testo).
+    await expect(page.getByText(/documento in preparazione|versione/i).first()).toBeVisible();
   });
 
   test("LEGAL-11 - Signup Parent: nessun checkbox Termini/Privacy/Marketing (gate OFF)", async ({ page }) => {

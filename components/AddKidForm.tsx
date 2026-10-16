@@ -12,6 +12,7 @@ import { useGlobalActionProgress } from "@/components/GlobalActionProgress";
 import { Kid, KidGender } from "@/lib/types";
 import { categories as interestOptions } from "@/lib/mock-data";
 import { interestIcon, isKidInterestOption } from "@/lib/nextgen/kid-visual";
+import ParentalDeclarationText from "@/components/legal/ParentalDeclarationText";
 
 export default function AddKidForm({
   onAdded,
@@ -185,10 +186,7 @@ export default function AddKidForm({
             className="mt-0.5"
             required
           />
-          <span>
-            Dichiaro di essere titolare della responsabilità genitoriale su {name.trim() || "questo bambino"} e
-            autorizzo il trattamento dei suoi dati per l&apos;uso del servizio.
-          </span>
+          <ParentalDeclarationText kidName={name} />
         </label>
       )}
 

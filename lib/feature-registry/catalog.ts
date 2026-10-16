@@ -700,8 +700,10 @@ export const FEATURE_CATALOG: FeatureCatalogEntry[] = [
     flagName: "LEGAL_TERMS_GATE",
     description: "Checkbox Termini (obbligatorio, link a documento PUBLISHED) + Privacy Notice (link informativo, non un consenso) + Marketing (opzionale, non bloccante) in LoginForm.tsx al momento della registrazione. Scrittura server-side su legal_acceptances/consent_events.",
     sourceFiles: ["app/auth/login/LoginForm.tsx", "lib/legal/gate.ts", "supabase/migration_27_privacy_terms_consent.sql"],
-    note: "LEGAL CONTENT: PENDING EXTERNAL REVIEW. Nessun legal_documents PUBLISHED esiste oggi (0 righe in produzione) — il gate, anche se attivato per un account di test, mostrerebbe uno stato controllato di 'documento non disponibile', mai un'accettazione finta.",
+    note: "LEGAL CONTENT: PENDING EXTERNAL REVIEW. Dal 16/10/2026 testi bozza 1 in lib/legal/texts.ts, pubblicabili con supabase/legal_publish_2026-10-16_bozza1.sql. Senza documento PUBLISHED il gate mostra 'registrazione momentaneamente non disponibile', mai un'accettazione finta.",
     riskLevel: "high",
+    // 16/10/2026: gestito dalla card Release ("Consensi e informative").
+    releaseEligible: true,
   },
   {
     key: "legal_terms_gate_parental_declaration",
@@ -711,8 +713,9 @@ export const FEATURE_CATALOG: FeatureCatalogEntry[] = [
     flagName: "LEGAL_TERMS_GATE",
     description: "Richiesta di dichiarazione di responsabilità genitoriale sui dati del bambino, integrata nel flusso di creazione bambino (non nel signup generico). Scrittura su parental_declarations, verificata contro kids.parent_id via RLS.",
     sourceFiles: ["app/actions/kids.ts", "lib/legal/gate.ts", "supabase/migration_27_privacy_terms_consent.sql"],
-    note: "Non resa obbligatoria per utenti reali finché il testo della dichiarazione non è approvato — implementata (componente/logica/persistenza/test) ma dietro flag OFF.",
+    note: "Testo bozza 1 (16/10/2026) in components/legal/ParentalDeclarationText.tsx, versione 2026-10-16-bozza1. Dietro LEGAL_TERMS_GATE.",
     riskLevel: "high",
+    releaseEligible: true,
   },
   {
     key: "legal_public_routes",

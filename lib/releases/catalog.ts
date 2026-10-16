@@ -207,6 +207,22 @@ export const RELEASE_CATALOG: ReleaseCatalogEntry[] = [
     ],
     notes: "Creata il 15/10/2026. Ripiego: flag spento = nessuna di queste notifiche (le altre restano come prima).",
   },
+  {
+    // TRAMA — CONSENSI E INFORMATIVE (16/10/2026, pacchetto 2 go-live).
+    id: "consensi-informative",
+    label: "TRAMA — Consensi e informative",
+    shortDescription:
+      "In registrazione: accettazione dei Termini, link all'Informativa privacy, consenso marketing facoltativo. Aggiungendo un figlio: dichiarazione del genitore.",
+    targetAudience: ["parent", "partner"],
+    featureKeys: ["legal_terms_gate_signup", "legal_terms_gate_parental_declaration"],
+    knownLimitations: [
+      "Va accesa SOLO dopo aver pubblicato i testi (supabase/legal_publish_2026-10-16_bozza1.sql): senza testi pubblicati la registrazione si blocca con 'momentaneamente non disponibile'.",
+      "La pagina di registrazione non conosce ancora l'utente: per chi si registra la casella compare solo con la release in GLOBALE (la coorte non basta).",
+      "Chi è già registrato non viene richiesto di accettare: serve una schermata di accettazione per gli account esistenti (da fare).",
+      "Testi in BOZZA, da far rivedere a un legale (dati di minori).",
+    ],
+    notes: "Creata il 16/10/2026. Ripiego: flag spento = registrazione come prima, senza caselle.",
+  },
 ];
 
 export function getReleaseCatalog(): ReleaseCatalogEntry[] {

@@ -48,7 +48,9 @@ export const CURRENT_PRIVACY_NOTICE_VERSION = "v0-draft-2026-08-24";
 // dichiarazione di responsabilità genitoriale non è scritto/validato, questo
 // resta l'unico valore usato da app/actions/kids.ts — attivo SOLO quando
 // LEGAL_TERMS_GATE risolve true per l'utente (mai per un utente reale oggi).
-export const CURRENT_PARENTAL_DECLARATION_VERSION = "v0-draft-2026-08-24";
+// 16/10/2026: testo bozza 1 in components/legal/ParentalDeclarationText.tsx
+// (stessa stringa di versione, PARENTAL_DECLARATION_TEXT_VERSION).
+export const CURRENT_PARENTAL_DECLARATION_VERSION = "2026-10-16-bozza1";
 
 // PRE-MICRO-PILOT CLOSURE GATE (task #573, 25/08/2026) — spostati qui da
 // lib/legal/gate.ts: sono logica PURA (nessun I/O), ma gate.ts importa

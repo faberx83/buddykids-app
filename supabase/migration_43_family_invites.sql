@@ -1,5 +1,6 @@
 -- Migrazione 43 — Inviti famiglia per email (family_invites).
 --
+-- STATO: PREPARATA, NON APPLICATA
 -- QUESTO FILE NON È STATO APPLICATO AL DATABASE. Va eseguito da Fabrizio
 -- nello SQL Editor di Supabase (progetto TRAMA).
 --
