@@ -4,6 +4,7 @@ import LoginForm from "./LoginForm";
 import { tenantForHost, TENANT_CONFIG } from "@/lib/tenant";
 import { resolveFeatureFlag } from "@/lib/feature-flags/resolve";
 import { resolvePublishedDocumentForPublicRoute } from "@/lib/legal/gate";
+import { cohortForBetaInviteCode } from "@/lib/legal/signup-cohort";
 
 // Anteprima social (WhatsApp/etc.) per i link di invito Beta (?beta=CODICE,
 // condivisi manualmente da Fabrizio — vedi app/actions/beta-invites.ts).
@@ -42,7 +43,12 @@ export async function generateMetadata({
   };
 }
 
-export default async function LoginPage() {
+export default async function LoginPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
+}) {
+  const params = await searchParams;
   const headerList = await headers();
   const host = headerList.get("host") || "";
   const tenant = tenantForHost(host);
@@ -70,7 +76,17 @@ export default async function LoginPage() {
   // app/admin/layout.tsx#TRAMA_ONE_ENABLED). Nessun comportamento cambia
   // finché un simile override non viene scritto: oggi 0 override esistono
   // per LEGAL_TERMS_GATE, quindi il risultato resta identico (false).
-  const legalGateEnabled = await resolveFeatureFlag({ flagName: "LEGAL_TERMS_GATE", tenant });
+  //
+  // 16/10/2026 — release "Consensi e informative" accendibile anche solo al
+  // Pilot: chi si registra da un link d'invito beta porta la sua coorte nel
+  // codice (?beta=), e la usiamo qui (lib/legal/signup-cohort.ts).
+  const betaCode = typeof params.beta === "string" ? params.beta : null;
+  const signupCohort = betaCode ? await cohortForBetaInviteCode(betaCode) : null;
+  const legalGateEnabled = await resolveFeatureFlag({
+    flagName: "LEGAL_TERMS_GATE",
+    tenant,
+    extraCohortKeys: signupCohort ? [signupCohort] : [],
+  });
   const currentTermsDoc = legalGateEnabled
     ? await resolvePublishedDocumentForPublicRoute("terms")
     : null;

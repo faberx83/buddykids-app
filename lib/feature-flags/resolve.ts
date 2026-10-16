@@ -32,6 +32,12 @@ export interface ResolveFeatureFlagParams {
   role?: string | null;
   tenant?: string | null;
   correlationId?: string | null;
+  /**
+   * 16/10/2026 — coorti già note PRIMA che l'utente esista (es. registrazione
+   * da un link d'invito beta: il codice dice a quale coorte entrerà). Si
+   * sommano a quelle lette dal database per userId. Default: nessuna.
+   */
+  extraCohortKeys?: string[];
 }
 
 /** Ambiente corrente per lo scope "environment": riusa VERCEL_ENV se
@@ -51,7 +57,7 @@ function currentEnvironment(): string | null {
 // determinato il risultato — serve a InternalPreviewBadge, non ai call site
 // esistenti (che continuano a ricevere solo un booleano).
 async function resolveFeatureFlagDetail(params: ResolveFeatureFlagParams): Promise<FeatureFlagEvaluationDetail> {
-  const { flagName, userId = null, role = null, tenant = null, correlationId = null } = params;
+  const { flagName, userId = null, role = null, tenant = null, correlationId = null, extraCohortKeys = [] } = params;
 
   // Flag sconosciuto al registry → false immediato, nessuna query DB.
   if (!isKnownFlag(flagName)) {
@@ -73,7 +79,7 @@ async function resolveFeatureFlagDetail(params: ResolveFeatureFlagParams): Promi
       return { enabled: false, matchedScope: null, matchedScopeValue: null };
     }
 
-    const [overridesResult, cohortKeys] = await Promise.all([
+    const [overridesResult, storedCohortKeys] = await Promise.all([
       client
         .from("feature_flag_overrides")
         .select("scope_type, scope_value, enabled, expires_at")
@@ -92,6 +98,7 @@ async function resolveFeatureFlagDetail(params: ResolveFeatureFlagParams): Promi
       return { enabled: false, matchedScope: null, matchedScopeValue: null };
     }
 
+    const cohortKeys = Array.from(new Set([...storedCohortKeys, ...extraCohortKeys.filter(Boolean)]));
     const context: FeatureFlagContext = {
       environment: currentEnvironment(),
       userId,

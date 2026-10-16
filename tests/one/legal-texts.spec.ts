@@ -78,4 +78,13 @@ test.describe("TRAMA — Testi legali [no browser]", () => {
     for (const k of rel!.featureKeys) expect(FEATURE_CATALOG.find((f) => f.key === k)?.releaseEligible).toBe(true);
     expect(read("supabase/migration_43_family_invites.sql")).toContain("-- STATO: PREPARATA, NON APPLICATA");
   });
+
+  test("LT-07 al Pilot basta il link d'invito beta: la coorte arriva dal codice, solo se valido", () => {
+    const page = read("app/auth/login/page.tsx");
+    expect(page).toContain("const signupCohort = betaCode ? await cohortForBetaInviteCode(betaCode) : null;");
+    expect(page).toContain("extraCohortKeys: signupCohort ? [signupCohort] : [],");
+    const cohort = read("lib/legal/signup-cohort.ts");
+    for (const t of ["if (!data || !data.active) return null;", "expires_at", "redeemed_count"]) expect(cohort).toContain(t);
+    expect(read("lib/feature-flags/resolve.ts")).toContain("...extraCohortKeys.filter(Boolean)");
+  });
 });
