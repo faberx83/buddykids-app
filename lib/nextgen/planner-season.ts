@@ -137,6 +137,10 @@ export interface SavedItemInput {
   ref: string;
   /** Altri riferimenti con cui la stessa cosa può essere già nel Planner. */
   altRefs?: string[];
+  /** 20/10/2026: nome mostrato nella card del Planner. */
+  title?: string;
+  /** 20/10/2026: quando è disponibile (settimane del centro, giorni aperti, date della scoperta). Vuoto = non si sa. */
+  ranges?: { startDate: string; endDate: string }[];
 }
 
 /**
@@ -144,6 +148,45 @@ export interface SavedItemInput {
  * impegno. Solo cose con una data possibile: niente "impegni senza data"
  * (external_planner_items.start_date è obbligatoria).
  */
+/** I salvati non ancora prenotati né nel Planner (stessa regola di countSavedNotInPlanner). */
+export function savedNotInPlanner(input: {
+  saved: SavedItemInput[];
+  bookedActivityDbIds: string[];
+  externalSourceRefs: string[];
+}): SavedItemInput[] {
+  const booked = new Set(input.bookedActivityDbIds);
+  const inPlanner = new Set(input.externalSourceRefs);
+  return input.saved.filter((s) => {
+    const refs = [s.ref, ...(s.altRefs ?? [])];
+    if (s.kind === "partner") return !booked.has(s.ref);
+    return !refs.some((r) => inPlanner.has(r));
+  });
+}
+
+/**
+ * 20/10/2026 — Fabrizio: "quella attività non salvata cos'è? Serve? Dipende
+ * dalla disponibilità o dalla necessità della famiglia, altrimenti no".
+ * La card Salvati del Planner compare solo per i salvati disponibili nella
+ * settimana che si guarda (dal lunedì alla domenica); `coversNeed` = sono
+ * disponibili anche in un giorno che per qualcuno è ancora scoperto (scuola
+ * chiusa senza niente). Un salvato senza date note non compare qui (resta
+ * in Salvati).
+ */
+export function savedForWeek<T extends { ranges?: { startDate: string; endDate: string }[] }>(
+  items: T[],
+  mondayIso: string,
+  uncoveredDates: string[] = []
+): { items: T[]; coversNeed: boolean } {
+  const end = (() => {
+    const d = new Date(mondayIso + "T00:00:00Z");
+    d.setUTCDate(d.getUTCDate() + 6);
+    return d.toISOString().slice(0, 10);
+  })();
+  const inWeek = items.filter((s) => (s.ranges ?? []).some((r) => r.startDate <= end && r.endDate >= mondayIso));
+  const coversNeed = inWeek.some((s) => (s.ranges ?? []).some((r) => uncoveredDates.some((d) => r.startDate <= d && d <= r.endDate)));
+  return { items: inWeek, coversNeed };
+}
+
 export function countSavedNotInPlanner(input: {
   saved: SavedItemInput[];
   bookedActivityDbIds: string[];

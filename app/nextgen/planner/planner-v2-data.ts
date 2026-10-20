@@ -27,7 +27,9 @@ import { getUnifiedFavoritesForParent } from "@/lib/data/favorites";
 import { getPlannerCalendarItemsForParent, type PlannerCalendarItem } from "@/lib/planner/calendar-items";
 import { computeBudgetSummary } from "@/lib/nextgen/planner-insights";
 import { buildCoverage, buildHolidaySummary, closureState, holidayPeriodsInRange, listClosurePeriods, weekdaysBetween } from "@/lib/nextgen/holiday-summary";
-import { countSavedNotInPlanner, type SavedItemInput } from "@/lib/nextgen/planner-season";
+import { countSavedNotInPlanner, savedNotInPlanner, type SavedItemInput } from "@/lib/nextgen/planner-season";
+import { getWeeksForActivity } from "@/lib/data/weeks";
+import { getActivityDays } from "@/lib/data/activity-days";
 import { resolveFeatureFlagVisibility } from "@/lib/feature-flags/resolve";
 import { generateCorrelationId } from "@/lib/telemetry/correlation";
 import type PlannerV2Client from "./PlannerV2Client";
@@ -146,21 +148,56 @@ export async function loadPlannerV2Props({
   }));
 
   // Salvati: preferiti con una data possibile, non ancora prenotati né nel Planner.
+  // 20/10/2026: con nome e date di disponibilità, per mostrarli nel Planner
+  // solo nella settimana in cui servono (savedForWeek in planner-season.ts).
+  const partnerRanges = new Map<string, { startDate: string; endDate: string }[]>();
+  await Promise.all(
+    favorites.map(async (f) => {
+      if (f.kind !== "partner") return;
+      const key = f.activity.dbId ?? f.activity.id;
+      const [weeks, days] = await Promise.all([
+        getWeeksForActivity(f.activity).catch(() => []),
+        f.activity.bookingMode && f.activity.bookingMode !== "week_only" ? getActivityDays(f.activity).catch(() => []) : Promise.resolve([]),
+      ]);
+      const ranges = [
+        ...weeks
+          .filter((w) => w.offered !== false && !w.soldOut && w.startDate && w.endDate)
+          .map((w) => ({ startDate: w.startDate!, endDate: w.endDate! })),
+        ...days.filter((d) => d.isOpen).map((d) => ({ startDate: d.date, endDate: d.date })),
+      ].filter((r) => r.endDate >= todayIso);
+      partnerRanges.set(key, ranges);
+    })
+  );
+  const datedRange = (start: string | null, end: string | null) =>
+    start ? [{ startDate: start, endDate: end ?? start }].filter((r) => r.endDate >= todayIso) : [];
   const saved: SavedItemInput[] = favorites.map((f): SavedItemInput =>
     f.kind === "partner"
-      ? { kind: "partner", ref: f.activity.dbId ?? f.activity.id }
+      ? {
+          kind: "partner",
+          ref: f.activity.dbId ?? f.activity.id,
+          title: f.activity.name,
+          ranges: partnerRanges.get(f.activity.dbId ?? f.activity.id) ?? [],
+        }
       : f.kind === "curated"
-        ? { kind: "curated", ref: f.curatedLeadId }
-        : { kind: "community", ref: f.discovery.id, altRefs: [f.favoriteId] }
+        ? { kind: "curated", ref: f.curatedLeadId, title: f.lead.activityTitle, ranges: datedRange(f.lead.startDate, f.lead.endDate) }
+        : {
+            kind: "community",
+            ref: f.discovery.id,
+            altRefs: [f.favoriteId],
+            title: f.discovery.title,
+            ranges: datedRange(f.discovery.startDate, f.discovery.endDate),
+          }
   );
-  const savedCount = countSavedNotInPlanner({
+  const savedInput = {
     saved,
     bookedActivityDbIds: bookings
       .filter((b) => b.status !== "cancelled" && b.partnerDecision !== "rejected")
       .map((b) => b.activityDbId)
       .filter((id): id is string => Boolean(id)),
     externalSourceRefs: externalItems.map((i) => i.sourceRef).filter((r): r is string => Boolean(r)),
-  });
+  };
+  const savedCount = countSavedNotInPlanner(savedInput);
+  const savedPending = savedNotInPlanner(savedInput).map((s) => ({ title: s.title ?? "", ranges: s.ranges ?? [] }));
 
   const hoursByActivityDbId: Record<string, string | undefined> = {};
   for (const a of activities) if (a.dbId) hoursByActivityDbId[a.dbId] = a.hours;
@@ -218,6 +255,7 @@ export async function loadPlannerV2Props({
     communities,
     groups,
     savedCount,
+    savedPending,
     navV2Enabled,
     assignPlusEnabled,
     partnerOnTrama,
