@@ -118,15 +118,26 @@ self.addEventListener("notificationclick", (event) => {
     return;
   }
 
-  // Tap sul corpo della notifica (nessun bottone azione): comportamento
-  // invariato rispetto a prima di questo cambiamento.
+  // Tap sul corpo della notifica (nessun bottone azione).
+  // 20/10/2026 — l'app sa di essere stata aperta da una notifica (messaggio
+  // alla finestra già aperta, oppure ?da=notifica su quella nuova): così il
+  // "ritorno alla Home dopo una pausa" (components/nextgen/ReturnHomeAfterIdle.tsx)
+  // non scavalca la pagina della notifica.
   const url = notificationData.url || "/";
+  const markedUrl = url + (url.indexOf("?") === -1 ? "?" : "&") + "da=notifica";
   event.waitUntil(
     self.clients.matchAll({ type: "window", includeUncontrolled: true }).then((clientList) => {
       for (const client of clientList) {
-        if (client.url.includes(url) && "focus" in client) return client.focus();
+        if (client.url.includes(url) && "focus" in client) {
+          try {
+            client.postMessage({ type: "trama-opened-from-notification" });
+          } catch (e) {
+            // messaggio facoltativo
+          }
+          return client.focus();
+        }
       }
-      if (self.clients.openWindow) return self.clients.openWindow(url);
+      if (self.clients.openWindow) return self.clients.openWindow(markedUrl);
     })
   );
 });

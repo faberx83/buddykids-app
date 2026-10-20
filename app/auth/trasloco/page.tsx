@@ -34,7 +34,7 @@ export default function TraslocoPage() {
         data-testid="trasloco"
       >
         <div className="mb-5">
-          <TramaSpinner size={96} label="Ti stiamo portando su tramapp.it" />
+          <TramaSpinner size={128} label="Ti stiamo portando su tramapp.it" />
         </div>
         <h1 className="mb-1 font-poppins text-[20px] font-semibold text-ink">TRAMA ha un nuovo indirizzo</h1>
         <p className="text-[15px] text-ink-2">tramapp.it — un attimo, ti portiamo dentro…</p>

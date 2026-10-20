@@ -8,7 +8,7 @@ import TramaSpinner from "@/components/TramaSpinner";
 export default function Loading() {
   return (
     <div className="flex min-h-[60vh] items-center justify-center">
-      <TramaSpinner size={96} />
+      <TramaSpinner size={128} />
     </div>
   );
 }

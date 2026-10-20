@@ -25,18 +25,40 @@ const SRC: Record<"color" | "navy" | "white", string> = {
 // caricamento (famiglie V1 e V2, Partner, Admin, trasloco di dominio).
 // role="status" + testo nascosto: chi usa un lettore di schermo sente
 // "Caricamento".
+// v7 (20/10/2026) — Fabrizio: "logo più grande, o wordmark sotto". Sotto il
+// logo che si tesse c'è la scritta TRAMA, ferma (si legge sempre), larga
+// circa metà del logo. Stesso colore del pannello (navy su Partner, bianca
+// su Admin). `wordmark={false}` per i punti dove il nome è già scritto
+// accanto (es. il trasloco di dominio).
+const WORDMARK: Record<"color" | "navy" | "white", string> = {
+  color: "/brand/trama-wordmark.png",
+  navy: "/brand/trama-wordmark.png",
+  white: "/brand/trama-wordmark-white.png",
+};
+
 export default function TramaSpinner({
   size = 160,
   tone = "color",
   label = "Caricamento",
+  wordmark = true,
 }: {
   size?: number;
   tone?: "color" | "navy" | "white";
   label?: string;
+  wordmark?: boolean;
 }) {
   return (
     <span role="status" className="inline-flex flex-col items-center" data-testid="trama-loader">
       <img src={SRC[tone]} alt="" aria-hidden="true" className="trama-weave" style={{ width: size, height: "auto" }} />
+      {wordmark && (
+        <img
+          src={WORDMARK[tone]}
+          alt=""
+          aria-hidden="true"
+          className="mt-3"
+          style={{ width: Math.round(size * 0.55), height: "auto" }}
+        />
+      )}
       <span className="sr-only">{label}</span>
     </span>
   );

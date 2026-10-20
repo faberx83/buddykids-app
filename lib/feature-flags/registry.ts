@@ -300,6 +300,15 @@ export const FEATURE_FLAG_REGISTRY = {
     defaultValue: false,
     allowedScopes: ["global", "environment", "user", "role", "cohort"],
   },
+  // TRAMA — RITORNO ALLA HOME DOPO UNA PAUSA (20/10/2026), release "home-dopo-pausa".
+  RETURN_HOME_AFTER_IDLE_ENABLED: {
+    name: "RETURN_HOME_AFTER_IDLE_ENABLED",
+    description:
+      "App installata: se si riapre o torna in primo piano dopo più di 30 minuti sulla stessa pagina lasciata, riparte " +
+      "dalla Home. Link e notifiche aperti dopo la pausa si rispettano. Default false: resta sull'ultima pagina.",
+    defaultValue: false,
+    allowedScopes: ["global", "environment", "user", "role", "cohort"],
+  },
   // TRAMA — PAGINA DI BENVENUTO (20/10/2026), release "pagina-benvenuto".
   LANDING_PUBLIC_ENABLED: {
     name: "LANDING_PUBLIC_ENABLED",

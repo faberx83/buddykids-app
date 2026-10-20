@@ -925,6 +925,23 @@ export const FEATURE_CATALOG: FeatureCatalogEntry[] = [
     releaseEligible: true,
   },
   {
+    // TRAMA — RITORNO ALLA HOME DOPO UNA PAUSA (20/10/2026). NEW, solo lato
+    // telefono (nessun dato salvato sul server): ricorda in locale l'ora e la
+    // pagina lasciate.
+    key: "return_home_after_idle",
+    label: "Dopo una pausa l'app riparte dalla Home",
+    area: "parent",
+    status: "INTERNAL_PREVIEW",
+    flagName: "RETURN_HOME_AFTER_IDLE_ENABLED",
+    description:
+      "App installata: riaprendola, o tornandoci, dopo più di 30 minuti si riparte dalla Home invece che dall'ultima " +
+      "pagina vista. Un link o una notifica aperti dopo la pausa portano comunque alla loro pagina.",
+    sourceFiles: ["lib/nextgen/return-home.ts", "components/nextgen/ReturnHomeAfterIdle.tsx", "app/nextgen/layout.tsx", "public/sw.js"],
+    note: "Solo con l'app installata sulla schermata Home (nel browser una scheda resta dov'era). Soglia 30 minuti.",
+    riskLevel: "low",
+    releaseEligible: true,
+  },
+  {
     // TRAMA — PAGINA DI BENVENUTO (20/10/2026). NEW: prima chi non aveva un
     // account vedeva solo la pagina di accesso. Riusa testi e schermate demo
     // del carosello di primo ingresso; nuova solo la lista d'attesa

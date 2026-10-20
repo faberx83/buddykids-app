@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import PhoneShell from "@/components/PhoneShell";
 import InstallPrompt from "@/components/InstallPrompt";
 import NextgenBottomNav from "@/components/nextgen/NextgenBottomNav";
+import ReturnHomeAfterIdle from "@/components/nextgen/ReturnHomeAfterIdle";
 import BetaFeedbackButton from "@/components/nextgen/BetaFeedbackButton";
 import { NextgenToastProvider } from "@/components/nextgen/NextgenToastProvider";
 import { createClient } from "@/lib/supabase/server";
@@ -141,6 +142,7 @@ export default async function NextgenLayout({ children }: { children: React.Reac
   let navV2Enabled = false;
   let addItemEnabled = false;
   let radarEnabled = false; // RADAR (14/10/2026): "Una scoperta" nel +
+  let returnHomeEnabled = false; // 20/10/2026: dopo una pausa l'app riparte dalla Home
   // TRAMA — ONBOARDING V2 (14/10/2026): con il flag acceso l'onboarding V2
   // prende il posto del carousel attuale (chiave tutorial nuova). I dati dei
   // figli e della scuola si leggono SOLO se l'onboarding sta per comparire.
@@ -210,7 +212,7 @@ export default async function NextgenLayout({ children }: { children: React.Reac
     globalActionProgressEnabled = globalActionProgressResolved;
     if (realRole === "parent") {
       try {
-        const [navV2, externalItems, radar] = await Promise.all([
+        const [navV2, externalItems, radar, returnHome] = await Promise.all([
           resolveFeatureFlag({
             flagName: "NAV_V2_ENABLED",
             userId: user.id,
@@ -232,10 +234,18 @@ export default async function NextgenLayout({ children }: { children: React.Reac
             tenant: "family",
             correlationId: generateCorrelationId(),
           }).catch(() => false),
+          resolveFeatureFlag({
+            flagName: "RETURN_HOME_AFTER_IDLE_ENABLED",
+            userId: user.id,
+            role: realRole,
+            tenant: "family",
+            correlationId: generateCorrelationId(),
+          }).catch(() => false),
         ]);
         navV2Enabled = navV2;
         addItemEnabled = externalItems;
         radarEnabled = radar;
+        returnHomeEnabled = returnHome;
       } catch {
         navV2Enabled = false; // ripiego: barra attuale
       }
@@ -366,6 +376,7 @@ export default async function NextgenLayout({ children }: { children: React.Reac
               BetaFeedbackButton.tsx). */}
           {/* POLISH V2 (14/10/2026): con la nuova barra un solo elemento flottante, il +. */}
           <BetaFeedbackButton hideFab={navV2Enabled} />
+          {returnHomeEnabled && <ReturnHomeAfterIdle />}
           <ParentSpotlight progress={spotlightProgress} />
           {onboardingV2Enabled ? (
             <OnboardingV2

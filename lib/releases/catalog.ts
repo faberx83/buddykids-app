@@ -253,6 +253,18 @@ export const RELEASE_CATALOG: ReleaseCatalogEntry[] = [
     ],
     notes: "Creata il 20/10/2026. Ripiego: flag spento = tramapp.it senza account apre l'accesso come prima.",
   },
+  {
+    // TRAMA — RITORNO ALLA HOME DOPO UNA PAUSA (20/10/2026).
+    id: "home-dopo-pausa",
+    label: "TRAMA — Dopo una pausa si riparte dalla Home",
+    shortDescription: "App installata: riaprendola dopo più di 30 minuti si torna alla Home invece che all'ultima pagina vista.",
+    targetAudience: ["parent"],
+    featureKeys: ["return_home_after_idle"],
+    knownLimitations: [
+      "return_home_after_idle: solo con l'app installata sulla schermata Home; nel browser resta l'ultima pagina. Le notifiche aperte prima del deploy del nuovo service worker possono ancora portare alla Home dopo una pausa.",
+    ],
+    notes: "Creata il 20/10/2026. Ripiego: flag spento = l'app riapre l'ultima pagina vista, come prima.",
+  },
 ];
 
 export function getReleaseCatalog(): ReleaseCatalogEntry[] {
