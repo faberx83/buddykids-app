@@ -34,14 +34,19 @@ async function flagOnFor(userId: string, flagName: string): Promise<boolean> {
 }
 
 interface RawBooking {
+  id: string;
   status: string;
+  activities: One<{ id: string; name: string | null; hours: string | null; booking_mode: string | null; centers: One<{ name: string | null }> }>;
   partner_decision: string | null;
   booking_kids: { kid_id: string }[] | null;
   booking_weeks: { activity_weeks: One<{ start_date: string; end_date: string }> }[] | null;
   booking_days: { activity_days: One<{ date: string }> }[] | null;
 }
 
-async function loadFamily(service: Service, parentId: string, todayIso: string) {
+// 20/10/2026: esportata e arricchita (nomi, orari, luoghi) per il buongiorno
+// di TRAMA (lib/data/daily-briefing.ts): i promemoria serali usano gli stessi
+// dati, i campi in più non cambiano nulla per loro.
+export async function loadFamily(service: Service, parentId: string, todayIso: string) {
   const [externalOn, schoolOn] = await Promise.all([
     flagOnFor(parentId, "EXTERNAL_PLANNER_ITEMS_ENABLED"),
     flagOnFor(parentId, "SCHOOL_CALENDAR_INTELLIGENCE_ENABLED"),
@@ -52,7 +57,7 @@ async function loadFamily(service: Service, parentId: string, todayIso: string) 
     service
       .from("bookings")
       .select(
-        "status, partner_decision, booking_kids ( kid_id ), booking_weeks ( activity_weeks ( start_date, end_date ) ), booking_days ( activity_days ( date ) )"
+        "id, status, partner_decision, activities ( id, name, hours, booking_mode, centers ( name ) ), booking_kids ( kid_id ), booking_weeks ( activity_weeks ( start_date, end_date ) ), booking_days ( activity_days ( date ) )"
       )
       .eq("parent_id", parentId)
       .neq("status", "cancelled"),
@@ -63,7 +68,7 @@ async function loadFamily(service: Service, parentId: string, todayIso: string) 
     externalOn
       ? service
           .from("external_planner_items")
-          .select("start_date, end_date, all_day, start_time, end_time, external_planner_item_kids ( kid_id )")
+          .select("id, title, location, source_type, start_date, end_date, all_day, start_time, end_time, external_planner_item_kids ( kid_id )")
           .eq("parent_id", parentId)
           .is("deleted_at", null)
       : Promise.resolve({ data: [] as unknown[] }),
@@ -73,9 +78,18 @@ async function loadFamily(service: Service, parentId: string, todayIso: string) 
   const kidNameById: Record<string, string> = Object.fromEntries(kids.map((k) => [k.id, k.name]));
   const parentRole = ((profileRes.data as { parent_role?: ParentRole | null } | null)?.parent_role ?? null) as ParentRole | null;
 
+  const hoursByActivityDbId: Record<string, string | undefined> = {};
   const bookings = ((bookingsRes.data ?? []) as unknown as RawBooking[]).map((b) => {
     const kidIds = (b.booking_kids ?? []).map((k) => k.kid_id);
+    const activity = first(b.activities);
+    if (activity?.id && activity.hours) hoursByActivityDbId[activity.id] = activity.hours;
+    const dayDates = (b.booking_days ?? []).map((d) => first(d.activity_days)?.date).filter((d): d is string => Boolean(d));
     return {
+      id: b.id,
+      activityName: activity?.name ?? "Attività",
+      activityDbId: activity?.id ?? null,
+      centerName: first(activity?.centers ?? null)?.name ?? "",
+      isDayBased: dayDates.length > 0,
       status: b.status,
       partnerDecision: b.partner_decision ?? "pending",
       kidIds,
@@ -84,14 +98,16 @@ async function loadFamily(service: Service, parentId: string, todayIso: string) 
         .map((w) => first(w.activity_weeks))
         .filter((w): w is { start_date: string; end_date: string } => Boolean(w))
         .map((w) => ({ startDate: w.start_date, endDate: w.end_date })),
-      dayDates: (b.booking_days ?? [])
-        .map((d) => first(d.activity_days)?.date)
-        .filter((d): d is string => Boolean(d)),
+      dayDates,
     };
   });
 
   const externalItems = (
     (externalRes.data ?? []) as {
+      id: string;
+      title: string | null;
+      location: string | null;
+      source_type: string | null;
       start_date: string;
       end_date: string;
       all_day: boolean;
@@ -100,6 +116,10 @@ async function loadFamily(service: Service, parentId: string, todayIso: string) 
       external_planner_item_kids: { kid_id: string }[] | null;
     }[]
   ).map((i) => ({
+    id: i.id,
+    title: i.title ?? "Impegno",
+    location: i.location,
+    sourceType: i.source_type ?? "manual",
     startDate: i.start_date,
     endDate: i.end_date,
     allDay: i.all_day,
@@ -136,6 +156,8 @@ async function loadFamily(service: Service, parentId: string, todayIso: string) 
 
   return {
     todayIso,
+    parentRole,
+    hoursByActivityDbId,
     bookings,
     externalItems,
     responsibilities,

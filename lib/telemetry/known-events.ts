@@ -176,6 +176,9 @@ export const KNOWN_PRODUCT_EVENTS = [
   // stessa provenienza, oppure "already" se l'email era già in lista).
   "landing_viewed",
   "landing_waitlist_joined",
+  // TRAMA — IL BUONGIORNO (20/10/2026): un conteggio per giro (cron o "Mandamelo
+  // adesso"), mai nomi o email.
+  "daily_briefing_run",
 ] as const;
 
 export type KnownProductEvent = (typeof KNOWN_PRODUCT_EVENTS)[number];

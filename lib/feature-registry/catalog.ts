@@ -925,6 +925,35 @@ export const FEATURE_CATALOG: FeatureCatalogEntry[] = [
     releaseEligible: true,
   },
   {
+    // TRAMA — IL BUONGIORNO DI TRAMA (20/10/2026). NEW: riepilogo del mattino.
+    // Riusa caricamento dei promemoria serali, agenda della Home, regola
+    // Porta/Ritira del Planner, sendPushToUser e Resend; nuove solo due
+    // preferenze in profiles (migration_45) e un cron giornaliero.
+    key: "daily_briefing",
+    label: "Il buongiorno di TRAMA — riepilogo del mattino alle 8",
+    area: "parent",
+    status: "INTERNAL_PREVIEW",
+    flagName: "DAILY_BRIEFING_ENABLED",
+    description:
+      "Ogni mattina fra le 8:00 e le 8:59: impegni di oggi, chi porta e chi ritira (con i 'da decidere'), prossima " +
+      "chiusura della scuola. Sul telefono e/o per email, a scelta in Profilo → Impostazioni → Preferenze, con " +
+      "'Mandamelo adesso' per provarlo.",
+    sourceFiles: [
+      "lib/nextgen/daily-briefing.ts",
+      "lib/data/daily-briefing.ts",
+      "app/api/cron/daily-briefing/route.ts",
+      "app/actions/daily-briefing.ts",
+      "components/nextgen/DailyBriefingSettings.tsx",
+      "app/nextgen/profile/impostazioni/preferenze/page.tsx",
+    ],
+    note:
+      "Serve migration_45_daily_briefing.sql. Piano Vercel Hobby: arriva fra le 8:00 e le 8:59 (due voci di cron, 06 e " +
+      "07 UTC, ne risponde una sola secondo l'ora legale). Se non c'è niente da dire non parte. Rispetta 'Notifiche push' " +
+      "e 'Notifiche email'. Ogni giro lascia daily_briefing_run in product_events.",
+    riskLevel: "low",
+    releaseEligible: true,
+  },
+  {
     // TRAMA — RITORNO ALLA HOME DOPO UNA PAUSA (20/10/2026). NEW, solo lato
     // telefono (nessun dato salvato sul server): ricorda in locale l'ora e la
     // pagina lasciate.

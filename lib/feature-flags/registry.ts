@@ -300,6 +300,16 @@ export const FEATURE_FLAG_REGISTRY = {
     defaultValue: false,
     allowedScopes: ["global", "environment", "user", "role", "cohort"],
   },
+  // TRAMA — IL BUONGIORNO DI TRAMA (20/10/2026), release "buongiorno-trama".
+  DAILY_BRIEFING_ENABLED: {
+    name: "DAILY_BRIEFING_ENABLED",
+    description:
+      "Mostra in Profilo → Preferenze 'Il buongiorno di TRAMA' (riepilogo del mattino alle 8: impegni di oggi, chi " +
+      "accompagna, prossima chiusura della scuola) e lo invia, sul telefono e/o per email, a chi lo attiva. " +
+      "Default false: niente opzione, niente invii.",
+    defaultValue: false,
+    allowedScopes: ["global", "environment", "user", "role", "cohort"],
+  },
   // TRAMA — RITORNO ALLA HOME DOPO UNA PAUSA (20/10/2026), release "home-dopo-pausa".
   RETURN_HOME_AFTER_IDLE_ENABLED: {
     name: "RETURN_HOME_AFTER_IDLE_ENABLED",

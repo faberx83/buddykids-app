@@ -87,6 +87,8 @@ export interface SendEmailInput {
   to: string;
   subject: string;
   html: string;
+  /** Versione solo testo (facoltativa, 20/10/2026 — il buongiorno di TRAMA): migliora la consegna e la lettura senza HTML. */
+  text?: string;
 }
 
 export interface ResendPayload {
@@ -94,6 +96,7 @@ export interface ResendPayload {
   to: string;
   subject: string;
   html: string;
+  text?: string;
   reply_to?: string;
 }
 
@@ -106,6 +109,7 @@ export function buildResendPayload(input: SendEmailInput, settings: Pick<EmailSe
     subject: input.subject,
     html: input.html,
   };
+  if (input.text) payload.text = input.text;
   if (settings.replyTo) payload.reply_to = settings.replyTo;
   return payload;
 }

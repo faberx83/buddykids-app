@@ -96,8 +96,12 @@ test.describe("TRAMA — Promemoria famiglie [no browser]", () => {
     expect(data).toContain("detail: `parents=${parentIds.length} enabled=${enabled} sent=${sent}`");
     expect(read("app/actions/communities.ts")).toContain("await notifyClassProposal({ communityId, activityDbId, proposerId: user.id });");
     expect(KNOWN_PRODUCT_EVENTS).toContain("family_reminders_cron_run");
-    // nessun nuovo cron: il piano Hobby ne permette uno al giorno per voce, si riusa quello esistente
-    const vercel = JSON.parse(read("vercel.json"));
-    expect(vercel.crons).toHaveLength(2);
+    // nessun cron proprio per i promemoria: si riusa quello dei promemoria di
+    // partenza. 20/10/2026: altri cron possono esistere (il buongiorno ne ha
+    // due), ma sul piano Hobby ognuno gira al massimo una volta al giorno.
+    const vercel = JSON.parse(read("vercel.json")) as { crons: { path: string; schedule: string }[] };
+    expect(vercel.crons.filter((c) => /family|reminders-famiglie/.test(c.path))).toHaveLength(0);
+    expect(vercel.crons.some((c) => c.path === "/api/cron/travel-reminders")).toBe(true);
+    for (const c of vercel.crons) expect(c.schedule, c.path).toMatch(/^\d+ \d+ \* \* \*$/);
   });
 });

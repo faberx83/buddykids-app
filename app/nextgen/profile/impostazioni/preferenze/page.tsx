@@ -1,5 +1,6 @@
 import PreferenzeView from "@/components/PreferenzeView";
 import WalkthroughRestartButton from "@/components/WalkthroughRestartButton";
+import DailyBriefingSettings from "@/components/nextgen/DailyBriefingSettings";
 import { createClient } from "@/lib/supabase/server";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
 import { resolveFeatureFlag } from "@/lib/feature-flags/resolve";
@@ -26,6 +27,9 @@ import { Role } from "@/lib/types";
 // vedrà mai (flag off) sarebbe solo rumore, non un errore.
 export default async function NextgenPreferenzePage() {
   let showReplay = false;
+  // 20/10/2026 — "Il buongiorno di TRAMA" (release "buongiorno-trama"): null =
+  // non mostrare (release spenta o migration_45 non applicata).
+  let briefing: { push: boolean; email: boolean; address: string | null } | null = null;
   // ONBOARDING V2 (14/10/2026): con il flag acceso si riavvia la versione nuova.
   let onboardingV2Enabled = false;
   if (isSupabaseConfigured) {
@@ -34,6 +38,26 @@ export default async function NextgenPreferenzePage() {
       data: { user },
     } = await supabase.auth.getUser();
     if (user) {
+      const briefingOn = await resolveFeatureFlag({
+        flagName: "DAILY_BRIEFING_ENABLED",
+        userId: user.id,
+        tenant: "family",
+        correlationId: generateCorrelationId(),
+      }).catch(() => false);
+      if (briefingOn) {
+        const { data: b, error: bErr } = await supabase
+          .from("profiles")
+          .select("email, daily_briefing_push, daily_briefing_email")
+          .eq("id", user.id)
+          .maybeSingle();
+        if (!bErr && b) {
+          briefing = {
+            push: Boolean(b.daily_briefing_push),
+            email: Boolean(b.daily_briefing_email),
+            address: (b.email as string | null) ?? user.email ?? null,
+          };
+        }
+      }
       const { data: authProfile } = await supabase.from("profiles").select("role").eq("id", user.id).single();
       const realRole = (authProfile?.role as Role) ?? "parent";
       // FAMILY-FIRST BETA PASS (07/10/2026): anche l'Admin piattaforma (stesso
@@ -64,6 +88,11 @@ export default async function NextgenPreferenzePage() {
   return (
     <div>
       <PreferenzeView showBrandIcon />
+      {briefing && (
+        <div className="px-5 pb-5">
+          <DailyBriefingSettings initialPush={briefing.push} initialEmail={briefing.email} email={briefing.address} />
+        </div>
+      )}
       {showReplay && (
         <div className="space-y-3 px-5 pb-5">
           <div className="text-xs font-semibold text-ink-2">Aiuto e guida</div>
