@@ -137,18 +137,23 @@ export const ANNOUNCEMENT_CATALOG: AnnouncementCatalogEntry[] = [
   // Fabrizio (D2). Prodotto: claude/DECISIONI_ACCOMPAGNAMENTO_RITIRO_20260930.md.
   // Testi volutamente prudenti: niente date, niente promesse rigide; per le
   // deleghe nessun dettaglio sul meccanismo finché non c'è il parere legale.
+  // 20/10/2026 — Fabrizio: "sei d'accordo che non è più in arrivo?". Rilasciata:
+  // availability "available", CTA al foglio "Chi accompagna", version 2 (torna
+  // "nuova" per tutti), visibile solo con la release "chi-accompagna-veloce".
+  // Testo onesto: si decide per figlio e per giorno (non per singola attività
+  // se nello stesso giorno ce ne sono due), solo lun–ven.
   {
     id: "accompagnamento-ritiro",
-    releaseId: "accompagnamento-ritiro",
-    version: 1,
+    releaseId: "chi-accompagna-veloce",
+    version: 2,
     audience: ["parent"],
     announceToUsers: true,
-    availability: "coming_soon",
-    userTitle: "Chi accompagna e chi ritira, attività per attività",
+    requiredFeatureFlag: "CHI_ACCOMPAGNA_PLUS_ENABLED",
+    userTitle: "Chi porta e chi ritira, per tutto l'impegno",
     userBody:
-      "Stiamo lavorando per farti indicare chi porta e chi ritira per ogni singola attività, coinvolgendo anche nonni, tata o un altro genitore.",
-    deepLink: novitaAnchorHref("accompagnamento-ritiro"),
-    releasedAt: "2026-10-07",
+      "Nel Planner scegli chi porta e chi ritira ogni giorno: tu, l'altro genitore, i nonni, la tata o chi vuoi. Con un tocco vale per tutti i giorni dell'impegno, e se l'altro genitore è su TRAMA riceve un avviso.",
+    deepLink: "/nextgen/planner?panel=chi",
+    releasedAt: "2026-10-20",
   },
   {
     id: "deleghe-smart",
