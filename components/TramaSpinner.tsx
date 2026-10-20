@@ -36,37 +36,57 @@ const WORDMARK: Record<"color" | "navy" | "white", string> = {
   white: "/brand/trama-wordmark-white.png",
 };
 
-// v9 (20/10/2026, Fabrizio: "l'alone sotto non mi piace… sfondo beigiolino
-// e logo e wordmark ancora più grandi"). Niente alone: logo grande (il fondo
-// beige a schermo intero lo mettono le pagine loading.tsx, vedi
-// LOADER_SCREEN qui sotto) e scritta TRAMA larga quasi quanto il logo, che
-// entra con una dissolvenza. Con "riduci movimento": tutto fermo.
+// v10 (20/10/2026, Fabrizio: "verifica che il beige sia lo stesso del resto
+// del sito… userei il b"). Logo grande, scritta TRAMA larga 0.8 del logo e,
+// sotto, un filo con i quattro colori del logo che si riempie da sinistra a
+// destra (variante "B"). Sfondo: lo stesso delle pagine (trama-page,
+// #FDFCFA), non più il beige più scuro della v9. Usato da tutte le pagine
+// loading.tsx, dal trasloco e dallo splash d'apertura (AppSplashOverlay).
+// Con "riduci movimento": tutto fermo (filo pieno).
 
-/** Schermo del caricamento nelle app famiglie e Partner: beige caldo, a tutto schermo. */
-export const LOADER_SCREEN = "fixed inset-0 z-[80] flex items-center justify-center bg-[#F5EFE5]";
+/** Schermo del caricamento (famiglie e Partner): a tutto schermo, sfondo delle pagine. */
+export const LOADER_SCREEN = "fixed inset-0 z-[80] flex items-center justify-center bg-trama-page";
+/** Admin: stesso schermo sul fondo scuro dell'app Admin. */
+export const LOADER_SCREEN_ADMIN = "fixed inset-0 z-[80] flex items-center justify-center bg-[#1A1D2E]";
 
 export default function TramaSpinner({
   size = 220,
   tone = "color",
   label = "Caricamento",
   wordmark = true,
+  thread = true,
+  still = false,
 }: {
   size?: number;
   tone?: "color" | "navy" | "white";
   label?: string;
   wordmark?: boolean;
+  /** Il filo colorato sotto la scritta (variante B). */
+  thread?: boolean;
+  /** true = logo fermo (splash d'apertura, che dura meno di un giro dell'animazione). */
+  still?: boolean;
 }) {
+  const width = Math.round(size * 0.8);
   return (
     <span role="status" className="relative inline-flex flex-col items-center" data-testid="trama-loader">
-      <img src={SRC[tone]} alt="" aria-hidden="true" className="trama-weave relative" style={{ width: size, height: "auto" }} />
+      <img
+        src={SRC[tone]}
+        alt=""
+        aria-hidden="true"
+        className={still ? "relative" : "trama-weave relative"}
+        style={{ width: size, height: "auto" }}
+      />
       {wordmark && (
-        <img
-          src={WORDMARK[tone]}
-          alt=""
+        <img src={WORDMARK[tone]} alt="" aria-hidden="true" className="trama-loader-word relative mt-6" style={{ width, height: "auto" }} />
+      )}
+      {thread && (
+        <span
           aria-hidden="true"
-          className="trama-loader-word relative mt-6"
-          style={{ width: Math.round(size * 0.8), height: "auto" }}
-        />
+          className={`trama-loader-thread mt-[18px] block h-1 overflow-hidden rounded-full ${tone === "white" ? "bg-white/15" : "bg-[#ECE8E0]"}`}
+          style={{ width }}
+        >
+          <span className="block h-full w-full rounded-full" />
+        </span>
       )}
       <span className="sr-only">{label}</span>
     </span>

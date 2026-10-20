@@ -30,11 +30,11 @@ export default function TraslocoPage() {
   return (
     <PhoneShell>
       <div
-        className="flex min-h-screen flex-col items-center justify-center px-8 py-10 text-center sm:min-h-0 sm:flex-1"
+        className="flex min-h-screen flex-col items-center justify-center bg-trama-page px-8 py-10 text-center sm:min-h-0 sm:flex-1"
         data-testid="trasloco"
       >
         <div className="mb-5">
-          <TramaSpinner size={160} label="Ti stiamo portando su tramapp.it" />
+          <TramaSpinner size={200} label="Ti stiamo portando su tramapp.it" />
         </div>
         <h1 className="mb-1 font-poppins text-[20px] font-semibold text-ink">TRAMA ha un nuovo indirizzo</h1>
         <p className="text-[15px] text-ink-2">tramapp.it — un attimo, ti portiamo dentro…</p>

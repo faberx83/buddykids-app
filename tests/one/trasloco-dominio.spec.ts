@@ -237,8 +237,10 @@ test.describe("TRAMA — Caricamento col logo [no browser]", () => {
     expect(css).toContain("@keyframes tramaWeave {");
     expect(css).toMatch(/@media \(prefers-reduced-motion: reduce\) \{\n  \.trama-weave \{\n    animation: none;/);
     const spinner = read("components/TramaSpinner.tsx");
-    // 20/10/2026: "relative" per stare sopra l'alone colorato del loader v8.
-    expect(spinner).toContain('className="trama-weave relative"');
+    // 20/10/2026 (v10): logo animato nei caricamenti; fermo solo nello splash
+    // d'apertura (prop still), che dura meno di un giro dell'animazione.
+    expect(spinner).toContain('className={still ? "relative" : "trama-weave relative"}');
+    expect(spinner).toContain("still = false,");
     expect(spinner).toContain('role="status"');
     for (const p of ["app/nextgen/loading.tsx", "app/(main)/loading.tsx", "app/center/loading.tsx", "app/admin/loading.tsx", "app/auth/trasloco/page.tsx"]) {
       expect(read(p), p).toContain("<TramaSpinner");

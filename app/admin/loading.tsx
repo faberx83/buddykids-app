@@ -1,4 +1,4 @@
-import TramaSpinner from "@/components/TramaSpinner";
+import TramaSpinner, { LOADER_SCREEN_ADMIN } from "@/components/TramaSpinner";
 
 // TRAMA Sprint 3bis — vedi app/(main)/loading.tsx per la nota sul perché il
 // contenitore è passato da h-64 a min-h-[60vh].
@@ -9,8 +9,8 @@ import TramaSpinner from "@/components/TramaSpinner";
 // più: il pannello Admin è già bg-navy, vedi DashboardLayout.tsx).
 export default function Loading() {
   return (
-    <div className="flex min-h-[60vh] items-center justify-center">
-      <TramaSpinner size={176} tone="white" />
+    <div className={LOADER_SCREEN_ADMIN}>
+      <TramaSpinner size={220} tone="white" />
     </div>
   );
 }

@@ -101,7 +101,9 @@ export default async function RootLayout({
           logoSrc={config.splashLogo}
           wordmarkSrc={config.splashWordmark}
           claim={config.splashClaim}
-          background={config.chromeColor}
+          // 20/10/2026: stesso sfondo delle pagine (trama-page) per famiglie e
+          // Partner, come il caricamento; Admin resta sul suo fondo scuro.
+          background={config.chromeColor.toUpperCase() === "#FFFFFF" ? "#FDFCFA" : config.chromeColor}
         />
         <DemoRoleProvider>
           {children}

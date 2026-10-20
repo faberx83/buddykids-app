@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import TramaSpinner from "@/components/TramaSpinner";
 
 // BUGFIX (segnalato da Fabrizio: "si vede ancora lo sfondo colorato in
 // apertura della PWA, dovrebbe essere bianco... aggiungi anche nome TRAMA e
@@ -34,9 +35,14 @@ import { useEffect, useState } from "react";
 const HOLD_MS = 900;
 const FADE_MS = 350;
 
+function splashTone(logoSrc: string): "color" | "navy" | "white" {
+  if (logoSrc.includes("white")) return "white";
+  if (logoSrc.includes("navy")) return "navy";
+  return "color";
+}
+
 export default function AppSplashOverlay({
   logoSrc,
-  wordmarkSrc,
   claim,
   background,
 }: {
@@ -63,13 +69,17 @@ export default function AppSplashOverlay({
       aria-hidden="true"
       data-testid="app-splash-overlay"
       style={{ backgroundColor: background }}
-      className={`pointer-events-none fixed inset-0 z-[100] flex flex-col items-center justify-center gap-3 transition-opacity duration-[350ms] ${
+      className={`pointer-events-none fixed inset-0 z-[100] flex flex-col items-center justify-center transition-opacity duration-[350ms] ${
         phase === "fading" ? "opacity-0" : "opacity-100"
       }`}
     >
-      <img src={logoSrc} alt="" className="h-20 w-20" />
-      <img src={wordmarkSrc} alt="TRAMA" className="h-7 w-auto" />
-      {claim && <p className="text-[13px] text-ink-2">{claim}</p>}
+      {/* 20/10/2026 — stesso disegno del caricamento (TramaSpinner v10, logo
+          fermo perché lo splash dura meno di un giro dell'animazione):
+          logo grande, scritta TRAMA, filo colorato. logoSrc sceglie la
+          versione (colori, blu notte, bianca); wordmarkSrc resta nelle props
+          per compatibilità ma la scritta la sceglie TramaSpinner. */}
+      <TramaSpinner size={200} tone={splashTone(logoSrc)} still label="TRAMA" />
+      {claim && <p className="mt-4 text-[14px] text-ink-2">{claim}</p>}
     </div>
   );
 }

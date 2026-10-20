@@ -303,8 +303,28 @@ body:has(.app-shell) {
     width: 100%;
   }
 }
-/* Loader v9 (20/10/2026): scritta TRAMA che entra con una dissolvenza
-   (l'alone colorato della v8 è stato tolto). */
+/* Loader v10 (20/10/2026): scritta TRAMA che entra con una dissolvenza e
+   filo con i colori del logo che si riempie sotto (variante B). */
+.trama-loader-thread > span {
+  background: linear-gradient(90deg, #f66b5e, #f6a623, #2dba8c, #6f63c5);
+  transform-origin: left center;
+  animation: tramaThread 2s cubic-bezier(0.45, 0, 0.25, 1) infinite;
+}
+@keyframes tramaThread {
+  0% {
+    transform: scaleX(0);
+    opacity: 1;
+  }
+  60%,
+  85% {
+    transform: scaleX(1);
+    opacity: 1;
+  }
+  100% {
+    transform: scaleX(1);
+    opacity: 0;
+  }
+}
 .trama-loader-word {
   animation: tramaWordIn 0.6s ease-out 0.15s both;
 }
@@ -320,7 +340,8 @@ body:has(.app-shell) {
   }
 }
 @media (prefers-reduced-motion: reduce) {
-  .trama-loader-word {
+  .trama-loader-word,
+  .trama-loader-thread > span {
     animation: none;
   }
 }
