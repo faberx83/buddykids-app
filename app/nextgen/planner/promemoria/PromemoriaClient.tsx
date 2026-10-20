@@ -4,7 +4,6 @@ import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import PageHeader from "@/components/PageHeader";
-import { LimitedBadge } from "@/components/StatusBadge";
 import { useNextgenToast } from "@/components/nextgen/NextgenToastProvider";
 import { ADDRESS_KIND_LABELS, ParentAddress } from "@/lib/nextgen/address-kinds";
 import { saveTravelReminderAction, SaveTravelReminderInput } from "@/app/actions/travel-reminders";
@@ -44,7 +43,6 @@ export default function PromemoriaClient({
   const router = useRouter();
   const toast = useNextgenToast();
   const [active, setActive] = useState(initial.active);
-  const [expanded, setExpanded] = useState(initial.active);
   const [targetTime, setTargetTime] = useState(initial.targetTime);
   const [alarmMinutes, setAlarmMinutes] = useState<number>(initial.alarmMinutes);
   const [saving, setSaving] = useState(false);
@@ -83,196 +81,138 @@ export default function PromemoriaClient({
   function handleToggleActive() {
     const next = !active;
     setActive(next);
-    setExpanded(next);
     persist({ active: next });
   }
 
-  return (
-    <div className="flex min-h-screen flex-col">
-      {/* SPRINT CORRETTIVO — Promemoria non è più un link diretto da Profilo:
-          vive dietro l'hub "Famiglia e logistica" (vedi
-          app/nextgen/profile/famiglia/), "indietro" torna lì invece che
-          direttamente al Profilo. */}
-      {/* TRAMA — BACK NAVIGATION PROGRESS FIX (15/09/2026): backHref invece
-          di onBack — vedi ProfileNextgenClient.tsx per la spiegazione
-          completa. */}
-      <PageHeader title="Promemoria" backHref="/nextgen/profile/famiglia" showBrandIcon />
+  // 20/10/2026 — PROMEMORIA V2 (Fabrizio: "layout vecchio"). Stesse
+  // impostazioni e stesso salvataggio; aspetto delle Impostazioni V2:
+  // interruttore blu notte, campi da 48, scelte a pillola, nota onesta sul
+  // limite del piano in un riquadro neutro. Tolte le due icone decorative
+  // "in arrivo" (Calendar, Maps) e il pannello "Partenza" a scomparsa: con
+  // il promemoria attivo le scelte sono sempre visibili.
+  const pill = (on: boolean) =>
+    `min-h-[44px] rounded-full border px-4 text-[14px] font-semibold disabled:opacity-60 ${
+      on ? "border-trama-primary bg-trama-primary text-white" : "border-[#E3E6EC] bg-white text-ink"
+    }`;
 
-      <div className="flex flex-col gap-3 px-5 py-4">
-        {/* SPRINT CORRETTIVO 3 — rimosso il badge "Anteprima": le
-            impostazioni sotto sono ora salvate davvero. Nota onesta sul
-            requisito di piattaforma (permesso push del browser) invece del
-            vecchio avviso "non ancora salvate". */}
-        <p className="text-[11.5px] text-ink-2">
-          Riceverai una notifica push nei giorni in cui hai un&apos;attività prenotata. Assicurati di aver attivato le
-          notifiche in{" "}
-          <Link href="/nextgen/profile/impostazioni/preferenze" className="font-semibold text-trama-violet active:bg-black/[0.04]">
-            Profilo → Preferenze
-          </Link>
-          .
+  return (
+    <div className="flex flex-col pb-10">
+      <PageHeader title="Promemoria" backHref="/nextgen/profile" showBrandIcon />
+
+      <div className="flex flex-col gap-6 px-5 pt-3">
+        <p className="text-[14px] leading-snug text-ink-2">
+          Un avviso sul telefono nei giorni in cui hai un&apos;attività prenotata, all&apos;ora in cui devi partire.
         </p>
 
-        {/* FIX (segnalazione Fabrizio 05/09/2026: "se promemoria non
-            funziona va messo il badge delle cose ancora non pronte") — il
-            piano Vercel attuale (Hobby) limita il cron di controllo a UNA
-            sola esecuzione al giorno (~16-17, Europe/Rome — vedi
-            app/api/cron/travel-reminders/route.ts, TOLERANCE_MINUTES=20):
-            un orario di partenza lontano da quella fascia non riceve MAI il
-            promemoria, in silenzio (nessun errore, nessuna riga nei log
-            visibile al genitore). Non è un bug risolvibile qui — serve il
-            piano Vercel Pro per un cron ogni 15 minuti — quindi lo
-            segnaliamo onestamente invece di promettere puntualità che oggi
-            non possiamo garantire per ogni orario. */}
-        <div className="flex items-start gap-2 rounded-xl bg-[#FFF9EC] p-3">
-          <LimitedBadge title="Il controllo gira una sola volta al giorno (piano attuale)" />
-          <p className="flex-1 text-[11px] text-[#9a6b00]">
-            Con il piano attuale il controllo gira una sola volta al giorno, verso le 16-17: se il tuo orario di
-            partenza è lontano da quella fascia, il promemoria potrebbe non arrivare.
-          </p>
-        </div>
-
-        <div className="rounded-2xl bg-white p-4">
+        <div className="rounded-2xl border border-trama-line bg-white">
           <button
             type="button"
             onClick={handleToggleActive}
             disabled={saving}
-            className="flex w-full items-center justify-between active:bg-black/[0.04] disabled:opacity-60"
+            className="flex min-h-[60px] w-full items-center justify-between gap-3 px-4 py-2.5 text-left disabled:opacity-60"
             aria-pressed={active}
           >
-            <span className="text-[14px] font-bold text-ink">Promemoria attivo</span>
-            {/* Stesso pattern del toggle già corretto qui sotto (vedi
-                storico bug "il pallino restava a destra anche a interruttore
-                spento" — mancava un'ancora "left" esplicita). */}
-            <span
-              className={`relative h-6 w-11 flex-shrink-0 rounded-full transition-colors ${active ? "bg-green" : "bg-[#E0E3E9]"}`}
-            >
-              <span
-                className={`absolute left-0.5 top-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform ${active ? "translate-x-5" : "translate-x-0"}`}
-              />
+            <span className="flex flex-col">
+              <span className="text-[15px] font-semibold text-ink">Promemoria attivo</span>
+              <span className="text-[13px] text-ink-2">{active ? "Ti avvisiamo prima di partire" : "Spento"}</span>
+            </span>
+            <span aria-hidden="true" className={`relative h-7 w-12 flex-shrink-0 rounded-full transition-colors ${active ? "bg-trama-primary" : "bg-[#D6DAE3]"}`}>
+              <span className={`absolute top-0.5 h-6 w-6 rounded-full bg-white shadow transition-all ${active ? "left-[22px]" : "left-0.5"}`} />
             </span>
           </button>
 
           {active && (
-            <>
-              <p className="mt-3 text-[12.5px] text-ink-2">
-                Ti avviseremo all&apos;orario che imposti qui sotto, nei giorni in cui hai un&apos;attività prenotata.
-              </p>
-
-              <div className="mt-3 border-t border-[#F0F2F5] pt-3">
-                <button
-                  type="button"
-                  onClick={() => setExpanded((v) => !v)}
-                  className="flex w-full items-center justify-between text-[13px] font-bold text-green active:bg-black/[0.04]"
-                >
-                  Partenza
-                  <i className={`ti ${expanded ? "ti-chevron-up" : "ti-chevron-down"} text-[16px]`} />
-                </button>
-
-                {expanded && (
-                  <div className="mt-2.5 flex flex-col gap-2.5">
-                    {/* SPRINT CORRETTIVO 3 — sostituito il calcolo finto
-                        ("Esempio: 16:00") con un orario REALE impostato dal
-                        genitore: vedi nota di scope in cima al file sul
-                        perché non calcoliamo un tempo di percorrenza vero
-                        in questa fase. */}
-                    <div className="flex items-center gap-2.5 rounded-xl bg-bg p-3">
-                      <i className="ti ti-clock-hour-4 text-[22px] text-trama-violet" />
-                      <div className="min-w-0 flex-1">
-                        <div className="mb-1 text-[11.5px] font-semibold text-ink-2">A che ora devi partire?</div>
-                        <input
-                          type="time"
-                          value={targetTime}
-                          onChange={(e) => setTargetTime(e.target.value)}
-                          onBlur={() => persist({ targetTime })}
-                          disabled={saving}
-                          className="w-full rounded-lg border border-[#E8EBF0] bg-white px-2.5 py-1.5 text-[14px] font-bold text-ink outline-none disabled:opacity-60"
-                        />
-                      </div>
-                    </div>
-
-                    {availableAddresses.length > 0 ? (
-                      <div>
-                        <div className="mb-1.5 text-[11.5px] font-semibold text-ink-2">Da dove parti?</div>
-                        <div className="flex flex-wrap gap-1.5">
-                          {availableAddresses.map((a) => {
-                            const isSelected = originKind === a.kind;
-                            return (
-                              <button
-                                key={a.kind}
-                                type="button"
-                                disabled={saving}
-                                onClick={() => {
-                                  setOriginKind(a.kind);
-                                  persist({ originKind: a.kind });
-                                }}
-                                aria-pressed={isSelected}
-                                className={`rounded-full px-3 py-1.5 text-[12px] font-semibold transition-colors active:scale-95 disabled:opacity-60 ${
-                                  isSelected
-                                    ? "bg-trama-violet text-white"
-                                    : "bg-bg text-ink-2 hover:bg-[#EEF0F4]"
-                                }`}
-                              >
-                                {originLabel(a)}
-                              </button>
-                            );
-                          })}
-                        </div>
-                        {selectedOrigin && (
-                          <p className="mt-1.5 truncate text-[11px] text-ink-3">{selectedOrigin.address}</p>
-                        )}
-                      </div>
-                    ) : (
-                      <p className="text-[11.5px] text-ink-2">
-                        Nessun indirizzo salvato.{" "}
-                        <Link href="/nextgen/planner/indirizzi" className="font-semibold text-trama-violet active:bg-black/[0.04]">
-                          Aggiungine uno
-                        </Link>{" "}
-                        per personalizzare l&apos;avviso.
-                      </p>
-                    )}
-                  </div>
-                )}
-              </div>
-
-              <div className="mt-3 flex items-center justify-between border-t border-[#F0F2F5] pt-3 text-[13px]">
-                <span className="font-semibold text-ink">Allarme</span>
-                <select
-                  value={alarmMinutes}
+            <div className="flex flex-col gap-5 border-t border-[#F0F2F5] px-4 py-4">
+              <div>
+                <label htmlFor="promemoria-ora" className="mb-1.5 block text-[13.5px] font-semibold text-ink">
+                  A che ora devi partire?
+                </label>
+                <input
+                  id="promemoria-ora"
+                  type="time"
+                  value={targetTime}
+                  onChange={(e) => setTargetTime(e.target.value)}
+                  onBlur={() => persist({ targetTime })}
                   disabled={saving}
-                  onChange={(e) => {
-                    const next = Number(e.target.value);
-                    setAlarmMinutes(next);
-                    persist({ alarmMinutes: next as 15 | 30 | 60 });
-                  }}
-                  className="rounded-lg border border-[#E8EBF0] bg-white px-2.5 py-1.5 text-[12.5px] font-medium text-ink disabled:opacity-60"
-                >
-                  {ALARM_OPTIONS.map((o) => (
-                    <option key={o.value} value={o.value}>
-                      {o.label}
-                    </option>
-                  ))}
-                </select>
+                  className="min-h-[48px] w-full rounded-[12px] border border-trama-line bg-white px-3.5 text-[16px] font-semibold text-ink outline-none focus:border-trama-primary disabled:opacity-60"
+                />
               </div>
 
-              <div className="mt-3 flex items-center gap-2.5 border-t border-[#F0F2F5] pt-3">
-                <p className="flex-1 text-[11px] text-ink-2">
-                  Riceverai notifiche su spostamenti, eventi e attività nel calendario.
-                </p>
-                <span
-                  className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-bg text-ink-3"
-                  title="Integrazione Google Calendar — in arrivo"
-                >
-                  <i className="ti ti-calendar-event text-[16px]" />
-                </span>
-                <span
-                  className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-bg text-ink-3"
-                  title="Integrazione Maps — in arrivo"
-                >
-                  <i className="ti ti-map-2 text-[16px]" />
-                </span>
+              <div>
+                <span className="mb-1.5 block text-[13.5px] font-semibold text-ink">Avvisami</span>
+                <div className="flex flex-wrap gap-2" role="group" aria-label="Avvisami">
+                  {ALARM_OPTIONS.map((o) => (
+                    <button
+                      key={o.value}
+                      type="button"
+                      aria-pressed={alarmMinutes === o.value}
+                      disabled={saving}
+                      onClick={() => {
+                        setAlarmMinutes(o.value);
+                        persist({ alarmMinutes: o.value });
+                      }}
+                      className={pill(alarmMinutes === o.value)}
+                    >
+                      {o.label}
+                    </button>
+                  ))}
+                </div>
               </div>
-            </>
+
+              {availableAddresses.length > 0 ? (
+                <div>
+                  <span className="mb-1.5 block text-[13.5px] font-semibold text-ink">Da dove parti?</span>
+                  <div className="flex flex-wrap gap-2">
+                    {availableAddresses.map((a) => {
+                      const isSelected = originKind === a.kind;
+                      return (
+                        <button
+                          key={a.kind}
+                          type="button"
+                          disabled={saving}
+                          onClick={() => {
+                            setOriginKind(a.kind);
+                            persist({ originKind: a.kind });
+                          }}
+                          aria-pressed={isSelected}
+                          className={pill(isSelected)}
+                        >
+                          {originLabel(a)}
+                        </button>
+                      );
+                    })}
+                  </div>
+                  {selectedOrigin && <p className="mt-1.5 truncate text-[13px] text-ink-2">{selectedOrigin.address}</p>}
+                </div>
+              ) : (
+                <p className="text-[14px] leading-snug text-ink-2">
+                  Nessun indirizzo salvato.{" "}
+                  <Link href="/nextgen/planner/indirizzi" className="font-semibold text-trama-accent-ink">
+                    Aggiungine uno
+                  </Link>{" "}
+                  per scegliere da dove parti.
+                </p>
+              )}
+            </div>
           )}
+        </div>
+
+        <div className="flex items-start gap-3 rounded-2xl border border-trama-line bg-white px-4 py-3.5">
+          <i className="ti ti-info-circle mt-0.5 text-[18px] text-ink-3" aria-hidden="true" />
+          <div className="flex flex-col gap-1.5 text-[13.5px] leading-snug text-ink-2">
+            <p>
+              Servono le notifiche push attive:{" "}
+              <Link href="/nextgen/profile/impostazioni/preferenze" className="font-semibold text-trama-accent-ink">
+                Profilo → Preferenze
+              </Link>
+              .
+            </p>
+            <p>
+              <span className="sr-only">Funziona in parte: </span>
+              Per ora il controllo gira una volta al giorno, verso le 16-17: se parti a un orario lontano da quella fascia il
+              promemoria potrebbe non arrivare.
+            </p>
+          </div>
         </div>
       </div>
     </div>

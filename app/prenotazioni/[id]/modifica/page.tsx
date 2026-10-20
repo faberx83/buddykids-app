@@ -5,7 +5,7 @@ import { getWeeksForActivity } from "@/lib/data/weeks";
 import { getActivityDays, getBookedDayDecisionsForActivity } from "@/lib/data/activity-days";
 import { createClient } from "@/lib/supabase/server";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
-import { resolveFeatureFlag } from "@/lib/feature-flags/resolve";
+import { resolveFeatureFlag, resolveFeatureFlagVisibility } from "@/lib/feature-flags/resolve";
 import { generateCorrelationId } from "@/lib/telemetry/correlation";
 import PhoneShell from "@/components/PhoneShell";
 import ModificaPrenotazioneClient from "./ModificaPrenotazioneClient";
@@ -28,6 +28,9 @@ export default async function ModificaPrenotazionePage({
   // risolto qui server-side con lo stesso resolver TRAMA_ONE_ENABLED (vedi
   // app/booking/[id]/page.tsx) invece che dalla route.
   let nextgen = false;
+  // 20/10/2026 — Modifica V2: stesso flag e stessa regola di "Richiedi un
+  // posto" (app/booking/[id]/page.tsx): solo dentro TRAMA ONE.
+  let v2 = false;
   if (isSupabaseConfigured) {
     const supabase = await createClient();
     const {
@@ -41,6 +44,17 @@ export default async function ModificaPrenotazionePage({
       tenant: "family",
       correlationId: generateCorrelationId(),
     });
+    if (nextgen) {
+      v2 = await resolveFeatureFlagVisibility({
+        flagName: "BOOKINGS_V2_ENABLED",
+        userId: user.id,
+        role: "parent",
+        tenant: "family",
+        correlationId: generateCorrelationId(),
+      })
+        .then((r) => r.enabled)
+        .catch(() => false);
+    }
   }
 
   const bookings = await getMyBookingsForParent();
@@ -84,6 +98,7 @@ export default async function ModificaPrenotazionePage({
         days={days}
         bookedDayDecisions={Object.fromEntries(bookedDayDecisions)}
         nextgen={nextgen}
+        v2={v2}
       />
     </PhoneShell>
   );

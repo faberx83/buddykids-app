@@ -60,42 +60,41 @@ function AddressCard({ initial }: { initial: ParentAddress }) {
     showToast("Indirizzo rimosso");
   }
 
+  // 20/10/2026 — INDIRIZZI V2 (Fabrizio: "layout vecchio"): card con bordo,
+  // campi da 48, pulsanti a raggio 12, azioni da 44px. Il titolo resta figlio
+  // diretto della card (i test dal vivo cercano i campi partendo da lì).
+  const field =
+    "min-h-[48px] w-full rounded-[12px] border border-trama-line bg-white px-3.5 text-[16px] text-ink outline-none focus:border-trama-primary";
+  const iconBtn = "flex h-11 w-11 items-center justify-center rounded-full text-[18px] text-ink-2 active:bg-black/[0.04] disabled:opacity-50";
   return (
-    <div className="rounded-2xl bg-white p-4">
-      <div className="mb-2.5 text-[11px] font-bold uppercase tracking-wide text-ink-3">{title}</div>
+    <div className="rounded-2xl border border-trama-line bg-white px-4 py-3.5">
+      <div className="text-[15px] font-semibold text-ink">{title}</div>
 
       {editing ? (
-        <div className="flex flex-col gap-2.5">
-          {/* SPRINT 4 correttivo — campo nome personalizzato ora disponibile
-              per TUTTI i kind, non solo "altro": per i 3 slot fissi è
-              opzionale (placeholder mostra l'etichetta di default a cui si
-              torna se lasciato vuoto), per "altro" resta obbligatorio. */}
+        <div className="mt-2.5 flex flex-col gap-2.5">
           <input
             type="text"
             value={label}
             onChange={(e) => setLabel(e.target.value)}
-            placeholder={
-              initial.kind === "altro" ? "Nome (es. Casa dei nonni)" : `Nome personalizzato (default: ${ADDRESS_KIND_LABELS[initial.kind]})`
-            }
-            className="rounded-xl border border-[#E8EBF0] px-3 py-2 text-[13.5px] font-semibold text-ink"
+            aria-label="Nome del luogo"
+            placeholder={initial.kind === "altro" ? "Nome (es. Casa dei nonni)" : "Nome personalizzato (facoltativo)"}
+            className={field}
           />
           <input
             type="text"
             value={address}
             onChange={(e) => setAddress(e.target.value)}
+            aria-label="Indirizzo"
             placeholder="Via, città..."
-            className="rounded-xl border border-[#E8EBF0] px-3 py-2 text-[13.5px] text-ink"
+            autoComplete="street-address"
+            className={field}
           />
-          {error && <div className="text-[12px] font-medium text-red-500">{error}</div>}
+          {error && (
+            <p role="alert" className="text-[13px] font-medium text-[#B3261E]">
+              {error}
+            </p>
+          )}
           <div className="flex gap-2">
-            <button
-              type="button"
-              disabled={busy}
-              onClick={handleSave}
-              className="rounded-full bg-trama-violet px-4 py-2 text-[12.5px] font-bold text-white active:scale-[0.97] disabled:opacity-50"
-            >
-              {busy ? "Salvo…" : "Salva"}
-            </button>
             {saved.address && (
               <button
                 type="button"
@@ -105,42 +104,33 @@ function AddressCard({ initial }: { initial: ParentAddress }) {
                   setLabel(saved.label ?? "");
                   setError(null);
                 }}
-                className="rounded-full bg-bg px-4 py-2 text-[12.5px] font-semibold text-ink-2 active:brightness-95"
+                className="min-h-[44px] flex-1 rounded-[12px] border border-[#D9DDE5] bg-white px-4 text-[14px] font-semibold text-trama-primary"
               >
                 Annulla
               </button>
             )}
-          </div>
-        </div>
-      ) : (
-        <div className="flex items-center justify-between gap-2">
-          <span className="min-w-0 flex-1 truncate text-[13.5px] font-medium text-ink">{saved.address}</span>
-          <div className="flex flex-shrink-0 items-center gap-1.5">
-            <a
-              href={mapsUrl(saved.address)}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex h-8 w-8 items-center justify-center rounded-full bg-trama-lilac/20 text-trama-violet active:scale-95"
-              aria-label="Apri in Maps"
-            >
-              <i className="ti ti-map-pin text-[15px]" />
-            </a>
-            <button
-              type="button"
-              onClick={() => setEditing(true)}
-              className="flex h-8 w-8 items-center justify-center rounded-full bg-bg text-ink-2 active:scale-95"
-              aria-label="Modifica"
-            >
-              <i className="ti ti-pencil text-[14px]" />
-            </button>
             <button
               type="button"
               disabled={busy}
-              onClick={handleDelete}
-              className="flex h-8 w-8 items-center justify-center rounded-full bg-bg text-ink-2 active:scale-95 disabled:opacity-50"
-              aria-label="Rimuovi"
+              onClick={handleSave}
+              className="min-h-[44px] flex-1 rounded-[12px] bg-trama-primary px-4 text-[14px] font-semibold text-white active:bg-trama-primary-press disabled:opacity-60"
             >
-              <i className="ti ti-trash text-[14px]" />
+              {busy ? "Salvo…" : "Salva"}
+            </button>
+          </div>
+        </div>
+      ) : (
+        <div className="mt-0.5 flex items-center justify-between gap-2">
+          <span className="min-w-0 flex-1 truncate text-[14px] text-ink-2">{saved.address}</span>
+          <div className="-mr-2 flex flex-shrink-0 items-center">
+            <a href={mapsUrl(saved.address)} target="_blank" rel="noopener noreferrer" className={iconBtn} aria-label="Apri in Maps">
+              <i className="ti ti-map-pin" aria-hidden="true" />
+            </a>
+            <button type="button" onClick={() => setEditing(true)} className={iconBtn} aria-label="Modifica">
+              <i className="ti ti-pencil" aria-hidden="true" />
+            </button>
+            <button type="button" disabled={busy} onClick={handleDelete} className={iconBtn} aria-label="Rimuovi">
+              <i className="ti ti-trash" aria-hidden="true" />
             </button>
           </div>
         </div>
@@ -151,7 +141,7 @@ function AddressCard({ initial }: { initial: ParentAddress }) {
 
 export default function IndirizziClient({ addresses }: { addresses: ParentAddress[] }) {
   return (
-    <div className="flex min-h-screen flex-col">
+    <div className="flex flex-col pb-10">
       {/* SPRINT 7 — l'hub "Logistica & Famiglia" e' stato eliminato (feedback
           Fabrizio: "Logistica e Famiglia non devono diventare una sezione ad
           hoc?"): Indirizzi e' raggiungibile da Profilo (vera sezione
@@ -163,10 +153,9 @@ export default function IndirizziClient({ addresses }: { addresses: ParentAddres
           di onBack — vedi ProfileNextgenClient.tsx per la spiegazione
           completa. */}
       <PageHeader title="Indirizzi" backHref="/nextgen/profile/famiglia" showBrandIcon />
-      <div className="flex flex-col gap-3 px-5 py-4">
-        <p className="text-xs text-ink-2">
-          Salva gli indirizzi di famiglia per aprirli velocemente in Maps. La distanza e il tempo di percorrenza dai
-          centri arriveranno con la vista Mappa.
+      <div className="flex flex-col gap-2.5 px-5 pt-3">
+        <p className="mb-2 text-[14px] leading-snug text-ink-2">
+          I luoghi da cui partite di solito. Li ritrovi nei Promemoria e li apri in Maps con un tocco.
         </p>
         {addresses.map((a) => (
           <AddressCard key={a.kind} initial={a} />

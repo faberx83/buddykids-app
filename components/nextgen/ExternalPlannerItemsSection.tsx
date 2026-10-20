@@ -15,7 +15,7 @@
 // "impegno"/"I tuoi impegni"/"Aggiungi impegno", coerente con il resto del
 // Planner (Timeline, Missioni, Promemoria — stesso registro linguistico).
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, type Dispatch, type SetStateAction } from "react";
 import { useSearchParams } from "next/navigation";
 import { wantsNewExternalItem } from "@/lib/planner/new-external-item-link";
 import type { Kid } from "@/lib/types";
@@ -28,6 +28,7 @@ import {
 import { markFirstUsefulAction } from "@/lib/nextgen/first-action";
 import { useNextgenToast } from "@/components/nextgen/NextgenToastProvider";
 import KidName from "@/components/nextgen/KidName";
+import { useCloseOnBack } from "@/lib/nextgen/use-close-on-back";
 
 const KIND_LABEL: Record<ExternalPlannerItemKind, string> = {
   activity: "Attività organizzata",
@@ -82,13 +83,21 @@ function ItemForm({
   initial,
   onCancel,
   onSaved,
+  v2 = false,
+  editing = false,
 }: {
   kids: Kid[];
   initial: ExternalPlannerItemInput;
   onCancel: () => void;
   onSaved: (input: ExternalPlannerItemInput) => Promise<{ error?: string }>;
+  /** 20/10/2026 — "Un impegno" V2: foglio dal basso (vedi ItemFormSheetV2). */
+  v2?: boolean;
+  editing?: boolean;
 }) {
-  const [form, setForm] = useState<ExternalPlannerItemInput>(initial);
+  // 20/10/2026 (V2): con un solo figlio è già scelto.
+  const [form, setForm] = useState<ExternalPlannerItemInput>(() =>
+    v2 && !editing && initial.kidIds.length === 0 && kids.length === 1 ? { ...initial, kidIds: [kids[0].id] } : initial
+  );
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -105,6 +114,22 @@ function ItemForm({
     const result = await onSaved(form);
     setSaving(false);
     if (result.error) setError(result.error);
+  }
+
+  if (v2) {
+    return (
+      <ItemFormSheetV2
+        kids={kids}
+        form={form}
+        setForm={setForm}
+        toggleKid={toggleKid}
+        saving={saving}
+        error={error}
+        editing={editing}
+        onCancel={onCancel}
+        onSubmit={handleSubmit}
+      />
+    );
   }
 
   return (
@@ -254,6 +279,249 @@ function ItemForm({
   );
 }
 
+// ─── "Un impegno" V2 (20/10/2026) ──────────────────────────────────────
+// Fabrizio: "ha ancora layout vecchio". Stessi campi e stesso salvataggio
+// di ItemForm, ma in un foglio dal basso come i Filtri di Scopri
+// (DiscoverFiltersSheet): campi alti 48, figli come pillole blu notte,
+// "Tutto il giorno" come interruttore, Salva sempre visibile in fondo.
+// Indietro chiude il foglio (useCloseOnBack), come gli altri fogli V2.
+const V2_INPUT =
+  "min-h-[48px] w-full min-w-0 rounded-[12px] border border-trama-line bg-white px-3.5 text-[16px] text-ink outline-none focus:border-trama-primary";
+const V2_LABEL = "mb-1.5 block text-[13.5px] font-semibold text-ink";
+
+function ItemFormSheetV2({
+  kids,
+  form,
+  setForm,
+  toggleKid,
+  saving,
+  error,
+  editing,
+  onCancel,
+  onSubmit,
+}: {
+  kids: Kid[];
+  form: ExternalPlannerItemInput;
+  setForm: Dispatch<SetStateAction<ExternalPlannerItemInput>>;
+  toggleKid: (kidId: string) => void;
+  saving: boolean;
+  error: string | null;
+  editing: boolean;
+  onCancel: () => void;
+  onSubmit: () => void;
+}) {
+  useCloseOnBack(true, onCancel);
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      if (e.key === "Escape") onCancel();
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [onCancel]);
+  const heading = editing ? "Modifica impegno" : "Nuovo impegno";
+  const canSave = form.title.trim().length > 0 && form.kidIds.length > 0;
+
+  return (
+    <div className="fixed inset-0 z-[70] flex flex-col justify-end" role="presentation" data-testid="impegno-sheet">
+      <button type="button" aria-label="Chiudi" onClick={onCancel} className="absolute inset-0 bg-[rgba(23,42,77,0.45)]" />
+      <form
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="impegno-sheet-h"
+        onSubmit={(e) => {
+          e.preventDefault();
+          if (!saving) onSubmit();
+        }}
+        className="relative mx-auto flex max-h-[92dvh] w-full max-w-[430px] flex-col rounded-t-3xl bg-white shadow-[0_-8px_30px_rgba(23,42,77,0.18)]"
+      >
+        <div className="flex flex-col px-5 pt-2.5">
+          <span aria-hidden="true" className="mb-2 h-1 w-10 self-center rounded-full bg-[#D6DAE3]" />
+          <div className="flex items-center justify-between pb-2">
+            <h2 id="impegno-sheet-h" className="font-poppins text-[18px] font-semibold text-ink">
+              {heading}
+            </h2>
+            <button
+              type="button"
+              onClick={onCancel}
+              aria-label="Chiudi"
+              className="-mr-2 flex h-11 w-11 items-center justify-center rounded-full text-[20px] text-ink-2 active:bg-black/[0.04]"
+            >
+              <i className="ti ti-x" aria-hidden="true" />
+            </button>
+          </div>
+        </div>
+
+        <div className="no-scrollbar flex flex-1 flex-col gap-5 overflow-y-auto px-5 pb-4">
+          <div>
+            <label htmlFor="impegno-titolo" className={V2_LABEL}>
+              Cosa
+            </label>
+            <input
+              id="impegno-titolo"
+              type="text"
+              value={form.title}
+              onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))}
+              placeholder="Es. Calcio, Dentista, Centro estivo…"
+              className={V2_INPUT}
+              autoFocus={!editing}
+            />
+            <div className="mt-2 flex gap-2" role="group" aria-label="Tipo">
+              {(["commitment", "activity"] as ExternalPlannerItemKind[]).map((k) => (
+                <button
+                  key={k}
+                  type="button"
+                  aria-pressed={form.kind === k}
+                  onClick={() => setForm((f) => ({ ...f, kind: k }))}
+                  className={`flex min-h-[40px] items-center gap-1.5 rounded-full border px-3.5 text-[13.5px] font-semibold ${
+                    form.kind === k ? "border-trama-primary bg-trama-primary-soft text-trama-primary" : "border-[#E3E6EC] bg-white text-ink-2"
+                  }`}
+                >
+                  <i className={`ti ${KIND_ICON[k]} text-[15px]`} aria-hidden="true" />
+                  {KIND_LABEL[k]}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div>
+            <span className={V2_LABEL}>Per chi</span>
+            <div className="flex flex-wrap gap-2" role="group" aria-label="Per chi">
+              {kids.map((kid) => {
+                const on = form.kidIds.includes(kid.id);
+                return (
+                  <button
+                    key={kid.id}
+                    type="button"
+                    aria-pressed={on}
+                    onClick={() => toggleKid(kid.id)}
+                    className={`flex min-h-[44px] items-center gap-1.5 rounded-full border px-4 text-[15px] font-semibold ${
+                      on ? "border-trama-primary bg-trama-primary text-white" : "border-[#E3E6EC] bg-white text-ink"
+                    }`}
+                  >
+                    {on && <i className="ti ti-check text-[15px]" aria-hidden="true" />}
+                    <KidName kid={kid} />
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          <div className="flex flex-col gap-3">
+            <span className="text-[13.5px] font-semibold text-ink">Quando</span>
+            <div className="grid grid-cols-2 gap-3">
+              <label className="block">
+                <span className="mb-1 block text-[12.5px] text-ink-2">Dal</span>
+                <input
+                  type="date"
+                  value={form.startDate}
+                  onChange={(e) => setForm((f) => ({ ...f, startDate: e.target.value, endDate: f.endDate < e.target.value ? e.target.value : f.endDate }))}
+                  className={V2_INPUT}
+                />
+              </label>
+              <label className="block">
+                <span className="mb-1 block text-[12.5px] text-ink-2">Al</span>
+                <input
+                  type="date"
+                  value={form.endDate}
+                  min={form.startDate}
+                  onChange={(e) => setForm((f) => ({ ...f, endDate: e.target.value }))}
+                  className={V2_INPUT}
+                />
+              </label>
+            </div>
+            <button
+              type="button"
+              role="switch"
+              aria-checked={form.allDay}
+              onClick={() => setForm((f) => ({ ...f, allDay: !f.allDay }))}
+              className="flex min-h-[48px] items-center justify-between gap-3 rounded-[12px] border border-trama-line bg-white px-3.5 text-left"
+            >
+              <span className="text-[15px] text-ink">Tutto il giorno</span>
+              <span aria-hidden="true" className={`relative h-7 w-12 flex-shrink-0 rounded-full transition-colors ${form.allDay ? "bg-trama-primary" : "bg-[#D6DAE3]"}`}>
+                <span className={`absolute top-0.5 h-6 w-6 rounded-full bg-white shadow transition-all ${form.allDay ? "left-[22px]" : "left-0.5"}`} />
+              </span>
+            </button>
+            {!form.allDay && (
+              <div className="grid grid-cols-2 gap-3">
+                <label className="block">
+                  <span className="mb-1 block text-[12.5px] text-ink-2">Dalle</span>
+                  <input
+                    type="time"
+                    value={form.startTime ?? ""}
+                    onChange={(e) => setForm((f) => ({ ...f, startTime: e.target.value || null }))}
+                    className={V2_INPUT}
+                  />
+                </label>
+                <label className="block">
+                  <span className="mb-1 block text-[12.5px] text-ink-2">Alle</span>
+                  <input
+                    type="time"
+                    value={form.endTime ?? ""}
+                    onChange={(e) => setForm((f) => ({ ...f, endTime: e.target.value || null }))}
+                    className={V2_INPUT}
+                  />
+                </label>
+              </div>
+            )}
+          </div>
+
+          <div>
+            <label htmlFor="impegno-luogo" className={V2_LABEL}>
+              Dove <span className="font-normal text-ink-2">(facoltativo)</span>
+            </label>
+            <input
+              id="impegno-luogo"
+              type="text"
+              value={form.location ?? ""}
+              onChange={(e) => setForm((f) => ({ ...f, location: e.target.value || null }))}
+              placeholder="Es. Palestra di via Rossi"
+              className={V2_INPUT}
+            />
+          </div>
+
+          <div>
+            <label htmlFor="impegno-note" className={V2_LABEL}>
+              Note <span className="font-normal text-ink-2">(facoltativo)</span>
+            </label>
+            <textarea
+              id="impegno-note"
+              value={form.notes ?? ""}
+              onChange={(e) => setForm((f) => ({ ...f, notes: e.target.value || null }))}
+              placeholder="Es. portare il costume"
+              rows={2}
+              className={`${V2_INPUT} min-h-[80px] py-3`}
+            />
+          </div>
+
+          {error && (
+            <p role="alert" className="text-[13.5px] font-medium text-[#B3261E]">
+              {error}
+            </p>
+          )}
+        </div>
+
+        <div className="flex gap-2 border-t border-[#F0F2F5] px-5 pb-[calc(1rem+env(safe-area-inset-bottom))] pt-3">
+          <button
+            type="button"
+            onClick={onCancel}
+            disabled={saving}
+            className="min-h-[52px] flex-1 rounded-[12px] border border-[#D9DDE5] bg-white px-4 text-[15px] font-semibold text-trama-primary disabled:opacity-60"
+          >
+            Annulla
+          </button>
+          <button
+            type="submit"
+            disabled={saving || !canSave}
+            className="min-h-[52px] flex-[2] rounded-[12px] bg-trama-primary px-4 text-[15px] font-semibold text-white active:bg-trama-primary-press disabled:bg-[#B9C0CC]"
+          >
+            {saving ? "Salvataggio…" : editing ? "Salva" : "Aggiungi al Planner"}
+          </button>
+        </div>
+      </form>
+    </div>
+  );
+}
+
 export default function ExternalPlannerItemsSection({
   items,
   kids,
@@ -387,7 +655,7 @@ export default function ExternalPlannerItemsSection({
             onClick={() => setMode("creating")}
             className={
               v2
-                ? "flex min-h-[44px] items-center gap-1 rounded-[12px] border border-[#D9DDE5] bg-white px-3 text-[13px] font-semibold text-trama-primary active:bg-black/[0.03]"
+                ? "flex min-h-[44px] flex-shrink-0 items-center gap-1 whitespace-nowrap rounded-[12px] border border-[#D9DDE5] bg-white px-3 text-[13px] font-semibold text-trama-primary active:bg-black/[0.03]"
                 : "flex items-center gap-1 rounded-full bg-trama-violet px-3 py-1.5 text-[12px] font-semibold text-white active:scale-[0.98]"
             }
           >
@@ -397,10 +665,23 @@ export default function ExternalPlannerItemsSection({
         )}
       </div>
 
-      {mode === "creating" && <ItemForm key={defaultDate ?? "oggi"} kids={kids} initial={emptyInput(defaultDate)} onCancel={() => setMode("idle")} onSaved={handleCreate} />}
+      {mode === "creating" && (
+        <ItemForm
+          key={defaultDate ?? "oggi"}
+          kids={kids}
+          initial={emptyInput(defaultDate)}
+          onCancel={() => setMode("idle")}
+          onSaved={handleCreate}
+          v2={v2}
+        />
+      )}
 
       {sorted.length === 0 && mode === "idle" && (
-        <p className="rounded-xl border border-dashed border-[#E8EBF0] p-3 text-[12px] text-ink-3">
+        <p
+          className={
+            v2 ? "rounded-2xl border border-trama-line bg-white px-4 py-3.5 text-[14px] leading-snug text-ink-2" : "rounded-xl border border-dashed border-[#E8EBF0] p-3 text-[12px] text-ink-3"
+          }
+        >
           {emptyText ??
             "Aggiungi tutto quello che riguarda i tuoi figli, anche se non è su TRAMA: sport, musica, scuola, una festa, una visita, un impegno di famiglia."}
         </p>
@@ -417,10 +698,91 @@ export default function ExternalPlannerItemsSection({
                 initial={itemToInput(item)}
                 onCancel={() => setMode("idle")}
                 onSaved={(input) => handleUpdate(item.id, input)}
+                v2={v2}
+                editing
               />
             );
           }
           const itemKids = kids.filter((k) => item.kidIds.includes(k.id));
+          if (v2) {
+            // 20/10/2026 — card V2: bordo sottile, raggio 16, azioni da 44px.
+            const when = [
+              formatDateRangeIt(item.startDate, item.endDate),
+              !item.allDay && item.startTime ? `${item.startTime}${item.endTime ? `–${item.endTime}` : ""}` : null,
+            ]
+              .filter(Boolean)
+              .join(" · ");
+            return (
+              <div key={item.id} className="rounded-2xl border border-trama-line bg-white">
+                <div className="flex items-start gap-3 py-3 pl-4 pr-1.5">
+                  <span className="mt-0.5 flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-[12px] bg-trama-primary-soft text-[19px] text-trama-primary">
+                    <i className={`ti ${KIND_ICON[item.kind]}`} aria-hidden="true" />
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-[15px] font-semibold leading-snug text-ink">{item.title}</p>
+                    <p className="mt-0.5 text-[13px] text-ink-2">{when}</p>
+                    {item.location && <p className="text-[13px] text-ink-2">{item.location}</p>}
+                    {itemKids.length > 0 && (
+                      <p className="mt-0.5 text-[13px] font-semibold text-ink">
+                        {itemKids.map((k) => k.name).join(", ")}
+                      </p>
+                    )}
+                    {item.notes && <p className="mt-1 text-[13px] text-ink-3">{item.notes}</p>}
+                    {(item.sourceType === "curated_discovery" || item.sourceType === "community_discovery" || item.externalUrl) && (
+                      <p className="mt-1 flex flex-wrap items-center gap-x-2 text-[12.5px] text-ink-3">
+                        {item.sourceType === "curated_discovery" && <span>Da Scoperta TRAMA</span>}
+                        {item.sourceType === "community_discovery" && <span>Segnalato dalla community</span>}
+                        {item.externalUrl && (
+                          <a href={item.externalUrl} target="_blank" rel="noopener noreferrer" className="font-semibold text-trama-accent-ink">
+                            Vedi la fonte
+                          </a>
+                        )}
+                      </p>
+                    )}
+                  </div>
+                  <div className="flex shrink-0">
+                    <button
+                      type="button"
+                      aria-label="Modifica"
+                      onClick={() => setMode({ editing: item.id })}
+                      className="flex h-11 w-11 items-center justify-center rounded-full text-[18px] text-ink-2 active:bg-black/[0.04]"
+                    >
+                      <i className="ti ti-pencil" aria-hidden="true" />
+                    </button>
+                    <button
+                      type="button"
+                      aria-label="Elimina"
+                      onClick={() => setPendingDeleteId(item.id)}
+                      className="flex h-11 w-11 items-center justify-center rounded-full text-[18px] text-ink-2 active:bg-black/[0.04]"
+                    >
+                      <i className="ti ti-trash" aria-hidden="true" />
+                    </button>
+                  </div>
+                </div>
+                {pendingDeleteId === item.id && (
+                  <div className="flex flex-col gap-2.5 border-t border-[#F0F2F5] px-4 py-3">
+                    <p className="text-[14px] text-ink">Togliere questo impegno dal Planner?</p>
+                    <div className="flex gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setPendingDeleteId(null)}
+                        className="min-h-[44px] flex-1 rounded-[12px] border border-[#D9DDE5] bg-white text-[14px] font-semibold text-trama-primary"
+                      >
+                        Annulla
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleDelete(item.id)}
+                        className="min-h-[44px] flex-1 rounded-[12px] bg-[#B3261E] text-[14px] font-semibold text-white"
+                      >
+                        Togli
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            );
+          }
           return (
             <div key={item.id} className="rounded-xl border border-[#F0F2F5] bg-white p-3">
               <div className="flex items-start justify-between gap-2">

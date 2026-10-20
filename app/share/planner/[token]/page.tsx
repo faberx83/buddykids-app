@@ -54,10 +54,12 @@ export default async function SharedPlannerPage({ params }: { params: Promise<{ 
 
   if (!meta || !meta.valid) {
     return (
-      <div className="flex min-h-screen flex-col items-center justify-center bg-bg px-6 text-center">
-        <div className="text-3xl">🔒</div>
-        <p className="mt-3 text-base font-bold text-ink">Link non disponibile</p>
-        <p className="mt-1 max-w-xs text-sm text-ink-2">
+      <div className="flex min-h-screen flex-col items-center justify-center bg-trama-page px-6 text-center">
+        <span className="flex h-14 w-14 items-center justify-center rounded-full bg-trama-primary-soft text-[26px] text-trama-primary">
+          <i className="ti ti-lock" aria-hidden="true" />
+        </span>
+        <p className="mt-4 font-poppins text-[20px] font-semibold text-ink">Link non disponibile</p>
+        <p className="mt-1.5 max-w-xs text-[15px] leading-snug text-ink-2">
           Questo link di condivisione non esiste più o è stato revocato da chi lo ha creato.
         </p>
       </div>
@@ -74,101 +76,102 @@ export default async function SharedPlannerPage({ params }: { params: Promise<{ 
   }
   const weeks = Array.from(byWeek.entries()).sort(([a], [b]) => a.localeCompare(b));
 
+  // 20/10/2026 — PIANO CONDIVISO V2: è la pagina che vedono nonni, tata e
+  // chi non usa TRAMA, quindi un biglietto da visita. Stessi dati di prima,
+  // aspetto V2: logo, titolo grande, una card per attività, stato a
+  // pillola, "Apri in Maps" toccabile, chi porta e chi ritira giorno per
+  // giorno senza emoji.
+  const statusPill = (status: string) =>
+    status === "confirmed" ? "bg-[#E6F6F0] text-[#146B4F]" : "bg-[#FFF3E0] text-[#8A5300]";
   return (
-    <div className="min-h-screen bg-bg px-5 py-8">
-      <div className="mx-auto max-w-md">
-        <div className="mb-6 text-center">
-          <div className="mb-1 text-[11px] font-bold uppercase tracking-wide text-ink-3">
-            Piano condiviso · TRAMA
-          </div>
-          <h1 className="text-xl font-bold text-ink">{meta.label || "Il piano dell'estate"}</h1>
-          <p className="mt-1 text-xs text-ink-2">
+    <div className="min-h-screen bg-trama-page px-5 pb-10 pt-8">
+      <div className="mx-auto flex max-w-md flex-col">
+        <header className="mb-7 flex flex-col items-start">
+          <img src="/brand/trama-logo-mark.png" alt="TRAMA" className="h-9 w-auto" />
+          <p className="mt-4 text-[12px] font-bold uppercase tracking-[0.12em] text-trama-accent-ink">Piano condiviso</p>
+          <h1 className="mt-1 font-poppins text-[28px] font-semibold leading-tight text-ink">{meta.label || "Il piano dell'estate"}</h1>
+          <p className="mt-1 text-[15px] text-ink-2">
             {friendlyDate(meta.scopeStart)} – {friendlyDate(meta.scopeEnd)}
           </p>
-        </div>
+        </header>
 
         {weeks.length === 0 ? (
-          <div className="rounded-2xl bg-white p-6 text-center">
-            <p className="text-sm text-ink-2">Nessuna attività prenotata in questo periodo.</p>
+          <div className="rounded-2xl border border-trama-line bg-white px-4 py-6 text-center">
+            <p className="text-[15px] text-ink-2">Nessuna attività prenotata in questo periodo.</p>
           </div>
         ) : (
-          <div className="flex flex-col gap-3">
+          <div className="flex flex-col gap-7">
             {weeks.map(([weekStartDate, w]) => (
-              <div key={weekStartDate} className="rounded-2xl bg-white p-4">
-                <div className="mb-2 text-[11px] font-bold uppercase tracking-wide text-ink-3">
+              <section key={weekStartDate} className="flex flex-col gap-2.5" aria-label={`Settimana ${friendlyDate(weekStartDate)} – ${friendlyDate(w.weekEndDate)}`}>
+                <h2 className="font-poppins text-[18px] font-semibold text-ink">
                   {friendlyDate(weekStartDate)} – {friendlyDate(w.weekEndDate)}
-                </div>
-                <div className="flex flex-col gap-3">
-                  {w.items.map((item, i) => (
-                    <div key={i} className={i > 0 ? "border-t border-black/5 pt-3" : ""}>
-                      <div className="flex items-center justify-between gap-2 text-[13px]">
-                        <div className="min-w-0">
-                          <span className="font-semibold text-ink">{item.kidName}</span>
-                          <span className="text-ink-2"> · {item.activityName}</span>
-                        </div>
-                        <span className="flex-shrink-0 text-[10.5px] font-semibold text-ink-3">
-                          {STATUS_LABEL[item.status] ?? item.status}
+                </h2>
+                {w.items.map((item, i) => (
+                  <article key={i} className="rounded-2xl border border-trama-line bg-white px-4 py-3.5">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <p className="text-[16px] font-semibold leading-snug text-ink">{item.activityName}</p>
+                        <p className="text-[14px] font-semibold text-trama-accent-ink">{item.kidName}</p>
+                      </div>
+                      <span className={`flex-shrink-0 rounded-full px-2.5 py-1 text-[12px] font-semibold ${statusPill(item.status)}`}>
+                        {STATUS_LABEL[item.status] ?? item.status}
+                      </span>
+                    </div>
+
+                    {(item.days || item.hours) && (
+                      <p className="mt-2 flex items-center gap-2 text-[14px] text-ink-2">
+                        <i className="ti ti-clock flex-shrink-0 text-[16px] text-ink-3" aria-hidden="true" />
+                        <span>{[item.days, item.hours].filter(Boolean).join(" · ")}</span>
+                      </p>
+                    )}
+
+                    {(item.centerName || item.address) && (
+                      <div className="mt-1 flex items-center gap-2 text-[14px] text-ink-2">
+                        <i className="ti ti-map-pin flex-shrink-0 text-[16px] text-ink-3" aria-hidden="true" />
+                        <span className="min-w-0 flex-1">
+                          {item.centerName}
+                          {item.centerName && item.address ? " · " : ""}
+                          {item.address}
                         </span>
                       </div>
+                    )}
+                    {item.address && (
+                      <a
+                        href={mapsUrl(item.address)}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="mt-1 inline-flex min-h-[44px] items-center gap-1.5 text-[14px] font-semibold text-trama-accent-ink"
+                      >
+                        <i className="ti ti-navigation text-[16px]" aria-hidden="true" />
+                        Apri in Maps
+                      </a>
+                    )}
 
-                      {(item.centerName || item.address) && (
-                        <div className="mt-1.5 flex items-center gap-2 text-[11.5px] text-ink-2">
-                          <i className="ti ti-map-pin flex-shrink-0 text-ink-3" />
-                          <span className="min-w-0 flex-1 truncate">
-                            {item.centerName}
-                            {item.centerName && item.address ? " · " : ""}
-                            {item.address}
-                          </span>
-                          {item.address && (
-                            <a
-                              href={mapsUrl(item.address)}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="flex-shrink-0 font-semibold text-trama-violet"
-                            >
-                              Naviga →
-                            </a>
-                          )}
-                        </div>
-                      )}
-
-                      {(item.days || item.hours) && (
-                        <div className="mt-1 flex items-center gap-2 text-[11.5px] text-ink-2">
-                          <i className="ti ti-clock flex-shrink-0 text-ink-3" />
-                          <span>{[item.days, item.hours].filter(Boolean).join(" · ")}</span>
-                        </div>
-                      )}
-
-                      {item.responsibilities.length > 0 && (
-                        <div className="mt-2 rounded-xl bg-bg/60 px-2.5 py-2">
-                          <div className="mb-1 text-[9.5px] font-bold uppercase tracking-wide text-ink-3">
-                            Chi accompagna / ritira
-                          </div>
-                          <div className="flex flex-col gap-0.5">
-                            {item.responsibilities.map((cell) => (
-                              <div key={cell.weekday} className="flex items-center gap-2 text-[11.5px] text-ink-2">
-                                <span className="w-7 flex-shrink-0 font-semibold text-ink-3">
-                                  {WEEKDAY_LABEL_IT[cell.weekday]}
-                                </span>
-                                <span className="min-w-0 flex-1">
-                                  {cell.andata ? `${cell.andata.emoji} ${cell.andata.label}` : "Da assegnare"}
-                                  <span className="mx-1 text-ink-3">→</span>
-                                  {cell.ritorno ? `${cell.ritorno.emoji} ${cell.ritorno.label}` : "Da assegnare"}
-                                </span>
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              </div>
+                    {item.responsibilities.length > 0 && (
+                      <div className="mt-2 border-t border-[#F0F2F5] pt-3">
+                        <p className="mb-1.5 text-[13px] font-semibold text-ink">Chi porta e chi ritira</p>
+                        <ul className="flex flex-col gap-1">
+                          {item.responsibilities.map((cell) => (
+                            <li key={cell.weekday} className="flex items-baseline gap-2 text-[14px] text-ink-2">
+                              <span className="w-9 flex-shrink-0 font-semibold text-ink">{WEEKDAY_LABEL_IT[cell.weekday]}</span>
+                              <span className="min-w-0 flex-1">
+                                Porta <b className={cell.andata ? "font-semibold text-ink" : "font-semibold text-[#8A5300]"}>{cell.andata ? cell.andata.label : "da decidere"}</b>
+                                {" · "}
+                                ritira <b className={cell.ritorno ? "font-semibold text-ink" : "font-semibold text-[#8A5300]"}>{cell.ritorno ? cell.ritorno.label : "da decidere"}</b>
+                              </span>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                  </article>
+                ))}
+              </section>
             ))}
           </div>
         )}
 
-        <p className="mt-6 text-center text-[11px] text-ink-3">
+        <p className="mt-8 text-center text-[13px] leading-snug text-ink-3">
           Pagina di sola lettura, condivisa da un genitore su TRAMA.
         </p>
       </div>

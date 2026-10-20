@@ -45,6 +45,7 @@ export default function ModificaPrenotazioneClient({
   days = [],
   bookedDayDecisions = {},
   nextgen = false,
+  v2 = false,
 }: {
   booking: MyBooking;
   activity: Activity;
@@ -77,11 +78,28 @@ export default function ModificaPrenotazioneClient({
   // pattern di app/booking/[id]/BookingClient.tsx) — stessa palette "trama"
   // usata lì, invece del blu legacy hardcoded.
   nextgen?: boolean;
+  /** 20/10/2026 — MODIFICA V2 (BOOKINGS_V2_ENABLED, come "Richiedi un posto"
+   *  in BookingClient): blu notte, card e pulsanti V2, testi per le famiglie
+   *  invece delle note di test. Stessa logica e stesse azioni. */
+  v2?: boolean;
 }) {
   const router = useRouter();
-  const accentBg = nextgen ? "bg-trama-violet" : "bg-sky";
-  const accentText = nextgen ? "text-trama-violet" : "text-sky";
-  const accentHoverBorder = nextgen ? "hover:border-trama-violet" : "hover:border-sky";
+  const accentBg = v2 ? "bg-trama-primary" : nextgen ? "bg-trama-violet" : "bg-sky";
+  const accentText = v2 ? "text-trama-primary" : nextgen ? "text-trama-violet" : "text-sky";
+  const accentHoverBorder = v2 ? "hover:border-trama-primary" : nextgen ? "hover:border-trama-violet" : "hover:border-sky";
+  const ui = {
+    root: "flex h-full min-h-screen flex-col sm:min-h-0 sm:flex-1" + (v2 ? " bg-trama-page" : ""),
+    cell: v2 ? "rounded-[12px]" : "rounded-md",
+    totals: v2 ? "mt-5 rounded-2xl border border-trama-line bg-white px-4 py-3.5" : "mt-4 rounded-md bg-bg p-3.5",
+    primary: v2
+      ? "mt-5 min-h-[52px] w-full rounded-[12px] bg-trama-primary px-4 text-[16px] font-semibold text-white active:bg-trama-primary-press disabled:bg-[#B9C0CC]"
+      : `mt-4 w-full rounded-md ${accentBg} px-4 py-3 text-sm font-bold text-white disabled:opacity-50`,
+    cancel: v2
+      ? "mt-2.5 min-h-[48px] w-full rounded-[12px] border border-[#D9DDE5] bg-white px-4 text-[15px] font-semibold text-[#B3261E]"
+      : "mt-2.5 w-full rounded-md border border-[#E8EBF0] px-4 py-2.5 text-[13px] font-semibold text-orange",
+    error: v2 ? "mt-3 text-[13.5px] font-medium text-[#B3261E]" : "mt-3 text-xs font-medium text-orange",
+    intro: v2 ? "mb-4 text-[14px] leading-snug text-ink-2" : "mb-3 text-[13px] text-ink-2",
+  };
   const [selectedWeeks, setSelectedWeeks] = useState<string[]>(booking.weekIds);
   // Editor giorni: inizializzato con i giorni REALMENTE prenotati su QUESTA
   // prenotazione (booking.dayDates) — toggle locale, nessuna chiamata al
@@ -320,16 +338,20 @@ export default function ModificaPrenotazioneClient({
 
   if (!booking.canCancelOrModify) {
     return (
-      <div className="flex h-full min-h-screen flex-col sm:min-h-0 sm:flex-1">
+      <div className={ui.root} data-nav-v2={v2 ? "" : undefined}>
         {/* TRAMA — BACK NAVIGATION PROGRESS FIX (15/09/2026): onBack
             rimosso — era solo router.back() senza alcuna logica locale,
             quindi ricade sul ramo di default di PageHeader (nessun
             backHref/onBack → router.back()), che ora chiama runNavigation()
             prima di navigare. Comportamento identico, ora coperto. */}
-        <PageHeader title="Modifica prenotazione" showBrandIcon={nextgen} />
+        <PageHeader title="Modifica prenotazione" showBrandIcon={nextgen} v2={v2} />
         <div className="px-5 py-6">
-          <div className="rounded-lg border border-orange-mid bg-orange-light p-4 text-[13px] text-ink">
-            <div className="mb-1 font-bold">Non modificabile da qui</div>
+          <div
+            className={
+              v2 ? "rounded-2xl border border-[#F1D9A6] bg-[#FFF7E6] px-4 py-4 text-[14px] leading-snug text-ink" : "rounded-lg border border-orange-mid bg-orange-light p-4 text-[13px] text-ink"
+            }
+          >
+            <div className={v2 ? "mb-1 font-poppins text-[16px] font-semibold" : "mb-1 font-bold"}>Non modificabile da qui</div>
             <p>
               La finestra di {booking.cancellationWindowDays} giorni di preavviso richiesta da questo
               centro è terminata{booking.daysUntilStart !== null ? ` (mancano ${booking.daysUntilStart} giorni)` : ""}.
@@ -342,13 +364,14 @@ export default function ModificaPrenotazioneClient({
   }
 
   return (
-    <div className="flex h-full min-h-screen flex-col sm:min-h-0 sm:flex-1">
+    <div className={ui.root} data-nav-v2={v2 ? "" : undefined}>
       {/* TRAMA — BACK NAVIGATION PROGRESS FIX (15/09/2026): stesso motivo
           del ramo sopra — onBack rimosso, ricade sul default router.back()
           di PageHeader, ora coperto da runNavigation(). */}
-      <PageHeader title="Modifica prenotazione" showBrandIcon={nextgen} />
+      <PageHeader title="Modifica prenotazione" showBrandIcon={nextgen} v2={v2} />
       <div className="flex-1 overflow-y-auto px-5 py-[18px]">
-        <div className="mb-1 text-base font-bold text-ink">{booking.activityName}</div>
+        <div className={v2 ? "mb-1 font-poppins text-[22px] font-semibold leading-tight text-ink" : "mb-1 text-base font-bold text-ink"}>{booking.activityName}</div>
+        {v2 && booking.kidNames.length > 0 && <p className="mb-3 text-[14px] font-semibold text-trama-accent-ink">{booking.kidNames.join(", ")}</p>}
 
         {booking.isDayBased ? (
           <>
@@ -373,10 +396,18 @@ export default function ModificaPrenotazioneClient({
                 rifiutato dal centro non è più pre-selezionato/verde: torna
                 prenotabile normalmente con la nota "Rifiutato in
                 precedenza". */}
-            <p className="mb-3 text-[13px] text-ink-2">
-              Aggiungi o rimuovi giorni singoli — funzionalità di test per verificare l&apos;effetto lato
-              gestore. Puoi modificare fino a {booking.cancellationWindowDays} giorni prima del primo
-              giorno prenotato.
+            <p className={ui.intro}>
+              {v2 ? (
+                <>
+                  Tocca un giorno per aggiungerlo o toglierlo: il centro riceve la modifica. Puoi cambiare fino a{" "}
+                  {booking.cancellationWindowDays} giorni prima del primo giorno prenotato.
+                </>
+              ) : (
+                <>
+                  Aggiungi o rimuovi giorni singoli — funzionalità di test per verificare l&apos;effetto lato gestore. Puoi
+                  modificare fino a {booking.cancellationWindowDays} giorni prima del primo giorno prenotato.
+                </>
+              )}
             </p>
             {pastBookedCount > 0 && (
               <p className="mb-2 text-[12px] text-ink-2">
@@ -399,7 +430,7 @@ export default function ModificaPrenotazioneClient({
                         return (
                           <div
                             key={weekday}
-                            className="flex min-h-[76px] flex-col items-center justify-center rounded-md border border-dashed border-[#E8EBF0] px-1 py-2 text-center text-[10px] text-ink-3"
+                            className={`flex min-h-[76px] flex-col items-center justify-center ${ui.cell} border border-dashed border-[#E8EBF0] px-1 py-2 text-center text-[10px] text-ink-3`}
                           >
                             {weekdayShort[weekday]}
                             <span className="mt-1">—</span>
@@ -442,11 +473,13 @@ export default function ModificaPrenotazioneClient({
                           type="button"
                           disabled={disabled}
                           onClick={() => toggleDay(day)}
-                          className={`relative flex min-h-[76px] flex-col items-center justify-center rounded-md border-[1.5px] px-1 py-2 text-center transition-colors ${
+                          className={`relative flex min-h-[76px] flex-col items-center justify-center ${ui.cell} border-[1.5px] px-1 py-2 text-center transition-colors ${
                             showsDecision
                               ? decidedStyle[ownDecision as string]
                               : selected
-                              ? "border-green bg-green-light text-ink"
+                              ? v2
+                                ? "border-trama-primary bg-trama-primary-soft text-ink"
+                                : "border-green bg-green-light text-ink"
                               : disabled
                               ? "cursor-not-allowed border-[#E8EBF0] bg-[#FAFBFD] text-ink-3"
                               : `border-[#E8EBF0] bg-white text-ink ${accentHoverBorder}`
@@ -464,7 +497,7 @@ export default function ModificaPrenotazioneClient({
                               {decidedBadge[ownDecision as string].label}
                             </span>
                           ) : (
-                            <span className={`text-[11px] font-semibold ${selected ? "text-green" : accentText}`}>
+                            <span className={`text-[11px] font-semibold ${selected ? (v2 ? "text-trama-primary" : "text-green") : accentText}`}>
                               {selected ? "Incluso" : bookedElsewhere ? "Altra prenot." : full ? "Pieno" : `€${dayPrice(day, activity.pricePerWeek)}`}
                             </span>
                           )}
@@ -479,7 +512,7 @@ export default function ModificaPrenotazioneClient({
               </div>
             )}
 
-            <div className="mt-4 rounded-md bg-bg p-3.5">
+            <div className={ui.totals}>
               <div className="mb-2 text-[13px] font-semibold text-ink">Nuovo totale stimato</div>
               <div className="flex items-center justify-between text-[13px] text-ink-2">
                 <span>
@@ -500,22 +533,31 @@ export default function ModificaPrenotazioneClient({
               </div>
             </div>
 
-            {daysError && <p className="mt-3 text-xs font-medium text-orange">{daysError}</p>}
+            {daysError && <p className={ui.error}>{daysError}</p>}
 
             <button
               type="button"
               onClick={handleSaveDays}
               disabled={savingDays || daysUnchanged || selectedDayDates.length === 0}
-              className={`mt-4 w-full rounded-md ${accentBg} px-4 py-3 text-sm font-bold text-white disabled:opacity-50`}
+              className={ui.primary}
             >
               {savingDays ? "Salvataggio…" : "Salva modifiche"}
             </button>
           </>
         ) : (
           <>
-            <p className="mb-3 text-[13px] text-ink-2">
-              Cambia le settimane selezionate — funzionalità di test per verificare l&apos;effetto lato
-              gestore. Puoi modificare fino a {booking.cancellationWindowDays} giorni prima dell&apos;inizio.
+            <p className={ui.intro}>
+              {v2 ? (
+                <>
+                  Tocca una settimana per aggiungerla o toglierla: il centro riceve la modifica. Puoi cambiare fino a{" "}
+                  {booking.cancellationWindowDays} giorni prima dell&apos;inizio.
+                </>
+              ) : (
+                <>
+                  Cambia le settimane selezionate — funzionalità di test per verificare l&apos;effetto lato gestore. Puoi
+                  modificare fino a {booking.cancellationWindowDays} giorni prima dell&apos;inizio.
+                </>
+              )}
             </p>
             <div className="mb-2.5 grid grid-cols-2 gap-2.5">
               {weeks.map((w) => (
@@ -524,11 +566,12 @@ export default function ModificaPrenotazioneClient({
                   week={w}
                   selected={selectedSet.has(w.id)}
                   onToggle={() => toggleWeek(w)}
+                  v2={v2}
                 />
               ))}
             </div>
 
-            <div className="mt-4 rounded-md bg-bg p-3.5">
+            <div className={ui.totals}>
               <div className="mb-2 text-[13px] font-semibold text-ink">Nuovo totale stimato</div>
               <div className="flex items-center justify-between text-[13px] text-ink-2">
                 <span>
@@ -549,7 +592,7 @@ export default function ModificaPrenotazioneClient({
               </div>
             </div>
 
-            {error && <p className="mt-3 text-xs font-medium text-orange">{error}</p>}
+            {error && <p className={ui.error}>{error}</p>}
 
             {/* "Salva modifiche" fa solo il suo mestiere: salva il cambio di
                 settimane. Niente più doppio significato con l'annullamento
@@ -561,7 +604,7 @@ export default function ModificaPrenotazioneClient({
               type="button"
               onClick={handleSave}
               disabled={submitting || unchanged || selectedWeeks.length === 0}
-              className={`mt-4 w-full rounded-md ${accentBg} px-4 py-3 text-sm font-bold text-white disabled:opacity-50`}
+              className={ui.primary}
             >
               {submitting ? "Salvataggio…" : "Salva modifiche"}
             </button>
@@ -572,18 +615,22 @@ export default function ModificaPrenotazioneClient({
             verifica difensiva su booking.canCancelOrModify (vedi sopra) prima
             di aprire il pop-up di conferma vero e proprio. Sempre disponibile,
             sia per prenotazioni a settimana sia a giorni singoli. */}
-        <button type="button" onClick={openCancelPopup} className="mt-2.5 w-full rounded-md border border-[#E8EBF0] px-4 py-2.5 text-[13px] font-semibold text-orange">
+        <button type="button" onClick={openCancelPopup} className={ui.cancel}>
           Annulla prenotazione
         </button>
       </div>
 
       {showCancelConfirm && (
-        <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 px-4 pb-6 sm:items-center">
-          <div className="w-full max-w-sm rounded-2xl bg-white p-4">
-            <div className="mb-1 text-[15px] font-bold text-ink">
+        <div
+          className={`fixed inset-0 z-50 flex items-end justify-center ${v2 ? "bg-[rgba(23,42,77,0.45)]" : "bg-black/40"} px-4 pb-6 sm:items-center`}
+          role="dialog"
+          aria-modal="true"
+        >
+          <div className={v2 ? "w-full max-w-sm rounded-3xl bg-white p-5" : "w-full max-w-sm rounded-2xl bg-white p-4"}>
+            <div className={v2 ? "mb-1.5 font-poppins text-[18px] font-semibold text-ink" : "mb-1 text-[15px] font-bold text-ink"}>
               {cancelError ? "Non puoi più annullare" : "Vuoi annullare la prenotazione?"}
             </div>
-            <p className="mb-3 text-[13px] text-ink-2">
+            <p className={v2 ? "mb-4 text-[14px] leading-snug text-ink-2" : "mb-3 text-[13px] text-ink-2"}>
               {cancelError ??
                 `Stai per annullare "${booking.activityName}"${
                   booking.kidNames.length > 0 ? ` per ${booking.kidNames.join(", ")}` : ""
@@ -594,7 +641,11 @@ export default function ModificaPrenotazioneClient({
                 <button
                   type="button"
                   onClick={() => setShowCancelConfirm(false)}
-                  className="flex-1 rounded-md bg-bg py-2.5 text-center text-[13px] font-semibold text-ink-2"
+                  className={
+                    v2
+                      ? "min-h-[48px] flex-1 rounded-[12px] border border-[#D9DDE5] bg-white text-center text-[15px] font-semibold text-trama-primary"
+                      : "flex-1 rounded-md bg-bg py-2.5 text-center text-[13px] font-semibold text-ink-2"
+                  }
                 >
                   Chiudi
                 </button>
@@ -604,7 +655,11 @@ export default function ModificaPrenotazioneClient({
                     type="button"
                     disabled={cancelling}
                     onClick={() => setShowCancelConfirm(false)}
-                    className="flex-1 rounded-md bg-bg py-2.5 text-center text-[13px] font-semibold text-ink-2 disabled:opacity-50"
+                    className={
+                      v2
+                        ? "min-h-[48px] flex-1 rounded-[12px] border border-[#D9DDE5] bg-white text-center text-[15px] font-semibold text-trama-primary disabled:opacity-50"
+                        : "flex-1 rounded-md bg-bg py-2.5 text-center text-[13px] font-semibold text-ink-2 disabled:opacity-50"
+                    }
                   >
                     No, mantieni
                   </button>
@@ -612,7 +667,11 @@ export default function ModificaPrenotazioneClient({
                     type="button"
                     disabled={cancelling}
                     onClick={handleConfirmCancel}
-                    className="flex-1 rounded-md bg-orange py-2.5 text-center text-[13px] font-bold text-white disabled:opacity-50"
+                    className={
+                      v2
+                        ? "min-h-[48px] flex-1 rounded-[12px] bg-[#B3261E] text-center text-[15px] font-semibold text-white disabled:opacity-50"
+                        : "flex-1 rounded-md bg-orange py-2.5 text-center text-[13px] font-bold text-white disabled:opacity-50"
+                    }
                   >
                     {cancelling ? "Annullo…" : "Sì, annulla"}
                   </button>

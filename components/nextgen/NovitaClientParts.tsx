@@ -51,22 +51,27 @@ export function AnnouncementVoteButtons({
     }
   }
 
+  // 20/10/2026 — V2: pulsanti con testo ("Sì" / "No") invece delle sole
+  // icone, selezione in blu notte come le altre scelte dell'app.
   const base =
-    "flex min-h-[40px] min-w-[52px] items-center justify-center gap-1 rounded-full border px-3 text-[13px] font-semibold transition-colors active:scale-95 disabled:opacity-60";
+    "flex min-h-[44px] items-center justify-center gap-1.5 rounded-full border px-4 text-[14px] font-semibold transition-colors disabled:opacity-60";
+  const on = "border-trama-primary bg-trama-primary text-white";
+  const off = "border-[#E3E6EC] bg-white text-ink";
 
   return (
-    <div className="mt-3">
-      <div className="flex items-center gap-2">
-        <span className="mr-1 text-[12px] font-medium text-ink-2">Ti sarebbe utile?</span>
+    <div className="mt-3 border-t border-[#F0F2F5] pt-3">
+      <div className="flex flex-wrap items-center gap-2">
+        <span className="mr-1 text-[13.5px] font-semibold text-ink">Ti sarebbe utile?</span>
         <button
           type="button"
           aria-pressed={vote === 1}
           aria-label="Sì, mi sarebbe utile"
           disabled={saving}
           onClick={() => handle(1)}
-          className={`${base} ${vote === 1 ? "border-trama-green bg-trama-green/10 text-trama-green" : "border-[#E8EBF0] text-ink-2"}`}
+          className={`${base} ${vote === 1 ? on : off}`}
         >
           <i className="ti ti-thumb-up text-[16px]" aria-hidden="true" />
+          Sì
         </button>
         <button
           type="button"
@@ -74,29 +79,29 @@ export function AnnouncementVoteButtons({
           aria-label="No, non mi servirebbe"
           disabled={saving}
           onClick={() => handle(-1)}
-          className={`${base} ${vote === -1 ? "border-trama-orange bg-trama-orange/10 text-trama-orange" : "border-[#E8EBF0] text-ink-2"}`}
+          className={`${base} ${vote === -1 ? on : off}`}
         >
           <i className="ti ti-thumb-down text-[16px]" aria-hidden="true" />
+          No
         </button>
       </div>
-      <p className="mt-1.5 min-h-[16px] text-[11.5px] text-ink-3" aria-live="polite">
-        {error ? <span className="text-trama-orange">{error}</span> : vote !== 0 ? "Grazie, ne terremo conto." : ""}
+      <p className="mt-1.5 min-h-[18px] text-[13px] text-ink-2" aria-live="polite">
+        {error ? <span className="text-[#B3261E]">{error}</span> : vote !== 0 ? "Grazie, ne terremo conto." : ""}
       </p>
     </div>
   );
 }
 
 export function FeedbackInviteCard() {
+  // 20/10/2026 — V2: card come le altre, pulsante blu notte a raggio 12.
   return (
-    <div className="rounded-lg border border-dashed border-trama-violet/40 bg-trama-violet/[0.04] p-4">
-      <p className="text-[13.5px] font-bold text-ink">Hai un&apos;idea per TRAMA?</p>
-      <p className="mt-1 text-[12.5px] leading-snug text-ink-2">
-        Raccontaci cosa renderebbe TRAMA più utile alla tua famiglia, o cosa ti manca.
-      </p>
+    <div className="rounded-2xl border border-trama-line bg-white px-4 py-4">
+      <p className="font-poppins text-[16px] font-semibold text-ink">Hai un&apos;idea per TRAMA?</p>
+      <p className="mt-1 text-[14px] leading-snug text-ink-2">Raccontaci cosa renderebbe TRAMA più utile alla tua famiglia, o cosa ti manca.</p>
       <button
         type="button"
         onClick={() => openBetaFeedback("novita")}
-        className="mt-3 min-h-[44px] rounded-full bg-trama-violet px-5 text-[13.5px] font-bold text-white active:scale-[0.97]"
+        className="mt-3 min-h-[48px] rounded-[12px] bg-trama-primary px-5 text-[15px] font-semibold text-white active:bg-trama-primary-press"
       >
         Scrivici
       </button>
