@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { changePasswordAction } from "@/app/actions/profile";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
+import { SETTINGS_CARD, SETTINGS_ERROR, SETTINGS_INPUT, SETTINGS_OK, SettingsSection, SoonTag } from "@/components/nextgen/settings-v2";
 
 // Sottosezione "Sicurezza" (dentro Impostazioni) — condivisa tra genitore e
 // gestore centro (entrambi usano la stessa auth.users/profiles). Copre il
@@ -11,7 +12,9 @@ import { isSupabaseConfigured } from "@/lib/supabase/env";
 // un'integrazione più ampia con Supabase Auth (MFA/passkey) non ancora
 // presente — 2FA e gestione dispositivi/sessioni attive restano nella
 // stessa fase successiva.
-export default function ProfileSecuritySection() {
+// 20/10/2026 — `v2`: Impostazioni V2 nell'area famiglie (stessa logica,
+// aspetto nuovo). Il portale Partner e la V1 non la passano: invariati.
+export default function ProfileSecuritySection({ v2 = false }: { v2?: boolean } = {}) {
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [saving, setSaving] = useState(false);
@@ -50,6 +53,96 @@ export default function ProfileSecuritySection() {
     setSuccess(true);
     setNewPassword("");
     setConfirmPassword("");
+  }
+
+  if (v2) {
+    const eye = (
+      <button
+        type="button"
+        onClick={() => setShowPassword((v) => !v)}
+        aria-label={showPassword ? "Nascondi password" : "Mostra password"}
+        className="absolute right-1 top-1/2 flex h-11 w-11 -translate-y-1/2 items-center justify-center text-ink-3"
+      >
+        <i className={`ti ${showPassword ? "ti-eye-off" : "ti-eye"} text-[18px]`} aria-hidden="true" />
+      </button>
+    );
+    return (
+      <div className="flex flex-col gap-7">
+        <SettingsSection id="sic-password-h" title="Cambia password" hint="Almeno 8 caratteri, meglio se con numeri e lettere.">
+          <form
+            className={`${SETTINGS_CARD} flex flex-col gap-3.5 p-4`}
+            onSubmit={(e) => {
+              e.preventDefault();
+              void handleSubmit();
+            }}
+          >
+            <div>
+              <label htmlFor="security-new-password" className="mb-1.5 block text-[13.5px] font-semibold text-ink">
+                Nuova password
+              </label>
+              <div className="relative">
+                <input
+                  id="security-new-password"
+                  type={showPassword ? "text" : "password"}
+                  autoComplete="new-password"
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  placeholder="Almeno 8 caratteri"
+                  className={`${SETTINGS_INPUT} pr-12`}
+                />
+                {eye}
+              </div>
+            </div>
+            <div>
+              <label htmlFor="security-confirm-password" className="mb-1.5 block text-[13.5px] font-semibold text-ink">
+                Conferma nuova password
+              </label>
+              <div className="relative">
+                <input
+                  id="security-confirm-password"
+                  type={showPassword ? "text" : "password"}
+                  autoComplete="new-password"
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  className={`${SETTINGS_INPUT} pr-12`}
+                />
+                {eye}
+              </div>
+            </div>
+            {error && (
+              <p role="alert" className={SETTINGS_ERROR}>
+                {error}
+              </p>
+            )}
+            {success && (
+              <p role="status" className={SETTINGS_OK}>
+                Password aggiornata.
+              </p>
+            )}
+            <button
+              type="submit"
+              disabled={saving || !newPassword || !confirmPassword}
+              className="min-h-[48px] w-full rounded-[12px] bg-trama-primary px-4 text-[15px] font-semibold text-white active:bg-trama-primary-press disabled:bg-[#B9C0CC]"
+            >
+              {saving ? "Salvo…" : "Aggiorna password"}
+            </button>
+          </form>
+        </SettingsSection>
+
+        <SettingsSection id="sic-rapido-h" title="Accesso rapido">
+          <div className={`${SETTINGS_CARD} flex min-h-[60px] items-center gap-3 px-4 py-3`}>
+            <span className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-[12px] bg-trama-primary-soft text-[19px] text-trama-primary">
+              <i className="ti ti-fingerprint" aria-hidden="true" />
+            </span>
+            <span className="flex min-w-0 flex-1 flex-col">
+              <span className="text-[15px] font-semibold text-ink">Face ID o impronta</span>
+              <span className="text-[13px] text-ink-2">Per entrare senza scrivere la password</span>
+            </span>
+            <SoonTag />
+          </div>
+        </SettingsSection>
+      </div>
+    );
   }
 
   return (

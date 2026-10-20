@@ -8,6 +8,8 @@ import {
   requestAccountDeletionAction,
 } from "@/app/actions/profile";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
+import Link from "next/link";
+import { SETTINGS_CARD, SETTINGS_ERROR, SettingsSection, SwitchRow } from "@/components/nextgen/settings-v2";
 
 // Sezione "Privacy e account" — consenso marketing/cookie, disattivazione
 // temporanea e richiesta di cancellazione definitiva (diritto all'oblio).
@@ -18,7 +20,11 @@ export default function ProfilePrivacySection({
   initialMarketingConsent,
   initialAccountStatus,
   onAfterAccountAction,
+  v2 = false,
 }: {
+  /** 20/10/2026 — Impostazioni V2 nell'area famiglie: stessa logica, aspetto
+   *  nuovo, con i documenti dentro la pagina. Altrove invariato. */
+  v2?: boolean;
   initialMarketingConsent: boolean;
   initialAccountStatus: AccountStatus;
   onAfterAccountAction?: () => void;
@@ -72,6 +78,113 @@ export default function ProfilePrivacySection({
     }
     setAccountStatus("deletion_requested");
     setConfirmingDelete(false);
+  }
+
+  if (v2) {
+    const rowBase = "flex min-h-[56px] items-center justify-between px-4 py-2 text-[15px] font-semibold active:bg-black/[0.03]";
+    const docRow = `${rowBase} text-ink`;
+    const confirmBox = (text: string, confirmLabel: string, danger: boolean, onConfirm: () => void, onCancel: () => void) => (
+      <div className="flex flex-col gap-3 px-4 py-3.5">
+        <p className="text-[13.5px] leading-snug text-ink-2">{text}</p>
+        <div className="flex gap-2">
+          <button
+            type="button"
+            onClick={onConfirm}
+            disabled={busy}
+            className={`min-h-[44px] flex-1 rounded-[12px] px-4 text-[14px] font-semibold text-white disabled:opacity-60 ${danger ? "bg-[#B3261E]" : "bg-trama-primary"}`}
+          >
+            {confirmLabel}
+          </button>
+          <button
+            type="button"
+            onClick={onCancel}
+            className="min-h-[44px] flex-1 rounded-[12px] border border-[#D9DDE5] bg-white px-4 text-[14px] font-semibold text-trama-primary"
+          >
+            Annulla
+          </button>
+        </div>
+      </div>
+    );
+    return (
+      <div className="flex flex-col gap-7">
+        <SettingsSection id="priv-consensi-h" title="Consensi">
+          <div className={SETTINGS_CARD}>
+            <SwitchRow
+              label="Comunicazioni marketing"
+              hint="Facoltativo: puoi cambiarlo quando vuoi"
+              checked={marketingConsent}
+              onChange={(v) => void handleConsentChange(v)}
+            />
+          </div>
+        </SettingsSection>
+
+        <SettingsSection id="priv-documenti-h" title="Documenti">
+          <nav aria-label="Documenti" className={`${SETTINGS_CARD} flex flex-col divide-y divide-[#F0F2F5] overflow-hidden`}>
+            <Link href="/nextgen/informative/privacy" className={docRow}>
+              Informativa privacy
+              <i className="ti ti-chevron-right text-[18px] text-ink-3" aria-hidden="true" />
+            </Link>
+            <Link href="/nextgen/informative/termini" className={docRow}>
+              Termini di servizio
+              <i className="ti ti-chevron-right text-[18px] text-ink-3" aria-hidden="true" />
+            </Link>
+          </nav>
+        </SettingsSection>
+
+        <SettingsSection id="priv-account-h" title="Il tuo account">
+          {accountStatus === "deactivated" && (
+            <p className={`${SETTINGS_CARD} px-4 py-3.5 text-[14px] text-ink-2`}>Account disattivato. Contatta l&apos;assistenza per riattivarlo.</p>
+          )}
+          {accountStatus === "deletion_requested" && (
+            <p className={`${SETTINGS_CARD} px-4 py-3.5 text-[14px] text-ink-2`}>Richiesta di cancellazione inviata: verrà elaborata a breve.</p>
+          )}
+          {accountStatus === "active" && (
+            <div className={`${SETTINGS_CARD} flex flex-col divide-y divide-[#F0F2F5] overflow-hidden`}>
+              {confirmingDeactivate ? (
+                confirmBox(
+                  "Sei sicuro? Potrai chiedere la riattivazione in un secondo momento.",
+                  "Conferma disattivazione",
+                  false,
+                  () => void handleDeactivate(),
+                  () => setConfirmingDeactivate(false)
+                )
+              ) : (
+                <button type="button" onClick={() => setConfirmingDeactivate(true)} className={`${docRow} w-full text-left`}>
+                  <span className="flex flex-col">
+                    <span>Disattiva account temporaneamente</span>
+                    <span className="text-[13px] font-normal text-ink-2">Lo puoi riattivare in seguito</span>
+                  </span>
+                  <i className="ti ti-chevron-right text-[18px] text-ink-3" aria-hidden="true" />
+                </button>
+              )}
+              {confirmingDelete ? (
+                confirmBox(
+                  "Questa azione avvia la cancellazione definitiva dei tuoi dati (diritto all'oblio). Non è reversibile una volta completata.",
+                  "Conferma richiesta",
+                  true,
+                  () => void handleRequestDeletion(),
+                  () => setConfirmingDelete(false)
+                )
+              ) : (
+                <button type="button" onClick={() => setConfirmingDelete(true)} className={`${rowBase} w-full text-left text-[#B3261E]`}>
+                  <span className="flex flex-col">
+                    <span>Richiedi cancellazione account</span>
+                    <span className="text-[13px] font-normal text-ink-2">Cancella definitivamente i tuoi dati</span>
+                  </span>
+                  <i className="ti ti-chevron-right text-[18px] text-ink-3" aria-hidden="true" />
+                </button>
+              )}
+            </div>
+          )}
+        </SettingsSection>
+
+        {error && (
+          <p role="alert" className={SETTINGS_ERROR}>
+            {error}
+          </p>
+        )}
+      </div>
+    );
   }
 
   return (

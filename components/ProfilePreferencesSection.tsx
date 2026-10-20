@@ -1,11 +1,12 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import type { Language, Theme } from "@/lib/data/profile";
 import { updatePreferencesAction } from "@/app/actions/profile";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
 import { ComingSoonBadge } from "@/components/StatusBadge";
 import { enablePushNotifications, disablePushNotifications, hasBrowserPushSubscription } from "@/lib/push/client";
+import { SETTINGS_CARD, SETTINGS_ERROR, SettingsSection, SwitchRow } from "@/components/nextgen/settings-v2";
 
 const languageLabels: Record<Language, string> = { it: "Italiano", en: "English" };
 
@@ -26,7 +27,18 @@ export default function ProfilePreferencesSection({
   initialNotifyEmail,
   initialNotifyPush,
   initialNotifySms,
+  v2 = false,
+  briefingSlot,
+  helpSlot,
 }: {
+  /** 20/10/2026 — Impostazioni V2 (solo area famiglie /nextgen): stesse
+   *  scelte e stesso salvataggio, aspetto nuovo e ordine per importanza.
+   *  V1 e portale Partner non passano la prop: invariati. */
+  v2?: boolean;
+  /** V2: "Il buongiorno di TRAMA", subito sotto le notifiche. */
+  briefingSlot?: ReactNode;
+  /** V2: "Aiuto e guida". */
+  helpSlot?: ReactNode;
   initialLanguage: Language;
   initialTheme: Theme;
   initialNotifyEmail: boolean;
@@ -95,6 +107,104 @@ export default function ProfilePreferencesSection({
     }
     setNotifyPush(next);
     save({ notifyPush: next });
+  }
+
+  if (v2) {
+    const chip = (on: boolean) =>
+      `min-h-[40px] rounded-full border px-4 text-[14px] font-semibold ${on ? "border-trama-primary bg-trama-primary text-white" : "border-[#E3E6EC] bg-white text-ink"}`;
+    return (
+      <div className="flex flex-col gap-7">
+        <SettingsSection id="pref-notifiche-h" title="Notifiche" hint="Come ti avvisiamo di promemoria, messaggi e cambi di programma.">
+          <div className={`${SETTINGS_CARD} divide-y divide-[#F0F2F5]`}>
+            <SwitchRow
+              label="Notifiche push"
+              hint="Sul telefono, anche ad app chiusa"
+              checked={notifyPush}
+              onChange={handleTogglePush}
+              disabled={pushBusy}
+            />
+            <SwitchRow
+              label="Notifiche email"
+              hint="Conferme e riepiloghi alla tua email"
+              checked={notifyEmail}
+              onChange={(v) => {
+                setNotifyEmail(v);
+                save({ notifyEmail: v });
+              }}
+            />
+          </div>
+          {pushError && (
+            <p role="alert" className={SETTINGS_ERROR}>
+              {pushError}
+            </p>
+          )}
+        </SettingsSection>
+
+        {briefingSlot}
+        {helpSlot}
+
+        <SettingsSection id="pref-arrivo-h" title="In arrivo" hint="Puoi già sceglierle: si salvano, ma per ora non cambiano nulla nell'app.">
+          <div className={`${SETTINGS_CARD} divide-y divide-[#F0F2F5]`}>
+            <div className="flex flex-col gap-2 px-4 py-3">
+              <span className="flex items-center gap-2 text-[15px] font-semibold text-ink">
+                Lingua
+              </span>
+              <div className="flex gap-2">
+                {(Object.keys(languageLabels) as Language[]).map((l) => (
+                  <button
+                    key={l}
+                    type="button"
+                    aria-pressed={language === l}
+                    onClick={() => {
+                      setLanguage(l);
+                      save({ language: l });
+                    }}
+                    className={chip(language === l)}
+                  >
+                    {languageLabels[l]}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div className="flex flex-col gap-2 px-4 py-3">
+              <span className="flex items-center gap-2 text-[15px] font-semibold text-ink">
+                Tema
+              </span>
+              <div className="flex gap-2">
+                {(["light", "dark"] as Theme[]).map((t) => (
+                  <button
+                    key={t}
+                    type="button"
+                    aria-pressed={theme === t}
+                    onClick={() => {
+                      setTheme(t);
+                      save({ theme: t });
+                    }}
+                    className={chip(theme === t)}
+                  >
+                    {t === "light" ? "Chiaro" : "Scuro"}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <SwitchRow
+              label="Notifiche SMS"
+              checked={notifySms}
+              onChange={(v) => {
+                setNotifySms(v);
+                save({ notifySms: v });
+              }}
+            />
+          </div>
+        </SettingsSection>
+
+        {error && (
+          <p role="alert" className={SETTINGS_ERROR}>
+            {error}
+          </p>
+        )}
+      </div>
+    );
   }
 
   return (

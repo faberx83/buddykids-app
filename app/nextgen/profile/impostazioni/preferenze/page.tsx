@@ -1,4 +1,7 @@
-import PreferenzeView from "@/components/PreferenzeView";
+import PageHeader from "@/components/PageHeader";
+import ProfilePreferencesSection from "@/components/ProfilePreferencesSection";
+import { SETTINGS_CARD, SettingsSection } from "@/components/nextgen/settings-v2";
+import { getParentProfile } from "@/lib/data/profile";
 import WalkthroughRestartButton from "@/components/WalkthroughRestartButton";
 import DailyBriefingSettings from "@/components/nextgen/DailyBriefingSettings";
 import { createClient } from "@/lib/supabase/server";
@@ -85,39 +88,58 @@ export default async function NextgenPreferenzePage() {
   const carousel = getTutorialDefinition(onboardingV2Enabled ? ONBOARDING_V2_TUTORIAL_KEY : PARENT_ONBOARDING_TUTORIAL_KEY);
   const tour = getTutorialDefinition("discover_book_parent");
 
+  const profile = await getParentProfile();
+
+  // 20/10/2026 — IMPOSTAZIONI V2 (Fabrizio: "ha ancora layout vecchio"):
+  // stesse scelte di prima (componenti condivisi con la prop v2), in ordine
+  // d'uso: Notifiche → Il buongiorno → Aiuto e guida → In arrivo.
   return (
-    <div>
-      <PreferenzeView showBrandIcon />
-      {briefing && (
-        <div className="px-5 pb-5">
-          <DailyBriefingSettings initialPush={briefing.push} initialEmail={briefing.email} email={briefing.address} />
-        </div>
-      )}
-      {showReplay && (
-        <div className="space-y-3 px-5 pb-5">
-          <div className="text-xs font-semibold text-ink-2">Aiuto e guida</div>
-          {carousel && (
-            <WalkthroughRestartButton
-              tutorialKey={carousel.key}
-              tutorialTitle={carousel.title}
-              sectionLabel="Introduzione a TRAMA"
-              description="Le schermate di benvenuto che spiegano perché TRAMA ti serve e come pensarla — utili se vuoi rivederle da capo."
-              actionLabel="Rivedi introduzione TRAMA"
-              restartedMessage="Introduzione riavviata: riparte dalla prima schermata al prossimo accesso alla Home."
-            />
-          )}
-          {tour && (
-            <WalkthroughRestartButton
-              tutorialKey={tour.key}
-              tutorialTitle={tour.title}
-              sectionLabel="Tour guidato"
-              description={`"${tour.title}" ti accompagna passo passo alla prossima navigazione — utile se vuoi rivederlo da capo o se lo hai saltato per errore.`}
-              actionLabel="Avvia tour guidato"
-              restartedMessage="Tour riavviato: riparte dal primo passo alla prossima navigazione."
-            />
-          )}
-        </div>
-      )}
+    <div className="flex flex-col pb-10">
+      <PageHeader title="Preferenze" backHref="/nextgen/profile/impostazioni" showBrandIcon />
+      <div className="px-5 pt-5">
+        <ProfilePreferencesSection
+          v2
+          initialLanguage={profile.language}
+          initialTheme={profile.theme}
+          initialNotifyEmail={profile.notifyEmail}
+          initialNotifyPush={profile.notifyPush}
+          initialNotifySms={profile.notifySms}
+          briefingSlot={
+            briefing && <DailyBriefingSettings initialPush={briefing.push} initialEmail={briefing.email} email={briefing.address} />
+          }
+          helpSlot={
+            showReplay &&
+            (carousel || tour) && (
+              <SettingsSection id="pref-aiuto-h" title="Aiuto e guida">
+                <div className={`${SETTINGS_CARD} divide-y divide-[#F0F2F5]`}>
+                  {carousel && (
+                    <WalkthroughRestartButton
+                      v2
+                      tutorialKey={carousel.key}
+                      tutorialTitle={carousel.title}
+                      sectionLabel="Introduzione a TRAMA"
+                      description="Le schermate di benvenuto che spiegano a cosa serve TRAMA, se vuoi rivederle da capo."
+                      actionLabel="Rivedi introduzione TRAMA"
+                      restartedMessage="Introduzione riavviata: riparte dalla prima schermata al prossimo accesso alla Home."
+                    />
+                  )}
+                  {tour && (
+                    <WalkthroughRestartButton
+                      v2
+                      tutorialKey={tour.key}
+                      tutorialTitle={tour.title}
+                      sectionLabel="Tour guidato"
+                      description={`"${tour.title}" ti accompagna passo passo alla prossima navigazione, se l'hai saltato o vuoi rivederlo.`}
+                      actionLabel="Avvia tour guidato"
+                      restartedMessage="Tour riavviato: riparte dal primo passo alla prossima navigazione."
+                    />
+                  )}
+                </div>
+              </SettingsSection>
+            )
+          }
+        />
+      </div>
     </div>
   );
 }

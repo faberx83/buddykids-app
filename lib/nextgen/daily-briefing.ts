@@ -91,7 +91,6 @@ export function buildDailyBriefing(input: {
 }): DailyBriefing | null {
   const { todayIso, entries, slots } = input;
   const missing = slots.filter((s) => s.label === null);
-  const decided = slots.filter((s) => s.label !== null);
   const closure = nextClosure(input.closurePeriods, todayIso);
   if (entries.length === 0 && slots.length === 0 && !closure) return null;
 

@@ -33,7 +33,11 @@ export default function WalkthroughRestartButton({
   description,
   restartedMessage,
   actionLabel,
+  v2 = false,
 }: {
+  /** 20/10/2026 — Impostazioni V2: riga dentro la card "Aiuto e guida"
+   *  (stessi testi e stessa azione; altrove invariato). */
+  v2?: boolean;
   tutorialKey: string;
   tutorialTitle: string;
   sectionLabel?: string;
@@ -55,6 +59,31 @@ export default function WalkthroughRestartButton({
       return;
     }
     setDone(true);
+  }
+
+  if (v2) {
+    return (
+      <div className="flex flex-col gap-1 px-4 py-3.5">
+        <span className="text-[15px] font-semibold text-ink">{sectionLabel}</span>
+        <p className="text-[13px] leading-snug text-ink-2">{description}</p>
+        {done ? (
+          <p role="status" className="mt-1 text-[13px] font-medium text-[#146B4F]">
+            {restartedMessage}
+          </p>
+        ) : (
+          <button
+            type="button"
+            onClick={handleRestart}
+            disabled={busy}
+            className="flex min-h-[44px] items-center self-start text-[14px] font-semibold text-trama-accent-ink disabled:opacity-60"
+          >
+            <i className="ti ti-refresh mr-1.5" aria-hidden="true" />
+            {busy ? "Riavvio…" : (actionLabel ?? "Riavvia il tour guidato")}
+          </button>
+        )}
+        {error && <p className="text-[13px] font-medium text-[#B3261E]">{error}</p>}
+      </div>
+    );
   }
 
   return (

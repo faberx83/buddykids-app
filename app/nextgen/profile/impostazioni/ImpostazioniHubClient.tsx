@@ -14,6 +14,8 @@ export default function ImpostazioniHubClient() {
           completa. */}
       <PageHeader title="Impostazioni" backHref="/nextgen/profile" showBrandIcon />
 
+      {/* 20/10/2026 — Impostazioni V2: le tre pagine hanno il nuovo aspetto
+          (components/nextgen/settings-v2.tsx); qui solo testi più chiari. */}
       <div className="flex flex-col gap-2.5 px-5 pt-4">
         <HubCard
           href="/nextgen/profile/impostazioni/sicurezza"
@@ -21,7 +23,7 @@ export default function ImpostazioniHubClient() {
           iconBg="#E8F6FD"
           iconColor="#4DAFEF"
           title="Sicurezza"
-          subtitle="Password, accesso rapido"
+          subtitle="Password e accesso rapido"
         />
         <HubCard
           href="/nextgen/profile/impostazioni/preferenze"
@@ -29,7 +31,7 @@ export default function ImpostazioniHubClient() {
           iconBg="#FFF3E6"
           iconColor="#E08A2D"
           title="Preferenze"
-          subtitle="Lingua, tema, notifiche"
+          subtitle="Notifiche, il buongiorno, guida"
         />
         <HubCard
           href="/nextgen/profile/impostazioni/privacy"
@@ -37,7 +39,7 @@ export default function ImpostazioniHubClient() {
           iconBg="#FCE8EC"
           iconColor="#D6497A"
           title="Privacy e account"
-          subtitle="Consensi, informativa, chiusura account"
+          subtitle="Consensi, documenti, chiusura account"
         />
       </div>
     </div>
