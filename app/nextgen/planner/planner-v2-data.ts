@@ -19,6 +19,8 @@ import { getGroupsForUser } from "@/lib/data/groups";
 import { getExternalPlannerItemsForParent, type ExternalPlannerItem } from "@/lib/data/external-planner-items";
 import { getKidClosureIntervalsForParent } from "@/lib/data/school-calendar";
 import { getClosureNotNeededForParent } from "@/lib/data/closure-not-needed";
+import { getFamilyForUser } from "@/lib/data/family";
+import { CHI_ACCOMPAGNA_PLUS_FLAG } from "@/lib/nextgen/assign-plus";
 import { notNeededCoverage } from "@/lib/nextgen/closure-not-needed";
 import { createClient } from "@/lib/supabase/server";
 import { getUnifiedFavoritesForParent } from "@/lib/data/favorites";
@@ -65,12 +67,20 @@ export async function loadPlannerV2Props({
   searchParams: Record<string, string | undefined>;
 }): Promise<PlannerV2Props> {
   const todayIso = romeTodayIso();
-  const [externalEnabled, schoolEnabled, exportEnabled, navV2Enabled] = await Promise.all([
+  const [externalEnabled, schoolEnabled, exportEnabled, navV2Enabled, assignPlusEnabled] = await Promise.all([
     flagOn("EXTERNAL_PLANNER_ITEMS_ENABLED", userId, role),
     flagOn("SCHOOL_CALENDAR_INTELLIGENCE_ENABLED", userId, role),
     flagOn("CALENDAR_EXPORT_ENABLED", userId, role),
     flagOn("NAV_V2_ENABLED", userId, role),
+    flagOn(CHI_ACCOMPAGNA_PLUS_FLAG, userId, role),
   ]);
+  // 20/10/2026 — Chi accompagna più veloce: l'altro genitore è su TRAMA (nella
+  // stessa famiglia)? Decide fra "riceverà una notifica" e "invitalo".
+  const partnerOnTrama = assignPlusEnabled
+    ? await getFamilyForUser()
+        .then((f) => (f?.members ?? []).some((m) => !m.isMe))
+        .catch(() => false)
+    : false;
 
   const [planner, bookings, kids, activities, profile, responsibilities, familyPeople, mapPins, addresses, communities, groups, favorites] =
     await Promise.all([
@@ -209,6 +219,8 @@ export async function loadPlannerV2Props({
     groups,
     savedCount,
     navV2Enabled,
+    assignPlusEnabled,
+    partnerOnTrama,
     // POLISH V2 (14/10/2026): il dettaglio tecnico degli errori lo vede solo l'Admin piattaforma.
     showDiagnostics: role === "platform_admin",
     calendarExportEnabled: exportEnabled,

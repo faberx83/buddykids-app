@@ -310,6 +310,16 @@ export const FEATURE_FLAG_REGISTRY = {
     defaultValue: false,
     allowedScopes: ["global", "environment", "user", "role", "cohort"],
   },
+  // TRAMA — CHI ACCOMPAGNA PIÙ VELOCE (20/10/2026), release "chi-accompagna-veloce".
+  CHI_ACCOMPAGNA_PLUS_ENABLED: {
+    name: "CHI_ACCOMPAGNA_PLUS_ENABLED",
+    description:
+      "Nel foglio 'Chi accompagna' del Planner: 'applica a tutto l'impegno' dopo una scelta, invito all'altro genitore se " +
+      "non è su TRAMA, 'manda il piano' per nonni/tata/altri, e una notifica all'altro genitore (se è nella famiglia su " +
+      "TRAMA) con i passaggi che gli hai affidato, una per giro. Default false: foglio come prima (ma già più veloce).",
+    defaultValue: false,
+    allowedScopes: ["global", "environment", "user", "role", "cohort"],
+  },
   // TRAMA — RITORNO ALLA HOME DOPO UNA PAUSA (20/10/2026), release "home-dopo-pausa".
   RETURN_HOME_AFTER_IDLE_ENABLED: {
     name: "RETURN_HOME_AFTER_IDLE_ENABLED",

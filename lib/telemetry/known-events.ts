@@ -179,6 +179,9 @@ export const KNOWN_PRODUCT_EVENTS = [
   // TRAMA — IL BUONGIORNO (20/10/2026): un conteggio per giro (cron o "Mandamelo
   // adesso"), mai nomi o email.
   "daily_briefing_run",
+  // TRAMA — CHI ACCOMPAGNA PIÙ VELOCE (20/10/2026): notifica all'altro genitore
+  // dopo un giro di assegnazioni (detail = numero di passaggi, mai nomi).
+  "assign_partner_notified",
 ] as const;
 
 export type KnownProductEvent = (typeof KNOWN_PRODUCT_EVENTS)[number];

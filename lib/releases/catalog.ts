@@ -279,6 +279,19 @@ export const RELEASE_CATALOG: ReleaseCatalogEntry[] = [
     ],
     notes: "Creata il 20/10/2026. Ripiego: flag spento = niente opzione e niente invii, anche per chi l'aveva attivato.",
   },
+  {
+    // TRAMA — CHI ACCOMPAGNA PIÙ VELOCE (20/10/2026).
+    id: "chi-accompagna-veloce",
+    label: "TRAMA — Chi accompagna più veloce",
+    shortDescription: "Applica a tutto l'impegno, avviso all'altro genitore, piano da mandare a nonni e tata.",
+    targetAudience: ["parent"],
+    featureKeys: ["chi_accompagna_plus"],
+    knownLimitations: [
+      "chi_accompagna_plus: la notifica arriva solo se l'altro genitore è nella famiglia su TRAMA e ha le notifiche push attive.",
+      "chi_accompagna_plus: 'tutto l'impegno' copre al massimo sei mesi e solo i giorni feriali (sabato e domenica non hanno Chi accompagna).",
+    ],
+    notes: "Creata il 20/10/2026. Ripiego: flag spento = foglio come prima, senza proposte né notifiche (resta la scelta istantanea).",
+  },
 ];
 
 export function getReleaseCatalog(): ReleaseCatalogEntry[] {

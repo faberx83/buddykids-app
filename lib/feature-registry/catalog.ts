@@ -954,6 +954,33 @@ export const FEATURE_CATALOG: FeatureCatalogEntry[] = [
     releaseEligible: true,
   },
   {
+    // TRAMA — CHI ACCOMPAGNA PIÙ VELOCE (20/10/2026). ADAPT del foglio "Chi
+    // accompagna" del Planner V2 (AssignSheet) + NEW piccola: azione per più
+    // giorni (setResponsibilityForDatesAction, stessa tabella
+    // week_responsibilities) e notifica all'altro genitore (sendPushToUser).
+    key: "chi_accompagna_plus",
+    label: "Chi accompagna più veloce — tutto l'impegno, avvisi e condivisione",
+    area: "parent",
+    status: "INTERNAL_PREVIEW",
+    flagName: "CHI_ACCOMPAGNA_PLUS_ENABLED",
+    description:
+      "Dopo una scelta in 'Chi accompagna': 'Anche gli altri giorni di <impegno>?' per applicarla a tutto l'impegno; se " +
+      "scegli l'altro genitore e non è su TRAMA, l'invito; se scegli nonni, tata o altri, 'Manda il piano'. Alla chiusura " +
+      "del foglio una notifica all'altro genitore con i passaggi che gli hai affidato o tolto.",
+    sourceFiles: [
+      "lib/nextgen/assign-plus.ts",
+      "app/actions/assign-notify.ts",
+      "app/actions/responsibilities.ts",
+      "app/nextgen/planner/PlannerV2Client.tsx",
+    ],
+    note:
+      "Nessuna migrazione. La notifica arriva solo se l'altro genitore è nella stessa famiglia su TRAMA e ha le notifiche " +
+      "push attive; una per giro (alla chiusura del foglio). 'Tutto l'impegno' arriva al massimo a sei mesi avanti e solo " +
+      "ai giorni feriali. Ogni invio lascia assign_partner_notified in product_events.",
+    riskLevel: "low",
+    releaseEligible: true,
+  },
+  {
     // TRAMA — RITORNO ALLA HOME DOPO UNA PAUSA (20/10/2026). NEW, solo lato
     // telefono (nessun dato salvato sul server): ricorda in locale l'ora e la
     // pagina lasciate.

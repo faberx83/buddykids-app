@@ -145,7 +145,10 @@ export async function setResponsibilityAction(
   );
 
   if (error) return { error: error.message };
-  revalidatePath(PLANNER_PATH);
+  // 20/10/2026 — CHI ACCOMPAGNA PIÙ VELOCE: niente revalidatePath qui. Il
+  // Planner V2 aggiorna la scelta subito in locale e ricarica alla chiusura
+  // del foglio; il Planner di prima tiene già il suo stato locale. Prima ogni
+  // tocco aspettava il ridisegno dell'intero Planner (1–2 secondi).
   return {};
 }
 
@@ -173,7 +176,10 @@ export async function clearResponsibilityAction(
     .eq("moment", moment);
 
   if (error) return { error: error.message };
-  revalidatePath(PLANNER_PATH);
+  // 20/10/2026 — CHI ACCOMPAGNA PIÙ VELOCE: niente revalidatePath qui. Il
+  // Planner V2 aggiorna la scelta subito in locale e ricarica alla chiusura
+  // del foglio; il Planner di prima tiene già il suo stato locale. Prima ogni
+  // tocco aspettava il ridisegno dell'intero Planner (1–2 secondi).
   return {};
 }
 
@@ -243,4 +249,57 @@ export async function setWeekBulkResponsibilityAction(
   if (error) return { error: error.message };
   revalidatePath(PLANNER_PATH);
   return {};
+}
+
+// TRAMA — CHI ACCOMPAGNA PIÙ VELOCE (20/10/2026): "applica a tutto
+// l'impegno". Stessa scrittura di setResponsibilityAction, per più giorni di
+// un figlio in un colpo solo (una sola upsert). I giorni li calcola il foglio
+// con otherDaysOfCommitments (lib/nextgen/assign-plus.ts): qui si controlla
+// solo che siano date valide, feriali, al massimo 200.
+export async function setResponsibilityForDatesAction(
+  kidId: string,
+  dates: string[],
+  moment: Moment,
+  responsible: ResponsibleValue,
+  responsibleLabel?: string,
+  familyPersonId?: string
+): Promise<{ error?: string; count?: number }> {
+  if (!isSupabaseConfigured) return { error: "Supabase non configurato" };
+  if (responsible === "altro" && !responsibleLabel?.trim()) return { error: "Scrivi chi se ne occupa" };
+  const unique = Array.from(new Set(dates)).filter((d) => /^\d{4}-\d{2}-\d{2}$/.test(d));
+  if (unique.length === 0) return { count: 0 };
+  if (unique.length > 200) return { error: "Troppi giorni in una volta" };
+
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { error: "Non autenticato" };
+
+  const resolvedFamilyPersonId = await resolveFamilyPersonId(supabase, user.id, responsible, responsibleLabel, familyPersonId);
+  const now = new Date().toISOString();
+  const rows = unique.flatMap((iso) => {
+    const d = new Date(iso + "T00:00:00Z");
+    const offset = (d.getUTCDay() + 6) % 7; // 0 = lunedì
+    const wd = WEEKDAYS.find((w) => w.dayOffset === offset);
+    if (!wd) return []; // sabato/domenica: week_responsibilities conosce solo lun–ven
+    d.setUTCDate(d.getUTCDate() - offset);
+    return [
+      {
+        parent_id: user.id,
+        kid_id: kidId,
+        week_start_date: d.toISOString().slice(0, 10),
+        weekday: wd.value,
+        moment,
+        responsible,
+        responsible_label: responsible === "altro" ? responsibleLabel!.trim() : null,
+        ...(responsible === "altro" ? { family_person_id: resolvedFamilyPersonId } : {}),
+        updated_at: now,
+      },
+    ];
+  });
+  if (rows.length === 0) return { count: 0 };
+  const { error } = await supabase.from("week_responsibilities").upsert(rows, { onConflict: "parent_id,kid_id,week_start_date,weekday,moment" });
+  if (error) return { error: error.message };
+  return { count: rows.length };
 }

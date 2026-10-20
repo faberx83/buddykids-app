@@ -23,7 +23,7 @@
 // esistenti (setResponsibilityAction, clearResponsibilityAction,
 // toggleWeekDismissedAction, createPlanShareAction).
 
-import { Component, useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { Component, useCallback, useEffect, useMemo, useRef, useState, type Dispatch, type ReactNode, type SetStateAction } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { goBackInApp } from "@/lib/nextgen/in-app-history";
@@ -66,7 +66,14 @@ import { computeRolesToCover } from "@/lib/nextgen/week-roles";
 import { closureRangeLabel } from "@/lib/nextgen/holiday-summary";
 import { defaultDateForWeek, newExternalItemHref } from "@/lib/planner/new-external-item-link";
 import { useCloseOnBack } from "@/lib/nextgen/use-close-on-back";
-import { setResponsibilityAction, clearResponsibilityAction, setWeekBulkResponsibilityAction } from "@/app/actions/responsibilities";
+import {
+  setResponsibilityAction,
+  clearResponsibilityAction,
+  setWeekBulkResponsibilityAction,
+  setResponsibilityForDatesAction,
+} from "@/app/actions/responsibilities";
+import { notifyPartnerAssignmentsAction } from "@/app/actions/assign-notify";
+import { otherDaysOfCommitments, shortDayIt, isPartnerChoice, type AssignChange, type CommitmentDays } from "@/lib/nextgen/assign-plus";
 import { toggleWeekDismissedAction } from "@/app/actions/profile";
 import { setSchoolCalendarOverrideAction, clearSchoolCalendarOverrideAction } from "@/app/actions/school-calendar";
 import { notNeededKey, weekdaysOfWeek, type ClosureNotNeeded } from "@/lib/nextgen/closure-not-needed";
@@ -139,6 +146,8 @@ export default function PlannerV2Client({
   groups,
   savedCount,
   navV2Enabled,
+  assignPlusEnabled = false,
+  partnerOnTrama = false,
   showDiagnostics = false,
   calendarExportEnabled,
   calendarExportItems,
@@ -170,6 +179,10 @@ export default function PlannerV2Client({
   groups: GroupItem[];
   savedCount: number;
   navV2Enabled: boolean;
+  /** 20/10/2026 — release "chi-accompagna-veloce" (CHI_ACCOMPAGNA_PLUS_ENABLED). */
+  assignPlusEnabled?: boolean;
+  /** L'altro genitore è nella stessa famiglia su TRAMA (riceve la notifica). */
+  partnerOnTrama?: boolean;
   showDiagnostics?: boolean;
   calendarExportEnabled: boolean;
   calendarExportItems: PlannerCalendarItemForIcs[];
@@ -612,6 +625,10 @@ export default function PlannerV2Client({
           kidNameById={kidNameById}
           kidFilter={kidFilter}
           onChange={setResponsibilities}
+          todayIso={todayIso}
+          plusEnabled={assignPlusEnabled}
+          partnerOnTrama={partnerOnTrama}
+          onShareWeek={shareWeek}
           ownHistoryEntry={!assignFromLink.current}
           onClose={() => {
             setPanel(null);
@@ -1395,6 +1412,10 @@ function AssignSheet({
   kidFilter,
   onChange,
   onClose,
+  todayIso,
+  plusEnabled = false,
+  partnerOnTrama = false,
+  onShareWeek,
   ownHistoryEntry = true,
 }: {
   day: WeekDayModel | null;
@@ -1406,14 +1427,31 @@ function AssignSheet({
   externalItems: AgendaExternalInput[];
   kidNameById: Record<string, string>;
   kidFilter: string | null;
-  onChange: (next: WeekResponsibility[]) => void;
+  /** setState del Planner: accetta anche una funzione (aggiornamenti in sequenza). */
+  onChange: Dispatch<SetStateAction<WeekResponsibility[]>>;
   onClose: () => void;
+  todayIso: string;
+  /** 20/10/2026 — "chi-accompagna-veloce": tutto l'impegno, inviti, notifica. */
+  plusEnabled?: boolean;
+  partnerOnTrama?: boolean;
+  onShareWeek?: () => void;
   ownHistoryEntry?: boolean;
 }) {
   const showToast = useNextgenToast();
-  const [busyKey, setBusyKey] = useState<string | null>(null);
   const [otherFor, setOtherFor] = useState<string | null>(null);
   const [otherText, setOtherText] = useState("");
+  // 20/10/2026 — CHI ACCOMPAGNA PIÙ VELOCE. Prima ogni tocco aspettava il
+  // server (e il ridisegno del Planner) con la riga bloccata: ora la scelta si
+  // vede subito e si salva dietro; se il salvataggio fallisce torna com'era.
+  // seqRef: per ogni passaggio conta solo la risposta dell'ultimo tocco.
+  const seqRef = useRef<Record<string, number>>({});
+  // Ultima scelta fatta: sotto quel passaggio compaiono le proposte
+  // (tutto l'impegno, invita l'altro genitore, manda il piano).
+  const [offer, setOffer] = useState<AssignOffer | null>(null);
+  const [applyingAll, setApplyingAll] = useState(false);
+  // Passaggi affidati o tolti all'altro genitore in questo giro: una sola
+  // notifica alla chiusura del foglio.
+  const partnerChanges = useRef<AssignChange[]>([]);
   if (!day) return null;
   const weekday = WEEKDAYS.find((w) => addDaysIso(mondayIso, w.dayOffset) === day.dateIso)?.value ?? null;
   if (!weekday) return null;
@@ -1425,25 +1463,23 @@ function AssignSheet({
     return responsibilities.find((r) => r.kidId === kidId && r.weekStartDate === mondayIso && r.weekday === weekday && r.moment === moment);
   }
 
-  async function choose(kidId: string, moment: Moment, opt: ResponsibleOption | null, label?: string) {
+  const sameSlot = (r: WeekResponsibility, kidId: string, week: string, wd: Weekday, moment: Moment) =>
+    r.kidId === kidId && r.weekStartDate === week && r.weekday === wd && r.moment === moment;
+
+  function close() {
+    const changes = partnerChanges.current;
+    partnerChanges.current = [];
+    if (plusEnabled && partnerOnTrama && changes.length > 0) void notifyPartnerAssignmentsAction(changes).catch(() => undefined);
+    onClose();
+  }
+
+  async function choose(kidId: string, kidName: string, moment: Moment, opt: ResponsibleOption | null, label?: string) {
     const key = `${kidId}__${moment}`;
-    setBusyKey(key);
-    const rest = responsibilities.filter(
-      (r) => !(r.kidId === kidId && r.weekStartDate === mondayIso && r.weekday === weekday && r.moment === moment)
-    );
-    try {
-      if (opt === null) {
-        const res = await clearResponsibilityAction(kidId, mondayIso, weekday!, moment);
-        if (res.error) return showToast(res.error);
-        onChange(rest);
-        return;
-      }
-      const res = await setResponsibilityAction(kidId, mondayIso, weekday!, moment, opt.value, label ?? opt.label, opt.familyPersonId);
-      if (res.error) return showToast(res.error);
-      markFirstUsefulAction("chi_porta");
-      onChange([
-        ...rest,
-        {
+    const seq = (seqRef.current[key] ?? 0) + 1;
+    seqRef.current[key] = seq;
+    const before = current(kidId, moment) ?? null;
+    const next: WeekResponsibility | null = opt
+      ? {
           kidId,
           weekStartDate: mondayIso,
           weekday: weekday!,
@@ -1451,11 +1487,76 @@ function AssignSheet({
           responsible: opt.value,
           responsibleLabel: opt.value === "altro" ? (label ?? opt.label) : null,
           familyPersonId: opt.familyPersonId ?? null,
-        },
-      ]);
-    } finally {
-      setBusyKey(null);
+        }
+      : null;
+    // Subito a schermo.
+    onChange((cur) => [...cur.filter((r) => !sameSlot(r, kidId, mondayIso, weekday!, moment)), ...(next ? [next] : [])]);
+    if (plusEnabled && isPartnerChoice(before?.responsible) !== isPartnerChoice(next?.responsible)) {
+      partnerChanges.current.push({ dateIso: day!.dateIso, kidName, moment, assigned: isPartnerChoice(next?.responsible) });
     }
+    if (opt && plusEnabled) {
+      const commitments = otherDaysOfCommitments({ dateIso: day!.dateIso, todayIso, kidId, bookings, externalItems });
+      setOffer({ key, kidId, kidName, moment, opt, label, commitments });
+    } else if (!opt) {
+      setOffer((o) => (o?.key === key ? null : o));
+    }
+    // Poi il salvataggio, dietro.
+    const fail = { error: "Non siamo riusciti a salvare, riprova." };
+    const res = opt
+      ? await setResponsibilityAction(kidId, mondayIso, weekday!, moment, opt.value, label ?? opt.label, opt.familyPersonId).catch(() => fail)
+      : await clearResponsibilityAction(kidId, mondayIso, weekday!, moment).catch(() => fail);
+    if (seqRef.current[key] !== seq) return; // un tocco più recente ha già deciso
+    if (res.error) {
+      onChange((cur) => [...cur.filter((r) => !sameSlot(r, kidId, mondayIso, weekday!, moment)), ...(before ? [before] : [])]);
+      setOffer((o) => (o?.key === key ? null : o));
+      showToast(res.error);
+      return;
+    }
+    if (opt) markFirstUsefulAction("chi_porta");
+  }
+
+  async function applyToAll(c: CommitmentDays) {
+    if (!offer) return;
+    const { kidId, kidName, moment, opt, label } = offer;
+    setApplyingAll(true);
+    const rows: WeekResponsibility[] = c.dates.flatMap((iso) => {
+      const week = mondayOfIso(iso);
+      const wd = WEEKDAYS.find((w) => addDaysIso(week, w.dayOffset) === iso)?.value;
+      if (!wd) return [];
+      return [
+        {
+          kidId,
+          weekStartDate: week,
+          weekday: wd,
+          moment,
+          responsible: opt.value,
+          responsibleLabel: opt.value === "altro" ? (label ?? opt.label) : null,
+          familyPersonId: opt.familyPersonId ?? null,
+        },
+      ];
+    });
+    const previous = responsibilities;
+    onChange((cur) => [...cur.filter((r) => !rows.some((n) => sameSlot(r, n.kidId, n.weekStartDate, n.weekday, n.moment))), ...rows]);
+    const res: { error?: string } = await setResponsibilityForDatesAction(kidId, c.dates, moment, opt.value, label ?? opt.label, opt.familyPersonId).catch(
+      () => ({ error: "Non siamo riusciti a salvare, riprova." })
+    );
+    setApplyingAll(false);
+    if (res.error) {
+      onChange(previous);
+      showToast(res.error);
+      return;
+    }
+    if (isPartnerChoice(opt.value)) {
+      for (const n of rows) {
+        const was = previous.find((r) => sameSlot(r, n.kidId, n.weekStartDate, n.weekday, n.moment));
+        if (!isPartnerChoice(was?.responsible)) {
+          const offset = WEEKDAYS.find((w) => w.value === n.weekday)?.dayOffset ?? 0;
+          partnerChanges.current.push({ dateIso: addDaysIso(n.weekStartDate, offset), kidName, moment, assigned: true });
+        }
+      }
+    }
+    showToast(`Fatto: ${label ?? opt.label} anche negli altri ${c.dates.length === 1 ? "giorno" : `${c.dates.length} giorni`}`);
+    setOffer((o) => (o ? { ...o, commitments: o.commitments.filter((x) => x.key !== c.key) } : o));
   }
 
   // "altro" con una persona salvata: si confronta la persona; "Altro…" libero
@@ -1464,7 +1565,7 @@ function AssignSheet({
     Boolean(r) && r!.responsible === o.value && (o.value !== "altro" || r!.familyPersonId === o.familyPersonId);
 
   return (
-    <Sheet title={`Chi accompagna · ${day.label}`} onClose={onClose} ownHistoryEntry={ownHistoryEntry}>
+    <Sheet title={`Chi accompagna · ${day.label}`} onClose={close} ownHistoryEntry={ownHistoryEntry}>
       <div className="flex flex-col gap-5">
         {kidsToday.length === 0 && <p className="text-[13.5px] text-ink-2">Nessun passaggio da organizzare in questa giornata.</p>}
         {kidsToday.map((kid) => (
@@ -1482,7 +1583,7 @@ function AssignSheet({
                   <span className="text-[12px] font-semibold text-ink-2">
                     {mo.value === "andata" ? "Porta" : "Ritira"}
                   </span>
-                  <div className="flex flex-wrap gap-1.5" aria-busy={busyKey === key}>
+                  <div className="flex flex-wrap gap-1.5">
                     {options
                       .filter((o) => !(o.value === "altro" && !o.familyPersonId))
                       .map((o) => {
@@ -1491,9 +1592,8 @@ function AssignSheet({
                           <button
                             key={`${o.value}-${o.familyPersonId ?? ""}`}
                             type="button"
-                            disabled={busyKey === key}
                             aria-pressed={selected}
-                            onClick={() => choose(kid.kidId, mo.value, selected ? null : o)}
+                            onClick={() => void choose(kid.kidId, kid.kidName, mo.value, selected ? null : o)}
                             className={`min-h-[38px] rounded-full px-3.5 text-[13px] font-semibold disabled:opacity-60 ${
                               selected ? "bg-trama-navy text-white" : "border border-[#E3E6EC] bg-white text-ink"
                             }`}
@@ -1504,7 +1604,6 @@ function AssignSheet({
                       })}
                     <button
                       type="button"
-                      disabled={busyKey === key}
                       aria-pressed={Boolean(freeLabel)}
                       onClick={() => {
                         setOtherFor(key);
@@ -1525,7 +1624,7 @@ function AssignSheet({
                         const text = otherText.trim();
                         if (!text) return;
                         const generic = options.find((o) => o.value === "altro" && !o.familyPersonId);
-                        if (generic) void choose(kid.kidId, mo.value, generic, text);
+                        if (generic) void choose(kid.kidId, kid.kidName, mo.value, generic, text);
                         setOtherFor(null);
                       }}
                     >
@@ -1544,16 +1643,121 @@ function AssignSheet({
                       </button>
                     </form>
                   )}
+                  {offer?.key === key && plusEnabled && (
+                    <AssignOfferRow
+                      offer={offer}
+                      applying={applyingAll}
+                      partnerOnTrama={partnerOnTrama}
+                      onApply={(c) => void applyToAll(c)}
+                      onShareWeek={onShareWeek}
+                      onDismiss={() => setOffer(null)}
+                    />
+                  )}
                 </div>
               );
             })}
           </div>
         ))}
-        <button type="button" onClick={onClose} className="min-h-[48px] rounded-[12px] bg-trama-primary text-[14px] font-bold text-white active:bg-trama-primary-press">
+        <button type="button" onClick={close} className="min-h-[48px] rounded-[12px] bg-trama-primary text-[14px] font-bold text-white active:bg-trama-primary-press">
           Fatto
         </button>
       </div>
     </Sheet>
+  );
+}
+
+// 20/10/2026 — proposte dopo una scelta in "Chi accompagna" (release
+// "chi-accompagna-veloce"): tutto l'impegno, invito all'altro genitore se non
+// è su TRAMA, piano da mandare a chi non ha l'app.
+interface AssignOffer {
+  key: string;
+  kidId: string;
+  kidName: string;
+  moment: Moment;
+  opt: ResponsibleOption;
+  label?: string;
+  commitments: CommitmentDays[];
+}
+
+function AssignOfferRow({
+  offer,
+  applying,
+  partnerOnTrama,
+  onApply,
+  onShareWeek,
+  onDismiss,
+}: {
+  offer: AssignOffer;
+  applying: boolean;
+  partnerOnTrama: boolean;
+  onApply: (c: CommitmentDays) => void;
+  onShareWeek?: () => void;
+  onDismiss: () => void;
+}) {
+  const who = offer.label ?? offer.opt.label;
+  const isPartner = offer.opt.value === "partner";
+  const isOutside = offer.opt.value !== "io" && !isPartner;
+  const items: ReactNode[] = [];
+  for (const c of offer.commitments) {
+    const last = c.dates[c.dates.length - 1];
+    items.push(
+      <div key={c.key} className="flex flex-wrap items-center gap-x-2 gap-y-1.5">
+        <span className="min-w-0 flex-1 text-[13px] leading-snug text-ink">
+          Anche {c.dates.length === 1 ? "l'altro giorno" : `gli altri ${c.dates.length} giorni`} di <b className="font-semibold">{c.title}</b>
+          {c.dates.length > 1 ? ` (fino a ${shortDayIt(last)})` : ` (${shortDayIt(last)})`}?
+        </span>
+        <button
+          type="button"
+          disabled={applying}
+          onClick={() => onApply(c)}
+          className="min-h-[40px] rounded-[12px] bg-trama-primary px-3.5 text-[13px] font-bold text-white active:bg-trama-primary-press disabled:opacity-60"
+        >
+          {applying ? "Un attimo…" : "Sì, applica"}
+        </button>
+      </div>
+    );
+  }
+  if (isPartner && !partnerOnTrama) {
+    items.push(
+      <p key="invita" className="text-[13px] leading-snug text-ink-2">
+        {who} non è ancora su TRAMA.{" "}
+        <Link href="/nextgen/profile/famiglia" className="font-semibold text-trama-accent-ink">
+          Invita {who}
+        </Link>
+        : vedrete lo stesso Planner e riceverà un avviso per i passaggi affidati.
+      </p>
+    );
+  } else if (isPartner && partnerOnTrama) {
+    items.push(
+      <p key="avviso" className="flex items-center gap-1.5 text-[12.5px] text-ink-2">
+        <i className="ti ti-bell" aria-hidden="true" />
+        Quando chiudi, {who} riceve un avviso con i passaggi affidati.
+      </p>
+    );
+  }
+  if (isOutside && onShareWeek) {
+    items.push(
+      <div key="piano" className="flex flex-wrap items-center gap-x-2 gap-y-1.5">
+        <span className="min-w-0 flex-1 text-[13px] leading-snug text-ink">{who} non usa TRAMA? Manda il piano della settimana.</span>
+        <button
+          type="button"
+          onClick={onShareWeek}
+          className="min-h-[40px] rounded-[12px] border border-[#D9DDE5] bg-white px-3.5 text-[13px] font-semibold text-trama-primary active:bg-black/[0.03]"
+        >
+          <i className="ti ti-share mr-1" aria-hidden="true" />
+          Manda il piano
+        </button>
+      </div>
+    );
+  }
+  if (items.length === 0) return null;
+  return (
+    <div className="mt-1 flex flex-col gap-2 rounded-[12px] bg-trama-primary-soft px-3 py-2.5" data-testid="assign-offer">
+      {items}
+      <button type="button" onClick={onDismiss} className="min-h-[32px] self-end text-[12.5px] font-semibold text-ink-2">
+        Non ora
+      </button>
+    </div>
   );
 }
 
