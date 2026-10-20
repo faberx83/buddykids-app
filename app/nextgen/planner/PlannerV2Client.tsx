@@ -60,7 +60,7 @@ import {
   joinItalian,
   type WeekDayModel,
 } from "@/lib/nextgen/planner-week";
-import { buildSeasonRows, coverageByKid, type SeasonFilter, type SeasonRow } from "@/lib/nextgen/planner-season";
+import { buildSeasonRows, coverageByKid, savedForWeek, type SeasonFilter, type SeasonRow } from "@/lib/nextgen/planner-season";
 import { buildSeasonSummary, periodTitleForSeason, type PeriodWeekState, type SeasonSummaryModel } from "@/lib/nextgen/season-summary";
 import { computeRolesToCover } from "@/lib/nextgen/week-roles";
 import { closureRangeLabel } from "@/lib/nextgen/holiday-summary";
@@ -145,6 +145,7 @@ export default function PlannerV2Client({
   communities,
   groups,
   savedCount,
+  savedPending = [],
   navV2Enabled,
   assignPlusEnabled = false,
   partnerOnTrama = false,
@@ -178,6 +179,8 @@ export default function PlannerV2Client({
   communities: CommunityItem[];
   groups: GroupItem[];
   savedCount: number;
+  /** 20/10/2026: salvati non ancora nel Planner, con le date in cui sono disponibili. */
+  savedPending?: { title: string; ranges: { startDate: string; endDate: string }[] }[];
   navV2Enabled: boolean;
   /** 20/10/2026 — release "chi-accompagna-veloce" (CHI_ACCOMPAGNA_PLUS_ENABLED). */
   assignPlusEnabled?: boolean;
@@ -492,24 +495,38 @@ export default function PlannerV2Client({
         </div>
       )}
 
-      {/* SALVATI */}
-      {savedCount > 0 && (
-        <Link href="/nextgen/preferiti" className="flex items-center gap-3 rounded-2xl bg-[#F6F4EF] px-3.5 py-3 text-ink active:scale-[0.99]">
-          <span className="relative flex h-[34px] w-[34px] items-center justify-center rounded-[10px] bg-white text-trama-navy">
-            <i className="ti ti-bookmark text-[18px]" aria-hidden="true" />
-            <span className="absolute -right-[5px] -top-[5px] flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-trama-navy px-1 text-[10.5px] font-bold text-white ring-2 ring-[#F6F4EF]">
-              {savedCount}
-            </span>
-          </span>
-          <span className="flex min-w-0 flex-1 flex-col gap-px">
-            <span className="text-[14px] font-semibold">Salvati</span>
-            <span className="text-[12.5px] text-[#4B5563]">
-              {savedCount === 1 ? "1 attività non ancora nel Planner" : `${savedCount} attività non ancora nel Planner`}
-            </span>
-          </span>
-          <i className="ti ti-chevron-right text-[18px] text-ink-2" aria-hidden="true" />
-        </Link>
-      )}
+      {/* SALVATI (20/10/2026, Fabrizio: "serve? dipende dalla disponibilità o
+          dalla necessità della famiglia, altrimenti no"). Nella Settimana
+          compare solo se un salvato è disponibile in quei giorni, e dice se
+          copre una giornata ancora scoperta. Nella Stagione resta il
+          conteggio di prima. */}
+      {(() => {
+        if (savedCount === 0) return null;
+        if (view === "settimana") {
+          const uncoveredDates = week.days
+            .filter((d) => d.closureLabels.length > 0 && !d.isPast && !d.isWeekend)
+            .filter((d) => kids.some((k) => !(d.allKidIds ?? d.kidIds).includes(k.id) && !handledClosureDays.has(`${k.id}|${d.dateIso}`)))
+            .map((d) => d.dateIso);
+          const { items, coversNeed } = savedForWeek(savedPending, monday, uncoveredDates);
+          if (items.length === 0) return null;
+          const names = items.map((i) => i.title).filter(Boolean);
+          return (
+            <SavedCard
+              count={items.length}
+              title={coversNeed ? "Salvati che coprono la scuola chiusa" : "Salvati liberi questa settimana"}
+              detail={names.length === 1 ? names[0] : `${names.slice(0, 2).join(", ")}${names.length > 2 ? ` e altri ${names.length - 2}` : ""}`}
+              highlight={coversNeed}
+            />
+          );
+        }
+        return (
+          <SavedCard
+            count={savedCount}
+            title="Salvati"
+            detail={savedCount === 1 ? "1 attività non ancora nel Planner" : `${savedCount} attività non ancora nel Planner`}
+          />
+        );
+      })()}
 
       {view === "settimana" ? (
         <WeekView
@@ -655,6 +672,28 @@ function HeaderTool({ icon, label, onClick }: { icon: string; label: string; onC
       <i className={`ti ${icon} text-[20px]`} aria-hidden="true" />
       {label}
     </button>
+  );
+}
+
+function SavedCard({ count, title, detail, highlight = false }: { count: number; title: string; detail: string; highlight?: boolean }) {
+  return (
+    <Link
+      href="/nextgen/preferiti"
+      className={`flex items-center gap-3 rounded-2xl px-3.5 py-3 text-ink active:scale-[0.99] ${highlight ? "bg-[#FFF8EB]" : "bg-[#F6F4EF]"}`}
+      data-testid="planner-saved-card"
+    >
+      <span className="relative flex h-[34px] w-[34px] items-center justify-center rounded-[10px] bg-white text-trama-navy">
+        <i className="ti ti-bookmark text-[18px]" aria-hidden="true" />
+        <span className="absolute -right-[5px] -top-[5px] flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-trama-navy px-1 text-[10.5px] font-bold text-white ring-2 ring-[#F6F4EF]">
+          {count}
+        </span>
+      </span>
+      <span className="flex min-w-0 flex-1 flex-col gap-px">
+        <span className="text-[14px] font-semibold">{title}</span>
+        <span className="truncate text-[12.5px] text-[#4B5563]">{detail}</span>
+      </span>
+      <i className="ti ti-chevron-right text-[18px] text-ink-2" aria-hidden="true" />
+    </Link>
   );
 }
 

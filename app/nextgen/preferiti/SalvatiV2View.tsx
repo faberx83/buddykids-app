@@ -22,11 +22,15 @@ export default function SalvatiV2View({
   favorites,
   kids,
   plannerEnabled,
+  bookedActivityDbIds = [],
 }: {
   favorites: UnifiedFavoriteItem[];
   kids: Kid[];
   plannerEnabled: boolean;
+  /** 20/10/2026: le attività salvate già prenotate mostrano "Già prenotata" (lo stato vero è in Prenotazioni). */
+  bookedActivityDbIds?: string[];
 }) {
+  const booked = new Set(bookedActivityDbIds);
   const router = useRouter();
   const count = favorites.length;
   return (
@@ -69,7 +73,19 @@ export default function SalvatiV2View({
         <div className="flex flex-col gap-3">
           {favorites.map((item) =>
             item.kind === "partner" ? (
-              <DiscoverResultCard key={`partner-${item.activity.id}`} activity={item.activity} reasons={[]} distanceKm={null} initialFavorite />
+              <div key={`partner-${item.activity.id}`} className="flex flex-col gap-1.5">
+                {item.activity.dbId && booked.has(item.activity.dbId) && (
+                  <Link
+                    href="/nextgen/prenotazioni"
+                    className="flex min-h-[36px] items-center gap-1.5 self-start rounded-full bg-[#E6F6F0] px-3 text-[12.5px] font-semibold text-[#146B4F]"
+                    data-testid="saved-booked"
+                  >
+                    <i className="ti ti-check text-[14px]" aria-hidden="true" />
+                    Già prenotata · vedi la prenotazione
+                  </Link>
+                )}
+                <DiscoverResultCard activity={item.activity} reasons={[]} distanceKm={null} initialFavorite />
+              </div>
             ) : item.kind === "community" ? (
               <CommunityDiscoveryCard key={`community-${item.discovery.id}`} discovery={item.discovery} initialFavorite v2 />
             ) : (

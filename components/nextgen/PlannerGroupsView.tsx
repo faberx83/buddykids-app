@@ -46,8 +46,15 @@ function CommunityCard({ community, v2 = false }: { community: CommunityItem; v2
           <span>·</span>
           <span>{ROLE_LABEL[community.myRole]}</span>
         </div>
+        {/* 20/10/2026 — V2: la proposta va sotto, su una riga sua (Fabrizio:
+            "c'è una sovrapposizione": a destra schiacciava nome e famiglie). */}
+        {v2 && community.activeProposalsCount > 0 && (
+          <span className="mt-1.5 inline-flex rounded-full bg-trama-accent-soft px-2.5 py-0.5 text-[12px] font-semibold text-trama-accent-ink">
+            {community.activeProposalsCount === 1 ? "1 proposta per un Gruppo" : `${community.activeProposalsCount} proposte per un Gruppo`}
+          </span>
+        )}
       </div>
-      {community.activeProposalsCount > 0 && (
+      {!v2 && community.activeProposalsCount > 0 && (
         <span className="flex-shrink-0 rounded-full bg-trama-lilac/20 px-2.5 py-1 text-[11px] font-bold text-trama-violet">
           {community.activeProposalsCount} proposta{community.activeProposalsCount === 1 ? "" : "e"} pronta
           {community.activeProposalsCount === 1 ? "" : "e"} per un Gruppo
