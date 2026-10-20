@@ -1,87 +1,112 @@
 # TRAMA — Roadmap
 
-23/09/2026. Questo documento **sostituisce `docs/trama-one/analysis/TRAMA_BETA_ROADMAP_EXTERNAL.md`** come riferimento roadmap principale. È costruito sopra `docs/trama-one/STATE_OF_THE_ART.md`, verificato lo stesso giorno contro codice sorgente e query dirette (read-only) sul DB di produzione Supabase — non è una riscrittura stilistica della vecchia roadmap, ogni "stato attuale" qui sotto è allineato a quanto effettivamente verificato in quel documento, non a quanto la roadmap precedente dava per assunto.
-
-Come la vecchia roadmap, resta un documento prodotto per Partner/famiglie: non contiene backlog tecnico puro (migration, RLS, refactoring, debito tecnico, observability, framework di test) salvo dove quel debito è esso stesso un blocker per andare oltre la Beta — vedi sezione dedicata sotto.
-
----
-
-## PRIVATE BETA — SETTEMBRE (stato attuale)
-
-Ciò che è realmente disponibile oggi, verificato contro codice e DB live (`STATE_OF_THE_ART.md`, 23/09/2026):
-
-- Iscrizione famiglia, gestione base figli, Planner (settimana/famiglia/indirizzi/logistica/promemoria — promemoria con persistenza reale, non più stato locale), Ricerca con filtri avanzati, richiesta prenotazione, risposta del centro (intera/per-giorno/alternativa), gestione prenotazioni, gruppi/community, condivisione piano (link pubblico senza login), segnalazioni.
-- Per i Partner: candidatura assistita, verifica identità assistita (schema pronto, upload documento **non collegato** per decisione esplicita DEC-22 — non è un gap, è una scelta di scope), gestione completa attività/calendario/prezzi/capacità (con race condition su `spots_left` **risolta** via Compare-And-Swap applicativo e test di regressione dedicato — verificata staticamente, non ancora sotto carico concorrente reale), inbox richieste, risposta a prenotazioni, cancellazioni/rimborsi per giorno.
-- Assistenza diretta TRAMA per: notifiche (email non ancora attive in modo verificabile — vedi blocker sotto), spegnimento di un'attività, cancellazione account.
-- **Discovery Map**: ciclo di bugfix live completo e deployato con successo (commit `fa121ca` → `1f0e0ea`, confermato su `deploy_events`), verificato dal vivo da Fabrizio: basemap OpenStreetMap stabile, legenda sempre visibile senza scroll, 3 tipologie di marker con popup dedicati (TRAMA/Da invitare/Fonte pubblica), filtro Copertura con semantica corretta, chip Età/Servizi/Prezzo con stato attivo visibile, bell/chat mai sopra i marker, X per svuotare la ricerca.
-- **Non ancora deployato in produzione**: fix del chip Età che mostrava fantasma `(0-0)` all'apertura della Mappa (commit `6f44ef7`, root cause: `Number(null)` coercizzato a `0` invece di `NaN`). Il branch locale è avanti di 3 commit rispetto a `origin/main` (`e3d5451`, `d75db9c`, `6f44ef7`) — questo fix è pronto ma **in attesa di push/deploy**, non ancora verificabile live.
-- **Curated Favorites + Novità TRAMA (23/09/2026, POST-DISCOVERY CONSOLIDATION)**: implementate — cuore anche su Scoperta TRAMA (non solo Partner), Preferiti ora un'unica lista Partner+Curated con transizione automatica Curated→Partner senza duplicati; annunci prodotto (Notification Center + callout contestuale su Scopri + pagina storico `/nextgen/novita`), gated per audience/feature flag, mai un annuncio anticipato su una capability ancora internal-preview. Migration `supabase/migration_38_curated_favorites_and_announcements.sql` **APPLICATA in produzione** (commit `6e36f07`, dopo la stesura originale di questa riga — vedi nota DOCUMENTATION BASELINE nel report EXTERNAL PLANNER ITEMS).
-- **External Planner Items (28/09/2026)**: implementato — il Planner rappresenta impegni familiari fuori da una prenotazione TRAMA (manuali o aggiunti da una Scoperta TRAMA, snapshot al momento dell'aggiunta). Mai un fake booking/Partner/availability. Non contribuisce ad Activity/Coordination Coverage/WeekStatus/School Calendar in questo rilascio (regola conservativa deliberata). Migration `supabase/migration_39_external_planner_items.sql` **APPLICATA in produzione** (commit `b216ce8`, dopo la stesura originale di questa riga — vedi nota DOCUMENTATION BASELINE nel report EXTERNAL PLANNER ITEMS), dietro `cohort:internal-preview` (flag `EXTERNAL_PLANNER_ITEMS_ENABLED`, prima registrato come PLACEHOLDER, ora risolto per davvero). Ricorrenza settimanale semplice NON implementata in questo rilascio (solo one-off + multi-day) — classificata **P1 immediato**, vedi sezione dedicata sotto.
-- **External Planner Items — live UX fix pass (28/09/2026)**: 4 problemi emersi in live validation, tutti corretti — (1) visibilità nel Calendario Planner (la vista visuale non riceveva mai gli item, root cause una prop mai passata da `PlannerClient.tsx` a `PlannerCalendarView`, non un bug di dati/query); (2) rimozione ora ottimistica (spariva solo dopo il round-trip completo del Server Action); (3) "Aggiungi al Planner" ora chiede sempre le date quando la Scoperta non le conosce, invece di un fallback silenzioso a "oggi" (la CTA stessa non era mai stata gated dalla presenza di date, verificato); (4) polish leggero del layout calendario (legenda, navigazione "Vai a oggi", agenda giorno più leggibile). Nessuna migration necessaria per questo pass. Regola di Coverage conservativa **invariata e riverificata**: gli External Planner Item restano visibili nel calendario ma non contano mai per Activity/Coordination Coverage.
+**Aggiornata il 20/10/2026.** Sostituisce la versione del 23/09/2026, ora in `archive/superseded-versions/ROADMAP_20260923.md`.
+**Documenti collegati:** `LANCIO_BETA_20NOV.md` (stato e piano dei 31 giorni), `PREMORTEM.md` (pre-mortem della beta), `GUIDA_FAMIGLIE_BETA.md`.
 
 ---
 
-## Blocker pre-crescita / pre-produzione
+## Obiettivo ricentrato (20/10/2026)
 
-Non sono feature future: sono prerequisiti perché il prodotto possa uscire dal perimetro "Fabrizio + conoscenti" in modo sicuro e conforme. Onestamente, oggi il pilota **non ha dati di mercato reali** — tutti i 10 `profiles` in produzione sono account di Fabrizio o di conoscenti/famiglia (nessun utente acquisito via canale reale), quindi questa sezione conta più di qualunque voce POST-BETA per la prossima fase.
+**Prima le famiglie.** TRAMA deve essere utile a una famiglia anche se nessuno dei suoi centri è su TRAMA:
+- impegni e corsi della settimana;
+- ponti e vacanze della scuola;
+- chi accompagna e chi ritira;
+- condivisione con nonni e tata.
 
-| Blocker | Impatto | Urgenza |
+**I centri arrivano "per accerchiamento".** Le famiglie che usano TRAMA generano segnali sui centri che frequentano (impegni, suggerimenti, Radar, salvati). Quando un centro ha già 5–10 famiglie della sua zona, TRAMA gli porta un dato, non una promessa.
+
+**Modello economico in tre tempi:**
+1. beta gratuita con tutto acceso;
+2. freemium per le famiglie;
+3. solo dopo, commissione o canone per i centri, sul valore portato.
+
+Rispetto alla versione di settembre cambiano due cose:
+- l'obiettivo non è più "25–30 centri prima delle famiglie";
+- la beta non è più per singole funzioni: si lancia con tutto acceso, con missioni guidate.
+
+---
+
+## Fase 0 — Verso il lancio (21/10 → 20/11/2026)
+
+**Obiettivo:** 15–20 famiglie amiche, invitate per grappoli (2–3 classi o scuole), entrano il 20/11 senza intoppi e trovano un'app utile da subito.
+
+| Blocco | Cosa | Stato al 20/10 |
 |---|---|---|
-| Privacy Notice / Termini mai pubblicati (`legal_documents`=0 righe in produzione) | Il codice è onesto ("Documento in preparazione") ma non c'è alcun contenuto legale reale pubblicato — non conforme per un pilota con utenti esterni | ALTA — blocca qualunque acquisizione di utenti reali |
-| Vulnerabilità npm `high` (`sharp` <0.35.4, GHSA-rgj7-g3m4-5g8c) | Fix disponibile (`npm audit fix`), non applicato | ALTA — vulnerabilità di sicurezza nota e risolvibile, da chiudere prima di aprire il traffico |
-| `RESEND_API_KEY` non verificabile in produzione | Codice degrada senza rompersi (link/codice invito copiabile a mano dal Gestore), ma le notifiche email restano non confermate attive — solo Fabrizio/Vercel possono verificarlo | ALTA — condiziona sia la voce "Notifiche email automatiche" sotto sia l'esperienza Beta dichiarata |
-| Golden Journeys mai eseguiti sotto carico reale | 81 test su 124 file `.spec.ts` sono gated `isRealDeployment` (richiedono ambiente reale, non eseguibili in sandbox) — mai passati come PASS confermato | MEDIA — condizione nota da settimane, da chiudere prima di scalare oltre il Micro Pilot |
-| Zero dati pilota reali (solo dogfooding) | Nessuna validazione di mercato reale a oggi, nonostante 2 nuovi contatti esterni rispetto ad agosto/settembre | MEDIA — non un bug, ma un rischio di validazione da tenere esplicito prima di investire su feature POST-BETA |
-| Dati mock in dashboard Admin/Partner senza banner esplicativo confermato | Non riverificato voce per voce — con solo 8 attività/9 centri/20 prenotazioni alcune viste potrebbero sembrare "vuote" più che "mock", ma non è stato chiarito | BASSA/MEDIA — da chiarire con un'ispezione UI dedicata prima di mostrare le dashboard a Partner esterni |
-| Accessibilità non auditata | Nessuno strumento (axe/Lighthouse) eseguito, nessun pattern sistematico `aria-*` trovato nei componenti chiave ispezionati — stato "non verificato", non "confermato assente" | BASSA — da mettere in coda per un audit dedicato |
+| Catalogo | Via i centri di test; Scoperte TRAMA vere di novembre–gennaio; 3 centri di prova dichiarati; 1–2 centri veri amici | Da fare: oggi 0 date future |
+| Email | Registrazione e reset dal dominio (SMTP via Resend); prova reale delle email transazionali | Resend attivo; SMTP Supabase da fare |
+| Legale | Titolare definito, informative bozza 2 senza campi vuoti, un'ora con un legale | Bozza 1 pubblicata, titolare mancante |
+| Accessi | Nuovo codice beta; proroga della coorte al 30/06/2027 | Codice in scadenza il 01/12, coorte il 31/12 |
+| Infrastruttura | Vercel Pro, regione delle funzioni a Parigi, backup del database | Hobby, `iad1`, backup da verificare |
+| Notifiche | Prova reale di check-in, "Domani chi accompagna?", chiusure scolastiche, buongiorno | Job attivi, mai un invio reale |
+| Misura | Cruscotto beta settimanale; 5 interviste in calendario | Da fare |
+| Kit | Guida famiglie, messaggio WhatsApp, video brevi, teaser Instagram | Bozze pronte |
+| Congelamenti | Funzioni dal 27/10, codice dal 16/11 | — |
+
+**Già pronto (in produzione per la coorte beta):**
+- app famiglie V2 (Home, Planner Settimana e Stagione, +, Scopri, richiesta a 2 passi senza pagamento, Prenotazioni, Profilo e La tua famiglia, Classe e scuola);
+- impegni aggiunti a mano con Chi accompagna;
+- calendario scolastico (Lombardia/Milano, Puglia/Rutigliano);
+- Radar (AI simulata);
+- promemoria push;
+- consensi;
+- dominio `tramapp.it` con trasloco degli accessi;
+- pagina di benvenuto con lista d'attesa;
+- email transazionali.
+
+Solo in anteprima interna: il buongiorno di TRAMA e Chi accompagna plus.
 
 ---
 
-## POST-BETA / VALIDAZIONE Q4
+## Fase 1 — Beta famiglie (20/11/2026 → 31/01/2027)
 
-Capability già motivate dai primi use case reali della Beta, con dipendenze e confidenza dichiarate. Stati aggiornati secondo `STATE_OF_THE_ART.md`:
+**Obiettivo:** capire se le famiglie tornano e se coordinano davvero, e iniziare a vedere segnali sui centri.
 
-| Feature | Value proposition | Stato attuale | Dipendenza | Confidenza |
-|---|---|---|---|---|
-| Notifiche email automatiche | Ridurre il bisogno di contatto manuale per ogni evento | Codice pronto (`lib/email.ts`, degrada senza rompersi se manca la chiave); non verificabile da remoto se `RESEND_API_KEY` sia oggi impostata in produzione — vedi blocker sopra | Conferma/configurazione della chiave in produzione (verificabile solo da Fabrizio/Vercel) | HIGH |
-| Pubblicazione/sospensione attività autonoma | Dare ai Partner il controllo di mettere in pausa un'attività senza contattarci | Non esiste ancora | Decisione di design + piccola estensione dati | HIGH |
-| Modifica/cancellazione profilo figlio | Permettere correzioni senza contattare l'assistenza | Solo aggiunta esiste oggi | Estensione delle azioni esistenti | HIGH |
-| Accettazione parziale strutturata per prenotazioni a settimana | Dare ai Partner lo stesso livello di flessibilità già disponibile per le prenotazioni a giorno | Oggi solo un messaggio libero | Estensione del modello di risposta già esistente per i giorni | MEDIUM |
-| Dashboard analytics per Partner | Dare visibilità sulle proprie performance | Non esiste (solo lato Admin, e solo parzialmente) | Costruzione ex-novo | MEDIUM |
-| Calendario scolastico integrato al Planner | Aiutare le famiglie a pianificare attorno alle chiusure scolastiche | Struttura dati di base predisposta; flag `SCHOOL_CALENDAR_INTELLIGENCE_ENABLED` esiste ed è attivo per alcune cohort interne, ma il grado di completezza applicativa non è stato riverificato in questa sessione | Fonte dati chiusure scolastiche regionali/nazionali + logica Planner + verifica dedicata del flag | MEDIUM |
-| Cancellazione account con esportazione dati | Dare alle famiglie un controllo reale e conforme sui propri dati | Oggi solo disattivazione manuale | Pipeline di cancellazione/export dedicata | MEDIUM |
-| Filtro per tipo marker sulla Mappa Discovery (Centri TRAMA / Da invitare / Fonte pubblica) | Lasciare al genitore la scelta di quali categorie vedere, riducendo il rumore visivo su mappe affollate | Legenda statica sempre visibile (confermato ancora vero dopo il ciclo di bugfix di settembre), nessun filtro interattivo per tipo | Nuovo chip filtro + stato dedicato, integrato con la persistenza URL/restore della Mappa già esistente | MEDIUM |
-| Scelta della modalità/stile di visualizzazione della mappa | Dare controllo visivo/preferenza estetica sulla cartografia | Un solo stile (OpenStreetMap standard, oggi anche più stabile dopo il fix del basemap grigio), nessuna opzione di scelta | Valutazione di provider tile aggiuntivi compatibili con una usage policy verificata (vedi cronologia provider in `ActivityMap.tsx`) | LOW |
-| Zoom automatico sulla propria posizione con "Usa la mia posizione" | Centrare rapidamente la mappa sulla propria zona senza pan/zoom manuale | La posizione viene mostrata come marker, ma la mappa non si ricentra automaticamente su di essa — non toccato dal ciclo di bugfix di settembre | Piccola estensione del comportamento di fit esistente in `ActivityMap.tsx` | MEDIUM |
+- **Lancio a ondate:**
+  - 18/11: 5 famiglie;
+  - 20/11: le altre;
+  - gennaio: nuovi grappoli se i numeri reggono.
+- **Correzioni** solo da uso reale, con rilasci nei giorni fissati. Le novità passano 48 ore in anteprima interna prima di arrivare alla coorte.
+- **Candidati per dicembre**, in ordine, se emergono dall'uso:
+  1. impegni ricorrenti ("ogni martedì");
+  2. Chi accompagna nel weekend;
+  3. riepilogo "famiglie per centro";
+  4. porta finta "TRAMA Plus";
+  5. messaggi ai centri come conversazione.
+- **Decisione il 20/12** con i criteri del pre-mortem: Avanti, Correggere o Ripensare.
+
+## Fase 2 — Stagione estiva (febbraio → maggio 2027)
+
+**Obiettivo:** il caso d'uso più forte (organizzare l'estate) con centri veri.
+
+- Rilancio a fine gennaio: "Inizia a organizzare l'estate".
+- Scoperte estive pubblicate presto; primi centri veri nelle zone dei grappoli, entrati grazie ai segnali delle famiglie.
+- Finestra chiave: iscrizioni ai centri estivi comunali di Milano (marzo–aprile).
+- Verifica: al 31/03 almeno 3 centri veri con richieste reali dalle famiglie.
+
+## Fase 3 — Modello economico (da settembre 2027)
+
+- **Freemium famiglie:**
+  - gratis il cuore (Planner, impegni, Scopri, Chi accompagna);
+  - Plus da valutare (famiglia allargata, buongiorno avanzato, sincronizzazione calendario, storico);
+  - prezzo indicativo 2–4 €/mese, da validare con la porta finta della Fase 1.
+- **Centri:** commissione sulla richiesta confermata (3–5%) o canone leggero, solo dove TRAMA porta richieste reali.
+- **Da tenere aperto:** canali B2B2C (welfare aziendale, comuni, scuole). Il freemium da solo difficilmente sostiene il progetto.
+
+## Più avanti (senza date)
+
+- Accompagnamento/Ritiro completo e Deleghe (servono il parere legale e il QR dinamico).
+- Pagamenti in app.
+- Multi-sede per i centri.
+- Famiglie con più tutori non conviventi.
+- Restyle del portale centri.
+- App negli store.
 
 ---
 
-## SCALE / FUTURE
+## Debito da ridurre dopo la beta
 
-Capability strutturali per quando il prodotto cresce oltre la scala del Micro Pilot:
-
-| Feature | Value proposition | Stato attuale | Dipendenza | Confidenza |
-|---|---|---|---|---|
-| Multi-sede per un Partner | Permettere a un gestore con più centri di operare da un unico account | Non supportato architetturalmente oggi | Evoluzione del modello dati di proprietà del centro | MEDIUM |
-| Pagamenti in-app | Chiudere il ciclo prenotazione→pagamento dentro la piattaforma | Non esiste | Integrazione con un fornitore di pagamenti | LOW (nessuna data sostenibile oggi) |
-| Famiglia multi-tenant (più tutori non conviventi) | Supportare situazioni familiari più complesse | Modello famiglia attuale è a singolo nucleo (nota: `families`/`family_members`=0 righe in produzione, probabile percorso legacy; il percorso reale oggi è "Famiglia condivisa" su `family_people`) | Evoluzione dello schema dati Famiglia | LOW |
-
-Nessuna data d'arrivo viene indicata per le voci "Scale/Future": non ancora sostenibile.
-
----
-
-## PROSSIMO BLOCCO PRODOTTO PRINCIPALE
-
-Discovery V1 e School Calendar V1 restano **FREEZE** (Curated Favorites/Novità TRAMA/External Planner Items sono lavoro additivo, non una riapertura di quelle architetture). **EXTERNAL PLANNER ITEMS è ora IMPLEMENTED / INTERNAL PREVIEW** (28/09/2026) — vedi sezione PRIVATE BETA sopra per il dettaglio, e STATE_OF_THE_ART.md per l'audit completo. Non "done globalmente": resta dietro `cohort:internal-preview`. Migration `supabase/migration_39_external_planner_items.sql` **APPLICATA in produzione** (commit `b216ce8`) — questa riga era rimasta indietro rispetto alle sezioni sopra, corretta il 30/09/2026. **Da confermare con Fabrizio**: se il golden journey completo (EPI-L01..EPI-L22, `tests/one/external-planner-items.spec.ts`) è stato eseguito e chiuso, oltre al giro di fix UX live già documentato sopra.
-
-**P1 IMMEDIATO (subito dopo la live validation di External Planner Items)**: ricorrenza settimanale semplice ("ogni martedì dal 6/10 al 15/12") per gli impegni esterni — oggi solo one-off + multi-day. Non un RRULE editor complesso: la colonna `external_planner_items.recurrence_rule` (jsonb, forward-compatible) è già pronta nello schema, richiede solo la logica applicativa di espansione/edit-singola-occorrenza-vs-serie.
-
-Il prossimo blocco di prodotto importante dopo quel P1, **non ancora iniziato**, è:
-
-**ACCOMPAGNAMENTO/RITIRO** — chi accompagna e chi ritira un bambino per un impegno (TRAMA o esterno). A seguire, nello stesso filone Planner/coordinamento: Deleghe, Carpooling (evoluzione di quanto già esiste per i Gruppi), integrazione Gruppi più profonda, orchestrazione Notifiche, sync Calendario personale. External Planner Items è stato progettato per essere compatibile in avanti con tutti questi (identità stabile, timestamp, child/luogo/start-end già presenti) — vedi audit "FUTURE COMPATIBILITY" nel report EXTERNAL PLANNER ITEMS.
-
----
-
-## Nota
-
-Questo documento sostituisce `docs/trama-one/analysis/TRAMA_BETA_ROADMAP_EXTERNAL.md` come riferimento principale. Il vecchio file resta consultabile per lo storico delle decisioni ma non va più aggiornato.
+- Spegnere e togliere le interfacce non più usate (Legacy famiglie, parti di TRAMA ONE) e ridurre i feature flag.
+- Test end-to-end reali sui 5 percorsi chiave al posto di parte dei controlli statici sul sorgente.
+- Eventi di prodotto con un identificativo pseudonimo, per misurare il ritorno per famiglia.
+- Cancellazione account ed export dei dati self-service (oggi manuali).
+- Verifica del marchio "TRAMA".

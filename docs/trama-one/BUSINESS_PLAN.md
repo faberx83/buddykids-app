@@ -1,5 +1,7 @@
 # TRAMA — Business Plan (bozza)
 
+> **Aggiornamento 20/10/2026 — obiettivo ricentrato.** La sequenza di go-to-market cambia: **prima le famiglie** (beta a inviti dal 20/11/2026, tutte le funzioni accese, inviti per grappoli di classe o scuola), poi i centri "per accerchiamento" (i segnali delle famiglie portano i centri). Il modello economico va in tre tempi: beta gratuita, freemium per le famiglie, solo dopo commissione o canone sui centri. Dettaglio in `ROADMAP.md` e `LANCIO_BETA_20NOV.md` §8. Le sezioni 5–6 qui sotto restano come ipotesi di partenza, non come piano attuale.
+
 23/09/2026.
 
 Bozza scritta da Claude (agente AI) a partire dai documenti strategici di Fabrizio (*TRAMA Master Plan — Sintesi strategica e temi aperti*, v1.0, 13/07/2026; *TRAMA MVP Settembre 2026 — Competitive Intelligence Italia*, v1.1 Trust Layer, 16/07/2026) e dallo stato verificato del prodotto (`docs/trama-one/STATE_OF_THE_ART.md`, verificato contro codice e DB di produzione il 23/09/2026). I dati di business non deducibili da questi documenti sono marcati esplicitamente come **[PLACEHOLDER — DA COMPILARE: ...]** con una nota su cosa serve. Questo documento va validato e completato da Fabrizio, non è un piano approvato.

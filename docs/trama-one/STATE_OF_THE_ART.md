@@ -1,5 +1,7 @@
 # TRAMA — State of the Art
 
+> **Aggiornamento 20/10/2026.** Questa fotografia è del 23/09 ed è superata su molti punti: app famiglie V2, dominio `tramapp.it`, email, notifiche, consensi, Radar. Lo stato attuale verificato è in `LANCIO_BETA_20NOV.md` (sezioni 3–5), il dettaglio del redesign in `claude/STATE_OF_THE_ART_V2_20261014.md`. Il documento resta come riferimento tecnico storico.
+
 **Verificato contro commit HEAD del repo il 23/09/2026** (`e3d5451`, branch `main`), via lettura diretta del codice sorgente (`app/`, `components/`, `lib/`, `supabase/schema.sql`) e query SQL **read-only** dirette sul progetto Supabase di produzione (`eagsgfxunwyyxwwilldy`). Questo documento **non è derivato** dai report precedenti (package v4 di agosto, addendum/prefreeze di settembre): quei documenti sono stati usati solo come indice di cosa controllare, mai come fonte dei numeri riportati qui. Nessuna scrittura, migration o modifica dati è stata eseguita per produrlo.
 
 ---

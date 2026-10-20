@@ -47,9 +47,11 @@ procedimento invece di modificare questo.*
 | File | Cosa risponde |
 |---|---|
 | `TRAMA_STATO_AL_20260930.md` | **Partire da qui.** Sintesi più recente e riconciliata di tutto il resto — cos'è TRAMA, a che punto è, cosa è live, cosa è in corso, problemi aperti, incoerenze già risolte tra i documenti sottostanti |
-| `BUSINESS_PLAN.md` | Cos'è TRAMA, per chi, modello di business |
-| `ROADMAP.md` | Cosa è stato fatto, cosa viene dopo, in che ordine |
-| `PREMORTEM.md` | Rischi principali e come sono mitigati |
+| `LANCIO_BETA_20NOV.md` | **Dove siamo al 20/10/2026 e piano della beta famiglie del 20/11** (leggere per primo) |
+| `GUIDA_FAMIGLIE_BETA.md` | Guida da mandare alle famiglie invitate |
+| `BUSINESS_PLAN.md` | Cos'è TRAMA, per chi, modello di business (ipotesi di settembre, vedi nota in testa) |
+| `ROADMAP.md` | Obiettivo ricentrato (prima le famiglie) e fasi fino al 2027 — aggiornata 20/10/2026 |
+| `PREMORTEM.md` | Pre-mortem della beta famiglie (20/10/2026) e criteri di decisione |
 
 ## Livello 2 — Stato dell'arte tecnico (~30 min)
 
