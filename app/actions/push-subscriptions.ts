@@ -2,6 +2,7 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
+import { headers } from "next/headers";
 
 // TRAMA — Push notifications (31/08/2026). Registra/rimuove la subscription
 // del browser corrente (endpoint+chiavi, vedi supabase/migration_31_push_
@@ -29,17 +30,47 @@ export async function subscribeToPushAction(input: PushSubscriptionInput): Promi
   // che richiede di nuovo il permesso (es. dopo aver cancellato i dati del
   // sito) restituisce spesso lo stesso endpoint — un upsert evita righe
   // duplicate per lo stesso device invece di doverle deduplicare altrove.
+  const userAgent = ((await headers()).get("user-agent") ?? "").slice(0, 400) || null;
   const { error } = await supabase.from("push_subscriptions").upsert(
     {
       user_id: user.id,
       endpoint: input.endpoint,
       p256dh: input.keys.p256dh,
       auth: input.keys.auth,
+      user_agent: userAgent,
       last_seen_at: new Date().toISOString(),
     },
     { onConflict: "endpoint" }
   );
   if (error) return { error: error.message };
+
+  // 20/10/2026 — BUG "mi arrivano 2 notifiche" (Fabrizio): lo stesso telefono
+  // restava iscritto più volte (vecchio indirizzo .vercel.app, tramapp.it,
+  // app installata e browser), e ogni iscrizione riceveva la stessa notifica.
+  // Ora l'ultima iscrizione dello stesso browser sostituisce le precedenti:
+  // stesso servizio di notifica (es. Google per Chrome Android) e stesso
+  // browser (user agent uguale, o non registrato nelle iscrizioni più vecchie).
+  // Gli altri dispositivi (es. un iPhone) non vengono toccati.
+  try {
+    const host = new URL(input.endpoint).host;
+    const { data: others } = await supabase
+      .from("push_subscriptions")
+      .select("id, endpoint, user_agent")
+      .eq("user_id", user.id)
+      .neq("endpoint", input.endpoint);
+    const stale = (others ?? []).filter((o) => {
+      try {
+        return new URL(o.endpoint as string).host === host && (!o.user_agent || o.user_agent === userAgent);
+      } catch {
+        return false;
+      }
+    });
+    if (stale.length > 0) {
+      await supabase.from("push_subscriptions").delete().in("id", stale.map((o) => o.id as string)).eq("user_id", user.id);
+    }
+  } catch {
+    // pulizia facoltativa: l'iscrizione nuova è comunque salvata
+  }
   return {};
 }
 

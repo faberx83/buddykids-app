@@ -74,6 +74,12 @@ self.addEventListener("push", (event) => {
   if (Array.isArray(data.actions) && data.actions.length > 0) {
     options.actions = data.actions;
   }
+  // 20/10/2026 — stessa notifica arrivata due volte (es. due iscrizioni dello
+  // stesso telefono): con lo stesso tag la seconda sostituisce la prima.
+  if (typeof data.tag === "string" && data.tag) {
+    options.tag = data.tag;
+    options.renotify = false;
+  }
   event.waitUntil(self.registration.showNotification(title, options));
 });
 

@@ -9,17 +9,17 @@ import { loginAs, isRealDeployment } from "../fixtures/roles";
 // vuole due icone sul telefono, questo toggle è la scorciatoia dentro l'app.
 
 test.describe("Versione LEGACY/NEXTGEN - Toggle", () => {
-  test("TC-N28 - Il toggle su '/' porta a NEXTGEN e ricorda la scelta", async ({ page }) => {
+  // 20/10/2026 — Fabrizio: "ovunque disabilita il pulsante NEXTGEN e forza
+  // l'apertura dell'ultima versione". Prima TC-N28 verificava che "Passa a
+  // NextGen" su "/" portasse a /nextgen; ora il pulsante non c'è da nessuna
+  // parte e "/" porta comunque a /nextgen.
+  test("TC-N28 - Il pulsante 'Passa a NextGen' non c'è più da nessuna parte e '/' porta a /nextgen", async ({ page }) => {
     test.skip(!isRealDeployment, "Richiede un deploy con Supabase configurato e l'account genitore di test.");
     await loginAs(page, "parent");
-    // 16/10/2026: la vecchia Home è spenta (porta a /nextgen); resta su /?v1=1.
-    await page.goto("/?v1=1");
-
-    await expect(page.getByRole("button", { name: "Passa a NextGen" })).toBeVisible();
-    await page.getByRole("button", { name: "Passa a NextGen" }).click();
-    await expect(page).toHaveURL(/\/nextgen$/);
-
-    // La preferenza resta salvata: tornando su "/" si viene rimandati a /nextgen.
+    for (const path of ["/?v1=1", "/privacy", "/terms", "/nextgen"]) {
+      await page.goto(path);
+      await expect(page.getByRole("button", { name: /Passa a NextGen|Torna a V1/ })).toHaveCount(0);
+    }
     await page.goto("/");
     await expect(page).toHaveURL(/\/nextgen$/);
   });

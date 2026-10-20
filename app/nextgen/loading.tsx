@@ -7,8 +7,8 @@ import TramaSpinner from "@/components/TramaSpinner";
 // schermo fermo o vuoto. Stesso logo animato di Partner, Admin e V1.
 export default function Loading() {
   return (
-    <div className="flex min-h-[60vh] items-center justify-center">
-      <TramaSpinner size={128} />
+    <div className="flex min-h-[70vh] items-center justify-center">
+      <TramaSpinner size={176} />
     </div>
   );
 }

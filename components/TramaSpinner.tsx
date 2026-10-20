@@ -36,8 +36,13 @@ const WORDMARK: Record<"color" | "navy" | "white", string> = {
   white: "/brand/trama-wordmark-white.png",
 };
 
+// v8 (20/10/2026) — Fabrizio: "ancora troppo piccolo, lo vorrei più grande e
+// bellino". Logo più grande, scritta TRAMA larga quasi quanto il logo (prima
+// metà), un alone morbido con i colori dei fili che "respira" dietro il logo,
+// e la scritta che entra con una dissolvenza. Con "riduci movimento": tutto
+// fermo (vedi .trama-loader-* in globals.css).
 export default function TramaSpinner({
-  size = 160,
+  size = 176,
   tone = "color",
   label = "Caricamento",
   wordmark = true,
@@ -48,15 +53,22 @@ export default function TramaSpinner({
   wordmark?: boolean;
 }) {
   return (
-    <span role="status" className="inline-flex flex-col items-center" data-testid="trama-loader">
-      <img src={SRC[tone]} alt="" aria-hidden="true" className="trama-weave" style={{ width: size, height: "auto" }} />
+    <span role="status" className="relative inline-flex flex-col items-center" data-testid="trama-loader">
+      <span className="relative inline-flex items-center justify-center">
+        <span
+          aria-hidden="true"
+          className="trama-loader-glow pointer-events-none absolute rounded-full"
+          style={{ width: size * 1.35, height: size * 1.35, opacity: tone === "white" ? 0.35 : 0.75 }}
+        />
+        <img src={SRC[tone]} alt="" aria-hidden="true" className="trama-weave relative" style={{ width: size, height: "auto" }} />
+      </span>
       {wordmark && (
         <img
           src={WORDMARK[tone]}
           alt=""
           aria-hidden="true"
-          className="mt-3"
-          style={{ width: Math.round(size * 0.55), height: "auto" }}
+          className="trama-loader-word relative mt-5"
+          style={{ width: Math.round(size * 0.78), height: "auto" }}
         />
       )}
       <span className="sr-only">{label}</span>

@@ -107,7 +107,7 @@ export async function runDailyBriefing(
         continue;
       }
       if (r.daily_briefing_push) {
-        await sendPushToUser(r.id, { title: briefing.title, body: briefing.body, deepLink: briefing.deepLink });
+        await sendPushToUser(r.id, { title: briefing.title, body: briefing.body, deepLink: briefing.deepLink, tag: briefing.tag });
         result.pushes++;
       }
       if (r.daily_briefing_email && r.email && r.notify_email !== false && isEmailConfigured) {

@@ -81,7 +81,19 @@ const HIDDEN_PREFIXES = ["/center", "/admin", "/nextgen", "/auth", "/share", "/a
 // (cookie bk_version) è condizionato allo stesso controllo, per non lasciare
 // un comportamento residuo su account che avevano già impostato una
 // preferenza prima di questa restrizione.
+//
+// 20/10/2026 — SPENTO OVUNQUE (Fabrizio: "ovunque disabilita il pulsante
+// NEXTGEN e forza l'apertura dell'ultima versione", visto su Termini e
+// Informativa privacy). Il pulsante non compare più su nessuna pagina e non
+// c'è più nessun rimbalzo verso la V1 da una preferenza salvata in passato:
+// chi è collegato e apre "/" finisce già su /nextgen (proxy.ts), e Termini e
+// Privacy si aprono dentro l'app nuova. Il codice resta qui sotto, non
+// montato (LegacyVersionToggle), come la V1: spento ma tenuto lì.
 export default function VersionToggle() {
+  return null;
+}
+
+export function LegacyVersionToggle() {
   const pathname = usePathname() ?? "/";
   const router = useRouter();
   const hidden = HIDDEN_PREFIXES.some((p) => pathname.startsWith(p));

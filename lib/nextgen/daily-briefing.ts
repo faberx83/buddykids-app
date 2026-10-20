@@ -30,6 +30,8 @@ export interface BriefingSlot {
 export interface DailyBriefing {
   title: string;
   body: string;
+  /** Stessa giornata = stessa notifica: una seconda copia sostituisce la prima invece di aggiungersi. */
+  tag: string;
   deepLink: string;
   subject: string;
   html: string;
@@ -98,25 +100,27 @@ export function buildDailyBriefing(input: {
   const weekLink = `/nextgen/planner?week=${mondayOfIso(todayIso)}`;
   const deepLink = missing.length > 0 ? `${weekLink}&assegna=${todayIso}` : "/nextgen";
 
-  // ── Notifica: una riga utile, la più importante prima ──
-  const pushParts: string[] = [];
-  if (entries.length > 0) {
-    pushParts.push(entries.length === 1 ? `Oggi: ${entries[0].title}` : `Oggi ${entries.length} impegni, il primo: ${entries[0].title}`);
-  } else {
-    pushParts.push("Oggi niente in agenda");
-  }
+  // ── Notifica (20/10/2026, Fabrizio: "super scarna"): una riga per cosa,
+  // come un mini-elenco. Android e iPhone la mostrano intera aprendo la
+  // notifica; chiusa si vede la prima riga. Massimo 5 righe. ──
+  const MAX_LINES = 5;
+  const lines: string[] = [];
+  if (entries.length === 0) lines.push("Nessun impegno in agenda");
+  const shownEntries = entries.slice(0, missing.length || closure ? 3 : 4);
+  for (const e of shownEntries) lines.push(entryLine(e));
+  if (entries.length > shownEntries.length) lines.push(`+ altri ${entries.length - shownEntries.length}`);
   if (missing.length > 0) {
-    pushParts.push(
-      missing.length === 1
-        ? `manca chi ${missing[0].moment === "andata" ? "porta" : "ritira"} ${missing[0].kidName}`
-        : `${missing.length} passaggi da decidere`
-    );
+    const who = missing.map((m) => `chi ${m.moment === "andata" ? "porta" : "ritira"} ${m.kidName}`);
+    lines.push(`Da decidere: ${who.length <= 2 ? who.join(", ") : `${who.length} passaggi`}`);
+  } else if (slots.length > 0) {
+    lines.push("Chi accompagna: tutto deciso");
   }
   if (closure && closure.startDate <= addDaysIso(todayIso, 7)) {
-    pushParts.push(`scuola chiusa ${closureRangeLabel(closure.startDate, closure.endDate)}`);
+    lines.push(`Scuola chiusa ${closureRangeLabel(closure.startDate, closure.endDate)}`);
   }
-  const body = `${pushParts.join(" · ")}.`;
-  const title = `${hello}, ecco la tua giornata`;
+  const body = lines.slice(0, MAX_LINES).join("\n");
+  const title = `${hello} · ${dayLabel}`;
+  const tag = `buongiorno-${todayIso}`;
 
   // ── Email ──
   const momentLabel = (m: BriefingSlot["moment"]) => (m === "andata" ? "Porta" : "Ritira");
@@ -142,7 +146,7 @@ export function buildDailyBriefing(input: {
   const section = (title: string, rows: string) =>
     `<tr><td style="padding:18px 0 6px;font:600 12px/1.4 -apple-system,Helvetica,Arial,sans-serif;letter-spacing:.08em;text-transform:uppercase;color:#4A3F9E">${title}</td></tr><tr><td>${rows}</td></tr>`;
   const row = (left: string, right: string, warn = false) =>
-    `<div style="padding:10px 12px;margin:0 0 6px;border:1px solid #E9E6DF;border-radius:12px;background:#fff;font:15px/1.4 -apple-system,Helvetica,Arial,sans-serif;color:#172A4D">${left ? `<span style="color:#6B7280">${left}</span>&nbsp; ` : ""}${
+    `<div style="padding:10px 12px;margin:0 0 6px;border:1px solid #E9E6DF;border-radius:12px;background:#ffffff !important;font:15px/1.4 -apple-system,Helvetica,Arial,sans-serif;color:#172A4D">${left ? `<span style="color:#6B7280">${left}</span>&nbsp; ` : ""}${
       warn ? `<b style="color:#7A4500">${right}</b>` : `<b>${right}</b>`
     }</div>`;
 
@@ -157,8 +161,12 @@ export function buildDailyBriefing(input: {
     : row("", "Nessun impegno in agenda");
   const slotRows = slots.map((s) => row(`${escapeHtml(s.kidName)} · ${momentLabel(s.moment)}`, escapeHtml(s.label ?? "da decidere"), s.label === null)).join("");
 
-  const html = `<!doctype html><html lang="it"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>${escapeHtml(hello)}</title></head><body style="margin:0;background:#FDFCFA">
-<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#FDFCFA"><tr><td align="center" style="padding:24px 16px">
+  const html = `<!doctype html><html lang="it"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light only"><meta name="supported-color-schemes" content="light only">
+<style>:root{color-scheme:light only;supported-color-schemes:light only}body,table,td{background-color:#FDFCFA !important}</style>
+<title>${escapeHtml(hello)}</title></head><body bgcolor="#FDFCFA" style="margin:0;background:#FDFCFA;color-scheme:light only">
+<!-- 20/10/2026: sempre chiara come l'app, anche col tema scuro del telefono (Apple Mail e le app che rispettano color-scheme). -->
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" bgcolor="#FDFCFA" style="background:#FDFCFA"><tr><td align="center" bgcolor="#FDFCFA" style="padding:24px 16px">
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:520px">
 <tr><td style="padding:0 0 8px"><img src="${PUBLIC_ORIGIN}/brand/trama-logo-mark.png" alt="" width="44" style="display:block;height:auto"></td></tr>
 <tr><td style="font:600 24px/1.25 -apple-system,Helvetica,Arial,sans-serif;color:#172A4D">${escapeHtml(hello)}!</td></tr>
@@ -176,7 +184,7 @@ ${closureText ? section("Scuola chiusa", row("", escapeHtml(closureText))) : ""}
   if (missing.length) subjectBits.push(missing.length === 1 ? "1 passaggio da decidere" : `${missing.length} passaggi da decidere`);
   const subject = `Il buongiorno di TRAMA · ${dayLabel}: ${subjectBits.join(", ")}`;
 
-  return { title, body, deepLink, subject, html, text: textLines.join("\n") };
+  return { title, body, tag, deepLink, subject, html, text: textLines.join("\n") };
 }
 
 /** Il cron gira due volte (06 e 07 UTC): invia solo quando a Roma sono le 8 (ora legale e solare). */

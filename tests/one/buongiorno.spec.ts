@@ -47,8 +47,13 @@ test.describe("TRAMA — Il buongiorno [no browser]", () => {
       closurePeriods: [closure],
       kidNameById: { k1: "Lino" },
     })!;
-    expect(b.title).toBe("Buongiorno Giovanni, ecco la tua giornata");
-    expect(b.body).toBe("Oggi 2 impegni, il primo: Calcio · manca chi ritira Lino · scuola chiusa 30 ottobre – 2 novembre.");
+    // 20/10/2026 (Fabrizio: "super scarna"): una riga per cosa, data nel titolo.
+    expect(b.title).toBe("Buongiorno Giovanni · martedì 27 ottobre");
+    expect(b.body).toBe(
+      ["17:00 · Calcio · Lino", "In giornata · Inglese · Lino", "Da decidere: chi ritira Lino", "Scuola chiusa 30 ottobre – 2 novembre"].join("\n")
+    );
+    // Una sola notifica per giorno anche con più iscrizioni sullo stesso telefono.
+    expect(b.tag).toBe("buongiorno-2026-10-27");
     expect(b.deepLink).toBe("/nextgen/planner?week=2026-10-26&assegna=2026-10-27");
     expect(b.subject).toBe("Il buongiorno di TRAMA · martedì 27 ottobre: 2 impegni, 1 passaggio da decidere");
     expect(b.html).toContain("Decidi chi accompagna");
@@ -59,7 +64,8 @@ test.describe("TRAMA — Il buongiorno [no browser]", () => {
   test("BG-03 giornata vuota: non si manda niente; testi dell'email al sicuro", () => {
     expect(buildDailyBriefing({ todayIso: "2026-10-20", firstName: null, entries: [], slots: [], closurePeriods: [], kidNameById: {} })).toBeNull();
     const b = buildDailyBriefing({ todayIso: "2026-10-20", firstName: null, entries: [entry("<b>x</b>", "09:00")], slots: [], closurePeriods: [], kidNameById: {} })!;
-    expect(b.title).toBe("Buongiorno, ecco la tua giornata");
+    expect(b.title).toBe("Buongiorno · martedì 20 ottobre");
+    expect(b.body).toBe("09:00 · <b>x</b> · Lino"); // la notifica è testo semplice, l'email no
     expect(b.deepLink).toBe("/nextgen");
     expect(b.html).not.toContain("<b>x</b>");
     expect(b.html).toContain("&lt;b&gt;x&lt;/b&gt;");
@@ -101,5 +107,26 @@ test.describe("TRAMA — Il buongiorno [no browser]", () => {
     expect(FEATURE_FLAG_REGISTRY.DAILY_BRIEFING_ENABLED.defaultValue).toBe(false);
     expect(FEATURE_CATALOG.find((e) => e.key === "daily_briefing")?.releaseEligible).toBe(true);
     expect(getReleaseById("buongiorno-trama")?.featureKeys).toEqual(["daily_briefing"]);
+  });
+
+  // 20/10/2026 — "mi arrivano 2 notifiche e non 1 sola": lo stesso telefono
+  // aveva più iscrizioni push. Il SW usa l'etichetta (tag) per sostituire la
+  // notifica gemella, e a ogni nuova iscrizione si tolgono le vecchie dello
+  // stesso telefono (stesso servizio push e stesso browser).
+  test("BG-08 una notifica sola: tag nel SW e pulizia delle iscrizioni doppie", () => {
+    expect(read("lib/data/daily-briefing.ts")).toContain("tag: briefing.tag");
+    expect(read("lib/push/send.ts")).toContain("tag?: string;");
+    const sw = read("public/sw.js");
+    expect(sw).toContain('if (typeof data.tag === "string" && data.tag) {');
+    expect(sw).toContain("options.tag = data.tag;");
+    const sub = read("app/actions/push-subscriptions.ts");
+    expect(sub).toContain("user_agent");
+    expect(sub).toMatch(/\.neq\("endpoint", /);
+  });
+
+  test("BG-09 email chiara anche col telefono in tema scuro", () => {
+    const b = buildDailyBriefing({ todayIso: "2026-10-20", firstName: null, entries: [entry("Calcio", "17:00")], slots: [], closurePeriods: [], kidNameById: {} })!;
+    expect(b.html).toContain('<meta name="color-scheme" content="light only">');
+    expect(b.html).toContain('bgcolor="#FDFCFA"');
   });
 });

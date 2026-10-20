@@ -237,7 +237,8 @@ test.describe("TRAMA — Caricamento col logo [no browser]", () => {
     expect(css).toContain("@keyframes tramaWeave {");
     expect(css).toMatch(/@media \(prefers-reduced-motion: reduce\) \{\n  \.trama-weave \{\n    animation: none;/);
     const spinner = read("components/TramaSpinner.tsx");
-    expect(spinner).toContain('className="trama-weave"');
+    // 20/10/2026: "relative" per stare sopra l'alone colorato del loader v8.
+    expect(spinner).toContain('className="trama-weave relative"');
     expect(spinner).toContain('role="status"');
     for (const p of ["app/nextgen/loading.tsx", "app/(main)/loading.tsx", "app/center/loading.tsx", "app/admin/loading.tsx", "app/auth/trasloco/page.tsx"]) {
       expect(read(p), p).toContain("<TramaSpinner");

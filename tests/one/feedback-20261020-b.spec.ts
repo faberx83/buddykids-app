@@ -50,10 +50,33 @@ test.describe("TRAMA — Loader e ritorno alla Home [no browser]", () => {
     expect(read("app/nextgen/layout.tsx")).toContain("{returnHomeEnabled && <ReturnHomeAfterIdle />}");
   });
 
+  // 20/10/2026 (secondo giro, "ancora troppo piccolo… più grande e bellino"):
+  // logo 176, scritta larga quasi quanto il logo, alone colorato che respira.
   test("LD-02 loader: logo più grande nell'app e scritta TRAMA sotto", () => {
     const s = read("components/TramaSpinner.tsx");
     expect(s).toContain("wordmark = true,");
-    expect(s).toContain("style={{ width: Math.round(size * 0.55), height: \"auto\" }}");
-    expect(read("app/nextgen/loading.tsx")).toContain("<TramaSpinner size={128} />");
+    expect(s).toContain("style={{ width: Math.round(size * 0.78), height: \"auto\" }}");
+    expect(s).toContain("trama-loader-glow");
+    expect(read("app/nextgen/loading.tsx")).toContain("<TramaSpinner size={176} />");
+    const css = read("app/globals.css");
+    expect(css).toContain("@keyframes tramaGlow");
+    expect(css).toMatch(/prefers-reduced-motion: reduce\) \{\s*\.trama-loader-glow,\s*\.trama-loader-word \{\s*animation: none;/);
+  });
+});
+
+// 20/10/2026 — Fabrizio: "ovunque disabilita il pulsante NEXTGEN e forza
+// l'apertura dell'ultima versione (l'ho notato nei termini di servizio e
+// nell'informativa privacy)". [no browser]
+test.describe("TRAMA — versione nuova ovunque [no browser]", () => {
+  const read2 = (p: string) => require("fs").readFileSync(require("path").join(__dirname, "../..", p), "utf-8") as string;
+  test("NV-01 il pulsante 'Passa a NextGen' non si disegna più su nessuna pagina", () => {
+    const s = read2("components/VersionToggle.tsx");
+    expect(s).toMatch(/export default function VersionToggle\(\) \{\s*return null;\s*\}/);
+  });
+  test("NV-02 chi è collegato legge Termini e Privacy dentro l'app nuova", () => {
+    const p = read2("proxy.ts");
+    expect(p).toContain('"/privacy": "/nextgen/informative/privacy",');
+    expect(p).toContain('"/terms": "/nextgen/informative/termini",');
+    expect(p).toContain("if (isSupabaseConfigured && inAppLegal && (await getRequestUserId(request))) {");
   });
 });

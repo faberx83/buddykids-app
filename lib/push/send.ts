@@ -25,6 +25,8 @@ export interface PushPayload {
   // già in vigore per title/body qui sopra.
   actions?: { action: string; title: string }[];
   actionUrls?: Record<string, string>;
+  /** 20/10/2026: notifiche con lo stesso tag si sostituiscono invece di sommarsi (es. il buongiorno del giorno). */
+  tag?: string;
 }
 
 // createServiceClient() (lib/supabase/service.ts, Wave 1) — STESSO client

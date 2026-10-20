@@ -60,6 +60,13 @@ function copyCookies(from: NextResponse, to: NextResponse): NextResponse {
   return to;
 }
 
+// 20/10/2026 — pagine legali pubbliche → stessa pagina dentro l'app nuova,
+// solo per chi è collegato (vedi sotto, regola 2).
+const IN_APP_LEGAL: Record<string, string> = {
+  "/privacy": "/nextgen/informative/privacy",
+  "/terms": "/nextgen/informative/termini",
+};
+
 export async function proxy(request: NextRequest) {
   // Preferiamo l'header Host/X-Forwarded-Host: dietro proxy/load-balancer (e
   // in alcuni setup di "next start") request.nextUrl.hostname può riflettere
@@ -162,6 +169,18 @@ export async function proxy(request: NextRequest) {
     // vista del gestore non è detto sia loggata come genitore in quello
     // stesso browser). Stessa eccezione di /share sopra (pagine pubbliche
     // già pensate per la visione anonima).
+    // 20/10/2026 — Fabrizio: "forza l'apertura dell'ultima versione" (visto
+    // su Termini e Informativa privacy). Chi è collegato e apre /privacy o
+    // /terms (link nelle email, nella dichiarazione, nel login) li legge
+    // dentro l'app nuova, con intestazione e barra in basso. Chi non è
+    // collegato resta sulla pagina pubblica, come prima.
+    const inAppLegal = IN_APP_LEGAL[pathname];
+    if (isSupabaseConfigured && inAppLegal && (await getRequestUserId(request))) {
+      const target = request.nextUrl.clone();
+      target.pathname = inAppLegal;
+      target.search = "";
+      return copyCookies(sessionResponse, NextResponse.redirect(target));
+    }
     if (
       isSupabaseConfigured &&
       !pathname.startsWith("/auth") &&
