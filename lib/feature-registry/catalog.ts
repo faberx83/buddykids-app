@@ -957,6 +957,7 @@ export const FEATURE_CATALOG: FeatureCatalogEntry[] = [
     sourceFiles: [
       "app/benvenuto/page.tsx",
       "components/landing/BenvenutoView.tsx",
+      "components/landing/FeatureSlider.tsx",
       "components/landing/WaitlistForm.tsx",
       "components/landing/LandingPhone.tsx",
       "app/actions/waitlist.ts",

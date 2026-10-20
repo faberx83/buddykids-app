@@ -64,12 +64,23 @@ test.describe("TRAMA — Pagina di benvenuto [no browser]", () => {
 
   test("BV-05 promesse coerenti col prodotto e schermate riusate dal carosello", () => {
     const v = read("components/landing/BenvenutoView.tsx");
-    expect(v).toContain("ONBOARDING_SLIDES.map(");
+    expect(v).toContain("<FeatureSlider />");
+    expect(read("components/landing/FeatureSlider.tsx")).toContain("ONBOARDING_SLIDES.map(");
     expect(v).toContain("In TRAMA non si paga nulla");
     expect(v).not.toMatch(/verificat/i);
     expect(v).toContain('href="#invito"');
     expect(read("components/landing/LandingPhone.tsx")).toContain('import { PhoneScreen } from "@/components/nextgen/OnboardingCarousel";');
     expect(read("components/landing/WaitlistForm.tsx")).toContain("la cancelliamo entro 12 mesi");
+  });
+
+  test("BV-08 'Cosa fa TRAMA' scorre da solo come un video, con pausa, frecce, dito; fermo con 'riduci movimento'", () => {
+    const f = read("components/landing/FeatureSlider.tsx");
+    expect(f).toContain("export const SLIDE_MS = 6000;");
+    expect(f).toContain("const playing = !userPaused && !touching && visible && !reduced;");
+    expect(f).toContain('animation: i === index && !reduced ? `trama-slider-fill ${SLIDE_MS}ms linear forwards` : undefined,');
+    expect(f).toContain('aria-label={userPaused ? "Riprendi lo scorrimento" : "Metti in pausa lo scorrimento"}');
+    expect(f).toContain("if (end - start < -40) go(index + 1);");
+    expect(read("app/globals.css")).toContain("@keyframes trama-slider-fill {");
   });
 
   test("BV-06 release: senza account si arriva qui solo con la release a tutti; 'Registrati' diventa 'Chiedi un invito'", () => {

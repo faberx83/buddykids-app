@@ -293,6 +293,16 @@ body:has(.app-shell) {
   mask-size: 300% 300%;
   animation: tramaWeave 2s cubic-bezier(0.45, 0, 0.25, 1) infinite;
 }
+/* Pagina di benvenuto (20/10/2026): barretta che si riempie mentre una
+   schermata dello slider è in mostra (components/landing/FeatureSlider.tsx). */
+@keyframes trama-slider-fill {
+  from {
+    width: 0%;
+  }
+  to {
+    width: 100%;
+  }
+}
 @media (prefers-reduced-motion: reduce) {
   .trama-weave {
     animation: none;

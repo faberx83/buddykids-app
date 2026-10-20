@@ -1,14 +1,11 @@
 import Link from "next/link";
-import { ONBOARDING_SLIDES } from "@/lib/nextgen/onboarding-slides";
-import LandingPhone from "@/components/landing/LandingPhone";
+import FeatureSlider from "@/components/landing/FeatureSlider";
 import WaitlistForm from "@/components/landing/WaitlistForm";
 import TramaThread from "@/components/nextgen/TramaThread";
 
 // TRAMA — PAGINA DI BENVENUTO (20/10/2026): solo la parte visiva, senza
 // accessi a dati (quelli restano in app/benvenuto/page.tsx). Testi e
 // schermate demo riusano il carosello di primo ingresso.
-
-const SECTION_TONES = ["#F66B5E", "#F6A623", "#2DBA8C", "#6F63C5"];
 
 export default function BenvenutoView({ loggedIn, source }: { loggedIn: boolean; source: string | null }) {
   return (
@@ -63,31 +60,13 @@ export default function BenvenutoView({ loggedIn, source }: { loggedIn: boolean;
           </div>
         </section>
 
-        {/* Cosa fa: le quattro schermate del primo ingresso */}
+        {/* Cosa fa: le quattro schermate del primo ingresso, a scorrimento automatico */}
         <section aria-labelledby="cosa-h" className="border-t border-trama-line bg-white">
-          <div className="mx-auto flex max-w-5xl flex-col gap-14 px-5 py-14 md:gap-20 md:py-20">
-            <h2 id="cosa-h" className="sr-only">
-              Cosa puoi fare con TRAMA
-            </h2>
-            {ONBOARDING_SLIDES.map((s, i) => (
-              <article key={s.key} className={`flex flex-col items-center gap-8 md:flex-row ${i % 2 === 1 ? "md:flex-row-reverse" : ""}`}>
-                <div className="flex flex-1 flex-col gap-3">
-                  <span className="flex items-center gap-2 text-[12px] font-bold uppercase tracking-[0.14em]" style={{ color: SECTION_TONES[i] }}>
-                    <span aria-hidden="true" className="h-[3px] w-6 rounded-full" style={{ background: SECTION_TONES[i] }} />
-                    {s.eyebrow}
-                  </span>
-                  <h3 className="text-balance font-poppins text-[clamp(26px,6.4vw,36px)] font-semibold leading-[1.1] text-trama-navy">
-                    {s.titleBefore}
-                    <span className="text-trama-accent-ink">{s.titleHighlight}</span>
-                    {s.titleAfter}
-                  </h3>
-                  <p className="max-w-[44ch] text-[16px] leading-relaxed text-ink-2">{s.body}</p>
-                  <p className="text-[14px] text-ink-2">{s.note}</p>
-                </div>
-                <LandingPhone visual={s.visual} tilt={i % 2 === 0 ? -8 : 8} />
-              </article>
-            ))}
-
+          <h2 id="cosa-h" className="sr-only">
+            Cosa puoi fare con TRAMA
+          </h2>
+          <FeatureSlider />
+          <div className="mx-auto max-w-5xl px-5 pb-14 md:pb-20">
             <article className="flex flex-col gap-3 rounded-[20px] bg-trama-page p-6 md:p-8">
               <span className="flex items-center gap-2 text-[12px] font-bold uppercase tracking-[0.14em] text-trama-accent-ink">
                 <i className="ti ti-school text-[16px]" aria-hidden="true" />
