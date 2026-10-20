@@ -30,8 +30,10 @@ function codeOnly(source: string): string {
 }
 
 test.describe("Novità — Disponibile vs In arrivo [no browser]", () => {
-  test("FFB-01: le due voci In arrivo decise da Fabrizio esistono, senza flag né superficie contestuale", () => {
-    for (const id of ["accompagnamento-ritiro", "deleghe-smart"]) {
+  // 20/10/2026: "accompagnamento-ritiro" è uscita (Fabrizio: "non è più in
+  // arrivo"), vedi FFB-01b; resta In arrivo "deleghe-smart".
+  test("FFB-01: le voci In arrivo decise da Fabrizio esistono, senza flag né superficie contestuale", () => {
+    for (const id of ["deleghe-smart"]) {
       const entry = getAnnouncementById(id);
       expect(entry, id).toBeDefined();
       expect(isComingSoon(entry!)).toBe(true);
@@ -40,6 +42,14 @@ test.describe("Novità — Disponibile vs In arrivo [no browser]", () => {
       expect(entry!.contextualSurface).toBeUndefined();
       expect(entry!.announceToUsers).toBe(true);
     }
+  });
+
+  test("FFB-01b: 'Chi porta e chi ritira' è Disponibile, porta al foglio Chi accompagna, solo con la sua release", () => {
+    const entry = getAnnouncementById("accompagnamento-ritiro")!;
+    expect(isComingSoon(entry)).toBe(false);
+    expect(entry.version).toBe(2);
+    expect(entry.deepLink).toBe("/nextgen/planner?panel=chi");
+    expect(entry.requiredFeatureFlag).toBe("CHI_ACCOMPAGNA_PLUS_ENABLED");
   });
 
   test("FFB-02: le voci già rilasciate restano 'Disponibile' (default) con CTA alla funzione", () => {
