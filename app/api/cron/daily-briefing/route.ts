@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServiceClient } from "@/lib/supabase/service";
 import { runDailyBriefing } from "@/lib/data/daily-briefing";
+import { sendBetaReportNoticeIfDue } from "@/lib/data/beta-report-notice";
 import { isBriefingHour, romeNow } from "@/lib/nextgen/daily-briefing";
 
 // TRAMA — IL BUONGIORNO DI TRAMA (20/10/2026). Chiamato SOLO da Vercel Cron
@@ -39,5 +40,8 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: "Supabase non configurato (manca SUPABASE_SERVICE_ROLE_KEY)" }, { status: 500 });
   }
   const result = await runDailyBriefing(service, now, { source: "cron" });
-  return NextResponse.json({ ok: true, ...result });
+  // Admin Beta Cockpit (20/10/2026): stesso giro delle 8, nessun nuovo
+  // scheduler. Avviso "report pronto" al founder se una finestra si è chiusa.
+  const betaReport = await sendBetaReportNoticeIfDue(service, now);
+  return NextResponse.json({ ok: true, ...result, betaReport });
 }

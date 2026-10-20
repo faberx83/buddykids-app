@@ -28,6 +28,8 @@ import { isPushSupported, enablePushNotifications, hasBrowserPushSubscription } 
 import { updatePreferencesAction } from "@/app/actions/profile";
 import AgendaItemRow from "@/components/nextgen/AgendaItemRow";
 import TramaThread from "@/components/nextgen/TramaThread";
+import BetaSurveyCard from "@/components/nextgen/BetaSurveyCard";
+import type { SurveyDefinition } from "@/lib/beta-cockpit/survey";
 import ActivityVisual from "@/components/nextgen/ActivityVisual";
 import DayCoordinationBlock from "@/components/nextgen/DayCoordination";
 import SeasonSummaryCard, { type SeasonSummaryAction, type SeasonSummaryWelcome } from "@/components/nextgen/SeasonSummaryCard";
@@ -127,7 +129,10 @@ export default function HomeDashboardV2Client({
   activitiesAreMockFallback,
   navV2Enabled = false,
   avatarUrl = null,
+  betaSurvey = null,
 }: {
+  /** Survey della beta (BETA_SURVEY_ENABLED): al massimo una, null = nessuna card. */
+  betaSurvey?: SurveyDefinition | null;
   firstName: string | null;
   /** Foto del profilo (14/10/2026, richiesta Fabrizio): se c'è, l'avatar la mostra al posto dell'iniziale. */
   avatarUrl?: string | null;
@@ -372,6 +377,10 @@ export default function HomeDashboardV2Client({
           </ul>
         </section>
       )}
+
+      {/* 4b. BETA — survey del giorno 3 / 14 (Admin Beta Cockpit, 20/10/2026):
+          dopo "Da fare", così si vede senza scorrere fino in fondo. */}
+      {betaSurvey && <BetaSurveyCard survey={betaSurvey} />}
 
       {/* 5. RIEPILOGO DEL PERIODO */}
       {summary && (

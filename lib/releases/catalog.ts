@@ -266,6 +266,19 @@ export const RELEASE_CATALOG: ReleaseCatalogEntry[] = [
     notes: "Creata il 20/10/2026. Ripiego: flag spento = l'app riapre l'ultima pagina vista, come prima.",
   },
   {
+    // TRAMA — ADMIN BETA COCKPIT (20/10/2026).
+    id: "survey-beta",
+    label: "TRAMA — Survey della beta",
+    shortDescription: "Due survey brevi in Home (giorno 3 e giorno 14), risposte in Admin → Beta Famiglie.",
+    targetAudience: ["parent"],
+    featureKeys: ["beta_survey"],
+    knownLimitations: [
+      "beta_survey: compare solo con la Home V2 accesa.",
+      "beta_survey: senza migration_46 i giorni restano 3 e 14 e non si possono spegnere le singole survey da Admin.",
+    ],
+    notes: "Creata il 20/10/2026. Ripiego: flag spento = nessuna card; le risposte già date restano nei feedback.",
+  },
+  {
     // TRAMA — IL BUONGIORNO DI TRAMA (20/10/2026).
     id: "buongiorno-trama",
     label: "TRAMA — Il buongiorno",

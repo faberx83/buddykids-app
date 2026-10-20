@@ -69,6 +69,7 @@ procedimento invece di modificare questo.*
 | File | Cosa risponde |
 |---|---|
 | `PLANNER_BETA_V1.1_PROPOSTA.md` + `analysis/TRAMA_PLANNER_BETA_V1.1*.md` | Planner beta: proposta e implementazione |
+| `claude/INIZIATIVA_admin_beta_cockpit.md` | Admin Beta Cockpit (20/10/2026): metriche, stati, funnel, report e survey della beta famiglie |
 | `school-calendar-milano-puglia/PART_D_*.sql`, `PART_D2_*`, `PART_D3_*` | Intelligenza calendario scolastico: dati regionali (Lombardia/Milano, Puglia/Rutigliano) e proposta di migrazione/servizio |
 
 ## Livello 4 — Dati e codice (riferimenti, non duplicati qui)

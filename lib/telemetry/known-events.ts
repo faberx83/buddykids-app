@@ -182,6 +182,9 @@ export const KNOWN_PRODUCT_EVENTS = [
   // TRAMA — CHI ACCOMPAGNA PIÙ VELOCE (20/10/2026): notifica all'altro genitore
   // dopo un giro di assegnazioni (detail = numero di passaggi, mai nomi).
   "assign_partner_notified",
+  // TRAMA — ADMIN BETA COCKPIT (20/10/2026): avviso al founder "report pronto",
+  // uno per finestra (detail = chiave della finestra, date; mai famiglie).
+  "beta_report_notice_sent",
 ] as const;
 
 export type KnownProductEvent = (typeof KNOWN_PRODUCT_EVENTS)[number];

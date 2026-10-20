@@ -14,6 +14,7 @@ import { WEEKDAYS } from "@/lib/nextgen/responsibility-options";
 import HomeDashboardClient from "./HomeDashboardClient";
 import HomeDashboardV2Client from "./HomeDashboardV2Client";
 import { loadHomeV2Props } from "./home-v2-data";
+import { loadBetaSurveyForUser } from "@/lib/data/beta-survey";
 import { resolveFeatureFlagVisibility } from "@/lib/feature-flags/resolve";
 import { generateCorrelationId } from "@/lib/telemetry/correlation";
 
@@ -77,8 +78,12 @@ export default async function NextgenHomePage() {
   }
   if (user && homeV2Enabled) {
     const { data: v2Profile } = await supabase.from("profiles").select("full_name").eq("id", user.id).single();
-    const v2Props = await loadHomeV2Props({ userId: user.id, fullName: v2Profile?.full_name ?? null, planner });
-    return <HomeDashboardV2Client {...v2Props} />;
+    const [v2Props, betaSurvey] = await Promise.all([
+      loadHomeV2Props({ userId: user.id, fullName: v2Profile?.full_name ?? null, planner }),
+      // Survey della beta (BETA_SURVEY_ENABLED, fail-closed: null = nessuna card).
+      loadBetaSurveyForUser(user.id),
+    ]);
+    return <HomeDashboardV2Client {...v2Props} betaSurvey={betaSurvey} />;
   }
 
   // TRAMA — FAMILY-FIRST BETA PASS (07/10/2026): scorciatoia "Aggiungi un

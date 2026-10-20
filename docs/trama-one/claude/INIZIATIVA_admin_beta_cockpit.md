@@ -1,7 +1,7 @@
 # Iniziativa — Admin Beta Cockpit
 
 **Chat:** TRAMA ADMIN · **Aperta il:** 20/10/2026 · **Ultimo aggiornamento:** 20/10/2026 sera
-**Stato:** decisione (pre-apply review consegnata, in attesa di approvazione della migration 46)
+**Stato:** sviluppo concluso, in attesa di deploy e migration 46 (ramo `claude/admin-beta-cockpit`)
 
 ## Obiettivo
 Uno strumento operativo, leggibile in 5 minuti, per capire durante la beta del 20/11 chi è entrato, chi si è attivato, chi è tornato, dove si è fermato, cosa usa, quali frizioni emergono e quali centri ricorrono tra più famiglie. Una riga per **famiglia**, non per utente. Solo dati first-party.
@@ -106,89 +106,9 @@ Analisi in sola lettura di codice (`main` @ `34cc06c`) e database di produzione.
 
 ### Migration proposta (unica): `migration_46_beta_cockpit.sql`
 
-**Non applicata e non ancora nel repository.** Additiva, idempotente, una transazione.
-
-```sql
--- STATO: PREPARATA, NON APPLICATA
-begin;
-
--- D2 — impostazioni del cockpit (una sola riga)
-create table if not exists public.beta_cockpit_settings (
-  id smallint primary key default 1 check (id = 1),
-  report_frequency text not null default 'weekly' check (report_frequency in ('manual','daily','weekly')),
-  report_weekday smallint not null default 1 check (report_weekday between 1 and 7), -- 1 = lunedì
-  report_time time not null default '09:00',
-  report_timezone text not null default 'Europe/Rome',
-  beta_start_date date not null default '2026-11-18',
-  thresholds jsonb not null default '{}'::jsonb,        -- soglie leggibili, default nel codice
-  excluded_user_ids uuid[] not null default '{}',
-  survey_config jsonb not null default '{}'::jsonb,     -- survey accese e dopo quanti giorni
-  updated_by uuid references public.profiles(id) on delete set null,
-  updated_at timestamptz not null default now()
-);
-insert into public.beta_cockpit_settings (id) values (1) on conflict (id) do nothing;
-alter table public.beta_cockpit_settings enable row level security;
-create policy "Beta cockpit settings: solo admin legge" on public.beta_cockpit_settings for select using (public.is_platform_admin());
-create policy "Beta cockpit settings: solo admin aggiorna" on public.beta_cockpit_settings for update using (public.is_platform_admin()) with check (public.is_platform_admin());
-
--- D1 — decision log
-create table if not exists public.beta_decisions (
-  id uuid primary key default gen_random_uuid(),
-  period_start date not null,
-  period_end date not null,
-  observation text not null check (char_length(observation) <= 1000),
-  hypothesis text check (char_length(hypothesis) <= 1000),
-  decision text check (char_length(decision) <= 1000),
-  action text check (char_length(action) <= 500),
-  owner text check (char_length(owner) <= 80),
-  due_date date,
-  status text not null default 'aperta' check (status in ('aperta','fatta','annullata')),
-  created_by uuid references public.profiles(id) on delete set null,
-  created_at timestamptz not null default now(),
-  updated_at timestamptz not null default now()
-);
-alter table public.beta_decisions enable row level security;
-create policy "Beta decisions: solo admin" on public.beta_decisions for all using (public.is_platform_admin()) with check (public.is_platform_admin());
-
--- D6 — feedback: due stati in più e tag
-alter table public.beta_feedback drop constraint if exists beta_feedback_status_check;
-alter table public.beta_feedback add constraint beta_feedback_status_check
-  check (status in ('nuovo','da_capire','in_gestione','risolto','non_ora'));
-alter table public.beta_feedback add column if not exists admin_tags text[] not null default '{}';
-
--- D3 — giorni con app aperta (sola lettura, solo admin)
-create or replace function public.admin_beta_open_days(p_user_ids uuid[], p_since timestamptz)
-returns table (user_id uuid, day date)
-language sql stable security definer set search_path = ''
-as $$
-  select r.user_id::uuid, (r.created_at at time zone 'Europe/Rome')::date
-  from auth.refresh_tokens r
-  where public.is_platform_admin()
-    and r.created_at >= p_since
-    and r.user_id = any (select unnest(p_user_ids)::text)
-  group by 1, 2;
-$$;
-revoke all on function public.admin_beta_open_days(uuid[], timestamptz) from public, anon;
-grant execute on function public.admin_beta_open_days(uuid[], timestamptz) to authenticated;
-
-commit;
-```
+Approvata per intero il 20/10/2026. Il testo completo, con rollback e post-check, è nel repository: `supabase/migration_46_beta_cockpit.sql` (PREPARATA, NON APPLICATA). Additiva e idempotente, una transazione: tabella `beta_cockpit_settings` (una riga; default settimanale il venerdì alle 9, inizio beta 18/11), tabella `beta_decisions`, due stati in più e `admin_tags` su `beta_feedback`, funzione `admin_beta_open_days()` in sola lettura. Tutto leggibile e scrivibile solo da `platform_admin`.
 
 **Mappa dei 5 stati feedback:** Nuovo = `nuovo` · Da capire = `da_capire` · Da fare = `in_gestione` · Fatto = `risolto` · Non ora = `non_ora`. Le righe esistenti non cambiano; la pagina "Le mie segnalazioni" del genitore mostrerà `da_capire` come "In gestione" e `non_ora` come "Ricevuta".
-
-**Rollback:**
-```sql
-begin;
-drop function if exists public.admin_beta_open_days(uuid[], timestamptz);
-update public.beta_feedback set status = 'in_gestione' where status = 'da_capire';
-update public.beta_feedback set status = 'risolto' where status = 'non_ora';
-alter table public.beta_feedback drop constraint if exists beta_feedback_status_check;
-alter table public.beta_feedback add constraint beta_feedback_status_check check (status in ('nuovo','in_gestione','risolto'));
-alter table public.beta_feedback drop column if exists admin_tags;
-drop table if exists public.beta_decisions;
-drop table if exists public.beta_cockpit_settings;
-commit;
-```
 
 **Dati raccolti:** nessun dato nuovo sulle famiglie. Le due tabelle contengono solo impostazioni e note del founder; la funzione legge dati di sessione già esistenti e restituisce solo utente e giorno.
 
@@ -198,7 +118,7 @@ commit;
 
 ---
 
-## Definizioni proposte (da confermare)
+## Definizioni (confermate il 20/10/2026)
 
 **Famiglia.** Gli account genitore della stessa riga `families` tramite `family_members`; un genitore senza famiglia è una famiglia da solo. Nome mostrato: nome della famiglia o iniziali del genitore, mai i nomi dei figli.
 
@@ -234,17 +154,24 @@ Test (`tests/one/beta-cockpit*.spec.ts`): stato famiglia, attivazione, giorni at
 ## Decisioni prese
 | Data | Decisione | Chi | Motivo |
 |---|---|---|---|
+| 20/10/2026 | Migration 46 approvata per intero (impostazioni, decision log, feedback a 5 stati con tag, giorni con app aperta) | Fabrizio | Cockpit completo come da brief |
+| 20/10/2026 | "Attivata" = almeno un figlio + 3 impegni reali; la scuola si mostra a parte | Fabrizio | La scuola si può saltare e il calendario copre solo Milano e Rutigliano |
+| 20/10/2026 | Famiglie invitate registrate dalla Lista d'attesa ("+ Famiglia invitata"), collegate per email | Fabrizio | Si vede anche chi non si è mai registrato |
+| 20/10/2026 | Attivazione = traguardo con data; stato = situazione attuale (aggiunto "In avvio") | Claude | Evita una famiglia "attivata" e "dormiente" nello stesso campo |
 
 ## Stato tecnico
-- Flag: nessuno per il cockpit (solo Admin); `BETA_SURVEY_ENABLED` per la survey.
-- Migration: `migration_46_beta_cockpit.sql` — proposta, non scritta nel repo, in attesa di approvazione.
-- Commit: nessuno.
+- Cockpit: solo Admin, nessun flag. Survey: `BETA_SURVEY_ENABLED`, release "TRAMA — Survey della beta" (card Release).
+- Migration: `supabase/migration_46_beta_cockpit.sql` — PREPARATA, NON APPLICATA (la applica `bash deploy.sh` con `APPLICA`).
+- Ramo: `claude/admin-beta-cockpit`.
+- Test: `tests/one/beta-cockpit.spec.ts`, 34 test, tutti verdi nel sandbox; nessuna regressione nei test caricabili (stesse 7 failure preesistenti di `main`).
 
 ## Aspetta Fabrizio
-- [ ] Approvare (tutta, in parte o niente) la migration 46.
-- [ ] Scegliere la definizione di "Attivata".
-- [ ] Decidere se contare i giorni con app aperta (D3).
-- [ ] Confermare gli invitati via Lista d'attesa (D4).
+- [ ] `bash deploy.sh` (porta il ramo su main, controllo tipi completo, migration 46 con `APPLICA`, deploy).
+- [ ] Prima del 18/11: escludere dal cockpit i propri account e quelli di prova (dettaglio famiglia → "Escludi dai conteggi").
+- [ ] Inserire le famiglie invitate (Admin → Beta Famiglie → "+ Famiglia invitata").
+- [ ] Accendere la release "Survey della beta" quando parte la beta (Pilot).
+- [ ] Facoltativo: `node scripts/screenshots-beta-cockpit.mjs` per gli screenshot.
+- [ ] Informativa privacy: citare "dati tecnici di accesso (giorni di utilizzo) per statistiche interne".
 
 ## Problemi e rischi aperti
 - 37 righe `families` per 3 creatori, solo 2 con membri: famiglie orfane. Il cockpit le ignora, ma vanno capite (possibile bug nella creazione della famiglia).
@@ -252,4 +179,110 @@ Test (`tests/one/beta-cockpit*.spec.ts`): stato famiglia, attivazione, giorni at
 - Con piano Vercel gratuito i log durano un'ora: "errori tecnici" resta un dato aggregato.
 
 ## Da riportare nello stato
-- Il cruscotto beta (I2 di `LANCIO_BETA_20NOV.md`) ha una pre-apply review: una migration proposta (46), nessuna applicata.
+- Cruscotto beta (I2 di `LANCIO_BETA_20NOV.md`): costruito (Admin → Beta Famiglie e Beta → Report), sul ramo `claude/admin-beta-cockpit`, con migration 46 da applicare.
+- Survey beta in Home dietro `BETA_SURVEY_ENABLED`.
+
+---
+
+## Output finale (20/10/2026)
+
+### 1. Cosa esisteva prima
+Vedi la tabella A della pre-apply review. In sintesi: Admin con Dashboard e Analisi su dati finti; pagina Pilota per **utente** (3 tipi di azione, ritorno dal solo ultimo login); `product_events` senza utente; coda feedback a 3 stati; lista d'attesa; inviti beta; cron giornalieri.
+
+### 2. Cosa ho riusato
+| Elemento | Come |
+|---|---|
+| Layout e controllo Admin | Nuova voce "Beta Famiglie"; controllo `platform_admin` lato server come in `lib/data/pilot-users.ts` |
+| Tabelle operative (figli, scuola, impegni, chi accompagna, famiglia, salvati, condivisioni, prenotazioni, richieste, centri suggeriti, Radar, gruppi, Classe e scuola, push, onboarding) | Lette in sola lettura: sono le "azioni significative" |
+| `beta_feedback` | Triage a 5 stati e tag; risposte alle survey (area `survey_1`/`survey_2`) |
+| `beta_waitlist` | Famiglie invitate (stato "invitato") |
+| `announcement_receipts` | "Più tardi" della survey |
+| `normalizeDedupeKey` (centri suggeriti) | Stessa regola per la densità dei centri |
+| `loadFamily` dei promemoria serali | Chiusure della scuola non organizzate |
+| Cron del Buongiorno | Avviso "report pronto" al founder |
+| Feature flag e card Release | Survey dietro `BETA_SURVEY_ENABLED` |
+
+### 3. Cosa ho aggiunto
+- `lib/beta-cockpit/` (logica pura): `definitions.ts`, `dates.ts`, `model.ts`, `demand.ts`, `feedback.ts`, `survey.ts`, `view.ts`.
+- `lib/data/beta-cockpit.ts` (lettura), `lib/data/beta-survey.ts`, `lib/data/beta-report-notice.ts`.
+- `app/actions/beta-cockpit.ts` (impostazioni, esclusioni, invitati, triage, decisioni, survey).
+- Pagine: `/admin/beta` (Overview, Famiglie, Funnel, Utilizzo, Frizioni, Centri, Feedback), `/admin/beta/famiglia/[key]`, `/admin/beta/report`.
+- `components/nextgen/BetaSurveyCard.tsx` in Home V2 (dopo "Da fare").
+- `supabase/migration_46_beta_cockpit.sql`, `tests/one/beta-cockpit.spec.ts`, `scripts/screenshots-beta-cockpit.mjs`.
+- Modifiche piccole: voce di menu Admin; `lib/data/beta-feedback.ts` mostra alle famiglie e nella coda storica i 3 stati di sempre; evento `beta_report_notice_sent`; flag, catalogo e release della survey.
+
+### 4. Definizione delle metriche
+| Metrica | Definizione |
+|---|---|
+| Famiglia | Account genitore della stessa `families` (via `family_members`); senza famiglia = famiglia da sola. Una famiglia entra se almeno un adulto è nella coorte `trama-one-controlled-beta`; esclusi Admin, gestori, coorte `internal-preview` e la lista esclusi |
+| Invitata | Riga "invitato" in Lista d'attesa, oppure registrata con un codice beta |
+| Registrata | Almeno un adulto con account |
+| Impegni reali | Impegni nel Planner (anche da Scopri) non cancellati + richieste di prenotazione non annullate |
+| Attivata | Almeno un figlio e N impegni reali (N = 3, configurabile). Data = il più tardo dei due momenti |
+| Giorni attivi 7/14 | Giorni (Europe/Rome) con almeno un'azione significativa negli ultimi 7/14 |
+| App aperta | Giorni con sessione rinnovata (`admin_beta_open_days`), mostrati a parte, mai contati come azioni |
+| Attive nel periodo | Almeno un'azione significativa nel periodo |
+| Ritorno settimana 1/2 | Un giorno con azioni o app aperta tra i giorni 1–7 / 8–14 dopo la registrazione; "troppo recente" finché non sono passati 7/14 giorni |
+| Tempo al valore | Ore da registrazione a prima azione e ad attivazione; mediana + 3 più lente + chi non ci è arrivato |
+| Utilizzo per area | Famiglie con azioni nell'area nel periodo, azioni, famiglie con azioni in ≥2 giorni diversi |
+| Confronto | "vs periodo precedente" solo da 5 famiglie registrate in su e se il periodo precedente è dentro la beta |
+| Percentuali | "7 su 15"; la percentuale compare solo da 20 in su |
+
+### 5. Azione significativa
+Figlio aggiunto · scuola impostata · impegno inserito o modificato · attività da Scopri/Radar nel Planner · chi porta/ritira assegnato · altro genitore invitato o collegato · nonni/tata aggiunti · attività salvata · piano condiviso · richiesta o messaggio a un centro · centro suggerito · scoperta Radar · gruppo creato, invito o adesione · passaggio offerto/chiesto · Classe e scuola (adesione, proposta, interesse) · feedback · survey.
+**Non** contano: login, aperture di pagina, cambi di scheda, onboarding visto. Elenco nel codice: `lib/beta-cockpit/definitions.ts#ACTION_DEF`.
+
+### 6. Stati famiglia (soglie configurabili)
+| Stato | Regola (default) |
+|---|---|
+| Invitata | Nessun account registrato |
+| Non partita | Registrata, nessuna azione significativa |
+| In avvio | Qualche azione, non attivata, ultima azione da meno di 7 giorni |
+| Attiva | Attivata, ultima azione da meno di 4 giorni |
+| A rischio | Attivata, ultima azione da 4 a 6 giorni |
+| Dormiente | Ultima azione da almeno 7 giorni |
+Più il segno **"legge"**: apre l'app negli ultimi 7 giorni ma non fa azioni. Nessun punteggio.
+
+### 7. Funnel
+Invitata → Registrata → Onboarding concluso (completato o saltato) → Primo impegno → 3 impegni → Secondo adulto o coordinamento → Ritorno settimana 1 → Ritorno settimana 2. Sequenziale; per ogni passo: arrivate ("7 su 15"), ferme qui (clic = tabella filtrata), di cui troppo recenti.
+
+### 8. Densità dei centri
+Segnali per famiglia da: centri TRAMA salvati, richieste e prenotazioni; Scoperte salvate o nel Planner; scoperte community nel Planner; centri suggeriti; Radar; impegni scritti a mano (luogo o titolo, marcati "testo libero", parole generiche escluse). Chiave = nome normalizzato + comune (stessa regola dei centri suggeriti); un nome senza comune si aggancia all'unica variante con comune. Si contano **famiglie distinte**; fasce ≥2, ≥3, ≥5; "Top opportunità" = ≥2 famiglie e non solo testo libero. Zone = comuni della scuola delle famiglie.
+
+### 9. Survey
+Due survey fisse nel codice (`lib/beta-cockpit/survey.ts`), dietro `BETA_SURVEY_ENABLED`: la 1 dal giorno 3 (4 domande del brief), la 2 dal giorno 14 (5 domande; dal giorno 14 vale la 2). Card in Home V2, domande a scelta obbligatorie, testi facoltativi (600 caratteri), "Più tardi" = di nuovo dopo 2 giorni. Risposte in `beta_feedback` (area `survey_1`/`survey_2`), visibili in Admin → Beta Famiglie → Feedback (vista "Survey" e riepilogo per domanda). Giorni e accensione per survey in Report → Impostazioni.
+
+### 10. Report navigabile
+`/admin/beta/report`: Executive summary (con "Richiede attenzione" se il periodo arriva a oggi) → Funnel → Famiglie → Utilizzo → Frizioni → Centri → Feedback → Survey → Decisioni → Impostazioni. Ogni sezione si apre e chiude; ogni numero porta a `/admin/beta?tab=famiglie&filtro=…` e da lì alla famiglia. Periodi: Oggi, 3, 7, 14, 30 giorni, Beta completa, Personalizzato. Sintesi deterministica e "Segnali da guardare" senza cause.
+
+### 11. Frequenza configurabile
+Manuale / Giornaliero / Settimanale (giorno, ora, Europe/Rome), default settimanale il venerdì alle 9, inizio beta 18/11. Le finestre si calcolano dalle impostazioni ("20–26 nov") e il report si ricalcola dai dati: niente metriche copiate nel database, si salvano solo le decisioni.
+
+### 12. Cron
+Nessun nuovo scheduler: il cron del Buongiorno (8:00 a Roma) chiama `sendBetaReportNoticeIfDue`, che a finestra chiusa manda al founder un'email con i numeri e il link al report, una volta per finestra (`product_events` `beta_report_notice_sent`). Destinatario: `BETA_REPORT_EMAIL` se impostata, altrimenti l'email dell'Admin. Con un'ora dopo le 8 l'email arriva il giorno dopo.
+
+### 13. Test
+`tests/one/beta-cockpit.spec.ts` (34, tutti verdi): stato famiglia, attivazione, giorni attivi, azioni significative, funnel, densità centri, intervalli di date e fuso, report settimanale e giornaliero, filtri, feedback, survey, vista completa; controlli sul sorgente per l'accesso Admin (pagine e azioni), la migration e l'assenza di analytics di terze parti. Regressione: nessuna differenza con `main` nei 76 file caricabili nel sandbox. **Pending local verification:** controllo dei tipi completo, build e test browser (le dipendenze non si possono installare nel sandbox di questa sessione; li esegue `deploy.sh`).
+
+### 14. Screenshot
+Non producibili nel sandbox (nessun accesso all'app e niente dipendenze). Sul Mac: `node scripts/screenshots-beta-cockpit.mjs` (sola lettura, login Admin una volta, output in `logs/screens-beta-…/`).
+
+### 15. Limiti ancora presenti
+- Figli, impegni e assegnazioni restano per genitore: se due genitori inseriscono lo stesso figlio, conta due volte.
+- Di impegni e assegnazioni si vede solo l'ultima modifica: i giorni attivi sono un minimo.
+- Prenotazioni annullate: lo stato è quello di oggi anche nei report passati; push, inviti in attesa, salvati non collocati e chiusure sono sempre "a oggi".
+- Gli impegni a mano non hanno un campo "centro": la densità usa luogo o titolo (testo libero da verificare).
+- Errori tecnici solo aggregati e solo quelli del Planner; i log di Vercel non sono collegati alle famiglie.
+- "App aperta" conta i rinnovi di sessione: un'app lasciata aperta in background può contare come giorno aperto.
+- Le 37 righe `families` orfane (3 creatori) non entrano nel cockpit ma andrebbero capite.
+- Oggi il cockpit mostra 7 "famiglie" (account di prova e vicini): vanno escluse prima del 18/11.
+
+### 16. Cosa guardare ogni settimana (10 minuti, il venerdì)
+1. **Richiede attenzione**: scrivi oggi alle famiglie non attivate da 48h e a chi aspetta un centro.
+2. **Overview**: attive nel periodo e a rischio; il confronto col periodo prima.
+3. **Funnel**: dove si ferma il numero più alto di famiglie. Scegli **un** passo da capire.
+4. **Frizioni**: le prime tre; chiedi alle famiglie coinvolte (non cambiare la UI prima).
+5. **Utilizzo**: quali aree tornano in ≥2 giorni (abitudine) e quali nessuno usa.
+6. **Centri**: i nomi con ≥3 famiglie sono i primi da contattare a gennaio.
+7. **Feedback e survey**: triage dei nuovi; leggi "Se TRAMA sparisse domani" e "Cosa fai ancora su WhatsApp".
+8. **Decisioni**: una o due righe nel decision log (osservazione → ipotesi → decisione → azione, owner, data) e chiudi quelle fatte.

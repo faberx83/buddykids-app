@@ -21,6 +21,9 @@ import { resolveBuildInfoBubbleLabel } from "@/lib/build-info-bubble";
 // lib/data/admin-attendance.ts, lib/data/admin-favorites.ts.
 const baseNavItems = [
   { href: "/admin", label: "Dashboard", icon: "ti-layout-dashboard" },
+  // TRAMA — ADMIN BETA COCKPIT (20/10/2026): la beta famiglie, una riga per
+  // famiglia, con il report navigabile (/admin/beta/report).
+  { href: "/admin/beta", label: "Beta Famiglie", icon: "ti-heart-handshake" },
   { href: "/admin/analytics", label: "Analisi", icon: "ti-chart-bar" },
   { href: "/admin/centers", label: "Centri", icon: "ti-building-community" },
   { href: "/admin/activities", label: "Attività", icon: "ti-list-details" },

@@ -11,6 +11,7 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
+import { toLegacyFeedbackStatus } from "@/lib/beta-cockpit/feedback";
 import {
   BetaFeedbackItem,
   BetaFeedbackSource,
@@ -49,7 +50,9 @@ function mapRow(row: RawRow): BetaFeedbackItem {
     area: row.area,
     pagePath: row.page_path,
     message: row.message,
-    status: row.status,
+    // Migration 46: "da_capire"/"non_ora" esistono solo nel cockpit Admin;
+    // qui (famiglie e coda storica) restano i tre stati di sempre.
+    status: toLegacyFeedbackStatus(row.status),
     adminNote: row.admin_note ?? undefined,
     createdAt: row.created_at,
     parentName: firstOf(row.profiles)?.full_name ?? undefined,

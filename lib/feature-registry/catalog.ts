@@ -998,6 +998,31 @@ export const FEATURE_CATALOG: FeatureCatalogEntry[] = [
     releaseEligible: true,
   },
   {
+    // TRAMA — ADMIN BETA COCKPIT (20/10/2026). ADAPT: le risposte riusano
+    // beta_feedback (area survey_*) e "Più tardi" riusa announcement_receipts;
+    // nuova solo la card in Home (components/nextgen/BetaSurveyCard.tsx).
+    key: "beta_survey",
+    label: "Survey della beta in Home (giorno 3 e giorno 14)",
+    area: "parent",
+    status: "INTERNAL_PREVIEW",
+    flagName: "BETA_SURVEY_ENABLED",
+    description:
+      "Una card in Home chiede quattro cose dopo 3 giorni (cosa è servito, cosa è stato faticoso, quanto dispiacerebbe se " +
+      "TRAMA sparisse, cosa si fa ancora fuori) e cinque dopo 14. Le risposte si leggono in Admin → Beta Famiglie → Feedback.",
+    sourceFiles: [
+      "lib/beta-cockpit/survey.ts",
+      "lib/data/beta-survey.ts",
+      "components/nextgen/BetaSurveyCard.tsx",
+      "app/actions/beta-cockpit.ts",
+      "app/nextgen/page.tsx",
+    ],
+    note:
+      "Solo con la Home V2. Nessuna tabella nuova; giorni e accensione per survey si regolano da Admin solo dopo la " +
+      "migration_46_beta_cockpit.sql (prima: 3 e 14 giorni).",
+    riskLevel: "low",
+    releaseEligible: true,
+  },
+  {
     // TRAMA — PAGINA DI BENVENUTO (20/10/2026). NEW: prima chi non aveva un
     // account vedeva solo la pagina di accesso. Riusa testi e schermate demo
     // del carosello di primo ingresso; nuova solo la lista d'attesa

@@ -329,6 +329,16 @@ export const FEATURE_FLAG_REGISTRY = {
     defaultValue: false,
     allowedScopes: ["global", "environment", "user", "role", "cohort"],
   },
+  // TRAMA — ADMIN BETA COCKPIT (20/10/2026), release "survey-beta".
+  BETA_SURVEY_ENABLED: {
+    name: "BETA_SURVEY_ENABLED",
+    description:
+      "In Home una card con la survey della beta: la prima dopo 3 giorni dalla registrazione (4 domande), la seconda " +
+      "dopo 14 (5 domande); giorni e accensione da Admin → Beta → Report → Impostazioni. 'Più tardi' la ripropone dopo " +
+      "2 giorni. Le risposte vanno nei feedback (area survey_1/survey_2). Default false: nessuna card.",
+    defaultValue: false,
+    allowedScopes: ["global", "environment", "user", "role", "cohort"],
+  },
   // TRAMA — PAGINA DI BENVENUTO (20/10/2026), release "pagina-benvenuto".
   LANDING_PUBLIC_ENABLED: {
     name: "LANDING_PUBLIC_ENABLED",
