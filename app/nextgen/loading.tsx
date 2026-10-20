@@ -1,4 +1,4 @@
-import TramaSpinner from "@/components/TramaSpinner";
+import TramaSpinner, { LOADER_SCREEN } from "@/components/TramaSpinner";
 
 // TRAMA — caricamento delle pagine famiglie V2 (16/10/2026, Fabrizio: "vuoi
 // mettere il logo che fa qualche animazione? E utilizzarlo su pagine che si
@@ -7,8 +7,8 @@ import TramaSpinner from "@/components/TramaSpinner";
 // schermo fermo o vuoto. Stesso logo animato di Partner, Admin e V1.
 export default function Loading() {
   return (
-    <div className="flex min-h-[70vh] items-center justify-center">
-      <TramaSpinner size={176} />
+    <div className={LOADER_SCREEN}>
+      <TramaSpinner size={220} />
     </div>
   );
 }

@@ -36,13 +36,17 @@ const WORDMARK: Record<"color" | "navy" | "white", string> = {
   white: "/brand/trama-wordmark-white.png",
 };
 
-// v8 (20/10/2026) — Fabrizio: "ancora troppo piccolo, lo vorrei più grande e
-// bellino". Logo più grande, scritta TRAMA larga quasi quanto il logo (prima
-// metà), un alone morbido con i colori dei fili che "respira" dietro il logo,
-// e la scritta che entra con una dissolvenza. Con "riduci movimento": tutto
-// fermo (vedi .trama-loader-* in globals.css).
+// v9 (20/10/2026, Fabrizio: "l'alone sotto non mi piace… sfondo beigiolino
+// e logo e wordmark ancora più grandi"). Niente alone: logo grande (il fondo
+// beige a schermo intero lo mettono le pagine loading.tsx, vedi
+// LOADER_SCREEN qui sotto) e scritta TRAMA larga quasi quanto il logo, che
+// entra con una dissolvenza. Con "riduci movimento": tutto fermo.
+
+/** Schermo del caricamento nelle app famiglie e Partner: beige caldo, a tutto schermo. */
+export const LOADER_SCREEN = "fixed inset-0 z-[80] flex items-center justify-center bg-[#F5EFE5]";
+
 export default function TramaSpinner({
-  size = 176,
+  size = 220,
   tone = "color",
   label = "Caricamento",
   wordmark = true,
@@ -54,21 +58,14 @@ export default function TramaSpinner({
 }) {
   return (
     <span role="status" className="relative inline-flex flex-col items-center" data-testid="trama-loader">
-      <span className="relative inline-flex items-center justify-center">
-        <span
-          aria-hidden="true"
-          className="trama-loader-glow pointer-events-none absolute rounded-full"
-          style={{ width: size * 1.35, height: size * 1.35, opacity: tone === "white" ? 0.35 : 0.75 }}
-        />
-        <img src={SRC[tone]} alt="" aria-hidden="true" className="trama-weave relative" style={{ width: size, height: "auto" }} />
-      </span>
+      <img src={SRC[tone]} alt="" aria-hidden="true" className="trama-weave relative" style={{ width: size, height: "auto" }} />
       {wordmark && (
         <img
           src={WORDMARK[tone]}
           alt=""
           aria-hidden="true"
-          className="trama-loader-word relative mt-5"
-          style={{ width: Math.round(size * 0.78), height: "auto" }}
+          className="trama-loader-word relative mt-6"
+          style={{ width: Math.round(size * 0.8), height: "auto" }}
         />
       )}
       <span className="sr-only">{label}</span>

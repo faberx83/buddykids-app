@@ -50,17 +50,23 @@ test.describe("TRAMA — Loader e ritorno alla Home [no browser]", () => {
     expect(read("app/nextgen/layout.tsx")).toContain("{returnHomeEnabled && <ReturnHomeAfterIdle />}");
   });
 
-  // 20/10/2026 (secondo giro, "ancora troppo piccolo… più grande e bellino"):
-  // logo 176, scritta larga quasi quanto il logo, alone colorato che respira.
+  // 20/10/2026 (terzo giro, "l'alone sotto non mi piace… sfondo beigiolino e
+  // logo e wordmark ancora più grandi"): niente alone, schermo beige intero,
+  // logo 220, scritta larga 0.8 del logo.
   test("LD-02 loader: logo più grande nell'app e scritta TRAMA sotto", () => {
     const s = read("components/TramaSpinner.tsx");
     expect(s).toContain("wordmark = true,");
-    expect(s).toContain("style={{ width: Math.round(size * 0.78), height: \"auto\" }}");
-    expect(s).toContain("trama-loader-glow");
-    expect(read("app/nextgen/loading.tsx")).toContain("<TramaSpinner size={176} />");
+    expect(s).toContain("size = 220,");
+    expect(s).toContain("style={{ width: Math.round(size * 0.8), height: \"auto\" }}");
+    expect(s).not.toContain("trama-loader-glow");
+    expect(s).toContain('export const LOADER_SCREEN = "fixed inset-0 z-[80] flex items-center justify-center bg-[#F5EFE5]";');
+    for (const p of ["app/nextgen/loading.tsx", "app/(main)/loading.tsx", "app/center/loading.tsx"]) {
+      expect(read(p), p).toContain("<div className={LOADER_SCREEN}>");
+    }
+    expect(read("app/nextgen/loading.tsx")).toContain("<TramaSpinner size={220} />");
     const css = read("app/globals.css");
-    expect(css).toContain("@keyframes tramaGlow");
-    expect(css).toMatch(/prefers-reduced-motion: reduce\) \{\s*\.trama-loader-glow,\s*\.trama-loader-word \{\s*animation: none;/);
+    expect(css).not.toContain("tramaGlow");
+    expect(css).toMatch(/prefers-reduced-motion: reduce\) \{\s*\.trama-loader-word \{\s*animation: none;/);
   });
 });
 

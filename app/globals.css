@@ -303,26 +303,8 @@ body:has(.app-shell) {
     width: 100%;
   }
 }
-/* Loader v8 (20/10/2026): alone con i colori dei fili che respira dietro il
-   logo, scritta TRAMA che entra con una dissolvenza. */
-.trama-loader-glow {
-  background:
-    radial-gradient(circle at 30% 38%, rgba(246, 107, 94, 0.22), transparent 55%),
-    radial-gradient(circle at 70% 36%, rgba(246, 166, 35, 0.2), transparent 55%),
-    radial-gradient(circle at 34% 68%, rgba(45, 186, 140, 0.2), transparent 55%),
-    radial-gradient(circle at 66% 70%, rgba(111, 99, 197, 0.22), transparent 55%);
-  filter: blur(14px);
-  animation: tramaGlow 2s ease-in-out infinite;
-}
-@keyframes tramaGlow {
-  0%,
-  100% {
-    transform: scale(0.9);
-  }
-  50% {
-    transform: scale(1.05);
-  }
-}
+/* Loader v9 (20/10/2026): scritta TRAMA che entra con una dissolvenza
+   (l'alone colorato della v8 è stato tolto). */
 .trama-loader-word {
   animation: tramaWordIn 0.6s ease-out 0.15s both;
 }
@@ -338,7 +320,6 @@ body:has(.app-shell) {
   }
 }
 @media (prefers-reduced-motion: reduce) {
-  .trama-loader-glow,
   .trama-loader-word {
     animation: none;
   }

@@ -1,4 +1,4 @@
-import TramaSpinner from "@/components/TramaSpinner";
+import TramaSpinner, { LOADER_SCREEN } from "@/components/TramaSpinner";
 
 // TRAMA Sprint 3bis — "più grande e centrale" (richiesta di Fabrizio): da un
 // riquadro fisso h-64 a un contenitore che occupa la maggior parte della
@@ -6,8 +6,8 @@ import TramaSpinner from "@/components/TramaSpinner";
 // della schermata di caricamento invece di un dettaglio in un box piccolo.
 export default function Loading() {
   return (
-    <div className="flex min-h-[60vh] items-center justify-center">
-      <TramaSpinner size={176} />
+    <div className={LOADER_SCREEN}>
+      <TramaSpinner size={220} />
     </div>
   );
 }
