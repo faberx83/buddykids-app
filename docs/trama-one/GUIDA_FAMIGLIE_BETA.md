@@ -23,8 +23,8 @@ Senza gruppi WhatsApp, fogli Excel e post-it sul frigo.
 
 ## Come entrare (5 minuti)
 
-1. Aprite **[link d'invito]** dal telefono.
-2. Registratevi con la vostra email e il codice **[CODICE BETA]**. Vi arriva una mail di conferma da TRAMA: se non la vedete, guardate in Spam o Promozioni.
+1. Aprite dal telefono **questo link**: [https://tramapp.it/auth/login?beta=CODICE]. Il codice della beta è già dentro il link: usate proprio questo, non l'indirizzo scritto a mano.
+2. Registratevi con la vostra email e una password. Vi arriva una mail di conferma da TRAMA: se non la vedete, guardate in Spam o Promozioni.
 3. **Mettete TRAMA sulla schermata Home**, come un'app:
    - **iPhone:** aprite il link con **Safari** → tasto Condividi (il quadrato con la freccia) → "**Aggiungi alla schermata Home**". Poi aprite TRAMA dall'icona, non da Safari.
    - **Android:** in Chrome, il menu ⋮ → "**Installa app**" (o "Aggiungi a schermata Home").
@@ -67,5 +67,5 @@ Grazie davvero 🧵
 ## Messaggio corto per WhatsApp
 
 > Ciao! Ti va di provare in anteprima **TRAMA**, l'app che sto costruendo per organizzare attività dei figli, ponti della scuola e "chi li porta e chi li prende"? È una beta per pochi amici: ci metti 5 minuti a entrare e mi aiuta tantissimo sapere cosa non funziona.
-> Link: [link] · Codice: [CODICE]
+> Link (il codice è già dentro): [https://tramapp.it/auth/login?beta=CODICE]
 > Su iPhone aprilo con Safari e fai "Aggiungi alla schermata Home". Ti mando due righe di guida 🙏
