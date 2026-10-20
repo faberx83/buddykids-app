@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { headers } from "next/headers";
+import { redirect } from "next/navigation";
 import LoginForm from "./LoginForm";
 import { tenantForHost, TENANT_CONFIG } from "@/lib/tenant";
 import { resolveFeatureFlag } from "@/lib/feature-flags/resolve";
@@ -91,11 +92,23 @@ export default async function LoginPage({
     ? await resolvePublishedDocumentForPublicRoute("terms")
     : null;
 
+  // 20/10/2026 — PAGINA DI BENVENUTO (release "pagina-benvenuto"). Chi apre
+  // tramapp.it senza account arriva qui come /auth/login?next=/ (proxy.ts):
+  // con la release a tutti lo si porta su /benvenuto, che spiega cos'è TRAMA.
+  // Chi tocca "Accedi" (anche dalla pagina di benvenuto) apre /auth/login
+  // senza next=/ e resta qui. Beta solo su invito: senza un link d'invito
+  // il "Registrati" diventa "Chiedi un invito".
+  const landingEnabled =
+    tenant === "family" ? await resolveFeatureFlag({ flagName: "LANDING_PUBLIC_ENABLED", tenant }).catch(() => false) : false;
+  const nextParam = typeof params.next === "string" ? params.next : null;
+  if (landingEnabled && nextParam === "/" && !betaCode && !params.invite && !params.mode) redirect("/benvenuto");
+
   return (
     <LoginForm
       tenant={tenant}
       appName={appName}
       themeColor={config.themeColor}
+      inviteOnly={landingEnabled}
       legalGateEnabled={legalGateEnabled}
       currentTermsDoc={currentTermsDoc ? { id: currentTermsDoc.id, version: currentTermsDoc.version } : null}
     />

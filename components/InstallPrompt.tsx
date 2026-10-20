@@ -98,7 +98,11 @@ export default function InstallPrompt({
   // SPRINT 5.3 — "/share" (Condivisione Piano, pagina pubblica) escluso
   // sempre, indipendentemente da routeExclude: chi apre un link condiviso
   // (nonni, tata) non deve vedere un banner "Installa l'app".
-  const excluded = Boolean((routeExclude && pathname?.startsWith(routeExclude)) || pathname?.startsWith("/share"));
+  // 20/10/2026: anche la pagina di benvenuto (tramapp.it/benvenuto) — chi non
+  // ha un account non ha ancora niente da installare.
+  const excluded = Boolean(
+    (routeExclude && pathname?.startsWith(routeExclude)) || pathname?.startsWith("/share") || pathname?.startsWith("/benvenuto")
+  );
   const [deferredEvent, setDeferredEvent] = useState<BeforeInstallPromptEvent | null>(null);
   const [showIosHint, setShowIosHint] = useState(false);
   const [firstActionDone, setFirstActionDone] = useState(!waitForFirstAction);

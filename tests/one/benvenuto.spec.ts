@@ -1,0 +1,96 @@
+// TRAMA — PAGINA DI BENVENUTO E LISTA D'ATTESA (20/10/2026, Fabrizio: "una
+// landing che spiega cos'è TRAMA"; "solo su invito, ma la pagina vorrei fosse
+// accessibile e se qualcuno ci arriva mi interessa"). [no browser]
+
+import fs from "fs";
+import path from "path";
+import { test, expect } from "@playwright/test";
+import { checkWaitlist, cleanSource } from "../../lib/landing/waitlist";
+import { FEATURE_CATALOG } from "../../lib/feature-registry/catalog";
+import { getReleaseById } from "../../lib/releases/catalog";
+import { FEATURE_FLAG_REGISTRY } from "../../lib/feature-flags/registry";
+import { isKnownProductEvent } from "../../lib/telemetry/known-events";
+
+const read = (p: string) => fs.readFileSync(path.join(__dirname, "../..", p), "utf-8");
+
+test.describe("TRAMA — Pagina di benvenuto [no browser]", () => {
+  test("BV-01 modulo: email controllata, consenso obbligatorio, campi facoltativi puliti, trappola per i programmi", () => {
+    const ok = checkWaitlist({ email: " Giulia.R@Gmail.com ", comune: "  Milano  ", kidsCount: "2", note: " centri   estivi ", source: "WhatsApp!", consent: true });
+    expect(ok).toEqual({
+      ok: true,
+      row: { email: "giulia.r@gmail.com", comune: "Milano", kids_count: 2, note: "centri estivi", source: "whatsapp", contact_consent: true },
+    });
+    expect(checkWaitlist({ email: "giulia@gmail", consent: true })).toMatchObject({ ok: false, field: "email" });
+    expect(checkWaitlist({ email: "giulia@gmail.con", consent: true })).toMatchObject({ ok: false, field: "email", suggestion: "giulia@gmail.com" });
+    expect(checkWaitlist({ email: "giulia@gmail.com", consent: false })).toMatchObject({ ok: false, field: "consent" });
+    expect(checkWaitlist({ email: "giulia@gmail.com", consent: true, website: "http://spam" })).toMatchObject({ ok: false, field: "bot" });
+    const r = checkWaitlist({ email: "a@b.it", consent: true, kidsCount: "12", note: "x".repeat(900) });
+    expect(r.ok && r.row.kids_count).toBeNull();
+    expect(r.ok && r.row.note?.length).toBe(500);
+    expect(cleanSource("<script>")).toBe("script");
+    expect(cleanSource("")).toBeNull();
+  });
+
+  test("BV-02 salvataggio solo dal server, dopo i controlli; email già in lista non duplicata; avviso facoltativo a Fabrizio", () => {
+    const a = read("app/actions/waitlist.ts");
+    expect(a).toContain("const check = checkWaitlist(input);");
+    expect(a).toContain('.upsert(check.row, { onConflict: "email", ignoreDuplicates: true })');
+    expect(a).toContain("const notifyTo = process.env.WAITLIST_NOTIFY_EMAIL;");
+    expect(a).toContain("escapeHtml(r.email)");
+    // programma automatico: risposta uguale, niente salvato
+    expect(a).toContain('if (check.field === "bot") return { ok: true, already: false };');
+  });
+
+  test("BV-03 migrazione additiva: RLS attiva, nessun inserimento per i visitatori, lettura solo Admin", () => {
+    const m = read("supabase/migration_44_beta_waitlist.sql");
+    expect(m).toContain("-- STATO: PREPARATA, NON APPLICATA");
+    expect(m).toContain("create table if not exists public.beta_waitlist");
+    expect(m).toContain("alter table public.beta_waitlist enable row level security;");
+    expect(m).toContain("using (public.is_platform_admin());");
+    expect(m).not.toMatch(/for insert/i);
+    expect(m).toContain("drop table if exists public.beta_waitlist;"); // rollback documentato
+  });
+
+  test("BV-04 pagina pubblica: fuori dal controllo di accesso, niente 'installa' né cambio versione, visite senza IP", () => {
+    expect(read("proxy.ts")).toContain('!pathname.startsWith("/benvenuto") &&');
+    expect(read("components/InstallPrompt.tsx")).toContain('pathname?.startsWith("/benvenuto")');
+    expect(read("components/VersionToggle.tsx")).toContain('"/benvenuto"]');
+    const page = read("app/benvenuto/page.tsx");
+    expect(page).toContain('event_name: "landing_viewed", detail: source ?? "diretto"');
+    expect(page).toContain("if (!ua || BOT_UA.test(ua) || !isSupabaseConfigured) return;");
+    expect(isKnownProductEvent("landing_viewed")).toBe(true);
+    expect(isKnownProductEvent("landing_waitlist_joined")).toBe(true);
+  });
+
+  test("BV-05 promesse coerenti col prodotto e schermate riusate dal carosello", () => {
+    const v = read("components/landing/BenvenutoView.tsx");
+    expect(v).toContain("ONBOARDING_SLIDES.map(");
+    expect(v).toContain("In TRAMA non si paga nulla");
+    expect(v).not.toMatch(/verificat/i);
+    expect(v).toContain('href="#invito"');
+    expect(read("components/landing/LandingPhone.tsx")).toContain('import { PhoneScreen } from "@/components/nextgen/OnboardingCarousel";');
+    expect(read("components/landing/WaitlistForm.tsx")).toContain("la cancelliamo entro 12 mesi");
+  });
+
+  test("BV-06 release: senza account si arriva qui solo con la release a tutti; 'Registrati' diventa 'Chiedi un invito'", () => {
+    expect(FEATURE_FLAG_REGISTRY.LANDING_PUBLIC_ENABLED.defaultValue).toBe(false);
+    const entry = FEATURE_CATALOG.find((e) => e.key === "landing_benvenuto");
+    expect(entry?.flagName).toBe("LANDING_PUBLIC_ENABLED");
+    expect(entry?.releaseEligible).toBe(true);
+    expect(getReleaseById("pagina-benvenuto")?.featureKeys).toEqual(["landing_benvenuto"]);
+    const login = read("app/auth/login/page.tsx");
+    expect(login).toContain('if (landingEnabled && nextParam === "/" && !betaCode && !params.invite && !params.mode) redirect("/benvenuto");');
+    expect(login).toContain("inviteOnly={landingEnabled}");
+    const form = read("app/auth/login/LoginForm.tsx");
+    expect(form).toContain('isFamily && inviteOnly && mode === "login" && !inviteParam && !betaParam ? (');
+    expect(form).toContain('href="/benvenuto#invito"');
+  });
+
+  test("BV-07 Admin → Lista d'attesa: visite, richieste, email d'invito pronta col codice beta attivo", () => {
+    expect(read("app/admin/layout.tsx")).toContain('{ href: "/admin/lista-attesa", label: "Lista d\'attesa", icon: "ti-mail-heart" }');
+    expect(read("app/admin/lista-attesa/page.tsx")).toContain('codes.find((c) => c.state === "redeemable")?.code ?? null');
+    const c = read("app/admin/lista-attesa/ListaAttesaAdminClient.tsx");
+    expect(c).toContain("https://tramapp.it/auth/login?beta=${inviteCode}");
+    expect(read("app/actions/waitlist-admin.ts")).toContain('if (!data || data.length === 0) return { error: "Solo l\'Admin piattaforma può farlo" };');
+  });
+});

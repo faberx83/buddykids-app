@@ -52,9 +52,17 @@ test.describe("TRAMA - Login (header animato)", () => {
 
   test("TC-206 - Passando a 'Registrati' l'header animato resta sopra i campi, sulla stessa schermata", async ({ page }) => {
     test.skip(!isRealDeployment, "Richiede un deploy con Supabase configurato (tenant famiglia).");
+    // 20/10/2026: con la release "pagina-benvenuto" a tutti, "Registrati" senza
+    // un link d'invito diventa "Chiedi un invito" (beta solo su invito): si
+    // passa alla registrazione col link ?mode=signup, come da un invito.
     await page.goto("/auth/login");
-
-    await page.getByRole("button", { name: "Non hai un account? Registrati" }).click();
+    const toggle = page.getByRole("button", { name: "Non hai un account? Registrati" });
+    if (await toggle.isVisible().catch(() => false)) {
+      await toggle.click();
+    } else {
+      await expect(page.getByRole("link", { name: "Non hai un account? Chiedi un invito" })).toHaveAttribute("href", "/benvenuto#invito");
+      await page.goto("/auth/login?mode=signup");
+    }
     await expect(page.getByRole("img", { name: "TRAMA" })).toBeVisible();
     // BUGFIX (27/08): etichetta resa esplicita ("...centro — sconto") da
     // quando esiste anche l'invito Beta (?beta=CODICE, campo separato/badge,

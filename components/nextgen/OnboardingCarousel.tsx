@@ -416,7 +416,8 @@ function Avatar({ letter, tone }: { letter: string; tone: number }) {
   );
 }
 
-function PhoneScreen({ visual }: { visual: OnboardingSlideVisual }) {
+// 20/10/2026: esportata anche per la pagina di benvenuto (app/benvenuto), stesse schermate demo.
+export function PhoneScreen({ visual }: { visual: OnboardingSlideVisual }) {
   if (visual === "discover") {
     const d = ONBOARDING_DEMO_DISCOVER;
     return (

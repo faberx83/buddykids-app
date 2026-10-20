@@ -42,6 +42,7 @@ test.describe("TRAMA — Sottopagine V2 [no browser]", () => {
   test("SP-04 'Chi accompagna' dal + apre il foglio 'Chi fa cosa' della settimana", () => {
     expect(read("components/nextgen/AddSheet.tsx")).toContain("href: `/nextgen/planner?week=${plannerWeek ?? mondayOfTodayRome()}&panel=chi`");
     expect(read("app/nextgen/planner/planner-v2-data.ts")).toContain('searchParams.panel === "chi"');
-    expect(read("app/nextgen/planner/PlannerV2Client.tsx")).toContain('initialPanel: "mappa" | "gruppi" | "chi" | null;');
+    // 20/10/2026: si aggiunge { assign } ("Assegna" dalla Home), "chi" resta.
+    expect(read("app/nextgen/planner/PlannerV2Client.tsx")).toContain('initialPanel: "mappa" | "gruppi" | "chi" | { assign: string } | null;');
   });
 });

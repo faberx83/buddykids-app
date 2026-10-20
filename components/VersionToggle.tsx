@@ -70,7 +70,7 @@ function isStandaloneDisplay(): boolean {
 // /nextgen/center e /nextgen/admin) è esclusa: niente pulsante e niente
 // redirect automatico verso "/" da una preferenza "legacy" salvata in
 // passato. Su "/" (LEGACY) resta "Passa a NextGen" per gli account di test.
-const HIDDEN_PREFIXES = ["/center", "/admin", "/nextgen", "/auth", "/share", "/activity", "/one"];
+const HIDDEN_PREFIXES = ["/center", "/admin", "/nextgen", "/auth", "/share", "/activity", "/one", "/benvenuto"];
 
 // Richiesta di Fabrizio (27/08): il toggle non deve più essere visibile per
 // utenti esterni/beta tester — resta attivo SOLO per le sue utenze di test

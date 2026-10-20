@@ -925,6 +925,36 @@ export const FEATURE_CATALOG: FeatureCatalogEntry[] = [
     releaseEligible: true,
   },
   {
+    // TRAMA — PAGINA DI BENVENUTO (20/10/2026). NEW: prima chi non aveva un
+    // account vedeva solo la pagina di accesso. Riusa testi e schermate demo
+    // del carosello di primo ingresso; nuova solo la lista d'attesa
+    // (migration_44_beta_waitlist.sql).
+    key: "landing_benvenuto",
+    label: "Pagina di benvenuto — cos'è TRAMA e 'Chiedi un invito'",
+    area: "parent",
+    status: "INTERNAL_PREVIEW",
+    flagName: "LANDING_PUBLIC_ENABLED",
+    description:
+      "tramapp.it senza account apre /benvenuto: cosa fa TRAMA, come si entra e il modulo 'Chiedi un invito' (lista " +
+      "d'attesa in Admin). Nell'accesso, senza un link d'invito, 'Registrati' diventa 'Chiedi un invito'.",
+    sourceFiles: [
+      "app/benvenuto/page.tsx",
+      "components/landing/BenvenutoView.tsx",
+      "components/landing/WaitlistForm.tsx",
+      "components/landing/LandingPhone.tsx",
+      "app/actions/waitlist.ts",
+      "lib/landing/waitlist.ts",
+      "app/auth/login/page.tsx",
+      "app/admin/lista-attesa/page.tsx",
+    ],
+    note:
+      "Chi non ha un account non appartiene a nessuna coorte: il cambio vale solo con la release a tutti (Interno e " +
+      "Pilot non cambiano niente per i visitatori). /benvenuto è sempre raggiungibile col suo link. Serve " +
+      "migration_44 per salvare le richieste; WAITLIST_NOTIFY_EMAIL su Vercel per ricevere un'email a ogni richiesta.",
+    riskLevel: "low",
+    releaseEligible: true,
+  },
+  {
     // TRAMA — TRASLOCO SU tramapp.it (16/10/2026). NEW: prima non esisteva un
     // dominio proprio (solo alias *.vercel.app). Riusa proxy.ts (stesso punto
     // che già smista i tenant) e la sessione Supabase esistente: nessun nuovo

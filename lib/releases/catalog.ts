@@ -238,6 +238,21 @@ export const RELEASE_CATALOG: ReleaseCatalogEntry[] = [
     ],
     notes: "Creata il 16/10/2026. Ripiego: flag spento = i vecchi indirizzi funzionano come prima (al massimo un controllo all'ora, invisibile).",
   },
+  {
+    // TRAMA — PAGINA DI BENVENUTO (20/10/2026).
+    id: "pagina-benvenuto",
+    label: "TRAMA — Pagina di benvenuto",
+    shortDescription:
+      "Chi apre tramapp.it senza account vede cos'è TRAMA e può chiedere un invito; 'Registrati' senza invito diventa 'Chiedi un invito'.",
+    targetAudience: ["parent"],
+    featureKeys: ["landing_benvenuto"],
+    knownLimitations: [
+      "landing_benvenuto: per chi non ha un account vale solo la release a tutti; Interno e Pilot non cambiano nulla per i visitatori. Per vederla prima: tramapp.it/benvenuto.",
+      "Le richieste di invito si salvano solo dopo migration_44_beta_waitlist.sql; prima il modulo risponde 'scrivici a privacy@tramapp.it'.",
+      "Le visite (landing_viewed) sono un conteggio indicativo: ricariche comprese, anteprime dei link escluse.",
+    ],
+    notes: "Creata il 20/10/2026. Ripiego: flag spento = tramapp.it senza account apre l'accesso come prima.",
+  },
 ];
 
 export function getReleaseCatalog(): ReleaseCatalogEntry[] {

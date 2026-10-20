@@ -300,6 +300,16 @@ export const FEATURE_FLAG_REGISTRY = {
     defaultValue: false,
     allowedScopes: ["global", "environment", "user", "role", "cohort"],
   },
+  // TRAMA — PAGINA DI BENVENUTO (20/10/2026), release "pagina-benvenuto".
+  LANDING_PUBLIC_ENABLED: {
+    name: "LANDING_PUBLIC_ENABLED",
+    description:
+      "Chi apre tramapp.it senza account arriva sulla pagina di benvenuto (/benvenuto: cos'è TRAMA e 'Chiedi un invito') " +
+      "invece che sulla pagina di accesso; nell'accesso 'Registrati' diventa 'Chiedi un invito' (beta solo su invito). " +
+      "Default false: tutto come prima. /benvenuto resta comunque raggiungibile col suo link.",
+    defaultValue: false,
+    allowedScopes: ["global", "environment", "user", "role", "cohort", "tenant"],
+  },
   // TRAMA — TRASLOCO SU tramapp.it (16/10/2026), release "trasloco-tramapp".
   DOMAIN_MOVE_TRAMAPP_ENABLED: {
     name: "DOMAIN_MOVE_TRAMAPP_ENABLED",

@@ -175,6 +175,8 @@ export async function proxy(request: NextRequest) {
       // 16/10/2026 — link corti degli inviti (app/i/[key]): decidono loro se
       // serve il login, conservando la pagina d'arrivo.
       !pathname.startsWith("/i/") &&
+      // 20/10/2026 — pagina di benvenuto pubblica (app/benvenuto).
+      !pathname.startsWith("/benvenuto") &&
       pathname !== "/sw.js"
     ) {
       const userId = await getRequestUserId(request);

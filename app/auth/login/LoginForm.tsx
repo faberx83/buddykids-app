@@ -24,10 +24,13 @@ export default function LoginForm({
   themeColor,
   legalGateEnabled = false,
   currentTermsDoc = null,
+  inviteOnly = false,
 }: {
   tenant: Tenant;
   appName: string;
   themeColor: string;
+  /** 20/10/2026: beta solo su invito (release "pagina-benvenuto"): niente "Registrati" senza un link d'invito. */
+  inviteOnly?: boolean;
   // PRE-MICRO-PILOT CLOSURE GATE (task #568, 25/08/2026) — risolti
   // server-side in page.tsx (mai qui: nessun Client Component deve leggere
   // feature_flag_overrides/legal_documents direttamente). Default a
@@ -572,6 +575,16 @@ export default function LoginForm({
                 Vuoi diventare un Centro Partner TRAMA? Candidati
               </Link>
             ) : (
+              isFamily && inviteOnly && mode === "login" && !inviteParam && !betaParam ? (
+                // 20/10/2026: beta solo su invito — senza un link d'invito non
+                // si crea un account da qui: si chiede l'invito.
+                <Link
+                  href="/benvenuto#invito"
+                  className="mt-4 flex min-h-[44px] w-full items-center justify-center text-[14px] font-semibold text-trama-accent-ink"
+                >
+                  Non hai un account? Chiedi un invito
+                </Link>
+              ) : (
               <button
                 onClick={() => {
                   setMode(mode === "login" ? "signup" : "login");
@@ -587,6 +600,7 @@ export default function LoginForm({
               >
                 {mode === "login" ? "Non hai un account? Registrati" : "Hai già un account? Accedi"}
               </button>
+              )
             )
           ) : (
             <button

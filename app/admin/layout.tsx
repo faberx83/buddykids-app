@@ -49,6 +49,8 @@ const baseNavItems = [
   // Codici invito Beta (migration_30_beta_invite_codes.sql, 27/08/2026) —
   // auto-iscrizione alla Controlled Beta Cohort via link ?beta=CODICE.
   { href: "/admin/beta-invites", label: "Inviti Beta", icon: "ti-user-plus" },
+  // 20/10/2026 — richieste "Chiedi un invito" dalla pagina di benvenuto.
+  { href: "/admin/lista-attesa", label: "Lista d'attesa", icon: "ti-mail-heart" },
   // PRE-MICRO-PILOT CLOSURE GATE (task #574, 25/08/2026) — vista view-only
   // su legal_documents (Termini/Privacy Notice), non un CMS.
   { href: "/admin/legal", label: "Documenti legali", icon: "ti-file-shield" },

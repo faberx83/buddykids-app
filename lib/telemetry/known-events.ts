@@ -171,6 +171,11 @@ export const KNOWN_PRODUCT_EVENTS = [
   // TRAMA — TRASLOCO SU tramapp.it (16/10/2026): un utente portato dal vecchio
   // indirizzo al nuovo con il login. `detail` = il nuovo indirizzo, mai l'utente.
   "domain_move_handoff",
+  // TRAMA — PAGINA DI BENVENUTO (20/10/2026): visite (detail = da dove arriva,
+  // ?da= o utm_source, mai IP né cookie) e richieste di invito (detail =
+  // stessa provenienza, oppure "already" se l'email era già in lista).
+  "landing_viewed",
+  "landing_waitlist_joined",
 ] as const;
 
 export type KnownProductEvent = (typeof KNOWN_PRODUCT_EVENTS)[number];
