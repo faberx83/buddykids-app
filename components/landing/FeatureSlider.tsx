@@ -136,6 +136,20 @@ export default function FeatureSlider() {
         </div>
       </div>
 
+      {/* Chi legge la pagina senza eseguirla (motori di ricerca, ChatGPT e
+          simili) vede comunque tutte e quattro le schermate. */}
+      <noscript>
+        <ul>
+          {ONBOARDING_SLIDES.map((s) => (
+            <li key={s.key}>
+              <h3>{`${s.eyebrow}: ${s.titleBefore}${s.titleHighlight}${s.titleAfter}`}</h3>
+              <p>{s.body}</p>
+              <p>{s.note}</p>
+            </li>
+          ))}
+        </ul>
+      </noscript>
+
       <div className="flex items-center justify-center gap-3 md:justify-start">
         <button
           type="button"

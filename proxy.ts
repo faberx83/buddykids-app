@@ -177,6 +177,10 @@ export async function proxy(request: NextRequest) {
       !pathname.startsWith("/i/") &&
       // 20/10/2026 — pagina di benvenuto pubblica (app/benvenuto).
       !pathname.startsWith("/benvenuto") &&
+      // 20/10/2026 — app/robots.ts e app/sitemap.ts: senza questa esclusione
+      // /robots.txt rimandava al login e i lettori automatici leggevano "vietato tutto".
+      pathname !== "/robots.txt" &&
+      pathname !== "/sitemap.xml" &&
       pathname !== "/sw.js"
     ) {
       const userId = await getRequestUserId(request);
@@ -238,6 +242,8 @@ export async function proxy(request: NextRequest) {
     // anche qui, nella stessa sessione Partner — così page.tsx può
     // riconoscere il gestore e mostrare la barra di anteprima.
     pathname.startsWith("/activity") ||
+    pathname === "/robots.txt" ||
+    pathname === "/sitemap.xml" ||
     pathname === "/sw.js"
   ) {
     return sessionResponse;

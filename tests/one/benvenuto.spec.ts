@@ -105,3 +105,17 @@ test.describe("TRAMA — Pagina di benvenuto [no browser]", () => {
     expect(read("app/actions/waitlist-admin.ts")).toContain('if (!data || data.length === 0) return { error: "Solo l\'Admin piattaforma può farlo" };');
   });
 });
+
+test.describe("TRAMA — Pagina di benvenuto leggibile dai lettori automatici [no browser]", () => {
+  test("BV-09 robots.txt e sitemap: su tramapp.it solo le pagine pubbliche, l'app no; fuori dal controllo di accesso", () => {
+    const r = read("app/robots.ts");
+    expect(r).toContain('allow: ["/benvenuto", "/privacy", "/terms", "/brand/", "/og/"], disallow: "/"');
+    expect(r).toContain('if (!publicSite) return { rules: [{ userAgent: "*", disallow: "/" }] };');
+    expect(read("app/sitemap.ts")).toContain('url: "https://tramapp.it/benvenuto"');
+    const proxy = read("proxy.ts");
+    expect(proxy).toContain('pathname !== "/robots.txt" &&');
+    expect(proxy).toContain('pathname === "/robots.txt" ||');
+    // lo slider mostra tutte le schermate anche a chi non esegue la pagina
+    expect(read("components/landing/FeatureSlider.tsx")).toContain("<noscript>");
+  });
+});
