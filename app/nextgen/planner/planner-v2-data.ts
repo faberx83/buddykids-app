@@ -156,7 +156,11 @@ export async function loadPlannerV2Props({
         : // 15/10/2026: "Chi accompagna" dal + apre direttamente il foglio della settimana.
           searchParams.panel === "chi"
           ? "chi"
-          : null;
+          : // 20/10/2026: "Assegna" dalla Home apre direttamente la scelta di
+            // chi porta e chi ritira in quel giorno (?assegna=AAAA-MM-GG).
+            searchParams.assegna && ISO_DATE.test(searchParams.assegna)
+            ? { assign: searchParams.assegna }
+            : null;
 
   return {
     todayIso,

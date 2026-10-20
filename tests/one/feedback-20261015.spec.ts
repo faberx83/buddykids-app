@@ -25,7 +25,9 @@ test.describe("TRAMA — feedback 15/10 [no browser]", () => {
     expect(read("components/nextgen/AddSheet.tsx")).toContain("closeThenNavigate(o.href)");
     expect(read("components/nextgen/DiscoverFiltersSheet.tsx")).toContain("useCloseOnBack(open, onClose)");
     const planner = read("app/nextgen/planner/PlannerV2Client.tsx");
-    expect(planner).toContain("useCloseOnBack(true, onClose)");
+    // 20/10/2026: attivo per tutti i fogli del Planner tranne quello aperto da un link della Home (che fa da pagina).
+    expect(planner).toContain("useCloseOnBack(ownHistoryEntry, onClose)");
+    expect(planner).toContain("  ownHistoryEntry = true,\n}: {\n  title: string;");
     // aperti con un tocco (non da un link diretto ?panel=mappa|gruppi): Indietro torna al Planner
     expect(planner).toContain('useCloseOnBack((panel === "mappa" || panel === "gruppi") && initialPanel !== "mappa" && initialPanel !== "gruppi"');
   });

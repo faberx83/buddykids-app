@@ -19,6 +19,15 @@ import { useRouter } from "next/navigation";
 
 const KEY = "__tramaSheet";
 
+// 20/10/2026 — BUG (Fabrizio: "se clicco da decidere torna indietro, assegna
+// non fa nulla"): passando da un foglio all'altro (Chi fa cosa → Chi
+// accompagna venerdì) il primo, chiudendosi, toglieva la sua voce con
+// history.back() DOPO che il secondo aveva aggiunto la propria: il "back"
+// arrivava al secondo foglio e lo chiudeva subito. Ora la chiusura è rinviata
+// di un attimo: se nel frattempo si apre un altro foglio, questo riusa la voce
+// del primo (stessa posizione in cronologia) invece di aggiungerne una nuova.
+let pendingBack: { marker: number; timer: ReturnType<typeof setTimeout> } | null = null;
+
 export function useCloseOnBack(active: boolean, onClose: () => void): { closeThenNavigate: (href: string) => void } {
   const router = useRouter();
   const onCloseRef = useRef(onClose);
@@ -34,7 +43,15 @@ export function useCloseOnBack(active: boolean, onClose: () => void): { closeThe
     const marker = Date.now() + Math.random();
     markerRef.current = marker;
     try {
-      window.history.pushState({ ...(window.history.state ?? {}), [KEY]: marker }, "");
+      const state = (window.history.state ?? {}) as Record<string, unknown>;
+      if (pendingBack && state[KEY] === pendingBack.marker) {
+        // Un foglio si è appena chiuso per far posto a questo: si riusa la sua voce.
+        clearTimeout(pendingBack.timer);
+        pendingBack = null;
+        window.history.replaceState({ ...state, [KEY]: marker }, "");
+      } else {
+        window.history.pushState({ ...state, [KEY]: marker }, "");
+      }
     } catch {
       return;
     }
@@ -54,7 +71,13 @@ export function useCloseOnBack(active: boolean, onClose: () => void): { closeThe
       // Chiuso con X / sfondo / Esc: si toglie la voce aggiunta, se è ancora quella corrente.
       if (!poppedByBack && markerRef.current === marker && (window.history.state as Record<string, unknown> | null)?.[KEY] === marker) {
         markerRef.current = null;
-        window.history.back();
+        const timer = setTimeout(() => {
+          if (pendingBack?.marker !== marker) return;
+          pendingBack = null;
+          // Solo se si è ancora sulla voce del foglio (nel frattempo nessuna navigazione).
+          if ((window.history.state as Record<string, unknown> | null)?.[KEY] === marker) window.history.back();
+        }, 0);
+        pendingBack = { marker, timer };
       }
     };
   }, [active, router]);

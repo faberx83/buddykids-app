@@ -121,13 +121,27 @@ export default function DayCoordinationBlock({
     );
   }
 
+  // 20/10/2026 (Fabrizio: "se clicco da decidere torna indietro… semplifichiamo"):
+  // anche la tabella, con i suoi "da decidere", apre la scelta, non solo "Assegna".
+  const table = <CoordinationTable coordination={coordination} kidOrder={kidOrder} />;
+  const tableLabel = `${title}: scegli chi porta e chi ritira`;
   return (
     <div className="flex flex-col gap-2.5 rounded-b-[20px] bg-[#FBFAF7] px-4 pb-3.5 pt-3">
       <div className="flex items-center justify-between">
         <span className="text-[12px] font-semibold text-ink-2">{title}</span>
         {assign}
       </div>
-      <CoordinationTable coordination={coordination} kidOrder={kidOrder} />
+      {onAssign ? (
+        <button type="button" onClick={onAssign} aria-label={tableLabel} className="-mx-1 rounded-xl px-1 py-0.5 text-left active:bg-black/[0.03]">
+          {table}
+        </button>
+      ) : assignHref ? (
+        <Link href={assignHref} aria-label={tableLabel} className="-mx-1 block rounded-xl px-1 py-0.5 active:bg-black/[0.03]">
+          {table}
+        </Link>
+      ) : (
+        table
+      )}
     </div>
   );
 }

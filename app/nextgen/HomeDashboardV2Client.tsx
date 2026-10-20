@@ -339,7 +339,8 @@ export default function HomeDashboardV2Client({
               coordination={coordination}
               kidOrder={kidOrder}
               title="Chi accompagna oggi"
-              assignHref={weekHref}
+              // 20/10/2026: dritto alla scelta di chi porta e chi ritira oggi.
+              assignHref={`/nextgen/planner?week=${weekStartIso}&assegna=${todayIso}`}
             />
           </div>
         )}

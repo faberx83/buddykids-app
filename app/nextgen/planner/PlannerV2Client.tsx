@@ -143,7 +143,7 @@ export default function PlannerV2Client({
   todayIso: string;
   initialView: View;
   initialWeek: string | null;
-  initialPanel: "mappa" | "gruppi" | "chi" | null;
+  initialPanel: "mappa" | "gruppi" | "chi" | { assign: string } | null;
   kids: Kid[];
   bookings: AgendaBookingInput[];
   hoursByActivityDbId: Record<string, string | undefined>;
@@ -203,6 +203,9 @@ export default function PlannerV2Client({
   }, [monday]);
   const [kidFilter, setKidFilter] = useState<string | null>(null);
   const [panel, setPanel] = useState<Panel>(initialPanel);
+  // 20/10/2026: "Assegna" dalla Home apre qui direttamente la scelta del giorno
+  // (?assegna=…): quel foglio fa da pagina — Fatto, X e Indietro riportano alla Home.
+  const assignFromLink = useRef(initialPanel !== null && typeof initialPanel === "object");
   // 15/10/2026: "Indietro" da Mappa o Gruppi torna al Planner (non esce dalla pagina).
   useCloseOnBack((panel === "mappa" || panel === "gruppi") && initialPanel !== "mappa" && initialPanel !== "gruppi", () => setPanel(null));
   const [responsibilities, setResponsibilities] = useState<WeekResponsibility[]>(initialResponsibilities);
@@ -563,8 +566,14 @@ export default function PlannerV2Client({
           kidNameById={kidNameById}
           kidFilter={kidFilter}
           onChange={setResponsibilities}
+          ownHistoryEntry={!assignFromLink.current}
           onClose={() => {
             setPanel(null);
+            if (assignFromLink.current) {
+              assignFromLink.current = false;
+              goBackInApp(router, "/nextgen");
+              return;
+            }
             router.refresh();
           }}
         />
@@ -1132,8 +1141,21 @@ function SeasonWeekRow({
 
 // ─── Pannelli ───────────────────────────────────────────────────────────
 
-function Sheet({ title, onClose, children, tall = false }: { title: string; onClose: () => void; children: ReactNode; tall?: boolean }) {
-  useCloseOnBack(true, onClose); // 15/10/2026: "Indietro" chiude il foglio
+function Sheet({
+  title,
+  onClose,
+  children,
+  tall = false,
+  ownHistoryEntry = true,
+}: {
+  title: string;
+  onClose: () => void;
+  children: ReactNode;
+  tall?: boolean;
+  /** false = il foglio È la pagina (aperto da un link, es. "Assegna" in Home): Indietro torna da dove si veniva. */
+  ownHistoryEntry?: boolean;
+}) {
+  useCloseOnBack(ownHistoryEntry, onClose); // 15/10/2026: "Indietro" chiude il foglio
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
       if (e.key === "Escape") onClose();
@@ -1279,6 +1301,7 @@ function AssignSheet({
   kidFilter,
   onChange,
   onClose,
+  ownHistoryEntry = true,
 }: {
   day: WeekDayModel | null;
   mondayIso: string;
@@ -1291,6 +1314,7 @@ function AssignSheet({
   kidFilter: string | null;
   onChange: (next: WeekResponsibility[]) => void;
   onClose: () => void;
+  ownHistoryEntry?: boolean;
 }) {
   const showToast = useNextgenToast();
   const [busyKey, setBusyKey] = useState<string | null>(null);
@@ -1346,7 +1370,7 @@ function AssignSheet({
     Boolean(r) && r!.responsible === o.value && (o.value !== "altro" || r!.familyPersonId === o.familyPersonId);
 
   return (
-    <Sheet title={`Chi accompagna · ${day.label}`} onClose={onClose}>
+    <Sheet title={`Chi accompagna · ${day.label}`} onClose={onClose} ownHistoryEntry={ownHistoryEntry}>
       <div className="flex flex-col gap-5">
         {kidsToday.length === 0 && <p className="text-[13.5px] text-ink-2">Nessun passaggio da organizzare in questa giornata.</p>}
         {kidsToday.map((kid) => (
