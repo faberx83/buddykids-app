@@ -14,6 +14,8 @@ import "server-only";
 // notify_push). Nessuna tabella nuova, nessuna migrazione. Errori: mai
 // rilanciati (una famiglia che fallisce non blocca le altre).
 
+import { getClosureNotNeededForParent } from "@/lib/data/closure-not-needed";
+import { notNeededCoverage } from "@/lib/nextgen/closure-not-needed";
 import { createServiceClient } from "@/lib/supabase/service";
 import { resolveFeatureFlag } from "@/lib/feature-flags/resolve";
 import { sendPushToUser } from "@/lib/push/send";
@@ -154,6 +156,8 @@ export async function loadFamily(service: Service, parentId: string, todayIso: s
       ).catch(() => ({ hasAnySchoolProfile: false, closuresByKid: [] }))
     : { hasAnySchoolProfile: false, closuresByKid: [] };
 
+  const closureNotNeeded = schoolOn ? await getClosureNotNeededForParent(service, parentId) : [];
+
   return {
     todayIso,
     parentRole,
@@ -164,7 +168,8 @@ export async function loadFamily(service: Service, parentId: string, todayIso: s
     kidNameById,
     labelFor: (r: (typeof responsibilities)[number]) => resolveResponsibleDisplay(r, parentRole).label,
     closurePeriods: listClosurePeriods(closureData.closuresByKid, todayIso),
-    coverage: buildCoverage({ bookings, externalItems }),
+    // 20/10/2026 — i "Non serve" sulle chiusure contano come copertura.
+    coverage: [...buildCoverage({ bookings, externalItems }), ...notNeededCoverage(closureNotNeeded)],
   };
 }
 

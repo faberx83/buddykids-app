@@ -68,6 +68,8 @@ import { defaultDateForWeek, newExternalItemHref } from "@/lib/planner/new-exter
 import { useCloseOnBack } from "@/lib/nextgen/use-close-on-back";
 import { setResponsibilityAction, clearResponsibilityAction, setWeekBulkResponsibilityAction } from "@/app/actions/responsibilities";
 import { toggleWeekDismissedAction } from "@/app/actions/profile";
+import { setSchoolCalendarOverrideAction, clearSchoolCalendarOverrideAction } from "@/app/actions/school-calendar";
+import { notNeededKey, weekdaysOfWeek, type ClosureNotNeeded } from "@/lib/nextgen/closure-not-needed";
 import { createPlanShareAction } from "@/app/actions/plan-shares";
 import AgendaItemRow, { KidAvatar, kidToneFor } from "@/components/nextgen/AgendaItemRow";
 import TramaThread from "@/components/nextgen/TramaThread";
@@ -125,6 +127,7 @@ export default function PlannerV2Client({
   parentRole,
   familyPeople,
   closureLabelsByDate,
+  closureNotNeeded = [],
   holidaySummary,
   holidayPeriods = [],
   summerWeeks,
@@ -153,6 +156,8 @@ export default function PlannerV2Client({
   parentRole: ParentRole | null;
   familyPeople: FamilyPerson[];
   closureLabelsByDate: Record<string, string[]>;
+  /** 20/10/2026: "Non serve" sulle chiusure (school_calendar_overrides, per figlio e settimana). */
+  closureNotNeeded?: ClosureNotNeeded[];
   holidaySummary: SeasonSummaryModel | null;
   /** Ponti e vacanze dei prossimi mesi, uno per riga (Stagione a estate finita). */
   holidayPeriods?: HolidayPeriodRow[];
@@ -262,6 +267,41 @@ export default function PlannerV2Client({
       }),
     [monday, todayIso, bookings, agendaExternal, hoursByActivityDbId, kidNameById, responsibilities, labelFor, kidFilter, closureLabelsByDate]
   );
+
+  // 20/10/2026 — "Non serve" sulle chiusure: stato locale (si vede subito),
+  // salvato con l'azione già esistente degli override del calendario scuola.
+  const [notNeeded, setNotNeeded] = useState<Set<string>>(
+    () => new Set(closureNotNeeded.map((r) => notNeededKey(r.kidId, r.weekStartDate)))
+  );
+  const handledClosureDays = useMemo(() => {
+    const out = new Set<string>();
+    for (const key of notNeeded) {
+      const [kidId, weekStart] = key.split("|");
+      for (const d of weekdaysOfWeek(weekStart)) out.add(`${kidId}|${d}`);
+    }
+    return out;
+  }, [notNeeded]);
+  async function setClosureNotNeeded(kidId: string, on: boolean) {
+    const key = notNeededKey(kidId, monday);
+    const apply = (value: boolean) =>
+      setNotNeeded((cur) => {
+        const next = new Set(cur);
+        if (value) next.add(key);
+        else next.delete(key);
+        return next;
+      });
+    apply(on);
+    const res = on
+      ? await setSchoolCalendarOverrideAction(monday, "not_needed", kidId).catch(() => ({ error: "Non siamo riusciti a salvare, riprova." }))
+      : await clearSchoolCalendarOverrideAction(monday, kidId).catch(() => ({ error: "Non siamo riusciti a salvare, riprova." }));
+    if (res.error) {
+      apply(!on);
+      showToast(res.error);
+      return;
+    }
+    const name = kidNameById[kidId] ?? "";
+    showToast(on ? `Ok: per ${name} questa settimana non serve` : `Di nuovo da organizzare per ${name}`);
+  }
 
   const weeks = useMemo(
     () => summerWeeks.map((w) => (w.startDate in dismissedOverrides ? { ...w, dismissed: dismissedOverrides[w.startDate] } : w)),
@@ -463,6 +503,12 @@ export default function PlannerV2Client({
           week={week}
           kidOrder={kidOrder}
           kidList={kids.map((k) => ({ id: k.id, name: k.name }))}
+          alertKids={kids.filter((k) => kidFilter === null || k.id === kidFilter).map((k) => ({ id: k.id, name: k.name }))}
+          handledClosureDays={handledClosureDays}
+          notNeededThisWeek={kids.filter((k) => notNeeded.has(notNeededKey(k.id, monday))).map((k) => ({ id: k.id, name: k.name }))}
+          onClosureNotNeeded={setClosureNotNeeded}
+          findHref={`/nextgen/search?week=${monday}`}
+          addHref={externalEnabled ? newExternalItemHref(monday) : null}
           onPrev={() => setMonday(week.prevMondayIso)}
           onNext={() => setMonday(week.nextMondayIso)}
           onToday={() => setMonday(mondayOfIso(todayIso))}
@@ -601,6 +647,12 @@ function WeekView({
   week,
   kidOrder,
   kidList,
+  alertKids,
+  handledClosureDays,
+  notNeededThisWeek,
+  onClosureNotNeeded,
+  findHref,
+  addHref,
   onPrev,
   onNext,
   onToday,
@@ -615,6 +667,13 @@ function WeekView({
   kidOrder: string[];
   /** 15/10/2026: per la legenda dei pallini e "chi resta scoperto". */
   kidList: { id: string; name: string }[];
+  /** 20/10/2026: figli dell'avviso "scuola chiusa" (rispetta il filtro per figlio). */
+  alertKids: { id: string; name: string }[];
+  handledClosureDays: Set<string>;
+  notNeededThisWeek: { id: string; name: string }[];
+  onClosureNotNeeded: (kidId: string, on: boolean) => void;
+  findHref: string;
+  addHref: string | null;
   onPrev: () => void;
   onNext: () => void;
   onToday: () => void;
@@ -736,19 +795,54 @@ function WeekView({
           )}
         </div>
       )}
+      {/* 20/10/2026 — "SCUOLA CHIUSA, NON C'È ANCORA NIENTE" (Fabrizio: con il
+          filtro su Lino, Franchidea risultava scoperta pur avendo la gara; e
+          per Lino mancava cosa fare). Ora conta gli impegni di tutti i figli
+          (allKidIds) e mostra solo i figli scelti nel filtro; per ognuno:
+          Trova attività, Aggiungi impegno, Non serve (school_calendar_overrides). */}
       {(() => {
-        const uncovered = uncoveredClosureDays(week.days, kidList);
-        if (uncovered.length === 0) return null;
+        const uncovered = uncoveredClosureDays(week.days, alertKids, handledClosureDays);
+        const hasClosure = week.days.some((d) => d.closureLabels.length > 0 && !d.isPast && !d.isWeekend);
+        const skipped = hasClosure ? notNeededThisWeek.filter((k) => alertKids.some((a) => a.id === k.id)) : [];
+        if (uncovered.length === 0 && skipped.length === 0) return null;
+        const action =
+          "flex min-h-[40px] items-center rounded-[12px] border border-[#E9D7B4] bg-white px-3 text-[13px] font-semibold text-[#5C3600] active:bg-black/[0.03]";
         return (
-          <div className="flex items-start gap-2.5 rounded-[12px] bg-[#FFF8EB] px-3.5 py-3 text-[13px] text-[#5C3600]">
-            <i className="ti ti-school mt-px text-[17px] text-[#9A5A00]" aria-hidden="true" />
-            <span className="flex flex-col gap-0.5">
-              {uncovered.map((u) => (
-                <span key={u.kidId}>
-                  Scuola chiusa {joinItalian(u.dayLabels)}: per <b className="font-semibold">{u.kidName}</b> non c&apos;è ancora niente.
+          <div className="flex flex-col gap-3 rounded-[12px] bg-[#FFF8EB] px-3.5 py-3 text-[13px] text-[#5C3600]" data-testid="closure-alert">
+            {uncovered.map((u) => (
+              <div key={u.kidId} className="flex flex-col gap-2">
+                <span className="flex items-start gap-2.5">
+                  <i className="ti ti-school mt-px text-[17px] text-[#9A5A00]" aria-hidden="true" />
+                  <span>
+                    Scuola chiusa {joinItalian(u.dayLabels)}: per <b className="font-semibold">{u.kidName}</b> non c&apos;è ancora niente.
+                  </span>
                 </span>
-              ))}
-            </span>
+                <span className="flex flex-wrap gap-2 pl-[27px]">
+                  <Link href={findHref} className={action}>
+                    Trova attività
+                  </Link>
+                  {addHref && (
+                    <Link href={addHref} className={action}>
+                      Aggiungi impegno
+                    </Link>
+                  )}
+                  <button type="button" onClick={() => onClosureNotNeeded(u.kidId, true)} className={action}>
+                    Non serve
+                  </button>
+                </span>
+              </div>
+            ))}
+            {skipped.map((k) => (
+              <span key={k.id} className="flex items-center gap-2.5 text-[12.5px] text-[#7A5A2E]">
+                <i className="ti ti-check text-[16px]" aria-hidden="true" />
+                <span className="flex-1">
+                  Per <b className="font-semibold">{k.name}</b> questa settimana non serve organizzare niente.
+                </span>
+                <button type="button" onClick={() => onClosureNotNeeded(k.id, false)} className="min-h-[36px] px-1 font-semibold text-trama-accent-ink">
+                  Annulla
+                </button>
+              </span>
+            ))}
           </div>
         );
       })()}

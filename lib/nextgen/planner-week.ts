@@ -154,6 +154,11 @@ export interface WeekDayModel {
   coordination: DayCoordinationSummary;
   /** Figli con qualcosa quel giorno (per i pallini della striscia). */
   kidIds: string[];
+  /** 20/10/2026: come kidIds ma senza il filtro per figlio — "chi resta
+   *  scoperto" deve vedere gli impegni di tutti anche quando si guarda un
+   *  figlio solo (prima, con il filtro su Lino, Franchidea risultava
+   *  scoperta pur avendo la gara). */
+  allKidIds: string[];
   /** Etichette della chiusura scolastica, se la scuola è chiusa quel giorno. */
   closureLabels: string[];
 }
@@ -224,6 +229,7 @@ export function buildWeekModel(input: {
     }
     const coordination = summarizeDayCoordination(slots);
     const kidIds = Array.from(new Set(entries.flatMap((e) => e.kids.map((k) => k.id))));
+    const allKidIds = Array.from(new Set(all.flatMap((e) => e.kids.map((k) => k.id))));
 
     entryCount += entries.length;
     if (dateIso >= input.todayIso) missingCount += coordination.missingCount;
@@ -238,6 +244,7 @@ export function buildWeekModel(input: {
       entries,
       coordination,
       kidIds,
+      allKidIds,
       closureLabels: input.closureLabelsByDate?.[dateIso] ?? [],
     });
   }
@@ -333,15 +340,19 @@ export function itemsInWeek<T extends { startDate: string; endDate: string | nul
  * la settimana risulta "Da completare" o "Da organizzare".
  */
 export function uncoveredClosureDays(
-  days: { dateIso: string; label: string; isPast: boolean; isWeekend: boolean; kidIds: string[]; closureLabels: string[] }[],
-  kids: { id: string; name: string }[]
+  days: { dateIso: string; label: string; isPast: boolean; isWeekend: boolean; kidIds: string[]; allKidIds?: string[]; closureLabels: string[] }[],
+  kids: { id: string; name: string }[],
+  /** 20/10/2026: "kidId|giorno" già sistemati con "Non serve" (lib/nextgen/closure-not-needed.ts). */
+  handled: Set<string> = new Set()
 ): { kidId: string; kidName: string; dayLabels: string[] }[] {
   const closureDays = days.filter((d) => d.closureLabels.length > 0 && !d.isPast && !d.isWeekend);
   return kids
     .map((k) => ({
       kidId: k.id,
       kidName: k.name,
-      dayLabels: closureDays.filter((d) => !d.kidIds.includes(k.id)).map((d) => d.label.toLowerCase()),
+      dayLabels: closureDays
+        .filter((d) => !(d.allKidIds ?? d.kidIds).includes(k.id) && !handled.has(`${k.id}|${d.dateIso}`))
+        .map((d) => d.label.toLowerCase()),
     }))
     .filter((r) => r.dayLabels.length > 0);
 }

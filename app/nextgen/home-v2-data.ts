@@ -10,6 +10,9 @@
 // intervalli di chiusura scolastica (solo con
 // SCHOOL_CALENDAR_INTELLIGENCE_ENABLED), inviti ai gruppi.
 
+import { createClient } from "@/lib/supabase/server";
+import { getClosureNotNeededForParent } from "@/lib/data/closure-not-needed";
+import { notNeededCoverage } from "@/lib/nextgen/closure-not-needed";
 import type { PlannerData } from "@/lib/data/planner";
 import { getMyBookingsForParent } from "@/lib/data/my-bookings";
 import { getKidsForUser } from "@/lib/data/kids";
@@ -295,16 +298,21 @@ export async function loadHomeV2Props({
     : { hasAnySchoolProfile: false, closuresByKid: [] };
   // Chiusure dei prossimi mesi con il loro stato (organizzata / da
   // completare / da organizzare) — lib/nextgen/holiday-summary.ts.
-  const coverage = buildCoverage({
-    bookings: bookings.map((b) => ({
-      status: b.status,
-      partnerDecision: b.partnerDecision,
-      kidIds: b.kidIds,
-      weeks: b.weeks,
-      dayDates: b.dayDates,
-    })),
-    externalItems,
-  });
+  // 20/10/2026 — i "Non serve" sulle chiusure contano come copertura.
+  const closureNotNeeded = schoolEnabled ? await getClosureNotNeededForParent(await createClient(), userId) : [];
+  const coverage = [
+    ...buildCoverage({
+      bookings: bookings.map((b) => ({
+        status: b.status,
+        partnerDecision: b.partnerDecision,
+        kidIds: b.kidIds,
+        weeks: b.weeks,
+        dayDates: b.dayDates,
+      })),
+      externalItems,
+    }),
+    ...notNeededCoverage(closureNotNeeded),
+  ];
   const closurePeriods = schoolEnabled
     ? listClosurePeriods(closureData.closuresByKid, todayIso).map((p) => ({ ...p, state: closureState(p, coverage) }))
     : [];

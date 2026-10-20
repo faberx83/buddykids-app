@@ -18,6 +18,9 @@ import { getCommunitiesForUser } from "@/lib/data/communities";
 import { getGroupsForUser } from "@/lib/data/groups";
 import { getExternalPlannerItemsForParent, type ExternalPlannerItem } from "@/lib/data/external-planner-items";
 import { getKidClosureIntervalsForParent } from "@/lib/data/school-calendar";
+import { getClosureNotNeededForParent } from "@/lib/data/closure-not-needed";
+import { notNeededCoverage } from "@/lib/nextgen/closure-not-needed";
+import { createClient } from "@/lib/supabase/server";
 import { getUnifiedFavoritesForParent } from "@/lib/data/favorites";
 import { getPlannerCalendarItemsForParent, type PlannerCalendarItem } from "@/lib/planner/calendar-items";
 import { computeBudgetSummary } from "@/lib/nextgen/planner-insights";
@@ -108,10 +111,16 @@ export async function loadPlannerV2Props({
       }
     }
   }
-  const coverage = buildCoverage({
-    bookings: bookings.map((b) => ({ status: b.status, partnerDecision: b.partnerDecision, kidIds: b.kidIds, weeks: b.weeks, dayDates: b.dayDates })),
-    externalItems,
-  });
+  // 20/10/2026 — "Non serve" sulle chiusure (lib/nextgen/closure-not-needed.ts):
+  // conta come copertura di quei giorni per quel figlio.
+  const closureNotNeeded = schoolEnabled ? await getClosureNotNeededForParent(await createClient(), userId) : [];
+  const coverage = [
+    ...buildCoverage({
+      bookings: bookings.map((b) => ({ status: b.status, partnerDecision: b.partnerDecision, kidIds: b.kidIds, weeks: b.weeks, dayDates: b.dayDates })),
+      externalItems,
+    }),
+    ...notNeededCoverage(closureNotNeeded),
+  ];
   const closurePeriods = schoolEnabled
     ? listClosurePeriods(closureData.closuresByKid, todayIso).map((p) => ({ ...p, state: closureState(p, coverage) }))
     : [];
@@ -188,6 +197,7 @@ export async function loadPlannerV2Props({
     parentRole: profile.parentRole,
     familyPeople,
     closureLabelsByDate,
+    closureNotNeeded,
     holidaySummary,
     holidayPeriods,
     summerWeeks: planner.weeks,
