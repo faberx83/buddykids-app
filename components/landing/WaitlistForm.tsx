@@ -3,6 +3,10 @@
 // TRAMA — "Chiedi un invito" (20/10/2026). La beta è solo su invito: chi
 // arriva sulla pagina di benvenuto lascia l'email (più comune e numero di
 // figli, facoltativi) e Fabrizio la ritrova in Admin → Lista d'attesa.
+// 20/10/2026: niente casella di consenso (Fabrizio: "ridondante rispetto
+// all'azione stessa"). Base giuridica: la richiesta della persona (art. 6.1.b
+// GDPR, misure precontrattuali su sua richiesta), non un consenso separato;
+// l'informativa breve resta sotto il pulsante, con il link a quella completa.
 // Controlli: lib/landing/waitlist.ts; salvataggio: app/actions/waitlist.ts.
 
 import { useState } from "react";
@@ -18,7 +22,6 @@ export default function WaitlistForm({ source }: { source: string | null }) {
   const [comune, setComune] = useState("");
   const [kids, setKids] = useState("");
   const [note, setNote] = useState("");
-  const [consent, setConsent] = useState(false);
   const [website, setWebsite] = useState(""); // campo trappola, invisibile alle persone
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -30,7 +33,7 @@ export default function WaitlistForm({ source }: { source: string | null }) {
     setBusy(true);
     setError(null);
     setSuggestion(null);
-    const res = await joinWaitlistAction({ email, comune, kidsCount: kids, note, source, consent, website }).catch(() => null);
+    const res = await joinWaitlistAction({ email, comune, kidsCount: kids, note, source, website }).catch(() => null);
     setBusy(false);
     if (!res) return setError("Qualcosa non ha funzionato. Riprova tra poco.");
     if (!res.ok) {
@@ -116,10 +119,6 @@ export default function WaitlistForm({ source }: { source: string | null }) {
         <label htmlFor="wl-website">Non compilare questo campo</label>
         <input id="wl-website" tabIndex={-1} autoComplete="off" value={website} onChange={(e) => setWebsite(e.target.value)} />
       </div>
-      <label className="flex items-start gap-3 text-[14px] leading-snug text-ink-2">
-        <input type="checkbox" checked={consent} onChange={(e) => setConsent(e.target.checked)} className="mt-0.5 h-5 w-5 flex-shrink-0 accent-[#172A4D]" />
-        <span>Potete scrivermi a questa email per mandarmi l&apos;invito a TRAMA.</span>
-      </label>
       {error && (
         <p role="alert" className="text-[14px] font-medium text-[#B3261E]">
           {error}
@@ -146,8 +145,8 @@ export default function WaitlistForm({ source }: { source: string | null }) {
         {busy ? "Un attimo…" : "Chiedi un invito"}
       </button>
       <p className="text-[12.5px] leading-relaxed text-ink-2">
-        Usiamo la tua email solo per mandarti l&apos;invito. Se non entri in TRAMA la cancelliamo entro 12 mesi, e puoi chiederci di
-        farlo prima scrivendo a privacy@tramapp.it. Leggi l&apos;
+        Chiedendo l&apos;invito ci autorizzi a scriverti a questa email, solo per l&apos;invito: niente pubblicità. Se non entri in TRAMA
+        la cancelliamo entro 12 mesi, e puoi chiederci di farlo prima scrivendo a privacy@tramapp.it. Leggi l&apos;
         <Link href="/privacy" className="font-semibold text-trama-accent-ink underline">
           Informativa privacy
         </Link>

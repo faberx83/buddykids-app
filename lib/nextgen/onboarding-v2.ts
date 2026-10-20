@@ -77,12 +77,12 @@ export const ONBOARDING_V2_SLIDES: OnboardingV2Slide[] = [
     eyebrow: "Coordina",
     title: "Non solo cosa. Anche chi.",
     highlight: "Anche chi.",
-    body: "Chi porta e chi riprende, giorno per giorno: tu, l'altro genitore, i nonni o la tata. Se manca qualcuno, TRAMA te lo dice.",
+    body: "Chi porta e chi ritira, giorno per giorno: tu, l'altro genitore, i nonni o la tata. Se manca qualcuno, TRAMA te lo dice.",
     ctaLabel: "Inizia a organizzare",
     tilt: { y: -8, x: 4 },
     pops: [
-      { icon: "ti-alert-circle", tone: "amber", title: "Manca chi riprende", subtitle: "Lino · gio 18:00", side: "right", top: 14 },
-      { icon: "ti-check", tone: "green", title: "Riprende Nonna Rita", subtitle: "risolto", side: "left", top: 68 },
+      { icon: "ti-alert-circle", tone: "amber", title: "Manca chi ritira", subtitle: "Lino · gio 18:00", side: "right", top: 14 },
+      { icon: "ti-check", tone: "green", title: "Ritira Nonna Rita", subtitle: "risolto", side: "left", top: 68 },
     ],
   },
 ];
@@ -94,7 +94,7 @@ export const ONBOARDING_V2_DEMO = {
     date: "mer 14 ottobre",
     items: [
       { time: "16:45", name: "Nuoto", meta: "Sofia · Piscina Demo", tone: "#2DBA8C" },
-      { time: "17:00", name: "Ginnastica", meta: "Lino · Palestra Demo", tone: "#F6A623", who: "Porta tu · Riprende Marco" },
+      { time: "17:00", name: "Ginnastica", meta: "Lino · Palestra Demo", tone: "#F6A623", who: "Porta tu · Ritira Marco" },
     ],
   },
   fuori: {

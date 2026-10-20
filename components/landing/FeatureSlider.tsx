@@ -3,8 +3,9 @@
 // TRAMA — pagina di benvenuto, "Cosa fa TRAMA" a scorrimento automatico
 // (20/10/2026, Fabrizio: "uno slider… e se le pagine le facessimo già
 // automatiche tipo video?"). Come le storie: barrette in alto che si
-// riempiono, ogni schermata resta 6 secondi e passa da sola alla successiva,
-// in loop. Testi e schermate demo sono quelli del carosello di primo ingresso
+// riempiono, ogni schermata resta 6 secondi e passa da sola alla successiva;
+// sull'ultima si ferma con "Chiedi un invito" (pulsante "Riguarda").
+// Testi e schermate demo sono quelli del carosello di primo ingresso
 // (lib/nextgen/onboarding-slides.ts), riusati senza copiarli.
 //
 // Comandi: tocco sulle barrette o frecce per scegliere, scorrimento laterale
@@ -25,6 +26,9 @@ export default function FeatureSlider() {
   const n = ONBOARDING_SLIDES.length;
   const [index, setIndex] = useState(0);
   const [userPaused, setUserPaused] = useState(false);
+  // 20/10/2026: come un video, si ferma sull'ultima schermata (con "Chiedi un
+  // invito") invece di ricominciare da capo; "Riguarda" la fa ripartire.
+  const [finished, setFinished] = useState(false);
   const [touching, setTouching] = useState(false);
   const [visible, setVisible] = useState(true);
   const [reduced, setReduced] = useState(false);
@@ -47,8 +51,15 @@ export default function FeatureSlider() {
     return () => io.disconnect();
   }, []);
 
-  const go = useCallback((i: number) => setIndex(((i % n) + n) % n), [n]);
-  const playing = !userPaused && !touching && visible && !reduced;
+  const go = useCallback(
+    (i: number) => {
+      setFinished(false);
+      setIndex(((i % n) + n) % n);
+    },
+    [n]
+  );
+  const isLast = index === n - 1;
+  const playing = !userPaused && !finished && !touching && visible && !reduced;
   const slide = ONBOARDING_SLIDES[index];
 
   return (
@@ -89,12 +100,14 @@ export default function FeatureSlider() {
                   className="absolute inset-y-0 left-0 rounded-full"
                   style={{
                     background: TONES[i % TONES.length],
-                    width: i < index || (i === index && reduced) ? "100%" : i === index ? undefined : "0%",
+                    width: i < index || (i === index && (reduced || finished)) ? "100%" : i === index ? undefined : "0%",
                     animation: i === index && !reduced ? `trama-slider-fill ${SLIDE_MS}ms linear forwards` : undefined,
                     animationPlayState: playing ? "running" : "paused",
                   }}
                   onAnimationEnd={() => {
-                    if (i === index) go(index + 1);
+                    if (i !== index) return;
+                    if (isLast) setFinished(true);
+                    else go(index + 1);
                   }}
                 />
               </span>
@@ -104,11 +117,18 @@ export default function FeatureSlider() {
         {!reduced && (
           <button
             type="button"
-            onClick={() => setUserPaused((p) => !p)}
-            aria-label={userPaused ? "Riprendi lo scorrimento" : "Metti in pausa lo scorrimento"}
+            onClick={() => {
+              if (finished) {
+                setUserPaused(false);
+                go(0);
+                return;
+              }
+              setUserPaused((p) => !p);
+            }}
+            aria-label={finished ? "Riguarda da capo" : userPaused ? "Riprendi lo scorrimento" : "Metti in pausa lo scorrimento"}
             className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full border border-trama-line bg-white text-trama-navy"
           >
-            <i className={`ti ${userPaused ? "ti-player-play" : "ti-player-pause"} text-[16px]`} aria-hidden="true" />
+            <i className={`ti ${finished ? "ti-reload" : userPaused ? "ti-player-play" : "ti-player-pause"} text-[16px]`} aria-hidden="true" />
           </button>
         )}
       </div>
@@ -130,6 +150,15 @@ export default function FeatureSlider() {
           </h3>
           <p className="max-w-[44ch] text-[16px] leading-relaxed text-ink-2">{slide.body}</p>
           <p className="text-[14px] text-ink-2">{slide.note}</p>
+          {isLast && (
+            <a
+              href="#invito"
+              className="mt-2 flex min-h-[52px] items-center justify-center self-start rounded-[12px] bg-trama-primary px-6 text-[16px] font-semibold text-white active:bg-trama-primary-press"
+              data-testid="slider-cta"
+            >
+              Chiedi un invito
+            </a>
+          )}
         </div>
         <div className="order-1 flex justify-center md:order-2">
           <LandingPhone visual={slide.visual} tilt={index % 2 === 0 ? -8 : 8} float={!reduced} />

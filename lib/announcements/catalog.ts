@@ -146,7 +146,7 @@ export const ANNOUNCEMENT_CATALOG: AnnouncementCatalogEntry[] = [
     availability: "coming_soon",
     userTitle: "Chi accompagna e chi ritira, attività per attività",
     userBody:
-      "Stiamo lavorando per farti indicare chi porta e chi riprende per ogni singola attività, coinvolgendo anche nonni, tata o un altro genitore.",
+      "Stiamo lavorando per farti indicare chi porta e chi ritira per ogni singola attività, coinvolgendo anche nonni, tata o un altro genitore.",
     deepLink: novitaAnchorHref("accompagnamento-ritiro"),
     releasedAt: "2026-10-07",
   },

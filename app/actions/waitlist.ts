@@ -14,7 +14,7 @@ import { checkWaitlist, type WaitlistInput } from "@/lib/landing/waitlist";
 
 export type JoinWaitlistResult =
   | { ok: true; already: boolean }
-  | { ok: false; message: string; suggestion?: string; field?: "email" | "consent" };
+  | { ok: false; message: string; suggestion?: string; field?: "email" };
 
 function isMissingTableError(err: { code?: string; message?: string } | null | undefined): boolean {
   if (!err) return false;

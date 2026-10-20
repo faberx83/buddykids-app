@@ -499,7 +499,7 @@ function PhoneScreen({ visual }: { visual: OnboardingV2Visual }) {
       <div className="grid grid-cols-[34px_1fr_1fr] gap-1 text-[6.5px] font-semibold uppercase tracking-[0.06em] text-ink-3">
         <span />
         <span>Porta</span>
-        <span>Riprende</span>
+        <span>Ritira</span>
       </div>
       {d.rows.map((r) => (
         <div key={r.kid} className="grid grid-cols-[34px_1fr_1fr] items-center gap-1">
@@ -514,7 +514,7 @@ function PhoneScreen({ visual }: { visual: OnboardingV2Visual }) {
       ))}
       <div className="flex items-center gap-1 rounded-[9px] bg-[#FFF8EB] px-[7px] py-1.5 text-[7px] text-[#5C3600]">
         <i className="ti ti-alert-circle text-[8px]" />
-        Manca chi riprende {d.rows[0].kid}
+        Manca chi ritira {d.rows[0].kid}
       </div>
       <div className="flex gap-1">
         {["Tu", "Marco", "Nonna Rita", "Tata"].map((h) => (

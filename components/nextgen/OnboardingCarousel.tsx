@@ -513,7 +513,7 @@ export function PhoneScreen({ visual }: { visual: OnboardingSlideVisual }) {
                 <strong className="text-[8.5px] text-trama-navy">{row.porta}</strong>
               </div>
               <div className="rounded-lg bg-trama-card px-1.5 py-[5px]">
-                <small className="block text-[6.5px] uppercase tracking-[0.08em] text-ink-3">Riprende</small>
+                <small className="block text-[6.5px] uppercase tracking-[0.08em] text-ink-3">Ritira</small>
                 <strong className="text-[8.5px] text-trama-navy">{row.riprende}</strong>
               </div>
             </div>

@@ -93,7 +93,7 @@ export const ONBOARDING_SLIDES: OnboardingSlide[] = [
     progress: "3/4",
     eyebrow: "Coordina",
     titleBefore: "Chi porta, ",
-    titleHighlight: "chi riprende.",
+    titleHighlight: "chi ritira.",
     titleAfter: "",
     body: "Aggiungi chi ti aiuta (l'altro genitore, i nonni, la tata) e decidi andate e ritorni di ogni giornata.",
     note: "Indirizzi e promemoria restano nel Planner.",
@@ -101,7 +101,7 @@ export const ONBOARDING_SLIDES: OnboardingSlide[] = [
     visual: "coordinate",
     tilt: { y: -8, x: 4 },
     pops: [
-      { icon: "ti-arrows-exchange", tone: "violet", title: "Riprende Nonna Rita", subtitle: "Luca · 18:15", side: "left", top: 22 },
+      { icon: "ti-arrows-exchange", tone: "violet", title: "Ritira Nonna Rita", subtitle: "Luca · 18:15", side: "left", top: 22 },
       { icon: "ti-shield-check", tone: "amber", title: "Deleghe smart", subtitle: "ritiro sicuro, senza carta", comingSoon: true, side: "right", top: 66 },
     ],
   },

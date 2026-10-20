@@ -10,7 +10,6 @@ export interface WaitlistInput {
   kidsCount?: string | number | null;
   note?: string | null;
   source?: string | null;
-  consent?: boolean | null;
   /** Campo nascosto: se compilato è un programma automatico, non una persona. */
   website?: string | null;
 }
@@ -26,7 +25,7 @@ export interface WaitlistRow {
 
 export type WaitlistCheck =
   | { ok: true; row: WaitlistRow }
-  | { ok: false; field: "email" | "consent" | "bot"; message: string; suggestion?: string };
+  | { ok: false; field: "email" | "bot"; message: string; suggestion?: string };
 
 function clean(value: string | null | undefined, max: number): string | null {
   const v = (value ?? "").replace(/\s+/g, " ").trim();
@@ -43,9 +42,6 @@ export function checkWaitlist(input: WaitlistInput): WaitlistCheck {
   if ((input.website ?? "").trim()) return { ok: false, field: "bot", message: "Richiesta non valida." };
   const email = checkEmail(input.email ?? "");
   if (!email.ok) return { ok: false, field: "email", message: email.message, suggestion: email.suggestion };
-  if (!input.consent) {
-    return { ok: false, field: "consent", message: "Per mandarti l'invito ci serve il tuo permesso di scriverti." };
-  }
   const kidsRaw = typeof input.kidsCount === "number" ? input.kidsCount : parseInt(String(input.kidsCount ?? ""), 10);
   const kids = Number.isFinite(kidsRaw) && kidsRaw >= 1 && kidsRaw <= 9 ? kidsRaw : null;
   return {
@@ -56,6 +52,9 @@ export function checkWaitlist(input: WaitlistInput): WaitlistCheck {
       kids_count: kids,
       note: clean(input.note, 500),
       source: cleanSource(input.source),
+      // 20/10/2026: nessuna casella separata — chiedere l'invito è la richiesta
+      // di essere ricontattati per l'invito (e solo per quello). Il campo resta
+      // vero per ogni riga, come traccia di quella richiesta.
       contact_consent: true,
     },
   };

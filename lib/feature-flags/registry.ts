@@ -295,7 +295,7 @@ export const FEATURE_FLAG_REGISTRY = {
     name: "ONBOARDING_V2_ENABLED",
     description:
       "Abilita l'onboarding V2 delle famiglie: tre schermate animate (tutto in un posto, anche fuori da TRAMA, chi " +
-      "porta e chi riprende), poi figli e scuola, poi la Home. Si vede una volta (chiave family_onboarding_v2). " +
+      "porta e chi ritira), poi figli e scuola, poi la Home. Si vede una volta (chiave family_onboarding_v2). " +
       "Default false: onboarding attuale.",
     defaultValue: false,
     allowedScopes: ["global", "environment", "user", "role", "cohort"],

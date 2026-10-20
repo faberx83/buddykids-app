@@ -127,13 +127,29 @@ export default function BenvenutoView({ loggedIn, source }: { loggedIn: boolean;
         </section>
       </main>
 
-      <footer className="mx-auto flex max-w-5xl flex-col gap-4 px-5 pb-[calc(32px+env(safe-area-inset-bottom,0px))] pt-10 text-[14px] text-ink-2">
-        <p>
-          Gestisci un centro estivo o un&apos;attività per bambini?{" "}
-          <Link href="/auth/candidati" className="font-semibold text-trama-accent-ink underline">
+      {/* Ingresso per i centri (20/10/2026, Fabrizio: "lo renderei più separato
+          visivamente: oggi rischia di sembrare nota legale invece che ingresso B2B"). */}
+      <section aria-labelledby="centri-h" className="bg-trama-primary">
+        <div className="mx-auto flex max-w-5xl flex-col gap-4 px-5 py-10 md:flex-row md:items-center md:justify-between md:py-12">
+          <div className="flex flex-col gap-2">
+            <span className="text-[12px] font-bold uppercase tracking-[0.14em] text-white/70">Per i centri</span>
+            <h2 id="centri-h" className="font-poppins text-[clamp(22px,5.6vw,28px)] font-semibold leading-tight text-white">
+              Gestisci un centro estivo o un&apos;attività per bambini?
+            </h2>
+            <p className="max-w-[52ch] text-[15px] leading-relaxed text-white/80">
+              Porta le tue attività su TRAMA: le famiglie le trovano vicino a casa e ti mandano le richieste.
+            </p>
+          </div>
+          <Link
+            href="/auth/candidati"
+            className="flex min-h-[52px] flex-shrink-0 items-center justify-center self-start rounded-[12px] bg-white px-6 text-[16px] font-semibold text-trama-navy md:self-center"
+          >
             Candidati come partner
           </Link>
-        </p>
+        </div>
+      </section>
+
+      <footer className="mx-auto flex max-w-5xl flex-col gap-4 px-5 pb-[calc(32px+env(safe-area-inset-bottom,0px))] pt-8 text-[14px] text-ink-2">
         <nav aria-label="Informazioni" className="flex flex-wrap gap-x-5 gap-y-2">
           <Link href="/privacy" className="min-h-[32px] font-semibold text-ink">
             Informativa privacy

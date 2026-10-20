@@ -242,7 +242,7 @@ test.describe("TRAMA — Onboarding Carousel [no browser]", () => {
     expect(titles).toEqual([
       "Trova attività giuste per i tuoi figli.",
       "Tutto nello stesso Planner.",
-      "Chi porta, chi riprende.",
+      "Chi porta, chi ritira.", // 20/10/2026: stesso verbo dell'app (Porta / Ritira)
       "Fate rete con altre famiglie.",
     ]);
   });
