@@ -32,21 +32,28 @@ export async function GET(request: Request) {
   const url = new URL(request.url);
   const lat = Number(url.searchParams.get("lat"));
   const lng = Number(url.searchParams.get("lng"));
-  const target = buildPhotonUrl({
-    q: url.searchParams.get("q") ?? "",
-    kind: url.searchParams.get("kind") === "school" ? "school" : "any",
-    near: Number.isFinite(lat) && Number.isFinite(lng) && (lat !== 0 || lng !== 0) ? { lat, lng } : null,
-  });
-  if (!target) return empty;
+  const q = url.searchParams.get("q") ?? "";
+  const kind = url.searchParams.get("kind") === "school" ? "school" : "any";
+  const near = Number.isFinite(lat) && Number.isFinite(lng) && (lat !== 0 || lng !== 0) ? { lat, lng } : null;
+  let suggestions = await searchPhoton(buildPhotonUrl({ q, kind, near }));
+  // 21/10/2026 — Fabrizio: "non mi trova la Fondazione Grossman come scuola".
+  // In OpenStreetMap alcune scuole sono registrate come fondazione o ente, non
+  // come "scuola": se fra le scuole non c'è niente, si cerca fra tutti i luoghi.
+  if (suggestions.length === 0 && kind === "school") suggestions = await searchPhoton(buildPhotonUrl({ q, kind: "any", near }));
+  return NextResponse.json({ suggestions });
+}
+
+async function searchPhoton(target: string | null) {
+  if (!target) return [];
   try {
     const res = await fetch(target, {
       headers: { "User-Agent": "TRAMA (tramapp.it) - ricerca luoghi per famiglie", Accept: "application/json" },
       cache: "force-cache", // stessa ricerca = nessuna nuova chiamata a Photon
       signal: AbortSignal.timeout(4000),
     });
-    if (!res.ok) return empty;
-    return NextResponse.json({ suggestions: parsePhotonResponse(await res.json()) });
+    if (!res.ok) return [];
+    return parsePhotonResponse(await res.json());
   } catch {
-    return empty;
+    return [];
   }
 }

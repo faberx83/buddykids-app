@@ -396,7 +396,13 @@ function ItemFormSheetV2({
               onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))}
               placeholder="Es. Calcio, Dentista, Centro estivo…"
               className={V2_INPUT}
-              autoFocus={!editing}
+              ref={(el) => {
+                // Fuoco sul titolo senza far scorrere niente sotto il foglio.
+                if (el && !editing && !el.dataset.focused) {
+                  el.dataset.focused = "1";
+                  el.focus({ preventScroll: true });
+                }
+              }}
             />
             <div className="mt-2 flex gap-2" role="group" aria-label="Tipo">
               {(["commitment", "activity"] as ExternalPlannerItemKind[]).map((k) => (
@@ -654,8 +660,11 @@ export default function ExternalPlannerItemsSection({
   useEffect(() => {
     if (!wantsNew) return;
     setMode("creating");
-    document.getElementById("impegni")?.scrollIntoView({ behavior: "smooth", block: "start" });
-  }, [wantsNew]);
+    // 21/10/2026 — con il foglio V2 non si scorre: il foglio copre già lo
+    // schermo, e scorrere verso una sezione in fondo spostava l'intera app in
+    // su (bianco sotto la barra, segnalato da Fabrizio dopo un impegno).
+    if (!v2) document.getElementById("impegni")?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }, [wantsNew, v2]);
   const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
   // TRAMA — DELETE UX · OPTIMISTIC REMOVAL (28/09/2026, live UX fix).
   //
