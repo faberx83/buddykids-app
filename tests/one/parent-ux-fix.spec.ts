@@ -1,0 +1,167 @@
+import fs from "fs";
+import path from "path";
+import { test, expect } from "@playwright/test";
+import {
+  activityDateLine,
+  dateStateRank,
+  isSummerRange,
+  looksLikeSummerOnly,
+  periodFit,
+  schoolCoverage,
+  schoolCoverageNote,
+  schoolSetupHref,
+  summarizeActivityDates,
+  unavailableCtaLabel,
+} from "../../lib/nextgen/parent-ux-fix";
+import { buildHomeInbox } from "../../lib/nextgen/home-inbox";
+import { FEATURE_FLAG_REGISTRY } from "../../lib/feature-flags/registry";
+import { RELEASE_CATALOG } from "../../lib/releases/catalog";
+
+// TRAMA — CORREZIONI DAL TEST UX PARENT (21/10/2026), release
+// "correzioni-test-ux" (PARENT_UX_FIX_ENABLED). Iniziativa:
+// claude/INIZIATIVA_parent_ux_fix_2110.md. Logica pura + controlli sul
+// sorgente: nessun browser.
+//
+// Comando: npx playwright test tests/one/parent-ux-fix.spec.ts
+
+const ROOT = path.join(__dirname, "../..");
+const read = (file: string) => fs.readFileSync(path.join(ROOT, file), "utf8");
+
+const PONTE = { start: "2026-12-07", end: "2026-12-08" };
+const LUGLIO = { start: "2027-07-05", end: "2027-07-09" };
+
+test.describe("Correzioni dal test UX — ciclo 1 [no browser]", () => {
+  test("UXF-01 flag spento di default e in una sola release", () => {
+    expect(FEATURE_FLAG_REGISTRY.PARENT_UX_FIX_ENABLED.defaultValue).toBe(false);
+    const releases = RELEASE_CATALOG.filter((r) => r.featureKeys.includes("parent_ux_fix"));
+    expect(releases.map((r) => r.id)).toEqual(["correzioni-test-ux"]);
+  });
+
+  test("UXF-02 (001) una scoperta senza date non è un risultato del ponte: va in 'Date da verificare'", () => {
+    expect(periodFit({ startDate: null, endDate: null, title: "Laboratorio di teatro" }, PONTE)).toBe("to_verify");
+    // dichiaratamente estiva: per un ponte di dicembre non compare proprio
+    expect(periodFit({ startDate: null, endDate: null, title: "Centri Ricreativi Diurni Estivi per Minori" }, PONTE)).toBe("excluded");
+    // ma per l'estate resta da verificare
+    expect(periodFit({ startDate: null, endDate: null, title: "Centri Ricreativi Diurni Estivi per Minori" }, LUGLIO)).toBe("to_verify");
+    // con le date: regola di sempre
+    expect(periodFit({ startDate: "2026-12-01", endDate: "2026-12-24", title: "Campus di Natale" }, PONTE)).toBe("match");
+    expect(periodFit({ startDate: "2027-06-14", endDate: "2027-07-30", title: "CRE estivo" }, PONTE)).toBe("excluded");
+    expect(periodFit({ startDate: "2026-12-07", endDate: null, title: "Open day" }, PONTE)).toBe("match");
+  });
+
+  test("UXF-03 estate e parole estive", () => {
+    expect(isSummerRange(PONTE)).toBe(false);
+    expect(isSummerRange(LUGLIO)).toBe(true);
+    expect(isSummerRange({ start: "2026-05-25", end: "2026-06-05" })).toBe(true);
+    expect(looksLikeSummerOnly("Campus Estivi Milanosport")).toBe(true);
+    expect(looksLikeSummerOnly("CRE Estivo Scuola Primaria")).toBe(true);
+    expect(looksLikeSummerOnly("Corso di nuoto")).toBe(false);
+  });
+
+  test("UXF-04 (003) stato vero dalle date: aperta, esaurita, conclusa, senza date", () => {
+    const today = "2026-10-21";
+    const ended = summarizeActivityDates(
+      { weeks: [{ start: "2026-06-15", end: "2026-06-19", spotsLeft: 5 }, { start: "2026-08-24", end: "2026-08-28", spotsLeft: 3 }], days: [] },
+      today
+    );
+    expect(ended.state).toBe("ended");
+    expect(ended.lastEnd).toBe("2026-08-28");
+    expect(activityDateLine(ended).text).toBe("Edizione conclusa il 28 agosto");
+    expect(unavailableCtaLabel(ended)).toBe("Edizione conclusa");
+
+    const open = summarizeActivityDates(
+      {
+        weeks: [{ start: "2026-12-07", end: "2026-12-11", spotsLeft: 0 }, { start: "2026-12-14", end: "2026-12-18", spotsLeft: 4 }],
+        days: [],
+      },
+      today
+    );
+    expect(open.state).toBe("open");
+    expect(open.next).toEqual({ start: "2026-12-14", end: "2026-12-18" });
+    expect(open.upcoming.map((u) => u.full)).toEqual([true, false]);
+    expect(activityDateLine(open).text).toBe("Prossima data: 14–18 dic");
+
+    const full = summarizeActivityDates({ weeks: [{ start: "2026-12-07", end: "2026-12-11", spotsLeft: 0 }], days: [] }, today);
+    expect(full.state).toBe("full");
+    expect(unavailableCtaLabel(full)).toBe("Posti esauriti");
+
+    expect(summarizeActivityDates(undefined, today).state).toBe("no_dates");
+    expect(unavailableCtaLabel(null)).toBe("Non disponibile ora");
+  });
+
+  test("UXF-05 la modalità di prenotazione decide quali date contano", () => {
+    const rows = {
+      weeks: [{ start: "2026-06-15", end: "2026-06-19", spotsLeft: 5 }],
+      days: [{ date: "2026-12-07", isOpen: true, singleDayBookable: true, spotsLeft: 2 }],
+    };
+    expect(summarizeActivityDates(rows, "2026-10-21", "week_only").state).toBe("ended");
+    expect(summarizeActivityDates(rows, "2026-10-21", "day_only").state).toBe("open");
+    expect(summarizeActivityDates(rows, "2026-10-21", "mixed").state).toBe("open");
+  });
+
+  test("UXF-06 in Scopri le attività senza date future vanno in fondo", () => {
+    const open = summarizeActivityDates({ weeks: [{ start: "2026-12-14", end: "2026-12-18", spotsLeft: 4 }], days: [] }, "2026-10-21");
+    const ended = summarizeActivityDates({ weeks: [{ start: "2026-06-15", end: "2026-06-19", spotsLeft: 4 }], days: [] }, "2026-10-21");
+    expect(dateStateRank(open)).toBeLessThan(dateStateRank(ended));
+  });
+
+  test("UXF-07 (004) copertura della scuola per figlio", () => {
+    const kids = [
+      { id: "l", name: "Luca" },
+      { id: "g", name: "Giulia" },
+    ];
+    const c = schoolCoverage(kids, ["l"]);
+    expect(c).toEqual({ total: 2, configured: 1, missing: [{ id: "g", name: "Giulia" }] });
+    const note = schoolCoverageNote(c)!;
+    expect(note.text).toContain("1 figlio su 2");
+    expect(note.text).toContain("Le chiusure di Giulia non sono contate");
+    expect(note.ctaLabel).toBe("Imposta per Giulia");
+    expect(schoolSetupHref(note.kidId)).toBe("/nextgen/profile/famiglia?scuola=g");
+    expect(schoolCoverageNote(schoolCoverage(kids, ["l", "g"]))).toBeNull();
+    expect(schoolCoverageNote(schoolCoverage([], []))).toBeNull();
+  });
+
+  test("UXF-08 (006) 'Indica la scuola' resta in Da fare finché manca, prima di 'Completa il profilo'", () => {
+    const base = { bookings: [], upcomingCoordination: null, groupInvites: [], profileIncomplete: true, pushInactive: false };
+    expect(buildHomeInbox(base).all.map((i) => i.kind)).toEqual(["profile_incomplete"]);
+    const withSchool = buildHomeInbox({ ...base, schoolMissingKids: [{ id: "g", name: "Giulia" }] });
+    expect(withSchool.all.map((i) => i.kind)).toEqual(["school_missing", "profile_incomplete"]);
+    expect(withSchool.all[0].title).toBe("Indica la scuola di Giulia");
+    expect(withSchool.all[0].href).toBe("/nextgen/profile/famiglia?scuola=g");
+    const two = buildHomeInbox({ ...base, schoolMissingKids: [{ id: "l", name: "Luca" }, { id: "g", name: "Giulia" }] });
+    expect(two.all[0].title).toBe("Indica la scuola di Luca e Giulia");
+  });
+
+  test("UXF-09 Scopri: le scoperte senza date escono dal conteggio solo con il flag", () => {
+    const client = read("app/nextgen/search/SearchDiscoveryClient.tsx");
+    expect(client).toContain("const uxFix = Boolean(v2 && parentUxFix);");
+    expect(client).toContain("if (temporalRange && isUndated(lead)) return false;");
+    expect(client).toContain('data-testid="discovery-to-verify"');
+    expect(client).toContain("Date da verificare");
+    const page = read("app/nextgen/search/page.tsx");
+    expect(page).toContain("flagName: PARENT_UX_FIX_FLAG");
+    expect(page).toContain("if (user && discoverV2 && uxFixDetail.enabled)");
+  });
+
+  test("UXF-10 il tutorial non promette più 'solo le disponibilità reali'", () => {
+    expect(read("lib/walkthrough/registry.ts")).not.toContain("vedrai solo le disponibilità reali");
+  });
+
+  test("UXF-11 scheda attività: date vere e pulsante con la causa, solo con il flag", () => {
+    const detail = read("components/nextgen/ActivityDetailV2.tsx");
+    expect(detail).toContain('data-testid="activity-dates"');
+    expect(detail).toContain("{!dateSummary && activity.weeksAvailable && (");
+    expect(detail).toContain('{dateSummary ? unavailableCtaLabel(dateSummary) : "Non disponibile ora"}');
+    expect(detail).toContain("Apri mappa");
+    const page = read("app/activity/[id]/page.tsx");
+    expect(page).toContain("if (uxFix && activity.dbId)");
+  });
+
+  test("UXF-12 (007) Stagione senza scuola: stato iniziale e estate passata chiusa", () => {
+    const planner = read("app/nextgen/planner/PlannerV2Client.tsx");
+    expect(planner).toContain("const noHolidayState = Boolean(schoolCoverage) && summer.isOver && holidaySummary === null;");
+    expect(planner).toContain('data-testid="season-no-school"');
+    const data = read("app/nextgen/planner/planner-v2-data.ts");
+    expect(data).toContain("uxFixEnabled && schoolEnabled");
+  });
+});

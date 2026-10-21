@@ -331,6 +331,20 @@ export const RELEASE_CATALOG: ReleaseCatalogEntry[] = [
     notes: "Creata il 21/10/2026. Ripiego: flag spento = la lista dei sette giorni di prima.",
   },
   {
+    // TRAMA — CORREZIONI DAL TEST UX PARENT (21/10/2026).
+    id: "correzioni-test-ux",
+    label: "TRAMA — Correzioni dal test UX (21/10)",
+    shortDescription:
+      "Risultati per periodo veritieri, date e stato vero delle attività, scuola mancante per un figlio, Stagione senza scuola e le altre correzioni del test del 21/10.",
+    targetAudience: ["parent"],
+    featureKeys: ["parent_ux_fix"],
+    knownLimitations: [
+      "parent_ux_fix: le attività di prova restano visibili finché il ciclo L non è attivo e i centri di prova non sono segnati.",
+      "parent_ux_fix: 'Indica la scuola' non ha ancora un 'Più tardi': resta in Da fare finché ogni figlio ha la scuola.",
+    ],
+    notes: "Creata il 21/10/2026. Ripiego: flag spento = tutto come prima.",
+  },
+  {
     // TRAMA — CHI ACCOMPAGNA PIÙ VELOCE (20/10/2026).
     id: "chi-accompagna-veloce",
     label: "TRAMA — Chi accompagna più veloce",

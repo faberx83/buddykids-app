@@ -339,6 +339,17 @@ export const FEATURE_FLAG_REGISTRY = {
     defaultValue: false,
     allowedScopes: ["global", "environment", "user", "role", "cohort"],
   },
+  // TRAMA — CORREZIONI DAL TEST UX PARENT (21/10/2026), release "correzioni-test-ux".
+  // Iniziativa: claude/INIZIATIVA_parent_ux_fix_2110.md (cicli 1–4).
+  PARENT_UX_FIX_ENABLED: {
+    name: "PARENT_UX_FIX_ENABLED",
+    description:
+      "Correzioni dal test UX Parent del 21/10/2026: risultati per periodo veritieri (le attività senza date in 'Date da " +
+      "verificare'), date e stato vero su card e scheda, scuola mancante per un figlio, Stagione senza scuola, e le " +
+      "correzioni dei cicli successivi. Default false: comportamento di prima.",
+    defaultValue: false,
+    allowedScopes: ["global", "environment", "user", "role", "cohort"],
+  },
   // TRAMA — CHI ACCOMPAGNA PIÙ VELOCE (20/10/2026), release "chi-accompagna-veloce".
   CHI_ACCOMPAGNA_PLUS_ENABLED: {
     name: "CHI_ACCOMPAGNA_PLUS_ENABLED",

@@ -25,7 +25,8 @@ import ActivityVisual from "@/components/nextgen/ActivityVisual";
 import TramaThread from "@/components/nextgen/TramaThread";
 import ContactCenterButton from "@/components/ContactCenterButton";
 import { dayPrice } from "@/lib/day-pricing";
-import { placeLine, type ActivityService } from "@/lib/nextgen/activity-detail-v2";
+import { navigationDestination, placeLine, type ActivityService } from "@/lib/nextgen/activity-detail-v2";
+import { longDateIt, shortRangeIt, unavailableCtaLabel, type ActivityDateSummary } from "@/lib/nextgen/parent-ux-fix";
 
 const WEEKDAY_SHORT = ["Lun", "Mar", "Mer", "Gio", "Ven", "Sab", "Dom"];
 const WEEKDAY_LONG = ["lunedì", "martedì", "mercoledì", "giovedì", "venerdì"];
@@ -75,6 +76,7 @@ export default function ActivityDetailV2({
   realSpotsLeft,
   existingBooking,
   bookingHref,
+  dateSummary = null,
 }: {
   activity: Activity;
   reasons: string[];
@@ -102,6 +104,8 @@ export default function ActivityDetailV2({
   realSpotsLeft?: number;
   existingBooking: ExistingBookingSummary | null;
   bookingHref: string;
+  /** Correzioni dal test UX (21/10/2026, PARENT_UX_FIX_ENABLED): date vere e stato coerente. null = come prima. */
+  dateSummary?: ActivityDateSummary | null;
 }) {
   const facts = [
     activity.ageRange ? { icon: "ti-users", text: activity.ageRange } : null,
@@ -109,7 +113,9 @@ export default function ActivityDetailV2({
   ].filter(Boolean) as { icon: string; text: string }[];
   const daysSelected = selectedDayDates.length;
   const spotsText = !activityAvailable
-    ? "Al momento non disponibile"
+    ? dateSummary
+      ? unavailableCtaLabel(dateSummary)
+      : "Al momento non disponibile"
     : activity.showExactSpots && realSpotsLeft !== undefined
       ? realSpotsLeft === 1
         ? "Ultimo posto"
@@ -156,6 +162,29 @@ export default function ActivityDetailV2({
               <TramaThread className="mt-1.5" />
             </div>
             <p className="text-[14px] text-ink-2">{placeLine(activity)}</p>
+            {/* Correzioni dal test UX (21/10/2026), UX-PARENT-012: dove si
+                va davvero. "Apri mappa" con l'indirizzo o le coordinate; se
+                l'indirizzo non ha un numero civico lo diciamo. */}
+            {dateSummary && (() => {
+              const destination = navigationDestination(activity.address, activity.lat, activity.lng);
+              const vague = !/\d/.test(activity.address ?? "");
+              return (
+                <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+                  {destination && (
+                    <a
+                      href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(destination)}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex min-h-[36px] items-center gap-1 text-[13.5px] font-semibold text-trama-accent-ink"
+                    >
+                      <i className="ti ti-map-pin text-[15px]" aria-hidden="true" />
+                      Apri mappa
+                    </a>
+                  )}
+                  {vague && <span className="text-[12.5px] text-ink-2">Indirizzo esatto da confermare con il centro</span>}
+                </div>
+              );
+            })()}
             {facts.length > 0 && (
               <div className="flex flex-wrap gap-x-4 gap-y-1">
                 {facts.map((f) => (
@@ -247,7 +276,30 @@ export default function ActivityDetailV2({
                 <dt className="text-[14px] text-ink-2">Prezzo</dt>
                 <dd className="text-[14.5px] font-bold text-trama-navy">€{activity.pricePerWeek} a settimana</dd>
               </div>
-              {activity.weeksAvailable && (
+              {/* Correzioni dal test UX (21/10/2026), UX-PARENT-003: le date
+                  vere al posto del testo libero "7 di 8". */}
+              {dateSummary && (
+                <div data-testid="activity-dates" className="flex flex-col gap-1 border-t border-[#F0F2F5] py-2.5">
+                  <dt className="text-[14px] text-ink-2">Date</dt>
+                  <dd className="flex flex-col gap-1">
+                    {dateSummary.state === "ended" ? (
+                      <span className="text-[14.5px] font-semibold text-ink">
+                        Edizione conclusa{dateSummary.lastEnd ? ` il ${longDateIt(dateSummary.lastEnd)}` : ""}. Le nuove date non sono ancora pubblicate.
+                      </span>
+                    ) : dateSummary.state === "no_dates" ? (
+                      <span className="text-[14.5px] font-semibold text-ink">Il centro non ha ancora pubblicato le date.</span>
+                    ) : (
+                      dateSummary.upcoming.map((r) => (
+                        <span key={`${r.start}-${r.end}`} className="flex items-center justify-between gap-3 text-[14.5px]">
+                          <span className="font-semibold text-ink">{shortRangeIt(r.start, r.end)}</span>
+                          <span className={r.full ? "text-ink-3" : "font-semibold text-[#146B4F]"}>{r.full ? "Al completo" : "Posti liberi"}</span>
+                        </span>
+                      ))
+                    )}
+                  </dd>
+                </div>
+              )}
+              {!dateSummary && activity.weeksAvailable && (
                 <div className="flex items-center justify-between border-t border-[#F0F2F5] py-2.5">
                   <dt className="text-[14px] text-ink-2">Settimane aperte</dt>
                   <dd className="text-[14.5px] font-semibold text-ink">{activity.weeksAvailable}</dd>
@@ -418,7 +470,7 @@ export default function ActivityDetailV2({
           )
         ) : daysSelected === 0 && !activityAvailable ? (
           <button type="button" disabled className={CTA_DISABLED}>
-            Non disponibile ora
+            {dateSummary ? unavailableCtaLabel(dateSummary) : "Non disponibile ora"}
           </button>
         ) : daysSelected > 0 && !meetsMinDays ? (
           <button type="button" disabled data-spotlight="book_activity" className={CTA_DISABLED}>

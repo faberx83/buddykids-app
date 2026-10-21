@@ -82,6 +82,8 @@ import AgendaItemRow, { KidAvatar, kidToneFor } from "@/components/nextgen/Agend
 import TramaThread from "@/components/nextgen/TramaThread";
 import DayCoordinationBlock, { CoordinationTable } from "@/components/nextgen/DayCoordination";
 import SeasonSummaryCard from "@/components/nextgen/SeasonSummaryCard";
+import SchoolCoverageNote from "@/components/nextgen/SchoolCoverageNote";
+import { schoolSetupHref, type SchoolCoverage } from "@/lib/nextgen/parent-ux-fix";
 import PlannerMapView from "@/components/nextgen/PlannerMapView";
 import PlannerGroupsView from "@/components/nextgen/PlannerGroupsView";
 import PlannerBudgetView from "@/components/nextgen/PlannerBudgetView";
@@ -140,6 +142,7 @@ export default function PlannerV2Client({
   schoolClosedDates,
   holidaySummary,
   holidayPeriods = [],
+  parentUxFix = null,
   summerWeeks,
   budget,
   seasonBudgetTarget,
@@ -179,6 +182,8 @@ export default function PlannerV2Client({
   holidaySummary: SeasonSummaryModel | null;
   /** Ponti e vacanze dei prossimi mesi, uno per riga (Stagione a estate finita). */
   holidayPeriods?: HolidayPeriodRow[];
+  /** Correzioni dal test UX (21/10/2026, PARENT_UX_FIX_ENABLED): figli con e senza scuola. null = come prima. */
+  parentUxFix?: { schoolCoverage: SchoolCoverage } | null;
   summerWeeks: SeasonWeek[];
   budget: BudgetSummary;
   seasonBudgetTarget: number | null;
@@ -599,6 +604,7 @@ export default function PlannerV2Client({
           missingSlotsByStart={missingSlotsByStart}
           holidaySummary={holidaySummary}
           holidayPeriods={holidayPeriods}
+          schoolCoverage={parentUxFix?.schoolCoverage ?? null}
           filter={seasonFilter}
           onFilter={setSeasonFilter}
           onOpenWeek={openWeek}
@@ -1122,6 +1128,7 @@ function SeasonView({
   missingSlotsByStart,
   holidaySummary,
   holidayPeriods,
+  schoolCoverage = null,
   filter,
   onFilter,
   onOpenWeek,
@@ -1136,6 +1143,8 @@ function SeasonView({
   missingSlotsByStart: Record<string, number>;
   holidaySummary: SeasonSummaryModel | null;
   holidayPeriods: HolidayPeriodRow[];
+  /** Correzioni dal test UX (21/10/2026). null = come prima. */
+  schoolCoverage?: SchoolCoverage | null;
   filter: SeasonFilter;
   onFilter: (f: SeasonFilter) => void;
   onOpenWeek: (startIso: string) => void;
@@ -1180,13 +1189,43 @@ function SeasonView({
   );
   const coverage = useMemo(() => coverageByKid({ weeks, kids: kidList }), [weeks, kidList]);
 
-  const holidayMode = summer.isOver && holidaySummary !== null;
+  // Correzioni dal test UX (21/10/2026), UX-PARENT-007: estate finita e
+  // nessun riepilogo "Ponti e vacanze" (scuola non impostata o nessuna
+  // chiusura in vista) → uno stato iniziale che spiega cosa serve, e
+  // l'estate passata chiusa in fondo invece di "0 di 0" come contenuto
+  // principale. Senza il flag (schoolCoverage null): come prima.
+  const noHolidayState = Boolean(schoolCoverage) && summer.isOver && holidaySummary === null;
+  const holidayMode = (summer.isOver && holidaySummary !== null) || noHolidayState;
   const [showPastSummer, setShowPastSummer] = useState(false);
   const nameOf = (id: string) => kidList.find((k) => k.id === id)?.name ?? "";
 
   return (
     <>
-      <SeasonSummaryCard model={summary} onWeekClick={onOpenWeek} />
+      {noHolidayState && schoolCoverage ? (
+        <section data-testid="season-no-school" className="flex flex-col gap-2 rounded-2xl border border-trama-line bg-white p-4">
+          <h2 className="font-poppins text-[17px] font-semibold text-ink">Ponti e vacanze</h2>
+          {schoolCoverage.configured === 0 ? (
+            <>
+              <p className="text-[14px] leading-snug text-ink-2">
+                Indica la scuola dei tuoi figli: qui vedrai i prossimi ponti e le vacanze, e chi resta a casa.
+              </p>
+              {schoolCoverage.missing[0] && (
+                <Link
+                  href={schoolSetupHref(schoolCoverage.missing[0].id)}
+                  className="mt-1 flex min-h-[44px] w-fit items-center rounded-[12px] bg-trama-primary px-4 text-[14px] font-bold text-white active:bg-trama-primary-press"
+                >
+                  Indica la scuola
+                </Link>
+              )}
+            </>
+          ) : (
+            <p className="text-[14px] leading-snug text-ink-2">Nessuna chiusura della scuola nei prossimi mesi.</p>
+          )}
+        </section>
+      ) : (
+        <SeasonSummaryCard model={summary} onWeekClick={onOpenWeek} />
+      )}
+      {holidayMode && schoolCoverage && schoolCoverage.configured > 0 && <SchoolCoverageNote coverage={schoolCoverage} />}
 
       {/* A estate finita: ponti e vacanze uno per riga, con le azioni
           (segnalazione live 14/10: "da organizzare" ma nessuna azione). */}

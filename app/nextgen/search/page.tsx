@@ -39,7 +39,9 @@ import { getCuratedLeadIdsInPlanner, getCommunityDiscoveryIdsInPlanner } from "@
 // lette SOLO se il flag risolve true per questo utente.
 import { getVisibleCommunityDiscoveries } from "@/lib/data/radar";
 import type { CommunityDiscoveryRecord } from "@/lib/radar/community";
-import { getActivityOpenRanges } from "@/lib/data/activities";
+import { getActivityOpenRanges, getActivityDateRows } from "@/lib/data/activities";
+// TRAMA — CORREZIONI DAL TEST UX (21/10/2026): date vere su card e periodi.
+import { PARENT_UX_FIX_FLAG, summarizeActivityDates, type ActivityDateSummary } from "@/lib/nextgen/parent-ux-fix";
 import { getKidClosureIntervalsForParent } from "@/lib/data/school-calendar";
 import { listClosurePeriods } from "@/lib/nextgen/holiday-summary";
 import { buildDiscoverPeriods, type DiscoverPeriod } from "@/lib/nextgen/discover-v2";
@@ -104,6 +106,8 @@ export default async function NextgenSearchPage() {
   let communityIdsInPlanner: string[] = [];
   // TRAMA — SCOPRI V2 (14/10/2026): null = Scopri attuale, invariato.
   let discoverV2: { periods: DiscoverPeriod[]; activityRanges: Record<string, { start: string; end: string }[]> } | null = null;
+  // TRAMA — CORREZIONI DAL TEST UX (21/10/2026): null = comportamento di prima.
+  let parentUxFix: { dateSummaries: Record<string, ActivityDateSummary> } | null = null;
   if (isSupabaseConfigured) {
     const supabase = await createClient();
     const {
@@ -114,7 +118,7 @@ export default async function NextgenSearchPage() {
       const { data: profileRow } = await supabase.from("profiles").select("role").eq("id", user.id).single();
       role = (profileRow?.role as string) ?? "parent";
     }
-    const [realDiscoveryDetail, externalPlannerItemsDetail, radarDetail, discoverV2Detail, schoolDetail] = await Promise.all([
+    const [realDiscoveryDetail, externalPlannerItemsDetail, radarDetail, discoverV2Detail, schoolDetail, uxFixDetail] = await Promise.all([
       resolveFeatureFlagVisibility({
         flagName: "REAL_DISCOVERY_DATASET_ENABLED",
         userId: user?.id ?? null,
@@ -150,6 +154,13 @@ export default async function NextgenSearchPage() {
         tenant: "family",
         correlationId: generateCorrelationId(),
       }).catch(() => ({ enabled: false })),
+      resolveFeatureFlagVisibility({
+        flagName: PARENT_UX_FIX_FLAG,
+        userId: user?.id ?? null,
+        role,
+        tenant: "family",
+        correlationId: generateCorrelationId(),
+      }).catch(() => ({ enabled: false })),
     ]);
     if (user && discoverV2Detail.enabled) {
       try {
@@ -175,6 +186,19 @@ export default async function NextgenSearchPage() {
         };
       } catch {
         discoverV2 = null; // ripiego: Scopri attuale
+      }
+    }
+    // Solo con Scopri V2: le correzioni riguardano la presentazione V2.
+    if (user && discoverV2 && uxFixDetail.enabled) {
+      try {
+        const rows = await getActivityDateRows();
+        const dateSummaries: Record<string, ActivityDateSummary> = {};
+        for (const a of activities) {
+          if (a.dbId) dateSummaries[a.dbId] = summarizeActivityDates(rows[a.dbId], todayIso, a.bookingMode);
+        }
+        parentUxFix = { dateSummaries };
+      } catch {
+        parentUxFix = null; // ripiego: Scopri V2 di prima
       }
     }
     // Il Radar richiede un utente autenticato (invio contenuti, preferiti).
@@ -232,6 +256,7 @@ export default async function NextgenSearchPage() {
       communityDiscoveries={communityDiscoveries}
       communityIdsInPlanner={communityIdsInPlanner}
       discoverV2={discoverV2}
+      parentUxFix={parentUxFix}
       contextualAnnouncement={
         contextualAnnouncement
           ? {

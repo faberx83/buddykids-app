@@ -23,6 +23,7 @@ export default function DiscoverResultCard({
   weekStarts,
   initialFavorite,
   raised = false,
+  dateLine = null,
 }: {
   activity: Activity;
   reasons: string[];
@@ -31,6 +32,8 @@ export default function DiscoverResultCard({
   weekStarts?: string[];
   initialFavorite?: boolean;
   raised?: boolean;
+  /** Correzioni dal test UX (21/10/2026): prossima data vera o "Edizione conclusa". null = come prima. */
+  dateLine?: { text: string; tone: "ok" | "warn" | "muted" } | null;
 }) {
   const [fav, setFav] = useState(initialFavorite ?? false);
   const params = new URLSearchParams();
@@ -58,6 +61,17 @@ export default function DiscoverResultCard({
         <span className="flex flex-col gap-1.5 px-4 pb-[15px] pt-[13px]">
           <span className="text-[16px] font-semibold leading-snug">{activity.name}</span>
           {meta && <span className="text-[13px] text-ink-2">{meta}</span>}
+          {dateLine && (
+            <span
+              data-testid="discover-card-date"
+              className={`flex items-center gap-1.5 text-[13px] font-semibold ${
+                dateLine.tone === "ok" ? "text-[#146B4F]" : dateLine.tone === "warn" ? "text-[#B54708]" : "text-ink-2"
+              }`}
+            >
+              <i className="ti ti-calendar text-[14px]" aria-hidden="true" />
+              {dateLine.text}
+            </span>
+          )}
           {reasons.length > 0 && (
             <span className="mt-0.5 flex flex-wrap gap-1.5">
               {reasons.map((r, i) => (

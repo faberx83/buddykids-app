@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
-import { getActivityBySlug, getPromotionsForActivity } from "@/lib/data/activities";
+import { getActivityBySlug, getPromotionsForActivity, getActivityDateRows } from "@/lib/data/activities";
+import { PARENT_UX_FIX_FLAG, summarizeActivityDates, type ActivityDateSummary } from "@/lib/nextgen/parent-ux-fix";
 import { getFavoriteActivityIds } from "@/lib/data/favorites";
 import { getApprovedCertificationsForActivity } from "@/lib/data/certifications";
 import { getActivityDays, getBookedDayDecisionsForActivity, BookedDayDecision } from "@/lib/data/activity-days";
@@ -60,6 +61,10 @@ export default async function ActivityDetailPage({
   // (DISCOVER_V2_ENABLED), fail-closed; mai in anteprima Partner.
   let v2 = false;
   let reasonKids: { name: string; age: number; interests?: string[] }[] = [];
+  // TRAMA — CORREZIONI DAL TEST UX (21/10/2026, PARENT_UX_FIX_ENABLED, solo
+  // scheda V2): date vere e stato coerente ("Edizione conclusa", "Posti
+  // esauriti") al posto del testo libero "Settimane aperte 7 di 8".
+  let uxFix = false;
   // PLANNER BETA v1.1 (Wave 4, punto 22 "Activity Detail booking-aware") —
   // segnalazione: "Home → Prossimo appuntamento → Activity Detail" mostrava
   // ancora 'Prenota ora' anche per un'attività già prenotata (semanticamente
@@ -118,6 +123,13 @@ export default async function ActivityDetailPage({
           correlationId: generateCorrelationId(),
         }).catch(() => false);
         if (v2) {
+          uxFix = await resolveFeatureFlag({
+            flagName: PARENT_UX_FIX_FLAG,
+            userId: user.id,
+            role: "parent",
+            tenant: "family",
+            correlationId: generateCorrelationId(),
+          }).catch(() => false);
           reasonKids = await getKidsForUser()
             .then((kids) => kids.map((k) => ({ name: k.name, age: k.age, interests: k.interests })))
             .catch(() => []);
@@ -203,6 +215,11 @@ export default async function ActivityDetailPage({
       ? hasAvailableWeek || hasAvailableDay
       : hasAvailableWeek; // "week_only" o bookingMode non configurato (comportamento storico)
   const availableWeekSpots = offeredWeeks.filter((w) => !w.soldOut).map((w) => w.spots);
+  let dateSummary: ActivityDateSummary | null = null;
+  if (uxFix && activity.dbId) {
+    const rows = await getActivityDateRows(activity.dbId).catch(() => ({}) as Awaited<ReturnType<typeof getActivityDateRows>>);
+    dateSummary = summarizeActivityDates(rows[activity.dbId], todayIso, activity.bookingMode);
+  }
   const realSpotsLeft = availableWeekSpots.length ? Math.min(...availableWeekSpots) : undefined;
 
   return (
@@ -221,6 +238,7 @@ export default async function ActivityDetailPage({
         existingBooking={existingBooking}
         activityAvailable={activityAvailable}
         realSpotsLeft={realSpotsLeft}
+        dateSummary={dateSummary}
       />
     </PhoneShell>
   );

@@ -22,7 +22,8 @@ import { getResponsibilitiesForParent, getKidsBookedDaysForWeek } from "@/lib/da
 import { isParentProfileIncomplete, getParentProfile } from "@/lib/data/profile";
 import { getMyGroupInvites } from "@/lib/data/groups";
 import { getExternalPlannerItemsForParent } from "@/lib/data/external-planner-items";
-import { getKidClosureIntervalsForParent } from "@/lib/data/school-calendar";
+import { getKidClosureIntervalsForParent, getKidSchoolProfilesForParent } from "@/lib/data/school-calendar";
+import { PARENT_UX_FIX_FLAG, schoolCoverage, type SchoolCoverage } from "@/lib/nextgen/parent-ux-fix";
 import { computeMatchesForKid } from "@/lib/matching";
 import { resolveFeatureFlagVisibility } from "@/lib/feature-flags/resolve";
 import { generateCorrelationId } from "@/lib/telemetry/correlation";
@@ -125,11 +126,13 @@ export async function loadHomeV2Props({
   const todayIso = romeTodayIso();
   const weekStartIso = mondayOfIso(todayIso);
 
-  const [externalEnabled, schoolEnabled, navV2Enabled] = await Promise.all([
+  const [externalEnabled, schoolEnabled, navV2Enabled, uxFixEnabled] = await Promise.all([
     flagOn("EXTERNAL_PLANNER_ITEMS_ENABLED", userId),
     flagOn("SCHOOL_CALENDAR_INTELLIGENCE_ENABLED", userId),
     // Nuova barra (14/10): il Profilo si apre dall'avatar nell'intestazione.
     flagOn("NAV_V2_ENABLED", userId),
+    // Correzioni dal test UX (21/10/2026).
+    flagOn(PARENT_UX_FIX_FLAG, userId),
   ]);
 
   const weekdayDatesUnion = Array.from(
@@ -279,6 +282,15 @@ export async function loadHomeV2Props({
     profileIncomplete,
   };
 
+  // ── Correzioni dal test UX (21/10/2026), UX-PARENT-004/006: per quali
+  // figli c'è la scuola. Senza il flag: niente nota, niente voce in Da fare.
+  let schoolCoverageModel: SchoolCoverage | null = null;
+  if (uxFixEnabled && schoolEnabled && kidList.length > 0) {
+    const profiles = await getKidSchoolProfilesForParent(kidIds).catch(() => ({}));
+    schoolCoverageModel = schoolCoverage(kidList, Object.keys(profiles));
+    inboxInput.schoolMissingKids = schoolCoverageModel.missing;
+  }
+
   // ── Riepilogo del periodo ──
   const activeBookings = bookings.filter((b) => b.status !== "cancelled");
   const isNewFamily = kidList.length === 0 || (activeBookings.length === 0 && externalItems.length === 0);
@@ -406,6 +418,7 @@ export async function loadHomeV2Props({
     recommendationsTitle: "Idee per le settimane libere",
     externalPlannerItemsEnabled: externalEnabled,
     navV2Enabled,
+    schoolCoverage: schoolCoverageModel,
     activitiesAreMockFallback: isMockActivitiesArray(activities),
   };
 }

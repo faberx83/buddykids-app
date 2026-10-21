@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import AddKidForm from "@/components/AddKidForm";
 import AvatarUploadButton from "@/components/AvatarUploadButton";
@@ -52,6 +52,7 @@ export default function ProfileKidsSection({
   schoolProfiles = {},
   residenceCity = null,
   v2 = false,
+  autoOpenSchoolKidId = null,
 }: {
   initialKids: Kid[];
   autoOpenAddKid?: boolean;
@@ -63,6 +64,10 @@ export default function ProfileKidsSection({
   residenceCity?: string | null;
   /** PROFILO V2 (14/10/2026): titolo e card nello stile V2. Default: invariato. */
   v2?: boolean;
+  /** Correzioni dal test UX (21/10/2026), UX-PARENT-004/006: da "Imposta per
+   *  Giulia" (Home, Planner) si arriva con la scheda di quel figlio aperta
+   *  sulla scuola (?scuola=<id>). null = come prima. */
+  autoOpenSchoolKidId?: string | null;
 }) {
   const router = useRouter();
   const { start: startProgress, complete: completeProgress } = useGlobalActionProgress();
@@ -83,14 +88,22 @@ export default function ProfileKidsSection({
     : "rounded-md px-4 py-2 text-xs font-bold";
   const [kids, setKids] = useState<Kid[]>(initialKids);
   const [showAddKid, setShowAddKid] = useState(Boolean(autoOpenAddKid));
-  const [editingKidId, setEditingKidId] = useState<string | null>(null);
+  const autoOpenKid = autoOpenSchoolKidId ? initialKids.find((k) => k.id === autoOpenSchoolKidId) ?? null : null;
+  const [editingKidId, setEditingKidId] = useState<string | null>(autoOpenKid?.id ?? null);
   const [savingInterests, setSavingInterests] = useState(false);
   // §11 "EDIT CHILD PROFILE" — editing della sezione "Scuola e calendario",
   // indipendente dal pannello nome/data/genere/interessi sopra (stato
   // separato, cosi' aprire/chiudere l'uno non tocca l'altro).
-  const [editingSchoolKidId, setEditingSchoolKidId] = useState<string | null>(null);
-  const [schoolRegionDraft, setSchoolRegionDraft] = useState("");
-  const [schoolComuneDraft, setSchoolComuneDraft] = useState("");
+  const [editingSchoolKidId, setEditingSchoolKidId] = useState<string | null>(
+    autoOpenKid && schoolCalendarEnabled ? autoOpenKid.id : null
+  );
+  const [schoolRegionDraft, setSchoolRegionDraft] = useState(autoOpenKid ? (schoolProfiles[autoOpenKid.id]?.region ?? "") : "");
+  const [schoolComuneDraft, setSchoolComuneDraft] = useState(autoOpenKid ? (schoolProfiles[autoOpenKid.id]?.comune ?? "") : "");
+  useEffect(() => {
+    if (!autoOpenKid) return;
+    document.getElementById(`kid-school-${autoOpenKid.id}`)?.scrollIntoView({ block: "center" });
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- una volta, all'apertura
+  }, []);
   const [savingSchool, setSavingSchool] = useState(false);
   const [schoolError, setSchoolError] = useState<string | null>(null);
 
@@ -146,9 +159,9 @@ export default function ProfileKidsSection({
   // modificare caratteristiche figlio, tra cui età perché magari c'è un
   // errore") — bozza locale nome/data di nascita/genere per il bambino in
   // modifica, inizializzata quando si apre il pannello (vedi startEditing).
-  const [editName, setEditName] = useState("");
-  const [editBirthDate, setEditBirthDate] = useState("");
-  const [editGender, setEditGender] = useState<KidGender | "">("");
+  const [editName, setEditName] = useState(autoOpenKid?.name ?? "");
+  const [editBirthDate, setEditBirthDate] = useState(autoOpenKid?.birthDate ?? "");
+  const [editGender, setEditGender] = useState<KidGender | "">(autoOpenKid?.gender ?? "");
   const [savingDetails, setSavingDetails] = useState(false);
   const [detailsError, setDetailsError] = useState<string | null>(null);
 
@@ -422,7 +435,7 @@ export default function ProfileKidsSection({
                   kids) + disponibilità REALE del calendario per l'anno
                   scolastico corrente (mai inventata, §11). */}
               {schoolCalendarEnabled && (
-                <div className="mt-3 border-t border-[#F0F2F5] pt-3">
+                <div id={`kid-school-${k.id}`} className="mt-3 border-t border-[#F0F2F5] pt-3">
                   <div className="mb-1.5 flex items-center gap-1.5">
                     <i className="ti ti-school text-[13px] text-trama-violet" />
                     <span className="text-[11px] font-bold uppercase tracking-wide text-ink-3">Scuola e calendario</span>

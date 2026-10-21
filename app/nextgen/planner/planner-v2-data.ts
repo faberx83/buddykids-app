@@ -17,7 +17,8 @@ import { getParentAddresses } from "@/lib/data/addresses";
 import { getCommunitiesForUser } from "@/lib/data/communities";
 import { getGroupsForUser } from "@/lib/data/groups";
 import { getExternalPlannerItemsForParent, type ExternalPlannerItem } from "@/lib/data/external-planner-items";
-import { getKidClosureIntervalsForParent } from "@/lib/data/school-calendar";
+import { getKidClosureIntervalsForParent, getKidSchoolProfilesForParent } from "@/lib/data/school-calendar";
+import { PARENT_UX_FIX_FLAG, schoolCoverage } from "@/lib/nextgen/parent-ux-fix";
 import { getClosureNotNeededForParent } from "@/lib/data/closure-not-needed";
 import { getFamilyForUser } from "@/lib/data/family";
 import { CHI_ACCOMPAGNA_PLUS_FLAG } from "@/lib/nextgen/assign-plus";
@@ -71,7 +72,7 @@ export async function loadPlannerV2Props({
   searchParams: Record<string, string | undefined>;
 }): Promise<PlannerV2Props> {
   const todayIso = romeTodayIso();
-  const [externalEnabled, schoolEnabled, exportEnabled, navV2Enabled, assignPlusEnabled, weeklyRoutineEnabled, placeSearchEnabled, dayViewEnabled] = await Promise.all([
+  const [externalEnabled, schoolEnabled, exportEnabled, navV2Enabled, assignPlusEnabled, weeklyRoutineEnabled, placeSearchEnabled, dayViewEnabled, uxFixEnabled] = await Promise.all([
     flagOn("EXTERNAL_PLANNER_ITEMS_ENABLED", userId, role),
     flagOn("SCHOOL_CALENDAR_INTELLIGENCE_ENABLED", userId, role),
     flagOn("CALENDAR_EXPORT_ENABLED", userId, role),
@@ -80,6 +81,8 @@ export async function loadPlannerV2Props({
     flagOn("WEEKLY_ROUTINE_ENABLED", userId, role),
     flagOn(PLACE_SEARCH_FLAG, userId, role),
     flagOn(PLANNER_DAY_VIEW_FLAG, userId, role),
+    // Correzioni dal test UX (21/10/2026).
+    flagOn(PARENT_UX_FIX_FLAG, userId, role),
   ]);
   // 20/10/2026 — Chi accompagna più veloce: l'altro genitore è su TRAMA (nella
   // stessa famiglia)? Decide fra "riceverà una notifica" e "invitalo".
@@ -157,6 +160,18 @@ export async function loadPlannerV2Props({
     weekdayCount: p.weekdayCount,
     state: p.state,
   }));
+
+  // Correzioni dal test UX (21/10/2026), UX-PARENT-004/007: per quali figli
+  // c'è la scuola (nota sotto "Ponti e vacanze", Stagione senza scuola).
+  const parentUxFix =
+    uxFixEnabled && schoolEnabled
+      ? {
+          schoolCoverage: schoolCoverage(
+            kids.map((k) => ({ id: k.id, name: k.name })),
+            Object.keys(await getKidSchoolProfilesForParent(kids.map((k) => k.id)).catch(() => ({})))
+          ),
+        }
+      : null;
 
   // Salvati: preferiti con una data possibile, non ancora prenotati né nel Planner.
   // 20/10/2026: con nome e date di disponibilità, per mostrarli nel Planner
@@ -259,6 +274,7 @@ export async function loadPlannerV2Props({
     schoolClosedDates: Array.from(schoolClosedDates).sort(),
     holidaySummary,
     holidayPeriods,
+    parentUxFix,
     summerWeeks: planner.weeks,
     budget: computeBudgetSummary(bookings, activities),
     seasonBudgetTarget: profile.seasonBudgetTarget,

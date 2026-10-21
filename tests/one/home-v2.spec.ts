@@ -37,13 +37,15 @@ const emptyInbox = {
 };
 
 test.describe("HOME-V2 — Da fare", () => {
-  test("HV2-01: ordine di priorità rifiuti > coordinamento > parziali > inviti > profilo > push", () => {
+  // 21/10/2026 (correzioni dal test UX): "scuola da indicare" fra inviti e profilo.
+  test("HV2-01: ordine di priorità rifiuti > coordinamento > parziali > inviti > scuola > profilo > push", () => {
     const res = buildHomeInbox({
       bookings: [booking({ id: "p", partnerDecision: "partial" }), booking({ id: "r", partnerDecision: "rejected" })],
       upcomingCoordination: { missingCount: 2, firstKidName: "Sofia", firstMoment: "ritorno", firstDate: "2026-10-14", weekStartDate: "2026-10-12" },
       groupInvites: [{ id: "g", groupName: "Classe 3B", inviterName: "Chiara", activityName: null }],
       profileIncomplete: true,
       pushInactive: true,
+      schoolMissingKids: [{ id: "k", name: "Sofia" }],
     });
     expect(res.all.map((i) => i.kind)).toEqual([...HOME_INBOX_PRIORITY]);
   });

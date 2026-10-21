@@ -9,6 +9,7 @@ import { createClient } from "@/lib/supabase/server";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
 import { getSeasonWeekRanges, isoDate, overlaps } from "@/lib/season-weeks";
 import { attachCanonicalAvailability } from "@/lib/availability/canonical";
+import type { ActivityDateRows } from "@/lib/nextgen/parent-ux-fix";
 
 const SELECT_COLUMNS_BASE = `
   id, slug, name, emoji, address, latitude, longitude, age_min, age_max,
@@ -366,6 +367,37 @@ export async function getActivityOpenRanges(): Promise<Record<string, { start: s
   }
   if (!dayError && dayRows) {
     for (const row of dayRows as { activity_id: string; date: string }[]) push(row.activity_id, row.date, row.date);
+  }
+  return out;
+}
+
+// TRAMA — CORREZIONI DAL TEST UX (21/10/2026, PARENT_UX_FIX_ENABLED): tutte
+// le settimane e i giorni aperti, PASSATI COMPRESI e anche senza posti, per
+// dire alla famiglia lo stato vero ("Prossima data", "Posti esauriti",
+// "Edizione conclusa") al posto del testo libero activities.weeks_available.
+// Stesse due tabelle di getActivityOpenRanges, sola lettura. Con
+// activityDbId: una sola attività (scheda); senza: tutte (Scopri).
+export async function getActivityDateRows(activityDbId?: string): Promise<Record<string, ActivityDateRows>> {
+  if (!isSupabaseConfigured) return {};
+  const supabase = await createClient();
+  let weekQuery = supabase.from("activity_weeks").select("activity_id, start_date, end_date, spots_left");
+  let dayQuery = supabase.from("activity_days").select("activity_id, date, is_open, single_day_bookable, spots_left").eq("is_open", true);
+  if (activityDbId) {
+    weekQuery = weekQuery.eq("activity_id", activityDbId);
+    dayQuery = dayQuery.eq("activity_id", activityDbId);
+  }
+  const [{ data: weekRows, error: weekError }, { data: dayRows, error: dayError }] = await Promise.all([weekQuery, dayQuery]);
+  const out: Record<string, ActivityDateRows> = {};
+  const entry = (id: string) => (out[id] ??= { weeks: [], days: [] });
+  if (!weekError && weekRows) {
+    for (const r of weekRows as { activity_id: string; start_date: string; end_date: string; spots_left: number | null }[]) {
+      entry(r.activity_id).weeks.push({ start: r.start_date, end: r.end_date, spotsLeft: r.spots_left ?? 0 });
+    }
+  }
+  if (!dayError && dayRows) {
+    for (const r of dayRows as { activity_id: string; date: string; is_open: boolean; single_day_bookable: boolean | null; spots_left: number | null }[]) {
+      entry(r.activity_id).days.push({ date: r.date, isOpen: r.is_open, singleDayBookable: r.single_day_bookable !== false, spotsLeft: r.spots_left ?? 0 });
+    }
   }
   return out;
 }

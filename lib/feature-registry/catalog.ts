@@ -1034,6 +1034,35 @@ export const FEATURE_CATALOG: FeatureCatalogEntry[] = [
     releaseEligible: true,
   },
   {
+    // TRAMA — CORREZIONI DAL TEST UX PARENT (21/10/2026). ADAPT di Scopri V2,
+    // scheda attività V2, Home V2, Planner V2 (Stagione) e La tua famiglia:
+    // nessuna tabella nuova. Iniziativa: claude/INIZIATIVA_parent_ux_fix_2110.md.
+    key: "parent_ux_fix",
+    label: "Correzioni dal test UX Parent (21/10)",
+    area: "parent",
+    status: "INTERNAL_PREVIEW",
+    flagName: "PARENT_UX_FIX_ENABLED",
+    description:
+      "Ciclo 1: con un periodo scelto in Scopri le attività senza date vanno in 'Date da verificare' (fuori dal conteggio) " +
+      "e quelle estive non compaiono per un ponte; card e scheda mostrano la prossima data o 'Edizione conclusa' al posto " +
+      "del testo 'settimane aperte'; Home e Planner dicono per quanti figli c'è il calendario della scuola; 'Indica la " +
+      "scuola' resta in Da fare; Stagione senza scuola invita a impostarla invece di aprire l'estate passata.",
+    sourceFiles: [
+      "lib/nextgen/parent-ux-fix.ts",
+      "app/nextgen/search/SearchDiscoveryClient.tsx",
+      "components/nextgen/DiscoverResultCard.tsx",
+      "components/nextgen/ActivityDetailV2.tsx",
+      "components/nextgen/SchoolCoverageNote.tsx",
+      "app/nextgen/home-v2-data.ts",
+      "app/nextgen/planner/PlannerV2Client.tsx",
+    ],
+    note:
+      "Una sola release per tutti i cicli: spegnendo il flag tutto torna come prima. Il testo del tutorial di Scopri è " +
+      "corretto per tutti (diceva 'solo le disponibilità reali', non era vero).",
+    riskLevel: "low",
+    releaseEligible: true,
+  },
+  {
     // TRAMA — CHI ACCOMPAGNA PIÙ VELOCE (20/10/2026). ADAPT del foglio "Chi
     // accompagna" del Planner V2 (AssignSheet) + NEW piccola: azione per più
     // giorni (setResponsibilityForDatesAction, stessa tabella

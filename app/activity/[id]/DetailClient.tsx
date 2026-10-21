@@ -19,6 +19,7 @@ import FamilyPreviewBar from "./FamilyPreviewBar";
 import { FAMILY_PREVIEW_RETURN_HREF } from "@/lib/center/family-preview";
 // SCHEDA ATTIVITÀ V2 (14/10/2026): presentazione V2, stessa logica di questo file.
 import ActivityDetailV2 from "@/components/nextgen/ActivityDetailV2";
+import type { ActivityDateSummary } from "@/lib/nextgen/parent-ux-fix";
 import { activityDetailReasons, includedServices } from "@/lib/nextgen/activity-detail-v2";
 import { markFirstUsefulAction } from "@/lib/nextgen/first-action";
 
@@ -35,6 +36,7 @@ export default function DetailClient({
   nextgen = false,
   existingBooking = null,
   activityAvailable = true,
+  dateSummary = null,
   realSpotsLeft = undefined,
   partnerPreview = false,
   v2 = false,
@@ -103,6 +105,8 @@ export default function DetailClient({
   // undefined = non calcolato (non dovrebbe succedere dalla page.tsx reale,
   // ma teniamo un default sicuro "true" per non introdurre falsi negativi).
   activityAvailable?: boolean;
+  /** Correzioni dal test UX (21/10/2026), solo scheda V2: stato vero delle date. null = come prima. */
+  dateSummary?: ActivityDateSummary | null;
   // Posti liberi REALI (minimo tra le settimane offerte non esaurite) — da
   // mostrare al posto del vecchio activity.spotsLeft editoriale. undefined
   // se non calcolabile (es. attività a soli giorni spot, o nessuna
@@ -329,6 +333,7 @@ export default function DetailClient({
         meetsMinDays={meetsMinDays}
         activityAvailable={activityAvailable}
         realSpotsLeft={realSpotsLeft}
+        dateSummary={dateSummary}
         existingBooking={existingBooking}
         bookingHref={bookingHref}
       />

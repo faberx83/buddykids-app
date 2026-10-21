@@ -218,7 +218,10 @@ export const WALKTHROUGH_REGISTRY: Record<string, WalkthroughDefinition> = {
       {
         key: "filter_week",
         title: "Filtra per settimana",
-        description: "Scegli le settimane che ti servono: vedrai solo le disponibilità reali per quei giorni.",
+        // Correzioni dal test UX (21/10/2026), UX-PARENT-001: "solo le
+        // disponibilità reali" non era vero per le Scoperte senza date.
+        description:
+          "Scegli le settimane che ti servono: i centri su TRAMA mostrano i posti liberi in quei giorni; dove la fonte non indica le date, controlla prima di contarci.",
         spotlightTarget: "week_filter",
         spotlightRoute: "/nextgen/search",
       },

@@ -32,6 +32,8 @@ import BetaSurveyCard from "@/components/nextgen/BetaSurveyCard";
 import type { SurveyDefinition } from "@/lib/beta-cockpit/survey";
 import ActivityVisual from "@/components/nextgen/ActivityVisual";
 import DayCoordinationBlock from "@/components/nextgen/DayCoordination";
+import SchoolCoverageNote from "@/components/nextgen/SchoolCoverageNote";
+import type { SchoolCoverage } from "@/lib/nextgen/parent-ux-fix";
 import SeasonSummaryCard, { type SeasonSummaryAction, type SeasonSummaryWelcome } from "@/components/nextgen/SeasonSummaryCard";
 import NextgenCheckinCard from "@/components/nextgen/NextgenCheckinCard";
 import MockDataBanner from "@/components/MockDataBanner";
@@ -117,6 +119,7 @@ export default function HomeDashboardV2Client({
   coordination,
   urgentAlert,
   inboxInput,
+  schoolCoverage = null,
   todayCheckins,
   summary,
   welcome,
@@ -143,6 +146,8 @@ export default function HomeDashboardV2Client({
   coordination: DayCoordinationSummary;
   urgentAlert: UrgentTodayAlert | null;
   inboxInput: Omit<HomeInboxInput, "pushInactive">;
+  /** Correzioni dal test UX (21/10/2026): figli con e senza scuola. null = come prima. */
+  schoolCoverage?: SchoolCoverage | null;
   todayCheckins: TodayCheckin[];
   summary: SeasonSummaryModel | null;
   welcome: SeasonSummaryWelcome | null;
@@ -392,6 +397,10 @@ export default function HomeDashboardV2Client({
           weekHref={(week) => `/nextgen/planner?week=${week}`}
         />
       )}
+      {/* Correzioni dal test UX (21/10/2026), UX-PARENT-004: il conteggio
+          delle chiusure vale solo per i figli con la scuola. Solo quando
+          almeno uno ce l'ha (senza nessuno, c'è "Indica la scuola" in Da fare). */}
+      {schoolCoverage && schoolCoverage.configured > 0 && <SchoolCoverageNote coverage={schoolCoverage} className="-mt-3" />}
 
       {/* 6. PROSSIMA CHIUSURA */}
       {nextClosure && !closureLater && (
@@ -523,6 +532,7 @@ function TodoRow({ item, onPush, pushBusy }: { item: HomeInboxItem; onPush: () =
     coordination_soon: "ti-car",
     booking_partial: "ti-calendar-minus",
     group_invite: "ti-users",
+    school_missing: "ti-school",
     profile_incomplete: "ti-user-circle",
     push_inactive: "ti-bell-ringing",
   };

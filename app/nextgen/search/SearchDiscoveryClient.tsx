@@ -13,6 +13,15 @@ import DiscoverResultCard from "@/components/nextgen/DiscoverResultCard";
 import { mapFocusPoints } from "@/lib/nextgen/map-focus";
 import TramaThread from "@/components/nextgen/TramaThread";
 import { activityOpenIn, discoveryOpenIn, periodForWeek, type DiscoverPeriod } from "@/lib/nextgen/discover-v2";
+// TRAMA — CORREZIONI DAL TEST UX (21/10/2026, PARENT_UX_FIX_ENABLED), ciclo 1-A.
+import {
+  activityDateLine,
+  dateStateRank,
+  isUndated,
+  periodFit,
+  type ActivityDateSummary,
+  type IsoRange,
+} from "@/lib/nextgen/parent-ux-fix";
 import PageHeader from "@/components/PageHeader";
 import { ProductStatusChip } from "@/components/ProductStatusChip";
 import Link from "next/link";
@@ -267,6 +276,7 @@ export default function SearchDiscoveryClient({
   communityDiscoveries = [],
   communityIdsInPlanner = [],
   discoverV2 = null,
+  parentUxFix = null,
 }: {
   activities: Activity[];
   kids: Kid[];
@@ -328,6 +338,10 @@ export default function SearchDiscoveryClient({
   // DISCOVER_V2_ENABLED: "Per quando" (periodi + intervalli aperti per
   // attività) e la presentazione delle tavole V2.
   discoverV2?: { periods: DiscoverPeriod[]; activityRanges: Record<string, { start: string; end: string }[]> } | null;
+  // TRAMA — CORREZIONI DAL TEST UX (21/10/2026): null = comportamento di
+  // prima. Con PARENT_UX_FIX_ENABLED (solo in V2): stato vero delle date per
+  // attività (dbId) e "Date da verificare" per le scoperte senza date.
+  parentUxFix?: { dateSummaries: Record<string, ActivityDateSummary> } | null;
 }) {
   // TRAMA ONE — Sezione 8 (Chiusura P0 Parent, Context Object): questa
   // pagina riceveva già un deep-link `?kid=<id>` da lib/nextgen/missions.ts
@@ -497,6 +511,25 @@ export default function SearchDiscoveryClient({
     return per && v2.periods.some((p) => p.key === per) ? per : null;
   });
   const activePeriod = useMemo(() => periods.find((p) => p.key === periodKey) ?? null, [periods, periodKey]);
+  // TRAMA — CORREZIONI DAL TEST UX (21/10/2026), UX-PARENT-001. Con un
+  // periodo scelto (Per quando o settimane del filtro Date), una scoperta
+  // SENZA date note non entra più nei risultati né nel conteggio: va in "Date
+  // da verificare", e se il nome la dichiara estiva non compare per un
+  // periodo fuori dall'estate. Le scoperte con date restano alla regola di
+  // sempre. Senza il flag: niente di diverso.
+  const uxFix = Boolean(v2 && parentUxFix);
+  const temporalRange = useMemo<IsoRange | null>(() => {
+    if (!uxFix) return null;
+    if (activePeriod) return { start: activePeriod.start, end: activePeriod.end };
+    if (selectedWeekStarts.length === 0) return null;
+    const ranges = getSeasonWeekRanges(seasonYear).filter((r) => selectedWeekStarts.includes(isoDate(r.start)));
+    if (ranges.length === 0) return null;
+    return {
+      start: ranges.map((r) => isoDate(r.start)).sort()[0],
+      end: ranges.map((r) => isoDate(r.end)).sort().slice(-1)[0],
+    };
+  }, [uxFix, activePeriod, selectedWeekStarts, seasonYear]);
+  const [showToVerify, setShowToVerify] = useState(false);
   const [showFiltersV2, setShowFiltersV2] = useState(false);
 
   // TRAMA — REAL DISCOVERY PILOT (16/09/2026), §14 del report ("School
@@ -671,6 +704,8 @@ export default function SearchDiscoveryClient({
       .filter((r): r is SeasonWeekRange => Boolean(r));
 
     const filtered = realDiscoveryLeads.filter((lead) => {
+      // Correzioni UX (21/10): senza date note → "Date da verificare", non qui.
+      if (temporalRange && isUndated(lead)) return false;
       if (
         selectedRanges.length > 0 &&
         !selectedRanges.some((r) => isDiscoveryLeadCompatibleWithWeek(lead, isoDate(r.start), isoDate(r.end)))
@@ -697,6 +732,7 @@ export default function SearchDiscoveryClient({
 
     return sortDiscoveryLeadsForDisplay(filtered);
   }, [
+    temporalRange,
     realDiscoveryLeads,
     selectedWeekStarts,
     seasonYear,
@@ -732,8 +768,44 @@ export default function SearchDiscoveryClient({
       selectedWeekRanges,
       coverageFilterActive: selectedCoverageModes.length > 0 || onlyDaySpots,
     });
-    return activePeriod ? list.filter((d) => discoveryOpenIn(d, activePeriod)) : list;
-  }, [communityDiscoveries, seasonYear, selectedWeekStarts, minAge, maxAge, maxPrice, zone, query, selectedTagIds, selectedCoverageModes, onlyDaySpots, activePeriod]);
+    const inPeriod = activePeriod ? list.filter((d) => discoveryOpenIn(d, activePeriod)) : list;
+    // Correzioni UX (21/10): senza date note → "Date da verificare", non qui.
+    return temporalRange ? inPeriod.filter((d) => !isUndated(d)) : inPeriod;
+  }, [communityDiscoveries, seasonYear, selectedWeekStarts, minAge, maxAge, maxPrice, zone, query, selectedTagIds, selectedCoverageModes, onlyDaySpots, activePeriod, temporalRange]);
+
+  // TRAMA — CORREZIONI DAL TEST UX (21/10/2026), UX-PARENT-001: le scoperte
+  // senza date che restano possibili per il periodo, con tutti gli altri
+  // filtri applicati. Mostrate a parte, fuori dal conteggio dei risultati.
+  const leadsToVerify = useMemo(() => {
+    if (!temporalRange || realDiscoveryLeads.length === 0) return [];
+    return sortDiscoveryLeadsForDisplay(
+      realDiscoveryLeads.filter(
+        (lead) =>
+          isUndated(lead) &&
+          periodFit({ startDate: lead.startDate, endDate: lead.endDate, title: lead.activityTitle }, temporalRange) === "to_verify" &&
+          isDiscoveryLeadCompatibleWithAgeRange(lead, minAge, maxAge) &&
+          isDiscoveryLeadCompatibleWithPriceCap(lead, maxPrice) &&
+          isDiscoveryLeadCompatibleWithZoneQuery(lead, zone) &&
+          isDiscoveryLeadCompatibleWithCategoryTags(lead, selectedTagIds) &&
+          isDiscoveryLeadCompatibleWithTextQuery(lead, query) &&
+          isDiscoveryLeadCompatibleWithCoverage(lead, { selectedCoverageModes, onlyDaySpots })
+      )
+    );
+  }, [temporalRange, realDiscoveryLeads, minAge, maxAge, maxPrice, zone, selectedTagIds, query, selectedCoverageModes, onlyDaySpots]);
+  const communityToVerify = useMemo(() => {
+    if (!temporalRange || communityDiscoveries.length === 0) return [];
+    return filterCommunityDiscoveries(communityDiscoveries, {
+      minAge,
+      maxAge,
+      maxPrice,
+      zone,
+      query,
+      selectedTagIds,
+      selectedWeekRanges: [],
+      coverageFilterActive: selectedCoverageModes.length > 0 || onlyDaySpots,
+    }).filter((d) => isUndated(d) && periodFit({ startDate: d.startDate, endDate: d.endDate, title: d.title }, temporalRange) === "to_verify");
+  }, [temporalRange, communityDiscoveries, minAge, maxAge, maxPrice, zone, query, selectedTagIds, selectedCoverageModes, onlyDaySpots]);
+  const toVerifyCount = leadsToVerify.length + communityToVerify.length;
   const communityIdsInPlannerSet = useMemo(() => new Set(communityIdsInPlanner), [communityIdsInPlanner]);
   // Contenuto condiviso da un'altra app (Android share_target, vedi
   // public/manifest-nextgen.json): letto UNA volta all'apertura, così la
@@ -960,10 +1032,15 @@ export default function SearchDiscoveryClient({
     v2,
   ]);
 
-  const matches = useMemo(
-    () => computeSmartMatches(filteredActivities, selectedKids, { geo, uncoveredWeekStart, availabilityByWeek }),
-    [filteredActivities, selectedKids, geo, uncoveredWeekStart, availabilityByWeek]
-  );
+  const matches = useMemo(() => {
+    const list = computeSmartMatches(filteredActivities, selectedKids, { geo, uncoveredWeekStart, availabilityByWeek });
+    // Correzioni UX (21/10), UX-PARENT-003: le attività con date future
+    // prima, quelle concluse o senza date in fondo (ordine stabile).
+    if (!uxFix || !parentUxFix) return list;
+    const summaries = parentUxFix.dateSummaries;
+    const rank = (m: SmartMatch) => dateStateRank(m.activity.dbId ? summaries[m.activity.dbId] : undefined);
+    return list.slice().sort((a, b) => rank(a) - rank(b));
+  }, [filteredActivities, selectedKids, geo, uncoveredWeekStart, availabilityByWeek, uxFix, parentUxFix]);
 
   // Se c'è una posizione, dividiamo "Nella tua zona" / "Fuori dalla tua
   // zona" invece di escludere del tutto le attività fuori raggio (stesso
@@ -1134,6 +1211,7 @@ export default function SearchDiscoveryClient({
           weekStarts={selectedWeekStarts}
           initialFavorite={!!a.dbId && favoriteIdsSet.has(a.dbId)}
           raised={index === 0}
+          dateLine={uxFix && a.dbId && parentUxFix?.dateSummaries[a.dbId] ? activityDateLine(parentUxFix.dateSummaries[a.dbId]) : null}
         />
       );
     }
@@ -2148,6 +2226,38 @@ export default function SearchDiscoveryClient({
           </div>
         ) : (
           <div className="flex flex-col gap-1">{unifiedResults.map(renderDiscoveryResult)}</div>
+        )}
+
+        {/* TRAMA — CORREZIONI DAL TEST UX (21/10/2026), UX-PARENT-001: le
+            scoperte senza date, a parte e fuori dal conteggio, chiuse di
+            default. Mai presentate come disponibili nel periodo. */}
+        {uxFix && viewMode === "lista" && toVerifyCount > 0 && (
+          <section aria-labelledby="da-verificare-h" data-testid="discovery-to-verify" className="mt-2 flex flex-col gap-2">
+            <button
+              type="button"
+              aria-expanded={showToVerify}
+              onClick={() => setShowToVerify((v) => !v)}
+              className="flex min-h-[52px] items-center justify-between gap-3 rounded-2xl border border-dashed border-[#D6DAE3] bg-white px-4 py-3 text-left"
+            >
+              <span className="flex min-w-0 flex-col gap-0.5">
+                <span id="da-verificare-h" className="text-[14.5px] font-semibold text-ink">
+                  Date da verificare ({toVerifyCount})
+                </span>
+                <span className="text-[12.5px] leading-snug text-ink-2">
+                  La fonte non dice quando si svolgono: potrebbero non esserci {activePeriod ? `per ${activePeriod.label.charAt(0).toLowerCase()}${activePeriod.label.slice(1)}` : "nelle settimane scelte"}. Controlla con l&apos;organizzatore prima di contarci.
+                </span>
+              </span>
+              <i className={`ti ${showToVerify ? "ti-chevron-up" : "ti-chevron-down"} flex-shrink-0 text-[16px] text-ink-2`} aria-hidden="true" />
+            </button>
+            {showToVerify && (
+              <div className="flex flex-col gap-1">
+                {[
+                  ...leadsToVerify.map((lead): DiscoveryResult => ({ kind: "curated", lead })),
+                  ...communityToVerify.map((discovery): DiscoveryResult => ({ kind: "community", discovery })),
+                ].map((r, i) => renderDiscoveryResult(r, i + 1))}
+              </div>
+            )}
+          </section>
         )}
 
         {/* SCOPRI V2: "Mandalo a TRAMA" compatto, in fondo all'elenco. */}

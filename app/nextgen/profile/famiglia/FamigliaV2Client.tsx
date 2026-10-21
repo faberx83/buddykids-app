@@ -62,6 +62,7 @@ export default function FamigliaV2Client({
   schoolItems = null,
   todayIso = "",
   placeSearchEnabled = false,
+  autoOpenSchoolKidId = null,
 }: {
   kids: Kid[];
   autoOpenAddKid: boolean;
@@ -80,6 +81,8 @@ export default function FamigliaV2Client({
   todayIso?: string;
   /** 21/10/2026 — release "ricerca-luoghi". */
   placeSearchEnabled?: boolean;
+  /** Correzioni dal test UX (21/10/2026): ?scuola=<id> apre quella scheda sulla scuola. */
+  autoOpenSchoolKidId?: string | null;
 }) {
   return (
     <div className="flex flex-col pb-10">
@@ -96,6 +99,7 @@ export default function FamigliaV2Client({
           schoolProfiles={schoolProfiles}
           residenceCity={residenceCity}
           v2
+          autoOpenSchoolKidId={autoOpenSchoolKidId}
         />
         {schoolItems && <SchoolHoursBlock kids={kids.map((k) => ({ id: k.id, name: k.name }))} items={schoolItems} todayIso={todayIso} placeSearchEnabled={placeSearchEnabled} />}
         <ParentsBlock family={family} myName={myName} myEmail={myEmail} initialJoinCode={initialJoinCode} />

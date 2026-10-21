@@ -17,6 +17,7 @@ export type HomeInboxKind =
   | "coordination_soon"
   | "booking_partial"
   | "group_invite"
+  | "school_missing"
   | "profile_incomplete"
   | "push_inactive";
 
@@ -26,6 +27,7 @@ export const HOME_INBOX_PRIORITY: readonly HomeInboxKind[] = [
   "coordination_soon",
   "booking_partial",
   "group_invite",
+  "school_missing",
   "profile_incomplete",
   "push_inactive",
 ];
@@ -81,6 +83,10 @@ export interface HomeInboxInput {
   groupInvites: HomeInboxGroupInviteInput[];
   profileIncomplete: boolean;
   pushInactive: boolean;
+  /** Correzioni dal test UX (21/10/2026, PARENT_UX_FIX_ENABLED), UX-PARENT-006:
+   *  figli senza scuola. Assente = nessuna voce (comportamento di prima). La
+   *  voce resta finché ogni figlio ha la scuola, anche dopo il benvenuto. */
+  schoolMissingKids?: { id: string; name: string }[];
   /** Oggi (ISO). Se presente, le prenotazioni già concluse non entrano in
    *  "Da fare" (segnalazione live 14/10: una conferma parziale di settembre
    *  compariva ancora a ottobre). */
@@ -188,6 +194,19 @@ export function buildHomeInbox(input: HomeInboxInput): HomeInboxResult {
       detail: detail || "Accetta o rifiuta l'invito",
       ctaLabel: "Rispondi",
       href: "/nextgen/groups",
+    });
+  }
+
+  const missingSchool = input.schoolMissingKids ?? [];
+  if (missingSchool.length > 0) {
+    const first = missingSchool[0];
+    items.push({
+      id: "school_missing",
+      kind: "school_missing",
+      title: missingSchool.length === 1 ? `Indica la scuola di ${first.name}` : `Indica la scuola di ${joinNames(missingSchool.map((k) => k.name))}`,
+      detail: "Ti avvisiamo prima di ogni ponte e vacanza",
+      ctaLabel: "Imposta",
+      href: `/nextgen/profile/famiglia?scuola=${encodeURIComponent(first.id)}`,
     });
   }
 

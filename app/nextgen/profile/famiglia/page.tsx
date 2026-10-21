@@ -24,7 +24,7 @@ import { getExternalPlannerItemsForParent } from "@/lib/data/external-planner-it
 export default async function FamigliaHubPage({
   searchParams,
 }: {
-  searchParams: Promise<{ addKid?: string; code?: string }>;
+  searchParams: Promise<{ addKid?: string; code?: string; scuola?: string }>;
 }) {
   if (!isSupabaseConfigured) return <FamigliaHubClient />;
   const supabase = await createClient();
@@ -78,6 +78,8 @@ export default async function FamigliaHubPage({
     <FamigliaV2Client
       kids={kids}
       autoOpenAddKid={params.addKid === "1"}
+      // Correzioni dal test UX (21/10/2026): "Imposta per Giulia" → scheda aperta sulla scuola.
+      autoOpenSchoolKidId={params.scuola && kids.some((k) => k.id === params.scuola) ? params.scuola : null}
       initialJoinCode={!family && params.code ? params.code.toUpperCase().slice(0, 12) : null}
       schoolCalendarEnabled={schoolCalendarEnabled}
       schoolProfiles={schoolProfiles}
