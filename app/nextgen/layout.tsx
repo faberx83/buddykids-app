@@ -11,6 +11,7 @@ import { isSupabaseConfigured } from "@/lib/supabase/env";
 import { splashLinks } from "@/lib/tenant";
 import { Role } from "@/lib/types";
 import { resolveFeatureFlag } from "@/lib/feature-flags/resolve";
+import { PARENT_UX_FIX_FLAG } from "@/lib/nextgen/parent-ux-fix";
 import { generateCorrelationId } from "@/lib/telemetry/correlation";
 import { getWalkthroughProgress, WalkthroughProgressSummary } from "@/lib/walkthrough/data";
 import ParentSpotlight from "@/components/spotlight/ParentSpotlight";
@@ -144,6 +145,7 @@ export default async function NextgenLayout({ children }: { children: React.Reac
   let addItemEnabled = false;
   let radarEnabled = false; // RADAR (14/10/2026): "Una scoperta" nel +
   let returnHomeEnabled = false; // 20/10/2026: dopo una pausa l'app riparte dalla Home
+  let parentUxFix = false; // 21/10/2026: correzioni dal test UX (PARENT_UX_FIX_ENABLED)
   // TRAMA — ONBOARDING V2 (14/10/2026): con il flag acceso l'onboarding V2
   // prende il posto del carousel attuale (chiave tutorial nuova). I dati dei
   // figli e della scuola si leggono SOLO se l'onboarding sta per comparire.
@@ -213,7 +215,7 @@ export default async function NextgenLayout({ children }: { children: React.Reac
     globalActionProgressEnabled = globalActionProgressResolved;
     if (realRole === "parent") {
       try {
-        const [navV2, externalItems, radar, returnHome] = await Promise.all([
+        const [navV2, externalItems, radar, returnHome, uxFix] = await Promise.all([
           resolveFeatureFlag({
             flagName: "NAV_V2_ENABLED",
             userId: user.id,
@@ -242,11 +244,19 @@ export default async function NextgenLayout({ children }: { children: React.Reac
             tenant: "family",
             correlationId: generateCorrelationId(),
           }).catch(() => false),
+          resolveFeatureFlag({
+            flagName: PARENT_UX_FIX_FLAG,
+            userId: user.id,
+            role: realRole,
+            tenant: "family",
+            correlationId: generateCorrelationId(),
+          }).catch(() => false),
         ]);
         navV2Enabled = navV2;
         addItemEnabled = externalItems;
         radarEnabled = radar;
         returnHomeEnabled = returnHome;
+        parentUxFix = uxFix;
       } catch {
         navV2Enabled = false; // ripiego: barra attuale
       }
@@ -371,6 +381,7 @@ export default async function NextgenLayout({ children }: { children: React.Reac
               variant={navV2Enabled ? "v2" : "classic"}
               addItemEnabled={addItemEnabled}
               radarEnabled={radarEnabled}
+              uxFix={parentUxFix}
             />
           </div>
           {/* SPRINT 5 — floating CTA "Segnala un problema", montata qui una

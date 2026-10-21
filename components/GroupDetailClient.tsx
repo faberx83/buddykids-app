@@ -278,6 +278,7 @@ export default function GroupDetailClient({
   inviterName,
   backHref = "/groups",
   nextgen = false,
+  uxFix = false,
 }: {
   detail: GroupDetail;
   activityOptions: { dbId: string; name: string; center: string }[];
@@ -290,6 +291,9 @@ export default function GroupDetailClient({
    * trama-violet/Poppins, stesso trattamento già dato a CoverageStrip
    * (PrenotazioniClient.tsx). Legacy (default false) resta invariato. */
   nextgen?: GroupLook;
+  /** Correzioni dal test UX (21/10/2026, PARENT_UX_FIX_ENABLED, solo V2), UX-PARENT-009:
+   *  gruppo appena creato con tre passi; aggregazioni e richiesta solo dopo attività e figli. */
+  uxFix?: boolean;
 }) {
   const [tab, setTab] = useState<"gruppo" | "accompagnamento">("gruppo");
 
@@ -334,6 +338,11 @@ export default function GroupDetailClient({
               inviterName={inviterName}
               v2
             />
+            {uxFix && (
+              <p className="mt-2 text-[12.5px] leading-snug text-ink-2">
+                Nel gruppo non c&apos;è una chat: gli accordi restano tra voi genitori. Chi entra vede i bambini iscritti e le offerte di passaggio.
+              </p>
+            )}
           </div>
         </div>
 
@@ -366,7 +375,7 @@ export default function GroupDetailClient({
         </div>
 
         {tab === "gruppo" ? (
-          <GruppoTab detail={detail} activityOptions={activityOptions} nextgen={nextgen} />
+          <GruppoTab detail={detail} activityOptions={activityOptions} nextgen={nextgen} uxFix={uxFix} />
         ) : (
           <AccompagnamentoTab detail={detail} nextgen={nextgen} />
         )}
@@ -439,10 +448,12 @@ function GruppoTab({
   detail,
   activityOptions,
   nextgen,
+  uxFix = false,
 }: {
   detail: GroupDetail;
   activityOptions: { dbId: string; name: string; center: string }[];
   nextgen: GroupLook;
+  uxFix?: boolean;
 }) {
   const router = useRouter();
   const accentBg = nextgen === "v2" ? "bg-trama-primary" : nextgen ? "bg-trama-violet" : "bg-sky";
@@ -480,8 +491,37 @@ function GruppoTab({
     ? selectedKid
     : detail.myKids[0]?.id || "";
 
+  // Correzioni dal test UX (21/10/2026), UX-PARENT-009: finché mancano
+  // attività o bambini, aggregazioni e richiesta al centro aspettano.
+  const groupReady = Boolean(detail.activityId) && kidsCount > 0;
+  const showAdvanced = !uxFix || groupReady;
+
   return (
     <div className="px-5 pt-4">
+      {uxFix && !groupReady && (
+        <div data-testid="group-first-steps" className={cardCls}>
+          <div className={`mb-2 ${titleCls}`}>Per iniziare</div>
+          <ol className="flex flex-col gap-2">
+            {[
+              { done: Boolean(detail.activityId), text: "Scegli l'attività da fare insieme" },
+              { done: detail.kids.some((k) => k.isOwn), text: "Aggiungi i tuoi figli" },
+              { done: kidsCount > detail.kids.filter((k) => k.isOwn).length, text: "Invita le altre famiglie con il pulsante qui sopra" },
+            ].map((step, i) => (
+              <li key={step.text} className="flex items-center gap-2.5 text-[14px] text-ink">
+                <span
+                  className={`flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full text-[12px] font-bold ${
+                    step.done ? "bg-[#E6F6F0] text-[#146B4F]" : "bg-[#F1F3F6] text-trama-navy"
+                  }`}
+                >
+                  {step.done ? <i className="ti ti-check text-[13px]" aria-hidden="true" /> : i + 1}
+                </span>
+                <span className={step.done ? "text-ink-2 line-through" : ""}>{step.text}</span>
+              </li>
+            ))}
+          </ol>
+          <p className="mt-2.5 text-[12.5px] text-ink-2">Quando ci sono attività e bambini, qui puoi chiedere al centro un posto per il gruppo.</p>
+        </div>
+      )}
       {/* Attività target */}
       {!detail.activityId && detail.createdByMe && (
         <div className={cardCls}>
@@ -663,6 +703,8 @@ function GruppoTab({
         )}
       </div>
 
+      {showAdvanced && (
+      <>
       {/* Aggregazioni */}
       <div className={cardFlushCls}>
         <div className="flex items-center justify-between border-b border-[#F0F2F5] px-3.5 py-2.5">
@@ -715,13 +757,15 @@ function GruppoTab({
       <div className={cardCls}>
         <div className={`mb-1 ${titleCls}`}>Richiesta Gruppo al centro</div>
         <p className="mb-2.5 text-xs text-ink-2">
-          Sconto proporzionale al numero di bambini iscritti:{" "}
+          {uxFix ? "Sconto possibile in base ai bambini iscritti, se il centro lo accetta: " : "Sconto proporzionale al numero di bambini iscritti: "}
           {groupDiscountTiers.map((t) => `${t.minKids}+ → ${t.percent}%`).join(" · ")}.
         </p>
         <div className={`mb-3 flex items-center gap-2 rounded-md ${accentLight} px-3 py-2`}>
           <i className={`ti ti-tag ${accentText}`} />
           <span className="text-sm font-semibold text-ink">
-            Con {kidsCount} bambin{kidsCount === 1 ? "o" : "i"}: sconto stimato {previewDiscount}%
+            {uxFix
+              ? `Con ${kidsCount} bambin${kidsCount === 1 ? "o" : "i"}: sconto possibile ${previewDiscount}%, da confermare dal centro`
+              : `Con ${kidsCount} bambin${kidsCount === 1 ? "o" : "i"}: sconto stimato ${previewDiscount}%`}
           </span>
         </div>
 
@@ -768,6 +812,8 @@ function GruppoTab({
           </div>
         )}
       </div>
+      </>
+      )}
     </div>
   );
 }

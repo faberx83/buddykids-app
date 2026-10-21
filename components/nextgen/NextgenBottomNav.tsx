@@ -93,12 +93,15 @@ export default function NextgenBottomNav({
   variant = "classic",
   addItemEnabled = false,
   radarEnabled = false,
+  uxFix = false,
 }: {
   notifications?: NotificationItem[];
   variant?: "classic" | "v2";
   addItemEnabled?: boolean;
   /** RADAR (14/10/2026): "Una scoperta" nel foglio del +. */
   radarEnabled?: boolean;
+  /** Correzioni dal test UX (21/10/2026, PARENT_UX_FIX_ENABLED): nel + co-genitore e altra famiglia separati. */
+  uxFix?: boolean;
 }) {
   const pathname = usePathname();
   const { hasUnseenBookingResponse, hasUnseenOther } = useNavBadges(notifications);
@@ -158,7 +161,7 @@ export default function NextgenBottomNav({
           </button>
           {V2_RIGHT.map(renderItem)}
         </div>
-        <AddSheet open={addOpen} onClose={() => setAddOpen(false)} addItemEnabled={addItemEnabled} radarEnabled={radarEnabled} />
+        <AddSheet open={addOpen} onClose={() => setAddOpen(false)} addItemEnabled={addItemEnabled} radarEnabled={radarEnabled} uxFix={uxFix} />
       </>
     );
   }

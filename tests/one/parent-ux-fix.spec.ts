@@ -223,3 +223,34 @@ test.describe("Correzioni dal test UX — ciclo 2 [no browser]", () => {
     expect(card).toContain('setPlanError("Scegli almeno un figlio e indica quando si svolge.");');
   });
 });
+
+test.describe("Correzioni dal test UX — ciclo 3 [no browser]", () => {
+  test("UXF-30 (008) nel + co-genitore e altra famiglia sono due voci, solo con il flag", () => {
+    const sheet = read("components/nextgen/AddSheet.tsx");
+    expect(sheet).toContain('title: "Il mio co-genitore"');
+    expect(sheet).toContain('href: "/nextgen/profile/famiglia#genitori-h"');
+    expect(sheet).toContain(`title: "Un'altra famiglia"`);
+    // senza flag resta la voce di prima
+    expect(sheet).toContain('title: "Un altro genitore"');
+    expect(read("app/nextgen/layout.tsx")).toContain("uxFix={parentUxFix}");
+    expect(read("components/nextgen/NextgenBottomNav.tsx")).toContain("uxFix={uxFix}");
+  });
+
+  test("UXF-31 (008) La tua famiglia dice chi vede cosa", () => {
+    const fam = read("app/nextgen/profile/famiglia/FamigliaV2Client.tsx");
+    expect(fam).toContain("{uxFix && <AccessSummary />}");
+    expect(fam).toContain("Possono modificare");
+    expect(fam).toContain("Solo consultazione");
+    expect(fam).toContain("Solo un nome nel piano");
+    expect(fam).toContain("TRAMA non li avvisa");
+  });
+
+  test("UXF-32 (009) gruppo appena creato: tre passi, aggregazioni e richiesta dopo", () => {
+    const g = read("components/GroupDetailClient.tsx");
+    expect(g).toContain('data-testid="group-first-steps"');
+    expect(g).toContain("const showAdvanced = !uxFix || groupReady;");
+    expect(g).toContain("da confermare dal centro");
+    expect(g).toContain("Nel gruppo non c&apos;è una chat");
+    expect(read("app/nextgen/groups/[id]/page.tsx")).toContain("uxFix={v2 && uxFix}");
+  });
+});

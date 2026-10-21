@@ -30,12 +30,17 @@ export default function AddSheet({
   onClose,
   addItemEnabled,
   radarEnabled = false,
+  uxFix = false,
 }: {
   open: boolean;
   onClose: () => void;
   addItemEnabled: boolean;
   /** RADAR (14/10/2026, "il pulsante per aggiungere dépliant e foto dove è finito?"): con RADAR_ENABLED il + offre anche "Una scoperta". */
   radarEnabled?: boolean;
+  /** Correzioni dal test UX (21/10/2026), UX-PARENT-008: "Un altro genitore"
+   *  portava ai Gruppi. Con il flag: "Il mio co-genitore" (stesso piano, La
+   *  tua famiglia) e "Un'altra famiglia" (gruppo). false = come prima. */
+  uxFix?: boolean;
 }) {
   const firstLinkRef = useRef<HTMLAnchorElement | null>(null);
   // 15/10/2026: dal Planner, "Un impegno" parte dalla settimana che si sta
@@ -89,13 +94,32 @@ export default function AddSheet({
           },
         ]
       : []),
-    {
-      href: "/nextgen/groups",
-      icon: "ti-user-plus",
-      title: "Un altro genitore",
-      detail: "Invitalo a organizzarvi insieme in un gruppo",
-      primary: false,
-    },
+    ...(uxFix
+      ? [
+          {
+            href: "/nextgen/profile/famiglia#genitori-h",
+            icon: "ti-user-plus",
+            title: "Il mio co-genitore",
+            detail: "Stesso piano: vedete e cambiate tutto insieme",
+            primary: false,
+          },
+          {
+            href: "/nextgen/groups",
+            icon: "ti-users-group",
+            title: "Un'altra famiglia",
+            detail: "Un gruppo per organizzare un'attività con amici",
+            primary: false,
+          },
+        ]
+      : [
+          {
+            href: "/nextgen/groups",
+            icon: "ti-user-plus",
+            title: "Un altro genitore",
+            detail: "Invitalo a organizzarvi insieme in un gruppo",
+            primary: false,
+          },
+        ]),
   ];
 
   return (

@@ -106,8 +106,10 @@ export default function FamigliaV2Client({
           uxFix={uxFix}
         />
         {schoolItems && <SchoolHoursBlock kids={kids.map((k) => ({ id: k.id, name: k.name }))} items={schoolItems} todayIso={todayIso} placeSearchEnabled={placeSearchEnabled} />}
+        {/* Correzioni dal test UX (21/10/2026), UX-PARENT-008: chi vede cosa, in un colpo d'occhio. */}
+        {uxFix && <AccessSummary />}
         <ParentsBlock family={family} myName={myName} myEmail={myEmail} initialJoinCode={initialJoinCode} />
-        <HelpersBlock people={people} />
+        <HelpersBlock people={people} uxFix={uxFix} />
         <PlacesBlock addresses={addresses} />
       </div>
     </div>
@@ -393,7 +395,38 @@ function PersonRow({
 
 // ─── Chi vi aiuta ───────────────────────────────────────────────────────
 
-function HelpersBlock({ people }: { people: FamilyPerson[] }) {
+// ─── Chi vede cosa (correzioni dal test UX, 21/10/2026) ─────────────────
+
+function AccessSummary() {
+  const rows = [
+    { icon: "ti-pencil", title: "Genitori", detail: "Possono modificare: vedete e cambiate lo stesso Planner." },
+    { icon: "ti-eye", title: "Link del piano", detail: "Solo consultazione: per nonni e tata, senza account." },
+    { icon: "ti-user", title: "Chi vi aiuta", detail: "Solo un nome nel piano: nessun accesso, nessun avviso." },
+  ];
+  return (
+    <section aria-labelledby="accessi-h" data-testid="famiglia-accessi" className="flex flex-col gap-2.5">
+      <h2 id="accessi-h" className={H2}>
+        Chi vede cosa
+      </h2>
+      <ul className={`${CARD} divide-y divide-[#F0F2F5]`}>
+        {rows.map((r) => (
+          <li key={r.title} className="flex items-start gap-3 px-4 py-3">
+            <i className={`ti ${r.icon} mt-0.5 text-[17px] text-trama-navy`} aria-hidden="true" />
+            <span className="flex min-w-0 flex-col gap-0.5">
+              <span className="text-[14px] font-semibold text-ink">{r.title}</span>
+              <span className="text-[13px] leading-snug text-ink-2">{r.detail}</span>
+            </span>
+          </li>
+        ))}
+      </ul>
+      <Link href="/nextgen/planner?mode=calendario" className="flex min-h-[40px] items-center text-[13.5px] font-semibold text-trama-accent-ink">
+        Crea il link del piano ›
+      </Link>
+    </section>
+  );
+}
+
+function HelpersBlock({ people, uxFix = false }: { people: FamilyPerson[]; uxFix?: boolean }) {
   const router = useRouter();
   const showToast = useNextgenToast();
   const [name, setName] = useState("");
@@ -436,6 +469,12 @@ function HelpersBlock({ people }: { people: FamilyPerson[] }) {
         Nonno, Nonna e Tata ci sono già tra le scelte di Chi accompagna. Aggiungi qui le altre persone: la zia, la vicina,
         il papà di un compagno.
       </p>
+      {/* Correzioni dal test UX (21/10/2026): scegliere "Nonno" è un promemoria per voi, non un accordo preso con lui. */}
+      {uxFix && (
+        <p className="-mt-1 text-[12.5px] leading-snug text-ink-2">
+          Sono nomi nel vostro piano: TRAMA non li avvisa. Per accordarvi, mandate loro il link del piano.
+        </p>
+      )}
       {people.length > 0 && (
         <ul className={`${CARD} divide-y divide-[#F0F2F5]`}>
           {people.map((p) =>
