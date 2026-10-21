@@ -954,6 +954,34 @@ export const FEATURE_CATALOG: FeatureCatalogEntry[] = [
     releaseEligible: true,
   },
   {
+    // TRAMA — SETTIMANA TIPO, FASE A (21/10/2026). ADAPT: external_planner_items
+    // usa recurrence_rule (jsonb già nello schema, mai usata) e
+    // source_metadata.role="school"; nessuna tabella né colonna nuova.
+    // Iniziativa: claude/INIZIATIVA_planner_routine_settimanale.md.
+    key: "weekly_routine",
+    label: "Settimana tipo — impegni ricorrenti e orario della scuola",
+    area: "parent",
+    status: "INTERNAL_PREVIEW",
+    flagName: "WEEKLY_ROUTINE_ENABLED",
+    description:
+      "Nel foglio 'Nuovo impegno': 'Si ripete ogni settimana' con i giorni (anche sabato e domenica) e le settimane " +
+      "alterne. In 'La tua famiglia': l'orario della scuola per ogni figlio, che in agenda è una riga discreta e non " +
+      "compare nei giorni di chiusura e in vacanza.",
+    sourceFiles: [
+      "lib/planner/recurrence.ts",
+      "lib/data/external-planner-items.ts",
+      "components/nextgen/ExternalPlannerItemsSection.tsx",
+      "components/nextgen/SchoolHoursBlock.tsx",
+      "lib/nextgen/today-agenda.ts",
+      "lib/nextgen/planner-week.ts",
+    ],
+    note:
+      "Nessuna migrazione. La scuola non genera ancora passaggi in 'Chi accompagna' (arriva con la Fase B, per " +
+      "passaggio). Le ricorrenze valgono al massimo due anni per impegno.",
+    riskLevel: "low",
+    releaseEligible: true,
+  },
+  {
     // TRAMA — CHI ACCOMPAGNA PIÙ VELOCE (20/10/2026). ADAPT del foglio "Chi
     // accompagna" del Planner V2 (AssignSheet) + NEW piccola: azione per più
     // giorni (setResponsibilityForDatesAction, stessa tabella

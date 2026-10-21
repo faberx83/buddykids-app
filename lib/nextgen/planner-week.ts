@@ -7,6 +7,7 @@
 // così passare da una settimana all'altra è immediato.
 // Testata in tests/one/planner-v2.spec.ts.
 
+import { occurrenceDates, occursOn, type WeeklyRecurrence } from "@/lib/planner/recurrence";
 import {
   buildTodayAgenda,
   summarizeDayCoordination,
@@ -89,7 +90,7 @@ export function bookedDaysForWeek(
  */
 export function coordinationDaysForWeek(
   bookings: Pick<AgendaBookingInput, "status" | "kidIds" | "kidNames" | "weeks" | "dayDates">[],
-  externalItems: Pick<AgendaExternalInput, "startDate" | "endDate" | "kidIds">[],
+  externalItems: Pick<AgendaExternalInput, "startDate" | "endDate" | "kidIds" | "recurrence" | "isSchool">[],
   mondayIso: string,
   kidNameById: Record<string, string>
 ): { kidId: string; kidName: string; dates: string[] }[] {
@@ -97,7 +98,10 @@ export function coordinationDaysForWeek(
   const byKid = new Map<string, { kidName: string; dates: Set<string> }>();
   for (const k of bookedDaysForWeek(bookings, mondayIso)) byKid.set(k.kidId, { kidName: k.kidName, dates: new Set(k.dates) });
   for (const item of externalItems) {
-    const covered = weekdays.filter((iso) => item.startDate <= iso && iso <= item.endDate);
+    // 21/10/2026: solo i giorni in cui c'è davvero (ricorrenza); la scuola
+    // non genera passaggi in questa fase (sarebbero "da decidere" ogni giorno).
+    if (item.isSchool) continue;
+    const covered = weekdays.filter((iso) => occursOn(item, iso));
     if (covered.length === 0) continue;
     for (const kidId of item.kidIds) {
       const name = byKid.get(kidId)?.kidName || kidNameById[kidId];
@@ -119,7 +123,7 @@ export function coordinationDaysForWeek(
 export function dayCoordinationSlots(input: {
   dateIso: string;
   bookings: Pick<AgendaBookingInput, "status" | "kidIds" | "kidNames" | "weeks" | "dayDates">[];
-  externalItems: Pick<AgendaExternalInput, "startDate" | "endDate" | "kidIds">[];
+  externalItems: Pick<AgendaExternalInput, "startDate" | "endDate" | "kidIds" | "recurrence" | "isSchool">[];
   responsibilities: WeekResponsibility[];
   kidNameById: Record<string, string>;
   labelFor: (r: WeekResponsibility) => string;
@@ -188,6 +192,8 @@ export function buildWeekModel(input: {
   kidFilter: string | null;
   /** Giorni di scuola chiusa per figlio: { date: [label] }. */
   closureLabelsByDate?: Record<string, string[]>;
+  /** 21/10/2026: giorni senza scuola (chiusure E vacanze estive) — lì l'orario della scuola non c'è. */
+  schoolClosedDates?: string[];
 }): WeekModel {
   const monday = input.mondayIso;
   const booked = coordinationDaysForWeek(input.bookings, input.externalItems, monday, input.kidNameById).filter(
@@ -212,6 +218,7 @@ export function buildWeekModel(input: {
       externalItems: input.externalItems,
       hoursByActivityDbId: input.hoursByActivityDbId,
       kidNameById: input.kidNameById,
+      schoolClosedDates: input.schoolClosedDates ?? Object.keys(input.closureLabelsByDate ?? {}),
     });
     const entries =
       input.kidFilter === null ? all : all.filter((e) => e.kids.some((k) => k.id === input.kidFilter) || e.kids.length === 0);
@@ -328,9 +335,19 @@ export function buildMonthModel(input: {
  * solo a "cosa succede in questa settimana?": gli impegni di altre date non
  * la allungano più. Nessun dato cambiato, solo presentazione.
  */
-export function itemsInWeek<T extends { startDate: string; endDate: string | null }>(items: T[], mondayIso: string): T[] {
+export function itemsInWeek<T extends { startDate: string; endDate: string | null; recurrence?: WeeklyRecurrence | null; isSchool?: boolean }>(
+  items: T[],
+  mondayIso: string
+): T[] {
   const sunday = addDaysIso(mondayIso, 6);
-  return items.filter((i) => i.startDate <= sunday && (i.endDate ?? i.startDate) >= mondayIso);
+  return items.filter((i) => {
+    // 21/10/2026: l'orario della scuola si imposta in La tua famiglia, non è un "impegno aggiunto".
+    if (i.isSchool) return false;
+    if (!(i.startDate <= sunday && (i.endDate ?? i.startDate) >= mondayIso)) return false;
+    // Un impegno ricorrente conta nella settimana solo se quella settimana c'è davvero.
+    if (i.recurrence) return occurrenceDates({ startDate: i.startDate, endDate: i.endDate ?? i.startDate, recurrence: i.recurrence }, mondayIso, sunday).length > 0;
+    return true;
+  });
 }
 
 /**

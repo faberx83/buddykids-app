@@ -8,6 +8,7 @@
 // tests/one/external-planner-items.spec.ts può importarla direttamente,
 // senza errori di risoluzione modulo.
 
+import { parseRecurrence, type WeeklyRecurrence } from "@/lib/planner/recurrence";
 import type { DiscoveryLeadRecord } from "@/lib/discovery/real-dataset";
 
 export type ExternalPlannerItemKind = "activity" | "commitment";
@@ -26,6 +27,14 @@ export interface ExternalPlannerItemInput {
   notes: string | null;
   externalUrl: string | null;
   kidIds: string[];
+  /**
+   * 21/10/2026 — settimana tipo: si ripete nei giorni scelti (vedi
+   * lib/planner/recurrence.ts). undefined = non toccare (aggiornamenti dei
+   * flussi di prima), null = nessuna ricorrenza.
+   */
+  recurrence?: WeeklyRecurrence | null;
+  /** 21/10/2026 — è l'orario della scuola (solo alla creazione). */
+  isSchool?: boolean;
 }
 
 export interface ValidationResult {
@@ -42,6 +51,12 @@ export function validateExternalPlannerItemInput(input: ExternalPlannerItemInput
   if (!input.startDate || !input.endDate) return { valid: false, error: "Le date sono obbligatorie." };
   if (input.endDate < input.startDate) return { valid: false, error: "La data di fine non può precedere quella di inizio." };
   if (!input.kidIds || input.kidIds.length === 0) return { valid: false, error: "Seleziona almeno un bambino." };
+  if (input.recurrence) {
+    if (!parseRecurrence(input.recurrence)) return { valid: false, error: "Scegli almeno un giorno della settimana." };
+    if (Date.parse(input.endDate) - Date.parse(input.startDate) > 2 * 366 * 86400000) {
+      return { valid: false, error: "Un impegno che si ripete può durare al massimo due anni." };
+    }
+  }
   if (!input.allDay) {
     if (input.startTime && input.endTime && input.endTime < input.startTime && input.startDate === input.endDate) {
       return { valid: false, error: "L'ora di fine non può precedere quella di inizio." };

@@ -32,6 +32,7 @@
 // Stessa garanzia già documentata lato data layer in
 // lib/data/external-planner-items.ts (coverage_behavior sempre 'none').
 
+import { occursOn } from "@/lib/planner/recurrence";
 import type { ExternalPlannerItem } from "@/lib/data/external-planner-items";
 import type { Kid } from "@/lib/types";
 
@@ -92,6 +93,12 @@ export function buildExternalOccurrencesByDate(
     // limita a popolare la mappa: è buildCalendarMonths, sotto, a smistare
     // ogni occorrenza nella cella/mese giusto).
     while (cursor <= item.endDate && guard < MAX_OCCURRENCE_DAYS) {
+      // 21/10/2026 — settimana tipo: un impegno ricorrente c'è solo nei suoi giorni.
+      if (!occursOn(item, cursor)) {
+        cursor = addDaysIso(cursor, 1);
+        guard += 1;
+        continue;
+      }
       const occurrence: ExternalCalendarOccurrence = {
         itemId: item.id,
         dateIso: cursor,

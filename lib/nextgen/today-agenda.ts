@@ -9,6 +9,7 @@
 // summarizeDayCoordination quindi lavora per giornata e per figlio, mai per
 // occorrenza (nessuna responsabilità simulata per singolo impegno).
 
+import { occursOn, type WeeklyRecurrence } from "@/lib/planner/recurrence";
 import type { Moment } from "@/lib/nextgen/responsibility-options";
 
 export type AgendaSource = "trama" | "scoperta" | "manuale";
@@ -26,6 +27,8 @@ export interface AgendaKid {
 
 export interface AgendaEntry {
   id: string;
+  /** 21/10/2026 — settimana tipo: è l'orario della scuola (riga discreta in agenda). */
+  school?: boolean;
   /** "HH:MM" oppure null (tutto il giorno / orario non noto). */
   startTime: string | null;
   endTime: string | null;
@@ -62,6 +65,10 @@ export interface AgendaExternalInput {
   location: string | null;
   sourceType: string;
   kidIds: string[];
+  /** 21/10/2026 — settimana tipo (lib/planner/recurrence.ts): solo i giorni scelti. Assente = ogni giorno del periodo. */
+  recurrence?: WeeklyRecurrence | null;
+  /** 21/10/2026 — orario della scuola (impegno ricorrente speciale). */
+  isSchool?: boolean;
 }
 
 function pad2(n: number): string {
@@ -127,8 +134,11 @@ export function buildTodayAgenda(input: {
   externalItems: AgendaExternalInput[];
   hoursByActivityDbId: Record<string, string | undefined>;
   kidNameById: Record<string, string>;
+  /** 21/10/2026: giorni di scuola chiusa — l'orario della scuola quel giorno non c'è. */
+  schoolClosedDates?: string[];
 }): AgendaEntry[] {
   const entries: AgendaEntry[] = [];
+  const schoolClosed = new Set(input.schoolClosedDates ?? []);
 
   for (const b of input.bookings) {
     if (b.status === "cancelled" || b.partnerDecision === "rejected") continue;
@@ -147,9 +157,11 @@ export function buildTodayAgenda(input: {
   }
 
   for (const item of input.externalItems) {
-    if (!(item.startDate <= input.todayIso && input.todayIso <= item.endDate)) continue;
+    if (!occursOn(item, input.todayIso)) continue;
+    if (item.isSchool && schoolClosed.has(input.todayIso)) continue;
     entries.push({
       id: `external:${item.id}`,
+      ...(item.isSchool ? { school: true } : {}),
       startTime: item.allDay ? null : trimTime(item.startTime),
       endTime: item.allDay ? null : trimTime(item.endTime),
       title: item.title,

@@ -59,6 +59,25 @@ export default function AgendaItemRow({
   divider?: boolean;
 }) {
   const kidNames = entry.kids.map((k) => k.name).filter(Boolean);
+  // 21/10/2026 — settimana tipo: l'orario della scuola è una riga discreta
+  // ("Scuola · Lino · 8:30–16:30"), non una card come le attività.
+  if (entry.school) {
+    return (
+      <div className={`flex items-center gap-2.5 px-4 py-2.5 text-[13px] text-ink-2 ${divider ? "border-b border-[#F0F2F5]" : ""}`} data-testid="agenda-school-row">
+        <i className="ti ti-school text-[16px] text-ink-3" aria-hidden="true" />
+        <span className="min-w-0 flex-1 truncate">
+          <span className="font-semibold text-ink">{entry.title}</span>
+          {kidNames.length > 0 ? ` · ${kidNames.join(" e ")}` : ""}
+        </span>
+        {entry.startTime && (
+          <span className="flex-shrink-0 tabular-nums">
+            {entry.startTime}
+            {entry.endTime ? `–${entry.endTime}` : ""}
+          </span>
+        )}
+      </div>
+    );
+  }
   const subtitle = [kidNames.join(" e "), entry.place, AGENDA_SOURCE_LABEL[entry.source]].filter(Boolean).join(" · ");
   const firstKids = entry.kids.slice(0, 2);
 

@@ -29,6 +29,7 @@ import { markFirstUsefulAction } from "@/lib/nextgen/first-action";
 import { useNextgenToast } from "@/components/nextgen/NextgenToastProvider";
 import KidName from "@/components/nextgen/KidName";
 import { useCloseOnBack } from "@/lib/nextgen/use-close-on-back";
+import { isoWeekday, mondayOfIso, recurrenceLabel, schoolYearRange, WEEKDAY_LABELS_IT } from "@/lib/planner/recurrence";
 
 const KIND_LABEL: Record<ExternalPlannerItemKind, string> = {
   activity: "Attività organizzata",
@@ -59,6 +60,7 @@ function emptyInput(defaultDate?: string): ExternalPlannerItemInput {
     notes: null,
     externalUrl: null,
     kidIds: [],
+    recurrence: null,
   };
 }
 
@@ -75,6 +77,7 @@ function itemToInput(item: ExternalPlannerItem): ExternalPlannerItemInput {
     notes: item.notes,
     externalUrl: item.externalUrl,
     kidIds: item.kidIds,
+    recurrence: item.recurrence ?? null,
   };
 }
 
@@ -85,6 +88,7 @@ function ItemForm({
   onSaved,
   v2 = false,
   editing = false,
+  routineEnabled = false,
 }: {
   kids: Kid[];
   initial: ExternalPlannerItemInput;
@@ -93,6 +97,8 @@ function ItemForm({
   /** 20/10/2026 — "Un impegno" V2: foglio dal basso (vedi ItemFormSheetV2). */
   v2?: boolean;
   editing?: boolean;
+  /** 21/10/2026 — release "settimana-tipo": "Si ripete ogni settimana". */
+  routineEnabled?: boolean;
 }) {
   // 20/10/2026 (V2): con un solo figlio è già scelto.
   const [form, setForm] = useState<ExternalPlannerItemInput>(() =>
@@ -126,6 +132,7 @@ function ItemForm({
         saving={saving}
         error={error}
         editing={editing}
+        routineEnabled={routineEnabled}
         onCancel={onCancel}
         onSubmit={handleSubmit}
       />
@@ -297,6 +304,7 @@ function ItemFormSheetV2({
   saving,
   error,
   editing,
+  routineEnabled = false,
   onCancel,
   onSubmit,
 }: {
@@ -307,10 +315,28 @@ function ItemFormSheetV2({
   saving: boolean;
   error: string | null;
   editing: boolean;
+  routineEnabled?: boolean;
   onCancel: () => void;
   onSubmit: () => void;
 }) {
   useCloseOnBack(true, onCancel);
+  // 21/10/2026 — settimana tipo: si ripete nei giorni scelti, dentro il periodo Dal–Fino al.
+  const repeating = Boolean(form.recurrence);
+  function setRepeating(on: boolean) {
+    setForm((f) => {
+      if (!on) return { ...f, recurrence: null };
+      const endDate = f.endDate > f.startDate ? f.endDate : schoolYearRange(f.startDate).endDate;
+      return { ...f, endDate, recurrence: { freq: "weekly", weekdays: [isoWeekday(f.startDate)], interval: 1, anchor: mondayOfIso(f.startDate) } };
+    });
+  }
+  function toggleWeekday(d: number) {
+    setForm((f) => {
+      if (!f.recurrence) return f;
+      const has = f.recurrence.weekdays.includes(d);
+      const weekdays = has ? f.recurrence.weekdays.filter((x) => x !== d) : [...f.recurrence.weekdays, d].sort((a, b) => a - b);
+      return { ...f, recurrence: { ...f.recurrence, weekdays } };
+    });
+  }
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
       if (e.key === "Escape") onCancel();
@@ -319,7 +345,7 @@ function ItemFormSheetV2({
     return () => window.removeEventListener("keydown", onKey);
   }, [onCancel]);
   const heading = editing ? "Modifica impegno" : "Nuovo impegno";
-  const canSave = form.title.trim().length > 0 && form.kidIds.length > 0;
+  const canSave = form.title.trim().length > 0 && form.kidIds.length > 0 && (!form.recurrence || form.recurrence.weekdays.length > 0);
 
   return (
     <div className="fixed inset-0 z-[70] flex flex-col justify-end" role="presentation" data-testid="impegno-sheet">
@@ -408,6 +434,67 @@ function ItemFormSheetV2({
 
           <div className="flex flex-col gap-3">
             <span className="text-[13.5px] font-semibold text-ink">Quando</span>
+            {routineEnabled && (
+              <button
+                type="button"
+                role="switch"
+                aria-checked={repeating}
+                onClick={() => setRepeating(!repeating)}
+                className="flex min-h-[48px] items-center justify-between gap-3 rounded-[12px] border border-trama-line bg-white px-3.5 text-left"
+              >
+                <span className="flex flex-col">
+                  <span className="text-[15px] text-ink">Si ripete ogni settimana</span>
+                  <span className="text-[12.5px] text-ink-2">Es. ritmica il mercoledì, nuoto il sabato</span>
+                </span>
+                <span aria-hidden="true" className={`relative h-7 w-12 flex-shrink-0 rounded-full transition-colors ${repeating ? "bg-trama-primary" : "bg-[#D6DAE3]"}`}>
+                  <span className={`absolute top-0.5 h-6 w-6 rounded-full bg-white shadow transition-all ${repeating ? "left-[22px]" : "left-0.5"}`} />
+                </span>
+              </button>
+            )}
+            {form.recurrence && (
+              <div className="flex flex-col gap-2.5">
+                <div className="flex justify-between gap-1" role="group" aria-label="Giorni della settimana">
+                  {[1, 2, 3, 4, 5, 6, 7].map((d) => {
+                    const on = form.recurrence!.weekdays.includes(d);
+                    return (
+                      <button
+                        key={d}
+                        type="button"
+                        aria-pressed={on}
+                        aria-label={WEEKDAY_LABELS_IT[d].long}
+                        onClick={() => toggleWeekday(d)}
+                        className={`flex h-11 w-11 items-center justify-center rounded-full border text-[14px] font-semibold ${
+                          on ? "border-trama-primary bg-trama-primary text-white" : "border-[#E3E6EC] bg-white text-ink"
+                        }`}
+                      >
+                        {WEEKDAY_LABELS_IT[d].letter}
+                      </button>
+                    );
+                  })}
+                </div>
+                <button
+                  type="button"
+                  role="switch"
+                  aria-checked={form.recurrence.interval === 2}
+                  onClick={() =>
+                    setForm((f) =>
+                      f.recurrence ? { ...f, recurrence: { ...f.recurrence, interval: f.recurrence.interval === 2 ? 1 : 2, anchor: mondayOfIso(f.startDate) } } : f
+                    )
+                  }
+                  className="flex min-h-[44px] items-center justify-between gap-3 px-1 text-left"
+                >
+                  <span className="text-[14px] text-ink">A settimane alterne</span>
+                  <span aria-hidden="true" className={`relative h-6 w-10 flex-shrink-0 rounded-full transition-colors ${form.recurrence.interval === 2 ? "bg-trama-primary" : "bg-[#D6DAE3]"}`}>
+                    <span className={`absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition-all ${form.recurrence.interval === 2 ? "left-[18px]" : "left-0.5"}`} />
+                  </span>
+                </button>
+                <p className="text-[12.5px] leading-snug text-ink-2">
+                  {form.recurrence.weekdays.length === 0
+                    ? "Scegli almeno un giorno."
+                    : `${(recurrenceLabel(form.recurrence) ?? "").replace(/^./, (c) => c.toUpperCase())}. Il periodo lo scegli qui sotto: per "da gennaio", metti l'inizio a gennaio.`}
+                </p>
+              </div>
+            )}
             <div className="grid grid-cols-2 gap-3">
               <label className="block">
                 <span className="mb-1 block text-[12.5px] text-ink-2">Dal</span>
@@ -419,7 +506,7 @@ function ItemFormSheetV2({
                 />
               </label>
               <label className="block">
-                <span className="mb-1 block text-[12.5px] text-ink-2">Al</span>
+                <span className="mb-1 block text-[12.5px] text-ink-2">{form.recurrence ? "Fino al" : "Al"}</span>
                 <input
                   type="date"
                   value={form.endDate}
@@ -529,6 +616,7 @@ export default function ExternalPlannerItemsSection({
   emptyText,
   v2 = false,
   defaultDate,
+  routineEnabled = false,
 }: {
   items: ExternalPlannerItem[];
   kids: Kid[];
@@ -538,6 +626,8 @@ export default function ExternalPlannerItemsSection({
   title?: string;
   emptyText?: string;
   v2?: boolean;
+  /** 21/10/2026 — release "settimana-tipo". */
+  routineEnabled?: boolean;
 }) {
   const showToast = useNextgenToast();
   const [mode, setMode] = useState<"idle" | "creating" | { editing: string }>("idle");
@@ -673,6 +763,7 @@ export default function ExternalPlannerItemsSection({
           onCancel={() => setMode("idle")}
           onSaved={handleCreate}
           v2={v2}
+          routineEnabled={routineEnabled}
         />
       )}
 
@@ -700,15 +791,18 @@ export default function ExternalPlannerItemsSection({
                 onSaved={(input) => handleUpdate(item.id, input)}
                 v2={v2}
                 editing
+                routineEnabled={routineEnabled || Boolean(item.recurrence)}
               />
             );
           }
           const itemKids = kids.filter((k) => item.kidIds.includes(k.id));
           if (v2) {
             // 20/10/2026 — card V2: bordo sottile, raggio 16, azioni da 44px.
+            const rec = recurrenceLabel(item.recurrence);
             const when = [
-              formatDateRangeIt(item.startDate, item.endDate),
-              !item.allDay && item.startTime ? `${item.startTime}${item.endTime ? `–${item.endTime}` : ""}` : null,
+              rec ? `${rec.replace(/^./, (c) => c.toUpperCase())}` : formatDateRangeIt(item.startDate, item.endDate),
+              !item.allDay && item.startTime ? `${item.startTime.slice(0, 5)}${item.endTime ? `–${item.endTime.slice(0, 5)}` : ""}` : null,
+              rec ? `fino al ${formatDateRangeIt(item.endDate, item.endDate)}` : null,
             ]
               .filter(Boolean)
               .join(" · ");

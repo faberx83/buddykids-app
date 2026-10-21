@@ -18,6 +18,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import PageHeader from "@/components/PageHeader";
 import ProfileKidsSection from "@/components/ProfileKidsSection";
+import SchoolHoursBlock, { type SchoolHoursItem } from "@/components/nextgen/SchoolHoursBlock";
 import { useNextgenToast } from "@/components/nextgen/NextgenToastProvider";
 import {
   cancelFamilyInviteAction,
@@ -58,6 +59,8 @@ export default function FamigliaV2Client({
   people,
   addresses,
   initialJoinCode = null,
+  schoolItems = null,
+  todayIso = "",
 }: {
   kids: Kid[];
   autoOpenAddKid: boolean;
@@ -71,6 +74,9 @@ export default function FamigliaV2Client({
   addresses: ParentAddress[];
   /** Arrivati dal link d'invito con ?code=: il codice è già pronto da confermare. */
   initialJoinCode?: string | null;
+  /** 21/10/2026 — settimana tipo: orario della scuola per figlio (null = release spenta). */
+  schoolItems?: SchoolHoursItem[] | null;
+  todayIso?: string;
 }) {
   return (
     <div className="flex flex-col pb-10">
@@ -88,6 +94,7 @@ export default function FamigliaV2Client({
           residenceCity={residenceCity}
           v2
         />
+        {schoolItems && <SchoolHoursBlock kids={kids.map((k) => ({ id: k.id, name: k.name }))} items={schoolItems} todayIso={todayIso} />}
         <ParentsBlock family={family} myName={myName} myEmail={myEmail} initialJoinCode={initialJoinCode} />
         <HelpersBlock people={people} />
         <PlacesBlock addresses={addresses} />

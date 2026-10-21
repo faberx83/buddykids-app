@@ -7,6 +7,7 @@
 
 import type { AgendaBookingInput, AgendaExternalInput } from "@/lib/nextgen/today-agenda";
 import type { Moment, ResponsibleValue } from "@/lib/nextgen/responsibility-options";
+import { occurrenceDates, occursOn } from "@/lib/planner/recurrence";
 
 export const CHI_ACCOMPAGNA_PLUS_FLAG = "CHI_ACCOMPAGNA_PLUS_ENABLED";
 
@@ -54,7 +55,7 @@ export function otherDaysOfCommitments(input: {
   todayIso: string;
   kidId: string;
   bookings: Pick<AgendaBookingInput, "id" | "status" | "partnerDecision" | "activityName" | "kidIds" | "weeks" | "dayDates">[];
-  externalItems: Pick<AgendaExternalInput, "id" | "title" | "startDate" | "endDate" | "kidIds">[];
+  externalItems: Pick<AgendaExternalInput, "id" | "title" | "startDate" | "endDate" | "kidIds" | "recurrence" | "isSchool">[];
 }): CommitmentDays[] {
   const from = input.todayIso;
   const until = addDaysIso(input.todayIso, APPLY_ALL_HORIZON_DAYS);
@@ -72,9 +73,10 @@ export function otherDaysOfCommitments(input: {
     if (dates.length > 0) out.push({ key: `booking:${b.id}`, title: b.activityName, dates });
   }
   for (const item of input.externalItems) {
-    if (!item.kidIds.includes(input.kidId)) continue;
-    if (!(item.startDate <= input.dateIso && input.dateIso <= item.endDate)) continue;
-    const dates = keep(weekdaysBetween(item.startDate, item.endDate));
+    if (!item.kidIds.includes(input.kidId) || item.isSchool) continue;
+    if (!occursOn(item, input.dateIso)) continue;
+    // 21/10/2026: un impegno ricorrente propone solo i suoi giorni (es. ogni mercoledì).
+    const dates = keep(item.recurrence ? occurrenceDates(item, from, until) : weekdaysBetween(item.startDate, item.endDate));
     if (dates.length > 0) out.push({ key: `external:${item.id}`, title: item.title, dates });
   }
   return out;
