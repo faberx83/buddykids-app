@@ -17,6 +17,7 @@
 //     HORIZON_DEFAULT_DAYS da oggi.
 // Logica pura, testata in tests/one/home-v2.spec.ts (HV2-32…).
 
+import { occurrenceDates, type WeeklyRecurrence } from "@/lib/planner/recurrence";
 import type { SchoolClosureInterval } from "@/lib/school-calendar/need-core";
 import type { PeriodWeekState, SeasonSummaryCell, SeasonSummaryModel, SeasonSummaryMonth } from "@/lib/nextgen/season-summary";
 
@@ -174,6 +175,10 @@ export function buildCoverage(input: {
     startTime: string | null;
     endTime: string | null;
     kidIds: string[];
+    /** 21/10/2026 — settimana tipo: solo i giorni in cui c'è. */
+    recurrence?: WeeklyRecurrence | null;
+    /** La scuola non "copre" una chiusura né una settimana d'estate. */
+    isSchool?: boolean;
   }[];
 }): CoverageEntry[] {
   const out: CoverageEntry[] = [];
@@ -185,7 +190,9 @@ export function buildCoverage(input: {
   for (const i of input.externalItems) {
     const minutes = minutesBetween(i.startTime, i.endTime);
     if (!i.allDay && (minutes === null || minutes < MIN_COVER_MINUTES)) continue;
-    out.push({ kidIds: i.kidIds, dates: weekdaysBetween(i.startDate, i.endDate) });
+    if (i.isSchool) continue;
+    const dates = i.recurrence ? occurrenceDates(i, i.startDate, i.endDate) : weekdaysBetween(i.startDate, i.endDate);
+    if (dates.length > 0) out.push({ kidIds: i.kidIds, dates });
   }
   return out;
 }

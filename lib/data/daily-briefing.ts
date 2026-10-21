@@ -85,6 +85,8 @@ export async function runDailyBriefing(
         externalItems: family.externalItems,
         hoursByActivityDbId: family.hoursByActivityDbId,
         kidNameById: family.kidNameById,
+        // 21/10/2026 — settimana tipo: oggi senza scuola → niente riga "Scuola".
+        schoolClosedDates: family.closurePeriods.flatMap((p) => Object.values(p.weekdaysByKid).flat()),
       });
       const slots = dayCoordinationSlots({
         dateIso,

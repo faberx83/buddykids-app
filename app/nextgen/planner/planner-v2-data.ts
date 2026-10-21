@@ -69,12 +69,13 @@ export async function loadPlannerV2Props({
   searchParams: Record<string, string | undefined>;
 }): Promise<PlannerV2Props> {
   const todayIso = romeTodayIso();
-  const [externalEnabled, schoolEnabled, exportEnabled, navV2Enabled, assignPlusEnabled] = await Promise.all([
+  const [externalEnabled, schoolEnabled, exportEnabled, navV2Enabled, assignPlusEnabled, weeklyRoutineEnabled] = await Promise.all([
     flagOn("EXTERNAL_PLANNER_ITEMS_ENABLED", userId, role),
     flagOn("SCHOOL_CALENDAR_INTELLIGENCE_ENABLED", userId, role),
     flagOn("CALENDAR_EXPORT_ENABLED", userId, role),
     flagOn("NAV_V2_ENABLED", userId, role),
     flagOn(CHI_ACCOMPAGNA_PLUS_FLAG, userId, role),
+    flagOn("WEEKLY_ROUTINE_ENABLED", userId, role),
   ]);
   // 20/10/2026 — Chi accompagna più veloce: l'altro genitore è su TRAMA (nella
   // stessa famiglia)? Decide fra "riceverà una notifica" e "invitalo".
@@ -113,6 +114,12 @@ export async function loadPlannerV2Props({
     ? await getKidClosureIntervalsForParent(kids.map((k) => k.id)).catch(() => ({ hasAnySchoolProfile: false, closuresByKid: [] }))
     : { hasAnySchoolProfile: false, closuresByKid: [] };
   const closureLabelsByDate: Record<string, string[]> = {};
+  // 21/10/2026 — settimana tipo: giorni senza scuola, vacanze estive comprese
+  // (l'orario della scuola lì non compare).
+  const schoolClosedDates = new Set<string>();
+  for (const { closures } of closureData.closuresByKid) {
+    for (const c of closures) for (const d of weekdaysBetween(c.startDate, c.endDate)) schoolClosedDates.add(d);
+  }
   for (const { closures } of closureData.closuresByKid) {
     for (const c of closures) {
       if (c.kind === "summer_break") continue;
@@ -245,6 +252,7 @@ export async function loadPlannerV2Props({
     familyPeople,
     closureLabelsByDate,
     closureNotNeeded,
+    schoolClosedDates: Array.from(schoolClosedDates).sort(),
     holidaySummary,
     holidayPeriods,
     summerWeeks: planner.weeks,
@@ -259,6 +267,7 @@ export async function loadPlannerV2Props({
     navV2Enabled,
     assignPlusEnabled,
     partnerOnTrama,
+    weeklyRoutineEnabled,
     // POLISH V2 (14/10/2026): il dettaglio tecnico degli errori lo vede solo l'Admin piattaforma.
     showDiagnostics: role === "platform_admin",
     calendarExportEnabled: exportEnabled,

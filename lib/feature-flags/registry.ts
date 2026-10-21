@@ -310,6 +310,16 @@ export const FEATURE_FLAG_REGISTRY = {
     defaultValue: false,
     allowedScopes: ["global", "environment", "user", "role", "cohort"],
   },
+  // TRAMA — SETTIMANA TIPO (21/10/2026), release "settimana-tipo".
+  WEEKLY_ROUTINE_ENABLED: {
+    name: "WEEKLY_ROUTINE_ENABLED",
+    description:
+      "Impegni che si ripetono ogni settimana (giorni scelti, anche sabato e domenica, settimane alterne) nel foglio " +
+      "'Nuovo impegno', e l'orario della scuola per ogni figlio in 'La tua famiglia'. Gli impegni ricorrenti già salvati " +
+      "si vedono comunque nei giorni giusti. Default false: niente opzioni nuove.",
+    defaultValue: false,
+    allowedScopes: ["global", "environment", "user", "role", "cohort"],
+  },
   // TRAMA — CHI ACCOMPAGNA PIÙ VELOCE (20/10/2026), release "chi-accompagna-veloce".
   CHI_ACCOMPAGNA_PLUS_ENABLED: {
     name: "CHI_ACCOMPAGNA_PLUS_ENABLED",

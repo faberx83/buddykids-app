@@ -199,6 +199,9 @@ export async function loadHomeV2Props({
       location: i.location,
       sourceType: i.sourceType,
       kidIds: i.kidIds,
+      // 21/10/2026 — settimana tipo.
+      recurrence: i.recurrence ?? null,
+      isSchool: i.isSchool ?? false,
     })),
     hoursByActivityDbId,
     kidNameById,
@@ -216,7 +219,13 @@ export async function loadHomeV2Props({
       weeks: b.weeks,
       dayDates: b.dayDates,
     })),
-    externalItems: externalItems.map((i) => ({ startDate: i.startDate, endDate: i.endDate, kidIds: i.kidIds })),
+    externalItems: externalItems.map((i) => ({
+      startDate: i.startDate,
+      endDate: i.endDate,
+      kidIds: i.kidIds,
+      recurrence: i.recurrence ?? null,
+      isSchool: i.isSchool ?? false,
+    })),
     responsibilities,
     kidNameById,
     labelFor: (r: (typeof responsibilities)[number]) => resolveResponsibleDisplay(r, profile.parentRole).label,
@@ -368,7 +377,10 @@ export async function loadHomeV2Props({
     todayIso,
     weekStartIso,
     kids: kidList,
-    agenda,
+    // 21/10/2026 — settimana tipo: oggi senza scuola (chiusura o vacanze) → niente riga "Scuola".
+    agenda: closureData.closuresByKid.some(({ closures }) => closures.some((c) => c.startDate <= todayIso && todayIso <= c.endDate))
+      ? agenda.filter((e) => !e.school)
+      : agenda,
     coordination,
     urgentAlert,
     inboxInput,

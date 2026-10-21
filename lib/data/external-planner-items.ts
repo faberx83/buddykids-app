@@ -26,6 +26,7 @@ import "server-only";
 // futura decisione un cambio di CODICE, non una nuova migration — vedi
 // commento esteso nella migration stessa.
 
+import { isSchoolMetadata, parseRecurrence, SCHOOL_ROLE, serializeRecurrence, type WeeklyRecurrence } from "@/lib/planner/recurrence";
 import { createClient } from "@/lib/supabase/server";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
 
@@ -67,6 +68,10 @@ export interface ExternalPlannerItem {
   kidIds: string[];
   createdAt: string;
   updatedAt: string;
+  /** 21/10/2026 — settimana tipo: recurrence_rule letta e validata (null = ogni giorno del periodo). */
+  recurrence: WeeklyRecurrence | null;
+  /** 21/10/2026 — orario della scuola (source_metadata.role = "school"). */
+  isSchool: boolean;
 }
 
 // ─────────────────────────────────────────────────────────────────────────
@@ -90,6 +95,8 @@ interface RawItemRow {
   created_at: string;
   updated_at: string;
   external_planner_item_kids: { kid_id: string }[] | null;
+  recurrence_rule?: unknown;
+  source_metadata?: unknown;
 }
 
 function mapRow(row: RawItemRow): ExternalPlannerItem {
@@ -112,11 +119,13 @@ function mapRow(row: RawItemRow): ExternalPlannerItem {
     kidIds: (row.external_planner_item_kids ?? []).map((k) => k.kid_id),
     createdAt: row.created_at,
     updatedAt: row.updated_at,
+    recurrence: parseRecurrence(row.recurrence_rule),
+    isSchool: isSchoolMetadata(row.source_metadata),
   };
 }
 
 const SELECT_COLUMNS =
-  "id, kind, title, start_date, end_date, all_day, start_time, end_time, location, notes, external_url, source_type, source_ref, organizer_snapshot, created_at, updated_at, external_planner_item_kids ( kid_id )";
+  "id, kind, title, start_date, end_date, all_day, start_time, end_time, location, notes, external_url, source_type, source_ref, organizer_snapshot, created_at, updated_at, recurrence_rule, source_metadata, external_planner_item_kids ( kid_id )";
 
 // Lista completa (non filtrata per periodo) per il genitore loggato — il
 // Planner filtra/raggruppa lato client per settimana, stesso principio già
@@ -230,6 +239,9 @@ export async function createExternalPlannerItem(
       source_type: source.sourceType,
       source_ref: source.sourceRef ?? null,
       organizer_snapshot: source.organizerSnapshot ?? null,
+      // 21/10/2026 — settimana tipo (lib/planner/recurrence.ts).
+      recurrence_rule: serializeRecurrence(input.recurrence),
+      ...(input.isSchool ? { source_metadata: { role: SCHOOL_ROLE } } : {}),
       // coverage_behavior: colonna lasciata al default SQL ('none') di
       // proposito — nessuna scrittura esplicita da questo data layer, vedi
       // commento di testa del file.
@@ -285,6 +297,8 @@ export async function updateExternalPlannerItem(itemId: string, input: ExternalP
       location: input.location || null,
       notes: input.notes || null,
       external_url: input.externalUrl || null,
+      // 21/10/2026: la ricorrenza si cambia solo se il modulo la manda.
+      ...(input.recurrence !== undefined ? { recurrence_rule: serializeRecurrence(input.recurrence) } : {}),
     })
     .eq("id", itemId)
     .eq("parent_id", user.id);

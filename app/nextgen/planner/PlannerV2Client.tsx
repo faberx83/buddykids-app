@@ -135,6 +135,7 @@ export default function PlannerV2Client({
   familyPeople,
   closureLabelsByDate,
   closureNotNeeded = [],
+  schoolClosedDates,
   holidaySummary,
   holidayPeriods = [],
   summerWeeks,
@@ -149,6 +150,7 @@ export default function PlannerV2Client({
   navV2Enabled,
   assignPlusEnabled = false,
   partnerOnTrama = false,
+  weeklyRoutineEnabled = false,
   showDiagnostics = false,
   calendarExportEnabled,
   calendarExportItems,
@@ -168,6 +170,8 @@ export default function PlannerV2Client({
   closureLabelsByDate: Record<string, string[]>;
   /** 20/10/2026: "Non serve" sulle chiusure (school_calendar_overrides, per figlio e settimana). */
   closureNotNeeded?: ClosureNotNeeded[];
+  /** 21/10/2026: giorni senza scuola (chiusure e vacanze estive), per l'orario della scuola. */
+  schoolClosedDates?: string[];
   holidaySummary: SeasonSummaryModel | null;
   /** Ponti e vacanze dei prossimi mesi, uno per riga (Stagione a estate finita). */
   holidayPeriods?: HolidayPeriodRow[];
@@ -186,6 +190,8 @@ export default function PlannerV2Client({
   assignPlusEnabled?: boolean;
   /** L'altro genitore è nella stessa famiglia su TRAMA (riceve la notifica). */
   partnerOnTrama?: boolean;
+  /** 21/10/2026 — release "settimana-tipo" (WEEKLY_ROUTINE_ENABLED). */
+  weeklyRoutineEnabled?: boolean;
   showDiagnostics?: boolean;
   calendarExportEnabled: boolean;
   calendarExportItems: PlannerCalendarItemForIcs[];
@@ -262,6 +268,9 @@ export default function PlannerV2Client({
         location: i.location,
         sourceType: i.sourceType,
         kidIds: i.kidIds,
+        // 21/10/2026 — settimana tipo.
+        recurrence: i.recurrence ?? null,
+        isSchool: i.isSchool ?? false,
       })),
     [externalItems]
   );
@@ -280,8 +289,9 @@ export default function PlannerV2Client({
         labelFor,
         kidFilter,
         closureLabelsByDate,
+        schoolClosedDates,
       }),
-    [monday, todayIso, bookings, agendaExternal, hoursByActivityDbId, kidNameById, responsibilities, labelFor, kidFilter, closureLabelsByDate]
+    [monday, todayIso, bookings, agendaExternal, hoursByActivityDbId, kidNameById, responsibilities, labelFor, kidFilter, closureLabelsByDate, schoolClosedDates]
   );
 
   // 20/10/2026 — "Non serve" sulle chiusure: stato locale (si vede subito),
@@ -578,6 +588,7 @@ export default function PlannerV2Client({
             emptyText="Nessun impegno aggiunto per questa settimana. Usa + per aggiungerne uno."
             v2
             defaultDate={defaultDateForWeek(monday, todayIso)}
+            routineEnabled={weeklyRoutineEnabled}
           />
         </section>
       )}

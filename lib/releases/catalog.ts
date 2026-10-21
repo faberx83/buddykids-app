@@ -293,6 +293,19 @@ export const RELEASE_CATALOG: ReleaseCatalogEntry[] = [
     notes: "Creata il 20/10/2026. Ripiego: flag spento = niente opzione e niente invii, anche per chi l'aveva attivato.",
   },
   {
+    // TRAMA — SETTIMANA TIPO (21/10/2026), Fase A dell'iniziativa.
+    id: "settimana-tipo",
+    label: "TRAMA — Settimana tipo",
+    shortDescription: "Impegni che si ripetono ogni settimana (anche il sabato, anche a settimane alterne) e orario della scuola per figlio.",
+    targetAudience: ["parent"],
+    featureKeys: ["weekly_routine"],
+    knownLimitations: [
+      "weekly_routine: la scuola non genera ancora passaggi in Chi accompagna (Fase B, con una migrazione).",
+      "weekly_routine: Chi accompagna resta lun–ven finché non arriva la Fase B; gli impegni del sabato si vedono in agenda.",
+    ],
+    notes: "Creata il 21/10/2026. Ripiego: flag spento = niente opzioni nuove; gli impegni ricorrenti già creati restano nei loro giorni.",
+  },
+  {
     // TRAMA — CHI ACCOMPAGNA PIÙ VELOCE (20/10/2026).
     id: "chi-accompagna-veloce",
     label: "TRAMA — Chi accompagna più veloce",

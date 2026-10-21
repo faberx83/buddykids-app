@@ -14,6 +14,7 @@ import "server-only";
 // notify_push). Nessuna tabella nuova, nessuna migrazione. Errori: mai
 // rilanciati (una famiglia che fallisce non blocca le altre).
 
+import { isSchoolMetadata, parseRecurrence } from "@/lib/planner/recurrence";
 import { getClosureNotNeededForParent } from "@/lib/data/closure-not-needed";
 import { notNeededCoverage } from "@/lib/nextgen/closure-not-needed";
 import { createServiceClient } from "@/lib/supabase/service";
@@ -70,7 +71,7 @@ export async function loadFamily(service: Service, parentId: string, todayIso: s
     externalOn
       ? service
           .from("external_planner_items")
-          .select("id, title, location, source_type, start_date, end_date, all_day, start_time, end_time, external_planner_item_kids ( kid_id )")
+          .select("id, title, location, source_type, start_date, end_date, all_day, start_time, end_time, recurrence_rule, source_metadata, external_planner_item_kids ( kid_id )")
           .eq("parent_id", parentId)
           .is("deleted_at", null)
       : Promise.resolve({ data: [] as unknown[] }),
@@ -115,9 +116,14 @@ export async function loadFamily(service: Service, parentId: string, todayIso: s
       all_day: boolean;
       start_time: string | null;
       end_time: string | null;
+      recurrence_rule?: unknown;
+      source_metadata?: unknown;
       external_planner_item_kids: { kid_id: string }[] | null;
     }[]
   ).map((i) => ({
+    // 21/10/2026 — settimana tipo (lib/planner/recurrence.ts).
+    recurrence: parseRecurrence(i.recurrence_rule),
+    isSchool: isSchoolMetadata(i.source_metadata),
     id: i.id,
     title: i.title ?? "Impegno",
     location: i.location,

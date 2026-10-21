@@ -10,6 +10,7 @@ import { getFamilyPeopleForParent } from "@/lib/data/family-people";
 import { getParentAddresses } from "@/lib/data/addresses";
 import { getKidSchoolProfilesForParent } from "@/lib/data/school-calendar";
 import { getParentProfile } from "@/lib/data/profile";
+import { getExternalPlannerItemsForParent } from "@/lib/data/external-planner-items";
 
 // SPRINT CORRETTIVO (Fabrizio: "facciamo hub card se ha senso anche sulle
 // altre sezioni") — le 4 righe intere che prima stavano direttamente nel
@@ -36,7 +37,12 @@ export default async function FamigliaHubPage({
     resolveFeatureFlag({ flagName, userId: user.id, role: "parent", tenant: "family", correlationId: generateCorrelationId() }).catch(
       () => false
     );
-  const [v2, schoolCalendarEnabled] = await Promise.all([flag("PROFILE_V2_ENABLED"), flag("SCHOOL_CALENDAR_INTELLIGENCE_ENABLED")]);
+  const [v2, schoolCalendarEnabled, weeklyRoutineEnabled, externalEnabled] = await Promise.all([
+    flag("PROFILE_V2_ENABLED"),
+    flag("SCHOOL_CALENDAR_INTELLIGENCE_ENABLED"),
+    flag("WEEKLY_ROUTINE_ENABLED"),
+    flag("EXTERNAL_PLANNER_ITEMS_ENABLED"),
+  ]);
   if (!v2) return <FamigliaHubClient />;
 
   const [params, kids, family, people, addresses, profile, profileRow] = await Promise.all([
@@ -49,6 +55,14 @@ export default async function FamigliaHubPage({
     supabase.from("profiles").select("city").eq("id", user.id).maybeSingle(),
   ]);
   const schoolProfiles = schoolCalendarEnabled ? await getKidSchoolProfilesForParent(kids.map((k) => k.id)) : {};
+  // 21/10/2026 — settimana tipo: orario della scuola per figlio (impegni ricorrenti "scuola").
+  const schoolItems =
+    weeklyRoutineEnabled && externalEnabled
+      ? (await getExternalPlannerItemsForParent().catch(() => []))
+          .filter((i) => i.isSchool)
+          .map((i) => ({ id: i.id, kidIds: i.kidIds, startTime: i.startTime, endTime: i.endTime, recurrence: i.recurrence }))
+      : null;
+  const todayIso = new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Rome" }).format(new Date());
 
   return (
     <FamigliaV2Client
@@ -63,6 +77,8 @@ export default async function FamigliaHubPage({
       myEmail={profile.email}
       people={people}
       addresses={addresses}
+      schoolItems={schoolItems}
+      todayIso={todayIso}
     />
   );
 }
