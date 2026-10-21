@@ -39,9 +39,9 @@ import { getCuratedLeadIdsInPlanner, getCommunityDiscoveryIdsInPlanner } from "@
 // lette SOLO se il flag risolve true per questo utente.
 import { getVisibleCommunityDiscoveries } from "@/lib/data/radar";
 import type { CommunityDiscoveryRecord } from "@/lib/radar/community";
-import { getActivityOpenRanges, getActivityDateRows } from "@/lib/data/activities";
+import { getActivityOpenRanges, getActivityDateRows, getTestFixtureCenterIds } from "@/lib/data/activities";
 // TRAMA — CORREZIONI DAL TEST UX (21/10/2026): date vere su card e periodi.
-import { PARENT_UX_FIX_FLAG, summarizeActivityDates, type ActivityDateSummary } from "@/lib/nextgen/parent-ux-fix";
+import { PARENT_UX_FIX_FLAG, summarizeActivityDates, withoutTestFixtures, type ActivityDateSummary } from "@/lib/nextgen/parent-ux-fix";
 import { getKidClosureIntervalsForParent } from "@/lib/data/school-calendar";
 import { listClosurePeriods } from "@/lib/nextgen/holiday-summary";
 import { buildDiscoverPeriods, type DiscoverPeriod } from "@/lib/nextgen/discover-v2";
@@ -64,7 +64,7 @@ export default async function NextgenSearchPage() {
   }
 
   const seasonYear = await getSeasonYear();
-  const [activities, kids, planner, availabilityByWeek, activitiesWithDaySpots, favoriteActivityIds, curatedFavoriteLeadIds] =
+  const [allActivities, kids, planner, availabilityByWeek, activitiesWithDaySpots, favoriteActivityIds, curatedFavoriteLeadIds] =
     await Promise.all([
       getActivities(),
       getKidsForUser(),
@@ -81,6 +81,8 @@ export default async function NextgenSearchPage() {
       // FAVORITES — stesso principio, sulla tabella curated_favorites.
       getCuratedFavoriteLeadIds(),
     ]);
+  // Correzioni dal test UX (21/10/2026), ciclo 4-L: può perdere i centri di prova (sotto).
+  let activities = allActivities;
   const contextualAnnouncement = await getContextualAnnouncementForSurface("/nextgen/search");
 
   const uncoveredWeek = planner.weeks.find((w) => w.index === planner.firstUncoveredIndex) ?? null;
@@ -187,6 +189,12 @@ export default async function NextgenSearchPage() {
       } catch {
         discoverV2 = null; // ripiego: Scopri attuale
       }
+    }
+    // Correzioni dal test UX (21/10/2026), UX-PARENT-002, ciclo 4-L: i
+    // centri di prova (centers.is_test_fixture) fuori dal catalogo famiglie,
+    // con o senza Scopri V2. L'Admin piattaforma continua a vederli.
+    if (user && uxFixDetail.enabled) {
+      activities = withoutTestFixtures(activities, await getTestFixtureCenterIds(), role);
     }
     // Solo con Scopri V2: le correzioni riguardano la presentazione V2.
     if (user && discoverV2 && uxFixDetail.enabled) {

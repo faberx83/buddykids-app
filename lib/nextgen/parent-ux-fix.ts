@@ -246,3 +246,67 @@ export function newKidErrorSummary(errors: { field: NewKidField }[]): string | n
   const parts = errors.map((e) => label[e.field]);
   return `Da completare: ${parts.length === 1 ? parts[0] : `${parts.slice(0, -1).join(", ")} e ${parts[parts.length - 1]}`}.`;
 }
+
+// ─── Ciclo 4 — K. Ricerca per disciplina, non solo per nome ───────────
+
+/** Parole che indicano la stessa disciplina (italiano e inglese dei nomi dei centri). */
+const SEARCH_SYNONYMS: string[][] = [
+  ["calcio", "calcetto", "soccer", "football", "futsal"],
+  ["nuoto", "piscina", "swim", "swimming", "acquatic", "acquatico", "acquatica"],
+  ["danza", "dance", "ballo", "balletto", "hip hop", "hiphop"],
+  ["ginnastica", "gymnastics", "ritmica", "artistica"],
+  ["basket", "pallacanestro", "basketball", "minibasket"],
+  ["pallavolo", "volley", "volleyball", "minivolley"],
+  ["tennis", "padel"],
+  ["inglese", "english", "lingue", "language"],
+  ["musica", "music", "coro", "chitarra", "pianoforte", "piano"],
+  ["arte", "art", "pittura", "disegno"],
+  ["teatro", "theatre", "theater", "recitazione"],
+  ["robotica", "coding", "stem", "programmazione", "informatica", "tecnologia", "scienza", "science"],
+  ["cucina", "cooking", "chef"],
+  ["scacchi", "chess"],
+  ["natura", "outdoor", "avventura", "nature"],
+  ["arti marziali", "judo", "karate", "taekwondo"],
+];
+
+/** Minuscole e senza accenti: "Città" e "citta" si trovano a vicenda. */
+export function normalizeSearch(text: string): string {
+  return text.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/\s+/g, " ").trim();
+}
+
+function variantsOf(token: string): string[] {
+  for (const group of SEARCH_SYNONYMS) {
+    if (group.some((w) => normalizeSearch(w) === token)) return group.map(normalizeSearch);
+  }
+  return [token];
+}
+
+/**
+ * UX-PARENT-011: "calcio" deve trovare "Soccer Academy". Ogni parola della
+ * ricerca (o un suo sinonimo) deve comparire in almeno uno dei campi
+ * (nome, centro, descrizione, etichette). Ricerca vuota = tutto passa.
+ */
+export function matchesSearch(fields: (string | null | undefined)[], query: string): boolean {
+  const q = normalizeSearch(query);
+  if (!q) return true;
+  const haystack = normalizeSearch(fields.filter(Boolean).join(" • "));
+  // prima la frase intera (es. "arti marziali"), poi parola per parola
+  if (variantsOf(q).some((v) => haystack.includes(v))) return true;
+  return q.split(" ").every((token) => variantsOf(token).some((v) => haystack.includes(v)));
+}
+
+// ─── Ciclo 4 — L. Centri di prova fuori dal catalogo famiglie ─────────
+
+/**
+ * UX-PARENT-002: toglie dal catalogo delle famiglie le attività dei centri
+ * segnati come prova (centers.is_test_fixture). L'Admin piattaforma li vede
+ * sempre (prove e test automatici). Nessun centro segnato = lista invariata.
+ */
+export function withoutTestFixtures<T extends { centerDbId?: string }>(
+  activities: T[],
+  testCenterIds: ReadonlySet<string>,
+  role: string | null
+): T[] {
+  if (role === "platform_admin" || testCenterIds.size === 0) return activities;
+  return activities.filter((a) => !(a.centerDbId && testCenterIds.has(a.centerDbId)));
+}

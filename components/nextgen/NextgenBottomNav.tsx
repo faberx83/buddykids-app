@@ -62,7 +62,7 @@ function isActive(pathname: string, href: string): boolean {
 // niente risulta segnalato in due punti contemporaneamente. Stessa lista
 // `notifications` già calcolata una volta sola in app/nextgen/layout.tsx per
 // la campanella (NotificationCenter.tsx): zero nuove query.
-function useNavBadges(notifications: NotificationItem[]) {
+function useNavBadges(notifications: NotificationItem[], uxFix = false) {
   // Stesso cursore client-side della campanella (localStorage) — stesso
   // pattern SSR-safe one-shot-al-mount già stabilito lì, vedi
   // lib/notifications/seen-cursor.ts per il motivo dell'estrazione.
@@ -77,7 +77,8 @@ function useNavBadges(notifications: NotificationItem[]) {
 
   const items = applyClientCursor(notifications, lastSeenAt);
   const hasUnseenBookingResponse = items.some((i) => i.type === "booking_response" && !i.isSeen);
-  const hasUnseenOther = items.some((i) => i.type !== "booking_response" && !i.isSeen);
+  // Correzioni dal test UX (21/10/2026): le Novità di TRAMA non accendono pallini.
+  const hasUnseenOther = items.some((i) => i.type !== "booking_response" && !(uxFix && i.type === "trama_announcement") && !i.isSeen);
   return { hasUnseenBookingResponse, hasUnseenOther };
 }
 
@@ -104,7 +105,7 @@ export default function NextgenBottomNav({
   uxFix?: boolean;
 }) {
   const pathname = usePathname();
-  const { hasUnseenBookingResponse, hasUnseenOther } = useNavBadges(notifications);
+  const { hasUnseenBookingResponse, hasUnseenOther } = useNavBadges(notifications, uxFix);
   const [addOpen, setAddOpen] = useState(false);
 
   if (variant === "v2") {

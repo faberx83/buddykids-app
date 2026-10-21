@@ -18,6 +18,7 @@ import {
   activityDateLine,
   dateStateRank,
   isUndated,
+  matchesSearch,
   periodFit,
   type ActivityDateSummary,
   type IsoRange,
@@ -716,7 +717,12 @@ export default function SearchDiscoveryClient({
       if (!isDiscoveryLeadCompatibleWithPriceCap(lead, maxPrice)) return false;
       if (!isDiscoveryLeadCompatibleWithZoneQuery(lead, zone)) return false;
       if (!isDiscoveryLeadCompatibleWithCategoryTags(lead, selectedTagIds)) return false;
-      if (!isDiscoveryLeadCompatibleWithTextQuery(lead, query)) return false;
+      if (
+        uxFix
+          ? !matchesSearch([lead.activityTitle, lead.organizerName, lead.shortDescription], query)
+          : !isDiscoveryLeadCompatibleWithTextQuery(lead, query)
+      )
+        return false;
       // TRAMA — DISCOVERY MAP FINALIZATION (22/09/2026), §9 "COVERAGE
       // FILTER — CORREZIONE SEMANTICA": a differenza degli altri filtri
       // sopra, questo ORA può escludere un lead con bookingMode sconosciuto
@@ -732,6 +738,7 @@ export default function SearchDiscoveryClient({
 
     return sortDiscoveryLeadsForDisplay(filtered);
   }, [
+    uxFix,
     temporalRange,
     realDiscoveryLeads,
     selectedWeekStarts,
@@ -787,7 +794,7 @@ export default function SearchDiscoveryClient({
           isDiscoveryLeadCompatibleWithPriceCap(lead, maxPrice) &&
           isDiscoveryLeadCompatibleWithZoneQuery(lead, zone) &&
           isDiscoveryLeadCompatibleWithCategoryTags(lead, selectedTagIds) &&
-          isDiscoveryLeadCompatibleWithTextQuery(lead, query) &&
+          matchesSearch([lead.activityTitle, lead.organizerName, lead.shortDescription], query) &&
           isDiscoveryLeadCompatibleWithCoverage(lead, { selectedCoverageModes, onlyDaySpots })
       )
     );
@@ -985,7 +992,15 @@ export default function SearchDiscoveryClient({
     const q = query.trim().toLowerCase();
 
     return activities.filter((a) => {
-      if (q && !a.name.toLowerCase().includes(q)) return false;
+      if (q) {
+        // Correzioni dal test UX (21/10/2026), UX-PARENT-011: con il flag si
+        // cerca anche in centro, descrizione ed etichette, con i sinonimi
+        // della disciplina ("calcio" trova "Soccer Academy").
+        const found = uxFix
+          ? matchesSearch([a.name, a.center, a.description, ...a.tags.map((t) => t.label)], q)
+          : a.name.toLowerCase().includes(q);
+        if (!found) return false;
+      }
       const [ageMin, ageMax] = parseAgeRange(a.ageRange);
       if (ageMax < minAge || ageMin > maxAge) return false;
       if (a.pricePerWeek > maxPrice) return false;
@@ -1030,6 +1045,7 @@ export default function SearchDiscoveryClient({
     selectedCoverageModes,
     activePeriod,
     v2,
+    uxFix,
   ]);
 
   const matches = useMemo(() => {

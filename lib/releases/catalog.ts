@@ -339,7 +339,7 @@ export const RELEASE_CATALOG: ReleaseCatalogEntry[] = [
     targetAudience: ["parent"],
     featureKeys: ["parent_ux_fix"],
     knownLimitations: [
-      "parent_ux_fix: le attività di prova restano visibili finché il ciclo L non è attivo e i centri di prova non sono segnati.",
+      "parent_ux_fix: i centri di prova spariscono dal catalogo famiglie solo dopo la migration 47 (centers.is_test_fixture); prima, nessun centro è nascosto.",
       "parent_ux_fix: 'Indica la scuola' non ha ancora un 'Più tardi': resta in Da fare finché ogni figlio ha la scuola.",
     ],
     notes: "Creata il 21/10/2026. Ripiego: flag spento = tutto come prima.",

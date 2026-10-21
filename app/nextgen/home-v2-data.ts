@@ -16,14 +16,14 @@ import { notNeededCoverage } from "@/lib/nextgen/closure-not-needed";
 import type { PlannerData } from "@/lib/data/planner";
 import { getMyBookingsForParent } from "@/lib/data/my-bookings";
 import { getKidsForUser } from "@/lib/data/kids";
-import { getActivities, isMockActivitiesArray } from "@/lib/data/activities";
+import { getActivities, getTestFixtureCenterIds, isMockActivitiesArray } from "@/lib/data/activities";
 import { getTodayCheckinsForParent } from "@/lib/data/checkin";
 import { getResponsibilitiesForParent, getKidsBookedDaysForWeek } from "@/lib/data/responsibilities";
 import { isParentProfileIncomplete, getParentProfile } from "@/lib/data/profile";
 import { getMyGroupInvites } from "@/lib/data/groups";
 import { getExternalPlannerItemsForParent } from "@/lib/data/external-planner-items";
 import { getKidClosureIntervalsForParent, getKidSchoolProfilesForParent } from "@/lib/data/school-calendar";
-import { PARENT_UX_FIX_FLAG, schoolCoverage, type SchoolCoverage } from "@/lib/nextgen/parent-ux-fix";
+import { PARENT_UX_FIX_FLAG, schoolCoverage, withoutTestFixtures, type SchoolCoverage } from "@/lib/nextgen/parent-ux-fix";
 import { computeMatchesForKid } from "@/lib/matching";
 import { resolveFeatureFlagVisibility } from "@/lib/feature-flags/resolve";
 import { generateCorrelationId } from "@/lib/telemetry/correlation";
@@ -382,7 +382,14 @@ export async function loadHomeV2Props({
 
   // ── Suggerimenti: solo se c'è una settimana libera da riempire ──
   const recommendations =
-    planner.firstUncoveredIndex !== null && kidList.length > 0 ? pickRecommendations(activities, kids, 3) : [];
+    planner.firstUncoveredIndex !== null && kidList.length > 0
+      ? pickRecommendations(
+          // Correzioni dal test UX (21/10/2026), ciclo 4-L: mai un centro di prova tra le idee.
+          uxFixEnabled ? withoutTestFixtures(activities, await getTestFixtureCenterIds(), "parent") : activities,
+          kids,
+          3
+        )
+      : [];
 
   return {
     firstName: fullName?.split(" ")[0] ?? null,

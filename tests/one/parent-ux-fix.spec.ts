@@ -14,6 +14,9 @@ import {
   unavailableCtaLabel,
   validateNewKid,
   newKidErrorSummary,
+  matchesSearch,
+  normalizeSearch,
+  withoutTestFixtures,
 } from "../../lib/nextgen/parent-ux-fix";
 import { buildHomeInbox } from "../../lib/nextgen/home-inbox";
 import { FEATURE_FLAG_REGISTRY } from "../../lib/feature-flags/registry";
@@ -252,5 +255,54 @@ test.describe("Correzioni dal test UX — ciclo 3 [no browser]", () => {
     expect(g).toContain("da confermare dal centro");
     expect(g).toContain("Nel gruppo non c&apos;è una chat");
     expect(read("app/nextgen/groups/[id]/page.tsx")).toContain("uxFix={v2 && uxFix}");
+  });
+});
+
+test.describe("Correzioni dal test UX — ciclo 4, K e L [no browser]", () => {
+  test("UXF-40 (011) 'calcio' trova Soccer Academy; ricerca su più campi e senza accenti", () => {
+    const soccer = ["Soccer Academy Estate", "Campo Brera", "Allenamenti e tornei", "Sport"];
+    expect(matchesSearch(soccer, "calcio")).toBe(true);
+    expect(matchesSearch(soccer, "football")).toBe(true);
+    expect(matchesSearch(soccer, "brera")).toBe(true);
+    expect(matchesSearch(soccer, "danza")).toBe(false);
+    expect(matchesSearch(["Summer Camp Acquatico"], "nuoto")).toBe(true);
+    expect(matchesSearch(["Città dei bambini"], "citta")).toBe(true);
+    expect(matchesSearch(["Judo per bambini"], "arti marziali")).toBe(true);
+    expect(matchesSearch(soccer, "  ")).toBe(true);
+    expect(normalizeSearch("  Perché  NO ")).toBe("perche no");
+    const client = read("app/nextgen/search/SearchDiscoveryClient.tsx");
+    expect(client).toContain("matchesSearch([a.name, a.center, a.description, ...a.tags.map((t) => t.label)], q)");
+    expect(client).toContain(": a.name.toLowerCase().includes(q);");
+  });
+
+  test("UXF-41 (014) Novità a parte, fuori dal numero, lette all'apertura sul server", () => {
+    const nc = read("components/nextgen/NotificationCenter.tsx");
+    expect(nc).toContain("const unseenCount = uxFix ? countUnseen(items.filter((i) => !isNovita(i))) : countUnseen(items);");
+    expect(nc).toContain("markAnnouncementsSeenFromNovitaAction(");
+    expect(nc).toContain('data-testid="notifications-novita-h"');
+    const layout = read("app/nextgen/layout.tsx");
+    expect(layout).toContain('n.type === "trama_announcement" && n.relevantAt < joinedAt');
+    expect(layout).toContain("uxFix={parentUxFix} />}");
+    expect(read("components/nextgen/NextgenBottomNav.tsx")).toContain('!(uxFix && i.type === "trama_announcement")');
+  });
+
+  test("UXF-42 (002) centri di prova fuori dal catalogo famiglie, l'Admin li vede", () => {
+    const list = [{ id: "a", centerDbId: "test" }, { id: "b", centerDbId: "vero" }, { id: "c" }];
+    const test = new Set(["test"]);
+    expect(withoutTestFixtures(list, test, "parent").map((a) => a.id)).toEqual(["b", "c"]);
+    expect(withoutTestFixtures(list, test, "platform_admin").map((a) => a.id)).toEqual(["a", "b", "c"]);
+    expect(withoutTestFixtures(list, new Set(), "parent")).toHaveLength(3);
+  });
+
+  test("UXF-43 (002) migration 47: additiva, segno esplicito, preparata e non applicata", () => {
+    const sql = read("supabase/migration_47_centri_di_prova.sql");
+    expect(sql).toContain("-- STATO: PREPARATA, NON APPLICATA");
+    expect(sql).toContain("add column if not exists is_test_fixture boolean not null default false");
+    expect(sql).not.toMatch(/\bdelete\s+from\b/i);
+    expect(sql).not.toMatch(/\bdrop\s+table\b/i);
+    // colonna assente o errore → nessun centro nascosto
+    const data = read("lib/data/activities.ts");
+    expect(data).toContain('.from("centers").select("id").eq("is_test_fixture", true)');
+    expect(read("app/nextgen/search/page.tsx")).toContain("withoutTestFixtures(activities, await getTestFixtureCenterIds(), role)");
   });
 });

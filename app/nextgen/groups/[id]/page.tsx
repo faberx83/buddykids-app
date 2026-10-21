@@ -1,7 +1,8 @@
 import { notFound } from "next/navigation";
 import GroupDetailClient from "@/components/GroupDetailClient";
 import { getGroupDetail } from "@/lib/data/group-detail";
-import { getActivities } from "@/lib/data/activities";
+import { getActivities, getTestFixtureCenterIds } from "@/lib/data/activities";
+import { withoutTestFixtures } from "@/lib/nextgen/parent-ux-fix";
 import { getParentProfile } from "@/lib/data/profile";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
 import { resolveGroupDetailBackHref } from "@/lib/nextgen/groups-back-nav";
@@ -43,7 +44,7 @@ export default async function NextgenGroupDetailPage({
 
   const activityOptions =
     isSupabaseConfigured && detail.createdByMe && !detail.activityId
-      ? (await getActivities())
+      ? withoutTestFixtures(await getActivities(), uxFix ? await getTestFixtureCenterIds() : new Set<string>(), "parent")
           .filter((a) => a.dbId)
           .map((a) => ({ dbId: a.dbId as string, name: a.name, center: a.center }))
       : [];

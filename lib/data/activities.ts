@@ -402,6 +402,22 @@ export async function getActivityDateRows(activityDbId?: string): Promise<Record
   return out;
 }
 
+// TRAMA — CORREZIONI DAL TEST UX (21/10/2026), UX-PARENT-002, ciclo 4-L:
+// centri segnati come prova (centers.is_test_fixture, migration 47). Se la
+// migration non è ancora applicata (colonna assente) o c'è un errore:
+// insieme vuoto, cioè nessun centro nascosto — mai un catalogo vuoto.
+export async function getTestFixtureCenterIds(): Promise<Set<string>> {
+  if (!isSupabaseConfigured) return new Set();
+  try {
+    const supabase = await createClient();
+    const { data, error } = await supabase.from("centers").select("id").eq("is_test_fixture", true);
+    if (error || !data) return new Set();
+    return new Set((data as { id: string }[]).map((r) => r.id));
+  } catch {
+    return new Set();
+  }
+}
+
 export async function getActivitiesWithOpenDaySpots(): Promise<Set<string>> {
   if (!isSupabaseConfigured) return new Set(); // demo: nessuna attività ha un dbId da confrontare
 

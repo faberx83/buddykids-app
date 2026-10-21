@@ -37,7 +37,7 @@
 // resta SEMPRE non-visto finché pending (SEEN ≠ RESOLVED: aprire il center
 // non equivale ad accettare l'invito).
 
-import { useEffect, useRef, useState } from "react";
+import { Fragment, useEffect, useRef, useState } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import {
   NotificationItem,
@@ -49,7 +49,7 @@ import {
 import { markInquiriesReadAction } from "@/app/actions/inquiries";
 import { markBookingsReadAction } from "@/app/actions/booking-response";
 // TRAMA — POST-DISCOVERY CONSOLIDATION (23/09/2026), NOVITÀ TRAMA — LEVEL 1.
-import { markAnnouncementSeenAction } from "@/app/actions/announcements";
+import { markAnnouncementSeenAction, markAnnouncementsSeenFromNovitaAction } from "@/app/actions/announcements";
 // Estratto in un file dedicato (31/08/2026): NextgenBottomNav.tsx ora usa la
 // STESSA logica per i pallini "Prenotazioni"/"Profilo" — vedi
 // lib/notifications/seen-cursor.ts per il motivo dell'estrazione.
@@ -88,11 +88,16 @@ export default function NotificationCenter({
   initialNotifications,
   scope = "parent",
   hideFloatingBell = false,
+  uxFix = false,
 }: {
   initialNotifications: NotificationItem[];
   scope?: "parent" | "partner";
   /** POLISH V2 (14/10/2026): con la nuova barra le notifiche si aprono solo dalla campanella della Home. */
   hideFloatingBell?: boolean;
+  /** Correzioni dal test UX (21/10/2026, PARENT_UX_FIX_ENABLED), UX-PARENT-014: le Novità di TRAMA
+   *  stanno a parte, non contano nel numero e diventano lette appena si apre la campanella
+   *  (sul server, quindi su ogni dispositivo). false = come prima. */
+  uxFix?: boolean;
 }) {
   const router = useRouter();
   const pathname = usePathname();
@@ -120,11 +125,34 @@ export default function NotificationCenter({
     // eslint-disable-next-line react-hooks/exhaustive-deps -- one-shot al mount, `scope` è stabile per la vita del componente (deriva da una prop che non cambia dopo il mount, stesso pattern di STORAGE_KEY in BetaFeedbackButton.tsx)
   }, []);
 
-  const items = sortNotifications(applyClientCursor(initialNotifications, lastSeenAt));
-  const unseenCount = countUnseen(items);
+  // Correzioni dal test UX (21/10/2026): Novità già aperte in questa sessione.
+  const [seenNovita, setSeenNovita] = useState<Set<string>>(() => new Set());
+  const pendingNovitaRef = useRef<string[]>([]);
+  const items = sortNotifications(applyClientCursor(initialNotifications, lastSeenAt)).map((i) =>
+    seenNovita.has(i.id) ? { ...i, isSeen: true } : i
+  );
+  const isNovita = (i: NotificationItem) => i.type === "trama_announcement";
+  const unseenCount = uxFix ? countUnseen(items.filter((i) => !isNovita(i))) : countUnseen(items);
   const badgeLabel = unseenCount > 9 ? "9+" : String(unseenCount);
+  const itemsRef = useRef(items);
+
+  /** Con uxFix: all'apertura le Novità mostrate diventano lette sul server; restano "Nuovo" finché il pannello è aperto. */
+  function markNovitaOnOpen() {
+    if (!uxFix || scope !== "parent") return;
+    const unseen = itemsRef.current.filter((i) => isNovita(i) && !i.isSeen);
+    if (unseen.length === 0) return;
+    pendingNovitaRef.current = unseen.map((i) => i.id);
+    void markAnnouncementsSeenFromNovitaAction(unseen.map((i) => i.id.slice("trama_announcement".length + 1))).catch(() => undefined);
+  }
+  function settleNovitaOnClose() {
+    if (pendingNovitaRef.current.length === 0) return;
+    const ids = pendingNovitaRef.current;
+    pendingNovitaRef.current = [];
+    setSeenNovita((prev) => new Set([...prev, ...ids]));
+  }
 
   function openCenter() {
+    markNovitaOnOpen();
     setOpen(true);
     // Avanza il cursore ad ORA: gli elementi attualmente mostrati (per i
     // tipi senza colonna DB) risulteranno "visti" dal prossimo render — mai
@@ -134,7 +162,16 @@ export default function NotificationCenter({
     setLastSeenAt(now);
   }
 
+  // L'apertura dalla campanella della Home V2 passa da un evento: si usa
+  // sempre la versione aggiornata della funzione (niente valori vecchi).
+  const markNovitaOnOpenRef = useRef(markNovitaOnOpen);
+  useEffect(() => {
+    itemsRef.current = items;
+    markNovitaOnOpenRef.current = markNovitaOnOpen;
+  });
+
   function closeCenter() {
+    settleNovitaOnClose();
     setOpen(false);
     bellRef.current?.focus();
   }
@@ -154,6 +191,7 @@ export default function NotificationCenter({
     // Stessi passi di openCenter() sopra (cursore "visto" avanzato ad ora),
     // ripetuti qui per non leggere una funzione del render dentro l'effetto.
     function onOpenRequest() {
+      markNovitaOnOpenRef.current();
       const now = new Date().toISOString();
       writeLastSeenAt(scope, now);
       setLastSeenAt(now);
@@ -216,6 +254,7 @@ export default function NotificationCenter({
     } else if (item.type === "trama_announcement") {
       await markAnnouncementSeenAction(entityId);
     }
+    settleNovitaOnClose();
     setOpen(false);
     router.push(item.deepLink);
   }
@@ -298,7 +337,13 @@ export default function NotificationCenter({
               </div>
             ) : (
               <ul className="-mx-1 flex flex-1 flex-col gap-1 overflow-y-auto px-1 py-1">
-                {items.map((item) => (
+                {(uxFix ? [...items.filter((i) => !isNovita(i)), ...items.filter(isNovita)] : items).map((item, index, list) => (
+                  <Fragment key={item.id}>
+                  {uxFix && isNovita(item) && (index === 0 || !isNovita(list[index - 1])) && (
+                    <li key="novita-h" className="px-3 pb-1 pt-3 text-[11px] font-bold uppercase tracking-wide text-ink-3" data-testid="notifications-novita-h">
+                      Novità di TRAMA
+                    </li>
+                  )}
                   <li key={item.id}>
                     <button
                       type="button"
@@ -326,6 +371,7 @@ export default function NotificationCenter({
                       <i className="ti ti-chevron-right mt-1 flex-shrink-0 text-[16px] text-ink-3" aria-hidden="true" />
                     </button>
                   </li>
+                  </Fragment>
                 ))}
               </ul>
             )}
@@ -338,6 +384,7 @@ export default function NotificationCenter({
                 <button
                   type="button"
                   onClick={() => {
+                    settleNovitaOnClose();
                     setOpen(false);
                     router.push("/nextgen/novita");
                   }}

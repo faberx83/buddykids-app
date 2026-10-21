@@ -1055,6 +1055,11 @@ export const FEATURE_CATALOG: FeatureCatalogEntry[] = [
       "components/nextgen/SchoolCoverageNote.tsx",
       "app/nextgen/home-v2-data.ts",
       "app/nextgen/planner/PlannerV2Client.tsx",
+      "components/nextgen/ExternalPlannerItemsSection.tsx",
+      "components/nextgen/AddSheet.tsx",
+      "components/GroupDetailClient.tsx",
+      "components/nextgen/NotificationCenter.tsx",
+      "supabase/migration_47_centri_di_prova.sql",
     ],
     note:
       "Una sola release per tutti i cicli: spegnendo il flag tutto torna come prima. Il testo del tutorial di Scopri è " +

@@ -257,6 +257,13 @@ export default async function NextgenLayout({ children }: { children: React.Reac
         radarEnabled = radar;
         returnHomeEnabled = returnHome;
         parentUxFix = uxFix;
+        // Correzioni dal test UX (21/10/2026), UX-PARENT-014: un account
+        // nuovo non riceve come "da leggere" le Novità uscite prima che si
+        // iscrivesse (le trova comunque nella pagina Novità).
+        if (uxFix && user.created_at) {
+          const joinedAt = user.created_at;
+          notifications = notifications.filter((n) => !(n.type === "trama_announcement" && n.relevantAt < joinedAt));
+        }
       } catch {
         navV2Enabled = false; // ripiego: barra attuale
       }
@@ -403,7 +410,7 @@ export default async function NextgenLayout({ children }: { children: React.Reac
           ) : (
             <OnboardingCarousel progress={onboardingProgress} />
           )}
-          {isParentUser && <NotificationCenter initialNotifications={notifications} hideFloatingBell={navV2Enabled} />}
+          {isParentUser && <NotificationCenter initialNotifications={notifications} hideFloatingBell={navV2Enabled} uxFix={parentUxFix} />}
           {/* BUILD_INFO_BUBBLE */}
           <BuildInfoBubble label={buildInfoLabel} />
         </NextgenScrollActivityProvider>
