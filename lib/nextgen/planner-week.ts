@@ -238,7 +238,8 @@ export function buildWeekModel(input: {
     const kidIds = Array.from(new Set(entries.flatMap((e) => e.kids.map((k) => k.id))));
     const allKidIds = Array.from(new Set(all.flatMap((e) => e.kids.map((k) => k.id))));
 
-    entryCount += entries.length;
+    // 21/10/2026: la scuola non conta come impegno ("3 impegni", non "13").
+    entryCount += entries.filter((e) => !e.school).length;
     if (dateIso >= input.todayIso) missingCount += coordination.missingCount;
     days.push({
       dateIso,

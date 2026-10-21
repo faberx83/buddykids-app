@@ -92,6 +92,8 @@ import { useGlobalActionProgress } from "@/components/GlobalActionProgress";
 import { recordBetaSignalAction } from "@/app/actions/beta-signals";
 import { markFirstUsefulAction } from "@/lib/nextgen/first-action";
 import ProfileChip from "@/components/nextgen/ProfileChip";
+import PlannerDayFocus from "@/components/nextgen/PlannerDayFocus";
+import { defaultDayIso } from "@/lib/nextgen/planner-day";
 
 type View = "settimana" | "stagione";
 export interface HolidayPeriodRow {
@@ -152,6 +154,7 @@ export default function PlannerV2Client({
   partnerOnTrama = false,
   weeklyRoutineEnabled = false,
   placeSearchEnabled = false,
+  dayViewEnabled = false,
   showDiagnostics = false,
   calendarExportEnabled,
   calendarExportItems,
@@ -195,6 +198,8 @@ export default function PlannerV2Client({
   weeklyRoutineEnabled?: boolean;
   /** 21/10/2026 — release "ricerca-luoghi" (PLACE_SEARCH_ENABLED). */
   placeSearchEnabled?: boolean;
+  /** 21/10/2026 — release "planner-giorno" (PLANNER_DAY_VIEW_ENABLED): la Settimana un giorno alla volta. */
+  dayViewEnabled?: boolean;
   showDiagnostics?: boolean;
   calendarExportEnabled: boolean;
   calendarExportItems: PlannerCalendarItemForIcs[];
@@ -561,6 +566,29 @@ export default function PlannerV2Client({
           onShare={shareWeek}
           onExport={calendarExportEnabled ? () => setPanel("esporta") : null}
           showToday={monday !== mondayOfIso(todayIso)}
+          dayView={dayViewEnabled}
+          todayIso={todayIso}
+          // 21/10/2026 — un giorno alla volta: gli impegni aggiunti a mano escono
+          // dalla giornata e stanno qui, tutti (non solo questa settimana), in
+          // una scheda che si apre con "Gestisci". Il + della barra continua ad
+          // aprire il foglio "Nuovo impegno" (il componente resta montato).
+          beforeActions={
+            externalEnabled && dayViewEnabled ? (
+              <section aria-label="I tuoi impegni" className="mt-1">
+                <ExternalPlannerItemsSection
+                  items={externalItems.filter((i) => !i.isSchool && i.endDate >= todayIso)}
+                  kids={kids}
+                  title="I tuoi impegni"
+                  emptyText="Ancora nessuno: sport, musica, una festa, una visita. Quelli che si ripetono li inserisci una volta sola."
+                  v2
+                  collapsible
+                  defaultDate={defaultDateForWeek(monday, todayIso)}
+                  routineEnabled={weeklyRoutineEnabled}
+                  placeSearchEnabled={placeSearchEnabled}
+                />
+              </section>
+            ) : null
+          }
         />
       ) : (
         <SeasonView
@@ -581,7 +609,7 @@ export default function PlannerV2Client({
       )}
 
       {/* Impegni aggiunti a mano: elenco, modifica, nuovo (componente esistente). */}
-      {externalEnabled && view === "settimana" && (
+      {externalEnabled && view === "settimana" && !dayViewEnabled && (
         <section aria-label="I tuoi impegni" className="mt-2">
           {/* POLISH V2: solo gli impegni di questa settimana (gli altri restano nelle loro settimane). */}
           <ExternalPlannerItemsSection
@@ -733,6 +761,9 @@ function WeekView({
   onShare,
   onExport,
   showToday,
+  dayView = false,
+  todayIso,
+  beforeActions = null,
 }: {
   week: ReturnType<typeof buildWeekModel>;
   kidOrder: string[];
@@ -754,9 +785,19 @@ function WeekView({
   onShare: () => void;
   onExport: (() => void) | null;
   showToday: boolean;
+  /** 21/10/2026 — release "planner-giorno": un giorno alla volta. */
+  dayView?: boolean;
+  todayIso: string;
+  /** 21/10/2026: "I tuoi impegni" fra la giornata e le azioni della settimana. */
+  beforeActions?: ReactNode;
 }) {
   const status = weekStatusParts(week);
   const dayRefs = useRef<Record<string, HTMLElement | null>>({});
+  // Giorno aperto: quello toccato nella striscia, se è in questa settimana;
+  // altrimenti oggi / il primo giorno con qualcosa (cambiando settimana si riparte da lì).
+  const [picked, setPicked] = useState<string | null>(null);
+  const selectedIso = picked && week.days.some((d) => d.dateIso === picked) ? picked : defaultDayIso(week, todayIso);
+  const selectedIdx = week.days.findIndex((d) => d.dateIso === selectedIso);
   return (
     <>
       {/* NAVIGATORE */}
@@ -818,24 +859,45 @@ function WeekView({
         </button>
       )}
 
-      {/* STRISCIA 7 GIORNI */}
-      <div className="grid grid-cols-7 gap-1">
-        {week.days.map((d) => (
+      {/* STRISCIA 7 GIORNI — 21/10/2026, un giorno alla volta: il tocco apre
+          quel giorno (non scorre), la striscia resta in alto mentre scorri e
+          un pallino ambra segna i passaggi da decidere. */}
+      <div className={dayView ? "sticky top-0 z-10 -mx-5 bg-trama-page/95 px-5 py-1.5 backdrop-blur" : ""}>
+      <div className="grid grid-cols-7 gap-1" role={dayView ? "tablist" : undefined} aria-label={dayView ? "Giorni della settimana" : undefined}>
+        {week.days.map((d) => {
+          const on = dayView ? d.dateIso === selectedIso : d.isToday;
+          // Un giorno alla volta: i pallini dei figli contano gli impegni, non la
+          // scuola (altrimenti ogni giorno feriale ha tutti i pallini); il
+          // "da decidere" è un segno a parte nell'angolo, non un altro pallino.
+          const dotKidIds = dayView ? Array.from(new Set(d.entries.filter((e) => !e.school).flatMap((e) => e.kids.map((k) => k.id)))) : d.kidIds;
+          const missing = dayView && !d.isPast && d.coordination.missingCount > 0;
+          return (
           <button
             key={d.dateIso}
             type="button"
+            role={dayView ? "tab" : undefined}
+            aria-selected={dayView ? on : undefined}
             aria-current={d.isToday ? "date" : undefined}
-            aria-label={`${d.label}${d.entries.length ? `, ${d.entries.length} impegni` : ""}`}
-            onClick={() => dayRefs.current[d.dateIso]?.scrollIntoView({ behavior: "smooth", block: "start" })}
-            className={`flex flex-col items-center gap-1 rounded-[14px] pb-[9px] pt-2 ${
-              d.isToday ? "bg-trama-navy text-white" : d.isPast ? "text-ink-3" : "text-[#4B5563]"
-            }`}
+            aria-label={`${d.label}${d.isToday ? ", oggi" : ""}${d.entries.length ? `, ${d.entries.length} impegni` : ""}`}
+            onClick={() =>
+              dayView ? setPicked(d.dateIso) : dayRefs.current[d.dateIso]?.scrollIntoView({ behavior: "smooth", block: "start" })
+            }
+            className={`relative flex flex-col items-center gap-1 rounded-[14px] pb-[9px] pt-2 ${
+              on ? "bg-trama-navy text-white" : d.isPast ? "text-ink-3" : "text-[#4B5563]"
+            } ${dayView && d.isToday && !on ? "ring-1 ring-inset ring-trama-primary/40" : ""}`}
           >
+            {missing && (
+              <span
+                aria-hidden="true"
+                className="absolute right-1.5 top-1.5 h-2 w-2 rounded-full bg-[#E5675B] ring-2 ring-trama-page"
+                data-testid="strip-missing-dot"
+              />
+            )}
             <span className="text-[11px] font-semibold">{d.letter}</span>
-            <span className={`text-[16px] font-bold ${d.isToday ? "" : d.isPast ? "" : "text-ink"}`}>{d.dayOfMonth}</span>
+            <span className={`text-[16px] font-bold ${on ? "" : d.isPast ? "" : "text-ink"}`}>{d.dayOfMonth}</span>
             <span className="flex h-1.5 gap-[3px]">
               {d.closureLabels.length > 0 && <span className="h-1.5 w-1.5 rounded-full bg-[#8B93A1]" />}
-              {d.kidIds.slice(0, 3).map((id) => (
+              {dotKidIds.slice(0, 3).map((id) => (
                 <span
                   key={id}
                   className="h-1.5 w-1.5 rounded-full"
@@ -844,7 +906,9 @@ function WeekView({
               ))}
             </span>
           </button>
-        ))}
+          );
+        })}
+      </div>
       </div>
 
       {/* LEGENDA DEI PALLINI + CHI RESTA SCOPERTO (15/10/2026, "spiegami
@@ -862,6 +926,12 @@ function WeekView({
             <span className="flex items-center gap-1.5">
               <span aria-hidden="true" className="h-2 w-2 rounded-full bg-[#8B93A1]" />
               Scuola chiusa
+            </span>
+          )}
+          {dayView && week.days.some((d) => !d.isPast && d.coordination.missingCount > 0) && (
+            <span className="flex items-center gap-1.5">
+              <span aria-hidden="true" className="h-2 w-2 rounded-full bg-[#E5675B]" />
+              Passaggio da decidere
             </span>
           )}
         </div>
@@ -919,6 +989,19 @@ function WeekView({
       })()}
 
       {/* AGENDA */}
+      {dayView && selectedIdx >= 0 ? (
+        <div className="mt-1">
+          <PlannerDayFocus
+            day={week.days[selectedIdx]}
+            nextDay={week.days[selectedIdx + 1] ?? null}
+            kids={alertKids}
+            kidOrder={kidOrder}
+            todayIso={todayIso}
+            onAssign={() => onAssign(selectedIso)}
+            onSelect={setPicked}
+          />
+        </div>
+      ) : (
       <div className="mt-1 flex flex-col gap-[22px]">
         {week.days.map((d) => (
           <DaySection key={d.dateIso} day={d} kidOrder={kidOrder} onAssign={() => onAssign(d.dateIso)} refFn={(el) => {
@@ -926,10 +1009,12 @@ function WeekView({
           }} />
         ))}
       </div>
+      )}
 
       {/* AZIONI DELLA SETTIMANA — 21/10/2026 (Fabrizio: "un separatore a fine
           settimana, poi le azioni"): linea sottile e un po' d'aria, così
           domenica non sembra legata ai pulsanti. */}
+      {beforeActions}
       <div className="mt-2 border-t border-trama-line pt-4" data-testid="week-actions">
       <div className={`grid gap-2 ${onExport ? "grid-cols-2" : "grid-cols-1"}`}>
         <button
