@@ -927,8 +927,11 @@ function WeekView({
         ))}
       </div>
 
-      {/* AZIONI DELLA SETTIMANA */}
-      <div className={`mt-1.5 grid gap-2 ${onExport ? "grid-cols-2" : "grid-cols-1"}`}>
+      {/* AZIONI DELLA SETTIMANA — 21/10/2026 (Fabrizio: "un separatore a fine
+          settimana, poi le azioni"): linea sottile e un po' d'aria, così
+          domenica non sembra legata ai pulsanti. */}
+      <div className="mt-2 border-t border-trama-line pt-4" data-testid="week-actions">
+      <div className={`grid gap-2 ${onExport ? "grid-cols-2" : "grid-cols-1"}`}>
         <button
           type="button"
           onClick={onShare}
@@ -947,6 +950,7 @@ function WeekView({
             Esporta calendario
           </button>
         )}
+      </div>
       </div>
     </>
   );

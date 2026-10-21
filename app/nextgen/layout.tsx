@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from "next";
+import ShellScrollGuard from "@/components/nextgen/ShellScrollGuard";
 import PhoneShell from "@/components/PhoneShell";
 import InstallPrompt from "@/components/InstallPrompt";
 import NextgenBottomNav from "@/components/nextgen/NextgenBottomNav";
@@ -323,6 +324,8 @@ export default async function NextgenLayout({ children }: { children: React.Reac
             components/nextgen/NextgenScrollActivity.tsx. */}
         <NextgenScrollActivityProvider>
           <div className="flex h-full min-h-0 flex-col" data-nav-v2={navV2Enabled ? "" : undefined}>
+            {/* 21/10/2026 — il contenitore dell'app non deve mai scorrere (vedi ShellScrollGuard). */}
+            <ShellScrollGuard />
             {/* TRAMA BETA v1.1.1 (FINAL VISUAL CONFORMANCE PASS, punto 10) —
                 segnalazione: bell (NotificationCenter, bottom-24 left-4) e
                 chat (BetaFeedbackButton, bottom-24 right-4) sono

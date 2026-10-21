@@ -37,6 +37,8 @@ export default function PlaceAutocomplete({
   const [open, setOpen] = useState(false);
   const [active, setActive] = useState(-1);
   const [loading, setLoading] = useState(false);
+  // 21/10/2026: ricerca fatta e niente trovato → lo diciamo (si può scrivere a mano).
+  const [noResults, setNoResults] = useState(false);
   // Dopo una scelta il testo cambia: non rilanciare subito la ricerca.
   const picked = useRef<string | null>(null);
 
@@ -45,6 +47,7 @@ export default function PlaceAutocomplete({
     const q = value.trim();
     if (q.length < MIN_QUERY_LENGTH || picked.current === value) {
       setItems([]);
+      setNoResults(false);
       return;
     }
     const ctrl = new AbortController();
@@ -54,6 +57,7 @@ export default function PlaceAutocomplete({
         const res = await fetch(`/api/places/search?kind=${kind}&q=${encodeURIComponent(q)}`, { signal: ctrl.signal });
         const body = (await res.json()) as { suggestions?: PlaceSuggestion[] };
         setItems(body.suggestions ?? []);
+        setNoResults((body.suggestions ?? []).length === 0);
         setActive(-1);
         setOpen(true);
       } catch {
@@ -116,6 +120,11 @@ export default function PlaceAutocomplete({
       />
       {enabled && loading && (
         <i className="ti ti-loader-2 absolute right-3.5 top-1/2 -translate-y-1/2 animate-spin text-[16px] text-ink-3" aria-hidden="true" />
+      )}
+      {enabled && noResults && !loading && (
+        <p className="mt-1.5 text-[12.5px] leading-snug text-ink-2" data-testid="place-no-results">
+          Non lo trovo sulla mappa: va bene anche scritto a mano.
+        </p>
       )}
       {showList && (
         <div className="absolute inset-x-0 top-full z-20 mt-1 overflow-hidden rounded-[12px] border border-trama-line bg-white shadow-[0_8px_24px_rgba(23,42,77,0.14)]">
