@@ -211,3 +211,38 @@ export function schoolCoverageNote(c: SchoolCoverage): { text: string; ctaLabel:
 export function schoolSetupHref(kidId: string): string {
   return `/nextgen/profile/famiglia?scuola=${encodeURIComponent(kidId)}`;
 }
+
+// ─── Ciclo 2 — E. Form del figlio: tutti gli errori insieme ───────────
+
+export type NewKidField = "name" | "birthDate" | "declaration";
+
+/**
+ * UX-PARENT-015: gli errori del form "Aggiungi figlio" si vedono tutti
+ * insieme e accanto al campo, prima di qualunque chiamata al server.
+ * Restituisce i campi da correggere nell'ordine del form (il primo riceve
+ * il fuoco).
+ */
+export function validateNewKid(input: {
+  name: string;
+  birthDate: string;
+  declarationRequired: boolean;
+  declarationAccepted: boolean;
+  todayIso: string;
+}): { field: NewKidField; message: string }[] {
+  const out: { field: NewKidField; message: string }[] = [];
+  if (!input.name.trim()) out.push({ field: "name", message: "Scrivi il nome" });
+  if (!input.birthDate) out.push({ field: "birthDate", message: "Indica la data di nascita" });
+  else if (input.birthDate > input.todayIso) out.push({ field: "birthDate", message: "La data di nascita è nel futuro" });
+  if (input.declarationRequired && !input.declarationAccepted) {
+    out.push({ field: "declaration", message: "Conferma la dichiarazione per salvare" });
+  }
+  return out;
+}
+
+/** Riepilogo in una riga: "Mancano: nome e data di nascita." */
+export function newKidErrorSummary(errors: { field: NewKidField }[]): string | null {
+  if (errors.length === 0) return null;
+  const label: Record<NewKidField, string> = { name: "nome", birthDate: "data di nascita", declaration: "conferma della dichiarazione" };
+  const parts = errors.map((e) => label[e.field]);
+  return `Da completare: ${parts.length === 1 ? parts[0] : `${parts.slice(0, -1).join(", ")} e ${parts[parts.length - 1]}`}.`;
+}

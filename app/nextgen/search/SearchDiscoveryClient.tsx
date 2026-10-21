@@ -1246,6 +1246,7 @@ export default function SearchDiscoveryClient({
         plannerEnabled={externalPlannerItemsEnabled}
         initialInPlanner={curatedLeadIdsInPlannerSet.has(result.lead.id)}
         v2={!!v2}
+        uxFix={uxFix}
       />
     );
   }
@@ -2251,10 +2252,20 @@ export default function SearchDiscoveryClient({
             </button>
             {showToVerify && (
               <div className="flex flex-col gap-1">
-                {[
-                  ...leadsToVerify.map((lead): DiscoveryResult => ({ kind: "curated", lead })),
-                  ...communityToVerify.map((discovery): DiscoveryResult => ({ kind: "community", discovery })),
-                ].map((r, i) => renderDiscoveryResult(r, i + 1))}
+                {leadsToVerify.map((lead) => (
+                  <DiscoveryLeadCard
+                    key={`verify-${lead.id}`}
+                    lead={lead}
+                    initialFavorite={curatedFavoriteIdsSet.has(lead.id)}
+                    kids={kids}
+                    plannerEnabled={externalPlannerItemsEnabled}
+                    initialInPlanner={curatedLeadIdsInPlannerSet.has(lead.id)}
+                    v2
+                    uxFix
+                    periodHint={activePeriod ? { label: activePeriod.label, start: activePeriod.start, end: activePeriod.end } : null}
+                  />
+                ))}
+                {communityToVerify.map((discovery, i) => renderDiscoveryResult({ kind: "community", discovery }, i + 1))}
               </div>
             )}
           </section>

@@ -163,15 +163,16 @@ export async function loadPlannerV2Props({
 
   // Correzioni dal test UX (21/10/2026), UX-PARENT-004/007: per quali figli
   // c'è la scuola (nota sotto "Ponti e vacanze", Stagione senza scuola).
-  const parentUxFix =
-    uxFixEnabled && schoolEnabled
-      ? {
-          schoolCoverage: schoolCoverage(
-            kids.map((k) => ({ id: k.id, name: k.name })),
-            Object.keys(await getKidSchoolProfilesForParent(kids.map((k) => k.id)).catch(() => ({})))
-          ),
-        }
-      : null;
+  const parentUxFix = uxFixEnabled
+    ? {
+        schoolCoverage: schoolEnabled
+          ? schoolCoverage(
+              kids.map((k) => ({ id: k.id, name: k.name })),
+              Object.keys(await getKidSchoolProfilesForParent(kids.map((k) => k.id)).catch(() => ({})))
+            )
+          : null,
+      }
+    : null;
 
   // Salvati: preferiti con una data possibile, non ancora prenotati né nel Planner.
   // 20/10/2026: con nome e date di disponibilità, per mostrarli nel Planner

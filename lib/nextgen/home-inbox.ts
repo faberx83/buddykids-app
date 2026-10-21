@@ -87,6 +87,10 @@ export interface HomeInboxInput {
    *  figli senza scuola. Assente = nessuna voce (comportamento di prima). La
    *  voce resta finché ogni figlio ha la scuola, anche dopo il benvenuto. */
   schoolMissingKids?: { id: string; name: string }[];
+  /** Correzioni dal test UX (21/10/2026), primi passi: senza figli la prima
+   *  azione è "Aggiungi i tuoi figli" (nel benvenuto), quindi "Completa il
+   *  profilo" aspetta. Assente/false = come prima. */
+  noKidsYet?: boolean;
   /** Oggi (ISO). Se presente, le prenotazioni già concluse non entrano in
    *  "Da fare" (segnalazione live 14/10: una conferma parziale di settembre
    *  compariva ancora a ottobre). */
@@ -210,7 +214,7 @@ export function buildHomeInbox(input: HomeInboxInput): HomeInboxResult {
     });
   }
 
-  if (input.profileIncomplete) {
+  if (input.profileIncomplete && !input.noKidsYet) {
     items.push({
       id: "profile_incomplete",
       kind: "profile_incomplete",

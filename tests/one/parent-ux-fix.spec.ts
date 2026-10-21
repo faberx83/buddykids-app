@@ -12,6 +12,8 @@ import {
   schoolSetupHref,
   summarizeActivityDates,
   unavailableCtaLabel,
+  validateNewKid,
+  newKidErrorSummary,
 } from "../../lib/nextgen/parent-ux-fix";
 import { buildHomeInbox } from "../../lib/nextgen/home-inbox";
 import { FEATURE_FLAG_REGISTRY } from "../../lib/feature-flags/registry";
@@ -162,6 +164,62 @@ test.describe("Correzioni dal test UX — ciclo 1 [no browser]", () => {
     expect(planner).toContain("const noHolidayState = Boolean(schoolCoverage) && summer.isOver && holidaySummary === null;");
     expect(planner).toContain('data-testid="season-no-school"');
     const data = read("app/nextgen/planner/planner-v2-data.ts");
-    expect(data).toContain("uxFixEnabled && schoolEnabled");
+    expect(data).toContain("const parentUxFix = uxFixEnabled");
+    expect(data).toContain("schoolCoverage: schoolEnabled");
+  });
+});
+
+test.describe("Correzioni dal test UX — ciclo 2 [no browser]", () => {
+  test("UXF-20 (010) foglio impegno: conferma prima di scartare, bozza ripresa, solo con il flag", () => {
+    const src = read("components/nextgen/ExternalPlannerItemsSection.tsx");
+    expect(src).toContain("Chiudere senza salvare?");
+    expect(src).toContain("Continua a modificare");
+    expect(src).toContain('data-testid="impegno-draft-restored"');
+    // Indietro chiude e tiene la bozza; X, sfondo, Esc e Annulla chiedono.
+    expect(src).toContain("useCloseOnBack(true, onBack ?? onCancel);");
+    expect(src).toContain("onCancel={draftKey ? requestClose : onCancel}");
+    // senza flag nessuna chiave di bozza: comportamento di prima
+    expect(src.match(/draftKey=\{uxFix && v2 \? /g)?.length).toBe(3);
+    expect(read("app/nextgen/planner/PlannerV2Client.tsx").match(/uxFix=\{Boolean\(parentUxFix\)\}/g)?.length).toBe(2);
+  });
+
+  test("UXF-21 (015) form del figlio: tutti gli errori insieme, nell'ordine dei campi", () => {
+    const errors = validateNewKid({ name: " ", birthDate: "", declarationRequired: true, declarationAccepted: false, todayIso: "2026-10-21" });
+    expect(errors.map((e) => e.field)).toEqual(["name", "birthDate", "declaration"]);
+    expect(newKidErrorSummary(errors)).toBe("Da completare: nome, data di nascita e conferma della dichiarazione.");
+    expect(validateNewKid({ name: "Luca", birthDate: "2030-01-01", declarationRequired: false, declarationAccepted: false, todayIso: "2026-10-21" })[0].message).toBe(
+      "La data di nascita è nel futuro"
+    );
+    expect(validateNewKid({ name: "Luca", birthDate: "2016-06-15", declarationRequired: true, declarationAccepted: true, todayIso: "2026-10-21" })).toEqual([]);
+    const form = read("components/AddKidForm.tsx");
+    expect(form).toContain("if (uxFix) {");
+    expect(form).toContain('id="addkid-name"');
+  });
+
+  test("UXF-22 (015) gruppo senza nome: errore subito, senza 'Creo…'", () => {
+    const src = read("components/GroupsClient.tsx");
+    expect(src).toContain("if (uxFix && !newName.trim()) {");
+    expect(read("app/nextgen/groups/page.tsx")).toContain("parentUxFixEnabled()");
+  });
+
+  test("UXF-23 (013) scheda figlio: ogni Salva dice cosa salva", () => {
+    const src = read("components/ProfileKidsSection.tsx");
+    expect(src).toContain('uxFix ? "Salva nome e data" : "Salva dati"');
+    expect(src).toContain('uxFix ? "Salva interessi" : "Salva"');
+    expect(src).toContain('uxFix ? "Salva scuola" : "Salva"');
+  });
+
+  test("UXF-24 primi passi: senza figli 'Completa il profilo' aspetta; niente 'Condividi piano' a piano vuoto", () => {
+    const base = { bookings: [], upcomingCoordination: null, groupInvites: [], profileIncomplete: true, pushInactive: false };
+    expect(buildHomeInbox({ ...base, noKidsYet: true }).all).toEqual([]);
+    expect(buildHomeInbox({ ...base, noKidsYet: false }).all.map((i) => i.kind)).toEqual(["profile_incomplete"]);
+    expect(read("app/nextgen/home-v2-data.ts")).toContain("hideSharePlan: uxFixEnabled && isNewFamily,");
+  });
+
+  test("UXF-25 (001) 'Date da verificare': il periodo cercato si può usare solo con un tocco", () => {
+    const card = read("components/nextgen/DiscoveryLeadCard.tsx");
+    expect(card).toContain('data-testid="lead-period-hint"');
+    expect(card).toContain("{!hasKnownDates && periodHint && (");
+    expect(card).toContain('setPlanError("Scegli almeno un figlio e indica quando si svolge.");');
   });
 });

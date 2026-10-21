@@ -107,6 +107,8 @@ export default function DiscoveryLeadCard({
   plannerEnabled = false,
   initialInPlanner = false,
   v2 = false,
+  uxFix = false,
+  periodHint = null,
 }: {
   lead: DiscoveryLeadRecord;
   // FIX (§6 "FAVORITE BUTTON UX" del task) — stesso pattern di
@@ -126,6 +128,12 @@ export default function DiscoveryLeadCard({
   v2?: boolean;
   plannerEnabled?: boolean;
   initialInPlanner?: boolean;
+  /** Correzioni dal test UX (21/10/2026, PARENT_UX_FIX_ENABLED): errori del modulo tutti insieme. */
+  uxFix?: boolean;
+  /** Correzioni dal test UX (21/10/2026), UX-PARENT-001: il periodo cercato
+   *  (es. "Ponte 7–8 dic") per una scoperta SENZA date. Mai usato come data
+   *  vera: il genitore può sceglierlo con un tocco, dopo averlo verificato. */
+  periodHint?: { label: string; start: string; end: string } | null;
 }) {
   const showToast = useNextgenToast();
   const [fav, setFav] = useState(initialFavorite ?? false);
@@ -179,6 +187,11 @@ export default function DiscoveryLeadCard({
   }
 
   async function handleConfirmAddToPlanner() {
+    // Correzioni dal test UX (21/10/2026), UX-PARENT-015: le due mancanze insieme.
+    if (uxFix && planKidIds.length === 0 && (!planStartDate || !planEndDate)) {
+      setPlanError("Scegli almeno un figlio e indica quando si svolge.");
+      return;
+    }
     if (planKidIds.length === 0) {
       setPlanError("Seleziona almeno un bambino.");
       return;
@@ -533,6 +546,22 @@ export default function DiscoveryLeadCard({
               <p className="mb-1.5 text-[11px] font-semibold text-ink-2">
                 {hasKnownDates ? "Quando si svolge" : "Quando si svolge? Non indicato dalla fonte."}
               </p>
+              {!hasKnownDates && periodHint && (
+                <div data-testid="lead-period-hint" className="mb-2 rounded-lg bg-[#FFF8EB] px-2.5 py-2 text-[12px] leading-snug text-[#5C3A00]">
+                  Stai cercando per {periodHint.label.charAt(0).toLowerCase()}
+                  {periodHint.label.slice(1)}: la fonte non dice se c&apos;è. Se l&apos;hai verificato, puoi usare queste date.
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setPlanStartDate(periodHint.start);
+                      setPlanEndDate(periodHint.end);
+                    }}
+                    className="mt-1 block min-h-[36px] font-semibold text-trama-accent-ink"
+                  >
+                    Usa le date: {periodHint.label}
+                  </button>
+                </div>
+              )}
               <div className="grid grid-cols-2 gap-2">
                 <label className="block">
                   <span className="mb-1 block text-[10.5px] text-ink-3">Dal</span>

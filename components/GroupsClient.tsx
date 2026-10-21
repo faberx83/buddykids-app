@@ -47,6 +47,7 @@ export default function GroupsClient({
   showBrandIcon,
   initialTab,
   nextgen = false,
+  uxFix = false,
 }: {
   initialGroups: GroupItem[];
   initialPublicGroups: PublicGroupItem[];
@@ -70,6 +71,8 @@ export default function GroupsClient({
   initialTab?: number;
   /** "v2" (GROUPS_V2_ENABLED, 14/10/2026): stile V2 — intestazione, schede a pillola, card 20px. */
   nextgen?: boolean | "v2";
+  /** Correzioni dal test UX (21/10/2026, PARENT_UX_FIX_ENABLED). false = come prima. */
+  uxFix?: boolean;
 }) {
   const router = useRouter();
   const accentBg = nextgen === "v2" ? "bg-trama-primary" : nextgen ? "bg-trama-violet" : "bg-sky";
@@ -89,6 +92,12 @@ export default function GroupsClient({
 
   async function handleCreate() {
     setError(null);
+    // Correzioni dal test UX (21/10/2026), UX-PARENT-015: un errore già
+    // noto nel form si dice subito, senza passare da "Creo…".
+    if (uxFix && !newName.trim()) {
+      setError("Inserisci un nome per il gruppo");
+      return;
+    }
     setSaving(true);
     const result = await createGroupAction(newName);
     setSaving(false);

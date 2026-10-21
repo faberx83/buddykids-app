@@ -53,6 +53,7 @@ export default function ProfileKidsSection({
   residenceCity = null,
   v2 = false,
   autoOpenSchoolKidId = null,
+  uxFix = false,
 }: {
   initialKids: Kid[];
   autoOpenAddKid?: boolean;
@@ -68,6 +69,10 @@ export default function ProfileKidsSection({
    *  Giulia" (Home, Planner) si arriva con la scheda di quel figlio aperta
    *  sulla scuola (?scuola=<id>). null = come prima. */
   autoOpenSchoolKidId?: string | null;
+  /** Correzioni dal test UX (21/10/2026, PARENT_UX_FIX_ENABLED), UX-PARENT-013/015:
+   *  ogni "Salva" dice cosa salva e conferma sul posto; il form del nuovo
+   *  figlio mostra tutti gli errori insieme. false = come prima. */
+  uxFix?: boolean;
 }) {
   const router = useRouter();
   const { start: startProgress, complete: completeProgress } = useGlobalActionProgress();
@@ -91,6 +96,8 @@ export default function ProfileKidsSection({
   const autoOpenKid = autoOpenSchoolKidId ? initialKids.find((k) => k.id === autoOpenSchoolKidId) ?? null : null;
   const [editingKidId, setEditingKidId] = useState<string | null>(autoOpenKid?.id ?? null);
   const [savingInterests, setSavingInterests] = useState(false);
+  // Correzioni dal test UX (21/10/2026): conferma sul posto ("Salvato") per ogni blocco.
+  const [savedBlock, setSavedBlock] = useState<{ kidId: string; block: "dati" | "interessi" | "scuola" } | null>(null);
   // §11 "EDIT CHILD PROFILE" — editing della sezione "Scuola e calendario",
   // indipendente dal pannello nome/data/genere/interessi sopra (stato
   // separato, cosi' aprire/chiudere l'uno non tocca l'altro).
@@ -148,6 +155,7 @@ export default function ProfileKidsSection({
       return;
     }
     setEditingSchoolKidId(null);
+    if (uxFix) setSavedBlock({ kidId, block: "scuola" });
     // §14: la modifica di Regione ri-valuta l'associazione con il
     // calendario disponibile — schoolProfiles arriva da un Server
     // Component (pagina Profilo), quindi un refresh (non un redirect)
@@ -196,6 +204,7 @@ export default function ProfileKidsSection({
       setDetailsError(result.error);
       return;
     }
+    if (uxFix) setSavedBlock({ kidId, block: "dati" });
     setKids((prev) =>
       prev.map((k) =>
         k.id === kidId
@@ -241,7 +250,10 @@ export default function ProfileKidsSection({
       await updateKidInterestsAction(kidId, kid.interests ?? []);
     }
     setSavingInterests(false);
-    setEditingKidId(null);
+    // Correzioni dal test UX (21/10/2026): con uxFix la scheda resta aperta
+    // (sotto c'è la scuola) e il salvataggio si conferma sul posto.
+    if (uxFix) setSavedBlock({ kidId, block: "interessi" });
+    else setEditingKidId(null);
   }
 
   return (
@@ -379,8 +391,9 @@ export default function ProfileKidsSection({
                 disabled={savingDetails}
                 className={`mb-3 ${saveBtn} ${accentBg} text-white disabled:opacity-60`}
               >
-                {savingDetails ? "Salvo…" : "Salva dati"}
+                {savingDetails ? "Salvo…" : uxFix ? "Salva nome e data" : "Salva dati"}
               </button>
+              {uxFix && savedBlock?.kidId === k.id && savedBlock.block === "dati" && <SavedTick text="Nome e data salvati" />}
 
               <div className="mb-1.5 text-[11px] text-ink-2">
                 Interessi — usati per suggerire le attività più adatte in Home
@@ -425,8 +438,9 @@ export default function ProfileKidsSection({
                 disabled={savingInterests}
                 className={`${saveBtn} ${accentBg} text-white disabled:opacity-60`}
               >
-                {savingInterests ? "Salvo…" : "Salva"}
+                {savingInterests ? "Salvo…" : uxFix ? "Salva interessi" : "Salva"}
               </button>
+              {uxFix && savedBlock?.kidId === k.id && savedBlock.block === "interessi" && <SavedTick text="Interessi salvati" />}
 
               {/* TRAMA — SCHOOL CALENDAR UX REFINEMENT (§11 "EDIT CHILD
                   PROFILE", 14/09/2026): sezione persistente "Scuola e
@@ -479,7 +493,7 @@ export default function ProfileKidsSection({
                           disabled={savingSchool}
                           className="rounded-md bg-trama-violet px-3.5 py-1.5 text-[11px] font-bold text-white disabled:opacity-60"
                         >
-                          {savingSchool ? "Salvo…" : "Salva"}
+                          {savingSchool ? "Salvo…" : uxFix ? "Salva scuola" : "Salva"}
                         </button>
                         <button
                           type="button"
@@ -492,6 +506,8 @@ export default function ProfileKidsSection({
                       </div>
                     </div>
                   ) : schoolProfiles[k.id] ? (
+                    <>
+                    {uxFix && savedBlock?.kidId === k.id && savedBlock.block === "scuola" && <SavedTick text="Scuola salvata" />}
                     <div className="flex items-center justify-between gap-2">
                       <div className="min-w-0">
                         <p className="truncate text-[12.5px] font-medium text-ink">
@@ -512,6 +528,7 @@ export default function ProfileKidsSection({
                         Modifica
                       </button>
                     </div>
+                    </>
                   ) : (
                     <div className="flex items-center justify-between gap-2">
                       <p className="text-[11.5px] text-ink-3">Calendario scolastico non impostato</p>
@@ -547,8 +564,19 @@ export default function ProfileKidsSection({
           schoolCalendarEnabled={schoolCalendarEnabled}
           residenceCity={residenceCity}
           v2={v2}
+          uxFix={uxFix}
         />
       )}
     </div>
+  );
+}
+
+// Correzioni dal test UX (21/10/2026), UX-PARENT-013: conferma sul posto.
+function SavedTick({ text }: { text: string }) {
+  return (
+    <p role="status" className="mb-3 -mt-1.5 flex items-center gap-1 text-[12.5px] font-semibold text-[#146B4F]">
+      <i className="ti ti-check text-[14px]" aria-hidden="true" />
+      {text}
+    </p>
   );
 }

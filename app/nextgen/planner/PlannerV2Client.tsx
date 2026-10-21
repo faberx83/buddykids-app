@@ -183,7 +183,7 @@ export default function PlannerV2Client({
   /** Ponti e vacanze dei prossimi mesi, uno per riga (Stagione a estate finita). */
   holidayPeriods?: HolidayPeriodRow[];
   /** Correzioni dal test UX (21/10/2026, PARENT_UX_FIX_ENABLED): figli con e senza scuola. null = come prima. */
-  parentUxFix?: { schoolCoverage: SchoolCoverage } | null;
+  parentUxFix?: { schoolCoverage: SchoolCoverage | null } | null;
   summerWeeks: SeasonWeek[];
   budget: BudgetSummary;
   seasonBudgetTarget: number | null;
@@ -590,6 +590,7 @@ export default function PlannerV2Client({
                   defaultDate={defaultDateForWeek(monday, todayIso)}
                   routineEnabled={weeklyRoutineEnabled}
                   placeSearchEnabled={placeSearchEnabled}
+                  uxFix={Boolean(parentUxFix)}
                 />
               </section>
             ) : null
@@ -627,6 +628,7 @@ export default function PlannerV2Client({
             defaultDate={defaultDateForWeek(monday, todayIso)}
             routineEnabled={weeklyRoutineEnabled}
             placeSearchEnabled={placeSearchEnabled}
+            uxFix={Boolean(parentUxFix)}
           />
         </section>
       )}

@@ -14,7 +14,8 @@ test.describe("TRAMA — pagine residue V2 [no browser]", () => {
   test("PV2-01 Un impegno: con v2 il modulo è un foglio dal basso, Indietro lo chiude, Salva sempre visibile", () => {
     const s = read("components/nextgen/ExternalPlannerItemsSection.tsx");
     expect(s).toContain('data-testid="impegno-sheet"');
-    expect(s).toContain("useCloseOnBack(true, onCancel);");
+    // 21/10/2026 (correzioni dal test UX): Indietro chiude sempre; con il flag tiene la bozza (onBack).
+    expect(s).toContain("useCloseOnBack(true, onBack ?? onCancel);");
     expect(s).toContain('{saving ? "Salvataggio…" : editing ? "Salva" : "Aggiungi al Planner"}');
     // Stesso salvataggio di prima: il foglio usa lo stato e l'invio di ItemForm.
     expect(s).toContain("onSubmit={handleSubmit}");

@@ -47,6 +47,41 @@ function formatDateRangeIt(startDate: string, endDate: string): string {
   return startDate === endDate ? fmt(startDate) : `${fmt(startDate)} – ${fmt(endDate)}`;
 }
 
+// TRAMA — CORREZIONI DAL TEST UX (21/10/2026), UX-PARENT-010: bozza del
+// foglio impegno in sessionStorage (solo questa scheda del browser, solo
+// finché non si salva o si scarta). Mai dati condivisi né letti da Claude.
+const IMPEGNO_DRAFT_PREFIX = "trama.impegnoDraft.";
+function readImpegnoDraft(key: string): ExternalPlannerItemInput | null {
+  try {
+    const raw = window.sessionStorage.getItem(IMPEGNO_DRAFT_PREFIX + key);
+    return raw ? (JSON.parse(raw) as ExternalPlannerItemInput) : null;
+  } catch {
+    return null;
+  }
+}
+function writeImpegnoDraft(key: string, input: ExternalPlannerItemInput) {
+  try {
+    window.sessionStorage.setItem(IMPEGNO_DRAFT_PREFIX + key, JSON.stringify(input));
+  } catch {
+    // bozza non salvata: nessun effetto sul resto
+  }
+}
+function clearImpegnoDraft(key: string) {
+  try {
+    window.sessionStorage.removeItem(IMPEGNO_DRAFT_PREFIX + key);
+  } catch {
+    // niente da fare
+  }
+}
+/** Cosa manca per salvare, nell'ordine dei campi. */
+export function missingImpegnoFields(input: Pick<ExternalPlannerItemInput, "title" | "kidIds" | "recurrence">): string[] {
+  const out: string[] = [];
+  if (!input.title.trim()) out.push("cosa");
+  if (input.kidIds.length === 0) out.push("per quale figlio");
+  if (input.recurrence && input.recurrence.weekdays.length === 0) out.push("i giorni della settimana");
+  return out;
+}
+
 function emptyInput(defaultDate?: string): ExternalPlannerItemInput {
   const today = defaultDate && /^\d{4}-\d{2}-\d{2}$/.test(defaultDate) ? defaultDate : new Date().toISOString().slice(0, 10);
   return {
@@ -91,11 +126,16 @@ function ItemForm({
   editing = false,
   routineEnabled = false,
   placeSearchEnabled = false,
+  draftKey = null,
 }: {
   kids: Kid[];
   initial: ExternalPlannerItemInput;
   onCancel: () => void;
   onSaved: (input: ExternalPlannerItemInput) => Promise<{ error?: string }>;
+  /** Correzioni dal test UX (21/10/2026, PARENT_UX_FIX_ENABLED), UX-PARENT-010:
+   *  chiave della bozza in questa scheda del browser. null = come prima (la X
+   *  chiude e scarta senza chiedere). */
+  draftKey?: string | null;
   /** 20/10/2026 — "Un impegno" V2: foglio dal basso (vedi ItemFormSheetV2). */
   v2?: boolean;
   editing?: boolean;
@@ -105,11 +145,36 @@ function ItemForm({
   placeSearchEnabled?: boolean;
 }) {
   // 20/10/2026 (V2): con un solo figlio è già scelto.
-  const [form, setForm] = useState<ExternalPlannerItemInput>(() =>
+  const [baseline] = useState<ExternalPlannerItemInput>(() =>
     v2 && !editing && initial.kidIds.length === 0 && kids.length === 1 ? { ...initial, kidIds: [kids[0].id] } : initial
   );
+  // Correzioni dal test UX (21/10/2026), UX-PARENT-010: una bozza lasciata
+  // con "Indietro" si ritrova riaprendo lo stesso impegno.
+  const [restoredDraft] = useState<ExternalPlannerItemInput | null>(() => (draftKey ? readImpegnoDraft(draftKey) : null));
+  const [form, setForm] = useState<ExternalPlannerItemInput>(() => restoredDraft ?? baseline);
+  const [showRestored, setShowRestored] = useState(Boolean(restoredDraft));
+  const [confirmDiscard, setConfirmDiscard] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const dirty = draftKey !== null && JSON.stringify(form) !== JSON.stringify(baseline);
+
+  /** X, sfondo, Esc, Annulla: con modifiche non salvate si chiede prima. */
+  function requestClose() {
+    if (!dirty) {
+      if (draftKey) clearImpegnoDraft(draftKey);
+      onCancel();
+      return;
+    }
+    setConfirmDiscard(true);
+  }
+  /** Indietro del telefono: la voce di cronologia è già consumata, quindi si chiude e la bozza resta. */
+  function closeKeepingDraft() {
+    if (draftKey) {
+      if (dirty) writeImpegnoDraft(draftKey, form);
+      else clearImpegnoDraft(draftKey);
+    }
+    onCancel();
+  }
 
   function toggleKid(kidId: string) {
     setForm((f) => ({
@@ -124,6 +189,7 @@ function ItemForm({
     const result = await onSaved(form);
     setSaving(false);
     if (result.error) setError(result.error);
+    else if (draftKey) clearImpegnoDraft(draftKey);
   }
 
   if (v2) {
@@ -138,8 +204,28 @@ function ItemForm({
         editing={editing}
         routineEnabled={routineEnabled}
         placeSearchEnabled={placeSearchEnabled}
-        onCancel={onCancel}
+        onCancel={draftKey ? requestClose : onCancel}
+        onBack={draftKey ? closeKeepingDraft : undefined}
         onSubmit={handleSubmit}
+        guard={
+          draftKey
+            ? {
+                showRestored,
+                onDiscardRestored: () => {
+                  clearImpegnoDraft(draftKey);
+                  setForm(baseline);
+                  setShowRestored(false);
+                },
+                confirmDiscard,
+                onKeepEditing: () => setConfirmDiscard(false),
+                onDiscard: () => {
+                  clearImpegnoDraft(draftKey);
+                  setConfirmDiscard(false);
+                  onCancel();
+                },
+              }
+            : null
+        }
       />
     );
   }
@@ -312,7 +398,9 @@ function ItemFormSheetV2({
   routineEnabled = false,
   placeSearchEnabled = false,
   onCancel,
+  onBack,
   onSubmit,
+  guard = null,
 }: {
   kids: Kid[];
   form: ExternalPlannerItemInput;
@@ -324,9 +412,19 @@ function ItemFormSheetV2({
   routineEnabled?: boolean;
   placeSearchEnabled?: boolean;
   onCancel: () => void;
+  /** Correzioni dal test UX (21/10/2026): Indietro del telefono, se diverso da onCancel. */
+  onBack?: () => void;
   onSubmit: () => void;
+  /** Correzioni dal test UX (21/10/2026), UX-PARENT-010: bozza ripresa e conferma prima di scartare. null = come prima. */
+  guard?: {
+    showRestored: boolean;
+    onDiscardRestored: () => void;
+    confirmDiscard: boolean;
+    onKeepEditing: () => void;
+    onDiscard: () => void;
+  } | null;
 }) {
-  useCloseOnBack(true, onCancel);
+  useCloseOnBack(true, onBack ?? onCancel);
   // 21/10/2026 — settimana tipo: si ripete nei giorni scelti, dentro il periodo Dal–Fino al.
   const repeating = Boolean(form.recurrence);
   function setRepeating(on: boolean) {
@@ -385,6 +483,14 @@ function ItemFormSheetV2({
         </div>
 
         <div className="no-scrollbar flex flex-1 flex-col gap-5 overflow-y-auto px-5 pb-4">
+          {guard?.showRestored && (
+            <div data-testid="impegno-draft-restored" className="flex items-center justify-between gap-3 rounded-[12px] bg-[#FFF8EB] px-3.5 py-2.5 text-[13px] text-[#5C3A00]">
+              <span>Abbiamo ripreso le modifiche che non avevi salvato.</span>
+              <button type="button" onClick={guard.onDiscardRestored} className="min-h-[36px] flex-shrink-0 font-semibold text-trama-accent-ink">
+                Scarta
+              </button>
+            </div>
+          )}
           <div>
             <label htmlFor="impegno-titolo" className={V2_LABEL}>
               Cosa
@@ -619,6 +725,40 @@ function ItemFormSheetV2({
             {saving ? "Salvataggio…" : editing ? "Salva" : "Aggiungi al Planner"}
           </button>
         </div>
+        {/* Correzioni dal test UX (21/10/2026), UX-PARENT-015: un pulsante
+            grigio da solo non dice cosa manca. */}
+        {guard && !saving && !canSave && (
+          <p data-testid="impegno-missing" className="-mt-1 px-5 pb-[calc(0.75rem+env(safe-area-inset-bottom))] text-[12.5px] text-ink-2">
+            Per salvare manca: {missingImpegnoFields(form).join(", ")}.
+          </p>
+        )}
+        {guard?.confirmDiscard && (
+          <div className="absolute inset-0 z-10 flex items-end rounded-t-3xl bg-[rgba(23,42,77,0.35)]">
+            <div role="alertdialog" aria-modal="true" aria-labelledby="impegno-discard-h" className="w-full rounded-t-3xl bg-white px-5 pb-[calc(1rem+env(safe-area-inset-bottom))] pt-5">
+              <h3 id="impegno-discard-h" className="font-poppins text-[17px] font-semibold text-ink">
+                Chiudere senza salvare?
+              </h3>
+              <p className="mt-1 text-[14px] text-ink-2">Le modifiche a questo impegno andranno perse.</p>
+              <div className="mt-4 flex gap-2">
+                <button
+                  type="button"
+                  onClick={guard.onDiscard}
+                  className="min-h-[52px] flex-1 rounded-[12px] border border-[#D9DDE5] bg-white px-4 text-[15px] font-semibold text-[#B3261E]"
+                >
+                  Scarta
+                </button>
+                <button
+                  type="button"
+                  onClick={guard.onKeepEditing}
+                  autoFocus
+                  className="min-h-[52px] flex-[2] rounded-[12px] bg-trama-primary px-4 text-[15px] font-semibold text-white active:bg-trama-primary-press"
+                >
+                  Continua a modificare
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </form>
     </div>
   );
@@ -634,6 +774,7 @@ export default function ExternalPlannerItemsSection({
   routineEnabled = false,
   placeSearchEnabled = false,
   collapsible = false,
+  uxFix = false,
 }: {
   items: ExternalPlannerItem[];
   kids: Kid[];
@@ -649,6 +790,8 @@ export default function ExternalPlannerItemsSection({
   placeSearchEnabled?: boolean;
   /** 21/10/2026 — release "planner-giorno": una scheda "I tuoi impegni · Gestisci" che si apre; il foglio "Nuovo impegno" funziona comunque. */
   collapsible?: boolean;
+  /** Correzioni dal test UX (21/10/2026, PARENT_UX_FIX_ENABLED): bozza protetta e "cosa manca" nel foglio V2. */
+  uxFix?: boolean;
 }) {
   const showToast = useNextgenToast();
   const [expanded, setExpanded] = useState(false);
@@ -792,6 +935,7 @@ export default function ExternalPlannerItemsSection({
             v2={v2}
             routineEnabled={routineEnabled}
             placeSearchEnabled={placeSearchEnabled}
+            draftKey={uxFix && v2 ? "nuovo" : null}
           />
         )}
       </div>
@@ -835,6 +979,7 @@ export default function ExternalPlannerItemsSection({
           v2={v2}
           routineEnabled={routineEnabled}
           placeSearchEnabled={placeSearchEnabled}
+          draftKey={uxFix && v2 ? "nuovo" : null}
         />
       )}
 
@@ -864,6 +1009,7 @@ export default function ExternalPlannerItemsSection({
                 editing
                 routineEnabled={routineEnabled || Boolean(item.recurrence)}
                 placeSearchEnabled={placeSearchEnabled}
+                draftKey={uxFix && v2 ? item.id : null}
               />
             );
           }

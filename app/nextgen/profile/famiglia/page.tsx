@@ -11,6 +11,7 @@ import { getParentAddresses } from "@/lib/data/addresses";
 import { getKidSchoolProfilesForParent } from "@/lib/data/school-calendar";
 import { getParentProfile } from "@/lib/data/profile";
 import { getExternalPlannerItemsForParent } from "@/lib/data/external-planner-items";
+import { PARENT_UX_FIX_FLAG } from "@/lib/nextgen/parent-ux-fix";
 
 // SPRINT CORRETTIVO (Fabrizio: "facciamo hub card se ha senso anche sulle
 // altre sezioni") — le 4 righe intere che prima stavano direttamente nel
@@ -37,12 +38,14 @@ export default async function FamigliaHubPage({
     resolveFeatureFlag({ flagName, userId: user.id, role: "parent", tenant: "family", correlationId: generateCorrelationId() }).catch(
       () => false
     );
-  const [v2, schoolCalendarEnabled, weeklyRoutineEnabled, externalEnabled, placeSearchEnabled] = await Promise.all([
+  const [v2, schoolCalendarEnabled, weeklyRoutineEnabled, externalEnabled, placeSearchEnabled, uxFix] = await Promise.all([
     flag("PROFILE_V2_ENABLED"),
     flag("SCHOOL_CALENDAR_INTELLIGENCE_ENABLED"),
     flag("WEEKLY_ROUTINE_ENABLED"),
     flag("EXTERNAL_PLANNER_ITEMS_ENABLED"),
     flag("PLACE_SEARCH_ENABLED"),
+    // Correzioni dal test UX (21/10/2026).
+    flag(PARENT_UX_FIX_FLAG),
   ]);
   if (!v2) return <FamigliaHubClient />;
 
@@ -92,6 +95,7 @@ export default async function FamigliaHubPage({
       schoolItems={schoolItems}
       todayIso={todayIso}
       placeSearchEnabled={placeSearchEnabled}
+      uxFix={uxFix}
     />
   );
 }

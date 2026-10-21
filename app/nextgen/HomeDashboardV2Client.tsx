@@ -120,6 +120,7 @@ export default function HomeDashboardV2Client({
   urgentAlert,
   inboxInput,
   schoolCoverage = null,
+  hideSharePlan = false,
   todayCheckins,
   summary,
   welcome,
@@ -148,6 +149,8 @@ export default function HomeDashboardV2Client({
   inboxInput: Omit<HomeInboxInput, "pushInactive">;
   /** Correzioni dal test UX (21/10/2026): figli con e senza scuola. null = come prima. */
   schoolCoverage?: SchoolCoverage | null;
+  /** Correzioni dal test UX (21/10/2026): piano ancora vuoto → niente "Condividi piano". */
+  hideSharePlan?: boolean;
   todayCheckins: TodayCheckin[];
   summary: SeasonSummaryModel | null;
   welcome: SeasonSummaryWelcome | null;
@@ -487,14 +490,17 @@ export default function HomeDashboardV2Client({
       )}
 
       {/* 8. AZIONI RAPIDE */}
-      <section aria-label="Azioni rapide" className={`grid gap-2 ${externalPlannerItemsEnabled ? "grid-cols-3" : "grid-cols-2"}`}>
+      <section
+        aria-label="Azioni rapide"
+        className={`grid gap-2 ${(externalPlannerItemsEnabled ? 1 : 0) + (hideSharePlan ? 0 : 1) + 1 === 3 ? "grid-cols-3" : "grid-cols-2"}`}
+      >
         {externalPlannerItemsEnabled && (
           <QuickAction href={NEW_EXTERNAL_ITEM_HREF} icon="ti-calendar-plus" label="Aggiungi impegno" />
         )}
         {/* "Scopri attività" (non "Cerca"): stessa parola della scheda Scopri e
             della pagina in cui porta — segnalazione di Fabrizio 14/10. */}
         <QuickAction href="/nextgen/search" icon="ti-search" label="Scopri attività" />
-        <QuickAction href="/nextgen/planner?mode=calendario" icon="ti-share" label="Condividi piano" />
+        {!hideSharePlan && <QuickAction href="/nextgen/planner?mode=calendario" icon="ti-share" label="Condividi piano" />}
       </section>
 
       {/* 9. BETA — "Dicci cosa ne pensi" (15/10/2026, sì di Fabrizio al

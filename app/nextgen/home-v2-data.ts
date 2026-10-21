@@ -290,6 +290,7 @@ export async function loadHomeV2Props({
     schoolCoverageModel = schoolCoverage(kidList, Object.keys(profiles));
     inboxInput.schoolMissingKids = schoolCoverageModel.missing;
   }
+  if (uxFixEnabled) inboxInput.noKidsYet = kidList.length === 0;
 
   // ── Riepilogo del periodo ──
   const activeBookings = bookings.filter((b) => b.status !== "cancelled");
@@ -419,6 +420,8 @@ export async function loadHomeV2Props({
     externalPlannerItemsEnabled: externalEnabled,
     navV2Enabled,
     schoolCoverage: schoolCoverageModel,
+    // Correzioni dal test UX (21/10/2026): "Condividi piano" solo quando c'è qualcosa da condividere.
+    hideSharePlan: uxFixEnabled && isNewFamily,
     activitiesAreMockFallback: isMockActivitiesArray(activities),
   };
 }

@@ -13,6 +13,7 @@ import { Kid, KidGender } from "@/lib/types";
 import { categories as interestOptions } from "@/lib/mock-data";
 import { interestIcon, isKidInterestOption } from "@/lib/nextgen/kid-visual";
 import ParentalDeclarationText from "@/components/legal/ParentalDeclarationText";
+import { newKidErrorSummary, validateNewKid, type NewKidField } from "@/lib/nextgen/parent-ux-fix";
 
 export default function AddKidForm({
   onAdded,
@@ -26,6 +27,7 @@ export default function AddKidForm({
   schoolCalendarEnabled = false,
   residenceCity = null,
   v2 = false,
+  uxFix = false,
 }: {
   onAdded: (kid: Kid) => void;
   onCancel: () => void;
@@ -33,6 +35,8 @@ export default function AddKidForm({
   residenceCity?: string | null;
   /** 15/10/2026 — stile V2 (Profilo V2 / La tua famiglia): campi alti, interessi con icona, niente emoji. */
   v2?: boolean;
+  /** Correzioni dal test UX (21/10/2026, PARENT_UX_FIX_ENABLED), UX-PARENT-015: errori tutti insieme, accanto al campo. */
+  uxFix?: boolean;
 }) {
   const inputCls = v2
     ? "min-h-[48px] rounded-[12px] border border-trama-line bg-white px-3.5 text-[16px] outline-none focus:border-trama-primary"
@@ -43,6 +47,8 @@ export default function AddKidForm({
   const [interests, setInterests] = useState<string[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  // Correzioni dal test UX (21/10/2026): errori per campo (solo con uxFix).
+  const [fieldErrors, setFieldErrors] = useState<Partial<Record<NewKidField, string>>>({});
   // §10: entrambi opzionali rispetto alla creazione — se Regione resta
   // vuota, nessun kid_school_profile viene creato, il salvataggio del
   // bambino prosegue comunque normalmente (mai un blocco).
@@ -70,6 +76,21 @@ export default function AddKidForm({
 
   async function handleSave() {
     setError(null);
+    if (uxFix) {
+      const errors = validateNewKid({
+        name,
+        birthDate,
+        declarationRequired,
+        declarationAccepted,
+        todayIso: new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Rome" }).format(new Date()),
+      });
+      setFieldErrors(Object.fromEntries(errors.map((e) => [e.field, e.message])));
+      if (errors.length > 0) {
+        setError(newKidErrorSummary(errors));
+        document.getElementById(`addkid-${errors[0].field}`)?.focus();
+        return;
+      }
+    }
     if (declarationRequired && !declarationAccepted) {
       setError("Devi confermare la dichiarazione di responsabilità genitoriale");
       return;
@@ -102,19 +123,25 @@ export default function AddKidForm({
     <div className={v2 ? "rounded-2xl border border-trama-line bg-white p-4" : "rounded-md border-[1.5px] border-[#E3F0FB] bg-sky-light/40 p-3"}>
       <div className="mb-2 grid grid-cols-2 gap-2">
         <input
+          id="addkid-name"
           value={name}
           onChange={(e) => setName(e.target.value)}
           placeholder="Nome"
-          className={`col-span-2 ${inputCls}`}
+          aria-invalid={Boolean(fieldErrors.name) || undefined}
+          className={`col-span-2 ${inputCls} ${fieldErrors.name ? "border-[#B3261E]" : ""}`}
         />
+        {fieldErrors.name && <p className="col-span-2 -mt-1 text-[12.5px] font-medium text-[#B3261E]">{fieldErrors.name}</p>}
         <label className="text-[11px] text-ink-2">
           Data di nascita
           <input
+            id="addkid-birthDate"
             type="date"
             value={birthDate}
             onChange={(e) => setBirthDate(e.target.value)}
-            className={`mt-1 w-full ${inputCls}`}
+            aria-invalid={Boolean(fieldErrors.birthDate) || undefined}
+            className={`mt-1 w-full ${inputCls} ${fieldErrors.birthDate ? "border-[#B3261E]" : ""}`}
           />
+          {fieldErrors.birthDate && <span className="mt-1 block text-[12.5px] font-medium text-[#B3261E]">{fieldErrors.birthDate}</span>}
         </label>
         <label className="text-[11px] text-ink-2">
           Genere (opzionale)
@@ -130,6 +157,12 @@ export default function AddKidForm({
           </select>
         </label>
       </div>
+      {/* Correzioni dal test UX (21/10/2026): la Home chiede "nome ed età", qui serve la data esatta: diciamo perché. */}
+      {uxFix && (
+        <p className="-mt-1 mb-2.5 text-[12px] leading-snug text-ink-2">
+          Ci serve la data di nascita per sapere l&apos;età giusta ogni anno e proporre attività adatte.
+        </p>
+      )}
 
       <div className="mb-2.5">
         <div className="mb-1.5 text-[11px] text-ink-2">
@@ -180,14 +213,19 @@ export default function AddKidForm({
       {declarationRequired && (
         <label className="mb-2.5 flex items-start gap-2 text-[11px] leading-snug text-ink-2">
           <input
+            id="addkid-declaration"
             type="checkbox"
             checked={declarationAccepted}
             onChange={(e) => setDeclarationAccepted(e.target.checked)}
             className="mt-0.5"
+            aria-invalid={Boolean(fieldErrors.declaration) || undefined}
             required
           />
           <ParentalDeclarationText kidName={name} />
         </label>
+      )}
+      {declarationRequired && fieldErrors.declaration && (
+        <p className="-mt-1.5 mb-2.5 text-[12.5px] font-medium text-[#B3261E]">{fieldErrors.declaration}</p>
       )}
 
       {/* TRAMA — SCHOOL CALENDAR UX REFINEMENT (§10, 14/09/2026): sezione
@@ -236,7 +274,11 @@ export default function AddKidForm({
         </div>
       )}
 
-      {error && <p className="mb-2 text-xs font-medium text-orange">{error}</p>}
+      {error && (
+        <p role={uxFix ? "alert" : undefined} className={uxFix ? "mb-2 text-[13px] font-medium text-[#B3261E]" : "mb-2 text-xs font-medium text-orange"}>
+          {error}
+        </p>
+      )}
       <div className="flex gap-2">
         <button
           type="button"
