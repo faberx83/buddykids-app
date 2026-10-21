@@ -954,6 +954,32 @@ export const FEATURE_CATALOG: FeatureCatalogEntry[] = [
     releaseEligible: true,
   },
   {
+    // TRAMA — RICERCA LUOGHI (21/10/2026). NEW: route /api/places/search
+    // (proxy verso Photon/OpenStreetMap, nessuna chiave) + campo
+    // PlaceAutocomplete. Coordinate salvate in source_metadata.place.
+    key: "place_search",
+    label: "Ricerca luoghi — nome della scuola o del posto con indirizzo",
+    area: "parent",
+    status: "INTERNAL_PREVIEW",
+    flagName: "PLACE_SEARCH_ENABLED",
+    description:
+      "Scrivi il nome della scuola o del posto (palestra, piscina…) e TRAMA propone nome e indirizzo: nel 'Dove' del " +
+      "foglio 'Nuovo impegno' e nel nome della scuola in La tua famiglia. Si può sempre scrivere a mano.",
+    sourceFiles: [
+      "lib/places/search.ts",
+      "app/api/places/search/route.ts",
+      "components/nextgen/PlaceAutocomplete.tsx",
+      "components/nextgen/ExternalPlannerItemsSection.tsx",
+      "components/nextgen/SchoolHoursBlock.tsx",
+    ],
+    note:
+      "Fornitore: Photon (komoot, Germania) su dati OpenStreetMap, gratuito e senza chiave, uso 'ragionevole'. Lo " +
+      "chiama solo il server: arriva il testo cercato, mai chi cerca. Risposte in cache. Attribuzione " +
+      "'© OpenStreetMap' sotto i suggerimenti. Da valutare con il legale se citarlo nell'informativa.",
+    riskLevel: "low",
+    releaseEligible: true,
+  },
+  {
     // TRAMA — SETTIMANA TIPO, FASE A (21/10/2026). ADAPT: external_planner_items
     // usa recurrence_rule (jsonb già nello schema, mai usata) e
     // source_metadata.role="school"; nessuna tabella né colonna nuova.

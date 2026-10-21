@@ -129,7 +129,9 @@ test.describe("TRAMA — Settimana tipo [no browser]", () => {
     const data = read("lib/data/external-planner-items.ts");
     expect(data).toContain("recurrence_rule, source_metadata, external_planner_item_kids ( kid_id )");
     expect(data).toContain("recurrence_rule: serializeRecurrence(input.recurrence),");
-    expect(data).toContain("...(input.isSchool ? { source_metadata: { role: SCHOOL_ROLE } } : {}),");
+    // 21/10/2026 (ricerca luoghi): il ruolo "scuola" passa da sourceMetadataFor, insieme al luogo.
+    expect(data).toContain("...(input.isSchool || input.place ? { source_metadata: sourceMetadataFor(input) } : {}),");
+    expect(data).toContain("if (input.isSchool) meta.role = SCHOOL_ROLE;");
     expect(data).toContain("...(input.recurrence !== undefined ? { recurrence_rule: serializeRecurrence(input.recurrence) } : {}),");
     expect(FEATURE_FLAG_REGISTRY.WEEKLY_ROUTINE_ENABLED.defaultValue).toBe(false);
     expect(FEATURE_CATALOG.find((f) => f.key === "weekly_routine")?.releaseEligible).toBe(true);

@@ -33,8 +33,14 @@ export interface ExternalPlannerItemInput {
    * flussi di prima), null = nessuna ricorrenza.
    */
   recurrence?: WeeklyRecurrence | null;
-  /** 21/10/2026 — è l'orario della scuola (solo alla creazione). */
+  /** 21/10/2026 — è l'orario della scuola. */
   isSchool?: boolean;
+  /**
+   * 21/10/2026 — ricerca luoghi: coordinate del posto scelto dai
+   * suggerimenti (source_metadata.place). undefined = non toccare, null =
+   * scritto a mano (nessuna coordinata).
+   */
+  place?: { lat: number; lng: number } | null;
 }
 
 export interface ValidationResult {

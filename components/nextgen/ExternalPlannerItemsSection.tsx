@@ -30,6 +30,7 @@ import { useNextgenToast } from "@/components/nextgen/NextgenToastProvider";
 import KidName from "@/components/nextgen/KidName";
 import { useCloseOnBack } from "@/lib/nextgen/use-close-on-back";
 import { isoWeekday, mondayOfIso, recurrenceLabel, schoolYearRange, WEEKDAY_LABELS_IT } from "@/lib/planner/recurrence";
+import PlaceAutocomplete from "@/components/nextgen/PlaceAutocomplete";
 
 const KIND_LABEL: Record<ExternalPlannerItemKind, string> = {
   activity: "Attività organizzata",
@@ -89,6 +90,7 @@ function ItemForm({
   v2 = false,
   editing = false,
   routineEnabled = false,
+  placeSearchEnabled = false,
 }: {
   kids: Kid[];
   initial: ExternalPlannerItemInput;
@@ -99,6 +101,8 @@ function ItemForm({
   editing?: boolean;
   /** 21/10/2026 — release "settimana-tipo": "Si ripete ogni settimana". */
   routineEnabled?: boolean;
+  /** 21/10/2026 — release "ricerca-luoghi": suggerimenti nel campo "Dove". */
+  placeSearchEnabled?: boolean;
 }) {
   // 20/10/2026 (V2): con un solo figlio è già scelto.
   const [form, setForm] = useState<ExternalPlannerItemInput>(() =>
@@ -133,6 +137,7 @@ function ItemForm({
         error={error}
         editing={editing}
         routineEnabled={routineEnabled}
+        placeSearchEnabled={placeSearchEnabled}
         onCancel={onCancel}
         onSubmit={handleSubmit}
       />
@@ -305,6 +310,7 @@ function ItemFormSheetV2({
   error,
   editing,
   routineEnabled = false,
+  placeSearchEnabled = false,
   onCancel,
   onSubmit,
 }: {
@@ -316,6 +322,7 @@ function ItemFormSheetV2({
   error: string | null;
   editing: boolean;
   routineEnabled?: boolean;
+  placeSearchEnabled?: boolean;
   onCancel: () => void;
   onSubmit: () => void;
 }) {
@@ -556,12 +563,14 @@ function ItemFormSheetV2({
             <label htmlFor="impegno-luogo" className={V2_LABEL}>
               Dove <span className="font-normal text-ink-2">(facoltativo)</span>
             </label>
-            <input
+            {/* 21/10/2026 — ricerca luoghi: scrivi il nome del posto e scegli il suggerimento (nome + indirizzo). */}
+            <PlaceAutocomplete
               id="impegno-luogo"
-              type="text"
+              enabled={placeSearchEnabled}
               value={form.location ?? ""}
-              onChange={(e) => setForm((f) => ({ ...f, location: e.target.value || null }))}
-              placeholder="Es. Palestra di via Rossi"
+              onChange={(text) => setForm((f) => ({ ...f, location: text || null, ...(f.place ? { place: null } : {}) }))}
+              onPick={(p) => setForm((f) => ({ ...f, place: { lat: p.lat, lng: p.lng } }))}
+              placeholder={placeSearchEnabled ? "Es. Palestra Lamennais, Milano" : "Es. Palestra di via Rossi"}
               className={V2_INPUT}
             />
           </div>
@@ -617,6 +626,7 @@ export default function ExternalPlannerItemsSection({
   v2 = false,
   defaultDate,
   routineEnabled = false,
+  placeSearchEnabled = false,
 }: {
   items: ExternalPlannerItem[];
   kids: Kid[];
@@ -628,6 +638,8 @@ export default function ExternalPlannerItemsSection({
   v2?: boolean;
   /** 21/10/2026 — release "settimana-tipo". */
   routineEnabled?: boolean;
+  /** 21/10/2026 — release "ricerca-luoghi". */
+  placeSearchEnabled?: boolean;
 }) {
   const showToast = useNextgenToast();
   const [mode, setMode] = useState<"idle" | "creating" | { editing: string }>("idle");
@@ -764,6 +776,7 @@ export default function ExternalPlannerItemsSection({
           onSaved={handleCreate}
           v2={v2}
           routineEnabled={routineEnabled}
+          placeSearchEnabled={placeSearchEnabled}
         />
       )}
 
@@ -792,6 +805,7 @@ export default function ExternalPlannerItemsSection({
                 v2={v2}
                 editing
                 routineEnabled={routineEnabled || Boolean(item.recurrence)}
+                placeSearchEnabled={placeSearchEnabled}
               />
             );
           }

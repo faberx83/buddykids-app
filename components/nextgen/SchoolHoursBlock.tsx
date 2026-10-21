@@ -18,9 +18,15 @@ import {
 } from "@/app/actions/external-planner-items";
 import { mondayOfIso, recurrenceLabel, schoolYearRange, WEEKDAY_LABELS_IT, type WeeklyRecurrence } from "@/lib/planner/recurrence";
 import type { ExternalPlannerItemInput } from "@/lib/planner/external-planner-items-core";
+import PlaceAutocomplete from "@/components/nextgen/PlaceAutocomplete";
 
 export interface SchoolHoursItem {
   id: string;
+  /** Nome della scuola ("Scuola" se non indicato). */
+  title: string;
+  /** Indirizzo della scuola, se noto. */
+  location: string | null;
+  place: { lat: number; lng: number } | null;
   kidIds: string[];
   startTime: string | null;
   endTime: string | null;
@@ -39,10 +45,13 @@ export default function SchoolHoursBlock({
   kids,
   items,
   todayIso,
+  placeSearchEnabled = false,
 }: {
   kids: { id: string; name: string }[];
   items: SchoolHoursItem[];
   todayIso: string;
+  /** 21/10/2026 — release "ricerca-luoghi": nome della scuola con suggerimenti e indirizzo. */
+  placeSearchEnabled?: boolean;
 }) {
   const [editing, setEditing] = useState<string | null>(null);
   if (kids.length === 0) return null;
@@ -62,14 +71,14 @@ export default function SchoolHoursBlock({
           return (
             <li key={kid.id}>
               {editing === kid.id ? (
-                <SchoolHoursForm kid={kid} item={item} todayIso={todayIso} onDone={() => setEditing(null)} />
+                <SchoolHoursForm kid={kid} item={item} todayIso={todayIso} placeSearchEnabled={placeSearchEnabled} onDone={() => setEditing(null)} />
               ) : (
                 <div className="flex min-h-[60px] items-center gap-3 px-4 py-3">
                   <span className="flex min-w-0 flex-1 flex-col">
                     <span className="text-[15px] font-semibold text-ink">{kid.name}</span>
                     <span className="text-[13px] text-ink-2">
                       {item
-                        ? `${(recurrenceLabel(item.recurrence) ?? "").replace(/^./, (c) => c.toUpperCase())} · ${hhmm(item.startTime)}–${hhmm(item.endTime)}`
+                        ? `${item.title && item.title !== "Scuola" ? `${item.title} · ` : ""}${(recurrenceLabel(item.recurrence) ?? "").replace(/^./, (c) => c.toUpperCase())} · ${hhmm(item.startTime)}–${hhmm(item.endTime)}`
                         : "Non ancora impostato"}
                     </span>
                   </span>
@@ -94,13 +103,18 @@ function SchoolHoursForm({
   kid,
   item,
   todayIso,
+  placeSearchEnabled,
   onDone,
 }: {
   kid: { id: string; name: string };
   item: SchoolHoursItem | null;
   todayIso: string;
+  placeSearchEnabled: boolean;
   onDone: () => void;
 }) {
+  const [schoolName, setSchoolName] = useState(item && item.title !== "Scuola" ? item.title : "");
+  const [address, setAddress] = useState(item?.location ?? "");
+  const [place, setPlace] = useState<{ lat: number; lng: number } | null>(item?.place ?? null);
   const router = useRouter();
   const showToast = useNextgenToast();
   const [entry, setEntry] = useState(hhmm(item?.startTime ?? null) || "08:30");
@@ -119,16 +133,17 @@ function SchoolHoursForm({
     const year = schoolYearRange(todayIso);
     const input: ExternalPlannerItemInput = {
       kind: "commitment",
-      title: "Scuola",
+      title: schoolName.trim() || "Scuola",
       startDate: year.startDate,
       endDate: year.endDate,
       allDay: false,
       startTime: entry,
       endTime: exit,
-      location: null,
+      location: address.trim() || null,
       notes: null,
       externalUrl: null,
       kidIds: [kid.id],
+      place,
       recurrence: { freq: "weekly", weekdays, interval: 1, anchor: mondayOfIso(year.startDate) },
       isSchool: true,
     };
@@ -154,6 +169,40 @@ function SchoolHoursForm({
   return (
     <div className="flex flex-col gap-3.5 px-4 py-4" data-testid="school-hours-form">
       <span className="text-[15px] font-semibold text-ink">{kid.name}</span>
+      <div>
+        <label htmlFor={`scuola-nome-${kid.id}`} className="mb-1 block text-[12.5px] text-ink-2">
+          Nome della scuola <span className="text-ink-3">(facoltativo)</span>
+        </label>
+        <PlaceAutocomplete
+          id={`scuola-nome-${kid.id}`}
+          kind="school"
+          enabled={placeSearchEnabled}
+          value={schoolName}
+          onChange={(text) => {
+            setSchoolName(text);
+            setPlace(null);
+          }}
+          pickText={(p) => p.name}
+          onPick={(p) => {
+            setAddress(p.address);
+            setPlace({ lat: p.lat, lng: p.lng });
+          }}
+          placeholder={placeSearchEnabled ? "Es. Scuola primaria Pizzigoni" : "Es. Scuola primaria"}
+          className={INPUT}
+        />
+        {(address || placeSearchEnabled) && (
+          <input
+            aria-label="Indirizzo della scuola"
+            value={address}
+            onChange={(e) => {
+              setAddress(e.target.value);
+              setPlace(null);
+            }}
+            placeholder="Indirizzo"
+            className={`${INPUT} mt-2`}
+          />
+        )}
+      </div>
       <div className="grid grid-cols-2 gap-3">
         <label className="block">
           <span className="mb-1 block text-[12.5px] text-ink-2">Entrata</span>
