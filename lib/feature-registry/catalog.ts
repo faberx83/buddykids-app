@@ -1008,6 +1008,32 @@ export const FEATURE_CATALOG: FeatureCatalogEntry[] = [
     releaseEligible: true,
   },
   {
+    // TRAMA — PLANNER UN GIORNO ALLA VOLTA (21/10/2026). ADAPT della vista
+    // Settimana del Planner V2 (stesso modello buildWeekModel, stesso foglio
+    // AssignSheet); NEW solo la presentazione (PlannerDayFocus) e la logica
+    // pura della catena (lib/nextgen/planner-day.ts). Nessun dato nuovo.
+    key: "planner_day_view",
+    label: "Planner — un giorno alla volta",
+    area: "parent",
+    status: "INTERNAL_PREVIEW",
+    flagName: "PLANNER_DAY_VIEW_ENABLED",
+    description:
+      "Vista Settimana del Planner: striscia dei giorni in alto (resta visibile mentre scorri), il giorno scelto con, " +
+      "per ogni figlio, entrata e uscita da scuola, attività e ritiro in ordine di orario; andata e ritorno sul " +
+      "passaggio, con un tocco per assegnarli. 'I tuoi impegni' diventa una scheda con Gestisci.",
+    sourceFiles: [
+      "lib/nextgen/planner-day.ts",
+      "components/nextgen/PlannerDayFocus.tsx",
+      "app/nextgen/planner/PlannerV2Client.tsx",
+      "components/nextgen/ExternalPlannerItemsSection.tsx",
+    ],
+    note:
+      "Un'andata e un ritorno per figlio e giorno (modello attuale): l'andata va sul primo passaggio, il ritorno su " +
+      "'Ritiro' dopo l'ultimo impegno. Passaggi per singolo orario (es. uscita da scuola) con la Fase B.",
+    riskLevel: "low",
+    releaseEligible: true,
+  },
+  {
     // TRAMA — CHI ACCOMPAGNA PIÙ VELOCE (20/10/2026). ADAPT del foglio "Chi
     // accompagna" del Planner V2 (AssignSheet) + NEW piccola: azione per più
     // giorni (setResponsibilityForDatesAction, stessa tabella

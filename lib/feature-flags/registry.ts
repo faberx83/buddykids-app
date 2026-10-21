@@ -329,6 +329,16 @@ export const FEATURE_FLAG_REGISTRY = {
     defaultValue: false,
     allowedScopes: ["global", "environment", "user", "role", "cohort"],
   },
+  // TRAMA — PLANNER UN GIORNO ALLA VOLTA (21/10/2026), release "planner-giorno".
+  PLANNER_DAY_VIEW_ENABLED: {
+    name: "PLANNER_DAY_VIEW_ENABLED",
+    description:
+      "Planner V2, vista Settimana: un giorno alla volta (striscia dei giorni che resta in alto) e per ogni figlio la " +
+      "giornata come catena di passaggi, con chi accompagna sul passaggio. Gli impegni aggiunti a mano vanno nella " +
+      "scheda 'I tuoi impegni'. Default false: resta la lista dei sette giorni.",
+    defaultValue: false,
+    allowedScopes: ["global", "environment", "user", "role", "cohort"],
+  },
   // TRAMA — CHI ACCOMPAGNA PIÙ VELOCE (20/10/2026), release "chi-accompagna-veloce".
   CHI_ACCOMPAGNA_PLUS_ENABLED: {
     name: "CHI_ACCOMPAGNA_PLUS_ENABLED",

@@ -319,6 +319,18 @@ export const RELEASE_CATALOG: ReleaseCatalogEntry[] = [
     notes: "Creata il 21/10/2026. Ripiego: flag spento = niente opzioni nuove; gli impegni ricorrenti già creati restano nei loro giorni.",
   },
   {
+    // TRAMA — PLANNER UN GIORNO ALLA VOLTA (21/10/2026): versione A delle anteprime.
+    id: "planner-giorno",
+    label: "TRAMA — Planner, un giorno alla volta",
+    shortDescription: "La Settimana del Planner un giorno alla volta: per ogni figlio la giornata come catena di passaggi, con chi accompagna.",
+    targetAudience: ["parent"],
+    featureKeys: ["planner_day_view"],
+    knownLimitations: [
+      "planner_day_view: un'andata e un ritorno per figlio e giorno; l'uscita da scuola non ha ancora un suo passaggio (Fase B).",
+    ],
+    notes: "Creata il 21/10/2026. Ripiego: flag spento = la lista dei sette giorni di prima.",
+  },
+  {
     // TRAMA — CHI ACCOMPAGNA PIÙ VELOCE (20/10/2026).
     id: "chi-accompagna-veloce",
     label: "TRAMA — Chi accompagna più veloce",

@@ -633,6 +633,7 @@ export default function ExternalPlannerItemsSection({
   defaultDate,
   routineEnabled = false,
   placeSearchEnabled = false,
+  collapsible = false,
 }: {
   items: ExternalPlannerItem[];
   kids: Kid[];
@@ -646,8 +647,11 @@ export default function ExternalPlannerItemsSection({
   routineEnabled?: boolean;
   /** 21/10/2026 — release "ricerca-luoghi". */
   placeSearchEnabled?: boolean;
+  /** 21/10/2026 — release "planner-giorno": una scheda "I tuoi impegni · Gestisci" che si apre; il foglio "Nuovo impegno" funziona comunque. */
+  collapsible?: boolean;
 }) {
   const showToast = useNextgenToast();
+  const [expanded, setExpanded] = useState(false);
   const [mode, setMode] = useState<"idle" | "creating" | { editing: string }>("idle");
   // FAMILY-FIRST BETA PASS (07/10/2026): arrivando da "Aggiungilo al tuo
   // Planner" (Scopri senza risultati / Home) il modulo è già aperto.
@@ -756,10 +760,55 @@ export default function ExternalPlannerItemsSection({
     showToast("Impegno rimosso dal Planner.");
   }
 
+  if (collapsible && !expanded && (mode === "idle" || mode === "creating")) {
+    const names = Array.from(new Set(sorted.map((i) => i.title)));
+    const detail =
+      names.length === 0
+        ? "Ancora nessuno: aggiungi sport, musica, feste e visite"
+        : names.length <= 2
+          ? names.join(" e ")
+          : `${names.slice(0, 2).join(", ")} e altri ${names.length - 2}`;
+    return (
+      <div id="impegni" className="scroll-mt-20">
+        <button
+          type="button"
+          onClick={() => (names.length === 0 ? setMode("creating") : setExpanded(true))}
+          className="flex w-full items-center gap-3 rounded-2xl border border-trama-line bg-white px-4 py-3.5 text-left active:scale-[0.99]"
+          data-testid="impegni-card"
+        >
+          <span className="flex min-w-0 flex-1 flex-col gap-px">
+            <span className="text-[15px] font-semibold text-ink">{title}</span>
+            <span className="truncate text-[12.5px] text-ink-2">{detail}</span>
+          </span>
+          <span className="flex-shrink-0 text-[13.5px] font-semibold text-trama-accent-ink">{names.length === 0 ? "Aggiungi" : "Gestisci"} ›</span>
+        </button>
+        {mode === "creating" && (
+          <ItemForm
+            key={defaultDate ?? "oggi"}
+            kids={kids}
+            initial={emptyInput(defaultDate)}
+            onCancel={() => setMode("idle")}
+            onSaved={handleCreate}
+            v2={v2}
+            routineEnabled={routineEnabled}
+            placeSearchEnabled={placeSearchEnabled}
+          />
+        )}
+      </div>
+    );
+  }
+
   return (
     <div id="impegni" className="mb-4 scroll-mt-20">
       <div className="mb-2.5 flex items-center justify-between">
-        <div className={v2 ? "font-poppins text-[17px] font-semibold text-ink" : "font-poppins text-sm font-bold text-ink"}>{title}</div>
+        <div className="flex items-baseline gap-2">
+          <div className={v2 ? "font-poppins text-[17px] font-semibold text-ink" : "font-poppins text-sm font-bold text-ink"}>{title}</div>
+          {collapsible && (
+            <button type="button" onClick={() => setExpanded(false)} className="min-h-[36px] px-1 text-[13px] font-semibold text-trama-accent-ink">
+              Riduci
+            </button>
+          )}
+        </div>
         {mode === "idle" && (
           <button
             type="button"
