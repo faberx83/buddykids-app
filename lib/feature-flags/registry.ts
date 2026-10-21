@@ -310,6 +310,15 @@ export const FEATURE_FLAG_REGISTRY = {
     defaultValue: false,
     allowedScopes: ["global", "environment", "user", "role", "cohort"],
   },
+  // TRAMA — RICERCA LUOGHI (21/10/2026), release "ricerca-luoghi".
+  PLACE_SEARCH_ENABLED: {
+    name: "PLACE_SEARCH_ENABLED",
+    description:
+      "Suggerimenti mentre scrivi il nome di una scuola o di un posto (nome + indirizzo, dati OpenStreetMap via Photon, " +
+      "chiamato dal nostro server) nel 'Dove' degli impegni e nel nome della scuola. Default false: campi di testo normali.",
+    defaultValue: false,
+    allowedScopes: ["global", "environment", "user", "role", "cohort"],
+  },
   // TRAMA — SETTIMANA TIPO (21/10/2026), release "settimana-tipo".
   WEEKLY_ROUTINE_ENABLED: {
     name: "WEEKLY_ROUTINE_ENABLED",

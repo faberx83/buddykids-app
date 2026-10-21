@@ -151,6 +151,7 @@ export default function PlannerV2Client({
   assignPlusEnabled = false,
   partnerOnTrama = false,
   weeklyRoutineEnabled = false,
+  placeSearchEnabled = false,
   showDiagnostics = false,
   calendarExportEnabled,
   calendarExportItems,
@@ -192,6 +193,8 @@ export default function PlannerV2Client({
   partnerOnTrama?: boolean;
   /** 21/10/2026 — release "settimana-tipo" (WEEKLY_ROUTINE_ENABLED). */
   weeklyRoutineEnabled?: boolean;
+  /** 21/10/2026 — release "ricerca-luoghi" (PLACE_SEARCH_ENABLED). */
+  placeSearchEnabled?: boolean;
   showDiagnostics?: boolean;
   calendarExportEnabled: boolean;
   calendarExportItems: PlannerCalendarItemForIcs[];
@@ -589,6 +592,7 @@ export default function PlannerV2Client({
             v2
             defaultDate={defaultDateForWeek(monday, todayIso)}
             routineEnabled={weeklyRoutineEnabled}
+            placeSearchEnabled={placeSearchEnabled}
           />
         </section>
       )}

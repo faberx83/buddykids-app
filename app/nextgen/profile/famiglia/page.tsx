@@ -37,11 +37,12 @@ export default async function FamigliaHubPage({
     resolveFeatureFlag({ flagName, userId: user.id, role: "parent", tenant: "family", correlationId: generateCorrelationId() }).catch(
       () => false
     );
-  const [v2, schoolCalendarEnabled, weeklyRoutineEnabled, externalEnabled] = await Promise.all([
+  const [v2, schoolCalendarEnabled, weeklyRoutineEnabled, externalEnabled, placeSearchEnabled] = await Promise.all([
     flag("PROFILE_V2_ENABLED"),
     flag("SCHOOL_CALENDAR_INTELLIGENCE_ENABLED"),
     flag("WEEKLY_ROUTINE_ENABLED"),
     flag("EXTERNAL_PLANNER_ITEMS_ENABLED"),
+    flag("PLACE_SEARCH_ENABLED"),
   ]);
   if (!v2) return <FamigliaHubClient />;
 
@@ -60,7 +61,16 @@ export default async function FamigliaHubPage({
     weeklyRoutineEnabled && externalEnabled
       ? (await getExternalPlannerItemsForParent().catch(() => []))
           .filter((i) => i.isSchool)
-          .map((i) => ({ id: i.id, kidIds: i.kidIds, startTime: i.startTime, endTime: i.endTime, recurrence: i.recurrence }))
+          .map((i) => ({
+            id: i.id,
+            title: i.title,
+            location: i.location,
+            place: i.place,
+            kidIds: i.kidIds,
+            startTime: i.startTime,
+            endTime: i.endTime,
+            recurrence: i.recurrence,
+          }))
       : null;
   const todayIso = new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Rome" }).format(new Date());
 
@@ -79,6 +89,7 @@ export default async function FamigliaHubPage({
       addresses={addresses}
       schoolItems={schoolItems}
       todayIso={todayIso}
+      placeSearchEnabled={placeSearchEnabled}
     />
   );
 }

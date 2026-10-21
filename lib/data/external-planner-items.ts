@@ -72,6 +72,8 @@ export interface ExternalPlannerItem {
   recurrence: WeeklyRecurrence | null;
   /** 21/10/2026 — orario della scuola (source_metadata.role = "school"). */
   isSchool: boolean;
+  /** 21/10/2026 — coordinate del posto, se scelto dai suggerimenti. */
+  place: { lat: number; lng: number } | null;
 }
 
 // ─────────────────────────────────────────────────────────────────────────
@@ -99,6 +101,23 @@ interface RawItemRow {
   source_metadata?: unknown;
 }
 
+// 21/10/2026: source_metadata dei nostri impegni — ruolo "scuola" e/o luogo.
+function sourceMetadataFor(input: Pick<ExternalPlannerItemInput, "isSchool" | "place">): Record<string, unknown> | null {
+  const meta: Record<string, unknown> = {};
+  if (input.isSchool) meta.role = SCHOOL_ROLE;
+  if (input.place && Number.isFinite(input.place.lat) && Number.isFinite(input.place.lng)) {
+    meta.place = { lat: Number(input.place.lat.toFixed(6)), lng: Number(input.place.lng.toFixed(6)) };
+  }
+  return Object.keys(meta).length > 0 ? meta : null;
+}
+
+function placeFromMetadata(meta: unknown): { lat: number; lng: number } | null {
+  const p = (meta as { place?: { lat?: unknown; lng?: unknown } } | null)?.place;
+  const lat = Number(p?.lat);
+  const lng = Number(p?.lng);
+  return p && Number.isFinite(lat) && Number.isFinite(lng) ? { lat, lng } : null;
+}
+
 function mapRow(row: RawItemRow): ExternalPlannerItem {
   return {
     id: row.id,
@@ -121,6 +140,7 @@ function mapRow(row: RawItemRow): ExternalPlannerItem {
     updatedAt: row.updated_at,
     recurrence: parseRecurrence(row.recurrence_rule),
     isSchool: isSchoolMetadata(row.source_metadata),
+    place: placeFromMetadata(row.source_metadata),
   };
 }
 
@@ -241,7 +261,7 @@ export async function createExternalPlannerItem(
       organizer_snapshot: source.organizerSnapshot ?? null,
       // 21/10/2026 — settimana tipo (lib/planner/recurrence.ts).
       recurrence_rule: serializeRecurrence(input.recurrence),
-      ...(input.isSchool ? { source_metadata: { role: SCHOOL_ROLE } } : {}),
+      ...(input.isSchool || input.place ? { source_metadata: sourceMetadataFor(input) } : {}),
       // coverage_behavior: colonna lasciata al default SQL ('none') di
       // proposito — nessuna scrittura esplicita da questo data layer, vedi
       // commento di testa del file.
@@ -299,6 +319,8 @@ export async function updateExternalPlannerItem(itemId: string, input: ExternalP
       external_url: input.externalUrl || null,
       // 21/10/2026: la ricorrenza si cambia solo se il modulo la manda.
       ...(input.recurrence !== undefined ? { recurrence_rule: serializeRecurrence(input.recurrence) } : {}),
+      // 21/10/2026 — luogo scelto dai suggerimenti (o tolto se riscritto a mano).
+      ...(input.place !== undefined ? { source_metadata: sourceMetadataFor(input) } : {}),
     })
     .eq("id", itemId)
     .eq("parent_id", user.id);

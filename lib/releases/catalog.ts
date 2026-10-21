@@ -293,6 +293,19 @@ export const RELEASE_CATALOG: ReleaseCatalogEntry[] = [
     notes: "Creata il 20/10/2026. Ripiego: flag spento = niente opzione e niente invii, anche per chi l'aveva attivato.",
   },
   {
+    // TRAMA — RICERCA LUOGHI (21/10/2026).
+    id: "ricerca-luoghi",
+    label: "TRAMA — Ricerca luoghi",
+    shortDescription: "Nome della scuola o del posto → indirizzo suggerito (OpenStreetMap), negli impegni e nell'orario della scuola.",
+    targetAudience: ["parent"],
+    featureKeys: ["place_search"],
+    knownLimitations: [
+      "place_search: dipende dai dati OpenStreetMap — una scuola o una palestra non mappata non compare (si scrive a mano).",
+      "place_search: servizio pubblico Photon con limite di uso 'ragionevole'; con molti utenti conviene un'istanza nostra.",
+    ],
+    notes: "Creata il 21/10/2026. Ripiego: flag spento = campi di testo normali.",
+  },
+  {
     // TRAMA — SETTIMANA TIPO (21/10/2026), Fase A dell'iniziativa.
     id: "settimana-tipo",
     label: "TRAMA — Settimana tipo",

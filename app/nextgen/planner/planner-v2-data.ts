@@ -21,6 +21,7 @@ import { getKidClosureIntervalsForParent } from "@/lib/data/school-calendar";
 import { getClosureNotNeededForParent } from "@/lib/data/closure-not-needed";
 import { getFamilyForUser } from "@/lib/data/family";
 import { CHI_ACCOMPAGNA_PLUS_FLAG } from "@/lib/nextgen/assign-plus";
+import { PLACE_SEARCH_FLAG } from "@/lib/places/search";
 import { notNeededCoverage } from "@/lib/nextgen/closure-not-needed";
 import { createClient } from "@/lib/supabase/server";
 import { getUnifiedFavoritesForParent } from "@/lib/data/favorites";
@@ -69,13 +70,14 @@ export async function loadPlannerV2Props({
   searchParams: Record<string, string | undefined>;
 }): Promise<PlannerV2Props> {
   const todayIso = romeTodayIso();
-  const [externalEnabled, schoolEnabled, exportEnabled, navV2Enabled, assignPlusEnabled, weeklyRoutineEnabled] = await Promise.all([
+  const [externalEnabled, schoolEnabled, exportEnabled, navV2Enabled, assignPlusEnabled, weeklyRoutineEnabled, placeSearchEnabled] = await Promise.all([
     flagOn("EXTERNAL_PLANNER_ITEMS_ENABLED", userId, role),
     flagOn("SCHOOL_CALENDAR_INTELLIGENCE_ENABLED", userId, role),
     flagOn("CALENDAR_EXPORT_ENABLED", userId, role),
     flagOn("NAV_V2_ENABLED", userId, role),
     flagOn(CHI_ACCOMPAGNA_PLUS_FLAG, userId, role),
     flagOn("WEEKLY_ROUTINE_ENABLED", userId, role),
+    flagOn(PLACE_SEARCH_FLAG, userId, role),
   ]);
   // 20/10/2026 — Chi accompagna più veloce: l'altro genitore è su TRAMA (nella
   // stessa famiglia)? Decide fra "riceverà una notifica" e "invitalo".
@@ -268,6 +270,7 @@ export async function loadPlannerV2Props({
     assignPlusEnabled,
     partnerOnTrama,
     weeklyRoutineEnabled,
+    placeSearchEnabled,
     // POLISH V2 (14/10/2026): il dettaglio tecnico degli errori lo vede solo l'Admin piattaforma.
     showDiagnostics: role === "platform_admin",
     calendarExportEnabled: exportEnabled,
