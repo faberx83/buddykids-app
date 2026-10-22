@@ -338,3 +338,18 @@ test.describe("Ritest 22/10 — uscire da un gruppo, eliminare un gruppo [no bro
   });
 });
 
+test.describe("Ritest 22/10 — sezione scuola nello stile V2 [no browser]", () => {
+  test("UXF-53 scheda figlio: 'Calendario della scuola' V2, chiaro che bastano Regione e Comune", () => {
+    const k = read("components/ProfileKidsSection.tsx");
+    expect(k).toContain("const schoolV2 = v2 && uxFix;");
+    expect(k).toContain("{schoolCalendarEnabled && schoolV2 && (");
+    expect(k).toContain("{schoolCalendarEnabled && !schoolV2 && (");
+    expect(k).toContain('data-testid="kid-school-v2"');
+    expect(k).toContain("Il nome\n            della scuola non serve.");
+    // il collegamento da Home e Planner (?scuola=) apre ancora la sezione giusta
+    expect(k).toContain("id={`kid-school-${kidId}`}");
+    const f = read("components/AddKidForm.tsx");
+    expect(f).toContain("Il nome della scuola non serve.");
+  });
+});
+

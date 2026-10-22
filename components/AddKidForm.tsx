@@ -236,12 +236,27 @@ export default function AddKidForm({
           (schoolCalendarEnabled). */}
       {schoolCalendarEnabled && (
         <div className="mb-2.5 mt-1 border-t border-[#E8EBF0] pt-2.5">
-          <div className="mb-1.5 flex items-center gap-1.5">
-            <i className="ti ti-school text-[15px] text-trama-violet" />
-            <span className="font-poppins text-[13px] font-semibold text-ink">Scuola</span>
-            <span className="text-[11px] text-ink-3">(opzionale)</span>
-          </div>
-          <p className="mb-2 text-[11px] text-ink-2">Ci serve solo per individuare vacanze e giorni senza scuola.</p>
+          {uxFix && v2 ? (
+            <>
+              {/* Ritest 22/10/2026: stessa forma e stesse parole della scheda figlio V2. */}
+              <div className="mb-1 flex items-center gap-2 text-[15px] font-semibold text-ink">
+                <i className="ti ti-school text-[18px] text-trama-navy" aria-hidden="true" />
+                Calendario della scuola <span className="text-[13px] font-normal text-ink-2">(facoltativo)</span>
+              </div>
+              <p className="mb-2.5 text-[13px] leading-snug text-ink-2">
+                Bastano Regione e Comune della scuola: servono per sapere quando è chiusa. Il nome della scuola non serve.
+              </p>
+            </>
+          ) : (
+            <>
+              <div className="mb-1.5 flex items-center gap-1.5">
+                <i className="ti ti-school text-[15px] text-trama-violet" />
+                <span className="font-poppins text-[13px] font-semibold text-ink">Scuola</span>
+                <span className="text-[11px] text-ink-3">(opzionale)</span>
+              </div>
+              <p className="mb-2 text-[11px] text-ink-2">Ci serve solo per individuare vacanze e giorni senza scuola.</p>
+            </>
+          )}
           <div className="mb-1.5 grid grid-cols-2 gap-2">
             <select
               value={schoolRegion}
@@ -266,9 +281,9 @@ export default function AddKidForm({
             <button
               type="button"
               onClick={() => setSchoolComune(residenceCity)}
-              className="text-[11px] font-semibold text-trama-violet"
+              className={uxFix && v2 ? "flex min-h-[40px] items-center text-[13.5px] font-semibold text-trama-accent-ink" : "text-[11px] font-semibold text-trama-violet"}
             >
-              Usa il mio Comune
+              {uxFix && v2 ? `Usa il mio Comune (${residenceCity})` : "Usa il mio Comune"}
             </button>
           )}
         </div>

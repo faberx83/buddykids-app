@@ -84,6 +84,8 @@ export default function ProfileKidsSection({
       ? "border-trama-violet bg-trama-violet text-white"
       : "border-sky bg-sky text-white";
   const accentBg = v2 ? "bg-trama-primary" : accent === "violet" ? "bg-trama-violet" : "bg-sky";
+  // Ritest 22/10/2026: la sezione scuola nello stile V2 (solo con il flag delle correzioni UX).
+  const schoolV2 = v2 && uxFix;
   // 15/10/2026 — figli nello stile V2: campi alti, pulsanti a raggio 12.
   const inputCls = v2
     ? "min-h-[48px] rounded-[12px] border border-trama-line bg-white px-3.5 text-[16px] outline-none focus:border-trama-primary"
@@ -448,7 +450,27 @@ export default function ProfileKidsSection({
                   (source of truth: kid_school_profiles, mai duplicata su
                   kids) + disponibilità REALE del calendario per l'anno
                   scolastico corrente (mai inventata, §11). */}
-              {schoolCalendarEnabled && (
+              {schoolCalendarEnabled && schoolV2 && (
+                <SchoolBlockV2
+                  kidId={k.id}
+                  kidName={k.name}
+                  profile={schoolProfiles[k.id]}
+                  editing={editingSchoolKidId === k.id}
+                  regionDraft={schoolRegionDraft}
+                  comuneDraft={schoolComuneDraft}
+                  onRegion={setSchoolRegionDraft}
+                  onComune={setSchoolComuneDraft}
+                  residenceCity={residenceCity}
+                  saving={savingSchool}
+                  error={schoolError}
+                  saved={savedBlock?.kidId === k.id && savedBlock.block === "scuola"}
+                  onEdit={() => startEditingSchool(k.id, schoolProfiles[k.id])}
+                  onSave={() => saveSchool(k.id)}
+                  onCancel={() => setEditingSchoolKidId(null)}
+                  inputCls={inputCls}
+                />
+              )}
+              {schoolCalendarEnabled && !schoolV2 && (
                 <div id={`kid-school-${k.id}`} className="mt-3 border-t border-[#F0F2F5] pt-3">
                   <div className="mb-1.5 flex items-center gap-1.5">
                     <i className="ti ti-school text-[13px] text-trama-violet" />
@@ -580,3 +602,143 @@ function SavedTick({ text }: { text: string }) {
     </p>
   );
 }
+
+// Ritest 22/10/2026 (Fabrizio: "rimane vecchio stile… e l'indicazione della
+// scuola è solo come Comune"): sezione scuola nello stile V2, e detta per
+// quello che è — ci servono Regione e Comune per il calendario delle
+// chiusure, non il nome della scuola. Stessa logica e stessi dati di prima
+// (kid_school_profiles, setSchoolContextForKidAction).
+function SchoolBlockV2({
+  kidId,
+  kidName,
+  profile,
+  editing,
+  regionDraft,
+  comuneDraft,
+  onRegion,
+  onComune,
+  residenceCity,
+  saving,
+  error,
+  saved,
+  onEdit,
+  onSave,
+  onCancel,
+  inputCls,
+}: {
+  kidId: string;
+  kidName: string;
+  profile: KidSchoolProfileSummary | undefined;
+  editing: boolean;
+  regionDraft: string;
+  comuneDraft: string;
+  onRegion: (v: string) => void;
+  onComune: (v: string) => void;
+  residenceCity: string | null;
+  saving: boolean;
+  error: string | null;
+  saved: boolean;
+  onEdit: () => void;
+  onSave: () => void;
+  onCancel: () => void;
+  inputCls: string;
+}) {
+  return (
+    <section id={`kid-school-${kidId}`} aria-labelledby={`kid-school-h-${kidId}`} data-testid="kid-school-v2" className="mt-4 border-t border-[#F0F2F5] pt-4">
+      <h3 id={`kid-school-h-${kidId}`} className="flex items-center gap-2 text-[15px] font-semibold text-ink">
+        <i className="ti ti-school text-[18px] text-trama-navy" aria-hidden="true" />
+        Calendario della scuola
+      </h3>
+      {editing ? (
+        <div className="mt-2 flex flex-col gap-3">
+          <p className="text-[13px] leading-snug text-ink-2">
+            Ci servono solo Regione e Comune della scuola di {kidName}: le chiusure (ponti, vacanze) le decidono loro. Il nome
+            della scuola non serve.
+          </p>
+          <label className="flex flex-col gap-1.5 text-[13.5px] font-semibold text-ink">
+            Regione
+            <select value={regionDraft} onChange={(e: { target: { value: string } }) => onRegion(e.target.value)} className={`${inputCls} font-normal`}>
+              <option value="">Scegli la regione</option>
+              {ITALIAN_REGIONS.map((r) => (
+                <option key={r} value={r}>
+                  {r}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="flex flex-col gap-1.5 text-[13.5px] font-semibold text-ink">
+            Comune della scuola
+            <input
+              value={comuneDraft}
+              onChange={(e: { target: { value: string } }) => onComune(e.target.value)}
+              placeholder="Es. Milano"
+              className={`${inputCls} font-normal`}
+            />
+          </label>
+          {residenceCity && comuneDraft.trim().toLowerCase() !== residenceCity.trim().toLowerCase() && (
+            <button
+              type="button"
+              onClick={() => onComune(residenceCity)}
+              className="-mt-1 flex min-h-[40px] w-fit items-center text-[13.5px] font-semibold text-trama-accent-ink"
+            >
+              Usa il mio Comune ({residenceCity})
+            </button>
+          )}
+          {error && (
+            <p role="alert" className="text-[13px] font-medium text-[#B3261E]">
+              {error}
+            </p>
+          )}
+          <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={onCancel}
+              disabled={saving}
+              className="min-h-[48px] flex-1 rounded-[12px] border border-[#D9DDE5] bg-white px-4 text-[15px] font-semibold text-trama-primary disabled:opacity-60"
+            >
+              Annulla
+            </button>
+            <button
+              type="button"
+              onClick={onSave}
+              disabled={saving}
+              className="min-h-[48px] flex-[2] rounded-[12px] bg-trama-primary px-4 text-[15px] font-semibold text-white active:bg-trama-primary-press disabled:opacity-60"
+            >
+              {saving ? "Salvo…" : "Salva scuola"}
+            </button>
+          </div>
+        </div>
+      ) : profile ? (
+        <div className="mt-2 flex items-center justify-between gap-3">
+          <span className="flex min-w-0 flex-col gap-0.5">
+            <span className="truncate text-[14.5px] text-ink">
+              {profile.comune ? `${profile.comune} · ${profile.region}` : profile.region}
+            </span>
+            <span className={`text-[12.5px] ${profile.calendarAvailable ? "text-[#146B4F]" : "text-ink-2"}`}>
+              {saved
+                ? "Salvato"
+                : profile.calendarAvailable
+                  ? `Chiusure ${profile.academicYearShort} incluse nel Planner`
+                  : "Calendario di questa regione non ancora disponibile"}
+            </span>
+          </span>
+          <button type="button" onClick={onEdit} className="flex min-h-[44px] flex-shrink-0 items-center text-[14px] font-semibold text-trama-accent-ink">
+            Modifica
+          </button>
+        </div>
+      ) : (
+        <div className="mt-2 flex items-center justify-between gap-3">
+          <span className="text-[13.5px] leading-snug text-ink-2">Non ancora indicato: ponti e vacanze di {kidName} non sono nel Planner.</span>
+          <button
+            type="button"
+            onClick={onEdit}
+            className="flex min-h-[44px] flex-shrink-0 items-center rounded-[12px] border border-[#D9DDE5] bg-white px-3.5 text-[14px] font-semibold text-trama-primary"
+          >
+            Indica
+          </button>
+        </div>
+      )}
+    </section>
+  );
+}
+
