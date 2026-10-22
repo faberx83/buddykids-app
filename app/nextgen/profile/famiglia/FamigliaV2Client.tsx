@@ -104,8 +104,12 @@ export default function FamigliaV2Client({
           v2
           autoOpenSchoolKidId={autoOpenSchoolKidId}
           uxFix={uxFix}
+          schoolItems={uxFix ? schoolItems : null}
+          placeSearchEnabled={placeSearchEnabled}
+          todayIso={todayIso}
         />
-        {schoolItems && <SchoolHoursBlock kids={kids.map((k) => ({ id: k.id, name: k.name }))} items={schoolItems} todayIso={todayIso} placeSearchEnabled={placeSearchEnabled} />}
+        {/* Ritest 22/10/2026: con le correzioni UX gli orari della scuola stanno nella scheda del figlio. */}
+        {schoolItems && !uxFix && <SchoolHoursBlock kids={kids.map((k) => ({ id: k.id, name: k.name }))} items={schoolItems} todayIso={todayIso} placeSearchEnabled={placeSearchEnabled} />}
         {/* Correzioni dal test UX (21/10/2026), UX-PARENT-008: chi vede cosa, in un colpo d'occhio. */}
         {uxFix && <AccessSummary />}
         <ParentsBlock family={family} myName={myName} myEmail={myEmail} initialJoinCode={initialJoinCode} />

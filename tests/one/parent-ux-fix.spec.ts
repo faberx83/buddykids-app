@@ -17,7 +17,10 @@ import {
   matchesSearch,
   normalizeSearch,
   withoutTestFixtures,
+  regionFromPlace,
+  siblingSchools,
 } from "../../lib/nextgen/parent-ux-fix";
+import { parsePhotonResponse } from "../../lib/places/search";
 import { buildHomeInbox } from "../../lib/nextgen/home-inbox";
 import { FEATURE_FLAG_REGISTRY } from "../../lib/feature-flags/registry";
 import { RELEASE_CATALOG } from "../../lib/releases/catalog";
@@ -338,18 +341,63 @@ test.describe("Ritest 22/10 — uscire da un gruppo, eliminare un gruppo [no bro
   });
 });
 
-test.describe("Ritest 22/10 — sezione scuola nello stile V2 [no browser]", () => {
-  test("UXF-53 scheda figlio: 'Calendario della scuola' V2, chiaro che bastano Regione e Comune", () => {
+test.describe("Ritest 22/10 — una sola Scuola per figlio [no browser]", () => {
+  const REGIONS = ["Emilia-Romagna", "Friuli-Venezia Giulia", "Lombardia", "Sicilia", "Trentino-Alto Adige", "Valle d'Aosta"];
+
+  test("UXF-53 regione di OpenStreetMap → regione di TRAMA", () => {
+    expect(regionFromPlace("Lombardia", REGIONS)).toBe("Lombardia");
+    expect(regionFromPlace("Trentino-Alto Adige/Südtirol", REGIONS)).toBe("Trentino-Alto Adige");
+    expect(regionFromPlace("Friuli Venezia Giulia", REGIONS)).toBe("Friuli-Venezia Giulia");
+    expect(regionFromPlace("Valle d'Aosta / Vallée d'Aoste", REGIONS)).toBe("Valle d'Aosta");
+    expect(regionFromPlace("Emilia Romagna", REGIONS)).toBe("Emilia-Romagna");
+    expect(regionFromPlace("Lombardy", REGIONS)).toBe("Lombardia");
+    expect(regionFromPlace("Bayern", REGIONS)).toBeNull();
+    expect(regionFromPlace(undefined, REGIONS)).toBeNull();
+  });
+
+  test("UXF-54 la ricerca luoghi dà anche Comune e Regione (mai la provincia come Comune)", () => {
+    const [school, fuori] = parsePhotonResponse({
+      features: [
+        { geometry: { coordinates: [9.2, 45.47] }, properties: { name: "Scuola primaria Pizzigoni", street: "Via Castellino da Castello", housenumber: "10", postcode: "20127", city: "Milano", state: "Lombardia", countrycode: "IT", osm_key: "amenity", osm_value: "school" } },
+        { geometry: { coordinates: [9.1, 45.6] }, properties: { name: "Scuola dell'infanzia", county: "Monza e Brianza", state: "Lombardia", countrycode: "IT" } },
+      ],
+    });
+    expect(school.city).toBe("Milano");
+    expect(school.region).toBe("Lombardia");
+    expect(fuori.city).toBeUndefined();
+    expect(fuori.region).toBe("Lombardia");
+  });
+
+  test("UXF-55 'Stessa scuola di …': solo fratelli con la scuola, al massimo due", () => {
+    const kids = [
+      { id: "l", name: "Luca" },
+      { id: "g", name: "Giulia" },
+      { id: "m", name: "Marco" },
+    ];
+    const profiles = { l: { region: "Lombardia", comune: "Milano" }, m: undefined };
+    expect(siblingSchools("g", kids, profiles, { l: "Pizzigoni" })).toEqual([
+      { kidId: "l", kidName: "Luca", region: "Lombardia", comune: "Milano", schoolName: "Pizzigoni" },
+    ]);
+    expect(siblingSchools("l", kids, profiles, {})).toEqual([]);
+  });
+
+  test("UXF-56 scheda figlio: un solo blocco Scuola (calendario + orari), il blocco orari a parte sparisce con il flag", () => {
     const k = read("components/ProfileKidsSection.tsx");
     expect(k).toContain("const schoolV2 = v2 && uxFix;");
     expect(k).toContain("{schoolCalendarEnabled && schoolV2 && (");
+    expect(k).toContain("<KidSchoolBlock");
     expect(k).toContain("{schoolCalendarEnabled && !schoolV2 && (");
-    expect(k).toContain('data-testid="kid-school-v2"');
-    expect(k).toContain("Il nome\n            della scuola non serve.");
-    // il collegamento da Home e Planner (?scuola=) apre ancora la sezione giusta
-    expect(k).toContain("id={`kid-school-${kidId}`}");
-    const f = read("components/AddKidForm.tsx");
-    expect(f).toContain("Il nome della scuola non serve.");
+    const b = read("components/nextgen/KidSchoolBlock.tsx");
+    expect(b).toContain('data-testid="kid-school-unified"');
+    expect(b).toContain("setSchoolContextForKidAction(kid.id, region, comune)");
+    expect(b).toContain("isSchool: true,");
+    expect(b).toContain("Stessa scuola di {s.kidName}");
+    // il collegamento ?scuola= da Home e Planner apre ancora la sezione giusta
+    expect(b).toContain("id={`kid-school-${kid.id}`}");
+    const f = read("app/nextgen/profile/famiglia/FamigliaV2Client.tsx");
+    expect(f).toContain("{schoolItems && !uxFix && <SchoolHoursBlock");
+    expect(f).toContain("schoolItems={uxFix ? schoolItems : null}");
+    expect(read("components/AddKidForm.tsx")).toContain("Nome e orari li puoi aggiungere dopo, nella scheda del figlio.");
   });
 });
 

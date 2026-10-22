@@ -46,7 +46,8 @@ test.describe("TRAMA — Ricerca luoghi [no browser]", () => {
   test("RL-02 risposta: nome + indirizzo italiano, senza doppioni né risultati esteri", () => {
     const r = parsePhotonResponse(photon);
     expect(r).toHaveLength(2);
-    expect(r[0]).toEqual({ name: "Scuola Primaria Pizzigoni", address: "Via Castellino da Castello 10, 20127 Milano", lat: 45.4654, lng: 9.1859, kind: "amenity:school" });
+    // 22/10/2026 (una sola Scuola per figlio): anche il Comune, per il calendario delle chiusure.
+    expect(r[0]).toEqual({ name: "Scuola Primaria Pizzigoni", address: "Via Castellino da Castello 10, 20127 Milano", lat: 45.4654, lng: 9.1859, kind: "amenity:school", city: "Milano" });
     expect(r[1].name).toBe("Via Lamennais 8");
     expect(parsePhotonResponse(null)).toEqual([]);
     expect(placeLocationText(r[0])).toBe("Scuola Primaria Pizzigoni, Via Castellino da Castello 10, 20127 Milano");

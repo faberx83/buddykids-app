@@ -310,3 +310,61 @@ export function withoutTestFixtures<T extends { centerDbId?: string }>(
   if (role === "platform_admin" || testCenterIds.size === 0) return activities;
   return activities.filter((a) => !(a.centerDbId && testCenterIds.has(a.centerDbId)));
 }
+
+// ─── Ritest 22/10 — una sola "Scuola" per figlio ──────────────────────
+
+const REGION_ALIASES: Record<string, string> = {
+  lombardy: "Lombardia",
+  piedmont: "Piemonte",
+  tuscany: "Toscana",
+  apulia: "Puglia",
+  sicily: "Sicilia",
+  sardinia: "Sardegna",
+  aostavalley: "Valle d'Aosta",
+};
+
+function regionKey(text: string): string {
+  return normalizeSearch(text).replace(/[^a-z]/g, "");
+}
+
+/**
+ * Regione di TRAMA (una delle 20 di lib/school-calendar/regions.ts) dal nome
+ * che dà OpenStreetMap: "Trentino-Alto Adige/Südtirol" → "Trentino-Alto
+ * Adige", "Friuli Venezia Giulia" → "Friuli-Venezia Giulia". null se non
+ * corrisponde a nessuna: allora la regione la sceglie il genitore.
+ */
+export function regionFromPlace(osmRegion: string | null | undefined, regions: readonly string[]): string | null {
+  if (!osmRegion) return null;
+  const key = regionKey(osmRegion);
+  if (!key) return null;
+  const alias = Object.entries(REGION_ALIASES).find(([k]) => key.startsWith(k));
+  if (alias) return regions.includes(alias[1]) ? alias[1] : null;
+  return regions.find((r) => key.startsWith(regionKey(r))) ?? null;
+}
+
+export interface SiblingSchool {
+  kidId: string;
+  kidName: string;
+  region: string;
+  comune: string | null;
+  schoolName: string | null;
+}
+
+/** Fratelli con la scuola già indicata, per "Stessa scuola di Luca" (al massimo 2 proposte). */
+export function siblingSchools(
+  kidId: string,
+  kids: { id: string; name: string }[],
+  profiles: Record<string, { region: string; comune: string | null } | undefined>,
+  schoolNames: Record<string, string | null | undefined>
+): SiblingSchool[] {
+  return kids
+    .filter((k) => k.id !== kidId && profiles[k.id])
+    .map((k) => ({
+      kidId: k.id,
+      kidName: k.name,
+      region: profiles[k.id]!.region,
+      comune: profiles[k.id]!.comune,
+      schoolName: schoolNames[k.id] ?? null,
+    }))
+    .slice(0, 2);
+}

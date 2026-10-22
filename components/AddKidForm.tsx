@@ -244,7 +244,7 @@ export default function AddKidForm({
                 Calendario della scuola <span className="text-[13px] font-normal text-ink-2">(facoltativo)</span>
               </div>
               <p className="mb-2.5 text-[13px] leading-snug text-ink-2">
-                Bastano Regione e Comune della scuola: servono per sapere quando è chiusa. Il nome della scuola non serve.
+                Per ponti e vacanze bastano Regione e Comune della scuola. Nome e orari li puoi aggiungere dopo, nella scheda del figlio.
               </p>
             </>
           ) : (

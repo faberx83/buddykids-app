@@ -1061,6 +1061,7 @@ export const FEATURE_CATALOG: FeatureCatalogEntry[] = [
       "components/nextgen/NotificationCenter.tsx",
       "supabase/migration_47_centri_di_prova.sql",
       "supabase/migration_48_gruppi_esci_elimina.sql",
+      "components/nextgen/KidSchoolBlock.tsx",
     ],
     note:
       "Una sola release per tutti i cicli: spegnendo il flag tutto torna come prima. Il testo del tutorial di Scopri è " +

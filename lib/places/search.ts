@@ -23,6 +23,10 @@ export interface PlaceSuggestion {
   lng: number;
   /** Tipo OSM, es. "amenity:school". */
   kind: string;
+  /** 22/10/2026 (scuola unificata): Comune del luogo, se noto ("Milano"). Mai la provincia. */
+  city?: string;
+  /** 22/10/2026: regione come la dà OpenStreetMap ("Lombardia", "Trentino-Alto Adige/Südtirol"). */
+  region?: string;
 }
 
 export const PHOTON_URL = "https://photon.komoot.io/api/";
@@ -80,6 +84,8 @@ export function parsePhotonResponse(json: unknown): PlaceSuggestion[] {
       lat: Number(coords[1]),
       lng: Number(coords[0]),
       kind: [str(p.osm_key), str(p.osm_value)].filter(Boolean).join(":"),
+      ...((str(p.city) || str(p.town) || str(p.village)) ? { city: str(p.city) || str(p.town) || str(p.village) } : {}),
+      ...(str(p.state) ? { region: str(p.state) } : {}),
     });
   }
   return out;
