@@ -745,6 +745,7 @@ export async function leaveGroupAction(groupId: string): Promise<{ error?: strin
     return { error: "Non è stato possibile uscire dal gruppo. Riprova tra poco." };
   }
   revalidatePath("/nextgen/groups");
+  revalidatePath("/nextgen", "layout");
   return {};
 }
 
@@ -773,5 +774,6 @@ export async function deleteGroupAction(groupId: string): Promise<{ error?: stri
     return { error: "Non è stato possibile eliminare il gruppo. Riprova tra poco." };
   }
   revalidatePath("/nextgen/groups");
+  revalidatePath("/nextgen", "layout");
   return {};
 }

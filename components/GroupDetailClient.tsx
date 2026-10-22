@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { canGoBackInApp, goBackInApp } from "@/lib/nextgen/in-app-history";
 import TramaThread from "@/components/nextgen/TramaThread";
 import { monogramFor, threadColorFor } from "@/components/nextgen/ActivityVisual";
 import { GroupDetail, CarpoolLeg } from "@/lib/types";
@@ -301,19 +302,37 @@ export default function GroupDetailClient({
   uxFix?: boolean;
 }) {
   const [tab, setTab] = useState<"gruppo" | "accompagnamento">("gruppo");
+  const router = useRouter();
 
   if (nextgen === "v2") {
     return (
       <div className="-mb-40 flex min-h-[calc(100%+10rem)] flex-col bg-trama-page pb-24">
         <div className="px-5 pt-3.5">
           <header className="flex items-center gap-1">
-            <Link
-              href={backHref}
-              aria-label="Torna ai gruppi"
-              className="-ml-2.5 flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-full text-[22px] text-ink active:bg-black/[0.04]"
-            >
-              <i className="ti ti-arrow-left" aria-hidden="true" />
-            </Link>
+            {uxFix ? (
+              // Ritest 22/10 sera (Fabrizio: "rimpalla tra Gruppi e il gruppo"): la
+              // freccia era un link che APRIVA la lista dei gruppi come pagina nuova;
+              // la freccia della lista torna indietro nella cronologia, cioè al
+              // gruppo. Ora anche questa torna da dove si è venuti
+              // (lib/nextgen/in-app-history.ts), con la lista come ripiego.
+              <button
+                type="button"
+                onClick={() => goBackInApp(router, backHref)}
+                aria-label="Torna ai gruppi"
+                data-testid="group-detail-back"
+                className="-ml-2.5 flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-full text-[22px] text-ink active:bg-black/[0.04]"
+              >
+                <i className="ti ti-arrow-left" aria-hidden="true" />
+              </button>
+            ) : (
+              <Link
+                href={backHref}
+                aria-label="Torna ai gruppi"
+                className="-ml-2.5 flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-full text-[22px] text-ink active:bg-black/[0.04]"
+              >
+                <i className="ti ti-arrow-left" aria-hidden="true" />
+              </Link>
+            )}
             <span className="text-[14px] text-ink-2">Gruppi</span>
           </header>
           <div className="mt-2 flex items-start gap-3">
@@ -1094,9 +1113,16 @@ function LeaveOrDeleteGroup({ detail, backHref }: { detail: GroupDetail; backHre
       setError(result.error);
       return;
     }
-    // Ritest 22/10: replace, non push — con Indietro non si torna alla pagina di un gruppo che non c'è più.
-    router.replace(backHref);
-    router.refresh();
+    // Ritest 22/10: mai push — con Indietro non si torna alla pagina di un gruppo che non c'è più.
+    // Ritest 22/10 sera: se dietro c'è una pagina dell'app (di solito la lista), si torna lì;
+    // con replace la lista finiva due volte di fila nella cronologia e "indietro" sembrava fermo.
+    // La lista è aggiornata: l'azione invalida /nextgen (revalidatePath).
+    if (canGoBackInApp()) {
+      router.back();
+    } else {
+      router.replace(backHref);
+      router.refresh();
+    }
   }
 
   return (

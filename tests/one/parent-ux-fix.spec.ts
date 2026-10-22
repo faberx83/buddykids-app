@@ -659,4 +659,17 @@ test.describe("Secondo test UX 22/10 — 016…022 [no browser]", () => {
       "Da completare: nome e data di nascita."
     );
   });
+
+  test("UXF-89 ritest 22/10 sera: la freccia del gruppo torna indietro, niente rimpallo con la lista", () => {
+    const ui = read("components/GroupDetailClient.tsx");
+    // V2 con il flag: la freccia è un "indietro", non un link che apre la lista come pagina nuova
+    expect(ui).toContain("onClick={() => goBackInApp(router, backHref)}");
+    expect(ui).toContain('data-testid="group-detail-back"');
+    // dopo Esci/Elimina: indietro se c'è una pagina dell'app dietro, altrimenti la lista al posto del gruppo
+    expect(ui).toContain("if (canGoBackInApp()) {\n      router.back();\n    } else {\n      router.replace(backHref);");
+    // la lista dei gruppi torna indietro nella cronologia: con la freccia sopra non si rientra nel gruppo
+    expect(read("components/GroupsClient.tsx")).toContain("onClick={() => goBackInApp(router, resolvedBackHref)}");
+    const actions = read("app/actions/groups.ts");
+    expect(actions.match(/revalidatePath\("\/nextgen", "layout"\);/g)?.length ?? 0).toBeGreaterThanOrEqual(4);
+  });
 });
