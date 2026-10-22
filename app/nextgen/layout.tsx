@@ -322,10 +322,14 @@ export default async function NextgenLayout({ children }: { children: React.Reac
       // carousel non risulta completato o saltato (currentStepKey null),
       // per non sovrapporre due overlay nella stessissima prima sessione.
       const welcome = onboardingV2Enabled ? onboardingV2Progress : onboardingProgress;
-      if (!welcome || welcome.currentStepKey === null) {
+      // 22/10/2026 (Fabrizio: "come tolgo definitivamente il tutorial
+      // spotlight? non ha senso"): il tour "Scopri e prenota" porta a
+      // prenotare un catalogo che per la beta è quasi tutto "Edizione
+      // conclusa". Con PARENT_UX_FIX_ENABLED non parte più.
+      if (!parentUxFix && (!welcome || welcome.currentStepKey === null)) {
         spotlightProgress = await getWalkthroughProgress(user.id, "discover_book_parent");
       }
-    } else if (enabled) {
+    } else if (enabled && !parentUxFix) {
       spotlightProgress = await getWalkthroughProgress(user.id, "discover_book_parent");
     }
   }

@@ -28,6 +28,9 @@ import {
 } from "../../lib/nextgen/parent-ux-fix";
 import { parsePhotonResponse, mergeSchoolSuggestions, retryQuery, distinctiveWords, rankSchoolSuggestions, type PlaceSuggestion } from "../../lib/places/search";
 import { withoutNewExternalItemParam, wantsNewExternalItem } from "../../lib/planner/new-external-item-link";
+import { buildSharedExternalEntries, sharedDaysLabel, SHARED_PLANNER_STATUS } from "../../lib/plan-shares/build-entries";
+import { externalItemsToCalendarItems, firstOccurrence } from "../../lib/planner/calendar-items-core";
+import { buildPlannerCalendarIcs } from "../../lib/ics";
 import { tramaEmailHtml, escapeEmailHtml } from "../../lib/email-layout";
 import { installBannerFor, parseDismissedAt, INSTALL_REPROPOSE_DAYS } from "../../lib/nextgen/install-banner";
 import { appInviteUrl, familyInviteDestination } from "../../lib/public-links";
@@ -671,5 +674,81 @@ test.describe("Secondo test UX 22/10 — 016…022 [no browser]", () => {
     expect(read("components/GroupsClient.tsx")).toContain("onClick={() => goBackInApp(router, resolvedBackHref)}");
     const actions = read("app/actions/groups.ts");
     expect(actions.match(/revalidatePath\("\/nextgen", "layout"\);/g)?.length ?? 0).toBeGreaterThanOrEqual(4);
+  });
+
+  test("UXF-90 piano condiviso: anche gli impegni del Planner (scuola e RITMICA), niente note, chi porta sugli impegni", () => {
+    const school = {
+      id: "s1", title: 'Scuola Primaria "San Giusto"', startDate: "2026-09-14", endDate: "2027-06-08", allDay: false,
+      startTime: "08:30:00", endTime: "16:30:00", location: "Via San Giusto, Milano",
+      recurrence: { freq: "weekly" as const, weekdays: [1, 2, 3, 4, 5], interval: 1 as const, anchor: "2026-09-14" },
+      isSchool: true, kids: [{ id: "k1", name: "Noemi" }],
+    };
+    const ritmica = {
+      id: "r1", title: "RITMICA", startDate: "2026-09-14", endDate: "2027-06-08", allDay: false,
+      startTime: "17:00:00", endTime: "19:00:00", location: "Via F.R. Lamennais, 20153 Milano",
+      recurrence: { freq: "weekly" as const, weekdays: [5], interval: 1 as const, anchor: "2026-09-14" },
+      isSchool: false, kids: [{ id: "k1", name: "Noemi" }],
+    };
+    const resp = [
+      { kidId: "k1", weekStartDate: "2026-10-19", weekday: "ven" as const, moment: "andata" as const, responsible: "io" as const, responsibleLabel: null },
+      { kidId: "k1", weekStartDate: "2026-10-19", weekday: "ven" as const, moment: "ritorno" as const, responsible: "io" as const, responsibleLabel: null },
+    ];
+    const out = buildSharedExternalEntries([ritmica, school], "2026-10-19", "2026-10-25", resp, "padre");
+    expect(out.map((e) => e.activityName)).toEqual(['Scuola Primaria "San Giusto"', "RITMICA"]);
+    expect(out[0]).toMatchObject({ days: "da lun 19 a ven 23", hours: "08:30–16:30", weekStartDate: "2026-10-19", weekEndDate: "2026-10-25", status: SHARED_PLANNER_STATUS, responsibilities: [] });
+    expect(out[1]).toMatchObject({ days: "ven 23", hours: "17:00–19:00", address: "Via F.R. Lamennais, 20153 Milano" });
+    expect(out[1].responsibilities).toEqual([{ weekday: "ven", andata: { label: "Papà", emoji: "👨" }, ritorno: { label: "Papà", emoji: "👨" } }]);
+    // fuori periodo / senza figli: niente
+    expect(buildSharedExternalEntries([{ ...ritmica, kids: [] }], "2026-10-19", "2026-10-25")).toEqual([]);
+    expect(buildSharedExternalEntries([ritmica], "2026-10-19", "2026-10-22")).toEqual([]);
+    expect(sharedDaysLabel(["2026-10-19", "2026-10-21"])).toBe("lun 19 e mer 21");
+    const data = read("lib/data/plan-shares.ts");
+    expect(data).toContain("(await plannerShareEnabled(share.parent_id))");
+    // mai note, link esterni o organizzatore nella pagina pubblica
+    const select = data.slice(data.indexOf('.from("external_planner_items")'), data.indexOf('.eq("parent_id", ownerId)'));
+    expect(select).not.toMatch(/notes|external_url|organizer_snapshot/);
+    expect(read("app/share/planner/[token]/page.tsx")).toContain("item.status !== SHARED_PLANNER_STATUS");
+  });
+
+  test("UXF-91 esporta calendario: impegni del Planner con orario, ripetizione e chiusure della scuola", () => {
+    const items = [
+      {
+        id: "s1", title: 'Scuola Primaria "San Giusto"', startDate: "2026-09-14", endDate: "2027-06-08", allDay: false,
+        startTime: "08:30", endTime: "16:30", location: "Via San Giusto, Milano", kidIds: ["k1"],
+        recurrence: { weekdays: [1, 2, 3, 4, 5], interval: 1 as const, anchor: "2026-09-14" }, isSchool: true,
+      },
+      {
+        id: "r1", title: "RITMICA", startDate: "2026-09-14", endDate: "2027-06-08", allDay: false,
+        startTime: "17:00", endTime: "19:00", location: "Via F.R. Lamennais, 20153 Milano", kidIds: ["k1"],
+        recurrence: { weekdays: [5], interval: 1 as const, anchor: "2026-09-14" }, isSchool: false,
+      },
+    ];
+    const cal = externalItemsToCalendarItems(items, { k1: "Noemi" }, ["2026-12-07", "2026-12-08", "2027-07-01"]);
+    expect(cal.map((c) => c.title)).toEqual(['Scuola Primaria "San Giusto" · Noemi', "RITMICA"]);
+    // la prima volta che c'è davvero: venerdì 18 settembre per RITMICA
+    expect(cal[1].startDate).toBe("2026-09-18");
+    expect(firstOccurrence({ startDate: "2026-09-14", endDate: "2026-09-16", recurrence: { weekdays: [5], interval: 1, anchor: "2026-09-14" } })).toBeNull();
+    expect(cal[0].exceptDates).toEqual(["2026-12-07", "2026-12-08"]);
+    expect(cal[1].exceptDates).toEqual([]);
+    const ics = buildPlannerCalendarIcs(cal);
+    expect(ics).toContain("BEGIN:VTIMEZONE");
+    expect(ics).toContain("DTSTART;TZID=Europe/Rome:20260918T170000");
+    expect(ics).toContain("DTEND;TZID=Europe/Rome:20260918T190000");
+    expect(ics).toContain("RRULE:FREQ=WEEKLY;INTERVAL=1;BYDAY=FR;UNTIL=20270608T225959Z");
+    expect(ics).toContain("RRULE:FREQ=WEEKLY;INTERVAL=1;BYDAY=MO,TU,WE,TH,FR;UNTIL=20270608T225959Z");
+    expect(ics).toContain("EXDATE;TZID=Europe/Rome:20261207T083000,20261208T083000");
+    expect(ics).toContain("LOCATION:Via F.R. Lamennais\\, 20153 Milano");
+    // le prenotazioni TRAMA restano eventi di giornata intera, come prima
+    const booking = buildPlannerCalendarIcs([{ id: "b1", title: "Camp", kidNames: ["Noemi"], startDate: "2027-06-14", endDate: "2027-06-18", centerName: "Lido", centerAddress: null, centerCity: null, note: null }]);
+    expect(booking).toContain("DTSTART;VALUE=DATE:20270614");
+    expect(booking).not.toContain("VTIMEZONE");
+    expect(read("app/nextgen/planner/planner-v2-data.ts")).toContain("if (exportEnabled && uxFixEnabled && externalItems.length > 0) {");
+  });
+
+  test("UXF-92 tour Spotlight del genitore spento con le correzioni UX", () => {
+    const layout = read("app/nextgen/layout.tsx");
+    expect(layout).toContain("if (!parentUxFix && (!welcome || welcome.currentStepKey === null)) {");
+    expect(layout).toContain("} else if (enabled && !parentUxFix) {");
+    expect(read("app/nextgen/profile/impostazioni/preferenze/page.tsx")).toContain('(await parentUxFixEnabled()) ? null : getTutorialDefinition("discover_book_parent")');
   });
 });

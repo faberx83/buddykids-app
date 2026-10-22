@@ -1,5 +1,6 @@
 import { getSharedPlanMeta, getSharedPlanEntries } from "@/lib/data/plan-shares";
 import { WEEKDAYS } from "@/lib/nextgen/responsibility-options";
+import { SHARED_PLANNER_STATUS } from "@/lib/plan-shares/build-entries";
 
 // SPRINT 5.3 (NEXTGEN) — "Condivisione Piano": pagina pubblica di sola
 // lettura, SENZA login — per chi non ha un account (nonni, tata, altri
@@ -97,7 +98,7 @@ export default async function SharedPlannerPage({ params }: { params: Promise<{ 
 
         {weeks.length === 0 ? (
           <div className="rounded-2xl border border-trama-line bg-white px-4 py-6 text-center">
-            <p className="text-[15px] text-ink-2">Nessuna attività prenotata in questo periodo.</p>
+            <p className="text-[15px] text-ink-2">Niente in programma in questo periodo.</p>
           </div>
         ) : (
           <div className="flex flex-col gap-7">
@@ -113,9 +114,12 @@ export default async function SharedPlannerPage({ params }: { params: Promise<{ 
                         <p className="text-[16px] font-semibold leading-snug text-ink">{item.activityName}</p>
                         <p className="text-[14px] font-semibold text-trama-accent-ink">{item.kidName}</p>
                       </div>
-                      <span className={`flex-shrink-0 rounded-full px-2.5 py-1 text-[12px] font-semibold ${statusPill(item.status)}`}>
-                        {STATUS_LABEL[item.status] ?? item.status}
-                      </span>
+                      {/* 22/10/2026: gli impegni del Planner non hanno una conferma del centro. */}
+                      {item.status !== SHARED_PLANNER_STATUS && (
+                        <span className={`flex-shrink-0 rounded-full px-2.5 py-1 text-[12px] font-semibold ${statusPill(item.status)}`}>
+                          {STATUS_LABEL[item.status] ?? item.status}
+                        </span>
+                      )}
                     </div>
 
                     {(item.days || item.hours) && (

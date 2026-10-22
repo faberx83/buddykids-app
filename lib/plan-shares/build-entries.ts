@@ -54,6 +54,7 @@ import { WEEKDAYS, Weekday, WeekResponsibility, resolvePublicResponsibleLabel } 
 // importa lib/supabase/server) — eliminato a compile-time, questo modulo
 // resta senza alcun import server-only/rete, testabile in Node puro.
 import type { ParentRole } from "@/lib/data/profile";
+import { occurrenceDates, type WeeklyRecurrence } from "@/lib/planner/recurrence";
 
 export interface SharedPlanResponsibilityCell {
   weekday: Weekday;
@@ -308,4 +309,100 @@ export function buildSharedPlanEntriesFromRows(
 
   entries.sort((a, b) => a.weekStartDate.localeCompare(b.weekStartDate) || a.kidName.localeCompare(b.kidName));
   return entries;
+}
+
+// ─── 22/10/2026 — gli impegni del Planner nel piano condiviso ──────────
+// Fabrizio: "https://tramapp.it/share/planner/… non si vede nulla". Il link
+// "Condividi settimana" del Planner condivideva solo le prenotazioni TRAMA:
+// la settimana di una famiglia che usa il Planner per scuola e attività
+// (impegni aggiunti a mano, settimana tipo) risultava vuota. Con
+// PARENT_UX_FIX_ENABLED (risolto per il genitore che ha creato il link) il
+// piano mostra anche gli impegni del Planner: titolo, figlio, giorni, orario,
+// luogo e chi porta e chi ritira. Mai le note, mai il link esterno.
+
+export interface RawSharedExternalItem {
+  id: string;
+  title: string;
+  startDate: string;
+  endDate: string;
+  allDay: boolean;
+  startTime: string | null;
+  endTime: string | null;
+  location: string | null;
+  recurrence: WeeklyRecurrence | null;
+  isSchool: boolean;
+  kids: { id: string; name: string }[];
+}
+
+const SHORT_DAY_IT = ["dom", "lun", "mar", "mer", "gio", "ven", "sab"];
+
+function mondayOf(iso: string): string {
+  const d = new Date(iso + "T00:00:00Z");
+  d.setUTCDate(d.getUTCDate() - ((d.getUTCDay() + 6) % 7));
+  return d.toISOString().slice(0, 10);
+}
+
+/** "ven 23", "lun 19 e mer 21", "da lun 19 a ven 23" (giorni consecutivi). */
+export function sharedDaysLabel(dates: string[]): string {
+  const sorted = Array.from(new Set(dates)).sort();
+  const label = (iso: string) => `${SHORT_DAY_IT[new Date(iso + "T00:00:00Z").getUTCDay()]} ${Number(iso.slice(8, 10))}`;
+  if (sorted.length === 0) return "";
+  if (sorted.length === 1) return label(sorted[0]);
+  const consecutive = sorted.every((d, i) => i === 0 || addDaysIso(sorted[i - 1], 1) === d);
+  if (consecutive && sorted.length >= 3) return `da ${label(sorted[0])} a ${label(sorted[sorted.length - 1])}`;
+  return `${sorted.slice(0, -1).map(label).join(", ")} e ${label(sorted[sorted.length - 1])}`;
+}
+
+/** Stato delle voci del Planner: non hanno una conferma del centro (la pagina non mostra la pillola). */
+export const SHARED_PLANNER_STATUS = "planner";
+
+export function buildSharedExternalEntries(
+  items: RawSharedExternalItem[],
+  scopeStart: string,
+  scopeEnd: string,
+  responsibilities: WeekResponsibility[] = [],
+  ownerParentRole: ParentRole | null = null
+): SharedPlanEntry[] {
+  const out: (SharedPlanEntry & { sortKey: string })[] = [];
+  for (const item of items) {
+    if (item.kids.length === 0) continue;
+    const dates = occurrenceDates(
+      { startDate: item.startDate, endDate: item.endDate || item.startDate, recurrence: item.recurrence },
+      scopeStart,
+      scopeEnd
+    );
+    const byWeek = new Map<string, string[]>();
+    for (const d of dates) {
+      const m = mondayOf(d);
+      byWeek.set(m, [...(byWeek.get(m) ?? []), d]);
+    }
+    const start = item.startTime ? item.startTime.slice(0, 5) : null;
+    const end = item.endTime ? item.endTime.slice(0, 5) : null;
+    const hours = item.allDay ? "Tutto il giorno" : start && end ? `${start}–${end}` : start;
+    for (const [monday, weekDates] of byWeek) {
+      const weekdays = weekDates.map(weekdayFromIso).filter((w): w is Weekday => w !== null);
+      for (const kid of item.kids) {
+        out.push({
+          kidName: kid.name,
+          activityName: item.isSchool && (!item.title || item.title === "Scuola") ? "Scuola" : item.title,
+          weekStartDate: monday,
+          weekEndDate: addDaysIso(monday, 6),
+          status: SHARED_PLANNER_STATUS,
+          centerName: null,
+          address: item.location?.trim() || null,
+          hours,
+          days: sharedDaysLabel(weekDates),
+          // La scuola da sola non ha passaggi (stessa regola del Planner): chi
+          // porta e chi ritira compare sugli impegni, non due volte.
+          responsibilities: item.isSchool ? [] : buildResponsibilityCells(kid.id, monday, weekdays, responsibilities, ownerParentRole),
+          sortKey: `${monday}|${kid.name}|${item.isSchool ? 0 : 1}|${weekDates[0]}|${start ?? ""}`,
+        });
+      }
+    }
+  }
+  return out.sort((a, b) => a.sortKey.localeCompare(b.sortKey)).map((e) => {
+    const { sortKey, ...entry } = e;
+    void sortKey;
+    return entry;
+  });
 }

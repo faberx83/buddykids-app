@@ -12,6 +12,7 @@ import { getTutorialDefinition } from "@/lib/walkthrough/registry";
 import { PARENT_ONBOARDING_TUTORIAL_KEY } from "@/lib/nextgen/onboarding-slides";
 import { ONBOARDING_V2_TUTORIAL_KEY } from "@/lib/nextgen/onboarding-v2";
 import { Role } from "@/lib/types";
+import { parentUxFixEnabled } from "@/lib/nextgen/parent-ux-fix-flag";
 
 // TRAMA ONE (24/08/2026) — guscio NEXTGEN-native per "Preferenze", stesso
 // pattern di app/nextgen/prenotazioni (task #524): chiude uno dei rimandi
@@ -86,7 +87,8 @@ export default async function NextgenPreferenzePage() {
     }
   }
   const carousel = getTutorialDefinition(onboardingV2Enabled ? ONBOARDING_V2_TUTORIAL_KEY : PARENT_ONBOARDING_TUTORIAL_KEY);
-  const tour = getTutorialDefinition("discover_book_parent");
+  // 22/10/2026: con le correzioni dal test UX il tour "Scopri e prenota" non c'è più (vedi app/nextgen/layout.tsx).
+  const tour = (await parentUxFixEnabled()) ? null : getTutorialDefinition("discover_book_parent");
 
   const profile = await getParentProfile();
 

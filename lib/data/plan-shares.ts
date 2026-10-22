@@ -20,6 +20,11 @@ import {
 // un tipo (import type, eliminato a compile-time).
 import type { WeekResponsibility } from "@/lib/nextgen/responsibility-options";
 import type { ParentRole } from "@/lib/data/profile";
+import { buildSharedExternalEntries, type RawSharedExternalItem } from "@/lib/plan-shares/build-entries";
+import { isSchoolMetadata, parseRecurrence } from "@/lib/planner/recurrence";
+import { resolveFeatureFlag } from "@/lib/feature-flags/resolve";
+import { generateCorrelationId } from "@/lib/telemetry/correlation";
+import { PARENT_UX_FIX_FLAG } from "@/lib/nextgen/parent-ux-fix";
 
 export interface PlanShare {
   id: string;
@@ -182,7 +187,7 @@ async function getSharedPlanEntriesViaServiceRole(token: string): Promise<Shared
   const ownerParentRole = (profileData?.parent_role as ParentRole | null) ?? null;
 
   const seasonYear = seasonYearFromDates([share.scope_start, share.scope_end], new Date().getUTCFullYear());
-  return buildSharedPlanEntriesFromRows(
+  const bookingEntries = buildSharedPlanEntriesFromRows(
     data as RawEntryBookingRow[],
     share.scope_start,
     share.scope_end,
@@ -190,6 +195,83 @@ async function getSharedPlanEntriesViaServiceRole(token: string): Promise<Shared
     responsibilities,
     ownerParentRole
   );
+  // 22/10/2026 ("non si vede nulla"): anche gli impegni del Planner, se le
+  // correzioni del test UX sono accese per chi ha creato il link.
+  const plannerEntries = (await plannerShareEnabled(share.parent_id))
+    ? buildSharedExternalEntries(
+        await readSharedExternalItems(supabase, share.parent_id, share.scope_start, share.scope_end),
+        share.scope_start,
+        share.scope_end,
+        responsibilities,
+        ownerParentRole
+      )
+    : [];
+  if (plannerEntries.length === 0) return bookingEntries;
+  // Stessa settimana: prima le prenotazioni, poi gli impegni del Planner.
+  return [...bookingEntries, ...plannerEntries].sort((a, b) => a.weekStartDate.localeCompare(b.weekStartDate));
+}
+
+async function plannerShareEnabled(ownerId: string): Promise<boolean> {
+  try {
+    return await resolveFeatureFlag({
+      flagName: PARENT_UX_FIX_FLAG,
+      userId: ownerId,
+      role: "parent",
+      tenant: "family",
+      correlationId: generateCorrelationId(),
+    });
+  } catch {
+    return false;
+  }
+}
+
+// Solo i campi da mostrare: mai note, link esterni o organizzatore.
+async function readSharedExternalItems(
+  supabase: NonNullable<ReturnType<typeof createServiceClient>>,
+  ownerId: string,
+  scopeStart: string,
+  scopeEnd: string
+): Promise<RawSharedExternalItem[]> {
+  const { data, error } = await supabase
+    .from("external_planner_items")
+    .select("id, title, start_date, end_date, all_day, start_time, end_time, location, recurrence_rule, source_metadata, external_planner_item_kids ( kid_id, kids ( name ) )")
+    .eq("parent_id", ownerId)
+    .is("deleted_at", null)
+    .lte("start_date", scopeEnd);
+  if (error || !data) return [];
+  type Row = {
+    id: string;
+    title: string;
+    start_date: string;
+    end_date: string | null;
+    all_day: boolean;
+    start_time: string | null;
+    end_time: string | null;
+    location: string | null;
+    recurrence_rule: unknown;
+    source_metadata: unknown;
+    external_planner_item_kids: { kid_id: string; kids: { name: string } | { name: string }[] | null }[] | null;
+  };
+  return (data as Row[])
+    .filter((r) => (r.end_date ?? r.start_date) >= scopeStart)
+    .map((r) => ({
+      id: r.id,
+      title: r.title,
+      startDate: r.start_date,
+      endDate: r.end_date ?? r.start_date,
+      allDay: Boolean(r.all_day),
+      startTime: r.start_time,
+      endTime: r.end_time,
+      location: r.location,
+      recurrence: parseRecurrence(r.recurrence_rule),
+      isSchool: isSchoolMetadata(r.source_metadata),
+      kids: (r.external_planner_item_kids ?? [])
+        .map((k) => {
+          const kid = Array.isArray(k.kids) ? k.kids[0] : k.kids;
+          return kid?.name ? { id: k.kid_id, name: kid.name } : null;
+        })
+        .filter((k): k is { id: string; name: string } => k !== null),
+    }));
 }
 
 // Fallback: se SUPABASE_SERVICE_ROLE_KEY non è configurata su questo

@@ -32,6 +32,12 @@ export interface PlannerCalendarItem {
   // "hours" strutturato nel modello dati, vedi lib/ics.ts per la decisione
   // di non inventare orari, §4 della spec).
   note: string | null;
+  // 22/10/2026 — impegni del Planner (vedi lib/ics.ts): orario, ripetizione, giorni da saltare.
+  startTime?: string | null;
+  endTime?: string | null;
+  weekly?: { weekdays: number[]; interval: 1 | 2 } | null;
+  daily?: boolean;
+  exceptDates?: string[];
 }
 
 export function firstOf<T>(value: T | T[] | null | undefined): T | null {
@@ -159,4 +165,83 @@ export function mapBookingRowsToPlannerCalendarItems(rows: RawBookingRow[]): Pla
   }
 
   return items.sort((a, b) => a.startDate.localeCompare(b.startDate));
+}
+
+// ─── 22/10/2026 — gli impegni del Planner nell'export ─────────────────
+// Fabrizio: "anche esporta calendario non vede nulla". L'export leggeva solo
+// le prenotazioni TRAMA. Con PARENT_UX_FIX_ENABLED aggiunge gli impegni del
+// Planner (scuola compresa): orario, ripetizione settimanale, e per la
+// scuola i giorni di chiusura saltati. Mai le note dell'impegno.
+
+export interface ExternalItemForExport {
+  id: string;
+  title: string;
+  startDate: string;
+  endDate: string;
+  allDay: boolean;
+  startTime: string | null;
+  endTime: string | null;
+  location: string | null;
+  kidIds: string[];
+  recurrence: { weekdays: number[]; interval: 1 | 2; anchor: string } | null;
+  isSchool: boolean;
+}
+
+function isoWeekdayOf(iso: string): number {
+  const d = new Date(iso + "T00:00:00Z").getUTCDay();
+  return d === 0 ? 7 : d;
+}
+
+function addDays(iso: string, n: number): string {
+  const d = new Date(iso + "T00:00:00Z");
+  d.setUTCDate(d.getUTCDate() + n);
+  return d.toISOString().slice(0, 10);
+}
+
+function weeksFrom(anchorMonday: string, iso: string): number {
+  const monday = addDays(iso, -(isoWeekdayOf(iso) - 1));
+  return Math.round((Date.parse(monday) - Date.parse(anchorMonday)) / (7 * 86400000));
+}
+
+/** Primo giorno in cui l'impegno c'è davvero (per una ripetizione, un giorno della settimana scelto). */
+export function firstOccurrence(item: Pick<ExternalItemForExport, "startDate" | "endDate" | "recurrence">): string | null {
+  if (!item.recurrence) return item.startDate;
+  for (let d = item.startDate, i = 0; d <= item.endDate && i < 21; d = addDays(d, 1), i += 1) {
+    if (!item.recurrence.weekdays.includes(isoWeekdayOf(d))) continue;
+    if (item.recurrence.interval === 2 && Math.abs(weeksFrom(item.recurrence.anchor, d)) % 2 !== 0) continue;
+    return d;
+  }
+  return null;
+}
+
+export function externalItemsToCalendarItems(
+  items: ExternalItemForExport[],
+  kidNameById: Record<string, string>,
+  schoolClosedDates: string[] = []
+): PlannerCalendarItem[] {
+  const out: PlannerCalendarItem[] = [];
+  for (const item of items) {
+    const first = firstOccurrence(item);
+    if (!first) continue;
+    const kidNames = item.kidIds.map((id) => kidNameById[id]).filter((n): n is string => Boolean(n));
+    const timed = !item.allDay && Boolean(item.startTime);
+    out.push({
+      id: `external-${item.id}`,
+      source: "EXTERNAL",
+      title: item.isSchool && kidNames.length > 0 ? `${item.title || "Scuola"} · ${kidNames.join(", ")}` : item.title,
+      kidNames,
+      startDate: first,
+      endDate: item.endDate,
+      centerName: null,
+      centerAddress: item.location?.trim() || null,
+      centerCity: null,
+      note: null,
+      startTime: timed ? item.startTime!.slice(0, 5) : null,
+      endTime: timed && item.endTime ? item.endTime.slice(0, 5) : null,
+      weekly: item.recurrence ? { weekdays: item.recurrence.weekdays, interval: item.recurrence.interval } : null,
+      daily: !item.recurrence && timed && item.endDate > first,
+      exceptDates: item.isSchool ? schoolClosedDates.filter((d) => d >= first && d <= item.endDate) : [],
+    });
+  }
+  return out;
 }

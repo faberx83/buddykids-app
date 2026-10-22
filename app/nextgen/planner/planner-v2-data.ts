@@ -36,6 +36,7 @@ import { getActivityDays } from "@/lib/data/activity-days";
 import { resolveFeatureFlagVisibility } from "@/lib/feature-flags/resolve";
 import { generateCorrelationId } from "@/lib/telemetry/correlation";
 import type PlannerV2Client from "./PlannerV2Client";
+import { externalItemsToCalendarItems } from "@/lib/planner/calendar-items-core";
 
 export type PlannerV2Props = Parameters<typeof PlannerV2Client>[0];
 
@@ -111,7 +112,7 @@ export async function loadPlannerV2Props({
   const externalItems: ExternalPlannerItem[] = externalEnabled
     ? await getExternalPlannerItemsForParent().catch((): ExternalPlannerItem[] => [])
     : [];
-  const calendarExportItems: PlannerCalendarItem[] = exportEnabled
+  let calendarExportItems: PlannerCalendarItem[] = exportEnabled
     ? await getPlannerCalendarItemsForParent().catch((): PlannerCalendarItem[] => [])
     : [];
 
@@ -136,6 +137,19 @@ export async function loadPlannerV2Props({
         closureLabelsByDate[d] = list;
       }
     }
+  }
+  // 22/10/2026 (Fabrizio: "anche esporta calendario non vede nulla"): con le
+  // correzioni dal test UX l'export porta anche gli impegni del Planner,
+  // scuola compresa (senza i giorni di chiusura). lib/planner/calendar-items-core.ts.
+  if (exportEnabled && uxFixEnabled && externalItems.length > 0) {
+    calendarExportItems = [
+      ...calendarExportItems,
+      ...externalItemsToCalendarItems(
+        externalItems,
+        Object.fromEntries(kids.map((k) => [k.id, k.name])),
+        Array.from(schoolClosedDates)
+      ),
+    ];
   }
   // 20/10/2026 — "Non serve" sulle chiusure (lib/nextgen/closure-not-needed.ts):
   // conta come copertura di quei giorni per quel figlio.
