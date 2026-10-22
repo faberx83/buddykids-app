@@ -1084,7 +1084,8 @@ function LeaveOrDeleteGroup({ detail, backHref }: { detail: GroupDetail; backHre
       setError(result.error);
       return;
     }
-    router.push(backHref);
+    // Ritest 22/10: replace, non push — con Indietro non si torna alla pagina di un gruppo che non c'è più.
+    router.replace(backHref);
     router.refresh();
   }
 

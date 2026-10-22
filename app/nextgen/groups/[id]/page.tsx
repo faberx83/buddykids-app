@@ -1,4 +1,4 @@
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import GroupDetailClient from "@/components/GroupDetailClient";
 import { getGroupDetail } from "@/lib/data/group-detail";
 import { getActivities, getTestFixtureCenterIds } from "@/lib/data/activities";
@@ -40,7 +40,12 @@ export default async function NextgenGroupDetailPage({
   const { id } = await params;
   const { from } = await searchParams;
   const [detail, parentProfile, v2, uxFix] = await Promise.all([getGroupDetail(id), getParentProfile(), groupsV2Enabled(), parentUxFixEnabled()]);
-  if (!detail) notFound();
+  // Ritest 22/10/2026: gruppo eliminato o da cui si è usciti (es. Indietro
+  // dopo "Elimina il gruppo") → la lista dei gruppi, non una pagina 404.
+  if (!detail) {
+    if (uxFix) redirect("/nextgen/groups");
+    notFound();
+  }
 
   const activityOptions =
     isSupabaseConfigured && detail.createdByMe && !detail.activityId

@@ -10,7 +10,7 @@ import { createClient } from "@/lib/supabase/server";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
 import { resolveFeatureFlag } from "@/lib/feature-flags/resolve";
 import { generateCorrelationId } from "@/lib/telemetry/correlation";
-import { buildPhotonUrl, parsePhotonResponse, PLACE_SEARCH_FLAG } from "@/lib/places/search";
+import { buildPhotonUrl, mergeSchoolSuggestions, parsePhotonResponse, PLACE_SEARCH_FLAG, retryQuery } from "@/lib/places/search";
 
 export async function GET(request: Request) {
   const empty = NextResponse.json({ suggestions: [] });
@@ -35,11 +35,25 @@ export async function GET(request: Request) {
   const q = url.searchParams.get("q") ?? "";
   const kind = url.searchParams.get("kind") === "school" ? "school" : "any";
   const near = Number.isFinite(lat) && Number.isFinite(lng) && (lat !== 0 || lng !== 0) ? { lat, lng } : null;
-  let suggestions = await searchPhoton(buildPhotonUrl({ q, kind, near }));
-  // 21/10/2026 — Fabrizio: "non mi trova la Fondazione Grossman come scuola".
-  // In OpenStreetMap alcune scuole sono registrate come fondazione o ente, non
-  // come "scuola": se fra le scuole non c'è niente, si cerca fra tutti i luoghi.
-  if (suggestions.length === 0 && kind === "school") suggestions = await searchPhoton(buildPhotonUrl({ q, kind: "any", near }));
+  if (kind !== "school") return NextResponse.json({ suggestions: await searchPhoton(buildPhotonUrl({ q, kind, near })) });
+  // 21–22/10/2026 — Fabrizio: "non mi trova la Fondazione Grossman". In
+  // OpenStreetMap alcune scuole sono registrate come fondazione o ente, non
+  // come "scuola": si cerca fra le scuole e fra tutti i luoghi insieme
+  // (lib/places/search.ts#mergeSchoolSuggestions), e se non esce niente si
+  // riprova senza le parole generiche ("Fondazione Grossman" → "Grossman").
+  const [schools, any] = await Promise.all([
+    searchPhoton(buildPhotonUrl({ q, kind: "school", near })),
+    searchPhoton(buildPhotonUrl({ q, kind: "any", near })),
+  ]);
+  let suggestions = mergeSchoolSuggestions(q, schools, any);
+  const retry = suggestions.length === 0 ? retryQuery(q) : null;
+  if (retry) {
+    const [schools2, any2] = await Promise.all([
+      searchPhoton(buildPhotonUrl({ q: retry, kind: "school", near })),
+      searchPhoton(buildPhotonUrl({ q: retry, kind: "any", near })),
+    ]);
+    suggestions = mergeSchoolSuggestions(retry, schools2, any2);
+  }
   return NextResponse.json({ suggestions });
 }
 

@@ -14,6 +14,7 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { sendEmail, isEmailConfigured } from "@/lib/email";
+import { EMAIL_PUBLIC_ORIGIN, tramaEmailHtml } from "@/lib/email-layout";
 
 type SupabaseClientLike = Awaited<ReturnType<typeof createClient>>;
 
@@ -112,7 +113,13 @@ export async function notifyParentOfBookingResponse(
       subject = `Il centro ha una proposta per te: ${activityName}`;
       body = `<p>${greeting}</p><p>Il centro ha inviato una proposta alternativa per ${forWhat}:</p><p>${proposalNote ?? ""}</p>`;
     }
-    const result = await sendEmail({ to: parentRow.email, subject, html: body });
+    // 22/10/2026 (ritest): stessa forma delle altre email di TRAMA, con il pulsante per le prenotazioni.
+    const html = tramaEmailHtml({
+      title: subject,
+      paragraphs: body.replace(/^<p>|<\/p>$/g, "").split("</p><p>").filter(Boolean),
+      cta: { label: "Vedi le prenotazioni", href: `${EMAIL_PUBLIC_ORIGIN}/nextgen/prenotazioni` },
+    });
+    const result = await sendEmail({ to: parentRow.email, subject, html });
     if (result.error) {
       console.error(
         `[booking-response] Notifica email al genitore fallita definitivamente dopo ${result.attempts} tentativo/i (bookingId=${bookingId}, decision=${decision}): ${result.error}`

@@ -20,7 +20,8 @@ import {
   regionFromPlace,
   siblingSchools,
 } from "../../lib/nextgen/parent-ux-fix";
-import { parsePhotonResponse } from "../../lib/places/search";
+import { parsePhotonResponse, mergeSchoolSuggestions, retryQuery, distinctiveWords } from "../../lib/places/search";
+import { tramaEmailHtml, escapeEmailHtml } from "../../lib/email-layout";
 import { buildHomeInbox } from "../../lib/nextgen/home-inbox";
 import { FEATURE_FLAG_REGISTRY } from "../../lib/feature-flags/registry";
 import { RELEASE_CATALOG } from "../../lib/releases/catalog";
@@ -398,6 +399,52 @@ test.describe("Ritest 22/10 — una sola Scuola per figlio [no browser]", () => 
     expect(f).toContain("{schoolItems && !uxFix && <SchoolHoursBlock");
     expect(f).toContain("schoolItems={uxFix ? schoolItems : null}");
     expect(read("components/AddKidForm.tsx")).toContain("Nome e orari li puoi aggiungere dopo, nella scheda del figlio.");
+  });
+});
+
+test.describe("Ritest 22/10, secondo giro — 404, email, Grossman, stessa scuola [no browser]", () => {
+  const sug = (name: string, kind = "amenity:school") => ({ name, address: "", lat: 45.4, lng: 9.1, kind });
+
+  test("UXF-60 (14) dopo Elimina: replace, e un gruppo che non c'è più porta alla lista, non a un 404", () => {
+    expect(read("components/GroupDetailClient.tsx")).toContain("router.replace(backHref);");
+    const page = read("app/nextgen/groups/[id]/page.tsx");
+    expect(page).toContain('if (uxFix) redirect("/nextgen/groups");');
+    expect(page).toContain("notFound();");
+  });
+
+  test("UXF-61 (15) email: stessa forma per tutte, testi ripuliti", () => {
+    const html = tramaEmailHtml({ title: "Ti <b>invito</b>", paragraphs: ["Ciao"], cta: { label: "Vedi", href: "https://tramapp.it/x?a=1&b=2" }, footnote: "Nota <x>" });
+    expect(html).toContain("Ti &lt;b&gt;invito&lt;/b&gt;");
+    expect(html).toContain('href="https://tramapp.it/x?a=1&amp;b=2"');
+    expect(html).toContain("Nota &lt;x&gt;");
+    expect(html).toContain("trama-logo-mark.png");
+    expect(escapeEmailHtml(`"'`)).toBe("&quot;&#39;");
+    expect(read("app/actions/groups.ts")).toContain("tramaEmailHtml({");
+    expect(read("app/actions/groups.ts")).toContain('encodeURIComponent("/nextgen/groups?tab=inviti")');
+    expect(read("app/actions/family.ts")).toContain("tramaEmailHtml({");
+    expect(read("lib/booking-response/notify.ts")).toContain("tramaEmailHtml({");
+  });
+
+  test("UXF-62 (6 bis) 'Fondazione Grossman': fondazioni ed enti insieme alle scuole, poi senza parole generiche", () => {
+    expect(distinctiveWords("Fondazione Grossman")).toEqual(["grossman"]);
+    expect(retryQuery("Fondazione Grossman")).toBe("grossman");
+    expect(retryQuery("Grossman")).toBeNull();
+    const merged = mergeSchoolSuggestions(
+      "Fondazione Grossman",
+      [sug("Scuola primaria Gonzaga"), sug("Istituto Gesù")],
+      [sug("Fondazione Grossman", "office:foundation"), sug("Scuola primaria Gonzaga")]
+    );
+    expect(merged.map((m) => m.name)).toEqual(["Fondazione Grossman", "Scuola primaria Gonzaga", "Istituto Gesù"]);
+    const route = read("app/api/places/search/route.ts");
+    expect(route).toContain("mergeSchoolSuggestions(q, schools, any)");
+    expect(route).toContain("const retry = suggestions.length === 0 ? retryQuery(q) : null;");
+  });
+
+  test("UXF-63 (17) 'Stessa scuola di …' salta la ricerca: riepilogo e Cambia", () => {
+    const b = read("components/nextgen/KidSchoolBlock.tsx");
+    expect(b).toContain('data-testid="kid-school-copied"');
+    expect(b).toContain("setCopiedFrom(s.kidName);");
+    expect(b).toContain("{copiedFrom ? (");
   });
 });
 

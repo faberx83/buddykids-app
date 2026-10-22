@@ -9,6 +9,7 @@ import { getPublicGroups, getMyGroupInvites } from "@/lib/data/groups";
 import { revalidatePath } from "next/cache";
 import { headers } from "next/headers";
 import { sendEmail, isEmailConfigured } from "@/lib/email";
+import { escapeEmailHtml, tramaEmailHtml } from "@/lib/email-layout";
 import { familyHost } from "@/lib/tenant";
 // Wave 1 "Pilot Observability" (audit TRAMA_PILOT_ARCHITECTURE_REVIEW.md
 // sez.9/sez.11) — conteggi aggregati di adozione Gruppi/Carpool, MAI un
@@ -238,22 +239,22 @@ export async function inviteToGroupAction(groupId: string, email: string): Promi
   // 16/10/2026: indirizzo delle famiglie (tramapp.it in produzione), vedi familyHost().
   const host = familyHost(h.get("host") || "localhost:3000");
   const proto = h.get("x-forwarded-proto") || (host.startsWith("localhost") ? "http" : "https");
-  const link = `${proto}://${host}/auth/login?next=${encodeURIComponent("/groups")}`;
+  // 22/10/2026: dritti alla scheda "Inviti" dei Gruppi dell'app famiglie (prima "/groups", l'app vecchia).
+  const link = `${proto}://${host}/auth/login?next=${encodeURIComponent("/nextgen/groups?tab=inviti")}`;
 
   let emailSent = false;
   if (isEmailConfigured) {
     const inviterName = profile?.full_name || "Un genitore";
     const groupName = group?.name || "un gruppo";
-    const html = `
-      <div style="font-family: -apple-system, Helvetica, Arial, sans-serif; max-width: 480px; margin: 0 auto; padding: 24px; color:#1a2b3c;">
-        <h2 style="margin: 0 0 12px;">Ciao,</h2>
-        <p><b>${inviterName}</b> ti ha invitato a unirti al gruppo <b>"${groupName}"</b> su TRAMA, per organizzarvi insieme e ottenere lo sconto gruppo.</p>
-        <p style="text-align:center; margin: 24px 0;">
-          <a href="${link}" style="background:#6F63C5; color:#fff; padding:12px 24px; border-radius:8px; text-decoration:none; font-weight:bold; display:inline-block;">Vedi l'invito</a>
-        </p>
-        <p style="font-size:12px; color:#888;">Accedi con l'email a cui è arrivato questo invito (${invitedEmail}) e lo troverai nella tab "Inviti" di Gruppi.</p>
-      </div>
-    `;
+    // 22/10/2026 (ritest): stessa forma delle altre email di TRAMA (lib/email-layout.ts).
+    const html = tramaEmailHtml({
+      title: "Ti hanno invitato in un gruppo",
+      paragraphs: [
+        `<b>${escapeEmailHtml(inviterName)}</b> ti ha invitato nel gruppo <b>"${escapeEmailHtml(groupName)}"</b> su TRAMA, per organizzare insieme un'attività dei bambini e i passaggi.`,
+      ],
+      cta: { label: "Vedi l'invito", href: link },
+      footnote: `Entra con l'email a cui è arrivato questo invito (${invitedEmail}): lo trovi in Gruppi → Inviti.`,
+    });
     const sendResult = await sendEmail({
       to: invitedEmail,
       subject: `${inviterName} ti invita su TRAMA 🤝`,

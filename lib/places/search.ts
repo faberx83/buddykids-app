@@ -97,3 +97,58 @@ export function placeLocationText(p: Pick<PlaceSuggestion, "name" | "address">):
   if (p.address.toLowerCase().startsWith(p.name.toLowerCase())) return p.address;
   return `${p.name}, ${p.address}`;
 }
+
+// ─── 22/10/2026 — scuole che OpenStreetMap non registra come "scuola" ───
+// Ritest di Fabrizio: "non trovo ancora Fondazione Grossman". Il ripiego
+// del 21/10 cercava fra tutti i luoghi solo se fra le scuole non c'era
+// NIENTE; ma Photon restituisce quasi sempre qualche scuola simile, quindi
+// il ripiego non partiva. Ora: scuole e tutti i luoghi insieme, prima quelli
+// il cui nome contiene le parole cercate; se non esce niente, si riprova
+// senza le parole generiche ("Fondazione Grossman" → "Grossman").
+
+const GENERIC_SCHOOL_WORDS = new Set([
+  "scuola", "scuole", "istituto", "istituti", "ist", "fondazione", "primaria", "elementare", "elementari",
+  "secondaria", "media", "medie", "infanzia", "materna", "nido", "asilo", "liceo", "comprensivo", "ic",
+  "paritaria", "statale", "di", "del", "della", "dei", "delle", "e", "la", "il",
+]);
+
+function plain(text: string): string {
+  return text.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
+}
+
+/** Le parole "che contano" della ricerca: senza scuola, istituto, fondazione, primaria… */
+export function distinctiveWords(q: string): string[] {
+  return plain(q)
+    .split(/[^a-z0-9]+/)
+    .filter((w) => w.length >= 3 && !GENERIC_SCHOOL_WORDS.has(w));
+}
+
+/** Testo da cercare di nuovo senza le parole generiche, o null se non cambia niente. */
+export function retryQuery(q: string): string | null {
+  const words = distinctiveWords(q);
+  const retry = words.join(" ");
+  return words.length > 0 && retry !== plain(q).trim() ? retry : null;
+}
+
+/**
+ * Unisce i risultati fra le scuole e fra tutti i luoghi: prima chi ha nel
+ * nome tutte le parole che contano, poi le scuole, poi il resto; niente
+ * doppioni; al massimo `limit`.
+ */
+export function mergeSchoolSuggestions(q: string, schools: PlaceSuggestion[], any: PlaceSuggestion[], limit = 6): PlaceSuggestion[] {
+  const words = distinctiveWords(q);
+  const nameHas = (p: PlaceSuggestion) => words.length > 0 && words.every((w) => plain(p.name).includes(w));
+  const seen = new Set<string>();
+  const all: { p: PlaceSuggestion; rank: number; i: number }[] = [];
+  [...schools, ...any].forEach((p, i) => {
+    const key = `${p.name}|${p.address}`.toLowerCase();
+    if (seen.has(key)) return;
+    seen.add(key);
+    const isSchool = i < schools.length;
+    all.push({ p, rank: nameHas(p) ? 0 : isSchool ? 1 : 2, i });
+  });
+  return all
+    .sort((a, b) => a.rank - b.rank || a.i - b.i)
+    .slice(0, limit)
+    .map((x) => x.p);
+}

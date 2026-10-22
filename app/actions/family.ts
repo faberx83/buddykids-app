@@ -13,6 +13,7 @@ import { isSupabaseConfigured } from "@/lib/supabase/env";
 import { revalidatePath } from "next/cache";
 import { headers } from "next/headers";
 import { sendEmail, isEmailConfigured } from "@/lib/email";
+import { escapeEmailHtml, tramaEmailHtml } from "@/lib/email-layout";
 import { familyHost } from "@/lib/tenant";
 import { defaultFamilyName } from "@/lib/nextgen/family-page-v2";
 import { newShortInviteToken, shortInviteUrl } from "@/lib/public-links";
@@ -157,16 +158,15 @@ async function buildOrigin(): Promise<string> {
 }
 
 function buildFamilyInviteEmailHtml(params: { familyName: string; inviterName: string; link: string }): string {
-  return `
-    <div style="font-family: -apple-system, Helvetica, Arial, sans-serif; max-width: 480px; margin: 0 auto; padding: 24px; color:#1a2b3c;">
-      <h2 style="margin: 0 0 12px;">Ciao,</h2>
-      <p><b>${params.inviterName}</b> ti ha invitato a unirti alla famiglia <b>"${params.familyName}"</b> su TRAMA, per condividere indirizzi, organizzazione settimanale e piano attività dei bambini.</p>
-      <p style="text-align:center; margin: 24px 0;">
-        <a href="${params.link}" style="background:#6F63C5; color:#fff; padding:12px 24px; border-radius:8px; text-decoration:none; font-weight:bold; display:inline-block;">Accetta l'invito</a>
-      </p>
-      <p style="font-size:12px; color:#888;">Se il pulsante non funziona, apri questo link: ${params.link}</p>
-    </div>
-  `;
+  // 22/10/2026 (ritest): stessa forma delle altre email di TRAMA (lib/email-layout.ts).
+  return tramaEmailHtml({
+    title: "Organizziamoci insieme su TRAMA",
+    paragraphs: [
+      `<b>${escapeEmailHtml(params.inviterName)}</b> ti ha invitato nella famiglia <b>"${escapeEmailHtml(params.familyName)}"</b> su TRAMA: vedrete lo stesso Planner e potrete dividervi chi accompagna e chi ritira.`,
+    ],
+    cta: { label: "Accetta l'invito", href: params.link },
+    showLinkFallback: true,
+  });
 }
 
 export interface InviteToFamilyResult {

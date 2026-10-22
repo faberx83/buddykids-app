@@ -80,6 +80,8 @@ export default function KidSchoolBlock({
   const [region, setRegion] = useState(profile?.region ?? "");
   const [comune, setComune] = useState(profile?.comune ?? "");
   const [fromSearch, setFromSearch] = useState(false);
+  // Ritest 22/10 (prova 17): dopo "Stessa scuola di Luca" la ricerca si salta: riepilogo e "Cambia".
+  const [copiedFrom, setCopiedFrom] = useState<string | null>(null);
   const [withHours, setWithHours] = useState(Boolean(schoolItem));
   const [entry, setEntry] = useState(hhmm(schoolItem?.startTime) || "08:30");
   const [exit, setExit] = useState(hhmm(schoolItem?.endTime) || "16:30");
@@ -94,6 +96,7 @@ export default function KidSchoolBlock({
     setRegion(profile?.region ?? "");
     setComune(profile?.comune ?? "");
     setFromSearch(false);
+    setCopiedFrom(null);
     setWithHours(Boolean(schoolItem));
     setEntry(hhmm(schoolItem?.startTime) || "08:30");
     setExit(hhmm(schoolItem?.endTime) || "16:30");
@@ -115,10 +118,11 @@ export default function KidSchoolBlock({
         setExit(hhmm(it.endTime) || exit);
         setWeekdays(it.recurrence?.weekdays ?? weekdays);
       }
-    } else if (s.schoolName) {
-      setName(s.schoolName);
+    } else {
+      setName(s.schoolName && s.schoolName !== "Scuola" ? s.schoolName : "");
     }
     setFromSearch(false);
+    setCopiedFrom(s.kidName);
     setError(null);
   }
 
@@ -238,6 +242,24 @@ export default function KidSchoolBlock({
             </div>
           )}
 
+          {copiedFrom ? (
+            <div data-testid="kid-school-copied" className="flex items-start justify-between gap-3 rounded-[12px] bg-[#E6F6F0] px-3.5 py-3 text-[13.5px] text-[#146B4F]">
+              <span className="flex min-w-0 flex-col gap-0.5">
+                <span className="font-semibold">Stessa scuola di {copiedFrom}</span>
+                {name.trim() && <span className="truncate text-ink">{name}</span>}
+                <span className="text-ink">{comune ? `${comune} · ${region}` : region}</span>
+                {withHours && routineEnabled && (
+                  <span className="text-ink-2">
+                    {weekdays.map((d) => WEEKDAY_LABELS_IT[d].short).join(", ")} · {entry}–{exit}
+                  </span>
+                )}
+              </span>
+              <button type="button" onClick={() => setCopiedFrom(null)} className="min-h-[36px] flex-shrink-0 font-semibold text-trama-accent-ink">
+                Cambia
+              </button>
+            </div>
+          ) : (
+            <>
           <div className={LABEL}>
             <label htmlFor={`kid-school-name-${kid.id}`}>
               {placeSearchEnabled ? "Cerca la scuola" : "Nome della scuola"}{" "}
@@ -307,6 +329,9 @@ export default function KidSchoolBlock({
                   Usa il mio Comune ({residenceCity})
                 </button>
               )}
+            </>
+          )}
+
             </>
           )}
 
