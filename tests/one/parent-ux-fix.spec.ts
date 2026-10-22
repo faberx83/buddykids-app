@@ -228,9 +228,11 @@ test.describe("Correzioni dal test UX — ciclo 2 [no browser]", () => {
 });
 
 test.describe("Correzioni dal test UX — ciclo 3 [no browser]", () => {
-  test("UXF-30 (008) nel + co-genitore e altra famiglia sono due voci, solo con il flag", () => {
+  test("UXF-30 (008) nel + l'altro genitore e altra famiglia sono due voci, solo con il flag", () => {
     const sheet = read("components/nextgen/AddSheet.tsx");
-    expect(sheet).toContain('title: "Il mio co-genitore"');
+    // 22/10/2026 (Fabrizio): "L'altro genitore", non "Il mio co-genitore".
+    expect(sheet).toContain(`title: "L'altro genitore"`);
+    expect(sheet).not.toContain("co-genitore\"");
     expect(sheet).toContain('href: "/nextgen/profile/famiglia#genitori-h"');
     expect(sheet).toContain(`title: "Un'altra famiglia"`);
     // senza flag resta la voce di prima
@@ -306,3 +308,33 @@ test.describe("Correzioni dal test UX — ciclo 4, K e L [no browser]", () => {
     expect(read("app/nextgen/search/page.tsx")).toContain("withoutTestFixtures(activities, await getTestFixtureCenterIds(), role)");
   });
 });
+
+test.describe("Ritest 22/10 — uscire da un gruppo, eliminare un gruppo [no browser]", () => {
+  test("UXF-50 migration 48: solo due regole DELETE, preparata e non applicata", () => {
+    const sql = read("supabase/migration_48_gruppi_esci_elimina.sql");
+    expect(sql).toContain("-- STATO: PREPARATA, NON APPLICATA");
+    expect(sql).toContain("on public.group_members\n  for delete\n  using (auth.uid() = parent_id);");
+    expect(sql).toContain("on public.groups\n  for delete\n  using (created_by = auth.uid());");
+    expect(sql).not.toMatch(/\balter table\b|\bdelete\s+from\b|\bdrop\s+table\b/i);
+  });
+
+  test("UXF-51 azioni: chi crea elimina, gli altri escono; nessuna eliminazione con richiesta aperta", () => {
+    const a = read("app/actions/groups.ts");
+    expect(a).toContain("export async function leaveGroupAction(groupId: string)");
+    expect(a).toContain("export async function deleteGroupAction(groupId: string)");
+    expect(a).toContain("Hai creato tu questo gruppo: puoi eliminarlo, non uscire.");
+    expect(a).toContain('.in("status", ["pending", "accepted"])');
+    // uscendo, via prima i propri dati
+    const leave = a.slice(a.indexOf("export async function leaveGroupAction"), a.indexOf("export async function deleteGroupAction"));
+    expect(leave.indexOf('from("group_kids").delete()')).toBeLessThan(leave.indexOf('from("group_members")'));
+    expect(leave).toContain('.eq("parent_id", user.id)');
+  });
+
+  test("UXF-52 dettaglio gruppo: Esci / Elimina con conferma, solo con il flag", () => {
+    const g = read("components/GroupDetailClient.tsx");
+    expect(g).toContain("{uxFix && <LeaveOrDeleteGroup detail={detail} backHref={backHref} />}");
+    expect(g).toContain('data-testid="group-leave-delete"');
+    expect(g).toContain("Sparisce anche per le altre famiglie");
+  });
+});
+

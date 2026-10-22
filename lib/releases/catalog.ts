@@ -340,6 +340,7 @@ export const RELEASE_CATALOG: ReleaseCatalogEntry[] = [
     featureKeys: ["parent_ux_fix"],
     knownLimitations: [
       "parent_ux_fix: i centri di prova spariscono dal catalogo famiglie solo dopo la migration 47 (centers.is_test_fixture); prima, nessun centro è nascosto.",
+      "parent_ux_fix: 'Esci dal gruppo' ed 'Elimina il gruppo' funzionano solo dopo la migration 48 (regole DELETE); prima rispondono con un errore, senza togliere nulla.",
       "parent_ux_fix: 'Indica la scuola' non ha ancora un 'Più tardi': resta in Da fare finché ogni figlio ha la scuola.",
     ],
     notes: "Creata il 21/10/2026. Ripiego: flag spento = tutto come prima.",

@@ -38,7 +38,7 @@ export default function AddSheet({
   /** RADAR (14/10/2026, "il pulsante per aggiungere dépliant e foto dove è finito?"): con RADAR_ENABLED il + offre anche "Una scoperta". */
   radarEnabled?: boolean;
   /** Correzioni dal test UX (21/10/2026), UX-PARENT-008: "Un altro genitore"
-   *  portava ai Gruppi. Con il flag: "Il mio co-genitore" (stesso piano, La
+   *  portava ai Gruppi. Con il flag: "L'altro genitore" (stesso piano, La
    *  tua famiglia) e "Un'altra famiglia" (gruppo). false = come prima. */
   uxFix?: boolean;
 }) {
@@ -99,7 +99,7 @@ export default function AddSheet({
           {
             href: "/nextgen/profile/famiglia#genitori-h",
             icon: "ti-user-plus",
-            title: "Il mio co-genitore",
+            title: "L'altro genitore",
             detail: "Stesso piano: vedete e cambiate tutto insieme",
             primary: false,
           },

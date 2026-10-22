@@ -704,3 +704,68 @@ export async function removeCarpoolRequestAction(groupId: string): Promise<{ err
   revalidatePath(`/groups/${groupId}`);
   return {};
 }
+
+// ════════════════════════════════════════════════════════════════
+// TRAMA — USCIRE DA UN GRUPPO / ELIMINARE UN GRUPPO (22/10/2026)
+// Ritest delle correzioni UX (Fabrizio). Richiede la migration 48 (regole
+// DELETE su group_members e groups). Mostrate solo con PARENT_UX_FIX_ENABLED.
+// ════════════════════════════════════════════════════════════════
+
+/** Esci dal gruppo: via i tuoi bambini, le tue offerte e richieste di passaggio, poi la tua iscrizione. */
+export async function leaveGroupAction(groupId: string): Promise<{ error?: string }> {
+  if (!isSupabaseConfigured) return { error: "Supabase non configurato" };
+  const { supabase, user } = await requireUser();
+  if (!user) return { error: "Non autenticato" };
+
+  const { data: group } = await supabase.from("groups").select("id, created_by").eq("id", groupId).maybeSingle();
+  if (!group) return { error: "Gruppo non trovato" };
+  if (group.created_by === user.id) {
+    return { error: "Hai creato tu questo gruppo: puoi eliminarlo, non uscire." };
+  }
+
+  // Prima i propri dati nel gruppo (le regole li permettono già), poi l'iscrizione.
+  await supabase.from("carpool_offers").delete().eq("group_id", groupId).eq("parent_id", user.id);
+  await supabase.from("carpool_requests").delete().eq("group_id", groupId).eq("parent_id", user.id);
+  await supabase.from("group_kids").delete().eq("group_id", groupId).eq("parent_id", user.id);
+
+  const { data: removed, error } = await supabase
+    .from("group_members")
+    .delete()
+    .eq("group_id", groupId)
+    .eq("parent_id", user.id)
+    .select("group_id");
+  if (error) return { error: error.message };
+  if (!removed || removed.length === 0) {
+    return { error: "Non è stato possibile uscire dal gruppo. Riprova tra poco." };
+  }
+  revalidatePath("/nextgen/groups");
+  return {};
+}
+
+/** Elimina il gruppo (solo chi l'ha creato). Bloccato se c'è una richiesta al centro in attesa o accettata. */
+export async function deleteGroupAction(groupId: string): Promise<{ error?: string }> {
+  if (!isSupabaseConfigured) return { error: "Supabase non configurato" };
+  const { supabase, user } = await requireUser();
+  if (!user) return { error: "Non autenticato" };
+
+  const { data: group } = await supabase.from("groups").select("id, created_by").eq("id", groupId).maybeSingle();
+  if (!group) return { error: "Gruppo non trovato" };
+  if (group.created_by !== user.id) return { error: "Solo chi ha creato il gruppo può eliminarlo." };
+
+  const { data: openRequests } = await supabase
+    .from("group_requests")
+    .select("id")
+    .eq("group_id", groupId)
+    .in("status", ["pending", "accepted"]);
+  if (openRequests && openRequests.length > 0) {
+    return { error: "C'è una richiesta al centro in attesa o accettata: scrivi prima al centro." };
+  }
+
+  const { data: removed, error } = await supabase.from("groups").delete().eq("id", groupId).select("id");
+  if (error) return { error: error.message };
+  if (!removed || removed.length === 0) {
+    return { error: "Non è stato possibile eliminare il gruppo. Riprova tra poco." };
+  }
+  revalidatePath("/nextgen/groups");
+  return {};
+}

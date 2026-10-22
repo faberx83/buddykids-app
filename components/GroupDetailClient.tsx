@@ -22,6 +22,8 @@ import {
   removeCarpoolRequestAction,
   toggleGroupVisibilityAction,
   inviteToGroupAction,
+  leaveGroupAction,
+  deleteGroupAction,
 } from "@/app/actions/groups";
 
 const LEG_LABELS: Record<CarpoolLeg, string> = {
@@ -379,6 +381,7 @@ export default function GroupDetailClient({
         ) : (
           <AccompagnamentoTab detail={detail} nextgen={nextgen} />
         )}
+        {uxFix && <LeaveOrDeleteGroup detail={detail} backHref={backHref} />}
       </div>
     );
   }
@@ -1055,5 +1058,81 @@ function AccompagnamentoTab({ detail, nextgen }: { detail: GroupDetail; nextgen:
         </div>
       </div>
     </div>
+  );
+}
+
+// ─────────────────────────────────────────────
+// Uscire / eliminare (ritest del 22/10/2026, PARENT_UX_FIX_ENABLED + migration 48)
+// ─────────────────────────────────────────────
+function LeaveOrDeleteGroup({ detail, backHref }: { detail: GroupDetail; backHref: string }) {
+  const router = useRouter();
+  const [confirming, setConfirming] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const isCreator = detail.createdByMe;
+  const label = isCreator ? "Elimina il gruppo" : "Esci dal gruppo";
+  const question = isCreator
+    ? "Eliminare il gruppo? Sparisce anche per le altre famiglie, con bambini iscritti e passaggi."
+    : "Uscire dal gruppo? I tuoi bambini e i tuoi passaggi vengono tolti. Potrai rientrare solo con un nuovo invito.";
+
+  async function confirm() {
+    setBusy(true);
+    setError(null);
+    const result = isCreator ? await deleteGroupAction(detail.id) : await leaveGroupAction(detail.id);
+    setBusy(false);
+    if (result.error) {
+      setError(result.error);
+      return;
+    }
+    router.push(backHref);
+    router.refresh();
+  }
+
+  return (
+    <section aria-label={label} data-testid="group-leave-delete" className="mx-5 mb-6 mt-2 border-t border-trama-line pt-4">
+      {!confirming ? (
+        <button
+          type="button"
+          onClick={() => setConfirming(true)}
+          disabled={!isSupabaseConfigured}
+          className="flex min-h-[44px] items-center gap-2 text-[14px] font-semibold text-[#B3261E] disabled:opacity-60"
+        >
+          <i className={`ti ${isCreator ? "ti-trash" : "ti-logout"} text-[17px]`} aria-hidden="true" />
+          {label}
+        </button>
+      ) : (
+        <div role="alertdialog" aria-labelledby="group-leave-q" className="rounded-2xl border border-[#F3C9C5] bg-[#FDF3F2] p-4">
+          <p id="group-leave-q" className="text-[14px] leading-snug text-ink">
+            {question}
+          </p>
+          {error && (
+            <p role="alert" className="mt-2 text-[13px] font-medium text-[#B3261E]">
+              {error}
+            </p>
+          )}
+          <div className="mt-3 flex gap-2">
+            <button
+              type="button"
+              onClick={() => {
+                setConfirming(false);
+                setError(null);
+              }}
+              disabled={busy}
+              className="min-h-[44px] flex-1 rounded-[12px] border border-[#D9DDE5] bg-white px-4 text-[14px] font-semibold text-ink"
+            >
+              Annulla
+            </button>
+            <button
+              type="button"
+              onClick={confirm}
+              disabled={busy}
+              className="min-h-[44px] flex-1 rounded-[12px] bg-[#B3261E] px-4 text-[14px] font-semibold text-white disabled:opacity-60"
+            >
+              {busy ? "Un momento…" : isCreator ? "Elimina" : "Esci"}
+            </button>
+          </div>
+        </div>
+      )}
+    </section>
   );
 }

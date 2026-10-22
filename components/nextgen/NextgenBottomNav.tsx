@@ -101,7 +101,7 @@ export default function NextgenBottomNav({
   addItemEnabled?: boolean;
   /** RADAR (14/10/2026): "Una scoperta" nel foglio del +. */
   radarEnabled?: boolean;
-  /** Correzioni dal test UX (21/10/2026, PARENT_UX_FIX_ENABLED): nel + co-genitore e altra famiglia separati. */
+  /** Correzioni dal test UX (21/10/2026, PARENT_UX_FIX_ENABLED): nel + l'altro genitore e altra famiglia separati. */
   uxFix?: boolean;
 }) {
   const pathname = usePathname();
