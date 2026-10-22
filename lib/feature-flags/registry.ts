@@ -339,6 +339,17 @@ export const FEATURE_FLAG_REGISTRY = {
     defaultValue: false,
     allowedScopes: ["global", "environment", "user", "role", "cohort"],
   },
+  // TRAMA — CHI ACCOMPAGNA PER PASSAGGIO (22/10/2026), release "chi-accompagna-per-passaggio".
+  // Fase B della settimana tipo; migration 51 (passage_responsibilities).
+  PASSAGE_RESPONSIBILITIES_ENABLED: {
+    name: "PASSAGE_RESPONSIBILITIES_ENABLED",
+    description:
+      "Planner, giornata (con PLANNER_DAY_VIEW_ENABLED): chi porta e chi ritira per ogni passaggio — entrata e uscita da " +
+      "scuola, andata e ritorno di ogni impegno, sabato e domenica compresi. Un'uscita seguita entro un'ora da un'attività " +
+      "in un altro posto è un viaggio solo, dichiarato. Default false: un'andata e un ritorno per figlio e giorno.",
+    defaultValue: false,
+    allowedScopes: ["global", "environment", "user", "role", "cohort"],
+  },
   // TRAMA — CORREZIONI DAL TEST UX PARENT (21/10/2026), release "correzioni-test-ux".
   // Iniziativa: claude/INIZIATIVA_parent_ux_fix_2110.md (cicli 1–4).
   PARENT_UX_FIX_ENABLED: {

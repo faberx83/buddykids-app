@@ -37,6 +37,9 @@ import { resolveFeatureFlagVisibility } from "@/lib/feature-flags/resolve";
 import { generateCorrelationId } from "@/lib/telemetry/correlation";
 import type PlannerV2Client from "./PlannerV2Client";
 import { externalItemsToCalendarItems } from "@/lib/planner/calendar-items-core";
+import { getPassageResponsibilitiesForParent } from "@/lib/data/passage-responsibilities";
+import { PASSAGE_RESPONSIBILITIES_FLAG } from "@/lib/nextgen/passages";
+import { addDaysIso } from "@/lib/nextgen/planner-week";
 
 export type PlannerV2Props = Parameters<typeof PlannerV2Client>[0];
 
@@ -73,7 +76,7 @@ export async function loadPlannerV2Props({
   searchParams: Record<string, string | undefined>;
 }): Promise<PlannerV2Props> {
   const todayIso = romeTodayIso();
-  const [externalEnabled, schoolEnabled, exportEnabled, navV2Enabled, assignPlusEnabled, weeklyRoutineEnabled, placeSearchEnabled, dayViewEnabled, uxFixEnabled] = await Promise.all([
+  const [externalEnabled, schoolEnabled, exportEnabled, navV2Enabled, assignPlusEnabled, weeklyRoutineEnabled, placeSearchEnabled, dayViewEnabled, uxFixEnabled, passageFlag] = await Promise.all([
     flagOn("EXTERNAL_PLANNER_ITEMS_ENABLED", userId, role),
     flagOn("SCHOOL_CALENDAR_INTELLIGENCE_ENABLED", userId, role),
     flagOn("CALENDAR_EXPORT_ENABLED", userId, role),
@@ -84,7 +87,14 @@ export async function loadPlannerV2Props({
     flagOn(PLANNER_DAY_VIEW_FLAG, userId, role),
     // Correzioni dal test UX (21/10/2026).
     flagOn(PARENT_UX_FIX_FLAG, userId, role),
+    // 22/10/2026 — chi accompagna per passaggio (Fase B, migration 51).
+    flagOn(PASSAGE_RESPONSIBILITIES_FLAG, userId, role),
   ]);
+  // Vive nella giornata del Planner: senza "un giorno alla volta" resta spento.
+  const passagesEnabled = passageFlag && dayViewEnabled;
+  const passageResponsibilities = passagesEnabled
+    ? await getPassageResponsibilitiesForParent(addDaysIso(todayIso, -14))
+    : [];
   // 20/10/2026 — Chi accompagna più veloce: l'altro genitore è su TRAMA (nella
   // stessa famiglia)? Decide fra "riceverà una notifica" e "invitalo".
   const partnerOnTrama = assignPlusEnabled
@@ -304,6 +314,8 @@ export async function loadPlannerV2Props({
     partnerOnTrama,
     weeklyRoutineEnabled,
     dayViewEnabled,
+    passagesEnabled,
+    passageResponsibilities,
     placeSearchEnabled,
     // POLISH V2 (14/10/2026): il dettaglio tecnico degli errori lo vede solo l'Admin piattaforma.
     showDiagnostics: role === "platform_admin",

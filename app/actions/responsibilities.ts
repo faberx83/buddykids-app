@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
 import { ResponsibleValue, Weekday, Moment, WEEKDAYS } from "@/lib/nextgen/responsibility-options";
 import { revalidatePath } from "next/cache";
+import type { PassageTarget } from "@/lib/nextgen/passages";
 
 const PLANNER_PATH = "/nextgen/planner";
 
@@ -302,4 +303,141 @@ export async function setResponsibilityForDatesAction(
   const { error } = await supabase.from("week_responsibilities").upsert(rows, { onConflict: "parent_id,kid_id,week_start_date,weekday,moment" });
   if (error) return { error: error.message };
   return { count: rows.length };
+}
+
+// ─── 22/10/2026 — CHI ACCOMPAGNA PER PASSAGGIO (release "chi-accompagna-per-passaggio") ───
+// Scrive su passage_responsibilities (migration 51): uno o più passaggi con la
+// stessa persona (un viaggio = uscita da scuola + andata all'attività), anche
+// su più date ("tutto l'impegno"). `mirror`: le scelte che sono anche la prima
+// andata / l'ultimo ritorno del giorno si scrivono anche come scelta del
+// giorno (week_responsibilities), che Home, promemoria della sera e piano
+// condiviso leggono ancora. Logica: lib/nextgen/passages.ts.
+
+
+const PASSAGE_KEY_RE = /^(school|booking:[0-9a-f-]{36}|external:[0-9a-f-]{36})$/;
+const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+
+function validTargets<T extends { date: string; moment: Moment }>(list: T[], withKey: boolean): T[] | null {
+  if (list.length > 400) return null;
+  for (const t of list) {
+    if (!DATE_RE.test(t.date) || (t.moment !== "andata" && t.moment !== "ritorno")) return null;
+    if (withKey && !PASSAGE_KEY_RE.test((t as unknown as PassageTarget).passageKey)) return null;
+  }
+  return list;
+}
+
+function dayRowOf(date: string): { weekStartDate: string; weekday: Weekday } | null {
+  const d = new Date(date + "T00:00:00Z");
+  const offset = (d.getUTCDay() + 6) % 7;
+  const wd = WEEKDAYS.find((w) => w.dayOffset === offset);
+  if (!wd) return null; // sabato/domenica: la scelta del giorno non esiste
+  d.setUTCDate(d.getUTCDate() - offset);
+  return { weekStartDate: d.toISOString().slice(0, 10), weekday: wd.value };
+}
+
+export async function setPassageResponsibilitiesAction(input: {
+  targets: PassageTarget[];
+  responsible: ResponsibleValue;
+  responsibleLabel?: string;
+  familyPersonId?: string;
+  mirror?: { kidId: string; date: string; moment: Moment }[];
+}): Promise<{ error?: string }> {
+  if (!isSupabaseConfigured) return { error: "Supabase non configurato" };
+  if (input.responsible === "altro" && !input.responsibleLabel?.trim()) return { error: "Scrivi chi se ne occupa" };
+  const targets = validTargets(input.targets, true);
+  const mirror = validTargets(input.mirror ?? [], false);
+  if (!targets || !mirror) return { error: "Passaggi non validi" };
+  if (targets.length === 0) return {};
+
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { error: "Non autenticato" };
+
+  const familyPersonId = await resolveFamilyPersonId(supabase, user.id, input.responsible, input.responsibleLabel, input.familyPersonId);
+  const label = input.responsible === "altro" ? input.responsibleLabel!.trim().slice(0, 80) : null;
+  const now = new Date().toISOString();
+  const { error } = await supabase.from("passage_responsibilities").upsert(
+    targets.map((t) => ({
+      parent_id: user.id,
+      kid_id: t.kidId,
+      date: t.date,
+      passage_key: t.passageKey,
+      moment: t.moment,
+      responsible: input.responsible,
+      responsible_label: label,
+      family_person_id: input.responsible === "altro" ? familyPersonId : null,
+      updated_at: now,
+    })),
+    { onConflict: "parent_id,kid_id,date,passage_key,moment" }
+  );
+  if (error) return { error: error.message };
+
+  const dayRows = mirror.flatMap((m) => {
+    const day = dayRowOf(m.date);
+    if (!day) return [];
+    return [
+      {
+        parent_id: user.id,
+        kid_id: m.kidId,
+        week_start_date: day.weekStartDate,
+        weekday: day.weekday,
+        moment: m.moment,
+        responsible: input.responsible,
+        responsible_label: label,
+        ...(input.responsible === "altro" ? { family_person_id: familyPersonId } : {}),
+        updated_at: now,
+      },
+    ];
+  });
+  if (dayRows.length > 0) {
+    const { error: dayError } = await supabase
+      .from("week_responsibilities")
+      .upsert(dayRows, { onConflict: "parent_id,kid_id,week_start_date,weekday,moment" });
+    if (dayError) return { error: dayError.message };
+  }
+  return {};
+}
+
+export async function clearPassageResponsibilitiesAction(input: {
+  targets: PassageTarget[];
+  mirror?: { kidId: string; date: string; moment: Moment }[];
+}): Promise<{ error?: string }> {
+  if (!isSupabaseConfigured) return { error: "Supabase non configurato" };
+  const targets = validTargets(input.targets, true);
+  const mirror = validTargets(input.mirror ?? [], false);
+  if (!targets || !mirror) return { error: "Passaggi non validi" };
+
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { error: "Non autenticato" };
+
+  for (const t of targets) {
+    const { error } = await supabase
+      .from("passage_responsibilities")
+      .delete()
+      .eq("parent_id", user.id)
+      .eq("kid_id", t.kidId)
+      .eq("date", t.date)
+      .eq("passage_key", t.passageKey)
+      .eq("moment", t.moment);
+    if (error) return { error: error.message };
+  }
+  for (const m of mirror) {
+    const day = dayRowOf(m.date);
+    if (!day) continue;
+    const { error } = await supabase
+      .from("week_responsibilities")
+      .delete()
+      .eq("parent_id", user.id)
+      .eq("kid_id", m.kidId)
+      .eq("week_start_date", day.weekStartDate)
+      .eq("weekday", day.weekday)
+      .eq("moment", m.moment);
+    if (error) return { error: error.message };
+  }
+  return {};
 }

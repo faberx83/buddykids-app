@@ -331,6 +331,21 @@ export const RELEASE_CATALOG: ReleaseCatalogEntry[] = [
     notes: "Creata il 21/10/2026. Ripiego: flag spento = la lista dei sette giorni di prima.",
   },
   {
+    // TRAMA — CHI ACCOMPAGNA PER PASSAGGIO (22/10/2026): Fase B della settimana tipo.
+    id: "chi-accompagna-per-passaggio",
+    label: "TRAMA — Chi accompagna, per passaggio",
+    shortDescription:
+      "Nella giornata del Planner chi porta e chi ritira per ogni spostamento (scuola e attività, sabato compreso); uscita da scuola e attività vicine come un viaggio solo.",
+    targetAudience: ["parent"],
+    featureKeys: ["passage_responsibilities"],
+    knownLimitations: [
+      "passage_responsibilities: funziona solo dopo la migration 51 (passage_responsibilities); prima le scelte per passaggio non si salvano e restano quelle del giorno.",
+      "passage_responsibilities: serve anche la release 'planner-giorno' (vista un giorno alla volta).",
+      "passage_responsibilities: Home, promemoria della sera e piano condiviso leggono ancora la scelta del giorno (prima andata e ultimo ritorno); i passaggi in mezzo solo nel Planner.",
+    ],
+    notes: "Creata il 22/10/2026. Ripiego: flag spento = un'andata e un ritorno per figlio e giorno; le scelte per passaggio restano salvate ma non usate.",
+  },
+  {
     // TRAMA — CORREZIONI DAL TEST UX PARENT (21/10/2026).
     id: "correzioni-test-ux",
     label: "TRAMA — Correzioni dal test UX (21/10)",

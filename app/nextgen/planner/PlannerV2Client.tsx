@@ -95,7 +95,9 @@ import { recordBetaSignalAction } from "@/app/actions/beta-signals";
 import { markFirstUsefulAction } from "@/lib/nextgen/first-action";
 import ProfileChip from "@/components/nextgen/ProfileChip";
 import PlannerDayFocus from "@/components/nextgen/PlannerDayFocus";
-import { defaultDayIso } from "@/lib/nextgen/planner-day";
+import { buildKidPassageChains, defaultDayIso } from "@/lib/nextgen/planner-day";
+import PassageAssignBody from "@/components/nextgen/PassageAssignBody";
+import type { PassageResponsibility } from "@/lib/nextgen/passages";
 
 type View = "settimana" | "stagione";
 export interface HolidayPeriodRow {
@@ -158,6 +160,8 @@ export default function PlannerV2Client({
   weeklyRoutineEnabled = false,
   placeSearchEnabled = false,
   dayViewEnabled = false,
+  passagesEnabled = false,
+  passageResponsibilities = [],
   showDiagnostics = false,
   calendarExportEnabled,
   calendarExportItems,
@@ -205,6 +209,9 @@ export default function PlannerV2Client({
   placeSearchEnabled?: boolean;
   /** 21/10/2026 — release "planner-giorno" (PLANNER_DAY_VIEW_ENABLED): la Settimana un giorno alla volta. */
   dayViewEnabled?: boolean;
+  /** 22/10/2026 — release "chi-accompagna-per-passaggio" (con planner-giorno): chi porta e chi ritira per passaggio. */
+  passagesEnabled?: boolean;
+  passageResponsibilities?: PassageResponsibility[];
   showDiagnostics?: boolean;
   calendarExportEnabled: boolean;
   calendarExportItems: PlannerCalendarItemForIcs[];
@@ -288,6 +295,35 @@ export default function PlannerV2Client({
     [externalItems]
   );
   const labelFor = useCallback((r: WeekResponsibility) => resolveResponsibleDisplay(r, parentRole).label, [parentRole]);
+  // 22/10/2026 — chi accompagna per passaggio (Fase B, migration 51).
+  const [passageRows, setPassageRows] = useState<PassageResponsibility[]>(passageResponsibilities);
+  const passageLabelFor = useCallback((r: PassageResponsibility) => resolveResponsibleDisplay(r, parentRole).label, [parentRole]);
+  const passages = useMemo(
+    () => (passagesEnabled ? { rows: passageRows, labelFor: passageLabelFor } : null),
+    [passagesEnabled, passageRows, passageLabelFor]
+  );
+  const visibleKids = useMemo(
+    () => kids.filter((k) => kidFilter === null || k.id === kidFilter).map((k) => ({ id: k.id, name: k.name })),
+    [kids, kidFilter]
+  );
+  const agendaFor = useCallback(
+    (dateIso: string) =>
+      buildTodayAgenda({ todayIso: dateIso, bookings, externalItems: agendaExternal, hoursByActivityDbId, kidNameById, schoolClosedDates }),
+    [bookings, agendaExternal, hoursByActivityDbId, kidNameById, schoolClosedDates]
+  );
+  const rangeFor = useCallback(
+    (passageKey: string) => {
+      if (passageKey.startsWith("external:")) {
+        const item = agendaExternal.find((i) => `external:${i.id}` === passageKey);
+        return item ? { startDate: item.startDate, endDate: item.endDate } : null;
+      }
+      const b = bookings.find((x) => `booking:${x.id}` === passageKey);
+      if (!b) return null;
+      const dates = [...b.dayDates, ...b.weeks.flatMap((w) => [w.startDate, w.endDate])].sort();
+      return dates.length > 0 ? { startDate: dates[0], endDate: dates[dates.length - 1] } : null;
+    },
+    [agendaExternal, bookings]
+  );
 
   const week = useMemo(
     () =>
@@ -306,6 +342,18 @@ export default function PlannerV2Client({
       }),
     [monday, todayIso, bookings, agendaExternal, hoursByActivityDbId, kidNameById, responsibilities, labelFor, kidFilter, closureLabelsByDate, schoolClosedDates]
   );
+  // 22/10/2026 — con i passaggi, "da decidere" (striscia dei giorni e riga di
+  // stato) conta i passaggi della giornata, sabato e domenica compresi.
+  const weekShown = useMemo(() => {
+    if (!passages) return week;
+    let missingCount = 0;
+    const days = week.days.map((d) => {
+      const missing = buildKidPassageChains(d, visibleKids, passages).reduce((n, c) => n + c.missing, 0);
+      if (d.dateIso >= todayIso) missingCount += missing;
+      return { ...d, coordination: { ...d.coordination, missingCount: missing } };
+    });
+    return { ...week, days, missingCount };
+  }, [week, passages, visibleKids, todayIso]);
 
   // 20/10/2026 — "Non serve" sulle chiusure: stato locale (si vede subito),
   // salvato con l'azione già esistente degli override del calendario scuola.
@@ -553,7 +601,8 @@ export default function PlannerV2Client({
 
       {view === "settimana" ? (
         <WeekView
-          week={week}
+          week={weekShown}
+          passages={passages}
           kidOrder={kidOrder}
           kidList={kids.map((k) => ({ id: k.id, name: k.name }))}
           alertKids={kids.filter((k) => kidFilter === null || k.id === kidFilter).map((k) => ({ id: k.id, name: k.name }))}
@@ -681,7 +730,36 @@ export default function PlannerV2Client({
           }}
         />
       )}
-      {panel !== null && typeof panel === "object" && "assign" in panel && (
+      {panel !== null && typeof panel === "object" && "assign" in panel && passages && (
+        <PassageAssignSheet
+          day={weekShown.days.find((d) => d.dateIso === panel.assign) ?? null}
+          kids={visibleKids}
+          kidOrder={kidOrder}
+          options={resolveResponsibleOptions(parentRole, familyPeople)}
+          rows={passageRows}
+          onRowsChange={setPassageRows}
+          responsibilities={responsibilities}
+          onDayChange={setResponsibilities}
+          labelFor={passageLabelFor}
+          todayIso={todayIso}
+          agendaFor={agendaFor}
+          rangeFor={rangeFor}
+          plusEnabled={assignPlusEnabled}
+          partnerOnTrama={partnerOnTrama}
+          onShareWeek={shareWeek}
+          ownHistoryEntry={!assignFromLink.current}
+          onClose={() => {
+            setPanel(null);
+            if (assignFromLink.current) {
+              assignFromLink.current = false;
+              goBackInApp(router, "/nextgen");
+              return;
+            }
+            router.refresh();
+          }}
+        />
+      )}
+      {panel !== null && typeof panel === "object" && "assign" in panel && !passages && (
         <AssignSheet
           day={week.days.find((d) => d.dateIso === panel.assign) ?? null}
           mondayIso={monday}
@@ -772,8 +850,11 @@ function WeekView({
   dayView = false,
   todayIso,
   beforeActions = null,
+  passages = null,
 }: {
   week: ReturnType<typeof buildWeekModel>;
+  /** 22/10/2026 — release "chi-accompagna-per-passaggio". */
+  passages?: { rows: PassageResponsibility[]; labelFor: (row: PassageResponsibility) => string } | null;
   kidOrder: string[];
   /** 15/10/2026: per la legenda dei pallini e "chi resta scoperto". */
   kidList: { id: string; name: string }[];
@@ -1007,6 +1088,7 @@ function WeekView({
             todayIso={todayIso}
             onAssign={() => onAssign(selectedIso)}
             onSelect={setPicked}
+            passages={passages}
           />
         </div>
       ) : (
@@ -1846,6 +1928,36 @@ function AssignSheet({
           Fatto
         </button>
       </div>
+    </Sheet>
+  );
+}
+
+// 22/10/2026 — chi accompagna per passaggio: stesso foglio, contenuto per
+// passaggio (components/nextgen/PassageAssignBody.tsx), stesse proposte.
+function PassageAssignSheet({
+  day,
+  ownHistoryEntry,
+  onShareWeek,
+  onClose,
+  partnerOnTrama,
+  ...body
+}: Omit<Parameters<typeof PassageAssignBody>[0], "day" | "renderOffer"> & {
+  day: WeekDayModel | null;
+  ownHistoryEntry: boolean;
+  onShareWeek?: () => void;
+}) {
+  if (!day) return null;
+  return (
+    <Sheet title={`Chi accompagna · ${day.label}`} onClose={onClose} ownHistoryEntry={ownHistoryEntry}>
+      <PassageAssignBody
+        {...body}
+        day={day}
+        partnerOnTrama={partnerOnTrama}
+        onClose={onClose}
+        renderOffer={({ offer, applying, onApply, onDismiss }) => (
+          <AssignOfferRow offer={offer} applying={applying} partnerOnTrama={partnerOnTrama} onApply={onApply} onShareWeek={onShareWeek} onDismiss={onDismiss} />
+        )}
+      />
     </Sheet>
   );
 }

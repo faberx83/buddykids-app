@@ -7,7 +7,8 @@
 // esistente (AssignSheet). Sotto, l'anteprima del giorno dopo.
 // Logica: lib/nextgen/planner-day.ts.
 
-import { buildKidDayChains, dayTeaser, type DayStep, type KidDayChain } from "@/lib/nextgen/planner-day";
+import { buildKidDayChains, buildKidPassageChains, dayTeaser, type DayStep, type KidDayChain, type StepChip } from "@/lib/nextgen/planner-day";
+import type { PassageResponsibility } from "@/lib/nextgen/passages";
 import type { WeekDayModel } from "@/lib/nextgen/planner-week";
 import { KidAvatar, kidToneFor } from "@/components/nextgen/AgendaItemRow";
 
@@ -27,6 +28,7 @@ export default function PlannerDayFocus({
   todayIso,
   onAssign,
   onSelect,
+  passages,
 }: {
   day: WeekDayModel;
   nextDay: WeekDayModel | null;
@@ -36,8 +38,10 @@ export default function PlannerDayFocus({
   todayIso: string;
   onAssign: () => void;
   onSelect: (dateIso: string) => void;
+  /** 22/10/2026 — release "chi-accompagna-per-passaggio": chi porta e chi ritira per ogni passaggio. */
+  passages?: { rows: PassageResponsibility[]; labelFor: (row: PassageResponsibility) => string } | null;
 }) {
-  const chains = buildKidDayChains(day, kids);
+  const chains = passages ? buildKidPassageChains(day, kids, passages) : buildKidDayChains(day, kids);
   const busy = chains.filter((c) => c.steps.length > 0);
   const idle = chains.filter((c) => c.steps.length === 0);
   const canAssign = !day.isPast;
@@ -153,7 +157,7 @@ function StepRow({
   canAssign: boolean;
   onAssign: () => void;
 }) {
-  const quiet = step.kind === "school_out";
+  const quiet = step.kind === "school_out" && !step.chips;
   const school = step.kind === "school_in" || step.kind === "school_out";
   return (
     <li className={`relative flex gap-3 ${last ? "" : "pb-3.5"}`} data-testid="day-step">
@@ -169,10 +173,18 @@ function StepRow({
           <span className={`text-[14.5px] font-semibold ${quiet ? "text-ink-2" : "text-ink"}`}>{step.title}</span>
         </span>
         {step.detail && <span className="pl-[50px] text-[12.5px] leading-snug text-ink-2">{step.detail}</span>}
-        {step.passage && (
-          <span className="pl-[50px]">
-            <PassageChip passage={step.passage} canAssign={canAssign} onAssign={onAssign} />
+        {step.chips ? (
+          <span className="flex flex-wrap gap-1.5 pl-[50px]">
+            {step.chips.map((c) => (
+              <StepChipButton key={c.legKeys.join("+")} chip={c} canAssign={canAssign} onAssign={onAssign} />
+            ))}
           </span>
+        ) : (
+          step.passage && (
+            <span className="pl-[50px]">
+              <PassageChip passage={step.passage} canAssign={canAssign} onAssign={onAssign} />
+            </span>
+          )
         )}
       </span>
     </li>
@@ -201,6 +213,36 @@ function PassageChip({
   ) : (
     <>
       {what} da decidere{canAssign ? " · Assegna" : ""}
+    </>
+  );
+  if (!canAssign) {
+    return <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[12px] font-semibold ${cls}`}>{content}</span>;
+  }
+  return (
+    <button
+      type="button"
+      onClick={onAssign}
+      className={`inline-flex min-h-[32px] items-center gap-1 rounded-full px-2.5 py-1 text-[12px] font-semibold active:scale-[0.98] ${cls}`}
+      data-testid={decided ? "passage-decided" : "passage-missing"}
+    >
+      {content}
+    </button>
+  );
+}
+
+// 22/10/2026 — una scelta per passaggio ("Andata · Io", "Un viaggio · Nonno",
+// "Ritiro da scuola da decidere · Assegna"). Tocco = foglio Chi accompagna.
+function StepChipButton({ chip, canAssign, onAssign }: { chip: StepChip; canAssign: boolean; onAssign: () => void }) {
+  const decided = chip.label !== null;
+  const cls = decided ? "bg-[#E6F6EF] text-[#1E7A5B]" : "bg-[#FFF3E0] text-[#8A5A0B]";
+  const content = decided ? (
+    <>
+      <i className="ti ti-check text-[13px]" aria-hidden="true" />
+      {chip.text} · {chip.label}
+    </>
+  ) : (
+    <>
+      {chip.text} da decidere{canAssign ? " · Assegna" : ""}
     </>
   );
   if (!canAssign) {

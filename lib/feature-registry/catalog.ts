@@ -1034,6 +1034,37 @@ export const FEATURE_CATALOG: FeatureCatalogEntry[] = [
     releaseEligible: true,
   },
   {
+    // TRAMA — CHI ACCOMPAGNA PER PASSAGGIO (22/10/2026, Fase B della settimana
+    // tipo). NEW: tabella passage_responsibilities (migration 51, additiva,
+    // accanto a week_responsibilities che resta il ripiego). ADAPT della
+    // catena della giornata (planner-day.ts) e del foglio Chi accompagna.
+    key: "passage_responsibilities",
+    label: "Chi accompagna — per passaggio",
+    area: "parent",
+    status: "INTERNAL_PREVIEW",
+    flagName: "PASSAGE_RESPONSIBILITIES_ENABLED",
+    description:
+      "Nella giornata del Planner ogni spostamento ha il suo 'chi': entra a scuola, esce, porta all'attività, ritiro — " +
+      "anche il sabato. Uscita da scuola e attività entro un'ora sono 'un viaggio', con una scelta sola e 'Due persone " +
+      "diverse?' per dividerlo.",
+    sourceFiles: [
+      "lib/nextgen/passages.ts",
+      "lib/nextgen/planner-day.ts",
+      "lib/data/passage-responsibilities.ts",
+      "app/actions/responsibilities.ts",
+      "components/nextgen/PlannerDayFocus.tsx",
+      "components/nextgen/PassageAssignBody.tsx",
+      "app/nextgen/planner/PlannerV2Client.tsx",
+      "supabase/migration_51_chi_accompagna_per_passaggio.sql",
+    ],
+    note:
+      "Serve la vista 'un giorno alla volta' (PLANNER_DAY_VIEW_ENABLED). La scelta del giorno di prima vale ancora per " +
+      "la prima andata e l'ultimo ritorno; scegliendo quei due passaggi si aggiorna anche lei (Home, promemoria della " +
+      "sera e piano condiviso la leggono ancora).",
+    riskLevel: "medium",
+    releaseEligible: true,
+  },
+  {
     // TRAMA — CORREZIONI DAL TEST UX PARENT (21/10/2026). ADAPT di Scopri V2,
     // scheda attività V2, Home V2, Planner V2 (Stagione) e La tua famiglia:
     // nessuna tabella nuova. Iniziativa: claude/INIZIATIVA_parent_ux_fix_2110.md.
