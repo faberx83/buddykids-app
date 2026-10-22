@@ -16,7 +16,7 @@ import { sendEmail, isEmailConfigured } from "@/lib/email";
 import { escapeEmailHtml, tramaEmailHtml } from "@/lib/email-layout";
 import { familyHost } from "@/lib/tenant";
 import { defaultFamilyName } from "@/lib/nextgen/family-page-v2";
-import { newShortInviteToken, shortInviteUrl } from "@/lib/public-links";
+import { appInviteUrl, newShortInviteToken, shortInviteUrl } from "@/lib/public-links";
 
 // Stessi caratteri di app/actions/communities.ts (niente 0/O/1/I, ambigui da
 // leggere/dettare a voce quando il codice viene condiviso a mano, es. col
@@ -241,7 +241,8 @@ export async function inviteToFamilyAction(email: string): Promise<InviteToFamil
   if (error || !invite) return { error: "Non sono riuscito a preparare l'invito, riprova" };
 
   const origin = await buildOrigin();
-  const link = shortInviteUrl(origin, token);
+  // 22/10/2026: link "dentro l'app" (/nextgen/i/…): su Android con TRAMA installata apre l'app.
+  const link = appInviteUrl(origin, token);
 
   let emailSent = false;
   if (isEmailConfigured) {

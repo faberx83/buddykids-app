@@ -433,6 +433,7 @@ export default async function NextgenLayout({ children }: { children: React.Reac
         swScope="/nextgen"
         waitForFirstAction={onboardingV2Enabled}
         v2={onboardingV2Enabled}
+        uxFix={parentUxFix}
       />
     </PhoneShell>
   );

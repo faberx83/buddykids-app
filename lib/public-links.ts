@@ -59,6 +59,16 @@ export function shortInviteUrl(origin: string, key: string): string {
   return `${origin.replace(/\/$/, "")}${SHORT_INVITE_PREFIX}${key}`;
 }
 
+/**
+ * 22/10/2026 — stesso invito, ma sotto /nextgen (app/nextgen/i/[key]): su
+ * Android, con TRAMA installata, il link apre l'app invece del browser. Usato
+ * nelle email e nei link condivisi dalla V2; i vecchi /i/<chiave> funzionano ancora.
+ */
+export const APP_INVITE_PREFIX = "/nextgen/i/";
+export function appInviteUrl(origin: string, key: string): string {
+  return `${origin.replace(/\/$/, "")}${APP_INVITE_PREFIX}${key}`;
+}
+
 export function familyInviteDestination(key: string): string | null {
   const k = (key ?? "").trim();
   if (FAMILY_CODE.test(k)) return `/nextgen/profile/famiglia?code=${k}`;

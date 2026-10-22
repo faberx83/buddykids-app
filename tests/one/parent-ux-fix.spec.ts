@@ -22,6 +22,8 @@ import {
 } from "../../lib/nextgen/parent-ux-fix";
 import { parsePhotonResponse, mergeSchoolSuggestions, retryQuery, distinctiveWords } from "../../lib/places/search";
 import { tramaEmailHtml, escapeEmailHtml } from "../../lib/email-layout";
+import { installBannerFor, parseDismissedAt, INSTALL_REPROPOSE_DAYS } from "../../lib/nextgen/install-banner";
+import { appInviteUrl, familyInviteDestination } from "../../lib/public-links";
 import { buildHomeInbox } from "../../lib/nextgen/home-inbox";
 import { FEATURE_FLAG_REGISTRY } from "../../lib/feature-flags/registry";
 import { RELEASE_CATALOG } from "../../lib/releases/catalog";
@@ -420,7 +422,8 @@ test.describe("Ritest 22/10, secondo giro — 404, email, Grossman, stessa scuol
     expect(html).toContain("trama-logo-mark.png");
     expect(escapeEmailHtml(`"'`)).toBe("&quot;&#39;");
     expect(read("app/actions/groups.ts")).toContain("tramaEmailHtml({");
-    expect(read("app/actions/groups.ts")).toContain('encodeURIComponent("/nextgen/groups?tab=inviti")');
+    // 22/10 (link dentro l'app): niente più /auth/login?next=… nell'email, il login lo chiede proxy.ts.
+    expect(read("app/actions/groups.ts")).toContain("/nextgen/groups?tab=inviti`;");
     expect(read("app/actions/family.ts")).toContain("tramaEmailHtml({");
     expect(read("lib/booking-response/notify.ts")).toContain("tramaEmailHtml({");
   });
@@ -445,6 +448,59 @@ test.describe("Ritest 22/10, secondo giro — 404, email, Grossman, stessa scuol
     expect(b).toContain('data-testid="kid-school-copied"');
     expect(b).toContain("setCopiedFrom(s.kidName);");
     expect(b).toContain("{copiedFrom ? (");
+  });
+});
+
+test.describe("22/10 — link che aprono l'app, banner Apri nell'app / Installa [no browser]", () => {
+  const DAY = 86_400_000;
+  const base = { standalone: false, ios: false, installed: false, canPrompt: false, dismissedAt: null as number | null, now: 100 * DAY };
+
+  test("UXF-70 banner: app già installata → 'Apri dall'icona'; altrimenti Installa / istruzioni iPhone; mai dentro l'app", () => {
+    expect(installBannerFor({ ...base, installed: true })).toBe("open_app");
+    expect(installBannerFor({ ...base, canPrompt: true })).toBe("install");
+    expect(installBannerFor({ ...base, ios: true })).toBe("ios");
+    expect(installBannerFor({ ...base, standalone: true, installed: true })).toBe("none");
+    expect(installBannerFor(base)).toBe("none");
+  });
+
+  test("UXF-71 chiuso → torna dopo 7 giorni, non mai più (il vecchio '1' vale come molto tempo fa)", () => {
+    expect(INSTALL_REPROPOSE_DAYS).toBe(7);
+    expect(installBannerFor({ ...base, canPrompt: true, dismissedAt: base.now - 2 * DAY })).toBe("none");
+    expect(installBannerFor({ ...base, canPrompt: true, dismissedAt: base.now - 8 * DAY })).toBe("install");
+    expect(parseDismissedAt("1")).toBe(0);
+    expect(parseDismissedAt(null)).toBeNull();
+    expect(parseDismissedAt("1700000000000")).toBe(1700000000000);
+    const ip = read("components/InstallPrompt.tsx");
+    expect(ip).toContain('data-testid="install-open-app"');
+    expect(ip).toContain("getInstalledRelatedApps");
+    expect(ip).toContain('uxFix ? String(Date.now()) : "1"');
+    expect(read("app/nextgen/layout.tsx")).toContain("uxFix={parentUxFix}\n      />");
+    const manifest = JSON.parse(read("public/manifest-nextgen.json"));
+    expect(manifest.related_applications).toEqual([{ platform: "webapp", url: "https://tramapp.it/manifest-nextgen.json" }]);
+    expect(manifest.prefer_related_applications).toBe(false);
+    expect(manifest.scope).toBe("/nextgen");
+  });
+
+  test("UXF-72 link delle email e delle condivisioni dentro lo spazio dell'app (/nextgen)", () => {
+    expect(appInviteUrl("https://tramapp.it/", "AbCdEfGhJkLm")).toBe("https://tramapp.it/nextgen/i/AbCdEfGhJkLm");
+    expect(familyInviteDestination("AbCdEfGhJkLm")?.startsWith("/nextgen/")).toBe(true);
+    expect(read("app/nextgen/i/[key]/route.ts")).toContain('familyInviteDestination(decodeURIComponent(key)) ?? "/nextgen"');
+    expect(read("app/actions/groups.ts")).toContain("const link = `${proto}://${host}/nextgen/groups?tab=inviti`;");
+    expect(read("app/actions/family.ts")).toContain("const link = appInviteUrl(origin, token);");
+    expect(read("components/GroupDetailClient.tsx")).toContain('${inApp ? "/nextgen/groups/join/" : "/groups/join/"}${groupId}');
+    expect(read("app/nextgen/groups/join/[id]/page.tsx")).toContain('basePath="/nextgen/groups"');
+    expect(read("components/JoinGroupClient.tsx")).toContain("router.push(`${basePath}/${groupId}`);");
+    expect(read("lib/booking-response/notify.ts")).toContain("/nextgen/prenotazioni");
+    expect(read("app/actions/attendance.ts")).toContain("/nextgen/prenotazioni");
+    // senza sessione si torna alla pagina d'arrivo, non sempre alla Home
+    expect(read("components/nextgen/NextgenAuthRedirect.tsx")).toContain('const next = here.startsWith("/nextgen") ? here : "/nextgen";');
+  });
+
+  test("UXF-73 guida famiglie: aprire TRAMA dall'icona, Gmail, icona di Chrome nelle notifiche", () => {
+    const g = read("docs/trama-one/GUIDA_FAMIGLIE_BETA.md");
+    expect(g).toContain("Apri link web in Gmail");
+    expect(g).toContain("aprite TRAMA dall'icona");
+    expect(g).toContain("L'altro genitore");
   });
 });
 

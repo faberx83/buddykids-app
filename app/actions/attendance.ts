@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
 import { revalidatePath } from "next/cache";
 import { sendEmail, isEmailConfigured } from "@/lib/email";
+import { EMAIL_PUBLIC_ORIGIN, escapeEmailHtml, tramaEmailHtml } from "@/lib/email-layout";
 
 // Segna presente/assente/in ritardo un bambino in un giorno specifico di una
 // settimana di camp. Upsert su (kid_id, week_id, date) — vedi vincolo unique
@@ -91,12 +92,19 @@ export async function setAttendanceAction(input: {
             day: "numeric",
             month: "long",
           });
+          // 22/10/2026: stessa forma delle altre email di TRAMA e un pulsante "dentro l'app".
           await sendEmail({
             to: parentRow.email,
             subject: `${kidRow.name}: risultato assente oggi`,
-            html: `<p>Ciao${parentRow.full_name ? " " + parentRow.full_name.split(" ")[0] : ""},</p>
-<p><strong>${kidRow.name}</strong> risulta <strong>assente</strong> per <strong>${activityRow?.name ?? "l'attività"}</strong> di ${dateLabel}.</p>
-<p>Se si tratta di un errore o di un ritardo, contatta il centro.</p>`,
+            html: tramaEmailHtml({
+              title: `${kidRow.name} risulta assente`,
+              paragraphs: [
+                `Ciao${parentRow.full_name ? " " + escapeEmailHtml(parentRow.full_name.split(" ")[0]) : ""},`,
+                `<b>${escapeEmailHtml(kidRow.name)}</b> risulta <b>assente</b> per <b>${escapeEmailHtml(activityRow?.name ?? "l'attività")}</b> di ${dateLabel}.`,
+                "Se è un errore o un ritardo, scrivi al centro.",
+              ],
+              cta: { label: "Apri TRAMA", href: `${EMAIL_PUBLIC_ORIGIN}/nextgen/prenotazioni` },
+            }),
           });
         }
       }

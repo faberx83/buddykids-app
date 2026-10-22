@@ -239,8 +239,10 @@ export async function inviteToGroupAction(groupId: string, email: string): Promi
   // 16/10/2026: indirizzo delle famiglie (tramapp.it in produzione), vedi familyHost().
   const host = familyHost(h.get("host") || "localhost:3000");
   const proto = h.get("x-forwarded-proto") || (host.startsWith("localhost") ? "http" : "https");
-  // 22/10/2026: dritti alla scheda "Inviti" dei Gruppi dell'app famiglie (prima "/groups", l'app vecchia).
-  const link = `${proto}://${host}/auth/login?next=${encodeURIComponent("/nextgen/groups?tab=inviti")}`;
+  // 22/10/2026: dritti alla scheda "Inviti" dei Gruppi dell'app famiglie, con
+  // un indirizzo "dentro l'app" (/nextgen…): su Android con TRAMA installata il
+  // link apre l'app; il login, se serve, lo chiede proxy.ts tenendo la pagina.
+  const link = `${proto}://${host}/nextgen/groups?tab=inviti`;
 
   let emailSent = false;
   if (isEmailConfigured) {

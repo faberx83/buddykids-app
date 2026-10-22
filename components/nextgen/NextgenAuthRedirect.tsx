@@ -22,7 +22,11 @@ export default function NextgenAuthRedirect() {
   const router = useRouter();
 
   useEffect(() => {
-    router.replace("/auth/login?next=/nextgen");
+    // 22/10/2026: si torna alla pagina da cui si arrivava (es. un link d'invito
+    // dentro l'app), non sempre alla Home. Solo percorsi /nextgen.
+    const here = `${window.location.pathname}${window.location.search}`;
+    const next = here.startsWith("/nextgen") ? here : "/nextgen";
+    router.replace(`/auth/login?next=${encodeURIComponent(next)}`);
   }, [router]);
 
   return null;

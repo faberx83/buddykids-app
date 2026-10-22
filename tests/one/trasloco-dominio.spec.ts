@@ -151,12 +151,14 @@ test.describe("TRAMA — Indirizzi e link corti [no browser]", () => {
   test("LC-03 inviti famiglia, gruppi, condivisioni e inviti centro usano i nuovi indirizzi", () => {
     const fam = read("app/actions/family.ts");
     expect(fam).toContain("const token = newShortInviteToken();");
-    expect(fam).toContain("const link = shortInviteUrl(origin, token);");
+    // 22/10/2026: nell'email il link "dentro l'app" (/nextgen/i/…), stessa chiave.
+    expect(fam).toContain("const link = appInviteUrl(origin, token);");
     expect(fam).toContain("link: shortInviteUrl(origin, fam.invite_code as string),");
     expect(fam).not.toContain("/auth/login?next=${encodeURIComponent(acceptPath)}");
     expect(read("app/actions/groups.ts")).toContain('const host = familyHost(h.get("host") || "localhost:3000");');
     expect(read("app/actions/plan-shares.ts")).toContain('const host = familyHost(headerList.get("host") || "");');
-    expect(read("components/GroupDetailClient.tsx")).toContain("${familyOriginFromLocation(window.location)}/groups/join/${groupId}");
+    // 22/10/2026: con le correzioni UX il link porta a /nextgen/groups/join/… (app nuova); senza, come prima.
+    expect(read("components/GroupDetailClient.tsx")).toContain('${familyOriginFromLocation(window.location)}${inApp ? "/nextgen/groups/join/" : "/groups/join/"}${groupId}');
     expect(read("app/center/invites/InvitesClient.tsx")).toContain("${familyOriginFromLocation(window.location)}/auth/login?invite=${code}");
     expect(read("app/nextgen/planner/famiglia/FamigliaClient.tsx")).toContain("return shortInviteUrl(familyOriginFromLocation(window.location), token);");
     const route = read("app/i/[key]/route.ts");
@@ -195,7 +197,8 @@ test.describe("TRAMA — Genitori modificabili [no browser]", () => {
     expect(c).toContain("aria-label={`Togli ${name} dalla famiglia`}");
     expect(c).toContain("aria-label={`Rimanda il link a ${i.invitedEmail}`}");
     expect(c).toContain("aria-label={`Annulla l'invito a ${i.invitedEmail}`}");
-    expect(c).toContain("const url = shortInviteUrl(familyOriginFromLocation(window.location), token);");
+    // 22/10/2026: link condiviso "dentro l'app" (/nextgen/i/…).
+    expect(c).toContain("const url = appInviteUrl(familyOriginFromLocation(window.location), token);");
   });
 });
 

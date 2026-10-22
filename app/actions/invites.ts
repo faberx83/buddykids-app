@@ -6,6 +6,7 @@ import { isSupabaseConfigured } from "@/lib/supabase/env";
 import { getCenterContext, getMyCenter } from "@/lib/data/center-admin";
 import { getInvitePreview, InvitePreview } from "@/lib/data/invites";
 import { sendEmail, isEmailConfigured } from "@/lib/email";
+import { escapeEmailHtml, tramaEmailHtml } from "@/lib/email-layout";
 import { logGestoreAction } from "@/lib/data/activity-log";
 import { familyHost } from "@/lib/tenant";
 
@@ -73,22 +74,19 @@ function buildInviteEmailHtml(params: {
   link: string;
   contactName?: string;
 }): string {
-  const greeting = params.contactName ? `Ciao ${params.contactName},` : "Ciao,";
-  return `
-    <div style="font-family: -apple-system, Helvetica, Arial, sans-serif; max-width: 480px; margin: 0 auto; padding: 24px; color:#1a2b3c;">
-      <h2 style="margin: 0 0 12px;">${greeting}</h2>
-      <p>${params.centerName} ti invita a scoprire <b>TRAMA</b>, l'app per organizzare l'estate dei tuoi figli in pochi minuti.</p>
-      <p style="background:#E3F5F1; border-radius:10px; padding:16px; font-size:15px; margin: 20px 0;">
-        🎁 Hai uno sconto del <b>${params.discountPercent}%</b> sulla tua prima prenotazione${
-    params.expiresLabel ? `, valido fino al ${params.expiresLabel}` : ""
-  }.
-      </p>
-      <p style="text-align:center; margin: 24px 0;">
-        <a href="${params.link}" style="background:#1FA88E; color:#fff; padding:12px 24px; border-radius:8px; text-decoration:none; font-weight:bold; display:inline-block;">Registrati su TRAMA</a>
-      </p>
-      <p style="font-size:12px; color:#888;">Se il pulsante non funziona, apri questo link: ${params.link}</p>
-    </div>
-  `;
+  // 22/10/2026: stessa forma delle altre email di TRAMA (lib/email-layout.ts).
+  // Il link resta /auth/login?invite=…: è una registrazione, chi la riceve
+  // non ha ancora l'app installata.
+  return tramaEmailHtml({
+    title: `${params.centerName} ti invita su TRAMA`,
+    paragraphs: [
+      params.contactName ? `Ciao ${escapeEmailHtml(params.contactName)},` : "Ciao,",
+      `<b>${escapeEmailHtml(params.centerName)}</b> ti invita a scoprire TRAMA, l'app per organizzare le attività dei tuoi figli.`,
+      `Hai uno sconto del <b>${params.discountPercent}%</b> sulla prima prenotazione${params.expiresLabel ? `, valido fino al ${escapeEmailHtml(params.expiresLabel)}` : ""}.`,
+    ],
+    cta: { label: "Registrati su TRAMA", href: params.link },
+    showLinkFallback: true,
+  });
 }
 
 async function generateUniqueCode(

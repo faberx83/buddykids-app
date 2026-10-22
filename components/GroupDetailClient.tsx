@@ -103,6 +103,7 @@ function InviteButton({
   centerName,
   inviterName,
   v2 = false,
+  inApp = false,
 }: {
   groupId: string;
   groupName: string;
@@ -110,11 +111,13 @@ function InviteButton({
   centerName: string | null;
   inviterName: string;
   v2?: boolean;
+  /** 22/10/2026 (correzioni UX): link "dentro l'app" /nextgen/groups/join/… invece di /groups/join/… (app vecchia). */
+  inApp?: boolean;
 }) {
   const [copied, setCopied] = useState(false);
 
   async function share() {
-    const url = `${familyOriginFromLocation(window.location)}/groups/join/${groupId}`;
+    const url = `${familyOriginFromLocation(window.location)}${inApp ? "/nextgen/groups/join/" : "/groups/join/"}${groupId}`;
     const text = buildInviteText(inviterName, groupName, activityName, centerName);
     try {
       if (navigator.share) {
@@ -339,6 +342,7 @@ export default function GroupDetailClient({
               centerName={detail.centerName}
               inviterName={inviterName}
               v2
+              inApp={uxFix}
             />
             {uxFix && (
               <p className="mt-2 text-[12.5px] leading-snug text-ink-2">

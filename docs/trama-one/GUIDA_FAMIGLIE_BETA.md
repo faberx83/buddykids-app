@@ -30,11 +30,16 @@ Senza gruppi WhatsApp, fogli Excel e post-it sul frigo.
    - **Android:** in Chrome, il menu ⋮ → "**Installa app**" (o "Aggiungi a schermata Home").
 4. **Attivate le notifiche** quando TRAMA ve lo chiede. Su iPhone funzionano solo se avete fatto il punto 3.
 
+**Da qui in poi aprite TRAMA dall'icona**, non dai link:
+- **iPhone:** i link nelle email e su WhatsApp si aprono sempre in Safari (è una regola di Apple). Se vi capita, chiudete Safari e aprite TRAMA dall'icona: lì siete già collegati.
+- **Android:** con TRAMA installata, i link di TRAMA aprono direttamente l'app. Se usate **Gmail** e si apre comunque una pagina web: Gmail → Impostazioni → Impostazioni generali → togliete la spunta a "**Apri link web in Gmail**".
+- Le notifiche di TRAMA su Android mostrano l'icona di Chrome: è normale, passano da lì. Se a schermo bloccato vedete solo "TRAMA", toccate la freccia per leggere il testo.
+
 ## Le 5 missioni della prima settimana
 
-1. **Figli e scuola.** Inserite i figli e la loro scuola: TRAMA vi avvisa da sola dei giorni di chiusura (per esempio il ponte del 7–8 dicembre).
+1. **Figli e scuola.** Inserite i figli e, in Profilo → La tua famiglia → ogni figlio → **Scuola**, cercate la scuola per nome (se non c'è, bastano Regione e Comune): TRAMA vi avvisa da sola dei giorni di chiusura (per esempio il ponte del 7–8 dicembre).
 2. **La vostra settimana.** Con il **+** in basso → "Un impegno", inserite i corsi e le attività dei prossimi giorni (nuoto, inglese, calcio, dentista).
-3. **Invitate l'altro genitore** (o un nonno): + → "Un altro genitore". TRAMA serve davvero quando siete in due.
+3. **Invitate l'altro genitore** (o un nonno): + → "**L'altro genitore**". TRAMA serve davvero quando siete in due.
 4. **Chi accompagna.** Nel Planner, per ogni giorno, scegliete chi porta e chi ritira. La sera prima, se manca qualcuno, TRAMA ve lo ricorda.
 5. **Ponti e Natale.** Da Scopri guardate le attività per le vacanze, salvate quelle che vi interessano e, se volete, mandate una richiesta.
 

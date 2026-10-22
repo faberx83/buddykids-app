@@ -27,7 +27,7 @@ import {
   leaveFamilyAction,
   removeFamilyMemberAction,
 } from "@/app/actions/family";
-import { familyOriginFromLocation, shortInviteUrl } from "@/lib/public-links";
+import { appInviteUrl, familyOriginFromLocation } from "@/lib/public-links";
 import { addFamilyPersonAction, removeFamilyPersonAction, renameFamilyPersonAction } from "@/app/actions/family-people";
 import { ADDRESS_KIND_LABELS, type ParentAddress } from "@/lib/nextgen/address-kinds";
 import type { Family } from "@/lib/nextgen/family-roles";
@@ -219,7 +219,8 @@ function ParentsBlock({
   }
 
   async function resendInvite(token: string) {
-    const url = shortInviteUrl(familyOriginFromLocation(window.location), token);
+    // 22/10/2026: link "dentro l'app" (/nextgen/i/…), vedi lib/public-links.ts#appInviteUrl.
+    const url = appInviteUrl(familyOriginFromLocation(window.location), token);
     const text = `Ti invito su TRAMA per organizzare insieme le attività dei bambini: ${url}`;
     try {
       if (navigator.share) {

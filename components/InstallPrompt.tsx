@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { FIRST_ACTION_EVENT, hasDoneFirstUsefulAction } from "@/lib/nextgen/first-action";
 import { usePathname } from "next/navigation";
+import { installBannerFor, parseDismissedAt } from "@/lib/nextgen/install-banner";
 
 // Banner "Installa l'app" per Android/Chrome/Edge: cattura l'evento
 // beforeinstallprompt (impedendo il mini-infobar automatico di Chrome, poco
@@ -81,6 +82,10 @@ export default function InstallPrompt({
   // Stile V2 (icona al posto dell'emoji, pulsante navy a raggio 12, sopra la
   // nuova barra). Default false: aspetto di prima.
   v2 = false,
+  // 22/10/2026 (correzioni UX, PARENT_UX_FIX_ENABLED): "Apri nell'app" se
+  // TRAMA è già installata, "Installa" altrimenti, e il banner torna dopo
+  // qualche giorno invece di sparire per sempre (lib/nextgen/install-banner.ts).
+  uxFix = false,
 }: {
   appName: string;
   themeColor: string;
@@ -88,6 +93,7 @@ export default function InstallPrompt({
   swScope?: string;
   waitForFirstAction?: boolean;
   v2?: boolean;
+  uxFix?: boolean;
 }) {
   // Nessuno stato "dismissed" separato: il banner parte nascosto di default
   // (deferredEvent null, showIosHint false) e viene mostrato SOLO se
@@ -106,6 +112,8 @@ export default function InstallPrompt({
   const [deferredEvent, setDeferredEvent] = useState<BeforeInstallPromptEvent | null>(null);
   const [showIosHint, setShowIosHint] = useState(false);
   const [firstActionDone, setFirstActionDone] = useState(!waitForFirstAction);
+  // Correzioni UX (22/10): TRAMA già installata su questo telefono (Android).
+  const [alreadyInstalled, setAlreadyInstalled] = useState(false);
 
   useEffect(() => {
     if (!waitForFirstAction) return;
@@ -124,7 +132,25 @@ export default function InstallPrompt({
     }
 
     if (isStandalone()) return; // già installata: niente banner
-    if (localStorage.getItem(dismissKey(appName)) === "1") return; // chiuso in passato
+    if (uxFix) {
+      // Correzioni UX (22/10): chiuso da più di INSTALL_REPROPOSE_DAYS giorni → si ripropone.
+      let dismissedAt: number | null = null;
+      try {
+        dismissedAt = parseDismissedAt(localStorage.getItem(dismissKey(appName)));
+      } catch {
+        dismissedAt = null;
+      }
+      if (installBannerFor({ standalone: false, ios: false, installed: false, canPrompt: true, dismissedAt, now: Date.now() }) === "none") return;
+      const nav = navigator as Navigator & { getInstalledRelatedApps?: () => Promise<{ platform: string }[]> };
+      if (!isIos() && typeof nav.getInstalledRelatedApps === "function") {
+        nav
+          .getInstalledRelatedApps()
+          .then((apps) => {
+            if (apps.some((a) => a.platform === "webapp")) setAlreadyInstalled(true);
+          })
+          .catch(() => {});
+      }
+    } else if (localStorage.getItem(dismissKey(appName)) === "1") return; // chiuso in passato
 
     if (isIos()) {
       // Safari iOS non espone beforeinstallprompt: qui l'unica via è mostrare
@@ -143,12 +169,40 @@ export default function InstallPrompt({
 
     window.addEventListener("beforeinstallprompt", onBeforeInstallPrompt);
     return () => window.removeEventListener("beforeinstallprompt", onBeforeInstallPrompt);
-  }, [appName, excluded, swScope]);
+  }, [appName, excluded, swScope, uxFix]);
 
   function dismiss() {
-    localStorage.setItem(dismissKey(appName), "1");
+    try {
+      // Correzioni UX (22/10): l'istante, così il banner torna dopo qualche giorno.
+      localStorage.setItem(dismissKey(appName), uxFix ? String(Date.now()) : "1");
+    } catch {
+      // niente da fare: il banner resta chiuso solo per questa visita
+    }
     setDeferredEvent(null);
     setShowIosHint(false);
+    setAlreadyInstalled(false);
+  }
+
+  // Correzioni UX (22/10): l'app c'è già → aprila dall'icona (anche prima della prima azione utile).
+  if (!excluded && uxFix && alreadyInstalled) {
+    return (
+      <div
+        role="status"
+        data-testid="install-open-app"
+        className="fixed inset-x-4 bottom-[104px] z-50 flex items-center gap-3 rounded-2xl border border-trama-line bg-white p-4 shadow-[0_8px_24px_rgba(23,42,77,0.12)] md:inset-x-auto md:bottom-6 md:right-6 md:w-80"
+      >
+        <span aria-hidden="true" className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-[12px] bg-trama-primary-soft text-trama-primary">
+          <i className="ti ti-apps text-[22px]" />
+        </span>
+        <div className="min-w-0 flex-1">
+          <p className="text-sm font-bold text-ink">Hai già {appName} sul telefono</p>
+          <p className="text-xs text-ink-2">Aprila dall&apos;icona: lì resti collegato e ricevi le notifiche.</p>
+        </div>
+        <button onClick={dismiss} className="min-h-[40px] flex-shrink-0 rounded-[12px] border border-[#D9DDE5] px-3 text-xs font-bold text-trama-primary">
+          Ho capito
+        </button>
+      </div>
+    );
   }
 
   if (excluded || (!deferredEvent && !showIosHint)) return null;
@@ -164,7 +218,9 @@ export default function InstallPrompt({
           <p className="text-sm font-bold text-ink">Aggiungi {appName} alla schermata Home</p>
           <p className="text-xs text-ink-2">
             {showIosHint
-              ? <>Tocca <i className="ti ti-share-2" /> Condividi, poi &quot;Aggiungi alla schermata Home&quot;.</>
+              ? uxFix
+                ? <>Se l&apos;hai già aggiunta, aprila dall&apos;icona. Altrimenti tocca <i className="ti ti-share-2" /> Condividi, poi &quot;Aggiungi alla schermata Home&quot;.</>
+                : <>Tocca <i className="ti ti-share-2" /> Condividi, poi &quot;Aggiungi alla schermata Home&quot;.</>
               : "La apri come un'app, senza cercarla nel browser."}
           </p>
         </div>
