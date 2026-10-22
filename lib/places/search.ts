@@ -152,3 +152,62 @@ export function mergeSchoolSuggestions(q: string, schools: PlaceSuggestion[], an
     .slice(0, limit)
     .map((x) => x.p);
 }
+
+// ─── 22/10/2026 — secondo test UX (UX-PARENT-018): risultati pertinenti ───
+// "Scuola Demo UX Non Esistente" proponeva tabaccheria e trattoria;
+// "Fondazione Grossman" un'azienda di Bolzano; "Pizzigoni" metteva Catania e
+// Saronno prima di Milano. Con la ricerca "stretta" (solo il blocco Scuola
+// del figlio, PARENT_UX_FIX_ENABLED):
+//   - un luogo che non è una scuola resta solo se ha nel nome TUTTE le parole
+//     che contano e, se la zona è nota, è nella stessa Regione o nel Comune;
+//   - una scuola resta solo se ha nel nome almeno una parola che conta;
+//   - prima chi è nel Comune o nella Regione della famiglia, poi il resto.
+// Se non resta niente, il campo dice di usare il nome scritto (a mano).
+
+export interface SchoolSearchZone {
+  /** Comune della famiglia o già indicato per la scuola ("Milano"). */
+  city?: string | null;
+  /** Regione già indicata ("Lombardia"). */
+  region?: string | null;
+}
+
+export function isSchoolKind(kind: string): boolean {
+  return kind.startsWith("amenity:school") || kind.startsWith("amenity:kindergarten") || kind.startsWith("amenity:college");
+}
+
+function sameText(a: string | null | undefined, b: string | null | undefined): boolean {
+  if (!a || !b) return false;
+  const x = plain(a).trim();
+  const y = plain(b).trim();
+  return x.length > 0 && y.length > 0 && (x === y || x.startsWith(y) || y.startsWith(x));
+}
+
+export function rankSchoolSuggestions(
+  q: string,
+  schools: PlaceSuggestion[],
+  any: PlaceSuggestion[],
+  zone: SchoolSearchZone = {},
+  limit = 6
+): PlaceSuggestion[] {
+  const words = distinctiveWords(q);
+  const nameAll = (p: PlaceSuggestion) => words.length > 0 && words.every((w) => plain(p.name).includes(w));
+  const nameSome = (p: PlaceSuggestion) => words.length > 0 && words.some((w) => plain(p.name).includes(w));
+  const inCity = (p: PlaceSuggestion) => sameText(p.city, zone.city);
+  const inRegion = (p: PlaceSuggestion) => sameText(p.region, zone.region);
+  const zoneKnown = Boolean(zone.region?.trim() || zone.city?.trim());
+  const seen = new Set<string>();
+  const kept: { p: PlaceSuggestion; key: number[]; i: number }[] = [];
+  [...schools, ...any].forEach((p, i) => {
+    const id = `${p.name}|${p.address}`.toLowerCase();
+    if (seen.has(id)) return;
+    seen.add(id);
+    const school = i < schools.length || isSchoolKind(p.kind);
+    if (school ? !nameSome(p) : !nameAll(p) || (zoneKnown && !inRegion(p) && !inCity(p))) return;
+    const zoneRank = inCity(p) ? 0 : inRegion(p) ? 1 : 2;
+    kept.push({ p, key: [zoneRank, nameAll(p) ? 0 : 1, school ? 0 : 1], i });
+  });
+  return kept
+    .sort((a, b) => a.key[0] - b.key[0] || a.key[1] - b.key[1] || a.key[2] - b.key[2] || a.i - b.i)
+    .slice(0, limit)
+    .map((x) => x.p);
+}

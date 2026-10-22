@@ -25,6 +25,12 @@ test.describe("Admin - Gestione", () => {
     await page.getByRole("button", { name: "Crea tag" }).click();
 
     await expect(page.getByText(label)).toBeVisible({ timeout: 10_000 });
+
+    // Secondo test UX (22/10/2026, UX-PARENT-019): il tag creato qui finiva tra
+    // le preferenze dei gruppi delle famiglie ("Test 1786…"). Si elimina subito.
+    const chip = page.locator("div", { has: page.getByText(label, { exact: true }) }).filter({ has: page.getByTitle("Elimina tag") }).last();
+    await chip.getByTitle("Elimina tag").click();
+    await expect(page.getByText(label, { exact: true })).toHaveCount(0, { timeout: 10_000 });
   });
   // Priorita: Media | Precondizioni: Nessuna
   // Passi: Apri /admin/bookings

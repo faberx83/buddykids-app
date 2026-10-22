@@ -9,6 +9,8 @@ export interface Tag {
   label: string;
   emoji: string;
   bg: string;
+  /** Secondo test UX (22/10): tag che esiste solo per le prove (tags.is_test_fixture, migration 50). */
+  isTestFixture?: boolean;
 }
 
 export type MealOption = "included" | "packed" | "none";

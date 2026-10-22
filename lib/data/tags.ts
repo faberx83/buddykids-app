@@ -11,6 +11,8 @@ interface RawTagRow {
   label: string;
   emoji: string | null;
   bg_color: string | null;
+  /** Migration 50 (22/10/2026). Assente finché non è applicata. */
+  is_test_fixture?: boolean | null;
 }
 
 export async function getTags(): Promise<Tag[]> {
@@ -19,7 +21,9 @@ export async function getTags(): Promise<Tag[]> {
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("tags")
-    .select("id, label, emoji, bg_color")
+    // "*" e non l'elenco delle colonne: prima della migration 50
+    // is_test_fixture non esiste, e chiederla per nome darebbe errore.
+    .select("*")
     .order("created_at", { ascending: true });
 
   if (error || !data || data.length === 0) return mockTags;
@@ -29,5 +33,6 @@ export async function getTags(): Promise<Tag[]> {
     label: row.label,
     emoji: row.emoji || "🏷️",
     bg: row.bg_color || "#E3F9F5",
+    ...(row.is_test_fixture ? { isTestFixture: true } : {}),
   }));
 }

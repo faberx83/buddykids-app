@@ -406,6 +406,7 @@ export default async function NextgenLayout({ children }: { children: React.Reac
               schoolCalendarEnabled={onboardingV2SchoolEnabled}
               kidIdsWithoutSchool={onboardingV2KidIdsWithoutSchool}
               residenceCity={onboardingV2City}
+              uxFix={parentUxFix}
             />
           ) : (
             <OnboardingCarousel progress={onboardingProgress} />

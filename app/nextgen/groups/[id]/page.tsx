@@ -2,7 +2,7 @@ import { notFound, redirect } from "next/navigation";
 import GroupDetailClient from "@/components/GroupDetailClient";
 import { getGroupDetail } from "@/lib/data/group-detail";
 import { getActivities, getTestFixtureCenterIds } from "@/lib/data/activities";
-import { withoutTestFixtures } from "@/lib/nextgen/parent-ux-fix";
+import { familyVisibleTags, withoutTestFixtures } from "@/lib/nextgen/parent-ux-fix";
 import { getParentProfile } from "@/lib/data/profile";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
 import { resolveGroupDetailBackHref } from "@/lib/nextgen/groups-back-nav";
@@ -59,7 +59,7 @@ export default async function NextgenGroupDetailPage({
 
   return (
     <GroupDetailClient
-      detail={detail}
+      detail={uxFix ? { ...detail, availableTags: familyVisibleTags(detail.availableTags) } : detail}
       activityOptions={activityOptions}
       inviterName={inviterName}
       backHref={backHref}

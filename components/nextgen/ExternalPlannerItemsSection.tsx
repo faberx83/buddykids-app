@@ -17,7 +17,7 @@
 
 import { useEffect, useState, type Dispatch, type SetStateAction } from "react";
 import { useSearchParams } from "next/navigation";
-import { wantsNewExternalItem } from "@/lib/planner/new-external-item-link";
+import { wantsNewExternalItem, withoutNewExternalItemParam } from "@/lib/planner/new-external-item-link";
 import type { Kid } from "@/lib/types";
 import type { ExternalPlannerItem, ExternalPlannerItemInput, ExternalPlannerItemKind } from "@/lib/data/external-planner-items";
 import {
@@ -806,11 +806,22 @@ export default function ExternalPlannerItemsSection({
   const wantsNew = wantsNewExternalItem(`?${searchParams?.toString() ?? ""}`);
   useEffect(() => {
     if (!wantsNew) return;
+    // Secondo test UX (22/10, UX-PARENT-022): il parametro si consuma subito,
+    // PRIMA che il foglio aggiunga la sua voce di cronologia (useCloseOnBack).
+    if (uxFix && typeof window !== "undefined") {
+      try {
+        const { pathname, search, hash } = window.location;
+        window.history.replaceState(window.history.state, "", `${pathname}${withoutNewExternalItemParam(search)}${hash}`);
+      } catch {
+        // cronologia non disponibile: resta il comportamento di prima
+      }
+    }
     setMode("creating");
     // 21/10/2026 — con il foglio V2 non si scorre: il foglio copre già lo
     // schermo, e scorrere verso una sezione in fondo spostava l'intera app in
     // su (bianco sotto la barra, segnalato da Fabrizio dopo un impegno).
     if (!v2) document.getElementById("impegni")?.scrollIntoView({ behavior: "smooth", block: "start" });
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- uxFix non cambia durante la vita della pagina
   }, [wantsNew, v2]);
   const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
   // TRAMA — DELETE UX · OPTIMISTIC REMOVAL (28/09/2026, live UX fix).

@@ -32,3 +32,22 @@ export function wantsNewExternalItem(search: string): boolean {
     return false;
   }
 }
+
+/**
+ * Secondo test UX (22/10/2026, UX-PARENT-022): "?nuovo=impegno" apre il foglio
+ * una volta sola. Appena aperto si toglie dall'indirizzo (stessa voce di
+ * cronologia, vista e settimana restano): ricaricando la pagina dopo il
+ * salvataggio non riappare un "Nuovo impegno" vuoto.
+ * Restituisce la query senza il parametro ("" oppure "?view=…&week=…").
+ */
+export function withoutNewExternalItemParam(search: string): string {
+  try {
+    const params = new URLSearchParams(search);
+    if (params.get(NEW_EXTERNAL_ITEM_PARAM) !== NEW_EXTERNAL_ITEM_VALUE) return search;
+    params.delete(NEW_EXTERNAL_ITEM_PARAM);
+    const rest = params.toString();
+    return rest ? `?${rest}` : "";
+  } catch {
+    return search;
+  }
+}

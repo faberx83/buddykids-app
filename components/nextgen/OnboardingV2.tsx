@@ -46,6 +46,7 @@ import { setSchoolContextForFamilyAction } from "@/app/actions/school-calendar";
 import { ITALIAN_REGIONS } from "@/lib/school-calendar/regions";
 import { interestIcon } from "@/lib/nextgen/kid-visual";
 import ParentalDeclarationText from "@/components/legal/ParentalDeclarationText";
+import { newKidErrorSummary, onboardingTotalSteps, validateNewKid, type NewKidField } from "@/lib/nextgen/parent-ux-fix";
 
 export interface OnboardingV2Kid {
   id: string;
@@ -75,12 +76,15 @@ export default function OnboardingV2({
   schoolCalendarEnabled,
   kidIdsWithoutSchool,
   residenceCity,
+  uxFix = false,
 }: {
   progress: WalkthroughProgressSummary | null;
   kids: OnboardingV2Kid[];
   schoolCalendarEnabled: boolean;
   kidIdsWithoutSchool: string[];
   residenceCity: string | null;
+  /** Secondo test UX (22/10, PARENT_UX_FIX_ENABLED): passi stabili (021) e tutti gli errori insieme (015). */
+  uxFix?: boolean;
 }) {
   const router = useRouter();
   const visible = progress?.currentStepKey === ONBOARDING_V2_STEP_KEY;
@@ -116,7 +120,11 @@ export default function OnboardingV2({
   const show = visible && !dismissed;
   const kidsWithoutSchoolCount = kidIdsWithoutSchool.length + addedKidIds.length;
   const askSchool = shouldAskSchool({ schoolCalendarEnabled, kidsCount: localKids.length, kidsWithoutSchoolCount });
-  const totalSteps = askSchool ? 2 : 1;
+  const totalSteps = uxFix
+    ? onboardingTotalSteps({ schoolCalendarEnabled, kidsCount: localKids.length, kidsWithoutSchoolCount })
+    : askSchool
+      ? 2
+      : 1;
 
   useEffect(() => {
     if (show && !startedRef.current) {
@@ -224,6 +232,7 @@ export default function OnboardingV2({
             kids={localKids}
             step={1}
             totalSteps={totalSteps}
+            uxFix={uxFix}
             onBack={() => {
               setDirection(-1);
               setPhase("perche");
@@ -574,10 +583,12 @@ function KidsStep({
   onKidAdded,
   onContinue,
   onLater,
+  uxFix = false,
 }: {
   kids: OnboardingV2Kid[];
   step: number;
   totalSteps: number;
+  uxFix?: boolean;
   onBack: () => void;
   onKidAdded: (kid: OnboardingV2Kid) => void;
   onContinue: () => void;
@@ -592,6 +603,7 @@ function KidsStep({
   const [interests, setInterests] = useState<string[]>([]);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [badFields, setBadFields] = useState<NewKidField[]>([]);
   const [declarationRequired, setDeclarationRequired] = useState(false);
   const [declarationAccepted, setDeclarationAccepted] = useState(false);
   const today = useMemo(() => new Date().toISOString().slice(0, 10), []);
@@ -606,9 +618,20 @@ function KidsStep({
   async function handleAdd(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
-    if (!name.trim()) return setError("Scrivi il nome.");
-    if (!birthDate) return setError("Inserisci la data di nascita.");
-    if (declarationRequired && !declarationAccepted) return setError("Conferma la dichiarazione per continuare.");
+    setBadFields([]);
+    if (uxFix) {
+      // Secondo test UX (22/10, UX-PARENT-015 residuo): come in La tua famiglia,
+      // tutto quello che manca in una volta, non un campo alla volta.
+      const problems = validateNewKid({ name, birthDate, declarationRequired, declarationAccepted, todayIso: today });
+      if (problems.length > 0) {
+        setBadFields(problems.map((p) => p.field));
+        return setError(newKidErrorSummary(problems));
+      }
+    } else {
+      if (!name.trim()) return setError("Scrivi il nome.");
+      if (!birthDate) return setError("Inserisci la data di nascita.");
+      if (declarationRequired && !declarationAccepted) return setError("Conferma la dichiarazione per continuare.");
+    }
     setSaving(true);
     try {
       const res = await addKidAction(name, birthDate, gender || undefined, interests, declarationAccepted);
@@ -665,11 +688,24 @@ function KidsStep({
           <span className="text-[14px] font-bold text-trama-primary">{kids.length > 0 ? "Aggiungi un altro figlio" : "Aggiungi un figlio"}</span>
           <label className="flex flex-col gap-1.5 text-[13px] font-semibold text-ink-2">
             Nome
-            <input value={name} onChange={(e) => setName(e.target.value)} autoComplete="off" className={FIELD} />
+            <input
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              autoComplete="off"
+              aria-invalid={badFields.includes("name") || undefined}
+              className={`${FIELD} ${badFields.includes("name") ? "border-[#C0392B]" : ""}`}
+            />
           </label>
           <label className="flex flex-col gap-1.5 text-[13px] font-semibold text-ink-2">
             Data di nascita
-            <input type="date" value={birthDate} max={today} onChange={(e) => setBirthDate(e.target.value)} className={FIELD} />
+            <input
+              type="date"
+              value={birthDate}
+              max={today}
+              onChange={(e) => setBirthDate(e.target.value)}
+              aria-invalid={badFields.includes("birthDate") || undefined}
+              className={`${FIELD} ${badFields.includes("birthDate") ? "border-[#C0392B]" : ""}`}
+            />
           </label>
           <fieldset className="flex flex-col gap-2">
             <legend className="mb-2 text-[13px] font-semibold text-ink-2">

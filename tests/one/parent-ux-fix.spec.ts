@@ -19,8 +19,15 @@ import {
   withoutTestFixtures,
   regionFromPlace,
   siblingSchools,
+  addressBelongsTo,
+  groupInviteAcceptMessage,
+  GROUP_INVITE_RETRY_MESSAGE,
+  familyVisibleTags,
+  bellSummary,
+  onboardingTotalSteps,
 } from "../../lib/nextgen/parent-ux-fix";
-import { parsePhotonResponse, mergeSchoolSuggestions, retryQuery, distinctiveWords } from "../../lib/places/search";
+import { parsePhotonResponse, mergeSchoolSuggestions, retryQuery, distinctiveWords, rankSchoolSuggestions, type PlaceSuggestion } from "../../lib/places/search";
+import { withoutNewExternalItemParam, wantsNewExternalItem } from "../../lib/planner/new-external-item-link";
 import { tramaEmailHtml, escapeEmailHtml } from "../../lib/email-layout";
 import { installBannerFor, parseDismissedAt, INSTALL_REPROPOSE_DAYS } from "../../lib/nextgen/install-banner";
 import { appInviteUrl, familyInviteDestination } from "../../lib/public-links";
@@ -285,7 +292,9 @@ test.describe("Correzioni dal test UX — ciclo 4, K e L [no browser]", () => {
 
   test("UXF-41 (014) Novità a parte, fuori dal numero, lette all'apertura sul server", () => {
     const nc = read("components/nextgen/NotificationCenter.tsx");
-    expect(nc).toContain("const unseenCount = uxFix ? countUnseen(items.filter((i) => !isNovita(i))) : countUnseen(items);");
+    // 22/10 (UX-PARENT-020): il conteggio passa da bellSummary, sempre senza le Novità
+    expect(nc).toContain("const bell = bellSummary(items.filter((i) => !isNovita(i)));");
+    expect(nc).toContain("const unseenCount = uxFix ? bell.count : countUnseen(items);");
     expect(nc).toContain("markAnnouncementsSeenFromNovitaAction(");
     expect(nc).toContain('data-testid="notifications-novita-h"');
     const layout = read("app/nextgen/layout.tsx");
@@ -439,7 +448,9 @@ test.describe("Ritest 22/10, secondo giro — 404, email, Grossman, stessa scuol
     );
     expect(merged.map((m) => m.name)).toEqual(["Fondazione Grossman", "Scuola primaria Gonzaga", "Istituto Gesù"]);
     const route = read("app/api/places/search/route.ts");
-    expect(route).toContain("mergeSchoolSuggestions(q, schools, any)");
+    // 22/10 (UX-PARENT-018): fuori dal blocco Scuola (senza strict=1) resta questa unione
+    expect(route).toContain("strict ? rankSchoolSuggestions(text, s, a, zone) : mergeSchoolSuggestions(text, s, a)");
+    expect(route).toContain("let suggestions = merge(q, schools, any);");
     expect(route).toContain("const retry = suggestions.length === 0 ? retryQuery(q) : null;");
   });
 
@@ -504,3 +515,148 @@ test.describe("22/10 — link che aprono l'app, banner Apri nell'app / Installa 
   });
 });
 
+
+// ─── Secondo test UX (22/10/2026, ChatGPT): UX-PARENT-016…022 ─────────
+
+test.describe("Secondo test UX 22/10 — 016…022 [no browser]", () => {
+  test("UXF-80 (016) migration 49: nomi di colonna con la tabella, ingresso idempotente, preparata", () => {
+    const sql = read("supabase/migration_49_accetta_invito_gruppo.sql");
+    expect(sql).toContain("-- STATO: PREPARATA, NON APPLICATA");
+    expect(sql).toContain("#variable_conflict use_column");
+    expect(sql).toContain("where gm.group_id = v_invite.group_id and gm.parent_id = auth.uid()");
+    expect(sql).toContain("on conflict do nothing");
+    expect(sql).toContain("security definer");
+    expect(sql).toContain("set search_path = public, extensions, pg_temp");
+    expect(sql).toContain("grant execute on function public.accept_group_invite(uuid) to authenticated, service_role;");
+    expect(sql).toContain("revoke execute on function public.accept_group_invite(uuid) from public, anon;");
+    // il difetto: group_id senza tabella dentro la funzione che restituisce group_id
+    expect(sql).not.toMatch(/from public\.group_members where group_id/);
+    expect(sql).not.toMatch(/\bdrop table\b|\bdelete\s+from\b/i);
+  });
+
+  test("UXF-81 (016) messaggi: successo con il nome, errore tecnico → invito ancora valido + Riprova", () => {
+    expect(groupInviteAcceptMessage({ groupName: "Calcio Rossi" })).toEqual({ ok: true, text: "Sei nel gruppo «Calcio Rossi».", retry: false });
+    expect(groupInviteAcceptMessage({ groupName: null }).text).toBe("Sei nel gruppo.");
+    const tech = groupInviteAcceptMessage({ error: 'column reference "group_id" is ambiguous' });
+    expect(tech).toEqual({ ok: false, text: GROUP_INVITE_RETRY_MESSAGE, retry: true });
+    expect(GROUP_INVITE_RETRY_MESSAGE).toBe("Non siamo riusciti a farti entrare nel gruppo. L'invito è ancora valido.");
+    expect(groupInviteAcceptMessage({ error: "Questo invito è per un'altra email" })).toEqual({ ok: false, text: "Questo invito è per un'altra email.", retry: false });
+    const ui = read("components/GroupsClient.tsx");
+    expect(ui).toContain('uxFix && errorId === inv.id && errorInfo?.retry ? "Riprova" : "Accetta"');
+    expect(ui).toContain('showToast(groupInviteAcceptMessage({ groupName }).text, "success")');
+    expect(ui).toContain("uxFix={uxFix}");
+    expect(read("app/actions/groups.ts")).toContain('revalidatePath("/nextgen", "layout");');
+  });
+
+  test("UXF-82 (017) nome cambiato a mano: l'indirizzo vecchio si toglie, con lo stesso nome resta", () => {
+    expect(addressBelongsTo("Cavalcavia Bacula, 20155 Milano", "Scuola Pizzigoni", "Scuola Pizzigoni")).toBe(true);
+    expect(addressBelongsTo("Cavalcavia Bacula, 20155 Milano", "Scuola Pizzigoni", "  scuola  pizzigoni ")).toBe(true);
+    expect(addressBelongsTo("Cavalcavia Bacula, 20155 Milano", "Scuola Pizzigoni", "Scuola Demo UX Non Esistente")).toBe(false);
+    expect(addressBelongsTo("Cavalcavia Bacula, 20155 Milano", "", "Scuola Pizzigoni")).toBe(false);
+    expect(addressBelongsTo("", "Scuola Pizzigoni", "Scuola Pizzigoni")).toBe(false);
+    const ui = read("components/nextgen/KidSchoolBlock.tsx");
+    expect(ui).toContain("if (addressBelongsTo(address, addressFor, text)) return;");
+    expect(ui).toContain("Hai cambiato scuola. L&apos;indirizzo precedente è stato rimosso. Regione e Comune restano modificabili qui sotto.");
+    // copiando la scuola di un fratello l'indirizzo è legato al nome copiato
+    expect(ui).toContain('setAddressFor(it.title !== "Scuola" ? it.title : "");');
+  });
+
+  const sp = (name: string, kind: string, city?: string, region?: string): PlaceSuggestion => ({
+    name, address: city ? `Via 1, ${city}` : "", lat: 45, lng: 9, kind, ...(city ? { city } : {}), ...(region ? { region } : {}),
+  });
+
+  test("UXF-83 (018) ricerca stretta: niente tabaccherie, Bolzano fuori zona, Milano prima di Catania", () => {
+    // nome inventato: i luoghi estranei spariscono → "Usa questo nome"
+    const demo = rankSchoolSuggestions(
+      "Scuola Demo UX Non Esistente",
+      [sp("Scuola primaria Collodi", "amenity:school", "Milano", "Lombardia")],
+      [sp("Tabaccheria Esposito", "shop:tobacco", "Milano", "Lombardia"), sp("Trattoria Da Mario", "amenity:restaurant", "Roma", "Lazio")],
+      { city: "Milano", region: "Lombardia" }
+    );
+    expect(demo).toEqual([]);
+    // Grossman: l'azienda di Bolzano non è una scuola ed è fuori zona
+    const gross = rankSchoolSuggestions("Fondazione Grossman", [], [sp("Grossmann & Wenter", "office:company", "Bolzano", "Trentino-Alto Adige/Südtirol")], { city: "Milano", region: "Lombardia" });
+    expect(gross).toEqual([]);
+    // Pizzigoni: la scuola di Milano per prima
+    const pizz = rankSchoolSuggestions(
+      "Pizzigoni",
+      [sp("Scuola Pizzigoni", "amenity:school", "Catania", "Sicilia"), sp("Scuola Pizzigoni", "amenity:school", "Saronno", "Lombardia"), sp("Scuola Primaria Giuseppina Pizzigoni", "amenity:school", "Milano", "Lombardia")],
+      [],
+      { city: "Milano", region: "Lombardia" }
+    );
+    expect(pizz.map((p) => p.city)).toEqual(["Milano", "Saronno", "Catania"]);
+    // zona sconosciuta: un ente con il nome giusto resta (la Fondazione registrata come ente)
+    const ente = rankSchoolSuggestions("Fondazione Grossman", [], [sp("Fondazione Grossman", "office:foundation", "Milano", "Lombardia")]);
+    expect(ente).toHaveLength(1);
+  });
+
+  test("UXF-84 (018) 'Usa questo nome' esplicito e ricerca stretta solo nel blocco Scuola", () => {
+    const ac = read("components/nextgen/PlaceAutocomplete.tsx");
+    expect(ac).toContain("Non trovi la scuola? Puoi usare il nome che hai scritto. Per ponti e vacanze bastano Regione e Comune.");
+    expect(ac).toContain("Usa questo nome");
+    expect(ac).toContain("Altri luoghi con questo nome");
+    expect(ac).toContain("&strict=1");
+    const block = read("components/nextgen/KidSchoolBlock.tsx");
+    expect(block).toContain("strictZone={{ city: comune || residenceCity, region }}");
+    expect(block).toContain("onUseTyped={() => {");
+    expect(read("app/api/places/search/route.ts")).toContain("strict ? rankSchoolSuggestions(text, s, a, zone) : mergeSchoolSuggestions(text, s, a)");
+  });
+
+  test("UXF-85 (019) tag di prova: segno esplicito, filtro per le famiglie, TC-088 fa pulizia", () => {
+    const tags = [
+      { id: "sport", label: "Sport" },
+      { id: "test-1786025340380", label: "Test 1786025340380", isTestFixture: true },
+    ];
+    expect(familyVisibleTags(tags).map((t) => t.id)).toEqual(["sport"]);
+    // prima della migration il campo non c'è: nessun filtro
+    expect(familyVisibleTags([{ id: "test", label: "Test" }])).toHaveLength(1);
+    const sql = read("supabase/migration_50_tag_di_prova.sql");
+    expect(sql).toContain("-- STATO: PREPARATA, NON APPLICATA");
+    expect(sql).toContain("add column if not exists is_test_fixture boolean not null default false");
+    expect(sql).not.toMatch(/\bdelete\s+from\b/i);
+    expect(read("lib/data/tags.ts")).toContain('.select("*")');
+    expect(read("app/nextgen/groups/[id]/page.tsx")).toContain("availableTags: familyVisibleTags(detail.availableTags)");
+    expect(read("components/GroupDetailClient.tsx")).toContain('{uxFix ? "Nessuna preferenza" : "Nessuna preferenza particolare"}');
+    expect(read("tests/admin/gestione.spec.ts")).toContain('await chip.getByTitle("Elimina tag").click();');
+  });
+
+  test("UXF-86 (020) campanella: l'invito in attesa è 'da gestire', non 'da leggere'", () => {
+    const invite = { type: "group_invite_pending", isSeen: false, requiresAction: true };
+    const reply = { type: "inquiry_reply", isSeen: false };
+    const old = { type: "booking_response", isSeen: true };
+    expect(bellSummary([invite])).toEqual({ count: 1, toRead: 0, toAnswer: 1, ariaLabel: "Notifiche, 1 invito da gestire" });
+    expect(bellSummary([invite, reply, old]).ariaLabel).toBe("Notifiche, 1 da leggere, 1 invito da gestire");
+    expect(bellSummary([old]).ariaLabel).toBe("Notifiche");
+    expect(bellSummary([invite, { ...invite }]).ariaLabel).toBe("Notifiche, 2 inviti da gestire");
+    const nc = read("components/nextgen/NotificationCenter.tsx");
+    expect(nc).toContain("Da rispondere");
+    expect(nc).toContain("announceUnseenCount(unseenCount, uxFix ? bell.ariaLabel : undefined);");
+    expect(read("app/nextgen/HomeDashboardV2Client.tsx")).toContain("unseenLabel ?? `Notifiche, ${unseen} da leggere`");
+  });
+
+  test("UXF-87 (022) ?nuovo=impegno si consuma: vista e settimana restano", () => {
+    expect(withoutNewExternalItemParam("?nuovo=impegno&view=settimana&week=2026-10-19")).toBe("?view=settimana&week=2026-10-19");
+    expect(withoutNewExternalItemParam("?nuovo=impegno")).toBe("");
+    expect(withoutNewExternalItemParam("?view=settimana")).toBe("?view=settimana");
+    expect(wantsNewExternalItem(withoutNewExternalItemParam("?week=2026-10-19&nuovo=impegno"))).toBe(false);
+    const sec = read("components/nextgen/ExternalPlannerItemsSection.tsx");
+    expect(sec).toContain("window.history.replaceState(window.history.state, \"\", `${pathname}${withoutNewExternalItemParam(search)}${hash}`);");
+    // prima di setMode("creating"): il foglio aggiunge la sua voce di cronologia dopo
+    expect(sec.indexOf("withoutNewExternalItemParam(search)")).toBeLessThan(sec.indexOf('setMode("creating");'));
+  });
+
+  test("UXF-88 (021, 015) onboarding: 'Passo 1 di 2' fin dall'inizio, tutti gli errori insieme", () => {
+    expect(onboardingTotalSteps({ schoolCalendarEnabled: true, kidsCount: 0, kidsWithoutSchoolCount: 0 })).toBe(2);
+    expect(onboardingTotalSteps({ schoolCalendarEnabled: true, kidsCount: 1, kidsWithoutSchoolCount: 1 })).toBe(2);
+    expect(onboardingTotalSteps({ schoolCalendarEnabled: true, kidsCount: 2, kidsWithoutSchoolCount: 0 })).toBe(1);
+    expect(onboardingTotalSteps({ schoolCalendarEnabled: false, kidsCount: 0, kidsWithoutSchoolCount: 0 })).toBe(1);
+    const ob = read("components/nextgen/OnboardingV2.tsx");
+    expect(ob).toContain("validateNewKid({ name, birthDate, declarationRequired, declarationAccepted, todayIso: today })");
+    expect(ob).toContain("return setError(newKidErrorSummary(problems));");
+    expect(ob).toContain('aria-invalid={badFields.includes("name") || undefined}');
+    expect(read("app/nextgen/layout.tsx")).toContain("uxFix={parentUxFix}");
+    expect(newKidErrorSummary(validateNewKid({ name: "", birthDate: "", declarationRequired: false, declarationAccepted: false, todayIso: "2026-10-22" }))).toBe(
+      "Da completare: nome e data di nascita."
+    );
+  });
+});

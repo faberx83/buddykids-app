@@ -1061,6 +1061,8 @@ export const FEATURE_CATALOG: FeatureCatalogEntry[] = [
       "components/nextgen/NotificationCenter.tsx",
       "supabase/migration_47_centri_di_prova.sql",
       "supabase/migration_48_gruppi_esci_elimina.sql",
+      "supabase/migration_49_accetta_invito_gruppo.sql",
+      "supabase/migration_50_tag_di_prova.sql",
       "components/nextgen/KidSchoolBlock.tsx",
     ],
     note:

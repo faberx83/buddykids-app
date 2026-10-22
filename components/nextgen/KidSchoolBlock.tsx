@@ -30,7 +30,7 @@ import { ITALIAN_REGIONS } from "@/lib/school-calendar/regions";
 import type { KidSchoolProfileSummary } from "@/lib/data/school-calendar";
 import { mondayOfIso, recurrenceLabel, schoolYearRange, WEEKDAY_LABELS_IT } from "@/lib/planner/recurrence";
 import type { ExternalPlannerItemInput } from "@/lib/planner/external-planner-items-core";
-import { regionFromPlace, type SiblingSchool } from "@/lib/nextgen/parent-ux-fix";
+import { addressBelongsTo, regionFromPlace, type SiblingSchool } from "@/lib/nextgen/parent-ux-fix";
 
 function hhmm(t: string | null | undefined): string {
   return t ? t.slice(0, 5) : "";
@@ -76,6 +76,14 @@ export default function KidSchoolBlock({
   const savedName = schoolItem && schoolItem.title !== "Scuola" ? schoolItem.title : "";
   const [name, setName] = useState(savedName);
   const [address, setAddress] = useState(schoolItem?.location ?? "");
+  // Secondo test UX (22/10, UX-PARENT-017): l'indirizzo appartiene a un nome
+  // preciso (scelto dalla ricerca, copiato da un fratello o già salvato). Se
+  // il nome cambia a mano, l'indirizzo vecchio si toglie: mai "Scuola Demo"
+  // con l'indirizzo della Pizzigoni. Logica in lib/nextgen/parent-ux-fix.ts.
+  const [addressFor, setAddressFor] = useState(savedName);
+  const [addressRemoved, setAddressRemoved] = useState(false);
+  // UX-PARENT-018: "Usa questo nome" (scuola non trovata) → Regione e Comune a mano.
+  const [typedKept, setTypedKept] = useState(false);
   const [place, setPlace] = useState<{ lat: number; lng: number } | null>(schoolItem?.place ?? null);
   const [region, setRegion] = useState(profile?.region ?? "");
   const [comune, setComune] = useState(profile?.comune ?? "");
@@ -92,6 +100,9 @@ export default function KidSchoolBlock({
   function resetDraft() {
     setName(savedName);
     setAddress(schoolItem?.location ?? "");
+    setAddressFor(savedName);
+    setAddressRemoved(false);
+    setTypedKept(false);
     setPlace(schoolItem?.place ?? null);
     setRegion(profile?.region ?? "");
     setComune(profile?.comune ?? "");
@@ -111,6 +122,7 @@ export default function KidSchoolBlock({
     if (it) {
       setName(it.title !== "Scuola" ? it.title : "");
       setAddress(it.location ?? "");
+      setAddressFor(it.title !== "Scuola" ? it.title : "");
       setPlace(it.place ?? null);
       if (routineEnabled) {
         setWithHours(true);
@@ -120,7 +132,12 @@ export default function KidSchoolBlock({
       }
     } else {
       setName(s.schoolName && s.schoolName !== "Scuola" ? s.schoolName : "");
+      setAddress("");
+      setPlace(null);
+      setAddressFor("");
     }
+    setAddressRemoved(false);
+    setTypedKept(false);
     setFromSearch(false);
     setCopiedFrom(s.kidName);
     setError(null);
@@ -272,12 +289,27 @@ export default function KidSchoolBlock({
               value={name}
               onChange={(text) => {
                 setName(text);
-                setPlace(null);
                 setFromSearch(false);
+                setTypedKept(false);
+                if (addressBelongsTo(address, addressFor, text)) return;
+                if (address) setAddressRemoved(true);
+                setAddress("");
+                setPlace(null);
               }}
               pickText={(p) => p.name}
+              strictZone={{ city: comune || residenceCity, region }}
+              onUseTyped={() => {
+                setAddress("");
+                setPlace(null);
+                setAddressFor("");
+                setFromSearch(false);
+                setTypedKept(true);
+              }}
               onPick={(p) => {
                 setAddress(p.address);
+                setAddressFor(p.name);
+                setAddressRemoved(false);
+                setTypedKept(false);
                 setPlace({ lat: p.lat, lng: p.lng });
                 const r = regionFromPlace(p.region, ITALIAN_REGIONS);
                 if (r) setRegion(r);
@@ -288,6 +320,16 @@ export default function KidSchoolBlock({
               className={`${inputCls} w-full font-normal`}
             />
             {address && <span className="text-[12.5px] font-normal text-ink-2">{address}</span>}
+            {addressRemoved && !address && (
+              <span data-testid="kid-school-address-removed" className="text-[12.5px] font-normal leading-snug text-ink-2">
+                Hai cambiato scuola. L&apos;indirizzo precedente è stato rimosso. Regione e Comune restano modificabili qui sotto.
+              </span>
+            )}
+            {typedKept && (
+              <span data-testid="kid-school-typed-kept" className="text-[12.5px] font-normal leading-snug text-[#146B4F]">
+                Va bene «{name.trim()}». Indica Regione e Comune qui sotto: servono per ponti e vacanze.
+              </span>
+            )}
           </div>
 
           {fromSearch ? (

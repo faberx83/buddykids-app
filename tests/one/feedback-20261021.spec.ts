@@ -23,8 +23,8 @@ test.describe("TRAMA — feedback 21/10 [no browser]", () => {
     const r = read("app/api/places/search/route.ts");
     // 22/10/2026: non più "solo se fra le scuole non c'è niente" (Photon trova quasi sempre qualche scuola
     // simile e il ripiego non partiva): scuole e tutti i luoghi insieme, sempre (vedi UXF-62).
-    expect(r).toContain('searchPhoton(buildPhotonUrl({ q, kind: "school", near })),');
-    expect(r).toContain('searchPhoton(buildPhotonUrl({ q, kind: "any", near })),');
+    expect(r).toContain('searchPhoton(buildPhotonUrl({ q, kind: "school", near, limit })),'); // 22/10: limit più alto con strict=1
+    expect(r).toContain('searchPhoton(buildPhotonUrl({ q, kind: "any", near, limit })),'); // 22/10: limit più alto con strict=1
     expect(r.match(/^export /gm)).toHaveLength(1);
     expect(read("components/nextgen/PlaceAutocomplete.tsx")).toContain("Non lo trovo sulla mappa: va bene anche scritto a mano.");
   });

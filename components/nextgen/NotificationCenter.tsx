@@ -54,6 +54,7 @@ import { markAnnouncementSeenAction, markAnnouncementsSeenFromNovitaAction } fro
 // STESSA logica per i pallini "Prenotazioni"/"Profilo" — vedi
 // lib/notifications/seen-cursor.ts per il motivo dell'estrazione.
 import { readLastSeenAt, writeLastSeenAt } from "@/lib/notifications/seen-cursor";
+import { bellSummary, isPendingAnswer } from "@/lib/nextgen/parent-ux-fix";
 import {
   HEADER_BELL_EVENT,
   OPEN_NOTIFICATIONS_EVENT,
@@ -132,7 +133,10 @@ export default function NotificationCenter({
     seenNovita.has(i.id) ? { ...i, isSeen: true } : i
   );
   const isNovita = (i: NotificationItem) => i.type === "trama_announcement";
-  const unseenCount = uxFix ? countUnseen(items.filter((i) => !isNovita(i))) : countUnseen(items);
+  // Secondo test UX (22/10, UX-PARENT-020): un invito in attesa è "da rispondere", non "da leggere".
+  const bell = bellSummary(items.filter((i) => !isNovita(i)));
+  const unseenCount = uxFix ? bell.count : countUnseen(items);
+  const bellAriaLabel = uxFix ? bell.ariaLabel : unseenCount > 0 ? `Notifiche, ${unseenCount} da leggere` : "Notifiche";
   const badgeLabel = unseenCount > 9 ? "9+" : String(unseenCount);
   const itemsRef = useRef(items);
 
@@ -212,8 +216,8 @@ export default function NotificationCenter({
 
   useEffect(() => {
     if (scope !== "parent" || !headerBellPresent) return;
-    announceUnseenCount(unseenCount);
-  }, [scope, headerBellPresent, unseenCount]);
+    announceUnseenCount(unseenCount, uxFix ? bell.ariaLabel : undefined);
+  }, [scope, headerBellPresent, unseenCount, uxFix, bell.ariaLabel]);
 
   useEffect(() => {
     if (!open) return;
@@ -268,7 +272,7 @@ export default function NotificationCenter({
         ref={bellRef}
         type="button"
         onClick={openCenter}
-        aria-label={unseenCount > 0 ? `Notifiche, ${unseenCount} da leggere` : "Notifiche"}
+        aria-label={bellAriaLabel}
         aria-haspopup="dialog"
         aria-expanded={open}
         style={{ width: BUTTON_SIZE, height: BUTTON_SIZE }}
@@ -359,7 +363,11 @@ export default function NotificationCenter({
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center gap-1.5">
                           <span className="text-[13px] font-bold text-ink">{item.title}</span>
-                          {!item.isSeen && (
+                          {uxFix && isPendingAnswer(item) ? (
+                            <span data-testid="notification-to-answer" className="flex-shrink-0 rounded-full bg-trama-violet/10 px-1.5 py-0.5 text-[9.5px] font-bold uppercase tracking-wide text-trama-violet">
+                              Da rispondere
+                            </span>
+                          ) : !item.isSeen && (
                             <span className="flex-shrink-0 rounded-full bg-trama-orange/15 px-1.5 py-0.5 text-[9.5px] font-bold uppercase tracking-wide text-trama-orange">
                               Nuovo
                             </span>

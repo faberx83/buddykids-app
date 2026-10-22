@@ -311,6 +311,8 @@ export async function acceptGroupInviteAction(inviteId: string): Promise<Respond
   );
 
   revalidatePath("/groups");
+  // Secondo test UX (22/10): campanella, Da fare e I miei gruppi aggiornati subito.
+  revalidatePath("/nextgen", "layout");
   return { groupId: row.group_id || undefined };
 }
 
@@ -325,6 +327,7 @@ export async function declineGroupInviteAction(inviteId: string): Promise<{ erro
   if (row?.error) return { error: row.error };
 
   revalidatePath("/groups");
+  revalidatePath("/nextgen", "layout");
   return {};
 }
 

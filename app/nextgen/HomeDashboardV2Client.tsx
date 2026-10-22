@@ -169,9 +169,13 @@ export default function HomeDashboardV2Client({
 
   // ── Campanella nell'intestazione → centro notifiche esistente ──
   const [unseen, setUnseen] = useState(0);
+  // Secondo test UX (22/10, UX-PARENT-020): "1 invito da gestire" invece di "1 da leggere".
+  const [unseenLabel, setUnseenLabel] = useState<string | null>(null);
   useEffect(() => {
     function onCount(e: Event) {
-      setUnseen((e as CustomEvent<UnseenCountDetail | undefined>).detail?.count ?? 0);
+      const detail = (e as CustomEvent<UnseenCountDetail | undefined>).detail;
+      setUnseen(detail?.count ?? 0);
+      setUnseenLabel(detail?.label ?? null);
     }
     window.addEventListener(UNSEEN_COUNT_EVENT, onCount);
     announceHeaderBell(true);
@@ -274,7 +278,7 @@ export default function HomeDashboardV2Client({
             requestOpenNotifications();
             setUnseen(0);
           }}
-          aria-label={unseen > 0 ? `Notifiche, ${unseen} da leggere` : "Notifiche"}
+          aria-label={unseen > 0 ? unseenLabel ?? `Notifiche, ${unseen} da leggere` : "Notifiche"}
           aria-haspopup="dialog"
           className="relative flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-full border border-[#E8EBF0] bg-white text-trama-navy active:scale-95"
         >

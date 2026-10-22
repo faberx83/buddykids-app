@@ -6,8 +6,8 @@
 // /api/places/search). Si può sempre scrivere a mano: i suggerimenti
 // aiutano, non obbligano. Con la release spenta è un campo normale.
 
-import { useEffect, useId, useRef, useState } from "react";
-import { MIN_QUERY_LENGTH, placeLocationText, type PlaceSuggestion } from "@/lib/places/search";
+import { Fragment, useEffect, useId, useRef, useState } from "react";
+import { isSchoolKind, MIN_QUERY_LENGTH, placeLocationText, type PlaceSuggestion, type SchoolSearchZone } from "@/lib/places/search";
 
 export default function PlaceAutocomplete({
   id,
@@ -19,6 +19,8 @@ export default function PlaceAutocomplete({
   enabled,
   placeholder,
   className,
+  strictZone,
+  onUseTyped,
 }: {
   id: string;
   value: string;
@@ -31,6 +33,13 @@ export default function PlaceAutocomplete({
   enabled: boolean;
   placeholder?: string;
   className: string;
+  /**
+   * Secondo test UX (22/10, UX-PARENT-018): ricerca "stretta" — niente luoghi
+   * estranei, prima la zona indicata. Solo il blocco Scuola del figlio.
+   */
+  strictZone?: SchoolSearchZone | null;
+  /** Se c'è, un'azione esplicita "Usa questo nome" per tenere il testo scritto. */
+  onUseTyped?: (text: string) => void;
 }) {
   const listId = useId();
   const [items, setItems] = useState<PlaceSuggestion[]>([]);
@@ -54,7 +63,10 @@ export default function PlaceAutocomplete({
     const t = setTimeout(async () => {
       setLoading(true);
       try {
-        const res = await fetch(`/api/places/search?kind=${kind}&q=${encodeURIComponent(q)}`, { signal: ctrl.signal });
+        const zone = strictZone
+          ? `&strict=1${strictZone.city ? `&city=${encodeURIComponent(strictZone.city)}` : ""}${strictZone.region ? `&region=${encodeURIComponent(strictZone.region)}` : ""}`
+          : "";
+        const res = await fetch(`/api/places/search?kind=${kind}&q=${encodeURIComponent(q)}${zone}`, { signal: ctrl.signal });
         const body = (await res.json()) as { suggestions?: PlaceSuggestion[] };
         setItems(body.suggestions ?? []);
         setNoResults((body.suggestions ?? []).length === 0);
@@ -70,6 +82,7 @@ export default function PlaceAutocomplete({
       clearTimeout(t);
       ctrl.abort();
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- la zona serve solo a ordinare: si rilegge alla prossima ricerca, non ne fa partire una nuova
   }, [value, kind, enabled]);
 
   function pick(p: PlaceSuggestion) {
@@ -82,6 +95,16 @@ export default function PlaceAutocomplete({
   }
 
   const showList = enabled && open && items.length > 0;
+
+  function keepTyped() {
+    picked.current = value;
+    setOpen(false);
+    setItems([]);
+    setNoResults(false);
+    onUseTyped?.(value.trim());
+  }
+  const canUseTyped = Boolean(onUseTyped) && value.trim().length >= MIN_QUERY_LENGTH;
+  const firstOtherPlace = strictZone ? items.findIndex((p) => !isSchoolKind(p.kind)) : -1;
 
   return (
     <div className="relative">
@@ -121,30 +144,63 @@ export default function PlaceAutocomplete({
       {enabled && loading && (
         <i className="ti ti-loader-2 absolute right-3.5 top-1/2 -translate-y-1/2 animate-spin text-[16px] text-ink-3" aria-hidden="true" />
       )}
-      {enabled && noResults && !loading && (
+      {enabled && noResults && !loading && (canUseTyped ? (
+        <div className="mt-1.5 flex items-start justify-between gap-3 rounded-[12px] bg-bg px-3.5 py-2.5" data-testid="place-no-results">
+          <span className="text-[12.5px] leading-snug text-ink-2">
+            Non trovi la scuola? Puoi usare il nome che hai scritto. Per ponti e vacanze bastano Regione e Comune.
+          </span>
+          <button type="button" onClick={keepTyped} className="min-h-[36px] flex-shrink-0 text-[13px] font-semibold text-trama-accent-ink" data-testid="place-use-typed">
+            Usa questo nome
+          </button>
+        </div>
+      ) : (
         <p className="mt-1.5 text-[12.5px] leading-snug text-ink-2" data-testid="place-no-results">
           Non lo trovo sulla mappa: va bene anche scritto a mano.
         </p>
-      )}
+      ))}
       {showList && (
         <div className="absolute inset-x-0 top-full z-20 mt-1 overflow-hidden rounded-[12px] border border-trama-line bg-white shadow-[0_8px_24px_rgba(23,42,77,0.14)]">
           <ul id={listId} role="listbox" data-testid="place-suggestions">
             {items.map((p, i) => (
-              <li key={`${p.name}-${p.address}-${i}`} role="option" aria-selected={i === active}>
+              <Fragment key={`${p.name}-${p.address}-${i}`}>
+              {i === firstOtherPlace && (
+                <li role="presentation" className="border-t border-[#F0F2F5] px-3.5 pb-1 pt-2 text-[11px] font-bold uppercase tracking-wide text-ink-3">
+                  Altri luoghi con questo nome
+                </li>
+              )}
+              <li role="option" aria-selected={i === active}>
                 <button
                   type="button"
                   onMouseDown={(e) => e.preventDefault()}
                   onClick={() => pick(p)}
                   className={`flex w-full items-start gap-2.5 px-3.5 py-2.5 text-left ${i === active ? "bg-trama-primary-soft" : "active:bg-black/[0.03]"}`}
                 >
-                  <i className={`ti ${p.kind.startsWith("amenity:school") || p.kind.startsWith("amenity:kindergarten") ? "ti-school" : "ti-map-pin"} mt-0.5 text-[16px] text-ink-3`} aria-hidden="true" />
+                  <i className={`ti ${isSchoolKind(p.kind) ? "ti-school" : "ti-map-pin"} mt-0.5 text-[16px] text-ink-3`} aria-hidden="true" />
                   <span className="flex min-w-0 flex-col">
                     <span className="truncate text-[14.5px] font-semibold text-ink">{p.name}</span>
                     {p.address && <span className="truncate text-[12.5px] text-ink-2">{p.address}</span>}
                   </span>
                 </button>
               </li>
+              </Fragment>
             ))}
+            {canUseTyped && (
+              <li role="option" aria-selected={false}>
+                <button
+                  type="button"
+                  onMouseDown={(e) => e.preventDefault()}
+                  onClick={keepTyped}
+                  data-testid="place-use-typed-option"
+                  className="flex w-full items-start gap-2.5 border-t border-[#F0F2F5] px-3.5 py-2.5 text-left active:bg-black/[0.03]"
+                >
+                  <i className="ti ti-pencil mt-0.5 text-[16px] text-trama-accent-ink" aria-hidden="true" />
+                  <span className="flex min-w-0 flex-col">
+                    <span className="truncate text-[14px] font-semibold text-trama-accent-ink">Usa questo nome: «{value.trim()}»</span>
+                    <span className="text-[12px] text-ink-2">Non è nell&apos;elenco? Regione e Comune li indichi tu.</span>
+                  </span>
+                </button>
+              </li>
+            )}
           </ul>
           <p className="border-t border-[#F0F2F5] px-3.5 py-1.5 text-[11px] text-ink-3">Indirizzi © OpenStreetMap</p>
         </div>

@@ -19,6 +19,8 @@ export interface HeaderBellDetail {
 
 export interface UnseenCountDetail {
   count: number;
+  /** Secondo test UX (22/10): testo per lettori di schermo ("Notifiche, 1 invito da gestire"). */
+  label?: string;
 }
 
 function dispatch<T>(name: string, detail?: T): void {
@@ -44,6 +46,6 @@ export function announceHeaderBell(present: boolean): void {
   dispatch<HeaderBellDetail>(HEADER_BELL_EVENT, { present });
 }
 
-export function announceUnseenCount(count: number): void {
-  dispatch<UnseenCountDetail>(UNSEEN_COUNT_EVENT, { count });
+export function announceUnseenCount(count: number, label?: string): void {
+  dispatch<UnseenCountDetail>(UNSEEN_COUNT_EVENT, label ? { count, label } : { count });
 }

@@ -647,12 +647,18 @@ function GruppoTab({
                 </option>
               ))}
             </select>
+            {uxFix && (
+              <label htmlFor="group-kid-pref" className="block pt-1 text-[12.5px] font-semibold text-ink-2">
+                Attività preferita per questo gruppo <span className="font-normal">(facoltativa)</span>
+              </label>
+            )}
             <select
+              id="group-kid-pref"
               value={selectedTag}
               onChange={(e) => setSelectedTag(e.target.value)}
               className={`w-full rounded-md border border-[#E8EBF0] bg-bg px-3 py-2 text-sm outline-none ${accentFocus}`}
             >
-              <option value="">Nessuna preferenza particolare</option>
+              <option value="">{uxFix ? "Nessuna preferenza" : "Nessuna preferenza particolare"}</option>
               {detail.availableTags.map((t) => (
                 <option key={t.id} value={t.id}>
                   {t.emoji} {t.label}

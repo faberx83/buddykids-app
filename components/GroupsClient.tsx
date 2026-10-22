@@ -14,6 +14,8 @@ import {
 } from "@/app/actions/groups";
 import { GroupItem, PublicGroupItem, GroupInviteItem } from "@/lib/types";
 import { resolveGroupsListBackHref, groupsDetailQuery } from "@/lib/nextgen/groups-back-nav";
+import { useNextgenToast } from "@/components/nextgen/NextgenToastProvider";
+import { groupInviteAcceptMessage } from "@/lib/nextgen/parent-ux-fix";
 
 const tabs = ["I miei gruppi", "Scopri", "Inviti"];
 
@@ -290,6 +292,7 @@ export default function GroupsClient({
           basePath={basePath}
           nextgen={nextgen}
           detailQuery={detailQuery}
+          uxFix={uxFix}
         />
       )}
     </div>
@@ -392,29 +395,49 @@ function InvitiTab({
   basePath = "/groups",
   nextgen = false,
   detailQuery = "",
+  uxFix = false,
 }: {
   initialInvites: GroupInviteItem[];
   basePath?: string;
   nextgen?: boolean | "v2";
   detailQuery?: string;
+  /** Secondo test UX (22/10, UX-PARENT-016): messaggi chiari, "Riprova", conferma con il nome del gruppo. */
+  uxFix?: boolean;
 }) {
   const accentBg = nextgen === "v2" ? "bg-trama-primary" : nextgen ? "bg-trama-violet" : "bg-sky";
   const router = useRouter();
   const [invites, setInvites] = useState(initialInvites);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [errorId, setErrorId] = useState<string | null>(null);
+  const [errorInfo, setErrorInfo] = useState<{ text: string; retry: boolean } | null>(null);
+  const showToast = useNextgenToast();
 
   async function handleAccept(inviteId: string) {
     setBusyId(inviteId);
     setErrorId(null);
-    const result = await acceptGroupInviteAction(inviteId);
+    setErrorInfo(null);
+    let result: Awaited<ReturnType<typeof acceptGroupInviteAction>>;
+    try {
+      result = await acceptGroupInviteAction(inviteId);
+    } catch {
+      result = { error: "network" };
+    }
     setBusyId(null);
+    const groupName = invites.find((i) => i.id === inviteId)?.groupName;
     if (result.error) {
       setErrorId(inviteId);
+      if (uxFix) {
+        const msg = groupInviteAcceptMessage({ error: result.error });
+        setErrorInfo({ text: msg.text, retry: msg.retry });
+        // Invito già gestito o per un'altra email: si toglie dall'elenco solo ricaricando.
+        if (!msg.retry) router.refresh();
+      }
       return;
     }
     setInvites((prev) => prev.filter((i) => i.id !== inviteId));
+    if (uxFix) showToast(groupInviteAcceptMessage({ groupName }).text, "success");
     if (result.groupId) router.push(`${basePath}/${result.groupId}${detailQuery}`);
+    else if (uxFix) router.refresh();
   }
 
   async function handleDecline(inviteId: string) {
@@ -451,7 +474,13 @@ function InvitiTab({
             <div className="mt-1 text-xs font-semibold text-green">Sconto {inv.discountPercent}%</div>
           )}
           {errorId === inv.id && (
-            <p className="mt-1 text-[11px] font-medium text-orange">Errore nella risposta all&apos;invito</p>
+            uxFix && errorInfo ? (
+              <p role="alert" data-testid="group-invite-error" className="mt-1.5 text-[12.5px] font-medium leading-snug text-[#B3261E]">
+                {errorInfo.text}
+              </p>
+            ) : (
+              <p className="mt-1 text-[11px] font-medium text-orange">Errore nella risposta all&apos;invito</p>
+            )
           )}
           <div className="mt-2.5 flex gap-2">
             <button
@@ -459,7 +488,7 @@ function InvitiTab({
               disabled={busyId === inv.id}
               className={`${nextgen === "v2" ? "min-h-[44px] rounded-[12px] px-4 text-[13.5px]" : "rounded-md px-3.5 py-2 text-xs"} ${accentBg} font-bold text-white disabled:opacity-60`}
             >
-              {busyId === inv.id ? "Un momento…" : "Accetta"}
+              {busyId === inv.id ? "Un momento…" : uxFix && errorId === inv.id && errorInfo?.retry ? "Riprova" : "Accetta"}
             </button>
             <button
               onClick={() => handleDecline(inv.id)}

@@ -10,7 +10,7 @@ import { createClient } from "@/lib/supabase/server";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
 import { resolveFeatureFlag } from "@/lib/feature-flags/resolve";
 import { generateCorrelationId } from "@/lib/telemetry/correlation";
-import { buildPhotonUrl, mergeSchoolSuggestions, parsePhotonResponse, PLACE_SEARCH_FLAG, retryQuery } from "@/lib/places/search";
+import { buildPhotonUrl, mergeSchoolSuggestions, parsePhotonResponse, PLACE_SEARCH_FLAG, rankSchoolSuggestions, retryQuery } from "@/lib/places/search";
 
 export async function GET(request: Request) {
   const empty = NextResponse.json({ suggestions: [] });
@@ -41,18 +41,27 @@ export async function GET(request: Request) {
   // come "scuola": si cerca fra le scuole e fra tutti i luoghi insieme
   // (lib/places/search.ts#mergeSchoolSuggestions), e se non esce niente si
   // riprova senza le parole generiche ("Fondazione Grossman" → "Grossman").
+  // Secondo test UX (22/10, UX-PARENT-018): con strict=1 (blocco Scuola del
+  // figlio, PARENT_UX_FIX_ENABLED) niente luoghi estranei e prima la zona
+  // della famiglia (lib/places/search.ts#rankSchoolSuggestions). Si chiedono
+  // a Photon più risultati, perché poi se ne scartano.
+  const strict = url.searchParams.get("strict") === "1";
+  const zone = { city: url.searchParams.get("city"), region: url.searchParams.get("region") };
+  const limit = strict ? 10 : undefined;
+  const merge = (text: string, s: Awaited<ReturnType<typeof searchPhoton>>, a: Awaited<ReturnType<typeof searchPhoton>>) =>
+    strict ? rankSchoolSuggestions(text, s, a, zone) : mergeSchoolSuggestions(text, s, a);
   const [schools, any] = await Promise.all([
-    searchPhoton(buildPhotonUrl({ q, kind: "school", near })),
-    searchPhoton(buildPhotonUrl({ q, kind: "any", near })),
+    searchPhoton(buildPhotonUrl({ q, kind: "school", near, limit })),
+    searchPhoton(buildPhotonUrl({ q, kind: "any", near, limit })),
   ]);
-  let suggestions = mergeSchoolSuggestions(q, schools, any);
+  let suggestions = merge(q, schools, any);
   const retry = suggestions.length === 0 ? retryQuery(q) : null;
   if (retry) {
     const [schools2, any2] = await Promise.all([
-      searchPhoton(buildPhotonUrl({ q: retry, kind: "school", near })),
-      searchPhoton(buildPhotonUrl({ q: retry, kind: "any", near })),
+      searchPhoton(buildPhotonUrl({ q: retry, kind: "school", near, limit })),
+      searchPhoton(buildPhotonUrl({ q: retry, kind: "any", near, limit })),
     ]);
-    suggestions = mergeSchoolSuggestions(retry, schools2, any2);
+    suggestions = merge(retry, schools2, any2);
   }
   return NextResponse.json({ suggestions });
 }

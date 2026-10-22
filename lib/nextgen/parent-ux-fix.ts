@@ -368,3 +368,75 @@ export function siblingSchools(
     }))
     .slice(0, 2);
 }
+
+// ─── Secondo test UX (22/10/2026, ChatGPT): UX-PARENT-016…022 ─────────
+
+/**
+ * UX-PARENT-017. L'indirizzo resta solo se il nome è ancora quello a cui
+ * appartiene (stessa scuola, al massimo spazi o maiuscole diversi). Con un
+ * nome scritto a mano diverso l'indirizzo vecchio va tolto.
+ */
+export function addressBelongsTo(address: string, addressFor: string, typedName: string): boolean {
+  if (!address.trim() || !addressFor.trim()) return false;
+  return normalizeSearch(addressFor).replace(/\s+/g, " ").trim() === normalizeSearch(typedName).replace(/\s+/g, " ").trim();
+}
+
+/**
+ * UX-PARENT-016. Messaggi della risposta a un invito di gruppo: il successo
+ * nomina il gruppo; un errore tecnico non si mostra così com'è ("column
+ * reference…") ma dice che l'invito resta valido e si può riprovare.
+ * Gli errori "di dominio" della funzione (già gestito, altra email) restano.
+ */
+export const GROUP_INVITE_RETRY_MESSAGE = "Non siamo riusciti a farti entrare nel gruppo. L'invito è ancora valido.";
+const GROUP_INVITE_DOMAIN_ERRORS = ["Invito non trovato o già gestito", "Questo invito è per un'altra email"];
+
+export function groupInviteAcceptMessage(input: { groupName?: string | null; error?: string | null }): { ok: boolean; text: string; retry: boolean } {
+  if (!input.error) {
+    const name = input.groupName?.trim();
+    return { ok: true, text: name ? `Sei nel gruppo «${name}».` : "Sei nel gruppo.", retry: false };
+  }
+  if (GROUP_INVITE_DOMAIN_ERRORS.includes(input.error)) return { ok: false, text: `${input.error}.`, retry: false };
+  return { ok: false, text: GROUP_INVITE_RETRY_MESSAGE, retry: true };
+}
+
+/**
+ * UX-PARENT-019. Categorie (tag) da proporre alle famiglie: senza quelle
+ * segnate come prova (tags.is_test_fixture, migration 50). Prima della
+ * migration la colonna non c'è: nessun filtro, nessun errore.
+ */
+export function familyVisibleTags<T extends { isTestFixture?: boolean }>(tags: T[]): T[] {
+  return tags.filter((t) => t.isTestFixture !== true);
+}
+
+/**
+ * UX-PARENT-020. Campanella: un invito ancora in attesa non è "da leggere"
+ * ma "da rispondere". Il numero li conta tutti (restano un promemoria), il
+ * testo li distingue.
+ */
+export function bellSummary(items: { type: string; isSeen: boolean; requiresAction?: boolean }[]): {
+  count: number;
+  toRead: number;
+  toAnswer: number;
+  ariaLabel: string;
+} {
+  const toAnswer = items.filter((i) => isPendingAnswer(i)).length;
+  const toRead = items.filter((i) => !isPendingAnswer(i) && !i.isSeen).length;
+  const parts: string[] = [];
+  if (toRead > 0) parts.push(`${toRead} da leggere`);
+  if (toAnswer > 0) parts.push(toAnswer === 1 ? "1 invito da gestire" : `${toAnswer} inviti da gestire`);
+  return { count: toRead + toAnswer, toRead, toAnswer, ariaLabel: parts.length ? `Notifiche, ${parts.join(", ")}` : "Notifiche" };
+}
+
+export function isPendingAnswer(item: { type: string }): boolean {
+  return item.type === "group_invite_pending";
+}
+
+/**
+ * UX-PARENT-021. Passi dell'onboarding: se la scuola si chiederà, il totale
+ * è 2 fin dall'inizio — anche quando i figli non ci sono ancora (un figlio
+ * appena aggiunto non ha la scuola). Prima era "1 di 1" e poi "1 di 2".
+ */
+export function onboardingTotalSteps(input: { schoolCalendarEnabled: boolean; kidsCount: number; kidsWithoutSchoolCount: number }): number {
+  if (!input.schoolCalendarEnabled) return 1;
+  return input.kidsCount === 0 || input.kidsWithoutSchoolCount > 0 ? 2 : 1;
+}
