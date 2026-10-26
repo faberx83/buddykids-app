@@ -175,8 +175,9 @@ export default function PassageAssignBody({
         }
       }
     }
-    // "Anche gli altri giorni di …": solo per un impegno (non la scuola).
-    const activity = legs.find((l) => !l.school) ?? null;
+    // "Anche gli altri giorni di …": dell'impegno; se il passaggio è solo di
+    // scuola (entra / esce), degli altri giorni di scuola (26/10/2026).
+    const activity = legs.find((l) => !l.school) ?? legs[0] ?? null;
     if (opt && plusEnabled && activity) {
       const range = rangeFor(activity.passageKey);
       const dates = range
@@ -190,7 +191,7 @@ export default function PassageAssignBody({
         opt,
         label,
         passageKey: activity.passageKey,
-        commitments: dates.length > 0 ? [{ key: activity.passageKey, title: activity.title, dates }] : [],
+        commitments: dates.length > 0 ? [{ key: activity.passageKey, title: activity.school ? "scuola" : activity.title, dates }] : [],
       });
     } else if (opt && plusEnabled) {
       setOffer({ key, kidId, kidName, moment: legs[0].moment, opt, label, passageKey: legs[0].passageKey, commitments: [] });

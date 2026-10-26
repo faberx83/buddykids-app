@@ -74,10 +74,15 @@ function minutes(t: string): number {
   return h * 60 + m;
 }
 
-/** I passaggi di un figlio in una giornata, in ordine di orario. Solo scuola → nessun passaggio. */
+/**
+ * I passaggi di un figlio in una giornata, in ordine di orario.
+ * 26/10/2026 (Fabrizio: "non vedo nulla per i giorni di solo scuola"): anche
+ * la sola scuola ha i suoi due passaggi (entra, esce); con "Anche gli altri
+ * giorni di scuola?" si decidono una volta per tutte.
+ */
 export function dayLegs(entries: AgendaEntry[], kidId: string): Leg[] {
   const mine = entries.filter((e) => e.kids.some((k) => k.id === kidId));
-  if (!mine.some((e) => !e.school)) return [];
+  if (mine.length === 0) return [];
   const legs: Leg[] = [];
   const seenSchool = new Set<Moment>();
   for (const e of mine) {
@@ -233,14 +238,14 @@ export function otherDatesOfPassage(input: {
   agendaFor: (dateIso: string) => AgendaEntry[];
   horizonDays?: number;
 }): string[] {
-  if (input.passageKey === SCHOOL_PASSAGE_KEY) return [];
   const from = input.todayIso > input.range.startDate ? input.todayIso : input.range.startDate;
   const horizon = addDaysIso(input.todayIso, input.horizonDays ?? PASSAGE_APPLY_HORIZON_DAYS);
   const until = input.range.endDate < horizon ? input.range.endDate : horizon;
   const out: string[] = [];
   for (let d = from; d <= until; d = addDaysIso(d, 1)) {
     if (d === input.dateIso) continue;
-    if (input.agendaFor(d).some((e) => e.id === input.passageKey && e.kids.some((k) => k.id === input.kidId))) out.push(d);
+    const isIt = (e: AgendaEntry) => (input.passageKey === SCHOOL_PASSAGE_KEY ? Boolean(e.school) : e.id === input.passageKey);
+    if (input.agendaFor(d).some((e) => isIt(e) && e.kids.some((k) => k.id === input.kidId))) out.push(d);
   }
   return out;
 }

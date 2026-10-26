@@ -313,6 +313,15 @@ export default function PlannerV2Client({
   );
   const rangeFor = useCallback(
     (passageKey: string) => {
+      // 26/10/2026: la scuola dura tutto l'anno scolastico (l'orario salvato in La tua famiglia).
+      if (passageKey === "school") {
+        const school = agendaExternal.filter((i) => i.isSchool);
+        if (school.length === 0) return null;
+        return {
+          startDate: school.map((i) => i.startDate).sort()[0],
+          endDate: school.map((i) => i.endDate).sort()[school.length - 1],
+        };
+      }
       if (passageKey.startsWith("external:")) {
         const item = agendaExternal.find((i) => `external:${i.id}` === passageKey);
         return item ? { startDate: item.startDate, endDate: item.endDate } : null;

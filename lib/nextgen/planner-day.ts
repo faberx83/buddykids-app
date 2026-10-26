@@ -157,7 +157,7 @@ export function buildKidPassageChains(
     const others = mine.filter((e) => !e.school);
     const legs = dayLegs(day.entries, kid.id);
     if (legs.length === 0) {
-      // Solo scuola (o niente): la catena di sempre, compatta.
+      // Niente in programma: la catena di sempre (vuota).
       const [plain] = buildKidDayChains({ entries: day.entries, coordination: { mode: "none", kids: [], missingCount: 0, people: [] } }, [kid]);
       return plain;
     }

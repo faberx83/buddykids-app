@@ -74,9 +74,12 @@ test.describe("Chi accompagna per passaggio — modello [no browser]", () => {
     expect(legs.map((l) => l.key)).toEqual([legKey("school", "andata"), legKey("school", "ritorno"), legKey(RITMICA_ID, "andata"), legKey(RITMICA_ID, "ritorno")]);
   });
 
-  test("PB-02 solo scuola: nessun passaggio (come prima, niente 'da decidere' ogni giorno)", () => {
-    expect(dayLegs([school()], NOEMI.id)).toEqual([]);
+  // 26/10/2026 (Fabrizio: "non vedo nulla per i giorni di solo scuola"): la
+  // sola scuola ha i suoi due passaggi; prima (21/10) non ne aveva nessuno.
+  test("PB-02 solo scuola: entra ed esce, ognuno con la sua scelta; niente per chi non ha niente", () => {
+    expect(dayLegs([school()], NOEMI.id).map((l) => `${l.time} ${legLabel(l)}`)).toEqual(["08:30 Entra a scuola", "16:30 Esce da scuola"]);
     expect(dayLegs([ritmica()], BIANCA.id)).toEqual([]);
+    expect(dayLegs([], NOEMI.id)).toEqual([]);
   });
 
   test("PB-03 scelta del giorno di prima: vale per la prima andata e l'ultimo ritorno, in mezzo da decidere", () => {
@@ -160,10 +163,12 @@ test.describe("Chi accompagna per passaggio — modello [no browser]", () => {
     const [split] = buildKidPassageChains(day, [NOEMI], { rows: [row("school", "ritorno", "nonno"), row(RITMICA_ID, "andata", "io")], labelFor });
     expect(split.steps[1].chips?.map((c) => `${c.text}:${c.label}`)).toEqual(["Ritiro da scuola:Nonno", "Porta a RITMICA:Io"]);
     expect(split.missing).toBe(0);
-    // solo scuola: catena compatta di prima, senza scelte
-    const [only] = buildKidPassageChains({ ...day, entries: [school()] }, [NOEMI], { rows: [], labelFor });
+    // solo scuola (26/10): due righe con la loro scelta, da decidere
+    const [only] = buildKidPassageChains({ ...day, entries: [school()], coordination: { mode: "none" as const, kids: [], missingCount: 0, people: [] } }, [NOEMI], { rows: [], labelFor });
     expect(only.onlySchool).toBe(true);
-    expect(only.steps.every((s) => !s.chips && !s.passage)).toBe(true);
+    expect(only.steps.map((s) => `${s.time} ${s.title} ${s.chips?.map((c) => c.text).join("+")}`)).toEqual(["08:30 Entra a scuola Andata", "16:30 Esce da scuola Ritorno"]);
+    expect(only.missing).toBe(2);
+    expect(read("components/nextgen/PlannerDayFocus.tsx")).toContain("chain.onlySchool && chain.steps.every((s) => !s.passage && !s.chips)");
   });
 
   test("PB-10 migration 51: additiva, nuova tabella con RLS per genitore, preparata e non applicata", () => {
@@ -196,7 +201,22 @@ test.describe("Chi accompagna per passaggio — modello [no browser]", () => {
       agendaFor,
     });
     expect(dates).toEqual(["2026-10-30", "2026-11-06", "2026-11-13", "2026-11-20"]);
-    expect(otherDatesOfPassage({ dateIso: "2026-10-23", todayIso: "2026-10-22", kidId: NOEMI.id, passageKey: "school", range: { startDate: "2026-09-14", endDate: "2027-06-08" }, agendaFor })).toEqual([]);
+    // 26/10: "Anche gli altri giorni di scuola?" — i giorni feriali con la scuola, senza i ponti
+    const schoolDays = otherDatesOfPassage({ dateIso: "2026-10-23", todayIso: "2026-10-22", kidId: NOEMI.id, passageKey: "school", range: { startDate: "2026-09-14", endDate: "2026-12-11" }, agendaFor });
+    expect(schoolDays[0]).toBe("2026-10-22");
+    expect(schoolDays).not.toContain("2026-10-23");
+    expect(schoolDays).not.toContain("2026-10-24");
+    expect(schoolDays).not.toContain("2026-12-08");
+    expect(schoolDays).toContain("2026-12-07");
+    // "Ritiro da scuola: Nonno, anche gli altri giorni": il venerdì vale per tutto il viaggio fino a RITMICA
+    const exits = applyAllTargets({ kidId: NOEMI.id, passageKey: "school", moment: "ritorno", dates: ["2026-10-29", "2026-10-30"], agendaFor });
+    expect(exits.targets.map((t) => `${t.date} ${t.passageKey === "school" ? "school" : "ritmica"} ${t.moment}`)).toEqual([
+      "2026-10-29 school ritorno",
+      "2026-10-30 school ritorno",
+      "2026-10-30 ritmica andata",
+    ]);
+    // giovedì solo scuola: l'uscita è anche l'ultimo ritorno → scelta del giorno
+    expect(exits.mirror).toEqual([{ kidId: NOEMI.id, date: "2026-10-29", moment: "ritorno" }]);
   });
 
   test("PB-12 negli altri venerdì si ripete il viaggio intero (uscita da scuola + porta a RITMICA), con la scelta del giorno solo dove serve", () => {

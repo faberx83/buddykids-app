@@ -107,7 +107,8 @@ function KidChainCard({
   onAssign: () => void;
 }) {
   const dot = KID_DOTS[Math.max(kidOrder.indexOf(chain.kidId), 0) % KID_DOTS.length];
-  const compactSchool = chain.onlySchool && chain.steps.every((s) => !s.passage);
+  // 26/10/2026: con i passaggi anche la sola scuola ha le sue scelte (entra, esce): niente riga compatta.
+  const compactSchool = chain.onlySchool && chain.steps.every((s) => !s.passage && !s.chips);
   const schoolIn = chain.steps.find((s) => s.kind === "school_in");
   const schoolOut = chain.steps.find((s) => s.kind === "school_out");
   return (
