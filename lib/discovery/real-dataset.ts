@@ -198,7 +198,8 @@ export interface DiscoveryLeadRecord {
   bookingMode?: "weekly" | "daily" | "mixed" | null;
 }
 
-export const REAL_DISCOVERY_LEADS: DiscoveryLeadRecord[] = [
+// 26/10/2026: il dataset estivo ha un nome suo; REAL_DISCOVERY_LEADS (sotto) è estivo + Natale.
+export const SUMMER_DISCOVERY_LEADS: DiscoveryLeadRecord[] = [
   // ============ CLUSTER A — MILANO / MILANO OVEST (11 record) ============
   {
     id: "rho-cre-collodi-stripes",
@@ -857,6 +858,429 @@ export const REAL_DISCOVERY_LEADS: DiscoveryLeadRecord[] = [
     bookingMode: null,
   },
 ];
+
+// ════════════════════════════════════════════════════════════════════════
+// TRAMA — SCOPERTE DI NATALE (26/10/2026, bloccante B1 del lancio beta,
+// primo giro). Fabrizio: "sempre Milano e Rutigliano e dintorni
+// (teoricamente 10–15 km)"; scelta "ponte e Natale, in 2 giri".
+//
+// Stesse regole del dataset estivo: solo attività reali con fonte, campi non
+// verificati = null. Al 26/10/2026 quasi nessuno ha pubblicato l'edizione
+// 2026: per chi ripete il campus ogni anno le date restano null (Scopri le
+// mette in "Date da verificare") e la descrizione dice cosa è successo nel
+// 2025, così il genitore sa quando guardare. Unico campus con date 2026 già
+// pubblicate: Leone XIII (28–30 dicembre). Secondo giro il 10–15/11, quando
+// escono le edizioni 2026 (es. MUBA ha aperto le iscrizioni 2025 il 26/11).
+// Puglia: in rete quasi niente (le proposte locali girano sui social):
+// un solo record, CUS Bari, edizione 2024/25. Prezzi a giornata nella
+// descrizione (il campo prezzo conosce solo "a settimana").
+// Fonti lette il 26/10/2026.
+// ════════════════════════════════════════════════════════════════════════
+
+const RADIOMAMMA_NATALE_2025 = "https://www.radiomamma.it/notizie-per-famiglie-milano/campus-di-natale-2025-milano-tutte-le-attivita-quando-scuole-e-asili";
+const NATALE_2026_NOTE = "Edizione 2026 non ancora pubblicata al 26/10/2026: le date indicate sono quelle del 2025.";
+
+function natale2025(input: {
+  id: string;
+  organizerName: string;
+  activityTitle: string;
+  shortDescription: string;
+  category: DiscoveryLeadCategory;
+  ageMin: number | null;
+  ageMax: number | null;
+  locationName: string | null;
+  comune: string;
+  weeklyStructure: string;
+  contact: string | null;
+  officialUrl?: string;
+  officialUrlIsOrganizerSite?: boolean;
+  extraSources?: DiscoveryLeadSource[];
+}): DiscoveryLeadRecord {
+  return {
+    id: input.id,
+    organizerName: input.organizerName,
+    activityTitle: input.activityTitle,
+    shortDescription: input.shortDescription,
+    category: input.category,
+    ageMin: input.ageMin,
+    ageMax: input.ageMax,
+    locationName: input.locationName,
+    address: null,
+    comune: input.comune,
+    region: "Lombardia",
+    startDate: null,
+    endDate: null,
+    weeklyStructure: input.weeklyStructure,
+    price: null,
+    priceUnit: null,
+    registrationUrl: null,
+    officialUrl: input.officialUrl ?? RADIOMAMMA_NATALE_2025,
+    contact: input.contact,
+    image: null,
+    sourceType: "secondary_corroborated",
+    sources: [{ label: "Radiomamma — Campus di Natale 2025 a Milano", url: RADIOMAMMA_NATALE_2025 }, ...(input.extraSources ?? [])],
+    seasonYear: 2026,
+    confidence: "medium",
+    temporalNote: NATALE_2026_NOTE,
+    invitable: true,
+    officialUrlIsOrganizerSite: input.officialUrlIsOrganizerSite ?? false,
+    lat: null,
+    lng: null,
+    geoPrecision: null,
+    bookingMode: null,
+  };
+}
+
+const WINTER_DISCOVERY_LEADS: DiscoveryLeadRecord[] = [
+  // ============ MILANO E DINTORNI ============
+  {
+    id: "milano-leone-xiii-christmas-camp-2026",
+    organizerName: "Leone XIII Sport",
+    activityTitle: "Christmas Camp",
+    shortDescription:
+      "Sport e laboratori nelle vacanze di Natale, anche per un giorno solo. 60 € al giorno, 110 € due giorni, 150 € tre; +35 € di tessera per chi non fa un corso Leone XIII nel 2026/27.",
+    category: "multisport",
+    ageMin: 3,
+    ageMax: 12,
+    locationName: "Centro Sportivo Leone XIII",
+    address: "Via Gabriele Rossetti 4, 20145 Milano",
+    comune: "Milano",
+    region: "Lombardia",
+    startDate: "2026-12-28",
+    endDate: "2026-12-30",
+    weeklyStructure: "28, 29 e 30 dicembre 2026, 9:00–17:00 (ingresso 8:30–9:00, uscita 17:00–17:15)",
+    price: null,
+    priceUnit: null,
+    registrationUrl: "https://forms.gle/DX8djQeiCh6HmBSj6",
+    officialUrl: "https://leonexiiisport.it/camp-2025/christmas-camp/",
+    contact: null,
+    image: null,
+    sourceType: "primary_organizer",
+    sources: [{ label: "Leone XIII Sport — Christmas Camp", url: "https://leonexiiisport.it/camp-2025/christmas-camp/" }],
+    seasonYear: 2026,
+    confidence: "high",
+    temporalNote: "Edizione 2026 pubblicata dall'organizzatore (letta il 26/10/2026). Età: nati dal 2014 al 2023.",
+    invitable: true,
+    officialUrlIsOrganizerSite: true,
+    lat: null,
+    lng: null,
+    geoPrecision: null,
+    bookingMode: "daily",
+  },
+  {
+    id: "milano-muba-campus-invernale",
+    organizerName: "MUBA — Museo dei Bambini Milano",
+    activityTitle: "Campus invernale al MUBA",
+    shortDescription:
+      "Campus di Natale al Museo dei Bambini per la scuola primaria. Nel 2025: 22, 23, 29 e 30 dicembre, 8:30–17, 37 € al giorno (33 € fratelli); iscrizioni dal 26/11 alle 10. Date 2026 non ancora uscite.",
+    category: "artistico",
+    ageMin: 6,
+    ageMax: 11,
+    locationName: "MUBA, Rotonda della Besana",
+    address: "Via Enrico Besana 12, 20122 Milano",
+    comune: "Milano",
+    region: "Lombardia",
+    startDate: null,
+    endDate: null,
+    weeklyStructure: "Nel 2025: 22, 23, 29, 30 dicembre, 8:30–17:00",
+    price: null,
+    priceUnit: null,
+    registrationUrl: null,
+    officialUrl: "https://muba.it/en/families/winter-campus-2025/",
+    contact: null,
+    image: null,
+    sourceType: "primary_organizer",
+    sources: [
+      { label: "MUBA — Winter campus 2025", url: "https://muba.it/en/families/winter-campus-2025/" },
+      { label: "Radiomamma — Campus di Natale 2025 a Milano", url: RADIOMAMMA_NATALE_2025 },
+    ],
+    seasonYear: 2026,
+    confidence: "medium",
+    temporalNote: NATALE_2026_NOTE,
+    invitable: true,
+    officialUrlIsOrganizerSite: true,
+    lat: null,
+    lng: null,
+    geoPrecision: null,
+    bookingMode: "daily",
+  },
+  {
+    id: "milano-centrale-acqua-campus-natale",
+    organizerName: "Centrale dell'Acqua di Milano con Verdeacqua",
+    activityTitle: "Campus di Natale Arte & Scienza",
+    shortDescription:
+      "Campus sull'acqua tra arte e scienza nel museo di MM. Nel 2025: 22, 23, 29 e 30 dicembre; si può prenotare anche un giorno solo (nel 2023: 40 € al giorno, pranzo escluso). Date 2026 non ancora uscite.",
+    category: "educativo",
+    ageMin: 6,
+    ageMax: 11,
+    locationName: "Centrale dell'Acqua",
+    address: "Piazza Diocleziano 5, Milano",
+    comune: "Milano",
+    region: "Lombardia",
+    startDate: null,
+    endDate: null,
+    weeklyStructure: "Nel 2025: 22, 23, 29, 30 dicembre, dalle 8:30 al pomeriggio",
+    price: null,
+    priceUnit: null,
+    registrationUrl: null,
+    officialUrl: "https://www.verdeacqua.org/campus-di-natale",
+    contact: "eventi@verdeacqua.org",
+    image: null,
+    sourceType: "secondary_corroborated",
+    sources: [
+      { label: "Radiomamma — Campus di Natale 2025 a Milano", url: RADIOMAMMA_NATALE_2025 },
+      { label: "Affaritaliani — campus invernali alla Centrale dell'Acqua (edizione 2023)", url: "https://www.affaritaliani.it/milano/al-via-le-iscrizioni-per-i-campus-invernali-alla-centrale-acqua-890181.html" },
+    ],
+    seasonYear: 2026,
+    confidence: "medium",
+    temporalNote: NATALE_2026_NOTE,
+    invitable: true,
+    officialUrlIsOrganizerSite: true,
+    lat: null,
+    lng: null,
+    geoPrecision: null,
+    bookingMode: "daily",
+  },
+  {
+    id: "rho-campus-invernale-comune-lafucina",
+    organizerName: "Cooperativa Sociale LaFucina per il Comune di Rho",
+    activityTitle: "Campus invernale di Rho",
+    shortDescription:
+      "Campus delle vacanze di Natale del Comune di Rho, gestito dalla cooperativa LaFucina. Nel 2025: dal 22/12 al 5/1 nei giorni feriali, 8–16, 20 € al giorno (18 € dal quarto); iscrizioni online a inizio novembre. Date 2026 non ancora uscite.",
+    category: "educativo",
+    ageMin: 3,
+    ageMax: 10,
+    locationName: null,
+    address: null,
+    comune: "Rho",
+    region: "Lombardia",
+    startDate: null,
+    endDate: null,
+    weeklyStructure: "Nel 2025: 22, 23, 24, 29, 30, 31 dicembre, 2 e 5 gennaio, 8:00–16:00 (fino alle 18 su richiesta)",
+    price: null,
+    priceUnit: null,
+    registrationUrl: null,
+    officialUrl: "https://www.legnanonews.com/aree-geografiche/rhodense/2025/10/23/campus-invernale-di-rho-un-tempo-di-gioco-e-condivisione-nelle-vacanza-di-natale/1371484/",
+    contact: "cooperativalafucina@gmail.com",
+    image: null,
+    sourceType: "secondary_corroborated",
+    sources: [
+      {
+        label: "LegnanoNews, 23/10/2025 — Campus invernale di Rho",
+        url: "https://www.legnanonews.com/aree-geografiche/rhodense/2025/10/23/campus-invernale-di-rho-un-tempo-di-gioco-e-condivisione-nelle-vacanza-di-natale/1371484/",
+      },
+    ],
+    seasonYear: 2026,
+    confidence: "medium",
+    temporalNote: NATALE_2026_NOTE,
+    invitable: true,
+    officialUrlIsOrganizerSite: false,
+    lat: null,
+    lng: null,
+    geoPrecision: null,
+    bookingMode: "daily",
+  },
+  natale2025({
+    id: "milano-mudec-campus-invernale",
+    organizerName: "MUDEC — Museo delle Culture",
+    activityTitle: "Campus invernale gratuito al MUDEC",
+    shortDescription: "Campus gratuito di tre mattine al MUDEC. Nel 2025: 22, 23 e 24 dicembre, 9:30–12:30 (\"Il mio viaggio con Escher\"). Date 2026 non ancora uscite.",
+    category: "artistico",
+    ageMin: 6,
+    ageMax: 11,
+    locationName: "MUDEC",
+    comune: "Milano",
+    weeklyStructure: "Nel 2025: 22, 23, 24 dicembre, 9:30–12:30, gratuito",
+    contact: null,
+    officialUrl: "https://www.eventbrite.com/cc/il-mio-viaggio-con-escher-campus-gratuito-4793165",
+  }),
+  natale2025({
+    id: "milano-campacavallo-campus-natale",
+    organizerName: "CampaCavallo",
+    activityTitle: "Campus di Natale con i cavalli",
+    shortDescription: "Giornate all'aperto con i cavalli tra Parco di Trenno e Bosco in Città. Nel 2025: 22, 23, 29 e 30 dicembre, 8:30–16:30. Date 2026 non ancora uscite.",
+    category: "sportivo",
+    ageMin: 6,
+    ageMax: 13,
+    locationName: "Parco di Trenno e Bosco in Città",
+    comune: "Milano",
+    weeklyStructure: "Nel 2025: 22, 23, 29, 30 dicembre, 8:30–16:30",
+    contact: null,
+    officialUrl: "https://www.campacavallo.it",
+    officialUrlIsOrganizerSite: true,
+  }),
+  natale2025({
+    id: "milano-spazio-positivo-campus-natale",
+    organizerName: "Spazio Positivo Impresa Sociale",
+    activityTitle: "Campus di Natale",
+    shortDescription: "Campus delle vacanze di Natale in zona 7. Nel 2025: 22, 23, 29 e 30 dicembre e 2 gennaio, 9–17, con pre-iscrizione online. Date 2026 non ancora uscite.",
+    category: "educativo",
+    ageMin: 3,
+    ageMax: 12,
+    locationName: "Milano, zona 7",
+    comune: "Milano",
+    weeklyStructure: "Nel 2025: 22, 23, 29, 30 dicembre e 2 gennaio, 9:00–17:00",
+    contact: null,
+    officialUrl: "https://www.spaziopositivoimpresasociale.it/pre-iscrizione-campus-natale-2025/",
+    officialUrlIsOrganizerSite: true,
+  }),
+  natale2025({
+    id: "milano-idea-parco-nord-campus-natale",
+    organizerName: "Associazione IDEA",
+    activityTitle: "Campus di Natale al Parco Nord",
+    shortDescription: "Campus all'aperto al Parco Nord (\"Campioni tra i ghiacci\" nel 2025). Nel 2025: 22, 23, 24, 29, 30, 31 dicembre, 8:30–17 (il 24 e il 31 fino alle 14). Date 2026 non ancora uscite.",
+    category: "educativo",
+    ageMin: 6,
+    ageMax: 12,
+    locationName: "Parco Nord Milano",
+    comune: "Milano",
+    weeklyStructure: "Nel 2025: 22, 23, 24, 29, 30, 31 dicembre, 8:30–17:00",
+    contact: "laura.colosio@gmail.com",
+  }),
+  natale2025({
+    id: "milano-pingus-english-loreto-winter-camp",
+    organizerName: "Pingu's English Milano Loreto",
+    activityTitle: "Winter Break Camp in inglese",
+    shortDescription: "Campus di Natale in inglese a Loreto. Nel 2025: 22, 23, 24, 29, 30, 31 dicembre, 2 e 5 gennaio; tempo pieno 8:30–16:30 o mattina 8:30–13:30. Date 2026 non ancora uscite.",
+    category: "educativo",
+    ageMin: 3,
+    ageMax: 14,
+    locationName: "Milano, zona 3 (Loreto)",
+    comune: "Milano",
+    weeklyStructure: "Nel 2025: 22–24, 29–31 dicembre, 2 e 5 gennaio; 8:30–16:30 o 8:30–13:30",
+    contact: "milano.loreto@pingusenglish.it",
+  }),
+  natale2025({
+    id: "milano-pingus-english-sempione-winter-camp",
+    organizerName: "Pingu's English Milano Sempione",
+    activityTitle: "Winter Camp in inglese",
+    shortDescription: "Campus di Natale in inglese in zona Sempione. Nel 2025: 22, 23, 29, 30 e 31 dicembre; 8:30–16 o mattina 8:30–13:30, dopo-campus fino alle 17:30 su prenotazione. Date 2026 non ancora uscite.",
+    category: "educativo",
+    ageMin: 3,
+    ageMax: 12,
+    locationName: "Milano, zona 8 (Sempione)",
+    comune: "Milano",
+    weeklyStructure: "Nel 2025: 22, 23, 29, 30, 31 dicembre; 8:30–16:00 o 8:30–13:30",
+    contact: "milano.sempione@pingusenglish.it",
+  }),
+  natale2025({
+    id: "san-giuliano-pingus-english-winter-camp",
+    organizerName: "Pingu's English San Giuliano Milanese",
+    activityTitle: "Winter Camp in inglese",
+    shortDescription: "Giornate di campus in inglese a San Giuliano Milanese. Nel 2025: 22 e 23 dicembre e 5 gennaio, 9–16:30. Date 2026 non ancora uscite.",
+    category: "educativo",
+    ageMin: 4,
+    ageMax: 12,
+    locationName: null,
+    comune: "San Giuliano Milanese",
+    weeklyStructure: "Nel 2025: 22, 23 dicembre e 5 gennaio, 9:00–16:30",
+    contact: "reception.sg@pingusenglish.it",
+  }),
+  natale2025({
+    id: "milano-kidsandus-corsica-christmas",
+    organizerName: "Kids&Us Milano Corsica",
+    activityTitle: "Christmas Fun Weeks in inglese",
+    shortDescription: "Mattine in inglese per i più piccoli in zona Corsica. Nel 2025: 22 e 23 dicembre, 9–13. Date 2026 non ancora uscite.",
+    category: "educativo",
+    ageMin: 3,
+    ageMax: 10,
+    locationName: "Milano, zona 4 (Corsica)",
+    comune: "Milano",
+    weeklyStructure: "Nel 2025: 22 e 23 dicembre, 9:00–13:00",
+    contact: "milano.corsica@kidsandus.it",
+  }),
+  natale2025({
+    id: "milano-il-nano-gigante-natale",
+    organizerName: "Il Nano Gigante",
+    activityTitle: "Baby parking di Natale",
+    shortDescription: "Giornate di accoglienza anche per i piccolissimi in zona 3. Nel 2025: 23, 29 e 30 dicembre e 5 gennaio; tempo pieno 8:30–16:30 o mattina 8:30–12:30. Date 2026 non ancora uscite.",
+    category: "educativo",
+    ageMin: 1,
+    ageMax: 12,
+    locationName: "Milano, zona 3",
+    comune: "Milano",
+    weeklyStructure: "Nel 2025: 23, 29, 30 dicembre e 5 gennaio; 8:30–16:30 o 8:30–12:30",
+    contact: "info@ilnanogigante.it",
+  }),
+  natale2025({
+    id: "milano-ellybee-fun-campus-natale",
+    organizerName: "Ellybee Fun",
+    activityTitle: "Campus di Natale",
+    shortDescription: "Campus prima di Natale in zona 6. Nel 2025: 22 e 23 dicembre 8:30–16:30, 24 dicembre 8:30–13, con sconto per chi si iscriveva entro novembre. Date 2026 non ancora uscite.",
+    category: "educativo",
+    ageMin: 3,
+    ageMax: 9,
+    locationName: "Milano, zona 6",
+    comune: "Milano",
+    weeklyStructure: "Nel 2025: 22, 23 dicembre 8:30–16:30; 24 dicembre 8:30–13:00",
+    contact: "info@ellybeefun.com",
+  }),
+  natale2025({
+    id: "milano-bbfly-campus-natale",
+    organizerName: "BBfly Dance & Events",
+    activityTitle: "Campus di Natale tra atelier e movimento",
+    shortDescription: "Atelier creativi e attività motorie in zona 9, anche a giornata singola. Nel 2025: 22, 23, 29 e 30 dicembre, 2 e 5 gennaio, 8:30–17. Date 2026 non ancora uscite.",
+    category: "artistico",
+    ageMin: 4,
+    ageMax: 10,
+    locationName: "Milano, zona 9",
+    comune: "Milano",
+    weeklyStructure: "Nel 2025: 22, 23, 29, 30 dicembre, 2 e 5 gennaio, 8:30–17:00",
+    contact: "bbfly.dancevents@yahoo.com",
+  }),
+  natale2025({
+    id: "cologno-oltre-le-impronte-campus-natale",
+    organizerName: "Oltre le Impronte",
+    activityTitle: "Campus di Natale nella Casetta nel Parco",
+    shortDescription: "Campus delle vacanze di Natale a Cologno Monzese. Nel 2025: 22, 23, 24, 29, 30, 31 dicembre, 9–16 (il 24 e il 31 fino alle 14). Date 2026 non ancora uscite.",
+    category: "educativo",
+    ageMin: 3,
+    ageMax: 10,
+    locationName: "Casetta nel Parco",
+    comune: "Cologno Monzese",
+    weeklyStructure: "Nel 2025: 22, 23, 24, 29, 30, 31 dicembre, 9:00–16:00",
+    contact: "oltreleimpronte@gmail.com",
+  }),
+
+  // ============ BARI E DINTORNI ============
+  {
+    id: "bari-cus-xmas-vacanze",
+    organizerName: "CUS Bari",
+    activityTitle: "Xmas CUS Vacanze",
+    shortDescription:
+      "Mattine di sport nelle vacanze di Natale al CUS Bari, a giornata o a pacchetto. Edizione 2024/25: 10 giornate dal 21/12 al 4/1, 9–13; 20 € al giorno dai 6 anni (25 € a 4–5 anni) più 15 € di assicurazione e certificato medico. Date 2026 non ancora uscite.",
+    category: "multisport",
+    ageMin: 4,
+    ageMax: 16,
+    locationName: "CUS Bari",
+    address: null,
+    comune: "Bari",
+    region: "Puglia",
+    startDate: null,
+    endDate: null,
+    weeklyStructure: "Edizione 2024/25: 21, 22, 23, 27, 28, 29, 30 dicembre, 2, 3, 4 gennaio; ingresso 8–9, attività 9–13",
+    price: null,
+    priceUnit: null,
+    registrationUrl: null,
+    officialUrl: "https://www.cusbari.it/xmas-cus-vacanze/",
+    contact: "informazioni@cusbari.it · 080 5341779",
+    image: null,
+    sourceType: "primary_organizer",
+    sources: [{ label: "CUS Bari — Xmas CUS Vacanze (edizione 2024/25)", url: "https://www.cusbari.it/xmas-cus-vacanze/" }],
+    seasonYear: 2026,
+    confidence: "medium",
+    temporalNote: "Ultima edizione pubblicata: 2024/25 (pagina del 13/12/2024). Edizione 2026 non ancora pubblicata al 26/10/2026.",
+    invitable: true,
+    officialUrlIsOrganizerSite: true,
+    lat: null,
+    lng: null,
+    geoPrecision: null,
+    bookingMode: "mixed",
+  },
+];
+
+export const REAL_DISCOVERY_LEADS: DiscoveryLeadRecord[] = [...SUMMER_DISCOVERY_LEADS, ...WINTER_DISCOVERY_LEADS];
+export { WINTER_DISCOVERY_LEADS };
 
 // ============ LEAD SCARTATI (documentati, mai inseriti nel dataset) ============
 // §7-8 del report: lead con dati incoerenti/non verificabili restano fuori

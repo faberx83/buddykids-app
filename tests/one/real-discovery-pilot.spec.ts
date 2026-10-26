@@ -3,6 +3,8 @@ import path from "path";
 import { test, expect } from "@playwright/test";
 import {
   REAL_DISCOVERY_LEADS,
+  SUMMER_DISCOVERY_LEADS,
+  WINTER_DISCOVERY_LEADS,
   REJECTED_DISCOVERY_LEADS,
   isDiscoveryLeadCompatibleWithWeek,
   isDiscoveryLeadCompatibleWithAgeRange,
@@ -422,11 +424,13 @@ test.describe("DISCOVERY UNIFICATION — classificazione invitable (dataset, §8
     "noicattaro-centri-estivi-comunali",
   ];
 
-  test("RD-53: esattamente 7 record invitabili e 6 source-only su 13 totali", () => {
-    const invitableCount = REAL_DISCOVERY_LEADS.filter((l) => isDiscoveryLeadInvitable(l)).length;
+  // 26/10/2026: il dataset estivo ora si chiama SUMMER_DISCOVERY_LEADS
+  // (REAL_DISCOVERY_LEADS = estivo + Natale, vedi WD-01…): stesso controllo sui 13 estivi.
+  test("RD-53: esattamente 7 record invitabili e 6 source-only su 13 totali (dataset estivo)", () => {
+    const invitableCount = SUMMER_DISCOVERY_LEADS.filter((l) => isDiscoveryLeadInvitable(l)).length;
     expect(invitableCount).toBe(7);
-    expect(REAL_DISCOVERY_LEADS.length - invitableCount).toBe(6);
-    expect(REAL_DISCOVERY_LEADS.length).toBe(13);
+    expect(SUMMER_DISCOVERY_LEADS.length - invitableCount).toBe(6);
+    expect(SUMMER_DISCOVERY_LEADS.length).toBe(13);
   });
 
   test("RD-54: i 7 id attesi sono invitabili", () => {
@@ -1605,5 +1609,51 @@ test.describe("DISCOVERY LIVE UX BUGFIX — pannello Settimane di camp vuoto a f
     // il ramo non-vuoto deve restare quello esistente (stesso raggruppamento
     // per mese, nessuna regressione sul comportamento con settimane).
     expect(block).toContain("weekRangeGroups.map((group) =>");
+  });
+});
+
+// TRAMA — SCOPERTE DI NATALE (26/10/2026, B1 primo giro). Stesse regole del
+// dataset estivo: fonte per ogni record, niente dati inventati.
+test.describe("SCOPERTE DI NATALE — primo giro (26/10/2026)", () => {
+  test("WD-01: estivo + Natale, nessun id doppio", () => {
+    expect(REAL_DISCOVERY_LEADS.length).toBe(SUMMER_DISCOVERY_LEADS.length + WINTER_DISCOVERY_LEADS.length);
+    const ids = REAL_DISCOVERY_LEADS.map((l) => l.id);
+    expect(new Set(ids).size).toBe(ids.length);
+    expect(WINTER_DISCOVERY_LEADS.length).toBeGreaterThanOrEqual(15);
+  });
+
+  test("WD-02: ogni record ha almeno una fonte https e un organizzatore; zone di Milano e Bari", () => {
+    for (const l of WINTER_DISCOVERY_LEADS) {
+      expect(l.sources.length, l.id).toBeGreaterThan(0);
+      for (const s of l.sources) expect(s.url.startsWith("https://"), l.id).toBe(true);
+      expect(l.officialUrl.startsWith("https://"), l.id).toBe(true);
+      expect(l.organizerName.trim().length, l.id).toBeGreaterThan(0);
+      expect(["Lombardia", "Puglia"]).toContain(l.region);
+    }
+    expect(WINTER_DISCOVERY_LEADS.some((l) => l.region === "Puglia")).toBe(true);
+  });
+
+  test("WD-03: date solo se pubblicate per il 2026; senza date la descrizione dice che il 2026 non è uscito", () => {
+    for (const l of WINTER_DISCOVERY_LEADS) {
+      if (l.startDate) {
+        expect(l.startDate >= "2026-11-01" && (l.endDate ?? "") <= "2027-01-31", l.id).toBe(true);
+        expect(l.confidence).toBe("high");
+      } else {
+        expect(l.shortDescription, l.id).toMatch(/non ancora usc/);
+        expect(l.endDate).toBeNull();
+      }
+    }
+    const dated = WINTER_DISCOVERY_LEADS.filter((l) => l.startDate);
+    expect(dated.map((l) => l.id)).toEqual(["milano-leone-xiii-christmas-camp-2026"]);
+  });
+
+  test("WD-04: nessuna coordinata inventata e nessun prezzo a settimana per campus a giornata", () => {
+    for (const l of WINTER_DISCOVERY_LEADS) {
+      expect(l.lat, l.id).toBeNull();
+      expect(l.lng, l.id).toBeNull();
+      expect(l.priceUnit === null || l.priceUnit === "per_settimana", l.id).toBe(true);
+      expect(l.price, l.id).toBeNull();
+      expect(l.shortDescription.length, l.id).toBeLessThanOrEqual(280);
+    }
   });
 });
