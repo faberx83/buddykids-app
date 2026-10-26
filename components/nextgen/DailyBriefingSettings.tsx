@@ -55,7 +55,7 @@ export default function DailyBriefingSettings({
     <SettingsSection
       id="buongiorno-h"
       title="Il buongiorno di TRAMA"
-      hint="Ogni mattina verso le 8: gli impegni di oggi, chi porta e chi ritira, e se la scuola chiude a breve. Se non c'è niente da dire non ti scriviamo."
+      hint="Ogni mattina verso le 7: gli impegni di oggi, chi porta e chi ritira, e se la scuola chiude a breve. Se non c'è niente da dire non ti scriviamo."
     >
       <div className={`${SETTINGS_CARD} divide-y divide-[#F0F2F5]`}>
         <SwitchRow

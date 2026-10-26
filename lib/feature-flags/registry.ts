@@ -304,7 +304,7 @@ export const FEATURE_FLAG_REGISTRY = {
   DAILY_BRIEFING_ENABLED: {
     name: "DAILY_BRIEFING_ENABLED",
     description:
-      "Mostra in Profilo → Preferenze 'Il buongiorno di TRAMA' (riepilogo del mattino alle 8: impegni di oggi, chi " +
+      "Mostra in Profilo → Preferenze 'Il buongiorno di TRAMA' (riepilogo del mattino alle 7: impegni di oggi, chi " +
       "accompagna, prossima chiusura della scuola) e lo invia, sul telefono e/o per email, a chi lo attiva. " +
       "Default false: niente opzione, niente invii.",
     defaultValue: false,

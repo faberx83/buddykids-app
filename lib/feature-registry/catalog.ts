@@ -930,12 +930,12 @@ export const FEATURE_CATALOG: FeatureCatalogEntry[] = [
     // Porta/Ritira del Planner, sendPushToUser e Resend; nuove solo due
     // preferenze in profiles (migration_45) e un cron giornaliero.
     key: "daily_briefing",
-    label: "Il buongiorno di TRAMA — riepilogo del mattino alle 8",
+    label: "Il buongiorno di TRAMA — riepilogo del mattino alle 7",
     area: "parent",
     status: "INTERNAL_PREVIEW",
     flagName: "DAILY_BRIEFING_ENABLED",
     description:
-      "Ogni mattina fra le 8:00 e le 8:59: impegni di oggi, chi porta e chi ritira (con i 'da decidere'), prossima " +
+      "Ogni mattina fra le 7:00 e le 7:59: impegni di oggi, chi porta e chi ritira (con i 'da decidere'), prossima " +
       "chiusura della scuola. Sul telefono e/o per email, a scelta in Profilo → Impostazioni → Preferenze, con " +
       "'Mandamelo adesso' per provarlo.",
     sourceFiles: [
@@ -947,7 +947,7 @@ export const FEATURE_CATALOG: FeatureCatalogEntry[] = [
       "app/nextgen/profile/impostazioni/preferenze/page.tsx",
     ],
     note:
-      "Serve migration_45_daily_briefing.sql. Piano Vercel Hobby: arriva fra le 8:00 e le 8:59 (due voci di cron, 06 e " +
+      "Serve migration_45_daily_briefing.sql. Piano Vercel Hobby: arriva fra le 7:00 e le 7:59 (due voci di cron, 05 e " +
       "07 UTC, ne risponde una sola secondo l'ora legale). Se non c'è niente da dire non parte. Rispetta 'Notifiche push' " +
       "e 'Notifiche email'. Ogni giro lascia daily_briefing_run in product_events.",
     riskLevel: "low",

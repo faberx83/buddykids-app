@@ -2,7 +2,7 @@ import "server-only";
 
 // TRAMA — IL BUONGIORNO DI TRAMA (20/10/2026). Parte I/O del riepilogo del
 // mattino (la logica pura è in lib/nextgen/daily-briefing.ts).
-//   - runDailyBriefing(): chiamata da /api/cron/daily-briefing (alle 8 a Roma)
+//   - runDailyBriefing(): chiamata da /api/cron/daily-briefing (alle 7 a Roma)
 //     per tutti i genitori che l'hanno attivato in Profilo; oppure da "Mandamelo
 //     adesso" in Preferenze, solo per chi tocca il pulsante (onlyUserId).
 // Riusa lo stesso caricamento dei promemoria serali (loadFamily) e le stesse

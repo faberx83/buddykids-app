@@ -2,7 +2,7 @@ import "server-only";
 
 // TRAMA — ADMIN BETA COCKPIT · Avviso "report pronto" al founder. Nessun
 // nuovo scheduler: gira nel cron del Buongiorno (app/api/cron/daily-briefing,
-// alle 8 ora di Roma). Se secondo le impostazioni si è chiusa una finestra
+// alle 7 ora di Roma). Se secondo le impostazioni si è chiusa una finestra
 // (giornaliera o settimanale) e l'avviso non è ancora partito, manda
 // un'email con i numeri principali e il link al report. Un solo invio per
 // finestra (product_events "beta_report_notice_sent", detail = chiave della

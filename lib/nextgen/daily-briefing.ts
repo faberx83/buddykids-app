@@ -15,7 +15,8 @@ import type { ClosurePeriod } from "@/lib/nextgen/holiday-summary";
 import { closureRangeLabel } from "@/lib/nextgen/holiday-summary";
 import { addDaysIso, mondayOfIso } from "@/lib/nextgen/planner-week";
 
-export const BRIEFING_LOCAL_HOUR = 8;
+// 26/10/2026 (Fabrizio: "il buongiorno lo metterei un'ora prima"): dalle 8 alle 7.
+export const BRIEFING_LOCAL_HOUR = 7;
 export const BRIEFING_CLOSURE_DAYS = 14;
 export const PUBLIC_ORIGIN = "https://tramapp.it";
 
@@ -186,7 +187,7 @@ ${closureText ? section("Scuola chiusa", row("", escapeHtml(closureText))) : ""}
   return { title, body, tag, deepLink, subject, html, text: textLines.join("\n") };
 }
 
-/** Il cron gira due volte (06 e 07 UTC): invia solo quando a Roma sono le 8 (ora legale e solare). */
+/** Il cron gira due volte (05 e 06 UTC): invia solo quando a Roma sono le 7 (ora legale e solare). */
 export function isBriefingHour(now: Date): boolean {
   return romeNow(now).hour === BRIEFING_LOCAL_HOUR;
 }

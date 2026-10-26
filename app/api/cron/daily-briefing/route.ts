@@ -8,10 +8,11 @@ import { isBriefingHour, romeNow } from "@/lib/nextgen/daily-briefing";
 // (vercel.json), protetto da CRON_SECRET come gli altri cron.
 //
 // Orario: piano Hobby = un giro al giorno per voce, con precisione "entro
-// l'ora" (es. "0 6 * * *" parte fra le 6:00 e le 6:59 UTC). Le voci sono DUE,
-// 06 e 07 UTC, e si invia solo quando a Roma sono le 8: con l'ora legale
-// risponde quella delle 06 UTC, con l'ora solare quella delle 07 UTC; l'altra
-// non fa nulla. Così il buongiorno arriva sempre fra le 8:00 e le 8:59.
+// l'ora" (es. "0 5 * * *" parte fra le 5:00 e le 5:59 UTC). Le voci sono DUE,
+// 05 e 06 UTC, e si invia solo quando a Roma sono le 7: con l'ora legale
+// risponde quella delle 05 UTC, con l'ora solare quella delle 06 UTC; l'altra
+// non fa nulla. Così il buongiorno arriva sempre fra le 7:00 e le 7:59
+// (26/10/2026, Fabrizio: "un'ora prima"; prima era fra le 8:00 e le 8:59).
 //
 // Chi lo riceve: genitori con il buongiorno attivo in Profilo (migration_45)
 // e la release "buongiorno-trama" accesa per loro.
@@ -33,14 +34,14 @@ export async function GET(req: NextRequest) {
   }
   const now = new Date();
   if (!isBriefingHour(now)) {
-    return NextResponse.json({ ok: true, skipped: "non sono le 8 a Roma", rome: romeNow(now) });
+    return NextResponse.json({ ok: true, skipped: "non sono le 7 a Roma", rome: romeNow(now) });
   }
   const service = createServiceClient();
   if (!service) {
     return NextResponse.json({ error: "Supabase non configurato (manca SUPABASE_SERVICE_ROLE_KEY)" }, { status: 500 });
   }
   const result = await runDailyBriefing(service, now, { source: "cron" });
-  // Admin Beta Cockpit (20/10/2026): stesso giro delle 8, nessun nuovo
+  // Admin Beta Cockpit (20/10/2026): stesso giro delle 7, nessun nuovo
   // scheduler. Avviso "report pronto" al founder se una finestra si è chiusa.
   const betaReport = await sendBetaReportNoticeIfDue(service, now);
   return NextResponse.json({ ok: true, ...result, betaReport });

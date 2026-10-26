@@ -26,11 +26,13 @@ const entry = (title: string, start: string | null, kid = "Lino"): AgendaEntry =
 const closure = { startDate: "2026-10-30", endDate: "2026-11-02", labels: ["Ponte dei Santi"], kidIds: ["k1"], weekdaysByKid: { k1: ["2026-10-30", "2026-11-02"] }, weekdayCount: 2 };
 
 test.describe("TRAMA — Il buongiorno [no browser]", () => {
-  test("BG-01 arriva alle 8 di Roma, con l'ora legale e con quella solare", () => {
-    expect(isBriefingHour(new Date("2026-10-20T06:15:00Z"))).toBe(true); // CEST: 8:15
-    expect(isBriefingHour(new Date("2026-10-20T07:15:00Z"))).toBe(false); // CEST: 9:15
-    expect(isBriefingHour(new Date("2026-11-10T07:40:00Z"))).toBe(true); // CET: 8:40
-    expect(isBriefingHour(new Date("2026-11-10T06:40:00Z"))).toBe(false); // CET: 7:40
+  // 26/10/2026 (Fabrizio: "il buongiorno lo metterei un'ora prima"): dalle 8 alle 7.
+  test("BG-01 arriva alle 7 di Roma, con l'ora legale e con quella solare", () => {
+    expect(isBriefingHour(new Date("2026-10-20T05:15:00Z"))).toBe(true); // CEST: 7:15
+    expect(isBriefingHour(new Date("2026-10-20T06:15:00Z"))).toBe(false); // CEST: 8:15
+    expect(isBriefingHour(new Date("2026-11-10T06:40:00Z"))).toBe(true); // CET: 7:40
+    expect(isBriefingHour(new Date("2026-11-10T05:40:00Z"))).toBe(false); // CET: 6:40
+    expect(isBriefingHour(new Date("2026-11-10T07:40:00Z"))).toBe(false); // CET: 8:40, l'orario di prima
     expect(romeNow(new Date("2026-10-20T22:30:00Z")).dateIso).toBe("2026-10-21");
     expect(dateLabelIt("2026-10-20")).toBe("martedì 20 ottobre");
   });
@@ -73,12 +75,12 @@ test.describe("TRAMA — Il buongiorno [no browser]", () => {
     expect(nextClosure([closure], "2026-10-20")?.startDate).toBe("2026-10-30");
   });
 
-  test("BG-04 cron: protetto, due voci giornaliere (06 e 07 UTC), invia solo alle 8 di Roma", () => {
+  test("BG-04 cron: protetto, due voci giornaliere (05 e 06 UTC), invia solo alle 7 di Roma", () => {
     const route = read("app/api/cron/daily-briefing/route.ts");
     expect(route).toContain('if (!expected || !timingSafeEqual(auth, `Bearer ${expected}`)) {');
     expect(route).toContain("if (!isBriefingHour(now)) {");
     const vercel = JSON.parse(read("vercel.json")) as { crons: { path: string; schedule: string }[] };
-    expect(vercel.crons.filter((c) => c.path === "/api/cron/daily-briefing").map((c) => c.schedule)).toEqual(["0 6 * * *", "0 7 * * *"]);
+    expect(vercel.crons.filter((c) => c.path === "/api/cron/daily-briefing").map((c) => c.schedule)).toEqual(["0 5 * * *", "0 6 * * *"]);
   });
 
   test("BG-05 invio: solo chi l'ha attivato e ha la release; rispetta Notifiche email; conteggio senza dati personali", () => {

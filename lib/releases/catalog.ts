@@ -282,12 +282,12 @@ export const RELEASE_CATALOG: ReleaseCatalogEntry[] = [
     // TRAMA — IL BUONGIORNO DI TRAMA (20/10/2026).
     id: "buongiorno-trama",
     label: "TRAMA — Il buongiorno",
-    shortDescription: "Riepilogo del mattino alle 8 (impegni, chi accompagna, chiusure), sul telefono e/o per email, da attivare in Profilo.",
+    shortDescription: "Riepilogo del mattino alle 7 (impegni, chi accompagna, chiusure), sul telefono e/o per email, da attivare in Profilo.",
     targetAudience: ["parent"],
     featureKeys: ["daily_briefing"],
     knownLimitations: [
       "daily_briefing: va applicata migration_45_daily_briefing.sql; senza, l'opzione in Profilo non compare.",
-      "daily_briefing: piano Vercel Hobby, arriva fra le 8:00 e le 8:59; se il giorno è vuoto non arriva nulla.",
+      "daily_briefing: piano Vercel Hobby, arriva fra le 7:00 e le 7:59; se il giorno è vuoto non arriva nulla.",
       "daily_briefing: l'email parte solo con RESEND_API_KEY su Vercel e 'Notifiche email' attive.",
     ],
     notes: "Creata il 20/10/2026. Ripiego: flag spento = niente opzione e niente invii, anche per chi l'aveva attivato.",

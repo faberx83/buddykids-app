@@ -80,7 +80,7 @@ export default function ReportSettingsForm({
       </fieldset>
       <p className="-mt-2 text-xs text-ink-2">
         Il report di ogni finestra si ricalcola dai dati (niente copie nel database). Quando una finestra si chiude, il founder riceve un&apos;email col giro
-        del mattino delle 8 (stesso cron del Buongiorno): con un&apos;ora successiva alle 8, l&apos;email arriva il giorno dopo.
+        del mattino delle 7 (stesso cron del Buongiorno): con un&apos;ora successiva alle 7, l&apos;email arriva il giorno dopo.
       </p>
 
       <fieldset className="grid gap-2 sm:grid-cols-2" disabled={!available}>
