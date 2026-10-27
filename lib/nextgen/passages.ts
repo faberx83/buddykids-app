@@ -279,3 +279,12 @@ export function applyAllTargets(input: {
   }
   return { targets, mirror };
 }
+
+/**
+ * Chiave di una proposta "anche gli altri giorni" nel foglio Chi accompagna:
+ * figlio + passaggi (27/10/2026). Senza il figlio, due figli con lo stesso
+ * passaggio (es. entrata a scuola) condividevano la proposta e "Non ora".
+ */
+export function offerKeyFor(kidId: string, legs: { key: string }[]): string {
+  return `${kidId}|${legs.map((l) => l.key).join("+")}`;
+}

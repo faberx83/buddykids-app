@@ -19,6 +19,7 @@ import { isPartnerChoice, type AssignChange, type CommitmentDays } from "@/lib/n
 import { markFirstUsefulAction } from "@/lib/nextgen/first-action";
 import {
   applyAllTargets,
+  offerKeyFor,
   dayLegs,
   dayMirrorFor,
   groupTrips,
@@ -101,8 +102,21 @@ export default function PassageAssignBody({
   const [otherFor, setOtherFor] = useState<string | null>(null);
   const [otherText, setOtherText] = useState("");
   const [splitTrips, setSplitTrips] = useState<Set<string>>(() => new Set());
-  const [offer, setOffer] = useState<PassageOffer | null>(null);
-  const [applyingAll, setApplyingAll] = useState(false);
+  // 27/10/2026 (Fabrizio: "se decido di applicare a tutto l'impegno vale per
+  // entrambi i figli, stesso vale per 'non ora'… per un figlio sempre stesso
+  // schema, per l'altro no"): la proposta "anche gli altri giorni" è PER
+  // FIGLIO. Prima la chiave era solo il passaggio (es. entrata a scuola), uguale
+  // per i due figli: la proposta compariva sotto entrambi e "Non ora" la
+  // chiudeva per tutti. Ora una proposta per figlio e passaggio, indipendenti.
+  const [offers, setOffers] = useState<Record<string, PassageOffer>>({});
+  const [applyingKey, setApplyingKey] = useState<string | null>(null);
+  const setOfferFor = (key: string, next: PassageOffer | null) =>
+    setOffers((cur) => {
+      const copy = { ...cur };
+      if (next) copy[key] = next;
+      else delete copy[key];
+      return copy;
+    });
   const partnerChanges = useRef<AssignChange[]>([]);
   const seqRef = useRef<Record<string, number>>({});
 
@@ -128,7 +142,7 @@ export default function PassageAssignBody({
     r.kidId === kidId && r.weekStartDate === week && r.weekday === wd && r.moment === moment;
 
   async function choose(kidId: string, kidName: string, allLegs: ResolvedLeg[], legs: ResolvedLeg[], opt: ResponsibleOption | null, label?: string) {
-    const key = legs.map((l) => l.key).join("+");
+    const key = offerKeyFor(kidId, legs);
     const seq = (seqRef.current[key] ?? 0) + 1;
     seqRef.current[key] = seq;
     const targets: PassageTarget[] = legs.map((l) => ({ kidId, date: day.dateIso, passageKey: l.passageKey, moment: l.moment }));
@@ -183,7 +197,7 @@ export default function PassageAssignBody({
       const dates = range
         ? otherDatesOfPassage({ dateIso: day.dateIso, todayIso, kidId, passageKey: activity.passageKey, range, agendaFor })
         : [];
-      setOffer({
+      setOfferFor(key, {
         key,
         kidId,
         kidName,
@@ -194,9 +208,9 @@ export default function PassageAssignBody({
         commitments: dates.length > 0 ? [{ key: activity.passageKey, title: activity.school ? "scuola" : activity.title, dates }] : [],
       });
     } else if (opt && plusEnabled) {
-      setOffer({ key, kidId, kidName, moment: legs[0].moment, opt, label, passageKey: legs[0].passageKey, commitments: [] });
+      setOfferFor(key, { key, kidId, kidName, moment: legs[0].moment, opt, label, passageKey: legs[0].passageKey, commitments: [] });
     } else if (!opt) {
-      setOffer((o) => (o?.key === key ? null : o));
+      setOfferFor(key, null);
     }
 
     const fail = { error: "Non siamo riusciti a salvare, riprova." };
@@ -213,17 +227,16 @@ export default function PassageAssignBody({
     if (res.error) {
       onRowsChange(beforeRows);
       onDayChange(beforeDay);
-      setOffer((o) => (o?.key === key ? null : o));
+      setOfferFor(key, null);
       showToast(res.error);
       return;
     }
     if (opt) markFirstUsefulAction("chi_porta");
   }
 
-  async function applyToAll(c: CommitmentDays) {
-    if (!offer) return;
+  async function applyToAll(offer: PassageOffer, c: CommitmentDays) {
     const { kidId, opt, label, moment, passageKey } = offer;
-    setApplyingAll(true);
+    setApplyingKey(offer.key);
     const { targets, mirror } = applyAllTargets({ kidId, passageKey, moment, dates: c.dates, agendaFor });
     const beforeRows = rows;
     const beforeDay = responsibilities;
@@ -243,7 +256,7 @@ export default function PassageAssignBody({
       familyPersonId: opt.familyPersonId,
       mirror,
     }).catch(() => ({ error: "Non siamo riusciti a salvare, riprova." }));
-    setApplyingAll(false);
+    setApplyingKey(null);
     if (res.error) {
       onRowsChange(beforeRows);
       onDayChange(beforeDay);
@@ -274,7 +287,10 @@ export default function PassageAssignBody({
       for (const t of targets) partnerChanges.current.push({ dateIso: t.date, kidName: offer.kidName, moment: t.moment, assigned: true });
     }
     showToast(`Fatto: ${label ?? opt.label} anche negli altri ${c.dates.length === 1 ? "giorno" : `${c.dates.length} giorni`}`);
-    setOffer((o) => (o ? { ...o, commitments: o.commitments.filter((x) => x.key !== c.key) } : o));
+    setOffers((cur) => {
+      const o = cur[offer.key];
+      return o ? { ...cur, [offer.key]: { ...o, commitments: o.commitments.filter((x) => x.key !== c.key) } } : cur;
+    });
   }
 
   const isSelected = (leg: ResolvedLeg, o: ResponsibleOption) => {
@@ -350,9 +366,14 @@ export default function PassageAssignBody({
             </button>
           </form>
         )}
-        {offer?.key === legs.map((l) => l.key).join("+") &&
+        {offers[offerKeyFor(kidId, legs)] &&
           plusEnabled &&
-          renderOffer({ offer, applying: applyingAll, onApply: (c) => void applyToAll(c), onDismiss: () => setOffer(null) })}
+          renderOffer({
+            offer: offers[offerKeyFor(kidId, legs)],
+            applying: applyingKey === offerKeyFor(kidId, legs),
+            onApply: (c) => void applyToAll(offers[offerKeyFor(kidId, legs)], c),
+            onDismiss: () => setOfferFor(offerKeyFor(kidId, legs), null),
+          })}
       </>
     );
   }

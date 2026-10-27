@@ -10,6 +10,7 @@ import {
   legKey,
   legLabel,
   missingPassages,
+  offerKeyFor,
   resolveLegs,
   tripTitle,
   type PassageResponsibility,
@@ -251,5 +252,16 @@ test.describe("Chi accompagna per passaggio — modello [no browser]", () => {
     const actions = read("app/actions/responsibilities.ts");
     expect(actions).toContain('{ onConflict: "parent_id,kid_id,date,passage_key,moment" }');
     expect(actions).toContain("if (!wd) return null; // sabato/domenica: la scelta del giorno non esiste");
+  });
+
+  test("PB-14: 'anche gli altri giorni' e 'Non ora' sono per figlio (27/10/2026)", () => {
+    const legs = [{ key: legKey("school", "andata") }];
+    expect(offerKeyFor("noemi", legs)).not.toBe(offerKeyFor("leo", legs));
+    expect(offerKeyFor("noemi", legs)).toBe(`noemi|${legKey("school", "andata")}`);
+    const body = read("components/nextgen/PassageAssignBody.tsx");
+    expect(body).toContain("const [offers, setOffers] = useState<Record<string, PassageOffer>>({});");
+    expect(body).toContain("const key = offerKeyFor(kidId, legs);");
+    expect(body).toContain("onDismiss: () => setOfferFor(offerKeyFor(kidId, legs), null),");
+    expect(body).not.toContain("offer?.key === legs.map((l) => l.key).join(\"+\")");
   });
 });
