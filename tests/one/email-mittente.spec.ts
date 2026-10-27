@@ -25,6 +25,7 @@ const SENDERS = [
   "app/api/checkin/quick-action/route.ts", // ritardo dal link rapido
   "app/actions/invites.ts", // invito del Gestore
   "app/actions/waitlist.ts", // avviso nuova richiesta di invito
+  "lib/centers/notify-center.ts", // centri del pilota: nuova richiesta, candidatura, approvazione (27/10/2026)
 ];
 
 function listSourceFiles(dir: string): string[] {

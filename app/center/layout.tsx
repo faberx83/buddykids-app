@@ -66,7 +66,18 @@ export default async function CenterLayout({ children }: { children: React.React
       tenant: "center",
       correlationId: generateCorrelationId(),
     });
-    if (enabled) {
+    // Percorso dei centri del pilota (27/10/2026, D5 dell'iniziativa Partner/Admin
+    // V2): come per le famiglie, niente tour guidato né carosello per i centri.
+    const pilotFlow = enabled
+      ? await resolveFeatureFlag({
+          flagName: "CENTER_PILOT_FLOW_ENABLED",
+          userId: user.id,
+          role: realRole,
+          tenant: "center",
+          correlationId: generateCorrelationId(),
+        }).catch(() => false)
+      : false;
+    if (enabled && !pilotFlow) {
       spotlightProgress = await getWalkthroughProgress(user.id, "activity_creation_partner");
       onboardingCarouselProgress = await getWalkthroughProgress(user.id, "partner_beta_onboarding");
     }

@@ -331,6 +331,21 @@ export const RELEASE_CATALOG: ReleaseCatalogEntry[] = [
     notes: "Creata il 21/10/2026. Ripiego: flag spento = la lista dei sette giorni di prima.",
   },
   {
+    // TRAMA — PERCORSO DEI CENTRI DEL PILOTA (27/10/2026): P0 prima della campagna.
+    id: "centri-percorso-pilota",
+    label: "TRAMA — Centri: percorso del pilota",
+    shortDescription:
+      "Email al centro per ogni nuova richiesta, email della candidatura (conferma, avviso a TRAMA, approvazione con il link per l'accesso) e pagina tramapp.it/centri.",
+    targetAudience: ["partner"],
+    featureKeys: ["center_pilot_flow"],
+    knownLimitations: [
+      "center_pilot_flow: candidatura e pagina /centri sono pubbliche, quindi valgono solo con la release a tutti; Interno e Pilot accendono solo l'email delle nuove richieste per i gestori in coorte.",
+      "center_pilot_flow: un gestore che si registra dopo l'approvazione diventa gestore solo dopo la migration 52; prima deve registrarsi prima dell'approvazione.",
+      "center_pilot_flow: l'email della nuova richiesta va agli account gestore del centro; un centro senza gestore registrato riceve solo l'email di approvazione.",
+    ],
+    notes: "Creata il 27/10/2026. Ripiego: flag spento = solo push al centro, nessuna email della candidatura, tour come prima.",
+  },
+  {
     // TRAMA — CHI ACCOMPAGNA PER PASSAGGIO (22/10/2026): Fase B della settimana tipo.
     id: "chi-accompagna-per-passaggio",
     label: "TRAMA — Chi accompagna, per passaggio",

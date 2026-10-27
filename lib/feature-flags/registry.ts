@@ -339,6 +339,19 @@ export const FEATURE_FLAG_REGISTRY = {
     defaultValue: false,
     allowedScopes: ["global", "environment", "user", "role", "cohort"],
   },
+  // TRAMA — PERCORSO DEI CENTRI DEL PILOTA (27/10/2026), release "centri-percorso-pilota".
+  // P0 di claude/INIZIATIVA_partner_admin_v2.md. Si risolve anche senza utente
+  // (candidatura e pagina /centri sono pubbliche): per i visitatori vale solo "a tutti".
+  CENTER_PILOT_FLOW_ENABLED: {
+    name: "CENTER_PILOT_FLOW_ENABLED",
+    description:
+      "Percorso dei centri del pilota: email al centro a ogni nuova richiesta di una famiglia, email di conferma al " +
+      "centro che si candida e avviso a TRAMA, email 'sei approvato, crea l'accesso' all'approvazione, link alla " +
+      "pagina tramapp.it/centri dalla pagina di benvenuto, niente tour guidato nel portale dei centri. Default false: " +
+      "solo push al centro, nessuna email della candidatura, tour come prima.",
+    defaultValue: false,
+    allowedScopes: ["global", "environment", "user", "role", "cohort", "tenant"],
+  },
   // TRAMA — CHI ACCOMPAGNA PER PASSAGGIO (22/10/2026), release "chi-accompagna-per-passaggio".
   // Fase B della settimana tipo; migration 51 (passage_responsibilities).
   PASSAGE_RESPONSIBILITIES_ENABLED: {

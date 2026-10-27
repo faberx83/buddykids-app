@@ -196,6 +196,9 @@ export async function proxy(request: NextRequest) {
       !pathname.startsWith("/i/") &&
       // 20/10/2026 — pagina di benvenuto pubblica (app/benvenuto).
       !pathname.startsWith("/benvenuto") &&
+      // 27/10/2026 — pagina pubblica per i centri (app/centri), destinazione
+      // della campagna verso i centri.
+      !pathname.startsWith("/centri") &&
       // 20/10/2026 — app/robots.ts e app/sitemap.ts: senza questa esclusione
       // /robots.txt rimandava al login e i lettori automatici leggevano "vietato tutto".
       pathname !== "/robots.txt" &&

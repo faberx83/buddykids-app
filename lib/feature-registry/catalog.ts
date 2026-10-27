@@ -1034,6 +1034,36 @@ export const FEATURE_CATALOG: FeatureCatalogEntry[] = [
     releaseEligible: true,
   },
   {
+    // TRAMA — PERCORSO DEI CENTRI DEL PILOTA (27/10/2026). ADAPT di
+    // createBookingAction (oltre alla push, l'email), submitCenterCandidacyAction
+    // e approveCandidacyAction (email best-effort), layout Partner (tour spento);
+    // NEW solo la pagina pubblica /centri e le email (lib/centers/pilot-emails.ts).
+    key: "center_pilot_flow",
+    label: "Centri — percorso del pilota (email e pagina /centri)",
+    area: "partner",
+    status: "INTERNAL_PREVIEW",
+    flagName: "CENTER_PILOT_FLOW_ENABLED",
+    description:
+      "Un centro arrivato da una campagna non resta mai senza risposta e non lascia mai una famiglia senza risposta: " +
+      "email al centro per ogni nuova richiesta, conferma della candidatura (e avviso a TRAMA), email di approvazione " +
+      "con il link per creare l'accesso, pagina tramapp.it/centri.",
+    sourceFiles: [
+      "lib/centers/pilot-emails.ts",
+      "lib/centers/notify-center.ts",
+      "app/booking/[id]/actions.ts",
+      "app/actions/center-leads.ts",
+      "app/centri/page.tsx",
+      "components/landing/BenvenutoView.tsx",
+      "app/center/layout.tsx",
+    ],
+    note:
+      "Candidatura e pagina /centri sono pubbliche: per i visitatori vale solo la release a tutti. L'avviso a TRAMA va " +
+      "a CENTER_LEADS_NOTIFY_EMAIL, se manca a WAITLIST_NOTIFY_EMAIL. La pagina /centri è sempre raggiungibile col suo " +
+      "link; il flag decide solo il collegamento da /benvenuto.",
+    riskLevel: "low",
+    releaseEligible: true,
+  },
+  {
     // TRAMA — CHI ACCOMPAGNA PER PASSAGGIO (22/10/2026, Fase B della settimana
     // tipo). NEW: tabella passage_responsibilities (migration 51, additiva,
     // accanto a week_responsibilities che resta il ripiego). ADAPT della

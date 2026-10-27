@@ -11,6 +11,9 @@ import { persistProductEvent } from "@/lib/telemetry/events";
 // costruzione: una prenotazione riuscita non deve MAI dipendere dalla
 // riuscita della push.
 import { sendPushToUser } from "@/lib/push/send";
+// Percorso dei centri del pilota (27/10/2026): oltre alla push, l'email ai
+// gestori (dietro CENTER_PILOT_FLOW_ENABLED, best-effort come la push).
+import { emailCenterAdminsOfNewRequest } from "@/lib/centers/notify-center";
 
 export interface CreateBookingInput {
   activityDbId: string;
@@ -338,6 +341,15 @@ export async function createBookingAction(
           })
         )
       );
+      // La push arriva solo se il gestore l'ha attivata su un telefono:
+      // l'email arriva sempre (flag CENTER_PILOT_FLOW_ENABLED, per gestore).
+      await emailCenterAdminsOfNewRequest({
+        centerId: activityRow.center_id,
+        activityName: activityRow.name ?? null,
+        kids: input.kidIds.length,
+        days: input.dayBookings?.length ?? 0,
+        weeks: input.weekIds.length,
+      });
     }
   } catch (e) {
     console.error(`[createBookingAction] Errore inatteso durante la push al centro (bookingId=${bookingId}):`, e);

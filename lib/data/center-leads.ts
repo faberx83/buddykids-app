@@ -211,6 +211,12 @@ export interface PublicCandidacyStatus {
   status: CenterLeadStatus;
   candidateEmail?: string;
   createdAt: string;
+  /**
+   * 27/10/2026: candidatura approvata E accesso già creato (un profilo con
+   * quell'email è gestore del centro creato). La pagina di conferma mostra
+   * "Entra" invece di "Crea l'accesso". Mai altri dati del profilo.
+   */
+  registered?: boolean;
 }
 
 export async function getCandidacyStatusPublic(id: string): Promise<PublicCandidacyStatus | null> {
@@ -219,16 +225,32 @@ export async function getCandidacyStatusPublic(id: string): Promise<PublicCandid
 
   const { data, error } = await supabase
     .from("center_leads")
-    .select("suggested_name, status, candidate_email, created_at, lead_type")
+    .select("suggested_name, status, candidate_email, created_at, lead_type, claimed_center_id")
     .eq("id", id)
     .eq("lead_type", "self_candidacy")
     .maybeSingle();
 
   if (error || !data) return null;
+  let registered = false;
+  if (data.status === "claimed" && data.claimed_center_id && data.candidate_email) {
+    try {
+      const { data: prof } = await supabase
+        .from("profiles")
+        .select("id")
+        .ilike("email", data.candidate_email)
+        .eq("role", "center_admin")
+        .eq("center_id", data.claimed_center_id)
+        .limit(1);
+      registered = Boolean(prof && prof.length > 0);
+    } catch {
+      registered = false;
+    }
+  }
   return {
     suggestedName: data.suggested_name,
     status: data.status,
     candidateEmail: data.candidate_email ?? undefined,
     createdAt: data.created_at,
+    registered,
   };
 }

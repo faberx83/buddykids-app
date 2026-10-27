@@ -18,7 +18,7 @@ export default async function robots(): Promise<MetadataRoute.Robots> {
   const publicSite = tenantForHost(host) === "family" && isCanonicalHost(host);
   if (!publicSite) return { rules: [{ userAgent: "*", disallow: "/" }] };
   return {
-    rules: [{ userAgent: "*", allow: ["/benvenuto", "/privacy", "/terms", "/brand/", "/og/"], disallow: "/" }],
+    rules: [{ userAgent: "*", allow: ["/benvenuto", "/centri", "/privacy", "/terms", "/brand/", "/og/"], disallow: "/" }],
     sitemap: "https://tramapp.it/sitemap.xml",
   };
 }

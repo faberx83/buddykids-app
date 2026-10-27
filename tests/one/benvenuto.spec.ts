@@ -130,7 +130,8 @@ test.describe("TRAMA — Pagina di benvenuto [no browser]", () => {
 test.describe("TRAMA — Pagina di benvenuto leggibile dai lettori automatici [no browser]", () => {
   test("BV-09 robots.txt e sitemap: su tramapp.it solo le pagine pubbliche, l'app no; fuori dal controllo di accesso", () => {
     const r = read("app/robots.ts");
-    expect(r).toContain('allow: ["/benvenuto", "/privacy", "/terms", "/brand/", "/og/"], disallow: "/"');
+    // 27/10/2026: si aggiunge solo la pagina pubblica per i centri; l'app resta vietata.
+    expect(r).toContain('allow: ["/benvenuto", "/centri", "/privacy", "/terms", "/brand/", "/og/"], disallow: "/"');
     expect(r).toContain('if (!publicSite) return { rules: [{ userAgent: "*", disallow: "/" }] };');
     expect(read("app/sitemap.ts")).toContain('url: "https://tramapp.it/benvenuto"');
     const proxy = read("proxy.ts");

@@ -8,18 +8,19 @@
 --   APPLY_SQL=supabase/script_centro_di_prova_attivita.sql bash deploy.sh
 --
 -- Prima (Fabrizio, 5 minuti) — 27/10/2026: si passa dalla candidatura,
--- come farà un centro vero (form "Candidati come partner" in fondo a
--- tramapp.it/benvenuto, già compilato: Admin → Segnalazioni centri):
---   1. registra un account su tramapp.it con faberx83+centroprova@gmail.com
---      (conferma l'email). PRIMA dell'approvazione: finché migration_52 non
---      è applicata, la registrazione fatta dopo non diventa gestore;
---   2. Admin → Segnalazioni centri → candidatura "Centro di Prova" →
---      "Approva e crea centro" (città Milano, descrizione "Centro di prova di
---      TRAMA per la beta: le attività non esistono. Serve a provare
---      richiesta, risposta del centro, email e check-in. Nessun pagamento.").
---      L'approvazione trova l'account e lo fa gestore del centro.
---      (Il nome del centro si può poi cambiare in "TRAMA · Centro di prova"
---      da Admin → Centri.)
+-- come farà un centro vero (form già compilato, in Admin → Segnalazioni
+-- centri → "Candidature dei centri"). DOPO il deploy con migration_52 e con
+-- la release "Centri: percorso del pilota" accesa:
+--   1. Admin → Segnalazioni centri → "Centro di Prova" → "Approva e crea
+--      centro" (città Milano, descrizione "Centro di prova di TRAMA per la
+--      beta: le attività non esistono. Serve a provare richiesta, risposta
+--      del centro, email e check-in. Nessun pagamento.");
+--   2. arriva l'email "Centro di Prova è su TRAMA" a
+--      faberx83+centroprova@gmail.com → "Crea l'accesso" (portale centri,
+--      email già compilata) → conferma l'email → si entra già gestore;
+--   3. solo allora questo script.
+--   (Il nome del centro si può poi cambiare in "TRAMA · Centro di prova" da
+--   Admin → Centri.)
 --
 -- Cosa fa: trova il centro di quell'account e aggiunge 4 attività di prova,
 -- dichiarate nel nome e nella descrizione, a iscrizione per giorno singolo,
@@ -48,7 +49,7 @@ begin
   from public.profiles p
   where lower(p.email) = 'faberx83+centroprova@gmail.com' and p.role = 'center_admin';
   if v_center is null then
-    raise exception 'Prima registra l''account faberx83+centroprova@gmail.com, poi approva la candidatura "Centro di Prova" da Admin → Segnalazioni centri.';
+    raise exception 'Manca il gestore faberx83+centroprova@gmail.com: approva la candidatura "Centro di Prova" (Admin → Segnalazioni centri) e crea l''accesso dal link dell''email, poi rilancia.';
   end if;
 
   insert into public.activities

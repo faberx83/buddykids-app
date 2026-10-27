@@ -7,7 +7,16 @@ import TramaThread from "@/components/nextgen/TramaThread";
 // accessi a dati (quelli restano in app/benvenuto/page.tsx). Testi e
 // schermate demo riusano il carosello di primo ingresso.
 
-export default function BenvenutoView({ loggedIn, source }: { loggedIn: boolean; source: string | null }) {
+export default function BenvenutoView({
+  loggedIn,
+  source,
+  centersPage = false,
+}: {
+  loggedIn: boolean;
+  source: string | null;
+  /** 27/10/2026: release "Centri: percorso del pilota" a tutti → link a /centri. */
+  centersPage?: boolean;
+}) {
   return (
     <div data-nav-v2 className="min-h-screen bg-trama-page text-ink" data-testid="benvenuto">
       {/* Intestazione */}
@@ -140,12 +149,19 @@ export default function BenvenutoView({ loggedIn, source }: { loggedIn: boolean;
               Porta le tue attività su TRAMA: le famiglie le trovano vicino a casa e ti mandano le richieste.
             </p>
           </div>
-          <Link
-            href="/auth/candidati"
-            className="flex min-h-[52px] flex-shrink-0 items-center justify-center self-start rounded-[12px] bg-white px-6 text-[16px] font-semibold text-trama-navy md:self-center"
-          >
-            Candidati come partner
-          </Link>
+          <div className="flex flex-shrink-0 flex-col gap-2 self-start md:items-center md:self-center">
+            <Link
+              href={centersPage ? "/auth/candidati?da=benvenuto" : "/auth/candidati"}
+              className="flex min-h-[52px] items-center justify-center rounded-[12px] bg-white px-6 text-[16px] font-semibold text-trama-navy"
+            >
+              Candidati come partner
+            </Link>
+            {centersPage && (
+              <Link href="/centri?da=benvenuto" className="flex min-h-[44px] items-center justify-center text-[15px] font-semibold text-white">
+                Come funziona per i centri
+              </Link>
+            )}
+          </div>
         </div>
       </section>
 

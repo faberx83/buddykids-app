@@ -5,6 +5,8 @@ import { createServiceClient } from "@/lib/supabase/service";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
 import { cleanSource } from "@/lib/landing/waitlist";
 import BenvenutoView from "@/components/landing/BenvenutoView";
+import { resolveFeatureFlag } from "@/lib/feature-flags/resolve";
+import { CENTER_PILOT_FLOW_FLAG } from "@/lib/centers/pilot-emails";
 
 // TRAMA — PAGINA DI BENVENUTO (20/10/2026, Fabrizio: "per chi non ha un
 // account, una pagina su tramapp.it che spiega cos'è TRAMA"; "solo su invito,
@@ -72,5 +74,9 @@ export default async function BenvenutoPage({
     }
   }
 
-  return <BenvenutoView loggedIn={loggedIn} source={source} />;
+  // 27/10/2026: con la release "Centri: percorso del pilota" a tutti, la
+  // fascia "Per i centri" porta anche a tramapp.it/centri.
+  const centersPage = await resolveFeatureFlag({ flagName: CENTER_PILOT_FLOW_FLAG, tenant: "family" }).catch(() => false);
+
+  return <BenvenutoView loggedIn={loggedIn} source={source} centersPage={centersPage} />;
 }

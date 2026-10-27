@@ -93,7 +93,7 @@ export default function CenterLeadsAdminClient({
       ...prev,
       [lead.id]: res.warning
         ? `Centro "${res.centerName}" creato. ${res.warning}`
-        : `Centro "${res.centerName}" creato e gestore assegnato.`,
+        : `Centro "${res.centerName}" creato e collegato all'account di ${lead.candidateEmail}.`,
     }));
   }
 
@@ -141,19 +141,48 @@ export default function CenterLeadsAdminClient({
     if (!res.error) patchLead(id, { rewardStatus: status, rewardNote: note.trim() });
   }
 
-  const active = leads.filter((l) => l.status === "suggested" || l.status === "qualified" || l.status === "contacted");
-  const resolved = leads.filter((l) => l.status === "claimed" || l.status === "rejected" || l.status === "expired");
+  // 27/10/2026 (revisione del processo di candidatura): le candidature dei
+  // centri separate dalle segnalazioni delle famiglie, candidature per prime.
+  const [kind, setKind] = useState<"candidacy" | "referral" | "all">("candidacy");
+  const candidacyCount = leads.filter((l) => l.leadType === "self_candidacy").length;
+  const shown = leads.filter((l) =>
+    kind === "all" ? true : kind === "candidacy" ? l.leadType === "self_candidacy" : l.leadType !== "self_candidacy"
+  );
+  const active = shown.filter((l) => l.status === "suggested" || l.status === "qualified" || l.status === "contacted");
+  const resolved = shown.filter((l) => l.status === "claimed" || l.status === "rejected" || l.status === "expired");
 
   return (
     <div>
       <div className="mb-6">
-        <h1 className="text-xl font-bold text-white">CenterLead — Segnalazioni referral</h1>
+        <h1 className="text-xl font-bold text-white">Candidature e segnalazioni centri</h1>
         <p className="text-sm text-navy-text2">
-          Genitori che hanno segnalato un centro non ancora su TRAMA (J11). Nessuna riga qui crea mai
-          un&apos;attività pubblica o prenotabile: solo dopo un claim collegato a un centro che ha
-          completato l&apos;onboarding reale il centro diventa visibile ai genitori. Reward/commission
-          restano annotazioni manuali — nessun calcolo o pagamento automatico (scope Sprint 5).
+          Candidature: i centri che si candidano da tramapp.it/centri, dalla pagina di benvenuto o dal portale dei centri.
+          &quot;Approva e crea centro&quot; crea il centro; il gestore si collega da solo quando crea l&apos;accesso con la
+          stessa email. Segnalazioni: centri suggeriti dalle famiglie, mai pubblicati da qui.
         </p>
+      </div>
+
+      <div className="mb-5 flex flex-wrap gap-2" role="tablist" aria-label="Tipo">
+        {(
+          [
+            ["candidacy", `Candidature dei centri (${candidacyCount})`],
+            ["referral", `Segnalazioni delle famiglie (${leads.length - candidacyCount})`],
+            ["all", "Tutte"],
+          ] as const
+        ).map(([k, label]) => (
+          <button
+            key={k}
+            type="button"
+            role="tab"
+            aria-selected={kind === k}
+            onClick={() => setKind(k)}
+            className={`rounded-full px-3.5 py-1.5 text-xs font-semibold ${
+              kind === k ? "bg-white text-ink" : "border border-white/30 text-white"
+            }`}
+          >
+            {label}
+          </button>
+        ))}
       </div>
 
       {!isSupabaseConfigured && (
@@ -185,6 +214,7 @@ export default function CenterLeadsAdminClient({
                       {lead.suggestedLocality || "località non indicata"} · {lead.candidateEmail}
                       {lead.candidatePhone ? ` · ${lead.candidatePhone}` : ""} · il{" "}
                       {new Date(lead.createdAt).toLocaleDateString("it-IT")}
+                      {lead.demandContext?.campaignSource ? ` · arrivata da: ${lead.demandContext.campaignSource}` : ""}
                     </div>
                   ) : (
                     <div className="text-xs text-ink-2">

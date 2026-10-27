@@ -7,6 +7,9 @@ import { revalidatePath } from "next/cache";
 import { findPossibleDuplicates, getCandidacyStatusPublic, normalizeDedupeKey, PublicCandidacyStatus } from "@/lib/data/center-leads";
 import { CenterLeadDemandContext, CenterLeadItem, CenterLeadStatus } from "@/lib/types";
 import { createCenterAndAssignAction, CreateCenterInput, CreateCenterResult } from "@/app/actions/admin";
+import { emailCandidacyApproved, emailCandidacyReceived } from "@/lib/centers/notify-center";
+import { isTestCandidacyName } from "@/lib/centers/pilot-emails";
+import { cleanSource } from "@/lib/landing/waitlist";
 
 // Un genitore segnala un centro non ancora iscritto (TRAMA ONE Build
 // Sprint 5, J11 nella fonte di design). Crea SEMPRE una riga in
@@ -180,6 +183,10 @@ export interface CenterCandidacyInput {
   description?: string;
   phone?: string;
   email: string;
+  /** Da dove arriva (?da=… ripulito con cleanSource), es. "mail1". Facoltativo. */
+  source?: string | null;
+  /** Campo nascosto anti-bot: se compilato la candidatura si scarta in silenzio. */
+  website?: string;
 }
 
 // Form pubblico "Candidati" (/auth/candidati) — NESSUN account viene creato
@@ -195,8 +202,26 @@ export async function submitCenterCandidacyAction(
   if (!input.centerName.trim()) return { error: "Inserisci il nome del centro" };
   if (!input.email.trim()) return { error: "Inserisci un'email di contatto" };
 
+  // 27/10/2026 (revisione della candidatura): campo nascosto compilato = bot.
+  // Risposta "riuscita" senza id e senza salvare nulla, come la lista d'attesa.
+  if ((input.website ?? "").trim()) return {};
+
   const supabase = createServiceClient();
   if (!supabase) return { error: "Servizio momentaneamente non disponibile. Riprova più tardi o scrivici direttamente." };
+
+  const email = input.email.trim();
+
+  // 27/10/2026: stessa email con una candidatura ancora aperta → si riapre
+  // quella (stessa pagina di conferma), niente doppioni né email ripetute.
+  const { data: open } = await supabase
+    .from("center_leads")
+    .select("id")
+    .eq("lead_type", "self_candidacy")
+    .ilike("candidate_email", email.replace(/[\\%_]/g, (c) => `\\${c}`))
+    .in("status", ["suggested", "qualified", "contacted"])
+    .order("created_at", { ascending: false })
+    .limit(1);
+  if (open && open.length > 0) return { id: open[0].id };
 
   const dedupeKey = normalizeDedupeKey(input.centerName, input.locality);
 
@@ -206,11 +231,11 @@ export async function submitCenterCandidacyAction(
       suggested_name: input.centerName.trim(),
       suggested_locality: input.locality?.trim() || null,
       suggested_contact: input.description?.trim() || null,
-      demand_context: {},
+      demand_context: input.source ? { campaignSource: cleanSource(input.source) ?? undefined } : {},
       dedupe_key: dedupeKey,
       status: "suggested",
       lead_type: "self_candidacy",
-      candidate_email: input.email.trim(),
+      candidate_email: email,
       candidate_phone: input.phone?.trim() || null,
       reward_status: "not_applicable",
     })
@@ -219,6 +244,17 @@ export async function submitCenterCandidacyAction(
 
   if (error || !data) return { error: error?.message || "Errore nell'invio della candidatura" };
   revalidatePath("/admin/center-leads");
+  // Percorso dei centri del pilota (27/10/2026): conferma al centro e avviso a
+  // TRAMA, dietro CENTER_PILOT_FLOW_ENABLED. Best-effort: la candidatura è già salvata.
+  if (!isTestCandidacyName(input.centerName)) await emailCandidacyReceived({
+    leadId: data.id,
+    centerName: input.centerName.trim(),
+    locality: input.locality?.trim() || null,
+    email,
+    phone: input.phone?.trim() || null,
+    description: input.description?.trim() || null,
+    source: cleanSource(input.source),
+  });
   return { id: data.id };
 }
 
@@ -263,5 +299,27 @@ export async function approveCandidacyAction(leadId: string, centerInput: Create
   }
 
   revalidatePath("/admin/center-leads");
+  // Percorso dei centri del pilota (27/10/2026): "sei dentro" al candidato,
+  // dietro CENTER_PILOT_FLOW_ENABLED. Best-effort: centro e candidatura sono già salvati.
+  const {
+    data: { user: adminUser },
+  } = await supabase.auth.getUser();
+  const emailSent = await emailCandidacyApproved({
+    adminUserId: adminUser?.id ?? null,
+    centerName: result.centerName ?? centerInput.name,
+    email: centerInput.gestoreEmail ?? "",
+    alreadyRegistered: Boolean(result.assigned),
+  });
+  // Il candidato che non ha ancora un account non è un problema (lo era per
+  // createCenterAndAssignAction da Admin → Centri): con migration_52 si
+  // collega da solo quando crea l'accesso con la stessa email.
+  if (!result.assigned && result.warning?.startsWith("Centro creato, ma nessun utente registrato")) {
+    return {
+      ...result,
+      warning: emailSent
+        ? `Gli abbiamo mandato l'email con il link per creare l'accesso (${centerInput.gestoreEmail}): il centro si collega da solo.`
+        : `Il centro si collega da solo quando ${centerInput.gestoreEmail} crea l'accesso. L'email automatica non è partita (release "Centri: percorso del pilota" spenta o invio email non configurato): mandagli tu il link della pagina di conferma.`,
+    };
+  }
   return result;
 }

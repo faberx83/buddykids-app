@@ -107,7 +107,7 @@ export default function InstallPrompt({
   // 20/10/2026: anche la pagina di benvenuto (tramapp.it/benvenuto) — chi non
   // ha un account non ha ancora niente da installare.
   const excluded = Boolean(
-    (routeExclude && pathname?.startsWith(routeExclude)) || pathname?.startsWith("/share") || pathname?.startsWith("/benvenuto")
+    (routeExclude && pathname?.startsWith(routeExclude)) || pathname?.startsWith("/share") || pathname?.startsWith("/benvenuto") || pathname?.startsWith("/centri")
   );
   const [deferredEvent, setDeferredEvent] = useState<BeforeInstallPromptEvent | null>(null);
   const [showIosHint, setShowIosHint] = useState(false);

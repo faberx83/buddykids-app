@@ -62,6 +62,9 @@ export interface CenterLeadDemandContext {
   categoryTagIds?: string[]; // tag/categoria attiva nei filtri, se presente
   weekLabel?: string; // settimana/periodo cercato, se presente
   correlationId?: string; // stesso context object leggero di Sprint 3 (search→detail→booking)
+  // TRAMA — PERCORSO DEI CENTRI DEL PILOTA (27/10/2026): da dove arriva
+  // un'autocandidatura (?da=… di tramapp.it/centri o del form, es. "mail1").
+  campaignSource?: string;
   // TRAMA — DISCOVERY UNIFICATION + PROPONI INVITO (21/09/2026, §9 del
   // prompt: "Inserisci in demand_context almeno il riferimento
   // discoveryLeadId, seguendo i pattern esistenti"). Campo additivo — nessuna

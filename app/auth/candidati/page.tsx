@@ -1,5 +1,6 @@
 import CandidatiForm from "./CandidatiForm";
 import { TENANT_CONFIG } from "@/lib/tenant";
+import { cleanSource } from "@/lib/landing/waitlist";
 
 // Migrazione 21 — "Candidati come centro" (Fabrizio: "il registrati deve
 // essere un 'candidati' per cui deve far partire processo di onboarding").
@@ -13,6 +14,14 @@ import { TENANT_CONFIG } from "@/lib/tenant";
 // sottodominio serve la richiesta (link condivisibile ovunque): questa
 // pagina parla sempre a un potenziale gestore di centro, mai a un genitore
 // — a differenza di /auth/login, non serve leggere l'host.
-export default function CandidatiPage() {
-  return <CandidatiForm themeColor={TENANT_CONFIG.partner.themeColor} />;
+// 27/10/2026 (percorso dei centri del pilota): ?da=… (es. dalla pagina
+// tramapp.it/centri o da una mail della campagna) arriva con la candidatura.
+export default async function CandidatiPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
+}) {
+  const params = await searchParams;
+  const raw = Array.isArray(params.da) ? params.da[0] : params.da;
+  return <CandidatiForm themeColor={TENANT_CONFIG.partner.themeColor} source={cleanSource(raw)} />;
 }
