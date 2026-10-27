@@ -274,6 +274,7 @@ export default function SearchDiscoveryClient({
   externalPlannerItemsEnabled = false,
   curatedLeadIdsInPlanner = [],
   radarEnabled = false,
+  radarPhotoEnabled = true,
   communityDiscoveries = [],
   communityIdsInPlanner = [],
   discoverV2 = null,
@@ -322,6 +323,8 @@ export default function SearchDiscoveryClient({
   // TRAMA — RADAR (13/10/2026): tutti default sicuri (nessun CTA, nessun
   // dato) se RADAR_ENABLED risolve false lato server.
   radarEnabled?: boolean;
+  /** 27/10/2026: "Foto o screenshot" nel Radar solo con l'AI vera accesa. */
+  radarPhotoEnabled?: boolean;
   communityDiscoveries?: CommunityDiscoveryRecord[];
   communityIdsInPlanner?: string[];
   // BUG CORRETTO 07/08/2026 (segnalato da Fabrizio: "il filtro sulle
@@ -1422,7 +1425,9 @@ export default function SearchDiscoveryClient({
             </span>
             <span>
               <span className="block text-[14px] font-bold text-ink">Aggiungi una scoperta</span>
-              <span className="block text-[12px] text-ink-2">Hai visto un volantino o un post? Mandalo a TRAMA</span>
+              <span className="block text-[12px] text-ink-2">
+                {radarPhotoEnabled ? "Hai visto un volantino o un post? Mandalo a TRAMA" : "Hai trovato un'attività fuori da TRAMA? Mandaci il link o due righe"}
+              </span>
             </span>
           </button>
         )}
@@ -2324,6 +2329,7 @@ export default function SearchDiscoveryClient({
           }}
           initialUrl={sharedRadarUrl}
           initialText={sharedRadarText}
+          photoEnabled={radarPhotoEnabled}
         />
       )}
       {proposeDialogLead && (

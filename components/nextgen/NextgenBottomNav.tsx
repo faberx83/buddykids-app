@@ -94,6 +94,7 @@ export default function NextgenBottomNav({
   variant = "classic",
   addItemEnabled = false,
   radarEnabled = false,
+  radarPhotoEnabled = true,
   uxFix = false,
 }: {
   notifications?: NotificationItem[];
@@ -101,6 +102,8 @@ export default function NextgenBottomNav({
   addItemEnabled?: boolean;
   /** RADAR (14/10/2026): "Una scoperta" nel foglio del +. */
   radarEnabled?: boolean;
+  /** 27/10/2026: senza l'AI vera del Radar niente "foto" (lib/radar/provider.ts#isRadarPhotoAvailable). */
+  radarPhotoEnabled?: boolean;
   /** Correzioni dal test UX (21/10/2026, PARENT_UX_FIX_ENABLED): nel + l'altro genitore e altra famiglia separati. */
   uxFix?: boolean;
 }) {
@@ -162,7 +165,7 @@ export default function NextgenBottomNav({
           </button>
           {V2_RIGHT.map(renderItem)}
         </div>
-        <AddSheet open={addOpen} onClose={() => setAddOpen(false)} addItemEnabled={addItemEnabled} radarEnabled={radarEnabled} uxFix={uxFix} />
+        <AddSheet open={addOpen} onClose={() => setAddOpen(false)} addItemEnabled={addItemEnabled} radarEnabled={radarEnabled} radarPhotoEnabled={radarPhotoEnabled} uxFix={uxFix} />
       </>
     );
   }

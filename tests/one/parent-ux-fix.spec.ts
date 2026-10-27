@@ -31,6 +31,7 @@ import { withoutNewExternalItemParam, wantsNewExternalItem } from "../../lib/pla
 import { buildSharedExternalEntries, sharedDaysLabel, SHARED_PLANNER_STATUS } from "../../lib/plan-shares/build-entries";
 import { externalItemsToCalendarItems, firstOccurrence } from "../../lib/planner/calendar-items-core";
 import { buildPlannerCalendarIcs } from "../../lib/ics";
+import { monthOfWeek } from "../../lib/nextgen/planner-week";
 import { tramaEmailHtml, escapeEmailHtml } from "../../lib/email-layout";
 import { installBannerFor, parseDismissedAt, INSTALL_REPROPOSE_DAYS } from "../../lib/nextgen/install-banner";
 import { appInviteUrl, familyInviteDestination } from "../../lib/public-links";
@@ -762,6 +763,26 @@ test.describe("Secondo test UX 22/10 — 016…022 [no browser]", () => {
     expect(read("app/nextgen/search/SearchDiscoveryClient.tsx")).toContain("v2={Boolean(v2)}");
     // la voce "Già nell'app" ha l'ancora con l'id
     expect(read("app/nextgen/novita/page.tsx")).toContain("id={a.id}");
+  });
+
+  test("UXF-94 Condividi: settimana o tutto il mese (il mese del giovedì della settimana aperta)", () => {
+    expect(monthOfWeek("2026-10-26")).toEqual({ start: "2026-10-01", end: "2026-10-31", name: "ottobre" }); // gio 29/10
+    expect(monthOfWeek("2026-11-30")).toEqual({ start: "2026-12-01", end: "2026-12-31", name: "dicembre" }); // gio 3/12
+    expect(monthOfWeek("2027-02-22")).toEqual({ start: "2027-02-01", end: "2027-02-28", name: "febbraio" });
+    const c = read("app/nextgen/planner/PlannerV2Client.tsx");
+    expect(c).toContain('onShare={parentUxFix ? () => setPanel("condividi") : shareWeek}');
+    expect(c).toContain("Tutto il mese di ${shareMonth.name}");
+    expect(c).toContain("sharePeriod(shareMonth.start, shareMonth.end, `Mese di ${shareMonth.name}`");
+  });
+
+  test("UXF-95 Radar senza AI vera: niente 'Foto o screenshot', niente promessa di leggere volantini", () => {
+    const prov = read("lib/radar/provider.ts");
+    expect(prov).toContain('return Boolean(process.env.ANTHROPIC_API_KEY) && process.env.RADAR_AI_PROVIDER !== "mock";');
+    expect(read("components/nextgen/RadarAddDiscoverySheet.tsx")).toContain("{photoEnabled && (");
+    expect(read("app/nextgen/search/page.tsx")).toContain("radarPhotoEnabled={isRadarPhotoAvailable()}");
+    expect(read("app/nextgen/layout.tsx")).toContain("radarPhotoEnabled={isRadarPhotoAvailable()}");
+    expect(read("components/nextgen/NextgenBottomNav.tsx")).toContain("radarPhotoEnabled={radarPhotoEnabled}");
+    expect(read("components/nextgen/AddSheet.tsx")).toContain('radarPhotoEnabled ? "ti-photo-plus" : "ti-link-plus"');
   });
 });
 

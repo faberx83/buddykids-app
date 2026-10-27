@@ -38,6 +38,7 @@ import { getCuratedLeadIdsInPlanner, getCommunityDiscoveryIdsInPlanner } from "@
 // Dark Release — flag RADAR_ENABLED risolto server-side, scoperte community
 // lette SOLO se il flag risolve true per questo utente.
 import { getVisibleCommunityDiscoveries } from "@/lib/data/radar";
+import { isRadarPhotoAvailable } from "@/lib/radar/provider";
 import type { CommunityDiscoveryRecord } from "@/lib/radar/community";
 import { getActivityOpenRanges, getActivityDateRows, getTestFixtureCenterIds } from "@/lib/data/activities";
 // TRAMA — CORREZIONI DAL TEST UX (21/10/2026): date vere su card e periodi.
@@ -261,6 +262,7 @@ export default async function NextgenSearchPage() {
       externalPlannerItemsEnabled={externalPlannerItemsEnabled}
       curatedLeadIdsInPlanner={curatedLeadIdsInPlanner}
       radarEnabled={radarEnabled}
+      radarPhotoEnabled={isRadarPhotoAvailable()}
       communityDiscoveries={communityDiscoveries}
       communityIdsInPlanner={communityIdsInPlanner}
       discoverV2={discoverV2}

@@ -14,6 +14,8 @@
 #
 # Ogni volta (consigliato: prima del lancio e poi una volta a settimana):
 #   bash scripts/backup-db.sh
+# Se in .env.deploy c'è già SUPABASE_DB_URL (la usa deploy.sh per le
+# migration), lo script la prende da lì e non chiede nulla.
 # La stringa la incolli quando la chiede (non si vede e non viene salvata),
 # oppure: SUPABASE_DB_URL='postgresql://…' bash scripts/backup-db.sh
 #
@@ -35,6 +37,12 @@ if [ "${MAJOR:-0}" -lt 17 ]; then
 fi
 
 URL="${SUPABASE_DB_URL:-}"
+# 27/10/2026: se c'è, si usa la stessa stringa di deploy.sh (.env.deploy):
+# niente da incollare.
+if [ -z "$URL" ] && [ -f "$(dirname "$0")/../.env.deploy" ]; then
+  URL=$(grep -E '^(export )?SUPABASE_DB_URL=' "$(dirname "$0")/../.env.deploy" | tail -1 | sed -E 's/^(export )?SUPABASE_DB_URL=//; s/^["'"'"']//; s/["'"'"']$//')
+  [ -n "$URL" ] && echo "🔑 Uso SUPABASE_DB_URL di .env.deploy"
+fi
 if [ -z "$URL" ]; then
   printf "Incolla la stringa 'Session pooler' di Supabase (con la password): "
   read -rs URL

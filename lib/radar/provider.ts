@@ -14,6 +14,16 @@ import type { RadarProvider } from "@/lib/radar/types";
 
 export const DEFAULT_RADAR_AI_MODEL = "claude-sonnet-4-5";
 
+/**
+ * 27/10/2026 (Fabrizio: "togliamo foto per ora"): senza l'AI vera la foto di
+ * un volantino non si legge (la simulazione non vede il testo), quindi
+ * "Foto o screenshot" si mostra solo quando c'è ANTHROPIC_API_KEY. Il giorno
+ * in cui la chiave c'è, la foto torna da sola.
+ */
+export function isRadarPhotoAvailable(): boolean {
+  return Boolean(process.env.ANTHROPIC_API_KEY) && process.env.RADAR_AI_PROVIDER !== "mock";
+}
+
 export function getRadarProvider(): RadarProvider {
   const key = process.env.ANTHROPIC_API_KEY;
   if (key && process.env.RADAR_AI_PROVIDER !== "mock") {

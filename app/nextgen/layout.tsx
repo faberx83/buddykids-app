@@ -19,6 +19,7 @@ import OnboardingCarousel from "@/components/nextgen/OnboardingCarousel";
 import { PARENT_ONBOARDING_TUTORIAL_KEY } from "@/lib/nextgen/onboarding-slides";
 // TRAMA — ONBOARDING V2 (14/10/2026), dietro ONBOARDING_V2_ENABLED.
 import OnboardingV2, { type OnboardingV2Kid } from "@/components/nextgen/OnboardingV2";
+import { isRadarPhotoAvailable } from "@/lib/radar/provider";
 import { ONBOARDING_V2_TUTORIAL_KEY } from "@/lib/nextgen/onboarding-v2";
 import { getKidsForUser } from "@/lib/data/kids";
 // Profilo da ogni sezione (14/10/2026): avatar in alto a destra con la nuova barra.
@@ -392,6 +393,7 @@ export default async function NextgenLayout({ children }: { children: React.Reac
               variant={navV2Enabled ? "v2" : "classic"}
               addItemEnabled={addItemEnabled}
               radarEnabled={radarEnabled}
+              radarPhotoEnabled={isRadarPhotoAvailable()}
               uxFix={parentUxFix}
             />
           </div>

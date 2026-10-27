@@ -56,6 +56,7 @@ import {
   mondayOfIso,
   weekStatusParts,
   itemsInWeek,
+  monthOfWeek,
   uncoveredClosureDays,
   joinItalian,
   type WeekDayModel,
@@ -108,7 +109,7 @@ export interface HolidayPeriodRow {
   weekdayCount: number;
   state: "organized" | "to_complete" | "to_organize";
 }
-type Panel = "mappa" | "gruppi" | "mese" | "budget" | "esporta" | "chi" | { assign: string } | null;
+type Panel = "mappa" | "gruppi" | "mese" | "budget" | "esporta" | "chi" | "condividi" | { assign: string } | null;
 
 // Colori pieni dei figli per i pallini (le tinte chiare restano negli avatar).
 const KID_DOTS = ["#6F63C5", "#F6A623", "#2DBA8C", "#4DAFEF"];
@@ -428,17 +429,25 @@ export default function PlannerV2Client({
   }
 
   async function shareWeek() {
-    const sunday = addDaysIso(monday, 6);
+    await sharePeriod(monday, addDaysIso(monday, 6), `Settimana ${week.label}`, `TRAMA · ${week.label}`);
+  }
+
+  // 27/10/2026 (Fabrizio: "una possibilità di esportare e condividere tutto il
+  // mese non ce l'abbiamo?"): stesso link pubblico, periodo a scelta. Il mese è
+  // quello del giovedì della settimana aperta (la settimana "sta" in quel mese).
+  const shareMonth = useMemo(() => monthOfWeek(monday), [monday]);
+
+  async function sharePeriod(start: string, end: string, label: string, title: string) {
     startProgress();
     try {
-      const res = await createPlanShareAction(monday, sunday, `Settimana ${week.label}`);
+      const res = await createPlanShareAction(start, end, label);
       if (res.error || !res.url) {
         showToast(res.error ?? "Non è stato possibile creare il link");
         return;
       }
       try {
         if (navigator.share) {
-          await navigator.share({ title: `TRAMA · ${week.label}`, url: res.url });
+          await navigator.share({ title, url: res.url });
           return;
         }
       } catch {
@@ -626,7 +635,8 @@ export default function PlannerV2Client({
           onMonth={() => setPanel("mese")}
           onAssign={(dateIso) => setPanel({ assign: dateIso })}
           onWho={() => setPanel("chi")}
-          onShare={shareWeek}
+          onShare={parentUxFix ? () => setPanel("condividi") : shareWeek}
+          shareLabel={parentUxFix ? "Condividi" : "Condividi settimana"}
           onExport={calendarExportEnabled ? () => setPanel("esporta") : null}
           showToday={monday !== mondayOfIso(todayIso)}
           dayView={dayViewEnabled}
@@ -695,6 +705,41 @@ export default function PlannerV2Client({
       {panel === "budget" && (
         <Sheet title="Budget della stagione" onClose={() => setPanel(null)} tall>
           <PlannerBudgetView budget={budget} seasonBudgetTarget={seasonBudgetTarget} />
+        </Sheet>
+      )}
+      {panel === "condividi" && (
+        <Sheet title="Condividi il piano" onClose={() => setPanel(null)}>
+          <div className="flex flex-col gap-2.5" data-testid="share-period">
+            <p className="text-[13.5px] leading-snug text-ink-2">
+              Un link da mandare a nonni, tata o altri genitori: si apre senza app e senza accesso, vale 30 giorni.
+            </p>
+            {[
+              { key: "settimana", title: "Questa settimana", sub: week.label, run: shareWeek },
+              {
+                key: "mese",
+                title: `Tutto il mese di ${shareMonth.name}`,
+                sub: `Dal 1° al ${Number(shareMonth.end.slice(8, 10))} ${shareMonth.name}`,
+                run: () => sharePeriod(shareMonth.start, shareMonth.end, `Mese di ${shareMonth.name}`, `TRAMA · ${shareMonth.name}`),
+              },
+            ].map((o) => (
+              <button
+                key={o.key}
+                type="button"
+                onClick={async () => {
+                  setPanel(null);
+                  await o.run();
+                }}
+                className="flex min-h-[56px] items-center gap-3 rounded-[14px] border border-trama-line bg-white px-4 text-left active:bg-black/[0.03]"
+              >
+                <i className={`ti ${o.key === "mese" ? "ti-calendar-month" : "ti-calendar-week"} text-[20px] text-trama-navy`} aria-hidden="true" />
+                <span className="flex min-w-0 flex-1 flex-col">
+                  <span className="text-[14.5px] font-semibold text-ink">{o.title}</span>
+                  <span className="text-[12.5px] text-ink-2">{o.sub}</span>
+                </span>
+                <i className="ti ti-share text-[17px] text-ink-3" aria-hidden="true" />
+              </button>
+            ))}
+          </div>
         </Sheet>
       )}
       {panel === "esporta" && (
@@ -854,6 +899,7 @@ function WeekView({
   onAssign,
   onWho,
   onShare,
+  shareLabel = "Condividi settimana",
   onExport,
   showToday,
   dayView = false,
@@ -881,6 +927,8 @@ function WeekView({
   onAssign: (dateIso: string) => void;
   onWho: () => void;
   onShare: () => void;
+  /** 27/10/2026: "Condividi" (sceglie settimana o mese) con le correzioni UX, altrimenti "Condividi settimana". */
+  shareLabel?: string;
   onExport: (() => void) | null;
   showToday: boolean;
   /** 21/10/2026 — release "planner-giorno": un giorno alla volta. */
@@ -1122,7 +1170,7 @@ function WeekView({
           className="flex min-h-[46px] items-center justify-center gap-2 rounded-[14px] border border-[#E3E6EC] bg-white text-[13px] font-semibold text-trama-navy active:scale-[0.98]"
         >
           <i className="ti ti-share text-[17px]" aria-hidden="true" />
-          Condividi settimana
+          {shareLabel}
         </button>
         {onExport && (
           <button

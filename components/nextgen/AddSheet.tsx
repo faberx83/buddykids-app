@@ -30,6 +30,7 @@ export default function AddSheet({
   onClose,
   addItemEnabled,
   radarEnabled = false,
+  radarPhotoEnabled = true,
   uxFix = false,
 }: {
   open: boolean;
@@ -37,6 +38,8 @@ export default function AddSheet({
   addItemEnabled: boolean;
   /** RADAR (14/10/2026, "il pulsante per aggiungere dépliant e foto dove è finito?"): con RADAR_ENABLED il + offre anche "Una scoperta". */
   radarEnabled?: boolean;
+  /** 27/10/2026: senza l'AI vera del Radar niente "foto" (lib/radar/provider.ts#isRadarPhotoAvailable). */
+  radarPhotoEnabled?: boolean;
   /** Correzioni dal test UX (21/10/2026), UX-PARENT-008: "Un altro genitore"
    *  portava ai Gruppi. Con il flag: "L'altro genitore" (stesso piano, La
    *  tua famiglia) e "Un'altra famiglia" (gruppo). false = come prima. */
@@ -87,9 +90,9 @@ export default function AddSheet({
       ? [
           {
             href: "/nextgen/search?radar=1",
-            icon: "ti-photo-plus",
+            icon: radarPhotoEnabled ? "ti-photo-plus" : "ti-link-plus",
             title: "Una scoperta",
-            detail: "Un volantino, una foto o un link trovati fuori da TRAMA",
+            detail: radarPhotoEnabled ? "Un volantino, una foto o un link trovati fuori da TRAMA" : "Un link o un messaggio su un'attività trovata fuori da TRAMA",
             primary: false,
           },
         ]

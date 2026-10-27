@@ -104,11 +104,14 @@ export default function RadarAddDiscoverySheet({
   onClose,
   initialUrl = "",
   initialText = "",
+  photoEnabled = true,
 }: {
   open: boolean;
   onClose: () => void;
   initialUrl?: string;
   initialText?: string;
+  /** 27/10/2026: false finché l'AI vera è spenta — senza, la foto non si legge (lib/radar/provider.ts#isRadarPhotoAvailable). */
+  photoEnabled?: boolean;
 }) {
   const router = useRouter();
   const [step, setStep] = useState<Step>("choose");
@@ -364,6 +367,7 @@ export default function RadarAddDiscoverySheet({
                 tutte le famiglie.
               </p>
               <div className="flex flex-col gap-2.5">
+                {photoEnabled && (
                 <button type="button" onClick={() => chooseMode("photo")} className="flex items-center gap-3 rounded-xl border border-[#E4E0FA] bg-[#FAF9FF] px-4 py-3.5 text-left">
                   <span className="text-2xl" aria-hidden>📷</span>
                   <span>
@@ -371,6 +375,7 @@ export default function RadarAddDiscoverySheet({
                     <span className="block text-[12px] text-ink-2">Un volantino, una locandina, un post</span>
                   </span>
                 </button>
+                )}
                 <button type="button" onClick={() => chooseMode("link")} className="flex items-center gap-3 rounded-xl border border-[#E4E0FA] bg-[#FAF9FF] px-4 py-3.5 text-left">
                   <span className="text-2xl" aria-hidden>🔗</span>
                   <span>

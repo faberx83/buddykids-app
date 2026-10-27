@@ -380,3 +380,16 @@ export function joinItalian(items: string[]): string {
   if (items.length <= 1) return items[0] ?? "";
   return `${items.slice(0, -1).join(", ")} e ${items[items.length - 1]}`;
 }
+
+// 27/10/2026 — "Condividi" del Planner V2: settimana o tutto il mese.
+/** Mese del giovedì della settimana: primo e ultimo giorno, nome ("novembre"). */
+export function monthOfWeek(mondayIso: string): { start: string; end: string; name: string } {
+  const thu = new Date(mondayIso + "T00:00:00Z");
+  thu.setUTCDate(thu.getUTCDate() + 3);
+  const y = thu.getUTCFullYear();
+  const m = thu.getUTCMonth();
+  const start = new Date(Date.UTC(y, m, 1)).toISOString().slice(0, 10);
+  const end = new Date(Date.UTC(y, m + 1, 0)).toISOString().slice(0, 10);
+  const name = ["gennaio", "febbraio", "marzo", "aprile", "maggio", "giugno", "luglio", "agosto", "settembre", "ottobre", "novembre", "dicembre"][m];
+  return { start, end, name };
+}
