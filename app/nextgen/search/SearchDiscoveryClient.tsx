@@ -1436,6 +1436,7 @@ export default function SearchDiscoveryClient({
             body={contextualAnnouncement.userBody}
             deepLink={contextualAnnouncement.deepLink}
             className=""
+            v2={Boolean(v2)}
           />
         )}
 

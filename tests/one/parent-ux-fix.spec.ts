@@ -751,4 +751,17 @@ test.describe("Secondo test UX 22/10 — 016…022 [no browser]", () => {
     expect(layout).toContain("} else if (enabled && !parentUxFix) {");
     expect(read("app/nextgen/profile/impostazioni/preferenze/page.tsx")).toContain('(await parentUxFixEnabled()) ? null : getTutorialDefinition("discover_book_parent")');
   });
+
+  test("UXF-93 riquadro Novità in Scopri V2: card bianca, niente sottolineature, link alla voce nella pagina Novità", () => {
+    const c = read("components/nextgen/AnnouncementCallout.tsx");
+    const v2 = c.slice(c.indexOf("if (v2) {"), c.indexOf("return (\n    <div className={`${className} mb-3 flex items-start gap-2.5 rounded-lg"));
+    expect(v2).toContain("rounded-2xl border border-trama-line bg-white");
+    expect(v2).toContain("href={`/nextgen/novita#${announcementId}`}");
+    expect(v2).not.toContain("underline");
+    expect(v2).not.toContain("✨");
+    expect(read("app/nextgen/search/SearchDiscoveryClient.tsx")).toContain("v2={Boolean(v2)}");
+    // la voce "Già nell'app" ha l'ancora con l'id
+    expect(read("app/nextgen/novita/page.tsx")).toContain("id={a.id}");
+  });
 });
+

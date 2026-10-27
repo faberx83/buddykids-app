@@ -22,6 +22,7 @@ export default function AnnouncementCallout({
   body,
   deepLink,
   className = "mx-5",
+  v2 = false,
 }: {
   announcementId: string;
   title: string;
@@ -29,6 +30,13 @@ export default function AnnouncementCallout({
   deepLink: string;
   /** Il chiamante può azzerare il margine orizzontale (default mx-5) quando è già dentro un contenitore con padding — vedi SearchDiscoveryClient.tsx. */
   className?: string;
+  /**
+   * 27/10/2026 (Fabrizio: "Scopri le novità è in vecchio stile"): con Scopri V2
+   * stesso aspetto della pagina Novità (card bianca, bordo sottile, niente
+   * sottolineature) e il link porta alla voce nella pagina Novità — prima
+   * puntava a Scopri stessa, quindi il tocco chiudeva il riquadro e basta.
+   */
+  v2?: boolean;
 }) {
   const [dismissed, setDismissed] = useState(false);
   const [dismissing, setDismissing] = useState(false);
@@ -40,6 +48,37 @@ export default function AnnouncementCallout({
     setDismissed(true); // ottimistico: il callout non deve mai sembrare "bloccato" per un utente che ha già cliccato
     await dismissAnnouncementCalloutAction(announcementId);
     setDismissing(false);
+  }
+
+  if (v2) {
+    return (
+      <div className={`${className} mb-3 flex items-start gap-3 rounded-2xl border border-trama-line bg-white px-4 py-3.5`} data-testid="announcement-callout-v2">
+        <span aria-hidden="true" className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full bg-trama-accent-soft text-trama-accent-ink">
+          <i className="ti ti-sparkles text-[18px]" />
+        </span>
+        <div className="min-w-0 flex-1">
+          <p className="text-[15px] font-semibold leading-snug text-ink">{title}</p>
+          <p className="mt-1 text-[14px] leading-snug text-ink-2">{body}</p>
+          <div className="mt-1.5 flex items-center gap-4">
+            <Link
+              href={`/nextgen/novita#${announcementId}`}
+              onClick={handleDismiss}
+              className="flex min-h-[40px] items-center text-[14px] font-semibold text-trama-accent-ink"
+            >
+              Scopri le novità
+            </Link>
+            <button
+              type="button"
+              disabled={dismissing}
+              onClick={handleDismiss}
+              className="flex min-h-[40px] items-center text-[14px] font-semibold text-ink-2 disabled:opacity-60"
+            >
+              Ho capito
+            </button>
+          </div>
+        </div>
+      </div>
+    );
   }
 
   return (
