@@ -298,6 +298,19 @@ export async function approveCandidacyAction(leadId: string, centerInput: Create
     };
   }
 
+  // 27/10/2026 (Fabrizio: "Una sola" approvazione): approvare la candidatura
+  // rende il centro attivo (center_onboarding_state → APPROVED, con storico),
+  // senza il secondo giro profilo/identità/revisione. Funzione di
+  // migration_53: se non è ancora applicata il centro resta com'era, con avviso.
+  let activationWarning: string | null = null;
+  const { error: activationError } = await supabase.rpc("admin_approve_center_from_candidacy", {
+    p_center_id: result.centerId,
+    p_note: "Candidatura approvata (Admin → Segnalazioni centri)",
+  });
+  if (activationError) {
+    activationWarning = `Centro creato ma non ancora segnato come attivo (${activationError.message}): serve la migration 53.`;
+  }
+
   revalidatePath("/admin/center-leads");
   // Percorso dei centri del pilota (27/10/2026): "sei dentro" al candidato,
   // dietro CENTER_PILOT_FLOW_ENABLED. Best-effort: centro e candidatura sono già salvati.
@@ -316,10 +329,11 @@ export async function approveCandidacyAction(leadId: string, centerInput: Create
   if (!result.assigned && result.warning?.startsWith("Centro creato, ma nessun utente registrato")) {
     return {
       ...result,
-      warning: emailSent
+      warning: (activationWarning ? `${activationWarning} ` : "") + (emailSent
         ? `Gli abbiamo mandato l'email con il link per creare l'accesso (${centerInput.gestoreEmail}): il centro si collega da solo.`
-        : `Il centro si collega da solo quando ${centerInput.gestoreEmail} crea l'accesso. L'email automatica non è partita (release "Centri: percorso del pilota" spenta o invio email non configurato): mandagli tu il link della pagina di conferma.`,
+        : `Il centro si collega da solo quando ${centerInput.gestoreEmail} crea l'accesso. L'email automatica non è partita (release "Centri: percorso del pilota" spenta o invio email non configurato): mandagli tu il link della pagina di conferma.`),
     };
   }
+  if (activationWarning) return { ...result, warning: result.warning ? `${result.warning} ${activationWarning}` : activationWarning };
   return result;
 }

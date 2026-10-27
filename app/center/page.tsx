@@ -244,7 +244,9 @@ export default async function CenterDashboardPage() {
               Profilo centro: {ONBOARDING_STATUS_LABEL[onboarding.status]}
             </div>
             <div className="mt-0.5 text-[11.5px] text-[#9a6b00]">
-              Finché il profilo non è Approvato, la tua attività non è visibile alle famiglie.
+              {/* 27/10/2026: prima diceva "la tua attività non è visibile alle famiglie", ma il
+                  catalogo non legge questo stato (le attività sono visibili): testo corretto. */}
+              L&apos;attivazione la segue TRAMA: per qualunque dubbio rispondi all&apos;email di approvazione.
             </div>
           </div>
         </div>
