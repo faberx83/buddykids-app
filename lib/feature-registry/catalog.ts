@@ -1034,6 +1034,38 @@ export const FEATURE_CATALOG: FeatureCatalogEntry[] = [
     releaseEligible: true,
   },
   {
+    // TRAMA — MESSAGGI CON IL CENTRO COME CONVERSAZIONE (27/10/2026; approvato
+    // il 15/10). ADAPT di activity_inquiries (= la conversazione) e delle sue
+    // azioni; NEW la tabella inquiry_messages (migration_54, additiva), le
+    // pagine /nextgen/richieste/[id] e /center/richieste/[id].
+    key: "inquiry_threads",
+    label: "Messaggi con il centro — conversazione",
+    area: "cross_tenant",
+    status: "INTERNAL_PREVIEW",
+    flagName: "INQUIRY_THREADS_ENABLED",
+    description:
+      "Famiglia e centro si scrivono nella stessa conversazione (una per attività): niente più una domanda e una " +
+      "risposta per volta. Elenchi e conversazione in grafica V2 da entrambe le parti.",
+    sourceFiles: [
+      "lib/inquiries/thread.ts",
+      "lib/data/inquiries.ts",
+      "app/actions/inquiries.ts",
+      "components/inquiries/InquiryThreadView.tsx",
+      "components/inquiries/InquiryConversationList.tsx",
+      "components/ContactCenterButton.tsx",
+      "app/nextgen/richieste/page.tsx",
+      "app/nextgen/richieste/[id]/page.tsx",
+      "app/center/richieste/page.tsx",
+      "app/center/richieste/[id]/page.tsx",
+      "supabase/migration_54_messaggi_centro.sql",
+    ],
+    note:
+      "Serve la migration 54: prima, con il flag acceso, il secondo messaggio di una conversazione non si salva (errore " +
+      "chiaro). Va accesa insieme per famiglie e centri (stessa release).",
+    riskLevel: "medium",
+    releaseEligible: true,
+  },
+  {
     // TRAMA — PERCORSO DEI CENTRI DEL PILOTA (27/10/2026). ADAPT di
     // createBookingAction (oltre alla push, l'email), submitCenterCandidacyAction
     // e approveCandidacyAction (email best-effort), layout Partner (tour spento);

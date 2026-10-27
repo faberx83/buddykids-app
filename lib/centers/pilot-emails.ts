@@ -78,6 +78,34 @@ export function centerNewRequestEmail(input: {
   };
 }
 
+/** Nuovo messaggio di una famiglia nella conversazione (27/10/2026). */
+export function centerNewMessageEmail(input: {
+  activityName: string | null;
+  parentFirstName: string | null;
+  preview: string;
+  inquiryId: string;
+}): BuiltEmail {
+  const activity = input.activityName?.trim() || "una vostra attività";
+  const who = input.parentFirstName?.trim() || "Una famiglia";
+  const text = input.preview.replace(/\s+/g, " ").trim();
+  const short = text.length > 280 ? `${text.slice(0, 279)}…` : text;
+  const subject = `Nuovo messaggio: ${activity}`;
+  return {
+    subject,
+    html: tramaEmailHtml({
+      title: subject,
+      paragraphs: [
+        `${escapeEmailHtml(who)} vi ha scritto per <strong>${escapeEmailHtml(activity)}</strong>:`,
+        `<em>“${escapeEmailHtml(short)}”</em>`,
+        "Rispondete dal portale: la famiglia vede tutta la conversazione in TRAMA.",
+      ],
+      cta: { label: "Apri la conversazione", href: `${PARTNER_PUBLIC_ORIGIN}/center/richieste/${input.inquiryId}` },
+      showLinkFallback: true,
+      footnote: "Ricevete questa email perché gestite questo centro su TRAMA.",
+    }),
+  };
+}
+
 export function candidacyReceivedEmail(input: { centerName: string; statusUrl: string | null }): BuiltEmail {
   const subject = "Abbiamo ricevuto la vostra candidatura";
   return {

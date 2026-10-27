@@ -14,6 +14,7 @@ import {
   candidacyAdminNoticeEmail,
   candidacyApprovedEmail,
   candidacyReceivedEmail,
+  centerNewMessageEmail,
   centerNewRequestEmail,
 } from "@/lib/centers/pilot-emails";
 
@@ -53,6 +54,35 @@ export async function emailCenterAdminsOfNewRequest(input: {
     }
   } catch (e) {
     console.error("[center-pilot] errore inatteso nell'email di nuova richiesta:", e);
+  }
+}
+
+/** Nuovo messaggio di una famiglia → email a ogni gestore del centro (flag per gestore). */
+export async function emailCenterAdminsOfNewMessage(input: {
+  centerId: string;
+  activityName: string | null;
+  parentFirstName: string | null;
+  preview: string;
+  inquiryId: string;
+}): Promise<void> {
+  if (!isEmailConfigured) return;
+  try {
+    const service = createServiceClient();
+    if (!service) return;
+    const { data: admins } = await service
+      .from("profiles")
+      .select("id, email")
+      .eq("center_id", input.centerId)
+      .eq("role", "center_admin");
+    const mail = centerNewMessageEmail(input);
+    for (const admin of admins ?? []) {
+      if (!admin.email) continue;
+      if (!(await flagOn(admin.id, "center_admin"))) continue;
+      const r = await sendEmail({ to: admin.email, subject: mail.subject, html: mail.html });
+      if (r.error) console.error(`[center-pilot] email nuovo messaggio non inviata (center=${input.centerId}): ${r.error}`);
+    }
+  } catch (e) {
+    console.error("[center-pilot] errore inatteso nell'email di nuovo messaggio:", e);
   }
 }
 

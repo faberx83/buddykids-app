@@ -335,13 +335,15 @@ export const RELEASE_CATALOG: ReleaseCatalogEntry[] = [
     id: "centri-percorso-pilota",
     label: "TRAMA — Centri: percorso del pilota",
     shortDescription:
-      "Email al centro per ogni nuova richiesta, email della candidatura (conferma, avviso a TRAMA, approvazione con il link per l'accesso) e pagina tramapp.it/centri.",
-    targetAudience: ["partner"],
-    featureKeys: ["center_pilot_flow"],
+      "Email al centro per ogni nuova richiesta e messaggio, email della candidatura (conferma, avviso a TRAMA, approvazione con il link per l'accesso), pagina tramapp.it/centri, messaggi famiglia↔centro come conversazione.",
+    targetAudience: ["partner", "parent"],
+    featureKeys: ["center_pilot_flow", "inquiry_threads"],
     knownLimitations: [
       "center_pilot_flow: candidatura e pagina /centri sono pubbliche, quindi valgono solo con la release a tutti; Interno e Pilot accendono solo l'email delle nuove richieste per i gestori in coorte.",
       "center_pilot_flow: un gestore che si registra dopo l'approvazione diventa gestore solo dopo la migration 52; prima deve registrarsi prima dell'approvazione.",
       "center_pilot_flow: l'email della nuova richiesta va agli account gestore del centro; un centro senza gestore registrato riceve solo l'email di approvazione.",
+      "inquiry_threads: serve la migration 54 (inquiry_messages); prima, il secondo messaggio di una conversazione non si salva e la famiglia vede un errore chiaro.",
+      "inquiry_threads: alla famiglia arriva una notifica push quando il centro risponde (nessuna email); al centro push ed email.",
     ],
     notes: "Creata il 27/10/2026. Ripiego: flag spento = solo push al centro, nessuna email della candidatura, tour come prima.",
   },

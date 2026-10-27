@@ -339,6 +339,17 @@ export const FEATURE_FLAG_REGISTRY = {
     defaultValue: false,
     allowedScopes: ["global", "environment", "user", "role", "cohort"],
   },
+  // TRAMA — MESSAGGI CON IL CENTRO COME CONVERSAZIONE (27/10/2026), release
+  // "centri-percorso-pilota". migration_54 (inquiry_messages).
+  INQUIRY_THREADS_ENABLED: {
+    name: "INQUIRY_THREADS_ENABLED",
+    description:
+      "'Contatta il gestore' diventa una conversazione: una per famiglia e attività, messaggi in ordine da entrambe le " +
+      "parti, elenco 'Messaggi con i centri' (famiglie) e 'Messaggi dalle famiglie' (centri) in grafica V2. Default " +
+      "false: un messaggio e una risposta per richiesta, come prima (i messaggi si salvano comunque nella conversazione).",
+    defaultValue: false,
+    allowedScopes: ["global", "environment", "user", "role", "cohort", "tenant"],
+  },
   // TRAMA — PERCORSO DEI CENTRI DEL PILOTA (27/10/2026), release "centri-percorso-pilota".
   // P0 di claude/INIZIATIVA_partner_admin_v2.md. Si risolve anche senza utente
   // (candidatura e pagina /centri sono pubbliche): per i visitatori vale solo "a tutti".
