@@ -7,14 +7,19 @@
 -- "preparata"): prima servono l'account e il centro, poi lo applichi con
 --   APPLY_SQL=supabase/script_centro_di_prova_attivita.sql bash deploy.sh
 --
--- Prima (Fabrizio, 5 minuti):
+-- Prima (Fabrizio, 5 minuti) — 27/10/2026: si passa dalla candidatura,
+-- come farà un centro vero (form "Candidati come partner" in fondo a
+-- tramapp.it/benvenuto, già compilato: Admin → Segnalazioni centri):
 --   1. registra un account su tramapp.it con faberx83+centroprova@gmail.com
---      (conferma l'email);
---   2. Admin → Centri → Nuovo centro: nome "TRAMA · Centro di prova",
---      città Milano, descrizione "Centro di prova di TRAMA per la beta: le
---      attività non esistono. Serve a provare richiesta, risposta del centro,
---      email e check-in. Nessun pagamento.", email del gestore =
---      faberx83+centroprova@gmail.com.
+--      (conferma l'email). PRIMA dell'approvazione: finché migration_52 non
+--      è applicata, la registrazione fatta dopo non diventa gestore;
+--   2. Admin → Segnalazioni centri → candidatura "Centro di Prova" →
+--      "Approva e crea centro" (città Milano, descrizione "Centro di prova di
+--      TRAMA per la beta: le attività non esistono. Serve a provare
+--      richiesta, risposta del centro, email e check-in. Nessun pagamento.").
+--      L'approvazione trova l'account e lo fa gestore del centro.
+--      (Il nome del centro si può poi cambiare in "TRAMA · Centro di prova"
+--      da Admin → Centri.)
 --
 -- Cosa fa: trova il centro di quell'account e aggiunge 4 attività di prova,
 -- dichiarate nel nome e nella descrizione, a iscrizione per giorno singolo,
@@ -43,7 +48,7 @@ begin
   from public.profiles p
   where lower(p.email) = 'faberx83+centroprova@gmail.com' and p.role = 'center_admin';
   if v_center is null then
-    raise exception 'Prima crea l''account faberx83+centroprova@gmail.com e il centro "TRAMA · Centro di prova" da Admin → Centri, con quell''email come gestore.';
+    raise exception 'Prima registra l''account faberx83+centroprova@gmail.com, poi approva la candidatura "Centro di Prova" da Admin → Segnalazioni centri.';
   end if;
 
   insert into public.activities
