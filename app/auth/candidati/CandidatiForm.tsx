@@ -32,7 +32,7 @@ export default function CandidatiForm({ source = null }: { themeColor?: string; 
   const [suggestion, setSuggestion] = useState<string | null>(null);
 
   const inputClass =
-    "w-full rounded-xl border border-trama-line bg-white px-4 py-3 text-[16px] text-ink outline-none focus:border-trama-primary";
+    "w-full rounded-[12px] border border-trama-line bg-white px-4 py-3 text-[16px] text-ink outline-none focus:border-trama-primary";
   const labelClass = "mb-1.5 block text-[14px] font-semibold text-trama-navy";
 
   async function handleSubmit(e: React.FormEvent) {
