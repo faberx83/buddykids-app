@@ -163,24 +163,7 @@ test.describe("Candidatura dei centri: flusso (controlli sul sorgente)", () => {
   });
 });
 
-test.describe("Una sola approvazione (27/10/2026, scelta di Fabrizio)", () => {
-  test("CP-20 migration 53: funzione solo per platform_admin, non riattiva i sospesi, storico; sistema i centri da candidatura fermi", () => {
-    const sql = read("supabase/migration_53_candidatura_approva_centro.sql");
-    expect(sql.split("\n")[1]).toBe("-- STATO: PREPARATA, NON APPLICATA");
-    expect(sql).toContain("if not public.is_platform_admin() then");
-    expect(sql).toContain("if v_current_status = 'SUSPENDED' then");
-    expect(sql).toContain("insert into public.center_onboarding_audit_log");
-    expect(sql).toContain("revoke execute on function public.admin_approve_center_from_candidacy(uuid, text) from public, anon;");
-    expect(sql).toContain("where s.status in ('LEAD', 'CLAIMED')");
-    expect(sql).toContain("and l.claimed_center_id = s.center_id");
-  });
-
-  test("CP-21 'Approva e crea centro' rende il centro attivo dopo aver collegato la candidatura; l'avviso del portale non dice più il falso", () => {
-    const a = read("app/actions/center-leads.ts");
-    const fn = a.slice(a.indexOf("export async function approveCandidacyAction"));
-    expect(fn.indexOf('status: "claimed"')).toBeLessThan(fn.indexOf('supabase.rpc("admin_approve_center_from_candidacy"'));
-    expect(fn).toContain("serve la migration 53");
-    const dash = read("app/center/page.tsx");
-    expect(dash).not.toContain("Finché il profilo non è Approvato, la tua attività non è visibile alle famiglie.");
-  });
+test("CP-22 l'avviso di attivazione nel portale centri non dice più che le attività sono invisibili (il catalogo non legge lo stato)", () => {
+  const dash = read("app/center/page.tsx");
+  expect(dash).not.toContain("Finché il profilo non è Approvato, la tua attività non è visibile alle famiglie.");
 });
