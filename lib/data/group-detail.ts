@@ -132,6 +132,8 @@ export async function getGroupDetail(groupId: string): Promise<GroupDetail | nul
       kidId: row.kid_id,
       kidName: myKid?.name || (isOwn ? "Il tuo bambino/a" : "Bambino/a"),
       kidEmoji: myKid?.emoji || "🧒",
+      // 28/10/2026 (Fabrizio: "mettiamo foto?"): solo i propri figli.
+      kidPhotoUrl: isOwn ? (myKid?.avatarUrl ?? null) : null,
       isOwn,
       preferredTagId: row.preferred_tag_id,
       preferredTagLabel: tag?.label ?? null,

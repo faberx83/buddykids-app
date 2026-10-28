@@ -102,6 +102,7 @@ import PlannerDayFocus from "@/components/nextgen/PlannerDayFocus";
 import { buildKidPassageChains, defaultDayIso } from "@/lib/nextgen/planner-day";
 import PassageAssignBody from "@/components/nextgen/PassageAssignBody";
 import PassageBusyDayBody from "@/components/nextgen/PassageBusyDayBody";
+import PassageWeekBody from "@/components/nextgen/PassageWeekBody";
 import type { PassageResponsibility } from "@/lib/nextgen/passages";
 
 type View = "settimana" | "stagione";
@@ -311,7 +312,7 @@ export default function PlannerV2Client({
     [passagesEnabled, passageRows, passageLabelFor]
   );
   const visibleKids = useMemo(
-    () => kids.filter((k) => kidFilter === null || k.id === kidFilter).map((k) => ({ id: k.id, name: k.name })),
+    () => kids.filter((k) => kidFilter === null || k.id === kidFilter).map((k) => ({ id: k.id, name: k.name, avatarUrl: k.avatarUrl ?? null })),
     [kids, kidFilter]
   );
   const agendaFor = useCallback(
@@ -800,7 +801,30 @@ export default function PlannerV2Client({
           onClose={() => setPanel(null)}
         />
       )}
-      {panel === "chi" && (
+      {/* 28/10/2026 sera — "Chi fa cosa" della settimana col bambino al centro (PassageWeekBody). */}
+      {panel === "chi" && passages && passagePersonFirst && (
+        <Sheet title={`Chi fa cosa · ${week.label}`} onClose={() => { setPanel(null); router.refresh(); }} tall>
+          <PassageWeekBody
+            days={weekShown.days}
+            kids={visibleKids}
+            kidOrder={kidOrder}
+            options={resolveResponsibleOptions(parentRole, familyPeople)}
+            rows={passageRows}
+            onRowsChange={setPassageRows}
+            onDayChange={setResponsibilities}
+            labelFor={passageLabelFor}
+            todayIso={todayIso}
+            plusEnabled={assignPlusEnabled}
+            partnerOnTrama={partnerOnTrama}
+            onOpenDay={(dateIso) => setPanel({ assign: dateIso })}
+            onClose={() => {
+              setPanel(null);
+              router.refresh();
+            }}
+          />
+        </Sheet>
+      )}
+      {panel === "chi" && !(passages && passagePersonFirst) && (
         <WeekWhoSheet
           week={week}
           mondayIso={monday}

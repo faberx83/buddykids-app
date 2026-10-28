@@ -101,7 +101,7 @@ export default function PassageBusyDayBody({
   onClose,
 }: {
   day: WeekDayModel;
-  kids: { id: string; name: string }[];
+  kids: { id: string; name: string; avatarUrl?: string | null }[];
   kidOrder: string[];
   options: ResponsibleOption[];
   rows: PassageResponsibility[];
@@ -135,6 +135,7 @@ export default function PassageBusyDayBody({
 
   const generic = options.find((o) => o.value === "altro" && !o.familyPersonId) ?? null;
   const youLabel = options.find((o) => o.value === "io")?.label ?? "Tu";
+  const photoOf = (kidId: string) => kids.find((k) => k.id === kidId)?.avatarUrl ?? null;
 
   const kidDays = useMemo(
     () =>
@@ -560,7 +561,7 @@ export default function PassageBusyDayBody({
                   data-testid="busy-kid"
                 >
                   <div className="flex items-center gap-2.5 px-3.5 pb-2 pt-3">
-                    <KidAvatar name={kid.name} tone={kidToneFor(kid.id, kidOrder)} size={30} />
+                    <KidAvatar name={kid.name} tone={kidToneFor(kid.id, kidOrder)} size={30} photoUrl={photoOf(kid.id)} />
                     <h3 id={`busy-kid-${kid.id}`} className="min-w-0 flex-1 truncate text-[16px] font-bold text-trama-navy">
                       {kid.name}
                     </h3>
@@ -690,7 +691,7 @@ export default function PassageBusyDayBody({
           className="relative mx-auto flex max-h-[88%] w-full max-w-[560px] flex-col gap-4 overflow-y-auto rounded-t-3xl bg-trama-page px-5 pb-[calc(1.5rem+env(safe-area-inset-bottom))] pt-4 shadow-[0_-8px_30px_rgba(23,42,77,0.2)]"
         >
           <div className="flex items-start gap-3">
-            <KidAvatar name={item.parts[0].kidName} tone={kidToneFor(item.kidIds[0], kidOrder)} size={36} />
+            <KidAvatar name={item.parts[0].kidName} tone={kidToneFor(item.kidIds[0], kidOrder)} size={36} photoUrl={photoOf(item.kidIds[0])} />
             <div className="flex min-w-0 flex-1 flex-col gap-0.5">
               <h3 id="busy-who-title" className="font-poppins text-[19px] font-semibold leading-tight text-trama-navy">
                 {whoQuestion(item)}

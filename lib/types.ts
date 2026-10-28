@@ -285,6 +285,8 @@ export interface GroupKidEntry {
   kidId: string;
   kidName: string;
   kidEmoji: string;
+  /** 28/10/2026: la foto, solo per i propri figli (mai quelle dei figli degli altri). */
+  kidPhotoUrl?: string | null;
   isOwn: boolean; // true se è un bambino del genitore loggato (può modificarlo/rimuoverlo)
   preferredTagId: string | null;
   preferredTagLabel: string | null;

@@ -28,12 +28,30 @@ export function KidAvatar({
   tone,
   size = 30,
   ring = false,
+  photoUrl = null,
 }: {
   name: string;
   tone: { bg: string; text: string };
   size?: number;
   ring?: boolean;
+  /** 28/10/2026 (Fabrizio: "mettiamo foto?"): la foto del figlio, se caricata in La tua famiglia. */
+  photoUrl?: string | null;
 }) {
+  if (photoUrl) {
+    return (
+      // eslint-disable-next-line @next/next/no-img-element
+      <img
+        src={photoUrl}
+        alt=""
+        aria-hidden="true"
+        width={size}
+        height={size}
+        style={{ width: size, height: size }}
+        className={`flex-shrink-0 rounded-full object-cover ${ring ? "ring-2 ring-white" : ""}`}
+        data-testid="kid-photo"
+      />
+    );
+  }
   return (
     <span
       aria-hidden="true"

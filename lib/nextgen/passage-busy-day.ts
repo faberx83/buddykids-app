@@ -513,3 +513,26 @@ export function personView(
   groups.sort((a, b) => Number(b.you) - Number(a.you));
   return { groups, open: all.filter((i) => i.label === null) };
 }
+
+// ─── "Chi fa cosa" della settimana (28/10/2026 sera) ────────────────────
+// Fabrizio, sul foglio settimanale rimasto quello di prima (Porta / Ritira
+// per giorno e "Uguale per tutta la settimana" con tutte le persone): stesso
+// linguaggio del foglio del giorno. Ogni giorno: i figli, ognuno con i suoi
+// passaggi in fila ("08:00 Tu · 13:40 Zia Carla · 19:00 Chi?"); in cima
+// "Come la settimana scorsa" per tutti i giorni insieme.
+
+/** Le scelte della settimana prima, giorno per giorno (solo passaggi uguali e ancora da decidere, da oggi in poi). */
+export function weekSameAsLast(input: {
+  days: { date: string; items: BusyItem[] }[];
+  todayIso: string;
+  rows: PassageResponsibility[];
+  labelFor: (row: PassageResponsibility) => string;
+}): { perDay: { date: string; suggestion: SameWeekdaySuggestion }[]; count: number } {
+  const perDay = input.days
+    .filter((d) => d.date >= input.todayIso)
+    .flatMap((d) => {
+      const s = sameWeekdaySuggestion({ date: d.date, items: d.items, rows: input.rows, labelFor: input.labelFor, maxWeeks: 1 });
+      return s ? [{ date: d.date, suggestion: s }] : [];
+    });
+  return { perDay, count: perDay.reduce((n, d) => n + d.suggestion.count, 0) };
+}

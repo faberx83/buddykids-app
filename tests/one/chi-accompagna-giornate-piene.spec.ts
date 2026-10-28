@@ -17,6 +17,7 @@ import {
   siblingTwins,
   topPeople,
   usualPersonFor,
+  weekSameAsLast,
   whoQuestion,
   dayRowFor,
   groupByPerson,
@@ -341,5 +342,36 @@ test.describe("Chi accompagna v2: il bambino al centro", () => {
 
   test("GP-45 'Io' diventa 'Tu' (opzioni e scelte salvate)", () => {
     expect(RESPONSIBLE_OPTIONS.find((o) => o.value === "io")?.label).toBe("Tu");
+  });
+});
+
+// 28/10/2026 sera (Fabrizio sul foglio "Chi fa cosa" della settimana: "penso sia
+// ancora vecchio… nei gruppi ancora icona vecchia… mettiamo foto?").
+test.describe("Chi fa cosa della settimana e foto dei figli", () => {
+  test("GP-50 'Come la settimana scorsa': solo da oggi in poi, solo la settimana prima", () => {
+    const LAST = "2026-10-21";
+    const rows = [row(LINO.id, LAST, CALCIO, "ritorno", "partner"), row(LINO.id, "2026-10-14", "school", "andata", "io")];
+    const items = buildKidDays({ kids: KIDS, entries, date: WED, rows, labelFor }).flatMap((k) => k.items);
+    const w = weekSameAsLast({ days: [{ date: WED, items }], todayIso: "2026-10-26", rows, labelFor });
+    expect(w.count).toBe(1); // solo il ritiro da Calcio: l'entrata di due settimane fa non conta
+    expect(w.perDay.map((d) => d.date)).toEqual([WED]);
+    expect(weekSameAsLast({ days: [{ date: WED, items }], todayIso: "2026-10-29", rows, labelFor }).count).toBe(0);
+  });
+
+  test("GP-51 col flag il foglio della settimana è PassageWeekBody; spento resta WeekWhoSheet", () => {
+    const client = read("app/nextgen/planner/PlannerV2Client.tsx");
+    expect(client).toContain('{panel === "chi" && passages && passagePersonFirst && (');
+    expect(client).toContain('{panel === "chi" && !(passages && passagePersonFirst) && (');
+    const body = read("components/nextgen/PassageWeekBody.tsx");
+    expect(body).toContain("onClick={() => onOpenDay(w.day.dateIso)}");
+    expect(body).toContain("photoUrl={photoOf(kid.id)}");
+    expect(body).not.toContain("setWeekBulkResponsibilityAction"); // niente più "Uguale per tutta la settimana"
+  });
+
+  test("GP-52 foto dei figli: nel Planner e nei gruppi, solo i propri", () => {
+    expect(read("components/nextgen/AgendaItemRow.tsx")).toContain("photoUrl?: string | null;");
+    expect(read("app/nextgen/planner/PlannerV2Client.tsx")).toContain("avatarUrl: k.avatarUrl ?? null");
+    expect(read("lib/data/group-detail.ts")).toContain("kidPhotoUrl: isOwn ? (myKid?.avatarUrl ?? null) : null,");
+    expect(read("components/GroupDetailClient.tsx")).toContain("photoUrl={k.isOwn ? k.kidPhotoUrl : null}");
   });
 });

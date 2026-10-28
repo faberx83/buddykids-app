@@ -6,6 +6,7 @@ import Link from "next/link";
 import { canGoBackInApp, goBackInApp } from "@/lib/nextgen/in-app-history";
 import TramaThread from "@/components/nextgen/TramaThread";
 import { monogramFor, threadColorFor } from "@/components/nextgen/ActivityVisual";
+import { KidAvatar, KID_TONES } from "@/components/nextgen/AgendaItemRow";
 import { GroupDetail, CarpoolLeg } from "@/lib/types";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
 import { discountForGroupSize, GROUP_DISCOUNT_TIERS } from "@/lib/groups";
@@ -486,7 +487,7 @@ function GruppoTab({
   const accentText = nextgen === "v2" ? "text-trama-accent-ink" : nextgen ? "text-trama-violet" : "text-sky";
   const accentFocus = nextgen ? "focus:border-trama-violet" : "focus:border-sky";
   const accentLight = nextgen === "v2" ? "bg-trama-primary-soft" : nextgen ? "bg-trama-lilac/20" : "bg-sky-light";
-  const { titleCls, card: cardCls, cardFlush: cardFlushCls, btnShape, btnSecondary } = groupLook(nextgen);
+  const { titleCls, card: cardCls, cardFlush: cardFlushCls, btnShape, btnSecondary, v2: v2Look } = groupLook(nextgen);
   const [pickingActivity, setPickingActivity] = useState(false);
   const [selectedActivity, setSelectedActivity] = useState(activityOptions[0]?.dbId || "");
   const [savingActivity, setSavingActivity] = useState(false);
@@ -619,7 +620,18 @@ function GruppoTab({
         <div className="divide-y divide-[#F0F2F5]">
           {detail.kids.map((k) => (
             <div key={k.id} className="flex items-center gap-2.5 px-3.5 py-2.5">
-              <span className="text-lg">{k.kidEmoji}</span>
+              {/* 28/10/2026 (Fabrizio: "ancora icona vecchia… mettiamo foto?"): nel V2 la foto dei
+                  propri figli, altrimenti l'iniziale come nel Planner; i figli degli altri mai in foto. */}
+              {v2Look ? (
+                <KidAvatar
+                  name={k.kidName}
+                  tone={k.isOwn ? KID_TONES[0] : { bg: "bg-[#F1F0EC]", text: "text-ink-2" }}
+                  size={34}
+                  photoUrl={k.isOwn ? k.kidPhotoUrl : null}
+                />
+              ) : (
+                <span className="text-lg">{k.kidEmoji}</span>
+              )}
               <div className="min-w-0 flex-1">
                 <div className="truncate text-sm font-semibold text-ink">{k.kidName}</div>
                 <div className="text-xs text-ink-2">
