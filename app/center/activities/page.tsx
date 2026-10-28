@@ -2,6 +2,10 @@ import Link from "next/link";
 import { getActivitiesForCenter } from "@/lib/data/activities";
 import { getCenterContext } from "@/lib/data/center-admin";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
+// PORTALE CENTRI V2, GUSCIO (28/10/2026): elenco ridisegnato (tavola 6).
+import ActivitiesV2 from "@/components/center/ActivitiesV2";
+import { getActivityDateSummaries, EMPTY_DATE_SUMMARY } from "@/lib/data/activity-dates";
+import { partnerShellEnabledForCurrentUser } from "@/lib/centers/partner-v2-flag";
 
 // Difensivo, vedi nota in app/center/activities/[id]/page.tsx.
 export const dynamic = "force-dynamic";
@@ -9,6 +13,26 @@ export const dynamic = "force-dynamic";
 export default async function CenterActivitiesPage() {
   const { centerDbId, centerSlug, isPlatformAdmin } = await getCenterContext();
   const myActivities = await getActivitiesForCenter(centerDbId, centerSlug);
+
+  if (centerDbId && (await partnerShellEnabledForCurrentUser())) {
+    const dates = await getActivityDateSummaries(myActivities.map((a) => a.dbId ?? "").filter(Boolean));
+    return (
+      <ActivitiesV2
+        canCreate={isSupabaseConfigured}
+        activities={myActivities.map((a) => ({
+          slug: a.id,
+          name: a.name,
+          emoji: a.emoji,
+          ageRange: a.ageRange,
+          dayBased: a.bookingMode === "day_only",
+          mixed: a.bookingMode === "mixed",
+          hours: a.hours ?? null,
+          pricePerWeek: a.pricePerWeek,
+          dates: (a.dbId && dates[a.dbId]) || EMPTY_DATE_SUMMARY,
+        }))}
+      />
+    );
+  }
 
   return (
     <div>
