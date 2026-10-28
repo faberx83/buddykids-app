@@ -5,6 +5,9 @@ import { getActivitiesForCenter, getPromotionsForActivities } from "@/lib/data/a
 import { getCenterOnboardingState } from "@/lib/onboarding/data";
 import { CenterOnboardingStatus } from "@/lib/onboarding/types";
 import { buildFamilyPreviewHref, pickFamilyPreviewSlug } from "@/lib/center/family-preview";
+import { partnerV2EnabledForCurrentUser } from "@/lib/centers/partner-v2-flag";
+import { getMyCenterActivation } from "@/lib/data/center-activation";
+import { profileChecks } from "@/lib/centers/activation";
 
 // Forza il render dinamico per-richiesta: questa pagina dipende dalla
 // sessione/cookie dell'utente loggato (getMyCenter -> getCenterContext),
@@ -79,7 +82,21 @@ export default async function CenterProfilePage() {
       center.contactPhone?.trim() &&
       center.logoUrl
   );
-  const profileComplete = profileFieldsComplete && myActivities.length > 0;
+  const legacyProfileComplete = profileFieldsComplete && myActivities.length > 0;
+
+  // 28/10/2026, Fabrizio (screenshot "Profilo · Da completare" con il centro
+  // già attivo al 100%): questo riquadro usava una regola sua (telefono E
+  // logo obbligatori), diversa dai 5 controlli dell'attivazione. Con il
+  // portale V2 vale la stessa regola della card di Oggi e dell'Admin, e il
+  // riquadro dice cosa manca invece di "Modifica qui sotto".
+  const activation = (await partnerV2EnabledForCurrentUser()) ? await getMyCenterActivation(dbId) : null;
+  const missingChecks = activation ? profileChecks(activation.facts.profile).filter((c) => !c.done) : null;
+  const profileComplete = missingChecks ? missingChecks.length === 0 : legacyProfileComplete;
+  const profileHint = missingChecks
+    ? missingChecks.length === 0
+      ? "Telefono e logo sono facoltativi"
+      : `Manca: ${missingChecks.map((c) => c.label.toLowerCase()).join(", ")}`
+    : "Modifica qui sotto";
 
   return (
     <div className="max-w-2xl">
@@ -178,7 +195,7 @@ export default async function CenterProfilePage() {
           <span className={`text-[15px] font-bold ${profileComplete ? "text-trama-green" : "text-trama-orange"}`}>
             {profileComplete ? "Completo" : "Da completare"}
           </span>
-          <span className="text-[11.5px] text-ink-3">Modifica qui sotto</span>
+          <span className="text-[11.5px] text-ink-2">{profileHint}</span>
         </div>
       </div>
 

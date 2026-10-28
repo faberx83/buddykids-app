@@ -72,6 +72,29 @@ export default function ActivationAdminClient({ rows }: { rows: AdminActivationR
   const [note, setNote] = useState("");
   const [busy, setBusy] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
+  // 28/10/2026, Fabrizio: "servono 2 click per le spunte per vederle ok".
+  // La spunta seguiva solo il dato del server, che arriva dopo l'azione e il
+  // refresh: al primo tocco restava vuota. Ora si spunta subito (stato locale
+  // per centro), si salva, e se il salvataggio fallisce torna com'era.
+  const [pendingChecks, setPendingChecks] = useState<Record<string, { referent?: boolean; activities?: boolean }>>({});
+  const referentOn = (r: AdminActivationRow) => pendingChecks[r.centerId]?.referent ?? r.referentConfirmed;
+  const activitiesOn = (r: AdminActivationRow) => pendingChecks[r.centerId]?.activities ?? r.activitiesChecked;
+
+  async function toggleCheck(r: AdminActivationRow, check: "referent" | "activities", value: boolean) {
+    setMessage(null);
+    setPendingChecks((p) => ({ ...p, [r.centerId]: { ...p[r.centerId], [check]: value } }));
+    const res = await setActivationCheckAction(r.centerId, check, value).catch(() => ({ error: "Operazione non riuscita, riprova." }));
+    if (res.error) {
+      setPendingChecks((p) => {
+        const next = { ...p[r.centerId] };
+        delete next[check];
+        return { ...p, [r.centerId]: next };
+      });
+      return setMessage(res.error);
+    }
+    setMessage("Salvato.");
+    router.refresh();
+  }
 
   async function run(key: string, fn: () => Promise<{ error?: string }>, ok: string) {
     setMessage(null);
@@ -216,11 +239,9 @@ export default function ActivationAdminClient({ rows }: { rows: AdminActivationR
                   <input
                     type="checkbox"
                     className="mt-0.5 h-5 w-5 flex-shrink-0"
-                    checked={selected.referentConfirmed}
+                    checked={referentOn(selected)}
                     disabled={busy !== null || selected.bucket === "attivi"}
-                    onChange={(e) =>
-                      void run("ref", () => setActivationCheckAction(selected.centerId, "referent", e.target.checked), "Salvato.")
-                    }
+                    onChange={(e) => void toggleCheck(selected, "referent", e.target.checked)}
                   />
                   <span>Referente e telefono confermati con la telefonata</span>
                 </label>
@@ -228,11 +249,9 @@ export default function ActivationAdminClient({ rows }: { rows: AdminActivationR
                   <input
                     type="checkbox"
                     className="mt-0.5 h-5 w-5 flex-shrink-0"
-                    checked={selected.activitiesChecked}
+                    checked={activitiesOn(selected)}
                     disabled={busy !== null || selected.bucket === "attivi"}
-                    onChange={(e) =>
-                      void run("act", () => setActivationCheckAction(selected.centerId, "activities", e.target.checked), "Salvato.")
-                    }
+                    onChange={(e) => void toggleCheck(selected, "activities", e.target.checked)}
                   />
                   <span>Attività controllate (date, età, orari, posti)</span>
                 </label>
@@ -255,7 +274,9 @@ export default function ActivationAdminClient({ rows }: { rows: AdminActivationR
                 <div className="flex flex-wrap gap-2.5">
                   <button
                     type="button"
-                    disabled={!selected.canApprove || busy !== null}
+                    disabled={
+                      !(selected.status === "SUBMITTED" && referentOn(selected) && activitiesOn(selected)) || busy !== null
+                    }
                     onClick={() => void run("approve", () => approveActivationAction(selected.centerId), "Centro attivato: le sue attività ora sono visibili alle famiglie.")}
                     className="min-h-[46px] rounded-[12px] bg-trama-primary px-[18px] text-[14.5px] font-semibold text-white disabled:bg-[#B9C0CC]"
                   >
