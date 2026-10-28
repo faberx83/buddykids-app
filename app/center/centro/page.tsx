@@ -7,6 +7,8 @@ import { getMyCenterActivation } from "@/lib/data/center-activation";
 import { activationView, profileChecks, type ProfileCheckKey } from "@/lib/centers/activation";
 import { buildFamilyPreviewHref, pickFamilyPreviewSlug } from "@/lib/center/family-preview";
 import { partnerShellEnabledForCurrentUser } from "@/lib/centers/partner-v2-flag";
+import { centersContactAddress } from "@/lib/centers/pilot-emails";
+import { extractEmailAddress } from "@/lib/email";
 
 // TRAMA — PORTALE CENTRI V2, SEZIONE "CENTRO" (28/10/2026, tavola 8 del mock).
 // Una pagina di sole righe verso le pagine che esistono già (REUSE): profilo,
@@ -85,6 +87,10 @@ export default async function CentroPage() {
   const checks = activation ? profileChecks(activation.facts.profile) : [];
   const done = (key: ProfileCheckKey): RowState => (checks.find((c) => c.key === key)?.done ? "done" : "todo");
   const previewSlug = pickFamilyPreviewSlug(activities);
+  // 28/10/2026: la casella di TRAMA viene dalla configurazione (EMAIL_REPLY_TO),
+  // mai scritta nel codice (tests/one/email-mittente.spec.ts, EMM-06). Senza
+  // variabile la riga "Scrivi a TRAMA" non compare.
+  const contact = centersContactAddress(process.env, extractEmailAddress);
 
   const status = !view
     ? null
@@ -183,12 +189,16 @@ export default async function CentroPage() {
         rows={[
           { label: "Persone del centro e permessi", state: "soon" },
           { label: "Il mio account e le notifiche", href: "/center/account", state: "link" },
-          {
-            label: "Scrivi a TRAMA",
-            href: "mailto:trama@tramapp.it?subject=Dal%20portale%20centri",
-            state: "link",
-            hint: "trama@tramapp.it",
-          },
+          ...(contact
+            ? [
+                {
+                  label: "Scrivi a TRAMA",
+                  href: `mailto:${contact}?subject=${encodeURIComponent("Dal portale centri")}`,
+                  state: "link" as RowState,
+                  hint: contact,
+                },
+              ]
+            : []),
         ]}
       />
 
