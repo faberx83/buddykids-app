@@ -349,6 +349,21 @@ export const RELEASE_CATALOG: ReleaseCatalogEntry[] = [
     notes: "Creata il 27/10/2026. Ripiego: flag spento = solo push al centro, nessuna email della candidatura, tour come prima.",
   },
   {
+    // TRAMA — PORTALE CENTRI V2 (28/10/2026): "rivedere tutto il portale in
+    // ordine e pronto per una prima condivisione con potenziali partner".
+    id: "centri-portale-v2",
+    label: "TRAMA — Centri: portale V2",
+    shortDescription:
+      "Il portale dei centri in quattro sezioni (Oggi, Richieste, Attività, Centro), con i colori del portale centri. Le pagine e le azioni sono quelle di prima.",
+    targetAudience: ["partner"],
+    featureKeys: ["partner_shell_v2"],
+    knownLimitations: [
+      "partner_shell_v2: le pagine dentro le sezioni (prenotazioni, modifica attività, calendario, registro presenze) sono ancora nello stile di prima; si ridisegnano una alla volta.",
+      "partner_shell_v2: l'Admin resta com'è.",
+    ],
+    notes: "Creata il 28/10/2026. Ripiego: flag spento = menu laterale di prima.",
+  },
+  {
     // TRAMA — CHI ACCOMPAGNA PER PASSAGGIO (22/10/2026): Fase B della settimana tipo.
     id: "chi-accompagna-per-passaggio",
     label: "TRAMA — Chi accompagna, per passaggio",

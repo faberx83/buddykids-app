@@ -128,7 +128,7 @@ export default function CenterProfileClient({ center, dbId }: { center: Center; 
               </div>
             }
           />
-          <Field label="Nome del centro" className="flex-1">
+          <Field label="Nome del centro" className="flex-1" id="contatti">
             <input
               value={form.name}
               onChange={(e) => update("name", e.target.value)}
@@ -145,7 +145,7 @@ export default function CenterProfileClient({ center, dbId }: { center: Center; 
               className="w-full rounded-md border border-[#E8EBF0] bg-bg px-3 py-2 text-sm outline-none focus:border-sky"
             />
           </Field>
-          <Field label="Indirizzo">
+          <Field label="Indirizzo" id="indirizzo">
             <input
               value={form.address}
               onChange={(e) => update("address", e.target.value)}
@@ -154,7 +154,7 @@ export default function CenterProfileClient({ center, dbId }: { center: Center; 
           </Field>
         </div>
 
-        <Field label="Descrizione">
+        <Field label="Descrizione" id="descrizione">
           <textarea
             value={form.description}
             onChange={(e) => update("description", e.target.value)}
@@ -190,7 +190,7 @@ export default function CenterProfileClient({ center, dbId }: { center: Center; 
 
         <div className="my-2 h-px bg-[#F0F2F5]" />
 
-        <div>
+        <div id="accessibilita" className="scroll-mt-32">
           <div className="mb-1 text-sm font-bold text-ink">Accessibilità</div>
           <p className="mb-3 text-xs text-ink-2">
             Indica se il centro è accessibile alle persone con disabilità: i genitori lo vedranno
@@ -221,7 +221,7 @@ export default function CenterProfileClient({ center, dbId }: { center: Center; 
 
         <div className="my-2 h-px bg-[#F0F2F5]" />
 
-        <div>
+        <div id="social" className="scroll-mt-32">
           <div className="mb-1 text-sm font-bold text-ink">Social</div>
           <p className="mb-3 text-xs text-ink-2">
             Collega gli account social del centro: verranno mostrati nella pagina attività
@@ -246,7 +246,7 @@ export default function CenterProfileClient({ center, dbId }: { center: Center; 
 
         <div className="my-2 h-px bg-[#F0F2F5]" />
 
-        <div>
+        <div id="sconti" className="scroll-mt-32">
           <div className="mb-1 text-sm font-bold text-ink">Sconti</div>
           <p className="mb-3 text-xs text-ink-2">
             Personalizza gli sconti applicati alle prenotazioni delle famiglie per il tuo centro.
@@ -319,7 +319,7 @@ export default function CenterProfileClient({ center, dbId }: { center: Center; 
 
         <div className="my-2 h-px bg-[#F0F2F5]" />
 
-        <div>
+        <div id="cancellazioni" className="scroll-mt-32">
           <div className="mb-1 text-sm font-bold text-ink">Cancellazioni e modifiche</div>
           <p className="mb-3 text-xs text-ink-2">
             Entro quanti giorni prima dell&apos;inizio della settimana un genitore può annullare o
@@ -365,13 +365,16 @@ function Field({
   label,
   children,
   className,
+  id,
 }: {
   label: string;
   children: React.ReactNode;
   className?: string;
+  /** Ancora per le righe della sezione "Centro" del portale V2 (28/10/2026). */
+  id?: string;
 }) {
   return (
-    <div className={className}>
+    <div id={id} className={`${id ? "scroll-mt-32 " : ""}${className ?? ""}`}>
       <label className="mb-1.5 block text-xs font-semibold text-ink-2">{label}</label>
       {children}
     </div>

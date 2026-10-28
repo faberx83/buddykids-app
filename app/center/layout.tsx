@@ -19,6 +19,10 @@ import { getPartnerNotifications } from "@/lib/data/notifications-partner";
 // BUILD_INFO_BUBBLE — test pipeline nuovo account (30/09/2026), temporaneo.
 import BuildInfoBubble from "@/components/BuildInfoBubble";
 import { resolveBuildInfoBubbleLabel } from "@/lib/build-info-bubble";
+// PORTALE CENTRI V2, GUSCIO (28/10/2026, PARTNER_SHELL_V2_ENABLED).
+import PartnerShellV2 from "@/components/center/PartnerShellV2";
+import { PARTNER_SHELL_FLAG, partnerBadges } from "@/lib/centers/partner-shell";
+import { getMyCenter } from "@/lib/data/center-admin";
 
 export default async function CenterLayout({ children }: { children: React.ReactNode }) {
   // Con Supabase collegato, il ruolo reale (da profiles.role) sostituisce del
@@ -43,6 +47,8 @@ export default async function CenterLayout({ children }: { children: React.React
   let onboardingCarouselProgress: WalkthroughProgressSummary | null = null;
   // BUILD_INFO_BUBBLE
   let buildInfoLabel: string | null = null;
+  // Guscio V2 (28/10/2026): quattro sezioni al posto del menu laterale.
+  let shellV2 = false;
 
   if (isSupabaseConfigured) {
     const supabase = await createClient();
@@ -84,6 +90,18 @@ export default async function CenterLayout({ children }: { children: React.React
 
     // BUILD_INFO_BUBBLE
     buildInfoLabel = await resolveBuildInfoBubbleLabel({ userId: user.id, role: realRole, tenant: "center" });
+
+    // Guscio V2: solo per chi ha accesso al portale (gestore o Admin); per gli
+    // altri resta DashboardLayout, che mostra il blocco "non hai i permessi".
+    if (realRole === "center_admin" || realRole === "platform_admin") {
+      shellV2 = await resolveFeatureFlag({
+        flagName: PARTNER_SHELL_FLAG,
+        userId: user.id,
+        role: realRole,
+        tenant: "center",
+        correlationId: generateCorrelationId(),
+      }).catch(() => false);
+    }
   }
 
   // Badge rosso sulla voce "Richieste Gruppo" col conteggio in attesa —
@@ -207,6 +225,28 @@ export default async function CenterLayout({ children }: { children: React.React
       sectionLabel: "Account",
     },
   ];
+
+  if (shellV2) {
+    const { center } = await getMyCenter();
+    return (
+      <PartnerShellV2
+        centerName={center.name}
+        accountInitials={accountInitials}
+        accountAvatarUrl={gestoreProfile.avatarUrl}
+        badges={partnerBadges({
+          unreadBookings,
+          pendingGroupRequests,
+          unreadMessages: openInquiries,
+          unconfirmedCheckins,
+        })}
+      >
+        {children}
+        <NotificationCenter initialNotifications={partnerNotifications} scope="partner" />
+        <BuildInfoBubble label={buildInfoLabel} />
+        <BetaFeedbackButton appSource="gestore" />
+      </PartnerShellV2>
+    );
+  }
 
   return (
     <DashboardLayout

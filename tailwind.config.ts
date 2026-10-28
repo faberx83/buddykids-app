@@ -18,7 +18,22 @@ const config: Config = {
         ink: { DEFAULT: "#1A1D2E", 2: "#6B7280", 3: "#9CA3AF" },
         bg: "#F7F9FC",
         // Accento del tenant "Partner" (gestori centro) — sottodominio partner.*
-        partner: { DEFAULT: "#1FA88E", light: "#E3F5F1", mid: "#9FDCCF" },
+        // Portale centri V2 (28/10/2026), palette scelta da Fabrizio: C "Petrolio e
+        // senape" (claude/HANDOFF_partner_v2.md). Chiavi nuove accanto alle tre di
+        // prima (DEFAULT/light/mid restano per il portale di prima). Senape solo per
+        // anelli e segnali, mai per il testo: per il testo c'è accent-ink.
+        partner: {
+          DEFAULT: "#1FA88E",
+          light: "#E3F5F1",
+          mid: "#9FDCCF",
+          primary: "#0E5A63",
+          "primary-press": "#0A474E",
+          accent: "#D9A93C",
+          "accent-ink": "#8A6410",
+          soft: "#E2F0EF",
+          page: "#F6F9F8",
+          line: "#DCE6E3",
+        },
         // Sfondo scuro del tenant "Admin" (piattaforma) — sottodominio admin.*
         navy: { DEFAULT: "#1A1D2E", 2: "#242A40", 3: "#343B57", text2: "#9CA6C4" },
         // Rebrand TRAMA (richiesta di Fabrizio, handoff design "TRAMA Design
