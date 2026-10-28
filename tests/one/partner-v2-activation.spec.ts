@@ -174,7 +174,8 @@ test.describe("Attivazione: flusso (controlli sul sorgente)", () => {
   test("AC-15 Admin: pagina e voce di menu", () => {
     expect(read("app/admin/layout.tsx")).toContain('{ href: "/admin/centri-attivazione", label: "Centri da attivare"');
     const c = read("app/admin/centri-attivazione/ActivationAdminClient.tsx");
-    expect(c).toContain("disabled={!selected.canApprove || busy !== null}");
+    // 28/10/2026: stessa regola di canApprove (inviato + due spunte), letta dalle spunte appena date (AC-20).
+    expect(c).toMatch(/!\(selected\.status === "SUBMITTED" && referentOn\(selected\) && activitiesOn\(selected\)\) \|\| busy !== null/);
     expect(c).toContain("Referente e telefono confermati con la telefonata");
   });
 
@@ -218,6 +219,27 @@ test.describe("Attivazione: flusso (controlli sul sorgente)", () => {
       const body = a.slice(start, next === -1 ? undefined : next);
       expect(body).toContain('revalidatePath("/center");');
     }
+  });
+
+  // 28/10/2026, Fabrizio: "servono 2 click per le spunte per vederle ok".
+  test("AC-20 Admin: la spunta si vede al primo tocco, torna indietro se il salvataggio fallisce", () => {
+    const c = read("app/admin/centri-attivazione/ActivationAdminClient.tsx");
+    expect(c).toContain("pendingChecks");
+    expect(c).toContain("checked={referentOn(selected)}");
+    expect(c).toContain("checked={activitiesOn(selected)}");
+    expect(c).toContain("delete next[check]");
+    expect(c).not.toContain("checked={selected.referentConfirmed}");
+    // "Approva" segue le spunte appena date, senza aspettare il server.
+    expect(c).toMatch(/selected\.status === "SUBMITTED" && referentOn\(selected\) && activitiesOn\(selected\)/);
+  });
+
+  // 28/10/2026, screenshot "Profilo · Da completare" con il centro attivo al 100%.
+  test("AC-21 profilo: il riquadro usa i 5 controlli dell'attivazione e dice cosa manca", () => {
+    const p = read("app/center/profile/page.tsx");
+    expect(p).toContain("profileChecks(activation.facts.profile)");
+    expect(p).toContain("Manca: ");
+    expect(p).toContain("Telefono e logo sono facoltativi");
+    expect(p).toContain("legacyProfileComplete"); // senza portale V2 come prima
   });
 });
 
