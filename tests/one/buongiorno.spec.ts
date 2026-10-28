@@ -5,7 +5,7 @@
 import fs from "fs";
 import path from "path";
 import { test, expect } from "@playwright/test";
-import { buildDailyBriefing, dateLabelIt, isBriefingHour, nextClosure, romeNow } from "../../lib/nextgen/daily-briefing";
+import { briefingSheetLink, buildDailyBriefing, dateLabelIt, isBriefingHour, nextClosure, romeNow } from "../../lib/nextgen/daily-briefing";
 import type { AgendaEntry } from "../../lib/nextgen/today-agenda";
 import { FEATURE_CATALOG } from "../../lib/feature-registry/catalog";
 import { getReleaseById } from "../../lib/releases/catalog";
@@ -130,5 +130,67 @@ test.describe("TRAMA — Il buongiorno [no browser]", () => {
     const b = buildDailyBriefing({ todayIso: "2026-10-20", firstName: null, entries: [entry("Calcio", "17:00")], slots: [], closurePeriods: [], kidNameById: {} })!;
     expect(b.html).toContain('<meta name="color-scheme" content="light only">');
     expect(b.html).toContain('bgcolor="#FDFCFA"');
+  });
+  // 28/10/2026 (Fabrizio: "si può fare che cliccando sulla notifica si apra un
+  // pop-up sull'app con il buongiorno strutturato simile a quello che si
+  // riceve via mail?"): la notifica porta alla Home col foglio del buongiorno;
+  // l'email e il pulsante del foglio portano ancora dritti alla scelta.
+  test("BG-10 il foglio in app ha le stesse sezioni dell'email", () => {
+    const b = buildDailyBriefing({
+      todayIso: "2026-10-27",
+      firstName: "Giovanni",
+      entries: [entry("Calcio", "17:00"), entry("Inglese", null)],
+      slots: [
+        { kidId: "k1", kidName: "Lino", moment: "andata", label: "Mamma" },
+        { kidId: "k1", kidName: "Lino", moment: "ritorno", label: null },
+      ],
+      closurePeriods: [closure],
+      kidNameById: { k1: "Lino" },
+    })!;
+    expect(b.sheetLink).toBe("/nextgen?buongiorno=2026-10-27");
+    expect(briefingSheetLink("2026-11-02")).toBe("/nextgen?buongiorno=2026-11-02");
+    expect(b.model.hello).toBe("Buongiorno Giovanni");
+    expect(b.model.dayLabel).toBe("martedì 27 ottobre");
+    expect(b.model.entries).toEqual([
+      { time: "17:00", title: "Calcio", kids: "Lino" },
+      { time: "In giornata", title: "Inglese", kids: "Lino" },
+    ]);
+    expect(b.model.slots).toEqual([
+      { kidName: "Lino", momentLabel: "Porta", label: "Mamma" },
+      { kidName: "Lino", momentLabel: "Ritira", label: null },
+    ]);
+    expect(b.model.missingCount).toBe(1);
+    expect(b.model.closureText).toContain("Ponte dei Santi");
+    expect(b.model.cta).toEqual({ label: "Decidi chi accompagna", href: b.deepLink });
+    // Tutto deciso → il pulsante apre il Planner della settimana.
+    const ok = buildDailyBriefing({
+      todayIso: "2026-10-27",
+      firstName: null,
+      entries: [entry("Calcio", "17:00")],
+      slots: [{ kidId: "k1", kidName: "Lino", moment: "andata", label: "Papà" }],
+      closurePeriods: [],
+      kidNameById: { k1: "Lino" },
+    })!;
+    expect(ok.model.cta.label).toBe("Apri il Planner");
+    expect(ok.model.missingCount).toBe(0);
+    expect(ok.model.closureText).toBeNull();
+  });
+
+  test("BG-11 notifica → Home con il foglio; si chiude tornando alla Home pulita", () => {
+    const d = read("lib/data/daily-briefing.ts");
+    expect(d).toContain("deepLink: briefing.sheetLink");
+    expect(d).toContain("export async function getTodayBriefingForParent(");
+    // Il foglio rispetta la release del buongiorno (spenta → niente foglio).
+    const fn = d.slice(d.indexOf("export async function getTodayBriefingForParent("));
+    expect(fn).toContain("resolveFeatureFlag({ flagName: DAILY_BRIEFING_FLAG, userId: parentId");
+    expect(fn).toContain("if (!on) return null;");
+    const page = read("app/nextgen/page.tsx");
+    expect(page).toContain("const wantsBriefing = user ? Boolean((await searchParams)?.buongiorno) : false;");
+    expect(page.match(/\{briefing && <BuongiornoSheet model=\{briefing\} \/>\}/g)?.length).toBe(2); // Home V2 e Home di prima
+    const sheet = read("components/nextgen/BuongiornoSheet.tsx");
+    expect(sheet).toContain('router.replace("/nextgen", { scroll: false });');
+    expect(sheet).toContain('role="dialog"');
+    expect(sheet).toContain('if (e.key === "Escape") close();');
+    expect(sheet).toContain("da decidere");
   });
 });

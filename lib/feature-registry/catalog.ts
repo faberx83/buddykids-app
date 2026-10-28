@@ -937,9 +937,11 @@ export const FEATURE_CATALOG: FeatureCatalogEntry[] = [
     description:
       "Ogni mattina fra le 7:00 e le 7:59: impegni di oggi, chi porta e chi ritira (con i 'da decidere'), prossima " +
       "chiusura della scuola. Sul telefono e/o per email, a scelta in Profilo → Impostazioni → Preferenze, con " +
-      "'Mandamelo adesso' per provarlo.",
+      "'Mandamelo adesso' per provarlo. Toccando la notifica si apre la Home con il buongiorno in un foglio " +
+      "(stesse sezioni dell'email).",
     sourceFiles: [
       "lib/nextgen/daily-briefing.ts",
+      "components/nextgen/BuongiornoSheet.tsx",
       "lib/data/daily-briefing.ts",
       "app/api/cron/daily-briefing/route.ts",
       "app/actions/daily-briefing.ts",

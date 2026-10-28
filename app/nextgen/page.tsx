@@ -17,6 +17,8 @@ import { loadHomeV2Props } from "./home-v2-data";
 import { loadBetaSurveyForUser } from "@/lib/data/beta-survey";
 import { resolveFeatureFlagVisibility } from "@/lib/feature-flags/resolve";
 import { generateCorrelationId } from "@/lib/telemetry/correlation";
+import { getTodayBriefingForParent } from "@/lib/data/daily-briefing";
+import BuongiornoSheet from "@/components/nextgen/BuongiornoSheet";
 
 // TRAMA BETA v1.1.1 — ORGANIZATION COMPLETENESS: stessa tecnica di addDaysIso
 // duplicata altrove nel repo (piccola funzione pura, vedi lib/nextgen/
@@ -34,7 +36,11 @@ function addDaysIso(iso: string, days: number): string {
 // testate in LEGACY (getPlannerData, getMyBookingsForParent, getKidsForUser,
 // getActivities, computeMatchesForKid) — stesso DB, stesso layer, zero
 // duplicazione.
-export default async function NextgenHomePage() {
+export default async function NextgenHomePage({
+  searchParams,
+}: {
+  searchParams?: Promise<Record<string, string | string[] | undefined>>;
+}) {
   if (!isSupabaseConfigured) {
     return (
       <div className="px-5 py-8 text-sm text-ink-2">
@@ -54,6 +60,14 @@ export default async function NextgenHomePage() {
   // date reali di planner.weeks — non una nuova interpretazione delle
   // settimane, solo una dipendenza in più tra due fetch già esistenti.
   const planner = await getPlannerData();
+
+  // TRAMA — IL BUONGIORNO IN APP (28/10/2026): la notifica delle 7 porta a
+  // /nextgen?buongiorno=<data> e la Home si apre col foglio del buongiorno
+  // (stesse sezioni dell'email). Sempre la giornata di OGGI, anche da una
+  // notifica vecchia; flag spento o nessun bambino → nessun foglio.
+  const wantsBriefing = user ? Boolean((await searchParams)?.buongiorno) : false;
+  const briefingFor = async (fullName: string | null) =>
+    wantsBriefing && user ? getTodayBriefingForParent(user.id, fullName) : null;
 
   // TRAMA — HOME V2 (Fase 1, 13/10/2026): con HOME_V2_ENABLED acceso la Home
   // è HomeDashboardV2Client (dati in ./home-v2-data.ts). Flag spento, utente
@@ -78,12 +92,18 @@ export default async function NextgenHomePage() {
   }
   if (user && homeV2Enabled) {
     const { data: v2Profile } = await supabase.from("profiles").select("full_name").eq("id", user.id).single();
-    const [v2Props, betaSurvey] = await Promise.all([
+    const [v2Props, betaSurvey, briefing] = await Promise.all([
       loadHomeV2Props({ userId: user.id, fullName: v2Profile?.full_name ?? null, planner }),
       // Survey della beta (BETA_SURVEY_ENABLED, fail-closed: null = nessuna card).
       loadBetaSurveyForUser(user.id),
+      briefingFor(v2Profile?.full_name ?? null),
     ]);
-    return <HomeDashboardV2Client {...v2Props} betaSurvey={betaSurvey} />;
+    return (
+      <>
+        <HomeDashboardV2Client {...v2Props} betaSurvey={betaSurvey} />
+        {briefing && <BuongiornoSheet model={briefing} />}
+      </>
+    );
   }
 
   // TRAMA — FAMILY-FIRST BETA PASS (07/10/2026): scorciatoia "Aggiungi un
@@ -231,7 +251,11 @@ export default async function NextgenHomePage() {
     recommendations = recommendations.slice(0, 3);
   }
 
+  const briefing = await briefingFor(fullName);
+
   return (
+    <>
+    {briefing && <BuongiornoSheet model={briefing} />}
     <HomeDashboardClient
       firstName={fullName?.split(" ")[0] ?? null}
       planner={planner}
@@ -257,5 +281,6 @@ export default async function NextgenHomePage() {
       favoriteActivityIds={Array.from(favoriteActivityIds)}
       externalPlannerItemsEnabled={externalPlannerItemsEnabled}
     />
+    </>
   );
 }

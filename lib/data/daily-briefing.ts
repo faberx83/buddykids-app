@@ -18,7 +18,7 @@ import { sendEmail, isEmailConfigured } from "@/lib/email";
 import { loadFamily } from "@/lib/data/family-reminders";
 import { buildTodayAgenda } from "@/lib/nextgen/today-agenda";
 import { dayCoordinationSlots } from "@/lib/nextgen/planner-week";
-import { buildDailyBriefing, romeNow } from "@/lib/nextgen/daily-briefing";
+import { buildDailyBriefing, romeNow, type BriefingModel, type DailyBriefing } from "@/lib/nextgen/daily-briefing";
 
 export const DAILY_BRIEFING_FLAG = "DAILY_BRIEFING_ENABLED";
 
@@ -48,6 +48,64 @@ function firstName(full: string | null): string | null {
   return f ? f : null;
 }
 
+/**
+ * Il buongiorno di un genitore per una data (stesse regole del cron).
+ * "no-kids" = nessun figlio registrato; null = niente da dire oggi.
+ */
+async function briefingForParent(
+  service: Service,
+  parentId: string,
+  fullName: string | null,
+  dateIso: string
+): Promise<DailyBriefing | null | "no-kids"> {
+  const family = await loadFamily(service, parentId, dateIso);
+  if (Object.keys(family.kidNameById).length === 0) return "no-kids";
+  const entries = buildTodayAgenda({
+    todayIso: dateIso,
+    bookings: family.bookings,
+    externalItems: family.externalItems,
+    hoursByActivityDbId: family.hoursByActivityDbId,
+    kidNameById: family.kidNameById,
+    // 21/10/2026 — settimana tipo: oggi senza scuola → niente riga "Scuola".
+    schoolClosedDates: family.closurePeriods.flatMap((p) => Object.values(p.weekdaysByKid).flat()),
+  });
+  const slots = dayCoordinationSlots({
+    dateIso,
+    bookings: family.bookings,
+    externalItems: family.externalItems,
+    responsibilities: family.responsibilities,
+    kidNameById: family.kidNameById,
+    labelFor: family.labelFor,
+  });
+  const briefing = buildDailyBriefing({
+    todayIso: dateIso,
+    firstName: firstName(fullName),
+    entries,
+    slots,
+    closurePeriods: family.closurePeriods,
+    kidNameById: family.kidNameById,
+  });
+  return briefing;
+}
+
+/**
+ * Il buongiorno di oggi per il genitore collegato, per il foglio in Home
+ * (28/10/2026). Stesse letture del cron (client di servizio, ma solo i dati
+ * di questo genitore). Flag spento o errore → null: nessun foglio.
+ */
+export async function getTodayBriefingForParent(parentId: string, fullName: string | null, now: Date = new Date()): Promise<BriefingModel | null> {
+  try {
+    const on = await resolveFeatureFlag({ flagName: DAILY_BRIEFING_FLAG, userId: parentId, role: "parent", tenant: "family" }).catch(() => false);
+    if (!on) return null;
+    const service = createServiceClient();
+    if (!service) return null;
+    const b = await briefingForParent(service, parentId, fullName, romeNow(now).dateIso);
+    return b && b !== "no-kids" ? b.model : null;
+  } catch {
+    return null;
+  }
+}
+
 export async function runDailyBriefing(
   service: Service,
   now: Date,
@@ -74,42 +132,19 @@ export async function runDailyBriefing(
       const on = await resolveFeatureFlag({ flagName: DAILY_BRIEFING_FLAG, userId: r.id, role: "parent", tenant: "family" }).catch(() => false);
       if (!on) continue;
       result.enabled++;
-      const family = await loadFamily(service, r.id, dateIso);
-      if (Object.keys(family.kidNameById).length === 0) {
+      const briefing = await briefingForParent(service, r.id, r.full_name, dateIso);
+      if (briefing === "no-kids") {
         result.empty++;
         continue;
       }
-      const entries = buildTodayAgenda({
-        todayIso: dateIso,
-        bookings: family.bookings,
-        externalItems: family.externalItems,
-        hoursByActivityDbId: family.hoursByActivityDbId,
-        kidNameById: family.kidNameById,
-        // 21/10/2026 — settimana tipo: oggi senza scuola → niente riga "Scuola".
-        schoolClosedDates: family.closurePeriods.flatMap((p) => Object.values(p.weekdaysByKid).flat()),
-      });
-      const slots = dayCoordinationSlots({
-        dateIso,
-        bookings: family.bookings,
-        externalItems: family.externalItems,
-        responsibilities: family.responsibilities,
-        kidNameById: family.kidNameById,
-        labelFor: family.labelFor,
-      });
-      const briefing = buildDailyBriefing({
-        todayIso: dateIso,
-        firstName: firstName(r.full_name),
-        entries,
-        slots,
-        closurePeriods: family.closurePeriods,
-        kidNameById: family.kidNameById,
-      });
       if (!briefing) {
         result.empty++;
         continue;
       }
       if (r.daily_briefing_push) {
-        await sendPushToUser(r.id, { title: briefing.title, body: briefing.body, deepLink: briefing.deepLink, tag: briefing.tag });
+        // 28/10/2026: la notifica apre la Home con il foglio "Il buongiorno"
+        // (stesso contenuto dell'email); l'email continua a portare al Planner.
+        await sendPushToUser(r.id, { title: briefing.title, body: briefing.body, deepLink: briefing.sheetLink, tag: briefing.tag });
         result.pushes++;
       }
       if (r.daily_briefing_email && r.email && r.notify_email !== false && isEmailConfigured) {

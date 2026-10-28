@@ -28,9 +28,36 @@ export interface BriefingSlot {
   label: string | null;
 }
 
+/**
+ * 28/10/2026 (Fabrizio: "si può fare che cliccando sulla notifica si apra un
+ * pop-up sull'app con il buongiorno strutturato simile a quello che si riceve
+ * via mail?"): il contenuto dell'email come dati, per il foglio "Il buongiorno"
+ * nella Home (components/nextgen/BuongiornoSheet.tsx). Stesse righe e stesse
+ * parole dell'email.
+ */
+export interface BriefingModel {
+  todayIso: string;
+  hello: string;
+  dayLabel: string;
+  entries: { time: string; title: string; kids: string }[];
+  slots: { kidName: string; momentLabel: "Porta" | "Ritira"; label: string | null }[];
+  missingCount: number;
+  closureText: string | null;
+  cta: { label: string; href: string };
+}
+
+/** Dove porta la notifica del buongiorno: la Home, con il foglio aperto. */
+export function briefingSheetLink(todayIso: string): string {
+  return `/nextgen?buongiorno=${todayIso}`;
+}
+
 export interface DailyBriefing {
   title: string;
   body: string;
+  /** Il buongiorno come dati, per il foglio in app (28/10/2026). */
+  model: BriefingModel;
+  /** Link della notifica: la Home con il foglio aperto (28/10/2026). */
+  sheetLink: string;
   /** Stessa giornata = stessa notifica: una seconda copia sostituisce la prima invece di aggiungersi. */
   tag: string;
   deepLink: string;
@@ -184,7 +211,22 @@ ${closureText ? section("Scuola chiusa", row("", escapeHtml(closureText))) : ""}
   if (missing.length) subjectBits.push(missing.length === 1 ? "1 passaggio da decidere" : `${missing.length} passaggi da decidere`);
   const subject = `Il buongiorno di TRAMA · ${dayLabel}: ${subjectBits.join(", ")}`;
 
-  return { title, body, tag, deepLink, subject, html, text: textLines.join("\n") };
+  const model: BriefingModel = {
+    todayIso,
+    hello,
+    dayLabel,
+    entries: entries.map((e) => ({
+      time: e.startTime ? (e.endTime ? `${e.startTime}–${e.endTime}` : e.startTime) : "In giornata",
+      title: e.title,
+      kids: joinNames(e.kids.map((k) => k.name).filter(Boolean)),
+    })),
+    slots: slots.map((sl) => ({ kidName: sl.kidName, momentLabel: momentLabel(sl.moment), label: sl.label })),
+    missingCount: missing.length,
+    closureText,
+    cta: { label: missing.length ? "Decidi chi accompagna" : "Apri il Planner", href: missing.length ? deepLink : weekLink },
+  };
+
+  return { title, body, tag, deepLink, subject, html, text: textLines.join("\n"), model, sheetLink: briefingSheetLink(todayIso) };
 }
 
 /** Il cron gira due volte (05 e 06 UTC): invia solo quando a Roma sono le 7 (ora legale e solare). */
