@@ -177,5 +177,14 @@ test.describe("Portale centri V2 — Oggi", () => {
     expect(oggi).toContain("ActivationCard");
     expect(oggi).not.toMatch(/€|Fatturato/);
   });
+
+  test("PS-12 ponte di colori per le pagine non ancora ridisegnate, solo dentro il guscio", () => {
+    const css = read("app/globals.css");
+    const block = css.slice(css.indexOf("PONTE V2 PER LE PAGINE DEL PORTALE CENTRI"));
+    expect(block).toContain("[data-partner-v2] .bg-sky");
+    expect(block).toContain("[data-partner-v2] .text-sky");
+    expect(block).toContain("#0e5a63");
+    expect(read("components/center/PartnerShellV2.tsx")).toContain("data-partner-v2");
+  });
 });
 

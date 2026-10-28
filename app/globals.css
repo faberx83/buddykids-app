@@ -425,3 +425,52 @@ body:has(.app-shell) {
 [data-nav-v2] .hover\:bg-trama-violet:hover {
   background-color: #172a4d;
 }
+
+/* TRAMA — PONTE V2 PER LE PAGINE DEL PORTALE CENTRI (28/10/2026). Nel guscio V2
+   del portale (components/center/PartnerShellV2.tsx mette data-partner-v2) le
+   pagine non ancora ridisegnate (prenotazioni, modifica attività, calendario,
+   registro presenze, promozioni, inviti, account…) usano ancora l'azzurro e il
+   verde acqua del portale di prima. Qui, SOLO in quell'area, diventano i colori
+   del portale centri scelti da Fabrizio (petrolio #0E5A63, tinta #E2F0EF):
+   stesso meccanismo del ponte famiglie qui sopra. Tra l'altro il testo azzurro
+   #4DAFEF su bianco non era leggibile (2,4:1); il petrolio sì (7,9:1). Portale di
+   prima (senza guscio), famiglie e Admin: invariati. Per tornare indietro basta
+   togliere questo blocco. */
+[data-partner-v2] .bg-sky,
+[data-partner-v2] .bg-partner {
+  background-color: #0e5a63;
+}
+[data-partner-v2] .hover\:bg-\[\#3A9FDC\]:hover,
+[data-partner-v2] .hover\:bg-sky:hover {
+  background-color: #0a474e;
+}
+[data-partner-v2] .text-sky,
+[data-partner-v2] .text-partner {
+  color: #0e5a63;
+}
+[data-partner-v2] .bg-sky-light,
+[data-partner-v2] .bg-partner-light,
+[data-partner-v2] .bg-partner-mid {
+  background-color: #e2f0ef;
+}
+[data-partner-v2] .border-sky,
+[data-partner-v2] .border-partner {
+  border-color: #0e5a63;
+}
+[data-partner-v2] .focus\:border-sky:focus,
+[data-partner-v2] .focus\:border-partner:focus {
+  border-color: #0e5a63;
+}
+[data-partner-v2] .accent-sky {
+  accent-color: #0e5a63;
+}
+[data-partner-v2] .bg-bg {
+  background-color: #f6f9f8;
+}
+/* Titoli delle pagine di prima come i titoli V2 (Poppins semibold). */
+[data-partner-v2] h1.text-xl.font-bold {
+  font-family: var(--font-poppins), Poppins, sans-serif;
+  font-size: 24px;
+  font-weight: 600;
+  line-height: 1.25;
+}
