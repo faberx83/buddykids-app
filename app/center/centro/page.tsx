@@ -6,10 +6,7 @@ import { getActivitiesForCenter } from "@/lib/data/activities";
 import { getMyCenterActivation } from "@/lib/data/center-activation";
 import { activationView, profileChecks, type ProfileCheckKey } from "@/lib/centers/activation";
 import { buildFamilyPreviewHref, pickFamilyPreviewSlug } from "@/lib/center/family-preview";
-import { resolveFeatureFlag } from "@/lib/feature-flags/resolve";
-import { PARTNER_SHELL_FLAG } from "@/lib/centers/partner-shell";
-import { createClient } from "@/lib/supabase/server";
-import { isSupabaseConfigured } from "@/lib/supabase/env";
+import { partnerShellEnabledForCurrentUser } from "@/lib/centers/partner-v2-flag";
 
 // TRAMA — PORTALE CENTRI V2, SEZIONE "CENTRO" (28/10/2026, tavola 8 del mock).
 // Una pagina di sole righe verso le pagine che esistono già (REUSE): profilo,
@@ -17,21 +14,6 @@ import { isSupabaseConfigured } from "@/lib/supabase/env";
 // controlli dell'attivazione (lib/centers/activation.ts), così il centro vede
 // la stessa cosa qui e nella card di Oggi.
 export const dynamic = "force-dynamic";
-
-async function shellEnabled(): Promise<boolean> {
-  if (!isSupabaseConfigured) return false;
-  try {
-    const supabase = await createClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-    if (!user) return false;
-    const { data: profile } = await supabase.from("profiles").select("role").eq("id", user.id).single();
-    return await resolveFeatureFlag({ flagName: PARTNER_SHELL_FLAG, userId: user.id, role: profile?.role ?? null, tenant: "center" });
-  } catch {
-    return false;
-  }
-}
 
 type RowState = "done" | "todo" | "optional" | "soon" | "link";
 
@@ -95,7 +77,7 @@ function Section({ id, title, rows }: { id: string; title: string; rows: Row[] }
 
 export default async function CentroPage() {
   // Senza il guscio V2 la sezione non esiste: si torna al profilo di sempre.
-  if (!(await shellEnabled())) redirect("/center/profile");
+  if (!(await partnerShellEnabledForCurrentUser())) redirect("/center/profile");
 
   const { center, dbId } = await getMyCenter();
   const [activities, activation] = await Promise.all([getActivitiesForCenter(dbId, center.id), getMyCenterActivation(dbId)]);

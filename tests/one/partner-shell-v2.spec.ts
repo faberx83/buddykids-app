@@ -14,6 +14,7 @@ import {
   partnerBadges,
   sectionForPath,
 } from "../../lib/centers/partner-shell";
+import { toAnswerSummary } from "../../lib/centers/partner-oggi";
 import { FEATURE_FLAG_REGISTRY } from "../../lib/feature-flags/registry";
 import { FEATURE_CATALOG } from "../../lib/feature-registry/catalog";
 import { RELEASE_CATALOG } from "../../lib/releases/catalog";
@@ -140,3 +141,41 @@ test.describe("Portale centri V2 — guscio: flusso (controlli sul sorgente)", (
     }
   });
 });
+
+test.describe("Portale centri V2 — Oggi", () => {
+  test("PS-10 'Da rispondere': conteggio, frase e destinazione", () => {
+    expect(toAnswerSummary({ bookings: 2, messages: 1, groups: 0, oldestBookingDays: 1 })).toEqual({
+      total: 3,
+      detail: "2 prenotazioni e 1 messaggio · la più vecchia da 1 giorno",
+      href: "/center/prenotazioni",
+    });
+    expect(toAnswerSummary({ bookings: 0, messages: 3, groups: 0, oldestBookingDays: 0 })).toEqual({
+      total: 3,
+      detail: "3 messaggi",
+      href: "/center/richieste",
+    });
+    expect(toAnswerSummary({ bookings: 0, messages: 0, groups: 1, oldestBookingDays: 0 }).href).toBe("/center/group-requests");
+    expect(toAnswerSummary({ bookings: 1, messages: 2, groups: 1, oldestBookingDays: 0 }).detail).toBe(
+      "1 prenotazione, 2 messaggi e 1 richiesta di gruppo"
+    );
+    expect(toAnswerSummary({ bookings: 0, messages: 0, groups: 0, oldestBookingDays: 4 })).toEqual({
+      total: 0,
+      detail: "",
+      href: "/center/prenotazioni",
+    });
+  });
+
+  test("PS-11 Oggi V2 col guscio, dashboard di prima senza; niente euro nei numeri", () => {
+    const page = read("app/center/page.tsx");
+    expect(page).toContain("partnerShellEnabledForCurrentUser()");
+    expect(page).toContain("<OggiV2");
+    expect(page).toContain("<StatCard");
+    const oggi = read("components/center/OggiV2.tsx");
+    expect(oggi).toContain("Da rispondere");
+    expect(oggi).toContain("Niente da rispondere");
+    expect(oggi).toContain("Registro presenze");
+    expect(oggi).toContain("ActivationCard");
+    expect(oggi).not.toMatch(/€|Fatturato/);
+  });
+});
+
