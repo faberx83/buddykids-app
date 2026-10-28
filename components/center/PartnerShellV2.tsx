@@ -122,6 +122,16 @@ export default function PartnerShellV2({
                     }`}
                   >
                     {t.label}
+                    {(badges.bySubTab[t.href] ?? 0) > 0 && (
+                      <span
+                        className={`ml-1.5 flex h-[18px] min-w-[18px] items-center justify-center rounded-full px-1 text-[11px] font-bold ${
+                          active ? "bg-white text-partner-primary" : "bg-trama-error text-white"
+                        }`}
+                        aria-label={`${badges.bySubTab[t.href]} da guardare`}
+                      >
+                        {badgeLabel(badges.bySubTab[t.href])}
+                      </span>
+                    )}
                   </Link>
                 );
               })}

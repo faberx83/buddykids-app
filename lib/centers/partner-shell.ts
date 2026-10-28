@@ -81,6 +81,8 @@ export interface PartnerBadges {
   richieste: number;
   /** Check-in dei genitori da confermare. */
   oggi: number;
+  /** Per le schede dentro Richieste (href → numero): le tre caselle di prima viste come una. */
+  bySubTab: Record<string, number>;
 }
 
 export function partnerBadges(input: {
@@ -93,6 +95,11 @@ export function partnerBadges(input: {
   return {
     richieste: n(input.unreadBookings) + n(input.pendingGroupRequests) + n(input.unreadMessages),
     oggi: n(input.unconfirmedCheckins),
+    bySubTab: {
+      "/center/prenotazioni": n(input.unreadBookings),
+      "/center/richieste": n(input.unreadMessages),
+      "/center/group-requests": n(input.pendingGroupRequests),
+    },
   };
 }
 

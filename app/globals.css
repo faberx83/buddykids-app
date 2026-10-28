@@ -474,3 +474,23 @@ body:has(.app-shell) {
   font-weight: 600;
   line-height: 1.25;
 }
+/* Il viola delle famiglie rimasto in alcune pagine del portale (filtri delle
+   prenotazioni…) diventa petrolio; l'arancio pieno dei pulsanti "Rispondi"
+   diventa petrolio, il testo arancio (2:1 su bianco) un ambra leggibile. */
+[data-partner-v2] .bg-trama-violet,
+[data-partner-v2] .bg-trama-orange {
+  background-color: #0e5a63;
+}
+[data-partner-v2] .text-trama-violet {
+  color: #0e5a63;
+}
+[data-partner-v2] .border-trama-violet {
+  border-color: #0e5a63;
+}
+[data-partner-v2] .bg-trama-violet\/5 {
+  background-color: #e2f0ef;
+}
+[data-partner-v2] .text-trama-orange,
+[data-partner-v2] .text-orange {
+  color: #9a4d00;
+}
