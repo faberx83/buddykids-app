@@ -188,11 +188,12 @@ test.describe("Attivazione: flusso (controlli sul sorgente)", () => {
   test("AC-17 dal profilo si torna a Oggi dopo il salvataggio, e Oggi si aggiorna", () => {
     const fromCard = profileChecks({ ...fullProfile, description: null }).filter((c) => c.href.startsWith("/center/profile"));
     expect(fromCard.length).toBe(4);
-    for (const c of fromCard) expect(c.href).toBe("/center/profile?da=attivazione");
-    const page = read("app/center/profile/page.tsx");
-    expect(page).toContain('da === "attivazione"');
     const client = read("app/center/profile/CenterProfileClient.tsx");
-    expect(client).toContain('if (fromActivation) router.push("/center")');
+    expect(client).toContain('router.push("/center?salvato=profilo")');
+    expect(client).toContain("Salva e torna a Oggi");
+    const oggi = read("app/center/page.tsx");
+    expect(oggi).toContain('salvato === "profilo"');
+    expect(oggi).toContain("Profilo salvato");
     expect(client).not.toContain("Salvato su Supabase");
     const action = read("app/actions/center.ts");
     expect(action).toMatch(/revalidatePath\("\/center"\);/);
