@@ -1158,6 +1158,29 @@ export const FEATURE_CATALOG: FeatureCatalogEntry[] = [
     releaseEligible: true,
   },
   {
+    // TRAMA — CHI ACCOMPAGNA NELLE GIORNATE PIENE (28/10/2026).
+    key: "passage_person_first",
+    label: "Chi accompagna — giornate piene (prima chi, poi i passaggi)",
+    area: "parent",
+    status: "INTERNAL_PREVIEW",
+    flagName: "PASSAGE_PERSON_FIRST_ENABLED",
+    description:
+      "Nel foglio 'Chi accompagna' si sceglie prima la persona e poi si toccano i suoi passaggi; 'Come mercoledì scorso' " +
+      "copia in un tocco le scelte dello stesso giorno della settimana prima; fratelli con lo stesso passaggio in una riga; " +
+      "decisi raccolti per persona; a 'Fatto' una sola domanda 'Anche gli altri mercoledì?', con una spunta per figlio.",
+    sourceFiles: [
+      "lib/nextgen/passage-busy-day.ts",
+      "components/nextgen/PassageBusyDayBody.tsx",
+      "app/nextgen/planner/PlannerV2Client.tsx",
+      "app/nextgen/planner/planner-v2-data.ts",
+    ],
+    note:
+      "Vive dentro 'Chi accompagna, per passaggio' (PASSAGE_RESPONSIBILITIES_ENABLED + vista un giorno alla volta). " +
+      "Nessuna migration: stesse tabelle e stesse azioni. Col flag il Planner legge le scelte di 5 settimane indietro (prima 2).",
+    riskLevel: "low",
+    releaseEligible: true,
+  },
+  {
     // TRAMA — CORREZIONI DAL TEST UX PARENT (21/10/2026). ADAPT di Scopri V2,
     // scheda attività V2, Home V2, Planner V2 (Stagione) e La tua famiglia:
     // nessuna tabella nuova. Iniziativa: claude/INIZIATIVA_parent_ux_fix_2110.md.

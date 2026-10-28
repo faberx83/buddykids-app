@@ -39,6 +39,7 @@ import type PlannerV2Client from "./PlannerV2Client";
 import { externalItemsToCalendarItems } from "@/lib/planner/calendar-items-core";
 import { getPassageResponsibilitiesForParent } from "@/lib/data/passage-responsibilities";
 import { PASSAGE_RESPONSIBILITIES_FLAG } from "@/lib/nextgen/passages";
+import { PASSAGE_PERSON_FIRST_FLAG, PERSON_FIRST_HISTORY_DAYS } from "@/lib/nextgen/passage-busy-day";
 import { addDaysIso } from "@/lib/nextgen/planner-week";
 
 export type PlannerV2Props = Parameters<typeof PlannerV2Client>[0];
@@ -92,8 +93,11 @@ export async function loadPlannerV2Props({
   ]);
   // Vive nella giornata del Planner: senza "un giorno alla volta" resta spento.
   const passagesEnabled = passageFlag && dayViewEnabled;
+  // 28/10/2026 — Chi accompagna nelle giornate piene: prima chi, poi i
+  // passaggi; "Come mercoledì scorso" guarda fino a 4 settimane indietro.
+  const passagePersonFirst = passagesEnabled ? await flagOn(PASSAGE_PERSON_FIRST_FLAG, userId, role) : false;
   const passageResponsibilities = passagesEnabled
-    ? await getPassageResponsibilitiesForParent(addDaysIso(todayIso, -14))
+    ? await getPassageResponsibilitiesForParent(addDaysIso(todayIso, passagePersonFirst ? -PERSON_FIRST_HISTORY_DAYS : -14))
     : [];
   // 20/10/2026 — Chi accompagna più veloce: l'altro genitore è su TRAMA (nella
   // stessa famiglia)? Decide fra "riceverà una notifica" e "invitalo".
@@ -315,6 +319,7 @@ export async function loadPlannerV2Props({
     weeklyRoutineEnabled,
     dayViewEnabled,
     passagesEnabled,
+    passagePersonFirst,
     passageResponsibilities,
     placeSearchEnabled,
     // POLISH V2 (14/10/2026): il dettaglio tecnico degli errori lo vede solo l'Admin piattaforma.

@@ -364,6 +364,21 @@ export const RELEASE_CATALOG: ReleaseCatalogEntry[] = [
     notes: "Creata il 22/10/2026. Ripiego: flag spento = un'andata e un ritorno per figlio e giorno; le scelte per passaggio restano salvate ma non usate.",
   },
   {
+    // TRAMA — CHI ACCOMPAGNA NELLE GIORNATE PIENE (28/10/2026).
+    id: "chi-accompagna-giornate-piene",
+    label: "TRAMA — Chi accompagna, giornate piene",
+    shortDescription:
+      "Nel foglio Chi accompagna: prima chi, poi un tocco per passaggio; 'Come mercoledì scorso' in un tocco; una sola domanda 'Anche gli altri mercoledì?' a fine giornata.",
+    targetAudience: ["parent"],
+    featureKeys: ["passage_person_first"],
+    knownLimitations: [
+      "passage_person_first: serve la release 'chi-accompagna-per-passaggio' (e quindi 'planner-giorno'); senza, il foglio resta quello per giorno.",
+      "passage_person_first: 'Come mercoledì scorso' copia solo i passaggi uguali (stesso figlio, impegno e verso) salvati per passaggio; le scelte vecchie solo 'del giorno' non vengono copiate.",
+      "passage_person_first: 'Anche gli altri mercoledì?' propone solo lo stesso giorno della settimana (anche per la scuola), fino alla fine dell'impegno e al massimo sei mesi.",
+    ],
+    notes: "Creata il 28/10/2026 dal mock approvato da Fabrizio. Ripiego: flag spento = foglio per passaggio di prima; le scelte salvate restano.",
+  },
+  {
     // TRAMA — CORREZIONI DAL TEST UX PARENT (21/10/2026).
     id: "correzioni-test-ux",
     label: "TRAMA — Correzioni dal test UX (21/10)",

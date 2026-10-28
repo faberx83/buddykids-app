@@ -98,6 +98,7 @@ import ProfileChip from "@/components/nextgen/ProfileChip";
 import PlannerDayFocus from "@/components/nextgen/PlannerDayFocus";
 import { buildKidPassageChains, defaultDayIso } from "@/lib/nextgen/planner-day";
 import PassageAssignBody from "@/components/nextgen/PassageAssignBody";
+import PassageBusyDayBody from "@/components/nextgen/PassageBusyDayBody";
 import type { PassageResponsibility } from "@/lib/nextgen/passages";
 
 type View = "settimana" | "stagione";
@@ -162,6 +163,7 @@ export default function PlannerV2Client({
   placeSearchEnabled = false,
   dayViewEnabled = false,
   passagesEnabled = false,
+  passagePersonFirst = false,
   passageResponsibilities = [],
   showDiagnostics = false,
   calendarExportEnabled,
@@ -212,6 +214,8 @@ export default function PlannerV2Client({
   dayViewEnabled?: boolean;
   /** 22/10/2026 — release "chi-accompagna-per-passaggio" (con planner-giorno): chi porta e chi ritira per passaggio. */
   passagesEnabled?: boolean;
+  /** 28/10/2026 — Chi accompagna nelle giornate piene (PASSAGE_PERSON_FIRST_ENABLED). */
+  passagePersonFirst?: boolean;
   passageResponsibilities?: PassageResponsibility[];
   showDiagnostics?: boolean;
   calendarExportEnabled: boolean;
@@ -801,6 +805,7 @@ export default function PlannerV2Client({
           plusEnabled={assignPlusEnabled}
           partnerOnTrama={partnerOnTrama}
           onShareWeek={shareWeek}
+          personFirst={passagePersonFirst}
           ownHistoryEntry={!assignFromLink.current}
           onClose={() => {
             setPanel(null);
@@ -1997,13 +2002,23 @@ function PassageAssignSheet({
   onShareWeek,
   onClose,
   partnerOnTrama,
+  personFirst = false,
   ...body
 }: Omit<Parameters<typeof PassageAssignBody>[0], "day" | "renderOffer"> & {
   day: WeekDayModel | null;
   ownHistoryEntry: boolean;
   onShareWeek?: () => void;
+  /** 28/10/2026 — prima chi, poi i passaggi (PassageBusyDayBody); spento = come prima. */
+  personFirst?: boolean;
 }) {
   if (!day) return null;
+  if (personFirst) {
+    return (
+      <Sheet title={`Chi accompagna · ${day.label}`} onClose={onClose} ownHistoryEntry={ownHistoryEntry}>
+        <PassageBusyDayBody {...body} day={day} partnerOnTrama={partnerOnTrama} onShareWeek={onShareWeek} onClose={onClose} />
+      </Sheet>
+    );
+  }
   return (
     <Sheet title={`Chi accompagna · ${day.label}`} onClose={onClose} ownHistoryEntry={ownHistoryEntry}>
       <PassageAssignBody

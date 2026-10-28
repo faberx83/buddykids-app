@@ -386,6 +386,16 @@ export const FEATURE_FLAG_REGISTRY = {
     defaultValue: false,
     allowedScopes: ["global", "environment", "user", "role", "cohort"],
   },
+  // TRAMA — CHI ACCOMPAGNA NELLE GIORNATE PIENE (28/10/2026), release "chi-accompagna-giornate-piene".
+  PASSAGE_PERSON_FIRST_ENABLED: {
+    name: "PASSAGE_PERSON_FIRST_ENABLED",
+    description:
+      "Planner, foglio 'Chi accompagna' per passaggio (con PASSAGE_RESPONSIBILITIES_ENABLED): prima si sceglie la persona, " +
+      "poi un tocco per passaggio; 'Come mercoledì scorso' in un tocco; da decidere in alto, decisi per persona; a 'Fatto' " +
+      "una domanda sola 'Anche gli altri mercoledì?'. Default false: il foglio per passaggio di prima.",
+    defaultValue: false,
+    allowedScopes: ["global", "environment", "user", "role", "cohort"],
+  },
   // TRAMA — CORREZIONI DAL TEST UX PARENT (21/10/2026), release "correzioni-test-ux".
   // Iniziativa: claude/INIZIATIVA_parent_ux_fix_2110.md (cicli 1–4).
   PARENT_UX_FIX_ENABLED: {
