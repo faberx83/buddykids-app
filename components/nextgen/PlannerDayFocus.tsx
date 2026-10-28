@@ -74,7 +74,7 @@ export default function PlannerDayFocus({
       {busy.length === 0 && emptyWeekNodi && (
         <div className="flex items-center gap-3 rounded-2xl border border-trama-line bg-white py-1.5 pl-4 pr-2 text-[14px] text-ink-2" data-testid="day-free">
           <span className="min-w-0 flex-1">{NODI_COPY.emptyPlannerTitle}</span>
-          <Nodi state="empty" size={NODI_SIZE.plannerEmpty} yieldToToast />
+          <Nodi state="empty" size={NODI_SIZE.plannerEmpty} />
         </div>
       )}
 

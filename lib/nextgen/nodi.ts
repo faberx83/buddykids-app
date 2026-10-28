@@ -1,71 +1,79 @@
-// TRAMA — NODI THREAD (28/10/2026). Richiesta di Fabrizio: "Apri
-// CLAUDE_START_HERE.txt e segui le istruzioni senza ridisegnare né
-// reinterpretare gli asset" (pacchetto TRAMA_NODI_THREAD_FINAL v1.0, asset
-// definitivi e approvati). Iniziativa: claude/INIZIATIVA_nodi_thread.md.
+// TRAMA — NODI THREAD (28/10/2026). Iniziativa: claude/INIZIATIVA_nodi_thread.md.
 //
-// Logica pura (nessun I/O, testabile): quale file usare per stato, misura e
-// fondo, e quando un momento del Planner merita Nodi. Gli SVG stanno in
-// public/assets/nodi/ così come sono arrivati (non vanno modificati).
+// 28/10/2026 sera, Fabrizio: "Questa è la versione APPROVATA di Nodi Thread.
+// Usa esclusivamente gli asset forniti; non ridisegnare, non vettorializzare,
+// non reinterpretare [...] Sostituisci gli asset Nodi attualmente presenti
+// nell'app seguendo nodi-manifest.json." (TRAMA_NODI_THREAD_REFERENCE_PACK_v2).
+// Gli asset del pacchetto v1.0 sono stati tolti.
 //
-// Regole del pacchetto (docs/INTEGRATION_GUIDE.md), aggiornate dal
-// ritocco del 28/10/2026 pomeriggio ("Nodi è una presenza, non il
-// protagonista"):
-// - sotto 32 px solo nodi-micro.svg (senza volto); sotto 16 px niente;
-// - mai sopra 88 px nell'app (le misure grandi sono per marketing e social);
-// - su fondo navy #172A4D la variante -navy.svg, mai filtri CSS;
-// - al massimo un Nodi per schermata; la UI senza Nodi ha la stessa struttura.
+// Logica pura (nessun I/O, testabile): quale file usare per stato e misura,
+// e quando un momento del Planner merita Nodi. I PNG del pacchetto (1x e @2x)
+// stanno in public/assets/nodi/ così come sono arrivati; la mappa stato →
+// file è lib/nextgen/nodi-manifest.json, copia esatta di quella del pacchetto.
+//
+// Regole (pacchetto v2 + ritocco del 28/10 pomeriggio):
+// - al massimo un Nodi per schermata; nessuna card o spazio nuovo per Nodi;
+// - misure massime per posto dal manifest (NODI_SIZE), mai sopra 88 px;
+// - il pacchetto v2 non ha varianti navy né micro: su fondo scuro e sotto
+//   32 px Nodi non compare ("se non ci sta, nascondilo, non modificarlo").
+
+import manifest from "./nodi-manifest.json";
 
 export const NODI_FLAG = "NODI_ENABLED";
 
-export const NODI_STATES = ["idle", "welcome", "empty", "problem", "connect", "success", "group", "focus"] as const;
+export const NODI_STATES = ["idle", "welcome", "empty", "problem", "connect", "success", "group", "focus", "discover-empty"] as const;
 export type NodiState = (typeof NODI_STATES)[number];
 
 export const NODI_ASSET_DIR = "/assets/nodi";
-/** Misure: micro fino a 31 px (pacchetto), stati con il volto da 32 a 88 px (ritocco del 28/10). */
 export const NODI_FULL_MIN_PX = 32;
 export const NODI_MAX_PX = 88;
-export const NODI_MICRO_MAX_PX = 31;
-export const NODI_MIN_PX = 16;
 
 /**
- * Misure usate nell'app famiglie (che vive in una cornice telefono, quindi
- * valgono i valori "mobile" del ritocco): un solo posto da cui cambiarle.
+ * Misure massime per posto, da nodi-manifest.json ("placement", max_px).
+ * L'immagine sta dentro un quadrato di questo lato, senza deformarsi.
  */
 export const NODI_SIZE = {
-  /** Onboarding: max 72 su mobile. */
-  onboarding: 72,
-  /** Planner vuoto: empty state 56–64 su mobile. */
-  plannerEmpty: 56,
-  /** Gruppi vuoti: empty state 56–64. */
-  groupsEmpty: 56,
-  /** Home con informazioni: piccolo, 40–48. */
-  homeHint: 44,
-  /** Problema: 32–48; occupa lo stesso posto dell'icona da 34 px che sostituisce. */
-  problem: 34,
-  /** Scopri senza risultati: elemento contestuale, 32–48. */
-  discoverEmpty: 48,
-  /** Avviso: 24–32 su mobile (sotto 32 diventerebbe il micro, senza volto). */
-  toast: 32,
+  onboarding: manifest.placement.onboarding_children.max_px, // 72
+  plannerEmpty: manifest.placement.planner_empty_day.max_px, // 56
+  groupsEmpty: manifest.placement.groups_empty.max_px, // 56
+  homeHint: manifest.placement.home_get_started.max_px, // 44
+  problem: manifest.placement.who_does_what.max_px, // 34
+  discoverEmpty: manifest.placement.discover_no_results.max_px, // 48
+  toast: manifest.placement.assignment_success.max_px, // 32
 } as const;
 
 export interface NodiAsset {
+  /** PNG 1x del pacchetto. */
   src: string;
-  /** Lato effettivo in px (gli stati pieni non scendono sotto 48). */
+  /** PNG @2x del pacchetto (schermi ad alta densità). */
+  src2x: string;
+  /** Lato del quadrato in cui sta l'immagine (px). */
   size: number;
-  micro: boolean;
+  /** Proporzioni originali (larghezza, altezza) dal manifest. */
+  width: number;
+  height: number;
 }
 
 /**
- * File e misura per uno stato. null sotto 16 px (lì Nodi non si usa).
- * Sotto 32 px diventa il micro (che non ha variante navy); sopra 88 px viene
- * riportato a 88.
+ * File e misura per uno stato. null quando Nodi non deve comparire: sotto
+ * 32 px (il pacchetto non ha una versione senza volto) o su fondo navy (il
+ * pacchetto non ha varianti scure). Sopra 88 px viene riportato a 88.
  */
 export function nodiAsset(state: NodiState, size: number, navy = false): NodiAsset | null {
   const px = Math.round(size);
-  if (!Number.isFinite(px) || px < NODI_MIN_PX) return null;
-  if (px <= NODI_MICRO_MAX_PX) return { src: `${NODI_ASSET_DIR}/nodi-micro.svg`, size: px, micro: true };
-  const full = Math.min(Math.max(px, NODI_FULL_MIN_PX), NODI_MAX_PX);
-  return { src: `${NODI_ASSET_DIR}/nodi-${state}${navy ? "-navy" : ""}.svg`, size: full, micro: false };
+  if (navy) return null;
+  if (!Number.isFinite(px) || px < NODI_FULL_MIN_PX) return null;
+  const key = manifest.states[state] as keyof typeof manifest.assets;
+  const meta = manifest.assets[key];
+  if (!meta) return null;
+  const file = meta.png.replace(/^png\//, "");
+  return {
+    src: `${NODI_ASSET_DIR}/${file}`,
+    src2x: `${NODI_ASSET_DIR}/${file.replace(/\.png$/, "@2x.png")}`,
+    size: Math.min(px, NODI_MAX_PX),
+    width: meta.width,
+    height: meta.height,
+  };
 }
 
 // ─── Planner ──────────────────────────────────────────────────────────────
@@ -85,7 +93,7 @@ export interface AssignSnapshot {
   weekMissing: number;
 }
 
-export type AssignMoment = { state: "success" | "connect"; text: string } | null;
+export type AssignMoment = { state: "success"; text: string } | null;
 
 /** Testi del pacchetto (docs/COPY_GUIDE.md) e dell'app (stato della settimana). */
 export const NODI_COPY = {
@@ -100,16 +108,17 @@ export const NODI_COPY = {
 } as const;
 
 /**
- * Alla chiusura del foglio "Chi accompagna" (o "Chi fa cosa"): quale momento
- * mostrare, confrontando prima e dopo.
- * - la settimana era da completare e ora è tutta decisa → successo (milestone);
- * - il giorno aperto era da completare e ora è deciso → connessione;
- * - altrimenti niente (nessun Nodi a ogni salvataggio).
+ * Alla chiusura del foglio "Chi accompagna" (o "Chi fa cosa"): quale conferma
+ * mostrare, confrontando prima e dopo (manifest v2: assignment_success =
+ * stato "success").
+ * - la settimana era da completare e ora è tutta decisa → "Accompagnamenti della settimana decisi";
+ * - il giorno aperto era da completare e ora è deciso → "Fatto. Ora lo sanno tutti.";
+ * - altrimenti niente (mai a ogni salvataggio).
  */
 export function nodiAfterAssign(before: AssignSnapshot, after: AssignSnapshot): AssignMoment {
   if (before.weekMissing > 0 && after.weekMissing === 0) return { state: "success", text: NODI_COPY.weekDone };
   if (before.dayMissing !== null && after.dayMissing !== null && before.dayMissing > 0 && after.dayMissing === 0) {
-    return { state: "connect", text: NODI_COPY.connect };
+    return { state: "success", text: NODI_COPY.connect };
   }
   return null;
 }

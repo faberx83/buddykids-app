@@ -270,7 +270,7 @@ export default function GroupsClient({
 
           {groups.length === 0 && !showNew && (v2 && nodiEnabled ? (
             <div className="mx-5 mb-3 flex items-center gap-3" data-testid="nodi-groups-empty">
-              <Nodi state="group" size={NODI_SIZE.groupsEmpty} yieldToToast />
+              <Nodi state="group" size={NODI_SIZE.groupsEmpty} />
               <p className="min-w-0 flex-1 text-sm text-ink-2">
                 <span className="block font-semibold text-ink">{NODI_COPY.groupsEmptyTitle}</span>
                 Non fai ancora parte di nessun gruppo — creane uno per iniziare a risparmiare con gli

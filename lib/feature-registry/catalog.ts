@@ -1262,19 +1262,20 @@ export const FEATURE_CATALOG: FeatureCatalogEntry[] = [
     description:
       "Nodi compare piccolo e solo dove TRAMA trasforma complessità in connessione, dentro elementi che esistono già: " +
       "benvenuto nel passo dei figli, prossimo passo in Home, settimana vuota, passaggi senza accompagnatore, avviso dopo " +
-      "un'assegnazione o una settimana completata, Gruppi vuoti, Scopri senza risultati. Nessuna card nuova; mai " +
+      "un'assegnazione o una settimana completata (senza Nodi: l'avviso è scuro), Gruppi vuoti, Scopri senza risultati. Nessuna card nuova; mai " +
       "nell'intestazione, sulle card attività, nelle celle del calendario o sui bottoni; mai sopra 88 px.",
     sourceFiles: [
       "lib/nextgen/nodi.ts",
       "components/nextgen/Nodi.tsx",
-      "components/nextgen/NextgenToastProvider.tsx",
       "components/nextgen/PlannerDayFocus.tsx",
+      "lib/nextgen/nodi-manifest.json",
       "app/nextgen/layout.tsx",
       "public/assets/nodi/",
     ],
     note:
-      "Asset SVG definitivi copiati senza modifiche in public/assets/nodi (17 file). Statici, nessuna animazione. Misure in " +
-      "NODI_SIZE (lib/nextgen/nodi.ts). Un solo Nodi per schermata: mentre l'avviso con Nodi è visibile, gli altri si fanno da parte.",
+      "Asset del pacchetto TRAMA_NODI_THREAD_REFERENCE_PACK_v2 (versione approvata, 28/10 sera): 18 PNG 1x/@2x copiati " +
+      "senza modifiche in public/assets/nodi; mappa stato → file in lib/nextgen/nodi-manifest.json. Statici. Misure dal " +
+      "manifest (NODI_SIZE). Il pacchetto non ha varianti navy né micro: su fondo scuro e sotto 32 px Nodi non compare.",
     riskLevel: "low",
     releaseEligible: true,
   },

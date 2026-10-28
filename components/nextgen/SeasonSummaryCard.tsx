@@ -141,7 +141,7 @@ export default function SeasonSummaryCard({
             <h2 id="period-welcome-h" className="font-poppins text-[21px] font-semibold leading-tight text-ink">
               Iniziamo a costruire il vostro piano
             </h2>
-            {nodi && <Nodi state="focus" size={NODI_SIZE.homeHint} className="-my-1" yieldToToast />}
+            {nodi && <Nodi state="focus" size={NODI_SIZE.homeHint} className="-my-1" />}
           </div>
           <p className="text-[14px] leading-relaxed text-ink-2">{welcome.body}</p>
         </div>

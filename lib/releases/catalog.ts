@@ -420,7 +420,7 @@ export const RELEASE_CATALOG: ReleaseCatalogEntry[] = [
       "nodi_thread: 'Piccolo nodo da sciogliere' e gli avvisi dopo un'assegnazione sono nel Planner V2; la Home tiene il suo avviso di oggi.",
       "nodi_thread: la settimana vuota mostra Nodi solo nella vista 'un giorno alla volta' (release 'planner-giorno'); nella lista dei giorni no.",
       "nodi_thread: Gruppi e Scopri senza risultati solo nelle versioni V2 (GROUPS_V2_ENABLED, DISCOVER_V2_ENABLED).",
-      "nodi_thread: asset statici; il movimento descritto nel pacchetto è per una fase successiva.",
+      "nodi_thread: asset statici (PNG del pacchetto v2); nessuna variante per fondo scuro, quindi l'avviso dopo un'assegnazione resta senza Nodi.",
     ],
     notes: "Creata il 28/10/2026 dal pacchetto TRAMA_NODI_THREAD_FINAL v1.0 approvato da Fabrizio. Ripiego: flag spento = nessun Nodi, tutto come prima.",
   },
