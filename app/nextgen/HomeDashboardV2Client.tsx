@@ -399,7 +399,7 @@ export default function HomeDashboardV2Client({
         <SeasonSummaryCard
           model={summary}
           welcome={welcome}
-          // NODI THREAD (28/10/2026): Nodi nella card del prossimo passo (solo stato welcome, NODI_ENABLED).
+          // NODI THREAD (28/10/2026): Nodi piccolo nella card del prossimo passo (solo stato welcome, NODI_ENABLED).
           nodi
           attentionAction={attentionAction}
           notStartedAction={notStartedAction}

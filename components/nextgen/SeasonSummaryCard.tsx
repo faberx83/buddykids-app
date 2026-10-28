@@ -13,8 +13,9 @@
 
 import Link from "next/link";
 import type { PeriodWeekState, SeasonSummaryModel } from "@/lib/nextgen/season-summary";
-// NODI THREAD (28/10/2026): nella card del prossimo passo, solo nello stato welcome.
+// NODI THREAD (28/10/2026): piccolo, accanto al titolo della card del prossimo passo (solo stato welcome).
 import Nodi from "@/components/nextgen/Nodi";
+import { NODI_SIZE } from "@/lib/nextgen/nodi";
 
 export interface SeasonSummaryAction {
   label: string;
@@ -116,7 +117,7 @@ export default function SeasonSummaryCard({
   nodi = false,
 }: {
   model: SeasonSummaryModel;
-  /** NODI THREAD (28/10/2026): Nodi "focus" nello stato welcome (solo Home; NODI_ENABLED decide se si vede). */
+  /** NODI THREAD (28/10/2026): Nodi "focus" piccolo nello stato welcome (solo Home; NODI_ENABLED decide se si vede). */
   nodi?: boolean;
   /** 15/10/2026: celle della striscia toccabili (Home → link al Planner). */
   weekHref?: (weekStartIso: string) => string;
@@ -135,14 +136,14 @@ export default function SeasonSummaryCard({
   if (model.state === "welcome" && welcome) {
     return (
       <section aria-labelledby="period-welcome-h" className={shell}>
-        <div className="flex items-start gap-3">
-        <div className="flex min-w-0 flex-1 flex-col gap-1.5">
-          <h2 id="period-welcome-h" className="font-poppins text-[21px] font-semibold leading-tight text-ink">
-            Iniziamo a costruire il vostro piano
-          </h2>
+        <div className="flex flex-col gap-1.5">
+          <div className="flex items-start justify-between gap-3">
+            <h2 id="period-welcome-h" className="font-poppins text-[21px] font-semibold leading-tight text-ink">
+              Iniziamo a costruire il vostro piano
+            </h2>
+            {nodi && <Nodi state="focus" size={NODI_SIZE.homeHint} className="-my-1" yieldToToast />}
+          </div>
           <p className="text-[14px] leading-relaxed text-ink-2">{welcome.body}</p>
-        </div>
-        {nodi && <Nodi state="focus" size={88} className="-mr-1 -mt-1" />}
         </div>
         <ol className="flex flex-col">
           {welcome.steps.map((s, i) => (

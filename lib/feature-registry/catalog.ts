@@ -1229,19 +1229,21 @@ export const FEATURE_CATALOG: FeatureCatalogEntry[] = [
     status: "INTERNAL_PREVIEW",
     flagName: "NODI_ENABLED",
     description:
-      "Nodi compare solo dove TRAMA trasforma complessità in connessione: benvenuto nel passo dei figli, prossimo passo in " +
-      "Home, Planner vuoto, passaggi senza accompagnatore, avviso dopo un'assegnazione o una settimana completata, Gruppi " +
-      "vuoti, Scopri senza risultati. Mai nell'intestazione, sulle card attività, nelle celle del calendario o sui bottoni.",
+      "Nodi compare piccolo e solo dove TRAMA trasforma complessità in connessione, dentro elementi che esistono già: " +
+      "benvenuto nel passo dei figli, prossimo passo in Home, settimana vuota, passaggi senza accompagnatore, avviso dopo " +
+      "un'assegnazione o una settimana completata, Gruppi vuoti, Scopri senza risultati. Nessuna card nuova; mai " +
+      "nell'intestazione, sulle card attività, nelle celle del calendario o sui bottoni; mai sopra 88 px.",
     sourceFiles: [
       "lib/nextgen/nodi.ts",
       "components/nextgen/Nodi.tsx",
       "components/nextgen/NextgenToastProvider.tsx",
+      "components/nextgen/PlannerDayFocus.tsx",
       "app/nextgen/layout.tsx",
       "public/assets/nodi/",
     ],
     note:
-      "Asset SVG definitivi copiati senza modifiche in public/assets/nodi (17 file). Statici, nessuna animazione. Un solo " +
-      "Nodi per schermata: mentre l'avviso con Nodi è visibile, quello della card del Planner si nasconde.",
+      "Asset SVG definitivi copiati senza modifiche in public/assets/nodi (17 file). Statici, nessuna animazione. Misure in " +
+      "NODI_SIZE (lib/nextgen/nodi.ts). Un solo Nodi per schermata: mentre l'avviso con Nodi è visibile, gli altri si fanno da parte.",
     riskLevel: "low",
     releaseEligible: true,
   },

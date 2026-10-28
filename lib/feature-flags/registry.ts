@@ -390,9 +390,10 @@ export const FEATURE_FLAG_REGISTRY = {
   NODI_ENABLED: {
     name: "NODI_ENABLED",
     description:
-      "Mostra Nodi, la mascotte di TRAMA, solo nei momenti chiave dell'app famiglie: onboarding (figli), card 'Iniziamo a " +
-      "costruire il vostro piano' in Home, Planner vuoto, 'Piccolo nodo da sciogliere: chi accompagna?', avviso dopo " +
-      "un'assegnazione o una settimana completata, Gruppi vuoti, Scopri senza risultati. Default false: nessun Nodi, tutto come prima.",
+      "Mostra Nodi, la mascotte di TRAMA, piccolo e solo nei momenti chiave dell'app famiglie, dentro elementi che esistono " +
+      "già: onboarding (figli), card 'Iniziamo a costruire il vostro piano' in Home, settimana vuota del Planner, 'Piccolo " +
+      "nodo da sciogliere' al posto dell'icona di 'Chi fa cosa', avviso dopo un'assegnazione o una settimana completata, " +
+      "Gruppi vuoti, Scopri senza risultati. Default false: nessun Nodi, tutto come prima.",
     defaultValue: false,
     allowedScopes: ["global", "environment", "user", "role", "cohort"],
   },

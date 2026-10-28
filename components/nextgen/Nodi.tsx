@@ -14,6 +14,9 @@
 // - Un solo Nodi principale per schermata: mentre un avviso con Nodi è in
 //   basso, i Nodi marcati yieldToToast si nascondono.
 // - Asset statici, nessuna animazione nella prima integrazione.
+// - Ritocco 28/10 pomeriggio: Nodi è una presenza, non il protagonista. Si
+//   inserisce negli elementi che esistono già, al posto di un'icona o accanto
+//   a un testo, senza card nuove e senza cambiare spaziature (NODI_SIZE).
 
 import { createContext, useContext, useMemo, useState } from "react";
 import { nodiAsset, type NodiState } from "@/lib/nextgen/nodi";
@@ -44,14 +47,15 @@ export function useNodiToastSignal(): (on: boolean) => void {
 
 export default function Nodi({
   state = "idle",
-  size = 112,
+  size = 48,
   navy = false,
   className = "",
   decorative = true,
   yieldToToast = false,
+  fallback = null,
 }: {
   state?: NodiState;
-  /** Lato in px: sotto 32 diventa il micro, fra 32 e 47 sale a 48, sotto 16 niente. */
+  /** Lato in px: sotto 32 diventa il micro, sopra 88 torna a 88, sotto 16 niente. Misure dell'app in NODI_SIZE. */
   size?: number;
   /** Fondo #172A4D: usa la variante -navy.svg (mai filtri CSS). */
   navy?: boolean;
@@ -59,12 +63,14 @@ export default function Nodi({
   decorative?: boolean;
   /** Si nasconde mentre è visibile un avviso con Nodi (regola: un Nodi per schermata). */
   yieldToToast?: boolean;
+  /** Cosa mostrare quando Nodi non c'è (flag spento o si fa da parte): di solito l'icona che sostituisce. */
+  fallback?: React.ReactNode;
 }) {
   const { enabled, toastActive } = useContext(NodiContext);
-  if (!enabled) return null;
-  if (yieldToToast && toastActive) return null;
+  if (!enabled) return <>{fallback}</>;
+  if (yieldToToast && toastActive) return <>{fallback}</>;
   const asset = nodiAsset(state, size, navy);
-  if (!asset) return null;
+  if (!asset) return <>{fallback}</>;
   return (
     // eslint-disable-next-line @next/next/no-img-element -- SVG statico del pacchetto, nessuna ottimizzazione da fare
     <img

@@ -83,8 +83,9 @@ import type { MapItem } from "@/components/ActivityMap";
 import { useSetNextgenHideFloatingControls } from "@/components/nextgen/NextgenScrollActivity";
 import ProfileChip from "@/components/nextgen/ProfileChip";
 import DiscoverFiltersSheet from "@/components/nextgen/DiscoverFiltersSheet";
-// NODI THREAD (28/10/2026): Scopri V2 senza risultati.
+// NODI THREAD (28/10/2026): Scopri V2 senza risultati, dentro il riquadro che c'è già.
 import Nodi, { useNodiEnabled } from "@/components/nextgen/Nodi";
+import { NODI_SIZE } from "@/lib/nextgen/nodi";
 
 // Leaflet usa `window`, quindi la mappa va caricata solo lato client — stesso
 // pattern già usato in LEGACY (app/(main)/search/SearchClient.tsx) e nel
@@ -2196,13 +2197,11 @@ export default function SearchDiscoveryClient({
           </div>
         ) : totalResultsCount === 0 ? (
           <div className="flex flex-col gap-3">
-            {/* NODI THREAD (28/10/2026): in Scopri V2 lo stato senza risultati
-                ha Nodi "focus", perché sotto c'è il prossimo passo (aggiungerlo
-                al Planner, suggerire un centro). Stesso testo di prima. */}
             {v2 && nodiEnabled ? (
-              <div className="flex flex-col items-center gap-2 rounded-2xl border border-trama-line bg-white px-5 pb-5 pt-4 text-center" data-testid="nodi-discover-empty">
-                <Nodi state="focus" size={80} />
-                <p className="text-[14px] font-semibold text-ink">Nessuna attività corrisponde ai filtri scelti.</p>
+              // NODI THREAD: stesso riquadro e stesso testo; Nodi piccolo a destra (sotto ci sono i prossimi passi).
+              <div className="flex items-center justify-center gap-3 rounded-lg border border-dashed border-[#D8DEE8] bg-white px-5 py-3 text-center text-sm text-ink-2" data-testid="nodi-discover-empty">
+                <span>Nessuna attività corrisponde ai filtri scelti.</span>
+                <Nodi state="focus" size={NODI_SIZE.discoverEmpty} yieldToToast />
               </div>
             ) : (
             <p className="rounded-lg border border-dashed border-[#D8DEE8] bg-white p-5 text-center text-sm text-ink-2">

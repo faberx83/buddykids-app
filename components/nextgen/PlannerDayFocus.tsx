@@ -11,6 +11,9 @@ import { buildKidDayChains, buildKidPassageChains, dayTeaser, type DayStep, type
 import type { PassageResponsibility } from "@/lib/nextgen/passages";
 import type { WeekDayModel } from "@/lib/nextgen/planner-week";
 import { KidAvatar, kidToneFor } from "@/components/nextgen/AgendaItemRow";
+// NODI THREAD (28/10/2026): Planner vuoto, nella riga "giornata libera" che c'è già.
+import Nodi from "@/components/nextgen/Nodi";
+import { NODI_COPY, NODI_SIZE } from "@/lib/nextgen/nodi";
 
 const KID_DOTS = ["#6F63C5", "#F6A623", "#2DBA8C", "#4DAFEF"];
 
@@ -29,6 +32,7 @@ export default function PlannerDayFocus({
   onAssign,
   onSelect,
   passages,
+  emptyWeekNodi = false,
 }: {
   day: WeekDayModel;
   nextDay: WeekDayModel | null;
@@ -40,6 +44,8 @@ export default function PlannerDayFocus({
   onSelect: (dateIso: string) => void;
   /** 22/10/2026 — release "chi-accompagna-per-passaggio": chi porta e chi ritira per ogni passaggio. */
   passages?: { rows: PassageResponsibility[]; labelFor: (row: PassageResponsibility) => string } | null;
+  /** NODI THREAD (28/10/2026): settimana senza impegni né chiusure e NODI_ENABLED acceso. */
+  emptyWeekNodi?: boolean;
 }) {
   const chains = passages ? buildKidPassageChains(day, kids, passages) : buildKidDayChains(day, kids);
   const busy = chains.filter((c) => c.steps.length > 0);
@@ -59,10 +65,17 @@ export default function PlannerDayFocus({
         )}
       </div>
 
-      {busy.length === 0 && (
+      {busy.length === 0 && !emptyWeekNodi && (
         <p className="rounded-2xl border border-trama-line bg-white px-4 py-3.5 text-[14px] text-ink-2" data-testid="day-free">
           {day.closureLabels.length > 0 ? "Scuola chiusa e niente in programma." : "Giornata libera."}
         </p>
+      )}
+      {/* NODI THREAD: settimana vuota = stessa riga, testo del Planner vuoto e Nodi piccolo a destra. */}
+      {busy.length === 0 && emptyWeekNodi && (
+        <div className="flex items-center gap-3 rounded-2xl border border-trama-line bg-white py-1.5 pl-4 pr-2 text-[14px] text-ink-2" data-testid="day-free">
+          <span className="min-w-0 flex-1">{NODI_COPY.emptyPlannerTitle}</span>
+          <Nodi state="empty" size={NODI_SIZE.plannerEmpty} yieldToToast />
+        </div>
       )}
 
       {busy.map((c) => (

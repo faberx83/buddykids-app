@@ -47,8 +47,9 @@ import { ITALIAN_REGIONS } from "@/lib/school-calendar/regions";
 import { interestIcon } from "@/lib/nextgen/kid-visual";
 import ParentalDeclarationText from "@/components/legal/ParentalDeclarationText";
 import { newKidErrorSummary, onboardingTotalSteps, validateNewKid, type NewKidField } from "@/lib/nextgen/parent-ux-fix";
-// NODI THREAD (28/10/2026): benvenuto nel primo passo utile (figli), una volta sola.
+// NODI THREAD (28/10/2026): benvenuto piccolo accanto al primo passo utile (figli), una volta sola.
 import Nodi from "@/components/nextgen/Nodi";
+import { NODI_SIZE } from "@/lib/nextgen/nodi";
 
 export interface OnboardingV2Kid {
   id: string;
@@ -659,9 +660,8 @@ function KidsStep({
     <div className="flex min-h-full flex-col gap-5 px-6 pb-[calc(24px+env(safe-area-inset-bottom,0px))] pt-[calc(12px+env(safe-area-inset-top,0px))] motion-safe:animate-[trama-onb2-in_0.45s_ease-out_both]">
       <StepHeader step={step} totalSteps={totalSteps} onBack={onBack} />
 
-      <div className="flex flex-col gap-2">
-        {/* NODI THREAD: solo all'ingresso del passo (nessun figlio ancora), non negli altri passi. */}
-        {kids.length === 0 && <Nodi state="welcome" size={136} className="-mb-1 self-center" />}
+      <div className="flex items-start gap-3">
+      <div className="flex min-w-0 flex-1 flex-col gap-2">
         <h2 id="onboarding-v2-title" className="font-poppins text-[24px] font-semibold leading-tight text-ink">
           {kids.length > 0 ? "I tuoi figli" : "Chi sono i tuoi figli?"}
         </h2>
@@ -670,6 +670,9 @@ function KidsStep({
             ? "Controlla che ci siano tutti: il Planner si organizza intorno a loro."
             : "Nome e data di nascita ci servono per proporti attività adatte all'età."}
         </p>
+      </div>
+      {/* NODI THREAD: a destra del testo, più basso del blocco (nessuna altezza in più); solo prima del primo figlio. */}
+      {kids.length === 0 && <Nodi state="welcome" size={NODI_SIZE.onboarding} />}
       </div>
 
       {kids.length > 0 && (

@@ -403,6 +403,7 @@ export const RELEASE_CATALOG: ReleaseCatalogEntry[] = [
     knownLimitations: [
       "nodi_thread: il benvenuto compare solo con la release 'onboarding-v2' (passo dei figli, prima di inserirne uno).",
       "nodi_thread: 'Piccolo nodo da sciogliere' e gli avvisi dopo un'assegnazione sono nel Planner V2; la Home tiene il suo avviso di oggi.",
+      "nodi_thread: la settimana vuota mostra Nodi solo nella vista 'un giorno alla volta' (release 'planner-giorno'); nella lista dei giorni no.",
       "nodi_thread: Gruppi e Scopri senza risultati solo nelle versioni V2 (GROUPS_V2_ENABLED, DISCOVER_V2_ENABLED).",
       "nodi_thread: asset statici; il movimento descritto nel pacchetto è per una fase successiva.",
     ],
