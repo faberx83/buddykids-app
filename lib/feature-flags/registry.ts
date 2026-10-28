@@ -339,6 +339,18 @@ export const FEATURE_FLAG_REGISTRY = {
     defaultValue: false,
     allowedScopes: ["global", "environment", "user", "role", "cohort"],
   },
+  // TRAMA — PORTALE CENTRI V2 (27/10/2026), release "centri-percorso-pilota".
+  // Fase 1: attivazione del centro (timeline + % profilo, verifiche TRAMA,
+  // Admin "Centri da attivare"), catalogo famiglie solo con centri attivi.
+  PARTNER_V2_ENABLED: {
+    name: "PARTNER_V2_ENABLED",
+    description:
+      "Portale centri V2. Fase 1: in Oggi la card 'Attivazione del centro' (timeline a passi, % del profilo calcolata " +
+      "dai dati, Invia a TRAMA, nota di modifica); Admin 'Centri da attivare' con le due verifiche e Approva; le " +
+      "famiglie vedono solo i centri attivi (quelli esistenti senza stato restano visibili). Default false: come prima.",
+    defaultValue: false,
+    allowedScopes: ["global", "environment", "user", "role", "cohort", "tenant"],
+  },
   // TRAMA — MESSAGGI CON IL CENTRO COME CONVERSAZIONE (27/10/2026), release
   // "centri-percorso-pilota". migration_54 (inquiry_messages).
   INQUIRY_THREADS_ENABLED: {

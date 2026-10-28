@@ -26,6 +26,8 @@ const baseNavItems = [
   { href: "/admin/beta", label: "Beta Famiglie", icon: "ti-heart-handshake" },
   { href: "/admin/analytics", label: "Analisi", icon: "ti-chart-bar" },
   { href: "/admin/centers", label: "Centri", icon: "ti-building-community" },
+  // Portale centri V2 (27/10/2026): attivazione dei centri (timeline, verifiche, approva).
+  { href: "/admin/centri-attivazione", label: "Centri da attivare", icon: "ti-rosette" },
   { href: "/admin/activities", label: "Attività", icon: "ti-list-details" },
   { href: "/admin/tags", label: "Tag", icon: "ti-tags" },
   { href: "/admin/bookings", label: "Prenotazioni", icon: "ti-ticket" },

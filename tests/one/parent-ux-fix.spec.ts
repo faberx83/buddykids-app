@@ -324,7 +324,10 @@ test.describe("Correzioni dal test UX — ciclo 4, K e L [no browser]", () => {
     // colonna assente o errore → nessun centro nascosto
     const data = read("lib/data/activities.ts");
     expect(data).toContain('.from("centers").select("id").eq("is_test_fixture", true)');
-    expect(read("app/nextgen/search/page.tsx")).toContain("withoutTestFixtures(activities, await getTestFixtureCenterIds(), role)");
+    // 27/10/2026 (portale centri V2): ai centri di prova si aggiungono quelli non ancora attivi; i centri di prova restano esclusi con il flag delle correzioni.
+    const search = read("app/nextgen/search/page.tsx");
+    expect(search).toContain("const fixtures = uxFixDetail.enabled ? await getTestFixtureCenterIds() : new Set<string>();");
+    expect(search).toContain("activities = withoutTestFixtures(activities, unionCenterIds(fixtures, inactive), role);");
   });
 });
 

@@ -1034,6 +1034,35 @@ export const FEATURE_CATALOG: FeatureCatalogEntry[] = [
     releaseEligible: true,
   },
   {
+    // TRAMA — PORTALE CENTRI V2, FASE 1: ATTIVAZIONE (27/10/2026). REUSE della
+    // macchina a stati di migration_09; NEW: calcolo dell'avanzamento
+    // (lib/centers/activation.ts), due verifiche TRAMA (migration_55), card in
+    // Oggi, pagina Admin; ADAPT del catalogo famiglie (centri non attivi fuori).
+    key: "partner_v2",
+    label: "Portale centri V2 — attivazione del centro",
+    area: "partner",
+    status: "INTERNAL_PREVIEW",
+    flagName: "PARTNER_V2_ENABLED",
+    description:
+      "Il centro vede a che punto è l'attivazione (timeline e % del profilo) e cosa manca; invia a TRAMA; TRAMA verifica " +
+      "(referente e attività) e approva da 'Centri da attivare'. Prima dell'approvazione le attività non sono nel catalogo.",
+    sourceFiles: [
+      "lib/centers/activation.ts",
+      "lib/data/center-activation.ts",
+      "app/actions/center-activation.ts",
+      "components/center/ActivationCard.tsx",
+      "app/center/page.tsx",
+      "app/admin/centri-attivazione/page.tsx",
+      "app/admin/centri-attivazione/ActivationAdminClient.tsx",
+      "supabase/migration_55_attivazione_centro.sql",
+    ],
+    note:
+      "Serve la migration 55 per le due verifiche (senza, 'Approva' risponde con un errore chiaro). Va accesa a tutti: " +
+      "il catalogo delle famiglie si filtra per chi guarda.",
+    riskLevel: "medium",
+    releaseEligible: true,
+  },
+  {
     // TRAMA — MESSAGGI CON IL CENTRO COME CONVERSAZIONE (27/10/2026; approvato
     // il 15/10). ADAPT di activity_inquiries (= la conversazione) e delle sue
     // azioni; NEW la tabella inquiry_messages (migration_54, additiva), le

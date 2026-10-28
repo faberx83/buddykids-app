@@ -2,6 +2,8 @@ import { notFound, redirect } from "next/navigation";
 import GroupDetailClient from "@/components/GroupDetailClient";
 import { getGroupDetail } from "@/lib/data/group-detail";
 import { getActivities, getTestFixtureCenterIds } from "@/lib/data/activities";
+import { createClient } from "@/lib/supabase/server";
+import { getInactiveCenterIdsForViewer, unionCenterIds } from "@/lib/data/center-activation";
 import { familyVisibleTags, withoutTestFixtures } from "@/lib/nextgen/parent-ux-fix";
 import { getParentProfile } from "@/lib/data/profile";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
@@ -20,6 +22,14 @@ import { parentUxFixEnabled } from "@/lib/nextgen/parent-ux-fix-flag";
 // Poppins) — ora nextgen=true attiva la variante di stile violetta/Poppins
 // (vedi GroupDetailClient.tsx), stesso principio già usato per CoverageStrip
 // in app/(main)/prenotazioni/PrenotazioniClient.tsx.
+async function currentUserId(): Promise<string | null> {
+  if (!isSupabaseConfigured) return null;
+  const {
+    data: { user },
+  } = await (await createClient()).auth.getUser();
+  return user?.id ?? null;
+}
+
 export default async function NextgenGroupDetailPage({
   params,
   searchParams,
@@ -49,7 +59,12 @@ export default async function NextgenGroupDetailPage({
 
   const activityOptions =
     isSupabaseConfigured && detail.createdByMe && !detail.activityId
-      ? withoutTestFixtures(await getActivities(), uxFix ? await getTestFixtureCenterIds() : new Set<string>(), "parent")
+      ? withoutTestFixtures(
+          await getActivities(),
+          // Portale centri V2 (27/10/2026): neanche i centri non ancora attivi.
+          unionCenterIds(uxFix ? await getTestFixtureCenterIds() : new Set<string>(), await getInactiveCenterIdsForViewer(await currentUserId(), "parent")),
+          "parent"
+        )
           .filter((a) => a.dbId)
           .map((a) => ({ dbId: a.dbId as string, name: a.name, center: a.center }))
       : [];

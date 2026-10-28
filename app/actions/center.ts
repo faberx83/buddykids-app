@@ -438,6 +438,25 @@ export async function updateCenterProfileAction(
 
   if (error) return { error: error.message };
 
+  // Portale centri V2 (27/10/2026): salvare il profilo, dove c'è la sezione
+  // "Cancellazioni e modifiche", vale come conferma delle regole di
+  // cancellazione per l'attivazione (stessa voce della checklist di sempre).
+  // Best-effort: un errore qui non cambia il salvataggio del profilo.
+  try {
+    await supabase.from("center_onboarding_checklist_completions").upsert(
+      {
+        center_id: input.centerDbId,
+        item_key: "cancellation_policy_set",
+        completed: true,
+        completed_at: new Date().toISOString(),
+        updated_by: user.id,
+      },
+      { onConflict: "center_id,item_key" }
+    );
+  } catch {
+    /* best effort */
+  }
+
   await logGestoreAction(supabase, {
     actorId: user.id,
     centerId: input.centerDbId,

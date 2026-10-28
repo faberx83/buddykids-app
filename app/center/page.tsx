@@ -17,6 +17,10 @@ import { resolveFeatureFlag } from "@/lib/feature-flags/resolve";
 import { generateCorrelationId } from "@/lib/telemetry/correlation";
 import { Role } from "@/lib/types";
 import { CenterOnboardingStatus } from "@/lib/onboarding/types";
+import { partnerV2EnabledForCurrentUser } from "@/lib/centers/partner-v2-flag";
+import { getMyCenterActivation } from "@/lib/data/center-activation";
+import { activationView } from "@/lib/centers/activation";
+import ActivationCard from "@/components/center/ActivationCard";
 
 // TRAMA ONE — Sezione 7 (Chiusura P0 Partner). Gap documentato in DEC-58/
 // DEC-62 (docs/trama-one/analysis/DECISION_LOG.md): questa dashboard non
@@ -111,10 +115,15 @@ const ONBOARDING_STATUS_LABEL: Record<CenterOnboardingStatus, string> = {
 // equivalente reale esistente oggi) sono stati rimossi invece di essere
 // "reincartati": un gap dichiarato è preferibile a un numero finto.
 export default async function CenterDashboardPage() {
-  await maybeRedirectToOnboarding();
+  // Portale centri V2 (27/10/2026, PARTNER_V2_ENABLED): l'attivazione è qui
+  // in Oggi, per tutti; niente più rimando alla procedura TRAMA ONE.
+  const partnerV2 = await partnerV2EnabledForCurrentUser();
+  if (!partnerV2) await maybeRedirectToOnboarding();
 
   const { center, dbId } = await getMyCenter();
   const isMockCenter = dbId === null;
+  const activation = partnerV2 && dbId ? await getMyCenterActivation(dbId) : null;
+  const activationState = activation ? activationView(activation.facts) : null;
 
   const [myActivities, bookings, openInquiriesCount, groupRequests, onboarding] = await Promise.all([
     getActivitiesForCenter(dbId, center.id),
@@ -213,9 +222,11 @@ export default async function CenterDashboardPage() {
         <div>
           <h1 className="text-lg font-bold text-ink">{center.name}</h1>
           <p className="mt-0.5 text-[12.5px] text-ink-2">
-            {onboardingIncomplete
-              ? ONBOARDING_STATUS_LABEL[onboarding.status]
-              : "Ecco la situazione di oggi"}
+            {activationState && !activationState.active
+              ? `In attivazione · profilo ${activationState.percent}%`
+              : onboardingIncomplete && !activationState
+                ? ONBOARDING_STATUS_LABEL[onboarding.status]
+                : "Ecco la situazione di oggi"}
           </p>
         </div>
         <div
@@ -234,7 +245,9 @@ export default async function CenterDashboardPage() {
           del genitore, si autonasconde da solo se non applicabile. */}
       <PushNotificationsPrompt />
 
-      {onboardingIncomplete && !isMockCenter && (
+      {activationState && !activationState.active && <ActivationCard view={activationState} />}
+
+      {onboardingIncomplete && !isMockCenter && !activationState && (
         <div className="mb-4 flex items-center gap-3 rounded-xl bg-yellow-light p-3.5">
           <div className="flex h-[34px] w-[34px] flex-shrink-0 items-center justify-center rounded-[9px] bg-[#FCEFC0]">
             <i className="ti ti-clock-hour-4 text-base text-[#9a6b00]" />

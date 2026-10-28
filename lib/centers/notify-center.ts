@@ -16,6 +16,9 @@ import {
   candidacyReceivedEmail,
   centerNewMessageEmail,
   centerNewRequestEmail,
+  activationApprovedEmail,
+  activationChangesEmail,
+  activationSubmittedNoticeEmail,
 } from "@/lib/centers/pilot-emails";
 
 async function flagOn(userId: string | null, role: string | null): Promise<boolean> {
@@ -135,5 +138,49 @@ export async function emailCandidacyApproved(input: {
   } catch (e) {
     console.error("[center-pilot] errore inatteso nell'email di approvazione:", e);
     return false;
+  }
+}
+
+// ─── Attivazione del centro (portale centri V2, 27/10/2026) ──────────
+// Senza flag: chi arriva qui ha già usato le pagine V2 (dietro
+// PARTNER_V2_ENABLED). Best-effort come il resto del file.
+
+async function centerAdminEmails(centerId: string): Promise<string[]> {
+  const service = createServiceClient();
+  if (!service) return [];
+  const { data } = await service.from("profiles").select("email").eq("center_id", centerId).eq("role", "center_admin");
+  return ((data ?? []) as { email: string | null }[]).map((r) => r.email).filter((e): e is string => Boolean(e));
+}
+
+export async function emailActivationSubmitted(input: { centerName: string; city: string | null }): Promise<void> {
+  if (!isEmailConfigured) return;
+  try {
+    const to = centerLeadsNotifyAddress();
+    if (!to) return;
+    const mail = activationSubmittedNoticeEmail(input);
+    await sendEmail({ to, subject: mail.subject, html: mail.html });
+  } catch (e) {
+    console.error("[center-activation] email 'profilo inviato' non partita:", e);
+  }
+}
+
+export async function emailActivationDecision(input: {
+  centerId: string;
+  centerName: string;
+  decision: "approved" | "changes";
+  note?: string;
+}): Promise<void> {
+  if (!isEmailConfigured) return;
+  try {
+    const mail =
+      input.decision === "approved"
+        ? activationApprovedEmail({ centerName: input.centerName })
+        : activationChangesEmail({ centerName: input.centerName, note: input.note ?? "" });
+    for (const to of await centerAdminEmails(input.centerId)) {
+      const r = await sendEmail({ to, subject: mail.subject, html: mail.html });
+      if (r.error) console.error(`[center-activation] email al centro non partita (${input.decision}): ${r.error}`);
+    }
+  } catch (e) {
+    console.error("[center-activation] errore inatteso nelle email di decisione:", e);
   }
 }

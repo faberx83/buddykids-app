@@ -17,6 +17,7 @@ import type { PlannerData } from "@/lib/data/planner";
 import { getMyBookingsForParent } from "@/lib/data/my-bookings";
 import { getKidsForUser } from "@/lib/data/kids";
 import { getActivities, getTestFixtureCenterIds, isMockActivitiesArray } from "@/lib/data/activities";
+import { getInactiveCenterIdsForViewer, unionCenterIds } from "@/lib/data/center-activation";
 import { getTodayCheckinsForParent } from "@/lib/data/checkin";
 import { getResponsibilitiesForParent, getKidsBookedDaysForWeek } from "@/lib/data/responsibilities";
 import { isParentProfileIncomplete, getParentProfile } from "@/lib/data/profile";
@@ -385,7 +386,12 @@ export async function loadHomeV2Props({
     planner.firstUncoveredIndex !== null && kidList.length > 0
       ? pickRecommendations(
           // Correzioni dal test UX (21/10/2026), ciclo 4-L: mai un centro di prova tra le idee.
-          uxFixEnabled ? withoutTestFixtures(activities, await getTestFixtureCenterIds(), "parent") : activities,
+          // Portale centri V2 (27/10/2026): neanche i centri non ancora attivi.
+          withoutTestFixtures(
+            activities,
+            unionCenterIds(uxFixEnabled ? await getTestFixtureCenterIds() : new Set<string>(), await getInactiveCenterIdsForViewer(userId, "parent")),
+            "parent"
+          ),
           kids,
           3
         )

@@ -186,3 +186,57 @@ export function candidacyApprovedEmail(input: {
     }),
   };
 }
+
+// ─── Attivazione del centro (portale centri V2, 27/10/2026) ──────────
+
+/** A TRAMA: un centro ha inviato il profilo per la verifica. */
+export function activationSubmittedNoticeEmail(input: { centerName: string; city: string | null }): BuiltEmail {
+  const subject = `TRAMA — profilo da verificare: ${input.centerName}`;
+  return {
+    subject,
+    html: tramaEmailHtml({
+      title: "Un centro ha inviato il profilo",
+      paragraphs: [
+        `<strong>${escapeEmailHtml(input.centerName)}</strong>${input.city ? ` · ${escapeEmailHtml(input.city)}` : ""} ha completato il profilo e aspetta la verifica.`,
+        "Telefona al referente, controlla le attività, spunta le due verifiche e approva (o chiedi una modifica).",
+      ],
+      cta: { label: "Apri Centri da attivare", href: "https://admin.tramapp.it/admin/centri-attivazione" },
+    }),
+  };
+}
+
+/** Al centro: TRAMA chiede una modifica, con la nota. */
+export function activationChangesEmail(input: { centerName: string; note: string }): BuiltEmail {
+  const subject = `${input.centerName}: TRAMA vi chiede una modifica`;
+  return {
+    subject,
+    html: tramaEmailHtml({
+      title: "Una modifica prima dell'attivazione",
+      paragraphs: [
+        `Abbiamo guardato il profilo di <strong>${escapeEmailHtml(input.centerName)}</strong>. Prima di attivarlo vi chiediamo:`,
+        `<em>“${escapeEmailHtml(input.note)}”</em>`,
+        "Correggete dal portale e reinviate: lo riguardiamo subito.",
+      ],
+      cta: { label: "Apri il portale", href: `${PARTNER_PUBLIC_ORIGIN}/center` },
+      showLinkFallback: true,
+      footnote: "Per qualunque domanda rispondete a questa email.",
+    }),
+  };
+}
+
+/** Al centro: attivato, visibile alle famiglie. */
+export function activationApprovedEmail(input: { centerName: string }): BuiltEmail {
+  const subject = `${input.centerName} è attivo su TRAMA`;
+  return {
+    subject,
+    html: tramaEmailHtml({
+      title: subject,
+      paragraphs: [
+        "Verifica fatta: da ora le vostre attività sono visibili alle famiglie, che possono mandarvi richieste per giorni e settimane.",
+        "Vi avvisiamo per email e notifica a ogni nuova richiesta. Rispondere presto fa la differenza.",
+      ],
+      cta: { label: "Apri il portale", href: `${PARTNER_PUBLIC_ORIGIN}/center` },
+      showLinkFallback: true,
+    }),
+  };
+}

@@ -41,6 +41,7 @@ import { getVisibleCommunityDiscoveries } from "@/lib/data/radar";
 import { isRadarPhotoAvailable } from "@/lib/radar/provider";
 import type { CommunityDiscoveryRecord } from "@/lib/radar/community";
 import { getActivityOpenRanges, getActivityDateRows, getTestFixtureCenterIds } from "@/lib/data/activities";
+import { getInactiveCenterIdsForViewer, unionCenterIds } from "@/lib/data/center-activation";
 // TRAMA — CORREZIONI DAL TEST UX (21/10/2026): date vere su card e periodi.
 import { PARENT_UX_FIX_FLAG, summarizeActivityDates, withoutTestFixtures, type ActivityDateSummary } from "@/lib/nextgen/parent-ux-fix";
 import { getKidClosureIntervalsForParent } from "@/lib/data/school-calendar";
@@ -194,8 +195,14 @@ export default async function NextgenSearchPage() {
     // Correzioni dal test UX (21/10/2026), UX-PARENT-002, ciclo 4-L: i
     // centri di prova (centers.is_test_fixture) fuori dal catalogo famiglie,
     // con o senza Scopri V2. L'Admin piattaforma continua a vederli.
-    if (user && uxFixDetail.enabled) {
-      activities = withoutTestFixtures(activities, await getTestFixtureCenterIds(), role);
+    // Portale centri V2 (27/10/2026, PARTNER_V2_ENABLED): anche i centri non
+    // ancora attivati da TRAMA restano fuori dal catalogo.
+    if (user) {
+      const inactive = await getInactiveCenterIdsForViewer(user.id, role);
+      if (uxFixDetail.enabled || inactive.size > 0) {
+        const fixtures = uxFixDetail.enabled ? await getTestFixtureCenterIds() : new Set<string>();
+        activities = withoutTestFixtures(activities, unionCenterIds(fixtures, inactive), role);
+      }
     }
     // Solo con Scopri V2: le correzioni riguardano la presentazione V2.
     if (user && discoverV2 && uxFixDetail.enabled) {

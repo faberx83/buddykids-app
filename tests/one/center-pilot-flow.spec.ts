@@ -79,7 +79,7 @@ test.describe("Candidatura dei centri: flusso (controlli sul sorgente)", () => {
     expect(entry?.area).toBe("partner");
     expect(entry?.releaseEligible).toBe(true);
     // 27/10/2026: nella stessa release anche i messaggi come conversazione (un solo interruttore)
-    expect(getReleaseById("centri-percorso-pilota")?.featureKeys).toEqual(["center_pilot_flow", "inquiry_threads"]);
+    expect(getReleaseById("centri-percorso-pilota")?.featureKeys).toEqual(["center_pilot_flow", "inquiry_threads", "partner_v2"]);
   });
 
   test("CP-11 nuova prenotazione: dopo la push, l'email ai gestori; tutto dentro il try della push (mai blocca la prenotazione)", () => {
