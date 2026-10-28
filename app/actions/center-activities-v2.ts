@@ -91,7 +91,7 @@ export async function createActivityFromTemplateAction(
   } = await supabase.auth.getUser();
   if (!user) return { error: "Sessione scaduta: rientrate nel portale." };
   const { centerDbId } = await getCenterContext();
-  if (!centerDbId) return { error: "Questo account non è ancora collegato a un centro: scriveteci a trama@tramapp.it." };
+  if (!centerDbId) return { error: "Questo account non è ancora collegato a un centro: scriveteci rispondendo all'email di benvenuto." };
 
   const dates = templateDates(template.key, romeToday());
   if (dates.length === 0) return { error: "Per questo modello non ci sono più giorni in questa stagione." };

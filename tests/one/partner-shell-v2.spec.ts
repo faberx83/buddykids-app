@@ -136,6 +136,9 @@ test.describe("Portale centri V2 — guscio: flusso (controlli sul sorgente)", (
     }
     expect(p).toContain('redirect("/center/profile")');
     expect(p).toContain("LogoutButton");
+    // 28/10/2026: la casella di TRAMA dalla configurazione, mai nel codice (EMM-06).
+    expect(p).toContain("centersContactAddress(process.env, extractEmailAddress)");
+    expect(p).not.toContain("@tramapp.it");
     const form = read("app/center/profile/CenterProfileClient.tsx");
     for (const id of ["contatti", "indirizzo", "descrizione", "accessibilita", "social", "sconti", "cancellazioni"]) {
       expect(form, id).toContain(`id="${id}"`);
