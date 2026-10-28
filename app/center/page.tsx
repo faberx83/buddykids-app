@@ -21,6 +21,9 @@ import { partnerV2EnabledForCurrentUser } from "@/lib/centers/partner-v2-flag";
 import { getMyCenterActivation } from "@/lib/data/center-activation";
 import { activationView } from "@/lib/centers/activation";
 import ActivationCard from "@/components/center/ActivationCard";
+// PORTALE CENTRI V2, GUSCIO (28/10/2026): Oggi ridisegnato (tavola 3).
+import OggiV2 from "@/components/center/OggiV2";
+import { partnerShellEnabledForCurrentUser } from "@/lib/centers/partner-v2-flag";
 
 // TRAMA ONE — Sezione 7 (Chiusura P0 Partner). Gap documentato in DEC-58/
 // DEC-62 (docs/trama-one/analysis/DECISION_LOG.md): questa dashboard non
@@ -215,6 +218,46 @@ export default async function CenterDashboardPage({
   // stato positivo leggero, non uno per categoria, e non verde (lo spec
   // chiede esplicitamente di non abusarne — qui grigio neutro come i banner
   // di stato account sopra, non un festeggiamento).
+  // Guscio V2 (28/10/2026, PARTNER_SHELL_V2_ENABLED): stessi dati, Oggi
+  // ridisegnato. Senza flag la dashboard qui sotto resta com'era.
+  if (await partnerShellEnabledForCurrentUser()) {
+    return (
+      <OggiV2
+        savedProfile={savedProfile}
+        activation={activationState}
+        toAnswer={{
+          bookings: pendingBookings.length,
+          messages: openInquiriesCount,
+          groups: pendingGroupRequests.length,
+          oldestBookingDays: oldestPendingDays,
+        }}
+        today={{
+          expected: attendanceSummary.expectedToday,
+          recorded: attendanceSummary.recordedToday,
+          unconfirmedCheckins,
+          specialDays: todaySpecialDays.map((d) => ({
+            key: `${d.activityId}-${d.label}`,
+            label: d.label,
+            activityName: d.activityName,
+            href: `/center/activities/${d.activityId}`,
+          })),
+        }}
+        numbers={{
+          publishedActivities: myActivities.length,
+          confirmed: activeBookings.filter((b) => b.partnerDecision === "accepted" || b.partnerDecision === "partial").length,
+          awaitingParent: awaitingParentReply.length,
+          expiringPromotions: expiringPromotions.length,
+        }}
+        recent={activeBookings.slice(0, 3).map((b) => ({
+          id: b.id,
+          kids: b.kidNames.join(", "),
+          activityName: b.activityName,
+          decision: b.partnerDecision,
+        }))}
+      />
+    );
+  }
+
   const nothingToShowToday =
     attendanceSummary.expectedToday === 0 &&
     todaySpecialDays.length === 0 &&
