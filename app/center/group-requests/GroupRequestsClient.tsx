@@ -36,7 +36,7 @@ export default function GroupRequestsClient({
   return (
     <div>
       <div className="mb-6">
-        <h1 className="text-xl font-bold text-ink">Richieste Gruppo</h1>
+        <h1 className="text-xl font-bold text-ink">Richieste di gruppo</h1>
         <p className="text-sm text-ink-2">
           Gruppi di famiglie che chiedono uno sconto proporzionale al numero di bambini iscritti —
           vedi lib/groups.ts per le fasce.
