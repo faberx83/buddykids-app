@@ -12,6 +12,9 @@ import type { ActivationView } from "@/lib/centers/activation";
 // manca, ognuno col suo pulsante; "Invia a TRAMA" attivo solo al 100%;
 // dopo l'invio "Tocca a TRAMA"; se TRAMA chiede una modifica, la nota.
 // Tutta la logica è in lib/centers/activation.ts.
+// 28/10/2026: colori del portale centri (petrolio e senape, tailwind
+// "partner-*"), scelta di Fabrizio: senape per anello e passo corrente, mai
+// per il testo (per il testo partner-accent-ink).
 
 const RING_R = 22;
 const RING_C = 2 * Math.PI * RING_R;
@@ -52,10 +55,10 @@ export default function ActivationCard({ view }: { view: ActivationView }) {
       data-nav-v2
       aria-labelledby="att-h"
       data-testid="activation-card"
-      className="mb-4 flex flex-col gap-4 rounded-[20px] border border-trama-line bg-white p-[18px]"
+      className="mb-4 flex flex-col gap-4 rounded-[20px] border border-partner-line bg-white p-[18px]"
     >
       <div className="flex flex-col gap-1">
-        <h2 id="att-h" className="font-poppins text-[19px] font-semibold text-trama-navy">
+        <h2 id="att-h" className="font-poppins text-[19px] font-semibold text-partner-primary">
           Attivazione del centro
         </h2>
         <p className="text-[14px] leading-snug text-ink-2">{view.headline}</p>
@@ -67,24 +70,24 @@ export default function ActivationCard({ view }: { view: ActivationView }) {
             {i < view.steps.length - 1 && (
               <span
                 aria-hidden="true"
-                className={`absolute left-1/2 top-[13px] h-[2px] w-full ${s.state === "done" ? "bg-trama-navy" : "bg-trama-line"}`}
+                className={`absolute left-1/2 top-[13px] h-[2px] w-full ${s.state === "done" ? "bg-partner-primary" : "bg-partner-line"}`}
               />
             )}
             <span
               className={`relative flex h-7 w-7 items-center justify-center rounded-full ${
                 s.state === "done"
-                  ? "bg-trama-navy text-white"
+                  ? "bg-partner-primary text-white"
                   : s.state === "current"
-                    ? "border-2 border-trama-accent bg-white"
+                    ? "border-2 border-partner-accent bg-white"
                     : "border-2 border-[#D5D1C8] bg-white"
               }`}
             >
               {s.state === "done" && <i className="ti ti-check text-[15px]" aria-hidden="true" />}
-              {s.state === "current" && <span className="h-2.5 w-2.5 rounded-full bg-trama-accent" aria-hidden="true" />}
+              {s.state === "current" && <span className="h-2.5 w-2.5 rounded-full bg-partner-accent" aria-hidden="true" />}
             </span>
             <span
               className={`text-center text-[11.5px] ${
-                s.state === "current" ? "font-bold text-trama-accent-ink" : s.state === "done" ? "font-semibold text-trama-navy" : "text-ink-2"
+                s.state === "current" ? "font-bold text-partner-accent-ink" : s.state === "done" ? "font-semibold text-partner-primary" : "text-ink-2"
               }`}
             >
               {s.label}
@@ -95,7 +98,7 @@ export default function ActivationCard({ view }: { view: ActivationView }) {
 
       {onProfile ? (
         <>
-          <div className="flex items-center gap-3.5 rounded-2xl bg-trama-accent-soft px-3.5 py-3">
+          <div className="flex items-center gap-3.5 rounded-2xl bg-partner-soft px-3.5 py-3">
             <div className="relative h-14 w-14 flex-shrink-0">
               <svg width="56" height="56" viewBox="0 0 56 56" role="img" aria-label={`Profilo completo al ${view.percent} per cento`}>
                 <circle cx="28" cy="28" r={RING_R} fill="none" stroke="#FFFFFF" strokeWidth="6" />
@@ -104,18 +107,18 @@ export default function ActivationCard({ view }: { view: ActivationView }) {
                   cy="28"
                   r={RING_R}
                   fill="none"
-                  stroke="#6F63C5"
+                  stroke="#D9A93C"
                   strokeWidth="6"
                   strokeLinecap="round"
                   strokeDasharray={`${(RING_C * view.percent) / 100} ${RING_C}`}
                   transform="rotate(-90 28 28)"
                 />
               </svg>
-              <span className="absolute inset-0 flex items-center justify-center text-[13px] font-bold text-trama-navy">{view.percent}%</span>
+              <span className="absolute inset-0 flex items-center justify-center text-[13px] font-bold text-partner-primary">{view.percent}%</span>
             </div>
             <div className="flex flex-col gap-0.5">
-              <span className="text-[12px] font-bold uppercase tracking-[0.08em] text-trama-accent-ink">Tocca a voi</span>
-              <span className="text-[15px] font-semibold text-trama-navy">
+              <span className="text-[12px] font-bold uppercase tracking-[0.08em] text-partner-accent-ink">Tocca a voi</span>
+              <span className="text-[15px] font-semibold text-partner-primary">
                 Profilo: {view.done} {view.done === 1 ? "cosa fatta" : "cose fatte"} su {view.total}
               </span>
               <span className="text-[13px] text-ink-2">Il resto lo controlla TRAMA durante la verifica.</span>
@@ -151,18 +154,18 @@ export default function ActivationCard({ view }: { view: ActivationView }) {
                         type="button"
                         onClick={confirmCancellation}
                         disabled={busy !== null}
-                        className="flex min-h-[36px] items-center rounded-full bg-trama-navy px-3 text-[13px] font-semibold text-white disabled:opacity-60"
+                        className="flex min-h-[36px] items-center rounded-full bg-partner-primary px-3 text-[13px] font-semibold text-white disabled:opacity-60"
                       >
                         {busy === "cancel" ? "…" : "Conferma"}
                       </button>
-                      <Link href={c.href} className="flex min-h-[36px] items-center px-1 text-[13px] font-semibold text-trama-accent-ink">
+                      <Link href={c.href} className="flex min-h-[36px] items-center px-1 text-[13px] font-semibold text-partner-accent-ink">
                         Cambia
                       </Link>
                     </span>
                   ) : (
                     <Link
                       href={c.href}
-                      className="flex min-h-[36px] flex-shrink-0 items-center rounded-full border border-[#D9DDE5] px-3 text-[13px] font-semibold text-trama-navy"
+                      className="flex min-h-[36px] flex-shrink-0 items-center rounded-full border border-[#D9DDE5] px-3 text-[13px] font-semibold text-partner-primary"
                     >
                       {c.cta}
                     </Link>
@@ -176,7 +179,7 @@ export default function ActivationCard({ view }: { view: ActivationView }) {
               type="button"
               onClick={submit}
               disabled={!view.canSubmit || busy !== null}
-              className="min-h-[50px] rounded-[12px] bg-trama-primary px-5 text-[15px] font-semibold text-white active:bg-trama-primary-press disabled:bg-[#B9C0CC]"
+              className="min-h-[50px] rounded-[12px] bg-partner-primary px-5 text-[15px] font-semibold text-white active:bg-partner-primary-press disabled:bg-[#B9C0CC]"
               data-testid="activation-submit"
             >
               {busy === "submit" ? "Invio…" : view.changesNote ? "Reinvia a TRAMA" : "Invia a TRAMA per la verifica"}
@@ -188,12 +191,12 @@ export default function ActivationCard({ view }: { view: ActivationView }) {
         </>
       ) : (
         <div className="flex items-center gap-3.5 rounded-2xl bg-[#F7F6F2] px-3.5 py-3">
-          <span className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-full border border-trama-line bg-white text-trama-navy">
+          <span className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-full border border-partner-line bg-white text-partner-primary">
             <i className="ti ti-clock-hour-4 text-[22px]" aria-hidden="true" />
           </span>
           <div className="flex flex-col gap-0.5">
             <span className="text-[12px] font-bold uppercase tracking-[0.08em] text-ink-2">Tocca a TRAMA</span>
-            <span className="text-[15px] font-semibold text-trama-navy">
+            <span className="text-[15px] font-semibold text-partner-primary">
               {view.suspended ? "Attivazione sospesa" : submittedOn ? `Inviato il ${submittedOn}` : "Profilo inviato"}
             </span>
             <span className="text-[13px] text-ink-2">
@@ -206,7 +209,7 @@ export default function ActivationCard({ view }: { view: ActivationView }) {
       )}
 
       {error && (
-        <p role="alert" className="text-[13.5px] font-medium text-trama-orange">
+        <p role="alert" className="text-[13.5px] font-medium text-[#B4361F]">
           {error}
         </p>
       )}
@@ -215,7 +218,7 @@ export default function ActivationCard({ view }: { view: ActivationView }) {
         <i className="ti ti-eye mt-0.5 text-[18px] text-ink-2" aria-hidden="true" />
         <p className="text-[13px] leading-snug text-ink-2">
           Le famiglie vedono le vostre attività dopo la verifica. Intanto potete preparare tutto e vedere{" "}
-          <Link href="/center/profile" className="font-semibold text-trama-accent-ink">
+          <Link href="/center/profile" className="font-semibold text-partner-accent-ink">
             come vi vedranno
           </Link>
           .

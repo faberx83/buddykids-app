@@ -342,6 +342,16 @@ export const FEATURE_FLAG_REGISTRY = {
   // TRAMA — PORTALE CENTRI V2 (27/10/2026), release "centri-percorso-pilota".
   // Fase 1: attivazione del centro (timeline + % profilo, verifiche TRAMA,
   // Admin "Centri da attivare"), catalogo famiglie solo con centri attivi.
+  // TRAMA — PORTALE CENTRI V2, GUSCIO (28/10/2026), release "Centri: portale V2".
+  PARTNER_SHELL_V2_ENABLED: {
+    name: "PARTNER_SHELL_V2_ENABLED",
+    description:
+      "Portale centri V2: quattro sezioni (Oggi, Richieste, Attività, Centro) in basso su telefono e in alto su computer, " +
+      "al posto del menu laterale a 12 voci; palette petrolio e senape; Oggi e Centro ridisegnati. Le pagine e le azioni " +
+      "sono quelle di prima. Default false: portale di prima.",
+    defaultValue: false,
+    allowedScopes: ["global", "environment", "user", "role", "cohort", "tenant"],
+  },
   PARTNER_V2_ENABLED: {
     name: "PARTNER_V2_ENABLED",
     description:

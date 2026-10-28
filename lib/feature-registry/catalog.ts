@@ -1036,6 +1036,32 @@ export const FEATURE_CATALOG: FeatureCatalogEntry[] = [
     releaseEligible: true,
   },
   {
+    // TRAMA — PORTALE CENTRI V2, GUSCIO (28/10/2026). WRAP delle pagine di oggi
+    // in un contenitore nuovo (components/center/PartnerShellV2.tsx) al posto di
+    // DashboardLayout (che resta per il portale di prima e per l'Admin); ADAPT
+    // di Oggi; NEW la pagina hub "Centro" (/center/centro), fatta solo di righe
+    // verso pagine esistenti. Nessuna azione e nessun dato nuovi.
+    key: "partner_shell_v2",
+    label: "Portale centri V2 — guscio e sezioni",
+    area: "partner",
+    status: "INTERNAL_PREVIEW",
+    flagName: "PARTNER_SHELL_V2_ENABLED",
+    description:
+      "Il portale dei centri in quattro sezioni (Oggi, Richieste, Attività, Centro), con i colori del portale centri " +
+      "(petrolio e senape). Pronto per mostrarlo ai primi centri.",
+    sourceFiles: [
+      "lib/centers/partner-shell.ts",
+      "components/center/PartnerShellV2.tsx",
+      "app/center/layout.tsx",
+      "app/center/centro/page.tsx",
+    ],
+    note:
+      "Si può accendere prima in Anteprima interna per vederlo con il proprio account gestore, poi a tutti. " +
+      "Spento = portale di prima, invariato.",
+    riskLevel: "low",
+    releaseEligible: true,
+  },
+  {
     // TRAMA — PORTALE CENTRI V2, FASE 1: ATTIVAZIONE (27/10/2026). REUSE della
     // macchina a stati di migration_09; NEW: calcolo dell'avanzamento
     // (lib/centers/activation.ts), due verifiche TRAMA (migration_55), card in
