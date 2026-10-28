@@ -1,0 +1,110 @@
+{
+  "design_lock": "The source of truth is source/NODI_THREAD_APPROVED_REFERENCE.png. Do not redraw, trace, simplify, recolor or generate variants.",
+  "primary_asset": "nodi-thread-primary",
+  "states": {
+    "idle": "nodi-thread-primary",
+    "welcome": "nodi-thread-state-01",
+    "empty": "nodi-thread-state-02",
+    "problem": "nodi-thread-state-03",
+    "connect": "nodi-thread-state-04",
+    "success": "nodi-thread-state-05",
+    "group": "nodi-thread-state-06",
+    "focus": "nodi-thread-state-07",
+    "discover-empty": "nodi-thread-state-08"
+  },
+  "placement": {
+    "onboarding_children": {
+      "state": "welcome",
+      "max_px": 72
+    },
+    "home_get_started": {
+      "state": "focus",
+      "max_px": 44,
+      "note": "Remove entirely if it competes with title or CTA."
+    },
+    "planner_empty_day": {
+      "state": "empty",
+      "max_px": 56
+    },
+    "who_does_what": {
+      "state": "problem",
+      "max_px": 34
+    },
+    "assignment_success": {
+      "state": "success",
+      "max_px": 32
+    },
+    "groups_empty": {
+      "state": "group",
+      "max_px": 56
+    },
+    "discover_no_results": {
+      "state": "discover-empty",
+      "max_px": 48
+    }
+  },
+  "rules": [
+    "Maximum one Nodi visible per viewport.",
+    "Never create a new card only for Nodi.",
+    "Never modify layout hierarchy to make room for Nodi.",
+    "If the asset does not fit, hide it rather than alter it.",
+    "Do not use Claude Design or image generation.",
+    "Use supplied PNG or raster-backed SVG only."
+  ],
+  "assets": {
+    "nodi-thread-primary": {
+      "width": 332,
+      "height": 300,
+      "png": "png/nodi-thread-primary.png",
+      "svg": "svg/nodi-thread-primary.svg"
+    },
+    "nodi-thread-state-01": {
+      "width": 97,
+      "height": 114,
+      "png": "png/nodi-thread-state-01.png",
+      "svg": "svg/nodi-thread-state-01.svg"
+    },
+    "nodi-thread-state-02": {
+      "width": 81,
+      "height": 88,
+      "png": "png/nodi-thread-state-02.png",
+      "svg": "svg/nodi-thread-state-02.svg"
+    },
+    "nodi-thread-state-03": {
+      "width": 97,
+      "height": 107,
+      "png": "png/nodi-thread-state-03.png",
+      "svg": "svg/nodi-thread-state-03.svg"
+    },
+    "nodi-thread-state-04": {
+      "width": 118,
+      "height": 111,
+      "png": "png/nodi-thread-state-04.png",
+      "svg": "svg/nodi-thread-state-04.svg"
+    },
+    "nodi-thread-state-05": {
+      "width": 72,
+      "height": 88,
+      "png": "png/nodi-thread-state-05.png",
+      "svg": "svg/nodi-thread-state-05.svg"
+    },
+    "nodi-thread-state-06": {
+      "width": 97,
+      "height": 86,
+      "png": "png/nodi-thread-state-06.png",
+      "svg": "svg/nodi-thread-state-06.svg"
+    },
+    "nodi-thread-state-07": {
+      "width": 77,
+      "height": 85,
+      "png": "png/nodi-thread-state-07.png",
+      "svg": "svg/nodi-thread-state-07.svg"
+    },
+    "nodi-thread-state-08": {
+      "width": 76,
+      "height": 87,
+      "png": "png/nodi-thread-state-08.png",
+      "svg": "svg/nodi-thread-state-08.svg"
+    }
+  }
+}

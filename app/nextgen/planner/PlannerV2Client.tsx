@@ -375,8 +375,8 @@ export default function PlannerV2Client({
   // NODI THREAD (28/10/2026): "prima" e "dopo" il foglio Chi accompagna / Chi
   // fa cosa. All'apertura si fotografano i passaggi da decidere; alla
   // chiusura (il pannello torna null), se il giorno o la settimana sono
-  // diventati completi, un avviso con un piccolo Nodi (nodiAfterAssign). Mai a
-  // ogni scelta. Gli onClose dei fogli restano com'erano.
+  // diventati completi, un avviso di conferma (nodiAfterAssign). Mai a ogni
+  // scelta. Gli onClose dei fogli restano com'erano.
   const nodiEnabled = useNodiEnabled();
   const assignBefore = useRef<(AssignSnapshot & { dayIso: string | null }) | null>(null);
   const panelKey = panel === "chi" ? "chi" : panel !== null && typeof panel === "object" && "assign" in panel ? `assign:${panel.assign}` : null;
@@ -390,7 +390,8 @@ export default function PlannerV2Client({
         dayMissing: before.dayIso ? (day ? day.coordination.missingCount : null) : null,
         weekMissing: weekShown.missingCount,
       });
-      if (moment) showToast(moment.text, "success", { nodi: moment.state });
+      // Il pacchetto v2 non ha una versione per fondo scuro: l'avviso (scuro) resta senza Nodi.
+      if (moment) showToast(moment.text, "success");
       return;
     }
     const dayIso = panelKey.startsWith("assign:") ? panelKey.slice("assign:".length) : null;
@@ -1032,14 +1033,14 @@ function WeekView({
         >
           {/* NODI THREAD: con passaggi da decidere Nodi "problem" prende il posto
               dell'icona, alla stessa misura (34 px): stessa riga, stessi testi
-              tranne il titolo. Mentre è visibile l'avviso con Nodi torna l'icona. */}
+              tranne il titolo. Senza Nodi resta l'icona. */}
           {(() => {
             const icon = (
               <span className="flex h-[34px] w-[34px] flex-shrink-0 items-center justify-center rounded-[10px] bg-trama-primary-soft text-trama-primary">
                 <i className="ti ti-car text-[18px]" aria-hidden="true" />
               </span>
             );
-            return nodiProblem ? <Nodi state="problem" size={NODI_SIZE.problem} yieldToToast fallback={icon} /> : icon;
+            return nodiProblem ? <Nodi state="problem" size={NODI_SIZE.problem} fallback={icon} /> : icon;
           })()}
           <span className="flex min-w-0 flex-1 flex-col gap-px">
             <span className="text-[14px] font-semibold text-ink">{nodiProblem ? NODI_COPY.problemTitle : "Chi fa cosa"}</span>

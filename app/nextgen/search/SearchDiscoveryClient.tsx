@@ -2201,7 +2201,7 @@ export default function SearchDiscoveryClient({
               // NODI THREAD: stesso riquadro e stesso testo; Nodi piccolo a destra (sotto ci sono i prossimi passi).
               <div className="flex items-center justify-center gap-3 rounded-lg border border-dashed border-[#D8DEE8] bg-white px-5 py-3 text-center text-sm text-ink-2" data-testid="nodi-discover-empty">
                 <span>Nessuna attività corrisponde ai filtri scelti.</span>
-                <Nodi state="focus" size={NODI_SIZE.discoverEmpty} yieldToToast />
+                <Nodi state="discover-empty" size={NODI_SIZE.discoverEmpty} />
               </div>
             ) : (
             <p className="rounded-lg border border-dashed border-[#D8DEE8] bg-white p-5 text-center text-sm text-ink-2">
