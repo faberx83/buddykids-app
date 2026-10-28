@@ -1160,14 +1160,15 @@ export const FEATURE_CATALOG: FeatureCatalogEntry[] = [
   {
     // TRAMA — CHI ACCOMPAGNA NELLE GIORNATE PIENE (28/10/2026).
     key: "passage_person_first",
-    label: "Chi accompagna — giornate piene (prima chi, poi i passaggi)",
+    label: "Chi accompagna — giornate piene (il bambino al centro)",
     area: "parent",
     status: "INTERNAL_PREVIEW",
     flagName: "PASSAGE_PERSON_FIRST_ENABLED",
     description:
-      "Nel foglio 'Chi accompagna' si sceglie prima la persona e poi si toccano i suoi passaggi; 'Come mercoledì scorso' " +
-      "copia in un tocco le scelte dello stesso giorno della settimana prima; fratelli con lo stesso passaggio in una riga; " +
-      "decisi raccolti per persona; a 'Fatto' una sola domanda 'Anche gli altri mercoledì?', con una spunta per figlio.",
+      "Nel foglio 'Chi accompagna' una scheda per figlio con la sua giornata; toccando 'Chi?' la domanda è scritta per " +
+      "intero, con chi lo fa di solito in alto e 'Anche <fratello>' se escono insieme; vista 'Per persona' a frasi " +
+      "('Tu: 08:30 porti Lino a scuola'); 'Come mercoledì scorso' in un tocco; a 'Fatto' una sola domanda 'Anche gli " +
+      "altri mercoledì?', con una spunta per figlio.",
     sourceFiles: [
       "lib/nextgen/passage-busy-day.ts",
       "components/nextgen/PassageBusyDayBody.tsx",

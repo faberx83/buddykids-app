@@ -10,6 +10,14 @@ import { test, expect } from "@playwright/test";
 import {
   PASSAGE_PERSON_FIRST_FLAG,
   buildBusyItems,
+  buildKidDays,
+  kidItemTitle,
+  personSentence,
+  personView,
+  siblingTwins,
+  topPeople,
+  usualPersonFor,
+  whoQuestion,
   dayRowFor,
   groupByPerson,
   itemIsPerson,
@@ -24,7 +32,7 @@ import {
 } from "../../lib/nextgen/passage-busy-day";
 import type { PassageResponsibility } from "../../lib/nextgen/passages";
 import type { AgendaEntry } from "../../lib/nextgen/today-agenda";
-import type { ResponsibleOption } from "../../lib/nextgen/responsibility-options";
+import { RESPONSIBLE_OPTIONS, type ResponsibleOption } from "../../lib/nextgen/responsibility-options";
 import { FEATURE_FLAG_REGISTRY } from "../../lib/feature-flags/registry";
 import { FEATURE_CATALOG } from "../../lib/feature-registry/catalog";
 import { getReleaseById } from "../../lib/releases/catalog";
@@ -226,12 +234,19 @@ test.describe("Chi accompagna, giornate piene: flag e foglio (sorgente)", () => 
     expect(client).toContain("<PassageAssignBody");
   });
 
-  test("GP-32 foglio: persona prima, ripiego senza persona, una domanda sola a 'Fatto'", () => {
+  // v2 (28/10 pomeriggio, Fabrizio: "il focus è sull'accompagnatore o sul
+  // bambino? … difficile capire 'mamma' di chi deve occuparsi"): via la
+  // scelta "prima chi"; ogni passaggio apre la sua domanda. Le garanzie su
+  // "Fatto", salvataggio e avviso restano quelle di prima.
+  test("GP-32 foglio v2: per bambino, 'Chi?' apre la domanda, una domanda sola a 'Fatto'", () => {
     const body = read("components/nextgen/PassageBusyDayBody.tsx");
-    // Con la persona scelta, un tocco affida (o toglie, se è già sua).
-    expect(body).toContain("void assign(item, itemIsPerson(item, person) ? null : person);");
-    // Senza persona, il tocco apre le scelte di quel passaggio: nessuno resta bloccato.
-    expect(body).toContain("setExpanded((cur) => (cur === item.key ? null : item.key));");
+    expect(body).toContain('const [view, setView] = useState<"kid" | "person">("kid");');
+    expect(body).toContain("onClick={() => openAsk(item)}");
+    expect(body).toContain("{whoQuestion(item)}");
+    expect(body).toContain("usualPersonFor({ item, date, rows, options })");
+    expect(body).toContain("void assign(withTwins ? [item, ...twins] : [item], p);");
+    // Il foglietto è chiamato, non montato come componente (il campo "Altro…" non perde il focus).
+    expect(body).toContain("{asked && whoPicker()}");
     // "Anche gli altri mercoledì?" solo a Fatto, una spunta per figlio e passaggio.
     expect(body).toContain("Anche {otherWeekdaysIt(date)}?");
     expect(body).toContain("sameWeekdayDates(");
@@ -240,5 +255,91 @@ test.describe("Chi accompagna, giornate piene: flag e foglio (sorgente)", () => 
     expect(body).toContain("setPassageResponsibilitiesAction({");
     expect(body).toContain("clearPassageResponsibilitiesAction({ targets, mirror })");
     expect(body).toContain("notifyPartnerAssignmentsAction(changes)");
+  });
+});
+
+test.describe("Chi accompagna v2: il bambino al centro", () => {
+  const PAPA: ResponsibleOption = { value: "partner", emoji: "", label: "Papà" };
+  const OPTIONS: ResponsibleOption[] = [
+    { value: "io", emoji: "", label: "Tu" },
+    PAPA,
+    { value: "altro", emoji: "", label: "Zia Carla", familyPersonId: "fp-carla" },
+    { value: "nonno", emoji: "", label: "Nonno" },
+    NONNA,
+    { value: "tata", emoji: "", label: "Tata" },
+    { value: "altro", emoji: "", label: "Altro" },
+  ];
+  const days = (rows: PassageResponsibility[] = []) => buildKidDays({ kids: KIDS, entries, date: WED, rows, labelFor });
+
+  test("GP-40 una scheda per figlio, nessuna riga in comune; titoli dal punto di vista del bambino", () => {
+    const d = days();
+    expect(d.map((k) => k.kid.name)).toEqual(["Lino", "Sara"]);
+    expect(d[0].items.map((i) => [i.time, kidItemTitle(i)])).toEqual([
+      ["08:10", "Entra a scuola"],
+      ["16:30", "Da scuola a Calcio"],
+      ["18:30", "Esce da Calcio"],
+    ]);
+    // Split del viaggio: "Va a Calcio".
+    const tripKey = d[0].items[1].parts[0].tripKey!;
+    const split = buildKidDays({ kids: KIDS, entries, date: WED, rows: [], labelFor, splitTrips: new Set([tripKey]) });
+    expect(split[0].items.map(kidItemTitle)).toEqual(["Entra a scuola", "Esce da scuola", "Va a Calcio", "Esce da Calcio"]);
+    // Il fratello con lo stesso passaggio alla stessa ora: "Anche Sara".
+    expect(siblingTwins(d[0].items[0], d).map((i) => i.kidsLabel)).toEqual(["Sara"]);
+    expect(siblingTwins(d[0].items[2], d)).toEqual([]);
+  });
+
+  test("GP-41 la domanda è scritta per intero; le frasi per persona dicono di chi si occupa", () => {
+    const [lino, sara] = days();
+    expect(whoQuestion(lino.items[0])).toBe("Chi porta Lino a scuola?");
+    expect(whoQuestion(lino.items[1])).toBe("Chi accompagna Lino da scuola a Calcio?");
+    expect(whoQuestion(sara.items[2])).toBe("Chi riprende Sara da Inglese?");
+    expect(personSentence(lino.items[0], true)).toBe("porti Lino a scuola");
+    expect(personSentence(sara.items[2], false)).toBe("riprende Sara da Inglese");
+    const split = buildKidDays({ kids: [LINO], entries, date: WED, rows: [], labelFor, splitTrips: new Set([lino.items[1].parts[0].tripKey!]) });
+    expect(whoQuestion(split[0].items[1])).toBe("Chi prende Lino all'uscita da scuola?");
+    expect(personSentence(split[0].items[1], false)).toBe("prende Lino a scuola");
+  });
+
+  test("GP-42 'Di solito': lo stesso giorno della settimana prima, poi il più frequente", () => {
+    const item = days()[0].items[2]; // Lino, ritiro da Calcio
+    const rows = [
+      row(LINO.id, "2026-10-26", CALCIO, "ritorno", "nonna"),
+      row(LINO.id, "2026-10-19", CALCIO, "ritorno", "nonna"),
+      row(LINO.id, "2026-10-14", CALCIO, "ritorno", "partner"),
+    ];
+    expect(usualPersonFor({ item, date: WED, rows, options: OPTIONS })?.opt.label).toBe("Papà");
+    expect(usualPersonFor({ item, date: WED, rows: rows.slice(0, 2), options: OPTIONS })?.opt.label).toBe("Nonna Rita");
+    expect(usualPersonFor({ item, date: WED, rows: [], options: OPTIONS })).toBeNull();
+    // Le scelte di oggi o del futuro non contano.
+    expect(usualPersonFor({ item, date: WED, rows: [row(LINO.id, "2026-11-04", CALCIO, "ritorno", "io")], options: OPTIONS })).toBeNull();
+  });
+
+  test("GP-43 le 3 persone più usate, poi l'ordine delle opzioni; 'Altro' generico mai fra i primi", () => {
+    const rows = [
+      { ...row(LINO.id, "2026-10-21", CALCIO, "ritorno", "altro"), familyPersonId: "fp-carla", responsibleLabel: "Zia Carla" },
+      { ...row(SARA.id, "2026-10-21", CALCIO, "ritorno", "altro"), familyPersonId: "fp-carla", responsibleLabel: "Zia Carla" },
+      row(LINO.id, "2026-10-21", "school", "andata", "nonna"),
+    ];
+    const top = topPeople({ rows, options: OPTIONS, exclude: ["partner||"], n: 3 });
+    expect(top.map((p) => p.opt.label)).toEqual(["Zia Carla", "Nonna Rita", "Tu"]);
+  });
+
+  test("GP-44 'Per persona': Tu per primo, poi in ordine di orario; i da decidere a parte", () => {
+    const rows = [
+      row(LINO.id, WED, "school", "andata", "partner"),
+      row(SARA.id, WED, "school", "andata", "io"),
+      row(LINO.id, WED, CALCIO, "ritorno", "io"),
+    ];
+    const labelsTu = (r: PassageResponsibility) => (r.responsible === "io" ? "Tu" : labelFor(r));
+    const v = personView(buildKidDays({ kids: KIDS, entries, date: WED, rows, labelFor: labelsTu }), "Tu");
+    expect(v.groups.map((g) => [g.label, g.you, g.items.length])).toEqual([
+      ["Tu", true, 2],
+      ["Papà", false, 1],
+    ]);
+    expect(v.open).toHaveLength(3);
+  });
+
+  test("GP-45 'Io' diventa 'Tu' (opzioni e scelte salvate)", () => {
+    expect(RESPONSIBLE_OPTIONS.find((o) => o.value === "io")?.label).toBe("Tu");
   });
 });

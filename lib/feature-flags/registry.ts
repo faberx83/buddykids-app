@@ -390,9 +390,10 @@ export const FEATURE_FLAG_REGISTRY = {
   PASSAGE_PERSON_FIRST_ENABLED: {
     name: "PASSAGE_PERSON_FIRST_ENABLED",
     description:
-      "Planner, foglio 'Chi accompagna' per passaggio (con PASSAGE_RESPONSIBILITIES_ENABLED): prima si sceglie la persona, " +
-      "poi un tocco per passaggio; 'Come mercoledì scorso' in un tocco; da decidere in alto, decisi per persona; a 'Fatto' " +
-      "una domanda sola 'Anche gli altri mercoledì?'. Default false: il foglio per passaggio di prima.",
+      "Planner, foglio 'Chi accompagna' per passaggio (con PASSAGE_RESPONSIBILITIES_ENABLED): una scheda per figlio con la " +
+      "sua giornata; 'Chi?' apre la domanda scritta ('Chi prende Lino all'uscita da scuola?') con chi lo fa di solito in alto; " +
+      "vista 'Per persona' a frasi; 'Come mercoledì scorso' in un tocco; a 'Fatto' una sola domanda 'Anche gli altri " +
+      "mercoledì?'. Default false: il foglio per passaggio di prima.",
     defaultValue: false,
     allowedScopes: ["global", "environment", "user", "role", "cohort"],
   },
