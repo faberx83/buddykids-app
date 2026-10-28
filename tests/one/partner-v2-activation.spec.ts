@@ -208,4 +208,16 @@ test.describe("Attivazione: flusso (controlli sul sorgente)", () => {
     expect(empty.hint).toContain("almeno 30 caratteri");
     expect(read("app/center/profile/CenterProfileClient.tsx")).toContain("MIN_DESCRIPTION");
   });
+
+  test("AC-19 creare un'attività o salvarne le date aggiorna anche Oggi", () => {
+    const a = read("app/actions/center.ts");
+    for (const fn of ["createActivityAction", "saveActivityDaysAction", "updateActivityAction"]) {
+      const start = a.indexOf(`export async function ${fn}`);
+      expect(start).toBeGreaterThan(-1);
+      const next = a.indexOf("export async function", start + 10);
+      const body = a.slice(start, next === -1 ? undefined : next);
+      expect(body).toContain('revalidatePath("/center");');
+    }
+  });
 });
+

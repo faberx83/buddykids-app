@@ -170,6 +170,9 @@ export async function createActivityAction(
     ...(seedError ? { meta: { activityDaysSeedError: seedError.message } } : {}),
   });
 
+  // 28/10/2026: anche "Oggi" (/center), dove la card di attivazione conta
+  // le attività con le date (stesso problema del profilo che non aggiornava Oggi).
+  revalidatePath("/center");
   revalidatePath("/center/activities");
   revalidatePath("/center/activities/[id]", "page");
   revalidatePath("/center/activities/[id]/calendar", "page");
@@ -225,6 +228,9 @@ export async function saveActivityDaysAction(
     meta: { daysCount: rows.length },
   });
 
+  // 28/10/2026: anche "Oggi" (/center), dove la card di attivazione conta
+  // le attività con le date (stesso problema del profilo che non aggiornava Oggi).
+  revalidatePath("/center");
   revalidatePath("/center/activities/[id]/calendar", "page");
   revalidatePath("/activity/[id]", "page");
 
@@ -371,6 +377,9 @@ export async function updateActivityAction(input: ActivityUpdateInput): Promise<
     },
   });
 
+  // 28/10/2026: anche "Oggi" (/center), dove la card di attivazione conta
+  // le attività con le date (stesso problema del profilo che non aggiornava Oggi).
+  revalidatePath("/center");
   revalidatePath("/center/activities");
   revalidatePath("/center/activities/[id]", "page");
   revalidatePath("/activity/[id]", "page");
