@@ -134,7 +134,7 @@ test.describe("Gestore - Attivita", () => {
     await dietButton.click();
 
     await page.getByRole("button", { name: /Salva modifiche/ }).click();
-    await expect(page.getByText(/Salvato su Supabase|Salvato \(demo\)/)).toBeVisible();
+    await expect(page.getByText(/Salvato ✓|Salvato \(demo\)/)).toBeVisible();
 
     // Ripristino lo stato di partenza per non alterare i run successivi.
     if (!wasChecked) {
@@ -224,7 +224,7 @@ test.describe("Gestore - Attivita", () => {
 
     await page.getByPlaceholder("Nessun minimo").fill("2");
     await page.getByRole("button", { name: /Salva modifiche/ }).click();
-    await expect(page.getByText(/Salvato su Supabase|Salvato \(demo\)/)).toBeVisible();
+    await expect(page.getByText(/Salvato ✓|Salvato \(demo\)/)).toBeVisible();
 
     // Ripristino il default 'mixed' per non alterare i run successivi.
     await page.getByRole("button", { name: "Settimana e Giorni spot" }).click();

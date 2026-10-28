@@ -1,11 +1,13 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { Center, SocialLinks } from "@/lib/types";
 import { DemoBadge } from "@/components/StatusBadge";
 import { updateCenterProfileAction } from "@/app/actions/center";
 import { GROUP_DISCOUNT_TIERS } from "@/lib/groups";
 import AvatarUploadButton from "@/components/AvatarUploadButton";
+import { MIN_DESCRIPTION } from "@/lib/centers/activation";
 
 const DEFAULT_FAMILY_TIERS = [10, 15, 20]; // 2°, 3°, 4°+ figlio
 
@@ -17,7 +19,17 @@ const socialFields: { key: keyof SocialLinks; label: string; icon: string; place
   { key: "website", label: "Sito web", icon: "ti-world", placeholder: "https://..." },
 ];
 
-export default function CenterProfileClient({ center, dbId }: { center: Center; dbId: string | null }) {
+export default function CenterProfileClient({
+  center,
+  dbId,
+  fromActivation = false,
+}: {
+  center: Center;
+  dbId: string | null;
+  /** Arrivati dalla card di attivazione: dopo il salvataggio si torna a "Oggi". */
+  fromActivation?: boolean;
+}) {
+  const router = useRouter();
   const [form, setForm] = useState({
     ...center,
     socialLinks: { ...center.socialLinks },
@@ -103,6 +115,8 @@ export default function CenterProfileClient({ center, dbId }: { center: Center; 
             return;
           }
           setSaved(true);
+          // 28/10/2026, Fabrizio: "non mi riporta nella dashboard".
+          if (fromActivation) router.push("/center");
         }}
         className="space-y-4 rounded-lg border border-[#E8EBF0] bg-white p-5"
       >
@@ -154,6 +168,13 @@ export default function CenterProfileClient({ center, dbId }: { center: Center; 
             rows={4}
             className="w-full rounded-md border border-[#E8EBF0] bg-bg px-3 py-2 text-sm outline-none focus:border-sky"
           />
+          {/* 28/10/2026: il controllo "Descrizione" dell'attivazione chiede
+              almeno MIN_DESCRIPTION caratteri; prima non lo diceva da nessuna parte. */}
+          {(form.description ?? "").trim().length < MIN_DESCRIPTION && (
+            <p className="mt-1 text-xs text-ink-2">
+              Almeno {MIN_DESCRIPTION} caratteri: ne mancano {MIN_DESCRIPTION - (form.description ?? "").trim().length}
+            </p>
+          )}
         </Field>
 
         <div className="grid grid-cols-2 gap-4">
@@ -333,12 +354,12 @@ export default function CenterProfileClient({ center, dbId }: { center: Center; 
             disabled={saving}
             className="rounded-md bg-sky px-5 py-2.5 text-sm font-bold text-white transition-colors hover:bg-[#3A9FDC] disabled:opacity-60"
           >
-            {saving ? "Salvo…" : "Salva modifiche"}
+            {saving ? "Salvo…" : fromActivation ? "Salva e torna a Oggi" : "Salva modifiche"}
           </button>
           {error && <span className="text-xs font-medium text-orange">{error}</span>}
           {saved && !error && (
             <span className="text-xs font-medium text-green">
-              {dbId ? "Salvato su Supabase ✓" : "Salvato (demo) — verrà scritto su Supabase quando collegato."}
+              {dbId ? (fromActivation ? "Salvato ✓ Torno a Oggi…" : "Salvato ✓") : "Salvato (demo), non viene registrato."}
             </span>
           )}
         </div>

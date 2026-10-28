@@ -23,7 +23,13 @@ const ONBOARDING_STATUS_LABEL: Record<CenterOnboardingStatus, string> = {
   SUSPENDED: "Sospeso",
 };
 
-export default async function CenterProfilePage() {
+export default async function CenterProfilePage({
+  searchParams,
+}: {
+  searchParams: Promise<{ da?: string | string[] }>;
+}) {
+  // 28/10/2026: arrivati dalla card di attivazione → dopo "Salva" si torna a "Oggi".
+  const fromActivation = (await searchParams).da === "attivazione";
   const { center, dbId } = await getMyCenter();
 
   // FINAL PRE-FREEZE WAVE (sez. 10-15, 08/09/2026) — "Il mio centro" resta
@@ -182,7 +188,7 @@ export default async function CenterProfilePage() {
         </div>
       </div>
 
-      <CenterProfileClient center={center} dbId={dbId} />
+      <CenterProfileClient center={center} dbId={dbId} fromActivation={fromActivation} />
     </div>
   );
 }

@@ -652,7 +652,7 @@ export default function AvailabilityCalendar({
               </button>
               {saveError && <span className="text-xs font-medium text-orange">{saveError}</span>}
               {savedOk && !dirty && (
-                <span className="text-xs font-medium text-green">Salvato su Supabase ✓</span>
+                <span className="text-xs font-medium text-green">Salvato ✓</span>
               )}
               {dirty && !saving && (
                 <span className="text-xs text-ink-3">Modifiche non ancora salvate</span>

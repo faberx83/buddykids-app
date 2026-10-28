@@ -465,6 +465,9 @@ export async function updateCenterProfileAction(
     entityId: input.centerDbId,
   });
 
+  // 28/10/2026: anche "Oggi" (/center), dove la card di attivazione
+  // ricalcola la % del profilo ("non viene aggiornato nulla").
+  revalidatePath("/center");
   revalidatePath("/center/profile");
   revalidatePath("/center/activities");
   revalidatePath("/activity/[id]", "page");

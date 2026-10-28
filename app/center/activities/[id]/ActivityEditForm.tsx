@@ -805,8 +805,8 @@ export default function ActivityEditForm({
           {saved && !saveError && (
             <span className="text-xs font-medium text-green">
               {activity.dbId
-                ? "Salvato su Supabase ✓"
-                : "Salvato (demo) — verrà scritto su Supabase quando collegato."}
+                ? "Salvato ✓"
+                : "Salvato (demo), non viene registrato."}
             </span>
           )}
         </div>

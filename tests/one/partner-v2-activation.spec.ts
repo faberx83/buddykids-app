@@ -182,4 +182,29 @@ test.describe("Attivazione: flusso (controlli sul sorgente)", () => {
     const a = read("app/actions/center.ts");
     expect(a).toContain('item_key: "cancellation_policy_set"');
   });
+
+  // 28/10/2026, Fabrizio: "se salvo modifiche appare ancora 'salvato su
+  // supabase' e non mi riporta nella dashboard dove non viene aggiornato nulla".
+  test("AC-17 dal profilo si torna a Oggi dopo il salvataggio, e Oggi si aggiorna", () => {
+    const fromCard = profileChecks({ ...fullProfile, description: null }).filter((c) => c.href.startsWith("/center/profile"));
+    expect(fromCard.length).toBe(4);
+    for (const c of fromCard) expect(c.href).toBe("/center/profile?da=attivazione");
+    const page = read("app/center/profile/page.tsx");
+    expect(page).toContain('da === "attivazione"');
+    const client = read("app/center/profile/CenterProfileClient.tsx");
+    expect(client).toContain('if (fromActivation) router.push("/center")');
+    expect(client).not.toContain("Salvato su Supabase");
+    const action = read("app/actions/center.ts");
+    expect(action).toMatch(/revalidatePath\("\/center"\);/);
+  });
+
+  test("AC-18 descrizione: il minimo di caratteri si vede, nella card e nel form", () => {
+    const short = profileChecks({ ...fullProfile, description: "Laboratori per bambini a Milano" .slice(0, 26) });
+    const d = short.find((c) => c.key === "description")!;
+    expect(d.done).toBe(false);
+    expect(d.hint).toBe("Almeno 30 caratteri: ne mancano 4");
+    const empty = profileChecks({ ...fullProfile, description: "" }).find((c) => c.key === "description")!;
+    expect(empty.hint).toContain("almeno 30 caratteri");
+    expect(read("app/center/profile/CenterProfileClient.tsx")).toContain("MIN_DESCRIPTION");
+  });
 });

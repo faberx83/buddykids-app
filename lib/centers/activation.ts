@@ -55,7 +55,12 @@ export interface ProfileCheck {
   cta: string;
 }
 
-const MIN_DESCRIPTION = 30;
+export const MIN_DESCRIPTION = 30;
+
+// 28/10/2026, Fabrizio: "se salvo modifiche … non mi riporta nella dashboard".
+// I controlli del profilo portano al profilo con ?da=attivazione: dopo il
+// salvataggio si torna a "Oggi", dove la card mostra la % aggiornata.
+const PROFILE_FROM_ACTIVATION = "/center/profile?da=attivazione";
 
 const filled = (v: string | null | undefined) => Boolean(v && v.trim().length > 0);
 
@@ -66,15 +71,18 @@ export function profileChecks(p: CenterProfileFacts): ProfileCheck[] {
       label: "Nome, zona e contatti",
       hint: "Un'email o un telefono a cui le famiglie possono scrivervi",
       done: filled(p.name) && filled(p.city) && (filled(p.contactEmail) || filled(p.contactPhone)),
-      href: "/center/profile",
+      href: PROFILE_FROM_ACTIVATION,
       cta: "Completa",
     },
     {
       key: "description",
       label: "Descrizione del centro",
-      hint: "Chi siete e cosa fate, in qualche riga",
+      hint:
+        (p.description ?? "").trim().length > 0
+          ? `Almeno ${MIN_DESCRIPTION} caratteri: ne mancano ${MIN_DESCRIPTION - (p.description ?? "").trim().length}`
+          : `Chi siete e cosa fate, almeno ${MIN_DESCRIPTION} caratteri`,
       done: (p.description ?? "").trim().length >= MIN_DESCRIPTION,
-      href: "/center/profile",
+      href: PROFILE_FROM_ACTIVATION,
       cta: "Scrivi",
     },
     {
@@ -82,7 +90,7 @@ export function profileChecks(p: CenterProfileFacts): ProfileCheck[] {
       label: "Indirizzo",
       hint: "Serve alla mappa e alla distanza da casa",
       done: filled(p.address),
-      href: "/center/profile",
+      href: PROFILE_FROM_ACTIVATION,
       cta: "Aggiungi",
     },
     {
@@ -93,7 +101,7 @@ export function profileChecks(p: CenterProfileFacts): ProfileCheck[] {
           ? `Si annulla senza costi fino a ${p.cancellationWindowDays} ${p.cancellationWindowDays === 1 ? "giorno" : "giorni"} prima`
           : "Entro quanti giorni si annulla senza costi",
       done: p.cancellationConfirmed,
-      href: "/center/profile",
+      href: PROFILE_FROM_ACTIVATION,
       cta: "Conferma",
     },
     {
