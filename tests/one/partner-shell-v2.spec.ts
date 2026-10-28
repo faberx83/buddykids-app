@@ -62,11 +62,12 @@ test.describe("Portale centri V2 — guscio: logica", () => {
     expect(partnerBadges({ unreadBookings: 2, pendingGroupRequests: 1, unreadMessages: 3, unconfirmedCheckins: 4 })).toEqual({
       richieste: 6,
       oggi: 4,
+      bySubTab: { "/center/prenotazioni": 2, "/center/richieste": 3, "/center/group-requests": 1 },
     });
-    expect(partnerBadges({ unreadBookings: -1, pendingGroupRequests: NaN, unreadMessages: 0, unconfirmedCheckins: 0 })).toEqual({
-      richieste: 0,
-      oggi: 0,
-    });
+    const zero = partnerBadges({ unreadBookings: -1, pendingGroupRequests: NaN, unreadMessages: 0, unconfirmedCheckins: 0 });
+    expect(zero.richieste).toBe(0);
+    expect(zero.oggi).toBe(0);
+    expect(Object.values(zero.bySubTab)).toEqual([0, 0, 0]);
     expect(badgeLabel(0)).toBeNull();
     expect(badgeLabel(3)).toBe("3");
     expect(badgeLabel(12)).toBe("9+");
