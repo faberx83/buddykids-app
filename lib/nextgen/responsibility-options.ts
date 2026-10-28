@@ -10,7 +10,8 @@
 export type ResponsibleValue = "io" | "partner" | "nonno" | "nonna" | "tata" | "altro";
 
 export const RESPONSIBLE_OPTIONS: { value: ResponsibleValue; emoji: string; label: string }[] = [
-  { value: "io", emoji: "🧑", label: "Io" },
+  // 28/10/2026 (Fabrizio, Chi accompagna: "Io" accanto a "Mamma" confonde): "Tu".
+  { value: "io", emoji: "🧑", label: "Tu" },
   { value: "partner", emoji: "❤️", label: "Partner" },
   { value: "nonno", emoji: "👴", label: "Nonno" },
   { value: "nonna", emoji: "👵", label: "Nonna" },

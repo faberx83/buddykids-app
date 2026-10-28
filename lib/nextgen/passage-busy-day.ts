@@ -365,3 +365,151 @@ export function dayRowFor(date: string): { weekStartDate: string; weekday: WeekR
   const wd = WEEKDAYS.find((w) => w.dayOffset === offset);
   return wd ? { weekStartDate: monday, weekday: wd.value } : null;
 }
+
+// ─── v2 (28/10/2026 pomeriggio): il bambino al centro ───────────────────
+// Fabrizio, sul foglio "prima chi": "il focus è sull'accompagnatore o sul
+// bambino? … rimane difficile capire 'mamma' di chi deve occuparsi.
+// Proverei a sintetizzare e semplificare ancora". Mock v2 approvato ("si ok
+// tutto"): una scheda per figlio con la sua giornata; "Chi?" apre la domanda
+// scritta per intero con la persona di solito in alto; vista "Per persona"
+// a frasi ("Tu: 08:30 porti Lino a scuola"); "Io" diventa "Tu".
+
+/** Le righe di un figlio solo (niente righe in comune fra fratelli). */
+export function buildKidDays(input: Omit<Parameters<typeof buildBusyItems>[0], "separated">): { kid: { id: string; name: string }; items: BusyItem[] }[] {
+  return input.kids
+    .map((kid) => ({ kid, items: buildBusyItems({ ...input, kids: [kid] }) }))
+    .filter((k) => k.items.length > 0);
+}
+
+const placeOf = (l: ResolvedLeg) => (l.school ? "scuola" : l.title);
+
+/** Dal punto di vista del bambino: "Entra a scuola", "Esce da scuola", "Va a Ritmica", "Esce da Ritmica", "Da scuola a Ritmica". */
+export function kidItemTitle(item: BusyItem): string {
+  const legs = item.parts[0].legs;
+  if (legs.length === 2) return tripTitle(legs[0], legs[1]);
+  const l = legs[0];
+  if (l.school) return l.moment === "andata" ? "Entra a scuola" : "Esce da scuola";
+  return l.moment === "andata" ? `Va a ${l.title}` : `Esce da ${l.title}`;
+}
+
+/** La domanda del foglietto: "Chi prende Lino all'uscita da scuola?" */
+export function whoQuestion(item: BusyItem): string {
+  const legs = item.parts[0].legs;
+  const kid = item.kidsLabel;
+  if (legs.length === 2) return `Chi accompagna ${kid} da ${placeOf(legs[0])} a ${placeOf(legs[1])}?`;
+  const l = legs[0];
+  if (l.school) return l.moment === "andata" ? `Chi porta ${kid} a scuola?` : `Chi prende ${kid} all'uscita da scuola?`;
+  return l.moment === "andata" ? `Chi porta ${kid} a ${l.title}?` : `Chi riprende ${kid} da ${l.title}?`;
+}
+
+/** La frase della vista "Per persona": "porti Lino a scuola" (tu) / "prende Lino a scuola" (gli altri). */
+export function personSentence(item: BusyItem, you: boolean): string {
+  const legs = item.parts[0].legs;
+  const kid = item.kidsLabel;
+  const v = (tu: string, lui: string) => (you ? tu : lui);
+  if (legs.length === 2) return `${v("porti", "porta")} ${kid} da ${placeOf(legs[0])} a ${placeOf(legs[1])}`;
+  const l = legs[0];
+  if (l.school) return l.moment === "andata" ? `${v("porti", "porta")} ${kid} a scuola` : `${v("prendi", "prende")} ${kid} a scuola`;
+  return l.moment === "andata" ? `${v("porti", "porta")} ${kid} a ${l.title}` : `${v("riprendi", "riprende")} ${kid} da ${l.title}`;
+}
+
+/** Identità di una persona (opzione + testo libero per "Altro…"). */
+export function personKey(p: { responsible: string; familyPersonId?: string | null; responsibleLabel?: string | null }): string {
+  const free = p.responsible === "altro" && !p.familyPersonId ? (p.responsibleLabel ?? "").trim() : "";
+  return `${p.responsible}|${p.familyPersonId ?? ""}|${free}`;
+}
+
+export const chosenKey = (p: ChosenPerson) =>
+  personKey({ responsible: p.opt.value, familyPersonId: p.opt.familyPersonId ?? null, responsibleLabel: p.opt.value === "altro" ? personLabel(p) : null });
+
+/** Da una scelta salvata alla persona fra le opzioni (null se non si ritrova). */
+export function personFromRow(row: PassageResponsibility, options: ResponsibleOption[]): ChosenPerson | null {
+  if (row.responsible === "altro" && !row.familyPersonId) {
+    const generic = options.find((o) => o.value === "altro" && !o.familyPersonId);
+    const label = row.responsibleLabel?.trim();
+    return generic && label ? { opt: generic, label } : null;
+  }
+  const opt = options.find((o) => o.value === row.responsible && (o.familyPersonId ?? null) === (row.familyPersonId ?? null));
+  return opt ? { opt } : null;
+}
+
+/**
+ * Chi lo fa "di solito": per lo stesso figlio e lo stesso passaggio, prima lo
+ * stesso giorno della settimana nelle 4 settimane prima (il più recente),
+ * poi chi l'ha fatto più spesso nei giorni prima.
+ */
+export function usualPersonFor(input: {
+  item: BusyItem;
+  date: string;
+  rows: PassageResponsibility[];
+  options: ResponsibleOption[];
+}): ChosenPerson | null {
+  const part = input.item.parts[0];
+  const leg = part.legs[0];
+  const past = input.rows.filter((r) => r.kidId === part.kidId && r.passageKey === leg.passageKey && r.moment === leg.moment && r.date < input.date);
+  for (let k = 1; k <= SAME_WEEKDAY_LOOKBACK_WEEKS; k += 1) {
+    const d = addDaysIso(input.date, -7 * k);
+    const r = past.find((x) => x.date === d);
+    if (r) {
+      const p = personFromRow(r, input.options);
+      if (p) return p;
+    }
+  }
+  const counts = new Map<string, { n: number; row: PassageResponsibility }>();
+  for (const r of past) {
+    const k = personKey(r);
+    const c = counts.get(k);
+    counts.set(k, { n: (c?.n ?? 0) + 1, row: r });
+  }
+  const best = Array.from(counts.values()).sort((a, b) => b.n - a.n)[0];
+  return best ? personFromRow(best.row, input.options) : null;
+}
+
+/** Le persone più usate (scelte salvate), escluse quelle già in alto; si completa con l'ordine delle opzioni. */
+export function topPeople(input: { rows: PassageResponsibility[]; options: ResponsibleOption[]; exclude: string[]; n?: number }): ChosenPerson[] {
+  const n = input.n ?? 3;
+  const counts = new Map<string, { n: number; p: ChosenPerson }>();
+  for (const r of input.rows) {
+    const p = personFromRow(r, input.options);
+    if (!p) continue;
+    const k = chosenKey(p);
+    counts.set(k, { n: (counts.get(k)?.n ?? 0) + 1, p });
+  }
+  const out: ChosenPerson[] = [];
+  const taken = new Set(input.exclude);
+  for (const { p } of Array.from(counts.values()).sort((a, b) => b.n - a.n)) {
+    if (out.length >= n) break;
+    const k = chosenKey(p);
+    if (taken.has(k)) continue;
+    out.push(p);
+    taken.add(k);
+  }
+  for (const o of input.options) {
+    if (out.length >= n) break;
+    if (o.value === "altro" && !o.familyPersonId) continue;
+    const p = { opt: o };
+    const k = chosenKey(p);
+    if (taken.has(k)) continue;
+    out.push(p);
+    taken.add(k);
+  }
+  return out;
+}
+
+/** Il fratello con lo stesso passaggio alla stessa ora ("Anche Franchidea"). */
+export function siblingTwins(item: BusyItem, kidDays: { kid: { id: string; name: string }; items: BusyItem[] }[]): BusyItem[] {
+  return kidDays.flatMap((k) => (k.kid.id === item.kidIds[0] ? [] : k.items.filter((i) => i.signature === item.signature)));
+}
+
+/** La vista "Per persona": Tu per primo, poi in ordine di prima uscita; i da decidere a parte. */
+export function personView(
+  kidDays: { kid: { id: string; name: string }; items: BusyItem[] }[],
+  youLabel: string
+): { groups: { label: string; you: boolean; items: BusyItem[] }[]; open: BusyItem[] } {
+  const all = kidDays
+    .flatMap((k) => k.items)
+    .sort((a, b) => (a.time ?? "").localeCompare(b.time ?? ""));
+  const groups = groupByPerson(all).map((g) => ({ ...g, you: g.label === youLabel }));
+  groups.sort((a, b) => Number(b.you) - Number(a.you));
+  return { groups, open: all.filter((i) => i.label === null) };
+}

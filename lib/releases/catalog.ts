@@ -368,7 +368,7 @@ export const RELEASE_CATALOG: ReleaseCatalogEntry[] = [
     id: "chi-accompagna-giornate-piene",
     label: "TRAMA — Chi accompagna, giornate piene",
     shortDescription:
-      "Nel foglio Chi accompagna: prima chi, poi un tocco per passaggio; 'Come mercoledì scorso' in un tocco; una sola domanda 'Anche gli altri mercoledì?' a fine giornata.",
+      "Nel foglio Chi accompagna: una scheda per figlio, 'Chi?' con la domanda scritta e chi lo fa di solito; vista Per persona a frasi; 'Come mercoledì scorso' in un tocco; una sola domanda 'Anche gli altri mercoledì?' a fine giornata.",
     targetAudience: ["parent"],
     featureKeys: ["passage_person_first"],
     knownLimitations: [
@@ -376,7 +376,7 @@ export const RELEASE_CATALOG: ReleaseCatalogEntry[] = [
       "passage_person_first: 'Come mercoledì scorso' copia solo i passaggi uguali (stesso figlio, impegno e verso) salvati per passaggio; le scelte vecchie solo 'del giorno' non vengono copiate.",
       "passage_person_first: 'Anche gli altri mercoledì?' propone solo lo stesso giorno della settimana (anche per la scuola), fino alla fine dell'impegno e al massimo sei mesi.",
     ],
-    notes: "Creata il 28/10/2026 dal mock approvato da Fabrizio. Ripiego: flag spento = foglio per passaggio di prima; le scelte salvate restano.",
+    notes: "Creata il 28/10/2026 dal mock approvato da Fabrizio; v2 lo stesso giorno (il bambino al centro; l'opzione 'Io' ora si chiama 'Tu' ovunque). Ripiego: flag spento = foglio per passaggio di prima; le scelte salvate restano.",
   },
   {
     // TRAMA — CORREZIONI DAL TEST UX PARENT (21/10/2026).

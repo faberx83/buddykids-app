@@ -93,7 +93,8 @@ test.describe("TRAMA BETA v1.1 — Calendario: una sola card 'Chi fa cosa?' espa
       test.skip(true, "Nessuno slot Andata/Ritorno libero da assegnare per l'account di test.");
     }
     await assignButton.click();
-    const ioOption = page.getByRole("button", { name: /^🧑 Io$/ });
+    // 28/10/2026 (Fabrizio: "Io" accanto a "Mamma" confonde): l'opzione "io" si chiama "Tu".
+    const ioOption = page.getByRole("button", { name: /^🧑 Tu$/ });
     await expect(ioOption).toBeVisible();
     await ioOption.click();
     // Optimistic update: l'etichetta "+ Assegna" viene sostituita da "Io".
