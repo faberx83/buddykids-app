@@ -47,6 +47,8 @@ import { ITALIAN_REGIONS } from "@/lib/school-calendar/regions";
 import { interestIcon } from "@/lib/nextgen/kid-visual";
 import ParentalDeclarationText from "@/components/legal/ParentalDeclarationText";
 import { newKidErrorSummary, onboardingTotalSteps, validateNewKid, type NewKidField } from "@/lib/nextgen/parent-ux-fix";
+// NODI THREAD (28/10/2026): benvenuto nel primo passo utile (figli), una volta sola.
+import Nodi from "@/components/nextgen/Nodi";
 
 export interface OnboardingV2Kid {
   id: string;
@@ -658,6 +660,8 @@ function KidsStep({
       <StepHeader step={step} totalSteps={totalSteps} onBack={onBack} />
 
       <div className="flex flex-col gap-2">
+        {/* NODI THREAD: solo all'ingresso del passo (nessun figlio ancora), non negli altri passi. */}
+        {kids.length === 0 && <Nodi state="welcome" size={136} className="-mb-1 self-center" />}
         <h2 id="onboarding-v2-title" className="font-poppins text-[24px] font-semibold leading-tight text-ink">
           {kids.length > 0 ? "I tuoi figli" : "Chi sono i tuoi figli?"}
         </h2>

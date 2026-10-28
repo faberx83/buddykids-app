@@ -394,6 +394,21 @@ export const RELEASE_CATALOG: ReleaseCatalogEntry[] = [
     notes: "Creata il 21/10/2026. Ripiego: flag spento = tutto come prima.",
   },
   {
+    // TRAMA — NODI THREAD (28/10/2026).
+    id: "nodi-thread",
+    label: "TRAMA — Nodi",
+    shortDescription: "La mascotte Nodi nei momenti chiave: benvenuto, stati vuoti, chi accompagna, conferme che contano.",
+    targetAudience: ["parent"],
+    featureKeys: ["nodi_thread"],
+    knownLimitations: [
+      "nodi_thread: il benvenuto compare solo con la release 'onboarding-v2' (passo dei figli, prima di inserirne uno).",
+      "nodi_thread: 'Piccolo nodo da sciogliere' e gli avvisi dopo un'assegnazione sono nel Planner V2; la Home tiene il suo avviso di oggi.",
+      "nodi_thread: Gruppi e Scopri senza risultati solo nelle versioni V2 (GROUPS_V2_ENABLED, DISCOVER_V2_ENABLED).",
+      "nodi_thread: asset statici; il movimento descritto nel pacchetto è per una fase successiva.",
+    ],
+    notes: "Creata il 28/10/2026 dal pacchetto TRAMA_NODI_THREAD_FINAL v1.0 approvato da Fabrizio. Ripiego: flag spento = nessun Nodi, tutto come prima.",
+  },
+  {
     // TRAMA — CHI ACCOMPAGNA PIÙ VELOCE (20/10/2026).
     id: "chi-accompagna-veloce",
     label: "TRAMA — Chi accompagna più veloce",

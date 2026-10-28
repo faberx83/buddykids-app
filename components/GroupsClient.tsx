@@ -16,6 +16,9 @@ import { GroupItem, PublicGroupItem, GroupInviteItem } from "@/lib/types";
 import { resolveGroupsListBackHref, groupsDetailQuery } from "@/lib/nextgen/groups-back-nav";
 import { useNextgenToast } from "@/components/nextgen/NextgenToastProvider";
 import { groupInviteAcceptMessage } from "@/lib/nextgen/parent-ux-fix";
+// NODI THREAD (28/10/2026): Gruppi vuoti (solo V2, NODI_ENABLED).
+import Nodi, { useNodiEnabled } from "@/components/nextgen/Nodi";
+import { NODI_COPY } from "@/lib/nextgen/nodi";
 
 const tabs = ["I miei gruppi", "Scopri", "Inviti"];
 
@@ -113,6 +116,7 @@ export default function GroupsClient({
   }
 
   const v2 = nextgen === "v2";
+  const nodiEnabled = useNodiEnabled();
 
   return (
     <div className={v2 ? "-mb-40 flex min-h-[calc(100%+10rem)] flex-col bg-trama-page pb-24" : "animate-fade-in"}>
@@ -264,12 +268,20 @@ export default function GroupsClient({
             </div>
           )}
 
-          {groups.length === 0 && !showNew && (
+          {groups.length === 0 && !showNew && v2 && nodiEnabled ? (
+            <div className="mx-5 mb-3 flex flex-col items-center gap-2 px-4 pt-4 text-center" data-testid="nodi-groups-empty">
+              <Nodi state="group" size={104} />
+              <p className="text-balance font-poppins text-[17px] font-semibold leading-snug text-ink">{NODI_COPY.groupsEmptyTitle}</p>
+              <p className="max-w-[34ch] text-[13.5px] leading-relaxed text-ink-2">
+                Non fai ancora parte di nessun gruppo — creane uno per iniziare a risparmiare con gli amici.
+              </p>
+            </div>
+          ) : groups.length === 0 && !showNew ? (
             <p className="mx-5 mb-3 text-sm text-ink-2">
               Non fai ancora parte di nessun gruppo — creane uno per iniziare a risparmiare con gli
               amici.
             </p>
-          )}
+          ) : null}
 
           {groups.map((g) => (
             <GroupCard key={g.id} group={g} basePath={basePath} nextgen={nextgen} detailQuery={detailQuery} />

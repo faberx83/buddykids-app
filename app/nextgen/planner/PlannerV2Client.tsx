@@ -91,6 +91,9 @@ import PlannerBudgetView from "@/components/nextgen/PlannerBudgetView";
 import PlannerCalendarExportCard from "@/components/nextgen/PlannerCalendarExportCard";
 import ExternalPlannerItemsSection from "@/components/nextgen/ExternalPlannerItemsSection";
 import { useNextgenToast } from "@/components/nextgen/NextgenToastProvider";
+// NODI THREAD (28/10/2026): Planner vuoto, "Piccolo nodo da sciogliere", avviso dopo un'assegnazione.
+import Nodi, { useNodiEnabled } from "@/components/nextgen/Nodi";
+import { isPlannerWeekEmpty, nodiAfterAssign, NODI_COPY, type AssignSnapshot } from "@/lib/nextgen/nodi";
 import { useGlobalActionProgress } from "@/components/GlobalActionProgress";
 import { recordBetaSignalAction } from "@/app/actions/beta-signals";
 import { markFirstUsefulAction } from "@/lib/nextgen/first-action";
@@ -368,6 +371,35 @@ export default function PlannerV2Client({
     });
     return { ...week, days, missingCount };
   }, [week, passages, visibleKids, todayIso]);
+
+  // NODI THREAD (28/10/2026): "prima" e "dopo" il foglio Chi accompagna / Chi
+  // fa cosa. All'apertura si fotografano i passaggi da decidere; alla
+  // chiusura, se il giorno o la settimana sono diventati completi, un avviso
+  // con Nodi (lib/nextgen/nodi.ts, nodiAfterAssign). Mai a ogni scelta.
+  const nodiEnabled = useNodiEnabled();
+  const assignBefore = useRef<(AssignSnapshot & { dayIso: string | null }) | null>(null);
+  const panelKey = panel === "chi" ? "chi" : panel !== null && typeof panel === "object" && "assign" in panel ? `assign:${panel.assign}` : null;
+  // Apertura (o passaggio a un altro giorno) = fotografia; chiusura (il
+  // pannello torna null) = confronto. Gli onClose dei fogli restano com'erano.
+  useEffect(() => {
+    if (!panelKey) {
+      const before = assignBefore.current;
+      assignBefore.current = null;
+      if (!nodiEnabled || !before) return;
+      const day = before.dayIso ? weekShown.days.find((d) => d.dateIso === before.dayIso) : null;
+      const moment = nodiAfterAssign(before, {
+        dayMissing: before.dayIso ? (day ? day.coordination.missingCount : null) : null,
+        weekMissing: weekShown.missingCount,
+      });
+      if (moment) showToast(moment.text, "success", { nodi: moment.state });
+      return;
+    }
+    const dayIso = panelKey.startsWith("assign:") ? panelKey.slice("assign:".length) : null;
+    const day = dayIso ? weekShown.days.find((d) => d.dateIso === dayIso) : null;
+    assignBefore.current = { dayIso, dayMissing: day ? day.coordination.missingCount : null, weekMissing: weekShown.missingCount };
+    // Solo quando si apre o si chiude un foglio, non a ogni scelta.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [panelKey]);
 
   // 20/10/2026 — "Non serve" sulle chiusure: stato locale (si vede subito),
   // salvato con l'azione già esistente degli override del calendario scuola.
@@ -943,6 +975,7 @@ function WeekView({
   beforeActions?: ReactNode;
 }) {
   const status = weekStatusParts(week);
+  const nodiEnabled = useNodiEnabled(); // NODI THREAD (28/10/2026)
   const dayRefs = useRef<Record<string, HTMLElement | null>>({});
   // Giorno aperto: quello toccato nella striscia, se è in questa settimana;
   // altrimenti oggi / il primo giorno con qualcosa (cambiando settimana si riparte da lì).
@@ -989,9 +1022,30 @@ function WeekView({
         )}
       </div>
 
+      {/* NODI THREAD (28/10/2026): con passaggi da decidere, "Chi fa cosa"
+          diventa la card del piccolo nodo, con Nodi e la CTA standard
+          "Assegna" (mai Nodi nelle singole giornate o sui bottoni). Si fa da
+          parte mentre è visibile l'avviso con Nodi (uno per schermata). */}
+      {nodiEnabled && status.missing && week.days.some((d) => d.coordination.mode !== "none") ? (
+        <div className="flex items-center gap-3 rounded-2xl border border-trama-line bg-white py-3 pl-3 pr-3.5" data-testid="nodi-problem-card">
+          <Nodi state="problem" size={64} yieldToToast />
+          <span className="flex min-w-0 flex-1 flex-col gap-0.5">
+            <span className="font-poppins text-[14.5px] font-semibold leading-snug text-ink">{NODI_COPY.problemTitle}</span>
+            <span className="text-[12.5px] font-semibold text-[#8A4B00]">{status.missing}</span>
+          </span>
+          <button
+            type="button"
+            onClick={onWho}
+            className="flex min-h-[40px] flex-shrink-0 items-center rounded-[12px] bg-trama-primary px-3.5 text-[13px] font-bold text-white active:bg-trama-primary-press"
+          >
+            Assegna
+          </button>
+        </div>
+      ) : null}
+
       {/* CHI FA COSA (nome del Planner attuale, segnalazione live 14/10):
           tutta la settimana in un colpo d'occhio + "uguale tutta la settimana". */}
-      {week.days.some((d) => d.coordination.mode !== "none") && (
+      {!(nodiEnabled && status.missing) && week.days.some((d) => d.coordination.mode !== "none") && (
         <button
           type="button"
           onClick={onWho}
@@ -1138,6 +1192,34 @@ function WeekView({
           </div>
         );
       })()}
+
+      {/* NODI THREAD (28/10/2026): Planner vuoto (nessun impegno, scuola
+          compresa, e nessuna chiusura). Azioni e testi già esistenti. */}
+      {nodiEnabled && isPlannerWeekEmpty(week) && (
+        <div className="flex flex-col items-center gap-2 rounded-2xl border border-trama-line bg-white px-5 pb-5 pt-4 text-center" data-testid="nodi-planner-empty">
+          <Nodi state="empty" size={104} />
+          <p className="text-balance font-poppins text-[17px] font-semibold leading-snug text-ink">{NODI_COPY.emptyPlannerTitle}</p>
+          <p className="max-w-[34ch] text-[13.5px] leading-relaxed text-ink-2">Qui vedrai chi va dove, a che ora e chi accompagna.</p>
+          <div className="mt-1.5 flex flex-wrap justify-center gap-2">
+            {addHref && (
+              <Link
+                href={addHref}
+                className="flex min-h-[44px] items-center rounded-[12px] bg-trama-primary px-4 text-[13.5px] font-bold text-white active:bg-trama-primary-press"
+              >
+                Aggiungi impegno
+              </Link>
+            )}
+            <Link
+              href={findHref}
+              className={`flex min-h-[44px] items-center rounded-[12px] px-4 text-[13.5px] font-bold ${
+                addHref ? "border border-[#E3E6EC] bg-white text-trama-navy" : "bg-trama-primary text-white active:bg-trama-primary-press"
+              }`}
+            >
+              Trova attività
+            </Link>
+          </div>
+        </div>
+      )}
 
       {/* AGENDA */}
       {dayView && selectedIdx >= 0 ? (

@@ -13,6 +13,8 @@
 
 import Link from "next/link";
 import type { PeriodWeekState, SeasonSummaryModel } from "@/lib/nextgen/season-summary";
+// NODI THREAD (28/10/2026): nella card del prossimo passo, solo nello stato welcome.
+import Nodi from "@/components/nextgen/Nodi";
 
 export interface SeasonSummaryAction {
   label: string;
@@ -111,8 +113,11 @@ export default function SeasonSummaryCard({
   welcome,
   weekHref,
   onWeekClick,
+  nodi = false,
 }: {
   model: SeasonSummaryModel;
+  /** NODI THREAD (28/10/2026): Nodi "focus" nello stato welcome (solo Home; NODI_ENABLED decide se si vede). */
+  nodi?: boolean;
   /** 15/10/2026: celle della striscia toccabili (Home → link al Planner). */
   weekHref?: (weekStartIso: string) => string;
   /** 15/10/2026: celle della striscia toccabili (Planner → apre la settimana). */
@@ -130,11 +135,14 @@ export default function SeasonSummaryCard({
   if (model.state === "welcome" && welcome) {
     return (
       <section aria-labelledby="period-welcome-h" className={shell}>
-        <div className="flex flex-col gap-1.5">
+        <div className="flex items-start gap-3">
+        <div className="flex min-w-0 flex-1 flex-col gap-1.5">
           <h2 id="period-welcome-h" className="font-poppins text-[21px] font-semibold leading-tight text-ink">
             Iniziamo a costruire il vostro piano
           </h2>
           <p className="text-[14px] leading-relaxed text-ink-2">{welcome.body}</p>
+        </div>
+        {nodi && <Nodi state="focus" size={88} className="-mr-1 -mt-1" />}
         </div>
         <ol className="flex flex-col">
           {welcome.steps.map((s, i) => (

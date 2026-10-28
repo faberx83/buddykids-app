@@ -24,6 +24,9 @@ import { ONBOARDING_V2_TUTORIAL_KEY } from "@/lib/nextgen/onboarding-v2";
 import { getKidsForUser } from "@/lib/data/kids";
 // Profilo da ogni sezione (14/10/2026): avatar in alto a destra con la nuova barra.
 import { ProfileChipProvider } from "@/components/nextgen/ProfileChip";
+// NODI THREAD (28/10/2026): mascotte nei momenti chiave, dietro NODI_ENABLED.
+import { NodiProvider } from "@/components/nextgen/Nodi";
+import { NODI_FLAG } from "@/lib/nextgen/nodi";
 import NotificationCenter from "@/components/nextgen/NotificationCenter";
 import NextgenAuthRedirect from "@/components/nextgen/NextgenAuthRedirect";
 import { getParentNotifications } from "@/lib/data/notifications";
@@ -147,6 +150,8 @@ export default async function NextgenLayout({ children }: { children: React.Reac
   let radarEnabled = false; // RADAR (14/10/2026): "Una scoperta" nel +
   let returnHomeEnabled = false; // 20/10/2026: dopo una pausa l'app riparte dalla Home
   let parentUxFix = false; // 21/10/2026: correzioni dal test UX (PARENT_UX_FIX_ENABLED)
+  // NODI THREAD (28/10/2026): famiglie e Admin piattaforma (che usa l'app famiglie), come l'onboarding.
+  let nodiEnabled = false;
   // TRAMA — ONBOARDING V2 (14/10/2026): con il flag acceso l'onboarding V2
   // prende il posto del carousel attuale (chiave tutorial nuova). I dati dei
   // figli e della scuola si leggono SOLO se l'onboarding sta per comparire.
@@ -195,7 +200,7 @@ export default async function NextgenLayout({ children }: { children: React.Reac
     // applicato in app/nextgen/planner/page.tsx (commit a38a49e, "in
     // generale è rallentata l'app") per evitare di reintrodurre lo stesso
     // problema aggiungendo qui un secondo flag risolto uno dopo l'altro.
-    const [enabled, globalActionProgressResolved, buildInfoLabelResolved] = await Promise.all([
+    const [enabled, globalActionProgressResolved, buildInfoLabelResolved, nodiResolved] = await Promise.all([
       resolveFeatureFlag({
         flagName: "TRAMA_ONE_ENABLED",
         userId: user.id,
@@ -212,8 +217,17 @@ export default async function NextgenLayout({ children }: { children: React.Reac
       }),
       // BUILD_INFO_BUBBLE
       resolveBuildInfoBubbleLabel({ userId: user.id, role: realRole, tenant: "family" }),
+      // NODI THREAD — in parallelo, nessuna attesa in più; errore = spento.
+      resolveFeatureFlag({
+        flagName: NODI_FLAG,
+        userId: user.id,
+        role: realRole,
+        tenant: "family",
+        correlationId: generateCorrelationId(),
+      }).catch(() => false),
     ]);
     globalActionProgressEnabled = globalActionProgressResolved;
+    nodiEnabled = nodiResolved && (realRole === "parent" || realRole === "platform_admin");
     if (realRole === "parent") {
       try {
         const [navV2, externalItems, radar, returnHome, uxFix] = await Promise.all([
@@ -338,6 +352,7 @@ export default async function NextgenLayout({ children }: { children: React.Reac
   return (
     <PhoneShell>
       <GlobalActionProgressProvider enabled={globalActionProgressEnabled}>
+      <NodiProvider enabled={nodiEnabled}>
       <NextgenToastProvider>
         {/* TRAMA BETA v1.1.1 (FINAL FUNCTIONAL + UI CONSISTENCY FIXES,
             punto 7) — Provider condiviso: bell/chat sotto sono FRATELLI del
@@ -422,6 +437,7 @@ export default async function NextgenLayout({ children }: { children: React.Reac
           <BuildInfoBubble label={buildInfoLabel} />
         </NextgenScrollActivityProvider>
       </NextgenToastProvider>
+      </NodiProvider>
       </GlobalActionProgressProvider>
       {/* Istanza DEDICATA a NEXTGEN: appName diverso ("TRAMA" vs quello di
           LEGACY, vedi lib/tenant.ts) -> chiave di dismiss separata in

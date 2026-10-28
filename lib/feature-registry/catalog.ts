@@ -1220,6 +1220,32 @@ export const FEATURE_CATALOG: FeatureCatalogEntry[] = [
     releaseEligible: true,
   },
   {
+    // TRAMA — NODI THREAD (28/10/2026). NEW: componente Nodi (ADAPT di
+    // web/Nodi.tsx del pacchetto TRAMA_NODI_THREAD_FINAL v1.0) + provider del
+    // flag; WRAP degli stati vuoti e degli avvisi esistenti. Nessun dato nuovo.
+    key: "nodi_thread",
+    label: "Nodi — la mascotte nei momenti chiave",
+    area: "parent",
+    status: "INTERNAL_PREVIEW",
+    flagName: "NODI_ENABLED",
+    description:
+      "Nodi compare solo dove TRAMA trasforma complessità in connessione: benvenuto nel passo dei figli, prossimo passo in " +
+      "Home, Planner vuoto, passaggi senza accompagnatore, avviso dopo un'assegnazione o una settimana completata, Gruppi " +
+      "vuoti, Scopri senza risultati. Mai nell'intestazione, sulle card attività, nelle celle del calendario o sui bottoni.",
+    sourceFiles: [
+      "lib/nextgen/nodi.ts",
+      "components/nextgen/Nodi.tsx",
+      "components/nextgen/NextgenToastProvider.tsx",
+      "app/nextgen/layout.tsx",
+      "public/assets/nodi/",
+    ],
+    note:
+      "Asset SVG definitivi copiati senza modifiche in public/assets/nodi (17 file). Statici, nessuna animazione. Un solo " +
+      "Nodi per schermata: mentre l'avviso con Nodi è visibile, quello della card del Planner si nasconde.",
+    riskLevel: "low",
+    releaseEligible: true,
+  },
+  {
     // TRAMA — CHI ACCOMPAGNA PIÙ VELOCE (20/10/2026). ADAPT del foglio "Chi
     // accompagna" del Planner V2 (AssignSheet) + NEW piccola: azione per più
     // giorni (setResponsibilityForDatesAction, stessa tabella

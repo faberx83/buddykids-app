@@ -83,6 +83,8 @@ import type { MapItem } from "@/components/ActivityMap";
 import { useSetNextgenHideFloatingControls } from "@/components/nextgen/NextgenScrollActivity";
 import ProfileChip from "@/components/nextgen/ProfileChip";
 import DiscoverFiltersSheet from "@/components/nextgen/DiscoverFiltersSheet";
+// NODI THREAD (28/10/2026): Scopri V2 senza risultati.
+import Nodi, { useNodiEnabled } from "@/components/nextgen/Nodi";
 
 // Leaflet usa `window`, quindi la mappa va caricata solo lato client — stesso
 // pattern già usato in LEGACY (app/(main)/search/SearchClient.tsx) e nel
@@ -484,6 +486,7 @@ export default function SearchDiscoveryClient({
   // settimana estiva (es. "Trova attività" su un ponte dal Planner) diventa
   // un periodo a sé, già selezionato.
   const v2 = discoverV2;
+  const nodiEnabled = useNodiEnabled(); // NODI THREAD (28/10/2026)
   // SCOPRI V2 — ritocchi 14/10/2026 ("allinea tutto al nuovo stile"): i
   // pannelli dei filtri come le card V2 (bianco, angoli 20px, ombra
   // leggera), titoli più leggibili, pill bianche col bordo. Fuori V2 le
@@ -2193,9 +2196,19 @@ export default function SearchDiscoveryClient({
           </div>
         ) : totalResultsCount === 0 ? (
           <div className="flex flex-col gap-3">
+            {/* NODI THREAD (28/10/2026): in Scopri V2 lo stato senza risultati
+                ha Nodi "focus", perché sotto c'è il prossimo passo (aggiungerlo
+                al Planner, suggerire un centro). Stesso testo di prima. */}
+            {v2 && nodiEnabled ? (
+              <div className="flex flex-col items-center gap-2 rounded-2xl border border-trama-line bg-white px-5 pb-5 pt-4 text-center" data-testid="nodi-discover-empty">
+                <Nodi state="focus" size={80} />
+                <p className="text-[14px] font-semibold text-ink">Nessuna attività corrisponde ai filtri scelti.</p>
+              </div>
+            ) : (
             <p className="rounded-lg border border-dashed border-[#D8DEE8] bg-white p-5 text-center text-sm text-ink-2">
               Nessuna attività corrisponde ai filtri scelti.
             </p>
+            )}
             {/* TRAMA — FAMILY-FIRST BETA PASS (07/10/2026): "nessun risultato"
                 non è un vicolo cieco. Se il Planner degli impegni esterni è
                 disponibile per l'utente, l'attività che cercava può comunque
