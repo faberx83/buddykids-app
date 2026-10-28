@@ -19,16 +19,7 @@ const socialFields: { key: keyof SocialLinks; label: string; icon: string; place
   { key: "website", label: "Sito web", icon: "ti-world", placeholder: "https://..." },
 ];
 
-export default function CenterProfileClient({
-  center,
-  dbId,
-  fromActivation = false,
-}: {
-  center: Center;
-  dbId: string | null;
-  /** Arrivati dalla card di attivazione: dopo il salvataggio si torna a "Oggi". */
-  fromActivation?: boolean;
-}) {
+export default function CenterProfileClient({ center, dbId }: { center: Center; dbId: string | null }) {
   const router = useRouter();
   const [form, setForm] = useState({
     ...center,
@@ -115,8 +106,10 @@ export default function CenterProfileClient({
             return;
           }
           setSaved(true);
-          // 28/10/2026, Fabrizio: "non mi riporta nella dashboard".
-          if (fromActivation) router.push("/center");
+          // 28/10/2026, Fabrizio: "vorrei però che al salvataggio ritornasse
+          // sulla dashboard" — sempre, non solo dalla card di attivazione.
+          // In caso di errore si resta qui, con il messaggio.
+          router.push("/center?salvato=profilo");
         }}
         className="space-y-4 rounded-lg border border-[#E8EBF0] bg-white p-5"
       >
@@ -354,12 +347,12 @@ export default function CenterProfileClient({
             disabled={saving}
             className="rounded-md bg-sky px-5 py-2.5 text-sm font-bold text-white transition-colors hover:bg-[#3A9FDC] disabled:opacity-60"
           >
-            {saving ? "Salvo…" : fromActivation ? "Salva e torna a Oggi" : "Salva modifiche"}
+            {saving ? "Salvo…" : "Salva e torna a Oggi"}
           </button>
           {error && <span className="text-xs font-medium text-orange">{error}</span>}
           {saved && !error && (
             <span className="text-xs font-medium text-green">
-              {dbId ? (fromActivation ? "Salvato ✓ Torno a Oggi…" : "Salvato ✓") : "Salvato (demo), non viene registrato."}
+              {dbId ? "Salvato ✓ Torno a Oggi…" : "Salvato (demo), non viene registrato."}
             </span>
           )}
         </div>

@@ -114,7 +114,14 @@ const ONBOARDING_STATUS_LABEL: Record<CenterOnboardingStatus, string> = {
 // suggerimenti cross-selling (entrambi costruiti solo su dati mock, nessun
 // equivalente reale esistente oggi) sono stati rimossi invece di essere
 // "reincartati": un gap dichiarato è preferibile a un numero finto.
-export default async function CenterDashboardPage() {
+export default async function CenterDashboardPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ salvato?: string | string[] }>;
+}) {
+  // 28/10/2026, Fabrizio: "vorrei però che al salvataggio ritornasse sulla
+  // dashboard". Il profilo torna qui con ?salvato=profilo: una riga di conferma.
+  const savedProfile = (await searchParams).salvato === "profilo";
   // Portale centri V2 (27/10/2026, PARTNER_V2_ENABLED): l'attivazione è qui
   // in Oggi, per tutti; niente più rimando alla procedura TRAMA ONE.
   const partnerV2 = await partnerV2EnabledForCurrentUser();
@@ -244,6 +251,16 @@ export default async function CenterDashboardPage() {
       {/* Invito proattivo push (01/09/2026) — stesso componente condiviso
           del genitore, si autonasconde da solo se non applicabile. */}
       <PushNotificationsPrompt />
+
+      {savedProfile && (
+        <p
+          role="status"
+          className="mb-4 flex items-center gap-2 rounded-xl bg-green-light px-3.5 py-2.5 text-sm font-semibold text-ink"
+        >
+          <i className="ti ti-circle-check text-[18px] text-green" aria-hidden="true" />
+          Profilo salvato
+        </p>
+      )}
 
       {activationState && !activationState.active && <ActivationCard view={activationState} />}
 

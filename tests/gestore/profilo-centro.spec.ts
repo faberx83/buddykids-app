@@ -50,7 +50,10 @@ test.describe("Gestore - Profilo Centro", () => {
     // centro reale (verificato via query SQL diretta). L'assenza di questa
     // asserzione (prima si controllava solo "niente Application error") è
     // il motivo per cui la suite non aveva mai intercettato la regressione.
-    await expect(page.getByText("Salvato su Supabase ✓")).toBeVisible();
+    // 28/10/2026, Fabrizio: "vorrei però che al salvataggio ritornasse sulla
+    // dashboard". Il salvataggio reale (non demo) riporta a Oggi con la conferma.
+    await page.waitForURL((url) => url.pathname === "/center" && url.searchParams.get("salvato") === "profilo");
+    await expect(page.getByText("Profilo salvato")).toBeVisible();
     await expect(page.locator("body")).not.toContainText("Application error");
   });
 
@@ -75,7 +78,10 @@ test.describe("Gestore - Profilo Centro", () => {
     await page.getByRole("button", { name: /Salva/ }).first().click();
     // Vedi nota in TC-192 sopra: asserzione rafforzata per intercettare la
     // regressione "Salvato (demo)" segnalata da Fabrizio.
-    await expect(page.getByText("Salvato su Supabase ✓")).toBeVisible();
+    // 28/10/2026, Fabrizio: "vorrei però che al salvataggio ritornasse sulla
+    // dashboard". Il salvataggio reale (non demo) riporta a Oggi con la conferma.
+    await page.waitForURL((url) => url.pathname === "/center" && url.searchParams.get("salvato") === "profilo");
+    await expect(page.getByText("Profilo salvato")).toBeVisible();
     await expect(page.locator("body")).not.toContainText("Application error");
   });
 });

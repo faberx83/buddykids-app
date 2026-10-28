@@ -240,7 +240,7 @@ test.describe("OD-02 — Calendario disponibilità Partner: bulk 'Giornata parti
     await page.getByRole("button", { name: "🏊" }).click();
     await page.getByRole("button", { name: /Applica a \d+ giorni/ }).click();
     await page.getByRole("button", { name: "Salva calendario" }).click();
-    await expect(page.getByText("Salvato su Supabase ✓")).toBeVisible({ timeout: 10_000 });
+    await expect(page.getByText("Salvato ✓")).toBeVisible({ timeout: 10_000 });
 
     // Persistenza dopo refresh.
     await page.reload();
@@ -269,12 +269,12 @@ test.describe("OD-02 — Calendario disponibilità Partner: bulk 'Giornata parti
     await page.getByPlaceholder("Es. Giornata in piscina").fill("[TEST] Giorno singolo");
     await page.getByRole("button", { name: "🎉" }).click();
     await page.getByRole("button", { name: "Salva calendario" }).click();
-    await expect(page.getByText("Salvato su Supabase ✓")).toBeVisible({ timeout: 10_000 });
+    await expect(page.getByText("Salvato ✓")).toBeVisible({ timeout: 10_000 });
 
     // Rimozione dal pannello singolo continua a funzionare.
     await page.getByRole("button", { name: "—" }).click();
     await page.getByRole("button", { name: "Salva calendario" }).click();
-    await expect(page.getByText("Salvato su Supabase ✓")).toBeVisible({ timeout: 10_000 });
+    await expect(page.getByText("Salvato ✓")).toBeVisible({ timeout: 10_000 });
   });
 
   // Test H — Mobile
