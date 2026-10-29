@@ -57,6 +57,7 @@ import { NextgenScrollActivityProvider, NextgenScrollArea } from "@/components/n
 import { GlobalActionProgressProvider } from "@/components/GlobalActionProgress";
 // BUILD_INFO_BUBBLE — test pipeline nuovo account (30/09/2026), temporaneo.
 import BuildInfoBubble from "@/components/BuildInfoBubble";
+import ChiAccompagnaOverlay from "@/components/nextgen/ChiAccompagnaOverlay";
 import { resolveBuildInfoBubbleLabel } from "@/lib/build-info-bubble";
 
 // SPRINT 0 (NEXTGEN — V2 in parallelo a LEGACY): guscio minimo dell'area
@@ -418,6 +419,9 @@ export default async function NextgenLayout({ children }: { children: React.Reac
               BetaFeedbackButton.tsx). */}
           {/* POLISH V2 (14/10/2026): con la nuova barra un solo elemento flottante, il +. */}
           <BetaFeedbackButton hideFab={navV2Enabled} />
+          {/* 29/10/2026 — "Chi accompagna" sopra la pagina in cui lo si tocca (release
+              chi-accompagna-giornate-piene; spenta: i link portano al Planner come prima). */}
+          <ChiAccompagnaOverlay />
           {returnHomeEnabled && <ReturnHomeAfterIdle />}
           <ParentSpotlight progress={spotlightProgress} />
           {onboardingV2Enabled ? (

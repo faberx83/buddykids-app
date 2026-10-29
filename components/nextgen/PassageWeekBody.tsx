@@ -58,6 +58,9 @@ export default function PassageWeekBody({
 }) {
   const showToast = useNextgenToast();
   const [busy, setBusy] = useState(false);
+  // 29/10/2026 (Fabrizio: "il chi fa cosa dovrebbe apparire già sul giorno today"): si parte da oggi,
+  // i giorni passati restano raccolti in una riga.
+  const [showPast, setShowPast] = useState(false);
   const partnerChanges = useRef<AssignChange[]>([]);
   const youLabel = options.find((o) => o.value === "io")?.label ?? "Tu";
   const photoOf = (kidId: string) => kids.find((k) => k.id === kidId)?.avatarUrl ?? null;
@@ -81,6 +84,7 @@ export default function PassageWeekBody({
   );
   const openOf = (w: (typeof week)[number]) => w.kidDays.reduce((n, k) => n + k.items.filter((i) => i.label === null).length, 0);
   const openTotal = week.filter((w) => !w.day.isPast).reduce((n, w) => n + openOf(w), 0);
+  const pastCount = week.filter((w) => w.day.isPast).length;
   const last = useMemo(
     () => weekSameAsLast({ days: week.map((w) => ({ date: w.day.dateIso, items: w.kidDays.flatMap((k) => k.items) })), todayIso, rows, labelFor }),
     [week, todayIso, rows, labelFor]
@@ -188,19 +192,39 @@ export default function PassageWeekBody({
         </div>
       )}
 
-      {week.map((w) => {
+      {pastCount > 0 && (
+        <button
+          type="button"
+          onClick={() => setShowPast((v) => !v)}
+          aria-expanded={showPast}
+          className="flex min-h-[40px] items-center justify-between rounded-[12px] px-1 text-[13.5px] font-semibold text-ink-2"
+          data-testid="week-past-toggle"
+        >
+          <span>{showPast ? "Nascondi i giorni passati" : `Giorni passati (${pastCount})`}</span>
+          <i className={`ti ${showPast ? "ti-chevron-up" : "ti-chevron-down"} text-[16px]`} aria-hidden="true" />
+        </button>
+      )}
+
+      {week
+        .filter((w) => showPast || !w.day.isPast)
+        .map((w) => {
         const open = openOf(w);
+        const isToday = w.day.dateIso === todayIso;
         return (
           <button
             key={w.day.dateIso}
             type="button"
             disabled={w.day.isPast}
             onClick={() => onOpenDay(w.day.dateIso)}
-            className="flex flex-col gap-2.5 rounded-2xl border border-trama-line bg-white px-3.5 py-3 text-left disabled:opacity-55"
+            className={`flex flex-col gap-2.5 rounded-2xl bg-white px-3.5 py-3 text-left disabled:opacity-55 ${
+              isToday ? "border-2 border-trama-navy" : "border border-trama-line"
+            }`}
             data-testid="week-day"
           >
             <span className="flex items-center justify-between gap-2">
-              <span className="text-[15px] font-bold text-trama-navy">{w.day.label}</span>
+              <span className="text-[15px] font-bold text-trama-navy">
+                {isToday ? `Oggi · ${w.day.label}` : w.day.label}
+              </span>
               {!w.day.isPast &&
                 (open > 0 ? (
                   <span className="text-[12.5px] font-semibold text-[#7A4500]">{open} da decidere</span>

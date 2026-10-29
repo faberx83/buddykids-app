@@ -10,6 +10,7 @@
 
 import { useState, type ReactNode } from "react";
 import Link from "next/link";
+import { openChiAccompagna } from "@/lib/nextgen/chi-accompagna-open";
 import { joinPeople, type DayCoordinationSummary } from "@/lib/nextgen/today-agenda";
 import { KidAvatar, kidToneFor } from "@/components/nextgen/AgendaItemRow";
 
@@ -91,7 +92,7 @@ export default function DayCoordinationBlock({
       {coordination.mode === "compact" ? "Modifica" : "Assegna"}
     </button>
   ) : assignHref ? (
-    <Link href={assignHref} className={assignCta}>
+    <Link href={assignHref} onClick={(e) => openChiAccompagna(assignHref) && e.preventDefault()} className={assignCta}>
       {coordination.mode === "compact" ? "Modifica" : "Assegna"}
     </Link>
   ) : null;
@@ -136,7 +137,7 @@ export default function DayCoordinationBlock({
           {table}
         </button>
       ) : assignHref ? (
-        <Link href={assignHref} aria-label={tableLabel} className="-mx-1 block rounded-xl px-1 py-0.5 active:bg-black/[0.03]">
+        <Link href={assignHref} aria-label={tableLabel} onClick={(e) => openChiAccompagna(assignHref) && e.preventDefault()} className="-mx-1 block rounded-xl px-1 py-0.5 active:bg-black/[0.03]">
           {table}
         </Link>
       ) : (
