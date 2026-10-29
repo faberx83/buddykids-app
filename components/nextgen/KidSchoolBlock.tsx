@@ -73,9 +73,13 @@ export default function KidSchoolBlock({
     // eslint-disable-next-line react-hooks/exhaustive-deps -- una volta, all'apertura da ?scuola=
   }, []);
 
-  const savedName = schoolItem && schoolItem.title !== "Scuola" ? schoolItem.title : "";
+  // 29/10/2026 (UX-PARENT-023, "il nome scuola manuale scompare dopo refresh"):
+  // il nome stava solo nel titolo degli orari; spegnendo gli orari si perdeva.
+  // Ora vive anche nel profilo scuola (migration 56): prima gli orari, poi il profilo.
+  const savedName = (schoolItem && schoolItem.title !== "Scuola" ? schoolItem.title : "") || profile?.schoolName || "";
+  const savedAddress = schoolItem?.location ?? profile?.schoolAddress ?? "";
   const [name, setName] = useState(savedName);
-  const [address, setAddress] = useState(schoolItem?.location ?? "");
+  const [address, setAddress] = useState(savedAddress);
   // Secondo test UX (22/10, UX-PARENT-017): l'indirizzo appartiene a un nome
   // preciso (scelto dalla ricerca, copiato da un fratello o già salvato). Se
   // il nome cambia a mano, l'indirizzo vecchio si toglie: mai "Scuola Demo"
@@ -96,10 +100,14 @@ export default function KidSchoolBlock({
   const [weekdays, setWeekdays] = useState<number[]>(schoolItem?.recurrence?.weekdays ?? [1, 2, 3, 4, 5]);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // UX-PARENT-023: il riepilogo mostra subito quello che si è appena salvato
+  // (prima restava il vecchio finché la pagina non si aggiornava).
+  const [justSaved, setJustSaved] = useState<{ name: string; region: string; comune: string; hours: string | null } | null>(null);
+  useEffect(() => setJustSaved(null), [profile, schoolItem]);
 
   function resetDraft() {
     setName(savedName);
-    setAddress(schoolItem?.location ?? "");
+    setAddress(savedAddress);
     setAddressFor(savedName);
     setAddressRemoved(false);
     setTypedKept(false);
@@ -153,10 +161,15 @@ export default function KidSchoolBlock({
       if (!entry || !exit || exit <= entry) return setError("L'uscita deve essere dopo l'entrata.");
     }
     setBusy(true);
-    const cal = await setSchoolContextForKidAction(kid.id, region, comune);
+    const cal = await setSchoolContextForKidAction(kid.id, region, comune, { name: name.trim() || null, address: address.trim() || null });
     if (cal.error) {
       setBusy(false);
-      return setError(cal.error);
+      return setError(`Non siamo riusciti a salvare la scuola: ${cal.error}. I dati sono ancora qui, riprova.`);
+    }
+    // Prima della migration 56 il nome si conserva solo con gli orari: lo diciamo, il modulo resta aperto.
+    if (cal.schoolNotSaved && name.trim() && !(withHours && routineEnabled)) {
+      setBusy(false);
+      return setError("Regione e Comune salvati. Il nome della scuola, senza orari, non si può ancora conservare: accendi gli orari oppure riprova dopo il prossimo aggiornamento di TRAMA.");
     }
     if (routineEnabled) {
       if (withHours) {
@@ -191,6 +204,12 @@ export default function KidSchoolBlock({
       }
     }
     setBusy(false);
+    setJustSaved({
+      name: name.trim(),
+      region,
+      comune: comune.trim(),
+      hours: withHours && routineEnabled ? `${weekdays.map((d) => WEEKDAY_LABELS_IT[d].short).join(", ")} · ${entry}–${exit}` : null,
+    });
     setEditing(false);
     showToast(`Scuola di ${kid.name} salvata`);
     router.refresh();
@@ -209,14 +228,24 @@ export default function KidSchoolBlock({
       </h3>
 
       {!editing ? (
-        profile ? (
-          <div className="mt-2 flex items-start justify-between gap-3">
+        profile || justSaved ? (
+          <div className="mt-2 flex items-start justify-between gap-3" data-testid="kid-school-summary">
             <span className="flex min-w-0 flex-col gap-0.5">
-              {savedName && <span className="truncate text-[14.5px] font-semibold text-ink">{savedName}</span>}
-              <span className="truncate text-[14px] text-ink">{profile.comune ? `${profile.comune} · ${profile.region}` : profile.region}</span>
-              {hoursLine && <span className="text-[13px] text-ink-2">{hoursLine}</span>}
-              <span className={`text-[12.5px] ${profile.calendarAvailable ? "text-[#146B4F]" : "text-ink-2"}`}>
-                {profile.calendarAvailable
+              {(justSaved ? justSaved.name : savedName) && (
+                <span className="truncate text-[14.5px] font-semibold text-ink">{justSaved ? justSaved.name : savedName}</span>
+              )}
+              <span className="truncate text-[14px] text-ink">
+                {justSaved
+                  ? justSaved.comune
+                    ? `${justSaved.comune} · ${justSaved.region}`
+                    : justSaved.region
+                  : profile?.comune
+                    ? `${profile.comune} · ${profile.region}`
+                    : profile?.region}
+              </span>
+              {(justSaved ? justSaved.hours : hoursLine) && <span className="text-[13px] text-ink-2">{justSaved ? justSaved.hours : hoursLine}</span>}
+              <span className={`text-[12.5px] ${profile?.calendarAvailable ? "text-[#146B4F]" : "text-ink-2"}`}>
+                {profile?.calendarAvailable
                   ? `Ponti e vacanze ${profile.academicYearShort} nel Planner`
                   : "Calendario di questa regione non ancora disponibile"}
               </span>

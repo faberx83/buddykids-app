@@ -63,7 +63,18 @@ async function seasonEndIsoDate(): Promise<string> {
   return isoDate(ranges[ranges.length - 1].end);
 }
 
-export async function getActivityDays(activity: Activity): Promise<DayAvailability[]> {
+export async function getActivityDays(
+  activity: Activity,
+  /**
+   * 29/10/2026 (test UX UX-PARENT-025, "Posti liberi ma CTA Non disponibile
+   * ora"): i giorni dopo la fine dell'estate (ponti e chiusure della scuola,
+   * es. 7–8 dicembre) venivano tolti qui, mentre date e posti in Scopri e in
+   * scheda li contavano: la scheda diceva "Posti liberi" e il pulsante "Non
+   * disponibile ora". Con PARENT_UX_FIX_ENABLED (passato dal chiamante) si
+   * tengono; spento, il taglio di fine estate resta come prima.
+   */
+  opts: { includeAfterSeason?: boolean } = {}
+): Promise<DayAvailability[]> {
   if (!isSupabaseConfigured || !activity.dbId) {
     return activityDaysByActivity[activity.id] ?? [];
   }
@@ -81,6 +92,7 @@ export async function getActivityDays(activity: Activity): Promise<DayAvailabili
   ]);
 
   if (error || !data || data.length === 0) return activityDaysByActivity[activity.id] ?? [];
+  if (opts.includeAfterSeason) return (data as RawDayRow[]).map(mapRow);
   return (data as RawDayRow[]).filter((row) => row.date <= seasonEndIso).map(mapRow);
 }
 

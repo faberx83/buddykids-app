@@ -34,7 +34,11 @@ import { dayCoordinationSlots } from "@/lib/nextgen/planner-week";
 import { buildTodayAgenda, summarizeDayCoordination, type DayCoordinationSlotInput } from "@/lib/nextgen/today-agenda";
 import { selectUrgentTodayAlert, type HomeInboxInput } from "@/lib/nextgen/home-inbox";
 import { buildSeasonSummary, periodTitleForSeason } from "@/lib/nextgen/season-summary";
-import { buildCoverage, buildHolidaySummary, closureState, listClosurePeriods } from "@/lib/nextgen/holiday-summary";
+import { buildCoverage, buildHolidaySummary, closureState, listClosurePeriods, weekdaysBetween } from "@/lib/nextgen/holiday-summary";
+import { PASSAGE_RESPONSIBILITIES_FLAG, type PassageResponsibility } from "@/lib/nextgen/passages";
+import { PLANNER_DAY_VIEW_FLAG } from "@/lib/nextgen/planner-day";
+import { passageDayCoordination } from "@/lib/nextgen/passage-busy-day";
+import { getPassageResponsibilitiesForParent } from "@/lib/data/passage-responsibilities";
 import { NEW_EXTERNAL_ITEM_HREF } from "@/lib/planner/new-external-item-link";
 import type { Activity, Kid, GroupInviteItem } from "@/lib/types";
 import type { ExternalPlannerItem } from "@/lib/data/external-planner-items";
@@ -177,8 +181,9 @@ export async function loadHomeV2Props({
   // ── Oggi ──
   const hoursByActivityDbId: Record<string, string | undefined> = {};
   for (const a of activities) if (a.dbId) hoursByActivityDbId[a.dbId] = a.hours;
-  const agenda = buildTodayAgenda({
-    todayIso,
+  // 29/10/2026 (UX-PARENT-024): l'agenda di una data qualunque, per contare i passaggi dei prossimi giorni.
+  const agendaOn = (dateIso: string) => buildTodayAgenda({
+    todayIso: dateIso,
     bookings: bookings.map((b) => ({
       id: b.id,
       status: b.status,
@@ -210,6 +215,7 @@ export async function loadHomeV2Props({
     hoursByActivityDbId,
     kidNameById,
   });
+  const agenda = agendaOn(todayIso);
 
   // 15/10/2026 (Fabrizio: "Si confermo"): Porta/Ritira di oggi con la STESSA
   // regola del Planner V2 — tutto l'anno (prima solo nelle settimane
@@ -319,6 +325,55 @@ export async function loadHomeV2Props({
   const closureData = schoolEnabled
     ? await getKidClosureIntervalsForParent(kidIds).catch(() => ({ hasAnySchoolProfile: false, closuresByKid: [] }))
     : { hasAnySchoolProfile: false, closuresByKid: [] };
+  // ── Chi accompagna, per passaggio (29/10/2026, test UX UX-PARENT-024) ──
+  // "La Home dice 'Accompagnamenti decisi' mentre alcuni sono ancora aperti":
+  // la Home contava solo le scelte del giorno (la sola scuola non contava),
+  // il Planner conta ogni passaggio, scuola compresa. Con la stessa release
+  // del Planner ("chi-accompagna-per-passaggio" + "planner-giorno") la Home
+  // usa lo stesso conteggio, oggi e nei prossimi 7 giorni (Da fare).
+  // Release spente: come prima.
+  let coordinationShown = coordination;
+  const [passageFlag, dayViewFlag] = await Promise.all([flagOn(PASSAGE_RESPONSIBILITIES_FLAG, userId), flagOn(PLANNER_DAY_VIEW_FLAG, userId)]);
+  if (passageFlag && dayViewFlag && kidList.length > 0) {
+    const passageRows = await getPassageResponsibilitiesForParent(todayIso).catch(() => []);
+    // Stessa regola del Planner: nei giorni senza scuola (chiusure e vacanze) la scuola non c'è.
+    const closedDates = new Set<string>();
+    for (const { closures } of closureData.closuresByKid) {
+      for (const c of closures) for (const d of weekdaysBetween(c.startDate, c.endDate)) closedDates.add(d);
+    }
+    const entriesOn = (d: string) => (closedDates.has(d) ? agendaOn(d).filter((e) => !e.school) : agendaOn(d));
+    const passageLabel = (r: PassageResponsibility) => resolveResponsibleDisplay(r, profile.parentRole).label;
+    const dayKidsOn = (d: string) =>
+      d === todayIso ? coordination.kids : summarizeDayCoordination(dayCoordinationSlots({ ...coordinationInput, dateIso: d })).kids;
+    const on = (d: string) => {
+      const kidsDay = dayKidsOn(d);
+      return passageDayCoordination({
+        kids: kidList,
+        entries: entriesOn(d),
+        date: d,
+        rows: passageRows,
+        labelFor: passageLabel,
+        dayChoiceFor: (kidId) => kidsDay.find((k) => k.kidId === kidId),
+      });
+    };
+    coordinationShown = on(todayIso).summary;
+    const soonPassages: { kidName: string; moment: (typeof slots)[number]["moment"]; date: string }[] = [];
+    for (let i = 1; i <= 7; i += 1) {
+      const date = addDaysIso(todayIso, i);
+      for (const m of on(date).missingItems) soonPassages.push({ kidName: m.kidName, moment: m.moment, date });
+    }
+    inboxInput.upcomingCoordination =
+      soonPassages.length > 0
+        ? {
+            missingCount: soonPassages.length,
+            firstKidName: soonPassages[0].kidName,
+            firstMoment: soonPassages[0].moment,
+            firstDate: soonPassages[0].date,
+            weekStartDate: mondayOfIso(soonPassages[0].date),
+          }
+        : null;
+  }
+
   // Chiusure dei prossimi mesi con il loro stato (organizzata / da
   // completare / da organizzare) — lib/nextgen/holiday-summary.ts.
   // 20/10/2026 — i "Non serve" sulle chiusure contano come copertura.
@@ -407,7 +462,7 @@ export async function loadHomeV2Props({
     agenda: closureData.closuresByKid.some(({ closures }) => closures.some((c) => c.startDate <= todayIso && todayIso <= c.endDate))
       ? agenda.filter((e) => !e.school)
       : agenda,
-    coordination,
+    coordination: coordinationShown,
     urgentAlert,
     inboxInput,
     todayCheckins,

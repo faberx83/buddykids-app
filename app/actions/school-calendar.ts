@@ -72,7 +72,13 @@ export async function setSchoolContextForFamilyAction(region: string, comune: st
  * "Correggi" per un bambino già configurato individualmente (kid_id
  * UNIQUE su kid_school_profiles: upsert semplice).
  */
-export async function setSchoolContextForKidAction(kidId: string, region: string, comune: string): Promise<{ error?: string }> {
+export async function setSchoolContextForKidAction(
+  kidId: string,
+  region: string,
+  comune: string,
+  /** 29/10/2026 (UX-PARENT-023): nome e indirizzo della scuola, anche senza orari (migration 56). */
+  school?: { name: string | null; address: string | null }
+): Promise<{ error?: string; schoolNotSaved?: boolean }> {
   if (!isSupabaseConfigured) return { error: "Supabase non configurato" };
   if (!isKnownItalianRegion(region)) return { error: "Regione non valida" };
 
@@ -90,9 +96,22 @@ export async function setSchoolContextForKidAction(kidId: string, region: string
   if (!kidRow) return { error: "Bambino non trovato" };
 
   const comuneTrimmed = comune.trim();
-  const { error } = await supabase
-    .from("kid_school_profiles")
-    .upsert({ kid_id: kidId, parent_id: user.id, region, comune: comuneTrimmed.length > 0 ? comuneTrimmed : null }, { onConflict: "kid_id" });
+  const base = { kid_id: kidId, parent_id: user.id, region, comune: comuneTrimmed.length > 0 ? comuneTrimmed : null };
+  if (school) {
+    const name = school.name?.trim() || null;
+    const address = name ? school.address?.trim() || null : null;
+    const { error } = await supabase
+      .from("kid_school_profiles")
+      .upsert({ ...base, school_name: name, school_address: address }, { onConflict: "kid_id" });
+    if (!error) return {};
+    // Prima della migration 56 le colonne non esistono: Regione e Comune si
+    // salvano lo stesso, e il chiamante lo dice (mai un nome perso in silenzio).
+    if (!/school_name|school_address|column/i.test(error.message)) return { error: error.message };
+    const retry = await supabase.from("kid_school_profiles").upsert(base, { onConflict: "kid_id" });
+    if (retry.error) return { error: retry.error.message };
+    return { schoolNotSaved: true };
+  }
+  const { error } = await supabase.from("kid_school_profiles").upsert(base, { onConflict: "kid_id" });
   if (error) return { error: error.message };
   return {};
 }

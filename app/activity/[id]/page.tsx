@@ -171,7 +171,7 @@ export default async function ActivityDetailPage({
     getPromotionsForActivity(activity),
     getFavoriteActivityIds(),
     getApprovedCertificationsForActivity(activity.dbId),
-    wantsDayAvailability ? getActivityDays(activity) : Promise.resolve([]),
+    wantsDayAvailability ? getActivityDays(activity, { includeAfterSeason: uxFix }) : Promise.resolve([]),
     // Segnalazione 25/08/2026 (Fabrizio): i giorni già prenotati per questa
     // attività devono distinguersi visivamente nella scheda "Giorni spot",
     // altrimenti sembra che il genitore non abbia prenotato nulla.

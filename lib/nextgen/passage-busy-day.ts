@@ -11,7 +11,7 @@
 // groupTrips, dayMirrorFor, applyAllTargets), senza rete. Il foglio è
 // components/nextgen/PassageBusyDayBody.tsx. Test: tests/one/chi-accompagna-giornate-piene.spec.ts.
 
-import type { AgendaEntry } from "@/lib/nextgen/today-agenda";
+import type { AgendaEntry, DayCoordinationSummary } from "@/lib/nextgen/today-agenda";
 import { WEEKDAYS, type Moment, type ResponsibleOption, type WeekResponsibility } from "@/lib/nextgen/responsibility-options";
 import {
   dayLegs,
@@ -535,4 +535,59 @@ export function weekSameAsLast(input: {
       return s ? [{ date: d.date, suggestion: s }] : [];
     });
   return { perDay, count: perDay.reduce((n, d) => n + d.suggestion.count, 0) };
+}
+
+// ─── La giornata in Home, come nel Planner (29/10/2026) ─────────────────
+// Test UX del 29/10 (UX-PARENT-024): la Home diceva "Accompagnamenti decisi ·
+// Nonno e Tu" mentre la scuola di Luca era ancora da decidere nel Planner.
+// La Home contava solo le scelte "del giorno" (week_responsibilities, dove la
+// sola scuola non conta); il Planner conta i passaggi, scuola compresa. Con
+// i passaggi accesi la Home usa questo riepilogo: stesse righe e stesso
+// conteggio del Planner (buildKidDays: un viaggio intero conta uno).
+
+export function passageDayCoordination(input: {
+  kids: { id: string; name: string }[];
+  entries: AgendaEntry[];
+  date: string;
+  rows: PassageResponsibility[];
+  labelFor: (row: PassageResponsibility) => string;
+  dayChoiceFor?: (kidId: string) => { andata?: string | null; ritorno?: string | null } | undefined;
+}): {
+  summary: DayCoordinationSummary;
+  missingItems: { kidName: string; moment: Moment; time: string | null }[];
+} {
+  const days = buildKidDays(input);
+  const people: string[] = [];
+  const missingItems: { kidName: string; moment: Moment; time: string | null }[] = [];
+  const passageKids = days.map(({ kid, items }) => {
+    for (const i of items) {
+      if (i.label === null) missingItems.push({ kidName: kid.name, moment: i.parts[0].legs[0].moment, time: i.time });
+      else if (!people.includes(i.label)) people.push(i.label);
+    }
+    return {
+      kidId: kid.id,
+      kidName: kid.name,
+      chips: items.map((i) => ({ key: i.key, time: i.time, label: i.label })),
+      missing: items.filter((i) => i.label === null).length,
+    };
+  });
+  const missingCount = missingItems.length;
+  return {
+    summary: {
+      mode: passageKids.length === 0 ? "none" : missingCount > 0 ? "detailed" : "compact",
+      kids: [],
+      missingCount,
+      people,
+      passageKids,
+    },
+    missingItems,
+  };
+}
+
+/** "2 passaggi da decidere · Luca" */
+export function missingPassagesLine(kids: { kidName: string; missing: number }[]): string | null {
+  const n = kids.reduce((a, k) => a + k.missing, 0);
+  if (n === 0) return null;
+  const who = namesIt(kids.filter((k) => k.missing > 0).map((k) => k.kidName));
+  return `${n === 1 ? "1 passaggio da decidere" : `${n} passaggi da decidere`} · ${who}`;
 }

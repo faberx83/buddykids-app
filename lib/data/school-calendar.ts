@@ -347,12 +347,17 @@ export interface KidSchoolProfileSummary {
   calendarAvailable: boolean;
   // "2026/27" — solo metadata (§15), mai un valore che il genitore compila.
   academicYearShort: string;
+  /** 29/10/2026 (UX-PARENT-023, migration 56): nome e indirizzo, anche senza orari. */
+  schoolName?: string | null;
+  schoolAddress?: string | null;
 }
 
 interface RawKidSchoolProfileFullRow {
   kid_id: string;
   region: string;
   comune: string | null;
+  school_name?: string | null;
+  school_address?: string | null;
 }
 
 /**
@@ -374,9 +379,10 @@ export async function getKidSchoolProfilesForParent(kidIds: string[]): Promise<R
   } = await supabase.auth.getUser();
   if (!user) return {};
 
+  // select("*"): funziona prima e dopo la migration 56 (school_name, school_address).
   const { data: profileRows, error } = await supabase
     .from("kid_school_profiles")
-    .select("kid_id, region, comune")
+    .select("*")
     .eq("parent_id", user.id)
     .in("kid_id", kidIds);
 
@@ -408,6 +414,8 @@ export async function getKidSchoolProfilesForParent(kidIds: string[]): Promise<R
       comune: p.comune,
       calendarAvailable: availableRegions.has(p.region),
       academicYearShort,
+      schoolName: p.school_name ?? null,
+      schoolAddress: p.school_address ?? null,
     };
   }
   return result;

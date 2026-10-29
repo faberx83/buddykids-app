@@ -408,7 +408,8 @@ test.describe("Ritest 22/10 — una sola Scuola per figlio [no browser]", () => 
     expect(k).toContain("{schoolCalendarEnabled && !schoolV2 && (");
     const b = read("components/nextgen/KidSchoolBlock.tsx");
     expect(b).toContain('data-testid="kid-school-unified"');
-    expect(b).toContain("setSchoolContextForKidAction(kid.id, region, comune)");
+    // 29/10/2026 (UX-PARENT-023): lo stesso salvataggio di Regione e Comune porta anche nome e indirizzo.
+    expect(b).toContain("setSchoolContextForKidAction(kid.id, region, comune, {");
     expect(b).toContain("isSchool: true,");
     expect(b).toContain("Stessa scuola di {s.kidName}");
     // il collegamento ?scuola= da Home e Planner apre ancora la sezione giusta

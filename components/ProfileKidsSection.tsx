@@ -472,7 +472,8 @@ export default function ProfileKidsSection({
                     k.id,
                     kids.map((x) => ({ id: x.id, name: x.name })),
                     schoolProfiles,
-                    Object.fromEntries(kids.map((x) => [x.id, schoolItemFor(x.id)?.title ?? null]))
+                    // 29/10/2026 (UX-PARENT-023): anche il nome salvato senza orari.
+                    Object.fromEntries(kids.map((x) => [x.id, schoolItemFor(x.id)?.title ?? schoolProfiles[x.id]?.schoolName ?? null]))
                   )}
                   siblingItems={Object.fromEntries(kids.map((x) => [x.id, schoolItemFor(x.id)]))}
                   routineEnabled={schoolItems !== null}
