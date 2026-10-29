@@ -50,9 +50,10 @@ test.describe("Portale centri V2 — guscio: logica", () => {
     for (const [p, s] of cases) expect(sectionForPath(p), p).toBe(s);
   });
 
-  test("PS-03 schede dentro Richieste e Attività, la più lunga vince", () => {
-    expect(PARTNER_SUBTABS.richieste?.map((t) => t.label)).toEqual(["Prenotazioni", "Messaggi", "Gruppi"]);
-    expect(activeSubTab("/center/richieste/123")).toBe("/center/richieste");
+  test("PS-03 schede dentro Attività, la più lunga vince; Richieste senza schede", () => {
+    // 29/10/2026: Richieste senza schede, filtri dentro l'elenco unico (PI-xx in partner-inbox-v2.spec.ts).
+    expect(PARTNER_SUBTABS.richieste).toBeUndefined();
+    expect(activeSubTab("/center/richieste/123")).toBeNull();
     expect(activeSubTab("/center/activities/x/calendar")).toBe("/center/activities");
     expect(activeSubTab("/center/promotions")).toBe("/center/promotions");
     expect(activeSubTab("/center")).toBeNull();

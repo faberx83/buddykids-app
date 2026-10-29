@@ -5,6 +5,8 @@ import { isSupabaseConfigured } from "@/lib/supabase/env";
 import { resolveFeatureFlag } from "@/lib/feature-flags/resolve";
 import { INQUIRY_THREADS_FLAG } from "@/lib/inquiries/thread";
 import InquiryConversationList from "@/components/inquiries/InquiryConversationList";
+import { redirect } from "next/navigation";
+import { partnerShellEnabledForCurrentUser } from "@/lib/centers/partner-v2-flag";
 
 // "Le richieste" del centro — ticketing semplice dai genitori (vedi
 // ContactCenterButton nella scheda attività, lib/data/inquiries.ts). Il
@@ -15,6 +17,8 @@ import InquiryConversationList from "@/components/inquiries/InquiryConversationL
 // per il gestore): elenco delle conversazioni in grafica V2, "Da rispondere"
 // in cima; ognuna si apre in /center/richieste/[id]. Spento: come prima.
 export default async function CenterRichiestePage() {
+  // Portale centri V2 (29/10/2026): i messaggi stanno nell'elenco unico di Richieste.
+  if (await partnerShellEnabledForCurrentUser()) redirect("/center/prenotazioni?tipo=messaggi");
   let threads = false;
   if (isSupabaseConfigured) {
     const supabase = await createClient();

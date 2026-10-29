@@ -1059,6 +1059,11 @@ export const FEATURE_CATALOG: FeatureCatalogEntry[] = [
       "components/center/TemplateActivityForm.tsx",
       "app/actions/center-activities-v2.ts",
       "lib/centers/activity-templates.ts",
+      "components/center/PartnerPageHeader.tsx",
+      "components/center/PartnerSheet.tsx",
+      "components/center/InboxV2.tsx",
+      "components/center/BookingSheet.tsx",
+      "lib/centers/partner-inbox.ts",
     ],
     note:
       "Si può accendere prima in Anteprima interna per vederlo con il proprio account gestore, poi a tutti. " +

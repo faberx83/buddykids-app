@@ -32,11 +32,8 @@ export interface PartnerSubTab {
 }
 
 export const PARTNER_SUBTABS: Partial<Record<PartnerSection, PartnerSubTab[]>> = {
-  richieste: [
-    { label: "Prenotazioni", href: "/center/prenotazioni" },
-    { label: "Messaggi", href: "/center/richieste" },
-    { label: "Gruppi", href: "/center/group-requests" },
-  ],
+  // 29/10/2026: Richieste non ha più schede: prenotazioni, messaggi e gruppi
+  // sono in un elenco solo con i filtri (components/center/InboxV2.tsx).
   attivita: [
     { label: "Attività", href: "/center/activities" },
     { label: "Promozioni", href: "/center/promotions" },
