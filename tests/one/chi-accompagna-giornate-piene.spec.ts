@@ -412,3 +412,12 @@ test.describe("Chi accompagna dove si tocca; la settimana parte da oggi", () => 
     expect(body).toContain("isToday ? `Oggi · ${w.day.label}` : w.day.label");
   });
 });
+
+// 29/10/2026 (Fabrizio, sul Planner: "qui c'è ripetizione"): "1 passaggio da
+// assegnare" compariva nella riga di stato e subito sotto nella riga "Chi fa cosa".
+test("GP-70 Planner: i passaggi da assegnare una volta sola (riga Chi fa cosa), non anche nella riga di stato", () => {
+  const client = read("app/nextgen/planner/PlannerV2Client.tsx");
+  expect(client).toContain('{status.missing && !week.days.some((d) => d.coordination.mode !== "none") && (');
+  // La riga "Chi fa cosa" continua a dirlo.
+  expect(client).toContain('{status.missing ?? "Accompagnamenti della settimana decisi"}');
+});

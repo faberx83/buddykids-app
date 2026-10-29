@@ -1033,10 +1033,12 @@ function WeekView({
         </button>
       </div>
 
-      {/* STATO DELLA SETTIMANA */}
+      {/* STATO DELLA SETTIMANA — 29/10/2026 (Fabrizio: "qui c'è ripetizione"): i
+          passaggi da assegnare li dice già la riga "Chi fa cosa" qui sotto; qui
+          compaiono solo se quella riga non c'è. */}
       <div className="flex items-center gap-2.5 text-[13px] text-[#374151]">
         <span>{status.entries}</span>
-        {status.missing && (
+        {status.missing && !week.days.some((d) => d.coordination.mode !== "none") && (
           <>
             <span aria-hidden="true" className="h-[3px] w-[3px] rounded-full bg-ink-3" />
             <span className="flex items-center gap-1.5 font-semibold text-[#8A4B00]">
