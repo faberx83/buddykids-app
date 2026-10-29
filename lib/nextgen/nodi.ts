@@ -53,6 +53,10 @@ export const NODI_SIZE = {
   toast: manifest.placement.assignment_success.max_px, // 32 (non usato: avviso scuro)
   /** "Chi è Nodi" nella pagina Cos'è TRAMA. */
   about: 64,
+  /** Card che escono dal telefono nella terza schermata dell'onboarding (29/10: "nelle slide mettilo più grande"). */
+  onboardingPop: 48,
+  /** Riquadro del gruppo in testa al suo dettaglio, al posto del monogramma da 56 px (29/10). */
+  groupHeader: 56,
 } as const;
 
 /** Parte del PNG da mostrare (frazioni di larghezza e altezza): solo Nodi, senza i pezzi dei vicini. */
