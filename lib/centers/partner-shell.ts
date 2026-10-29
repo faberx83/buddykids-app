@@ -64,29 +64,83 @@ export function sectionForPath(pathname: string): PartnerSection {
   return "oggi";
 }
 
-// 29/10/2026, Fabrizio: "mancano i pulsanti per tornare indietro". Le pagine
-// dentro una sezione (aperte da una riga di Centro, da Oggi o da una
-// richiesta) hanno in alto "‹ <pagina di provenienza>". Destinazione fissa,
-// mai la cronologia del browser: dalla PWA o da un link nelle email la
-// cronologia può essere vuota. Le quattro sezioni non ce l'hanno (ci sono le
-// schede in basso); profilo e attività hanno già il loro, nella pagina.
+// 29/10/2026, Fabrizio: "mancano i pulsanti per tornare indietro", poi
+// "L'indietro però - es. quello del registro presenze - dovrebbe portare alla
+// pagina prima non ad oggi". Come nell'app famiglie (lib/nextgen/
+// in-app-history.ts): "‹" torna alla pagina da cui si è arrivati, col suo
+// nome ("‹ Centro" se il registro è stato aperto da Centro, "‹ Oggi" se da
+// Oggi). Solo se dietro non c'è nessuna pagina del portale (link da email o
+// notifica, pagina ricaricata, PWA appena aperta) si va alla pagina "madre"
+// qui sotto. Le quattro sezioni non hanno "‹" (ci sono le schede).
 export interface PartnerBackLink {
   href: string;
   label: string;
 }
 
-// Hanno già il loro "indietro": profilo e pagine di un'attività (nella
-// pagina), sotto-pagine dell'account (PageHeader con backHref).
-const OWN_BACK_LINK = ["/center/profile", "/center/activities/", "/center/account/"];
+// Sotto-pagine dell'account: hanno già il loro (PageHeader con backHref).
+const OWN_BACK_LINK = ["/center/account/"];
 
+const PAGE_LABELS: [RegExp, string][] = [
+  [/^\/center$/, "Oggi"],
+  [/^\/center\/prenotazioni$/, "Richieste"],
+  [/^\/center\/richieste\/[^/]+$/, "Conversazione"],
+  [/^\/center\/activities$/, "Attività"],
+  [/^\/center\/activities\/new$/, "Nuova attività"],
+  [/^\/center\/activities\/[^/]+\/calendar$/, "Date e posti"],
+  [/^\/center\/activities\/[^/]+$/, "Attività"],
+  [/^\/center\/promotions$/, "Promozioni"],
+  [/^\/center\/centro$/, "Centro"],
+  [/^\/center\/profile$/, "Profilo"],
+  [/^\/center\/attendance$/, "Registro presenze"],
+  [/^\/center\/report-presenze$/, "Report presenze"],
+  [/^\/center\/invites$/, "Inviti"],
+  [/^\/center\/servizi-consigliati$/, "Servizi consigliati"],
+  [/^\/center\/account(\/.*)?$/, "Il mio account"],
+];
+
+const cleanPath = (pathname: string) => pathname.split(/[?#]/)[0].replace(/\/+$/, "") || "/center";
+
+/** Nome breve di una pagina del portale, per "‹ <nome>". */
+export function partnerPageLabel(pathname: string): string {
+  const path = cleanPath(pathname);
+  return PAGE_LABELS.find(([re]) => re.test(path))?.[1] ?? "Indietro";
+}
+
+/** Pagina "madre" di ripiego, quando dietro non c'è niente. null = niente "‹". */
 export function partnerBackLink(pathname: string): PartnerBackLink | null {
-  const path = pathname.replace(/\/+$/, "") || "/center";
+  const path = cleanPath(pathname);
   if (PARTNER_TABS.some((t) => t.href === path)) return null;
-  if (OWN_BACK_LINK.some((p) => (p.endsWith("/") ? path.startsWith(p) : startsWithPath(path, p)))) return null;
-  if (path.startsWith("/center/richieste/")) return { href: "/center/prenotazioni?tipo=messaggi", label: "Richieste" };
+  if (OWN_BACK_LINK.some((p) => path.startsWith(p))) return null;
   if (path.startsWith("/center/one")) return null;
+  const calendar = path.match(/^\/center\/activities\/([^/]+)\/calendar$/);
+  if (calendar) return { href: `/center/activities/${calendar[1]}`, label: "Attività" };
+  if (path.startsWith("/center/richieste/")) return { href: "/center/prenotazioni?tipo=messaggi", label: "Richieste" };
+  if (path === "/center/profile") return { href: "/center/centro", label: "Centro" };
   const tab = PARTNER_TABS.find((t) => t.key === sectionForPath(path));
   return tab ? { href: tab.href, label: tab.label } : null;
+}
+
+const MAX_STACK = 30;
+
+/**
+ * Pagine del portale visitate in questa scheda, dalla più vecchia all'ultima.
+ * wasBack = ci si è arrivati con "indietro" (del telefono, del browser o "‹").
+ */
+export function nextPartnerStack(stack: string[], pathname: string, wasBack: boolean): string[] {
+  const path = cleanPath(pathname);
+  if (stack[stack.length - 1] === path) return stack;
+  if (wasBack && stack[stack.length - 2] === path) return stack.slice(0, -1);
+  return [...stack, path].slice(-MAX_STACK);
+}
+
+/** Dove porta "‹" e con che nome: la pagina di prima se c'è, altrimenti la madre. */
+export function partnerBackTarget(pathname: string, stack: string[]): (PartnerBackLink & { history: boolean }) | null {
+  const fallback = partnerBackLink(pathname);
+  if (!fallback) return null;
+  const path = cleanPath(pathname);
+  const prev = stack[stack.length - 1] === path ? stack[stack.length - 2] : undefined;
+  if (prev) return { href: prev, label: partnerPageLabel(prev), history: true };
+  return { ...fallback, history: false };
 }
 
 /** La scheda attiva dentro la sezione (la più lunga che combacia). */

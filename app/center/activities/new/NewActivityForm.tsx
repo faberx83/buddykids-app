@@ -40,12 +40,6 @@ export default function NewActivityForm({ centerReady, v2 = false }: { centerRea
     <div className="max-w-xl">
       {v2 ? (
         <div className="mb-5 flex flex-col gap-4">
-          <Link
-            href="/center/activities"
-            className="inline-flex min-h-[40px] items-center gap-1 self-start text-[14px] font-semibold text-partner-primary"
-          >
-            <i className="ti ti-chevron-left text-[18px]" aria-hidden="true" /> Attività
-          </Link>
           <PartnerPageHeader
             title="Nuova attività"
             subtitle="Bastano nome, età, prezzo e due righe. Date, orari e servizi li aggiungete subito dopo."

@@ -9,6 +9,7 @@ import { GROUP_DISCOUNT_TIERS } from "@/lib/groups";
 import AvatarUploadButton from "@/components/AvatarUploadButton";
 import { MIN_DESCRIPTION } from "@/lib/centers/activation";
 import PlaceAutocomplete from "@/components/nextgen/PlaceAutocomplete";
+import { streetAddressText } from "@/lib/places/search";
 
 // PORTALE CENTRI V2 (29/10/2026). Fabrizio: "anche la sezione profilo è
 // vecchio stile". Col guscio nuovo (prop v2) stessi campi, stessa azione e
@@ -219,12 +220,13 @@ export default function CenterProfileClient({
                   onPick={(place) => {
                     if (place.city) update("city", place.city);
                   }}
-                  pickText={(place) => place.address || place.name}
+                  pickText={(place) => streetAddressText(place, form.address)}
                   enabled={placeSearch}
-                  placeholder="Es. Via Roma 12, Milano"
+                  placeholder="Es. Via Padova 21"
                   className={ui.input}
                 />
               </Field>
+              <p className="-mt-2 text-[12.5px] text-ink-2">Scrivete via e numero e sceglietela dai suggerimenti: il numero resta.</p>
               <Field label="Città" labelClass={ui.label}>
                 <input value={form.city} onChange={(e) => update("city", e.target.value)} className={ui.input} />
               </Field>

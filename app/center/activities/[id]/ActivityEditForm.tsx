@@ -18,7 +18,7 @@ import PartnerPageHeader from "@/components/center/PartnerPageHeader";
 import PlaceAutocomplete from "@/components/nextgen/PlaceAutocomplete";
 import { useNextgenToast } from "@/components/nextgen/NextgenToastProvider";
 import { buildFamilyPreviewHref } from "@/lib/center/family-preview";
-import { placeLocationText } from "@/lib/places/search";
+import { fullAddressText } from "@/lib/places/search";
 
 // PORTALE CENTRI V2 (29/10/2026). Fabrizio: "anche la sezione attività è
 // vecchio stile". Col guscio nuovo (prop v2, letta in page.tsx) stessa scheda,
@@ -337,13 +337,7 @@ export default function ActivityEditForm({
     <div className={v2 ? "flex max-w-2xl flex-col gap-5 pb-24" : "max-w-2xl"}>
       {v2 ? (
         <>
-          <Link
-            href="/center/activities"
-            data-testid="activity-edit-back"
-            className="inline-flex min-h-[40px] items-center gap-1 self-start text-[14px] font-semibold text-partner-primary"
-          >
-            <i className="ti ti-chevron-left text-[18px]" aria-hidden="true" /> Attività
-          </Link>
+          {/* "‹" in alto lo mette il guscio (torna alla pagina di prima). */}
           <PartnerPageHeader
             title={activity.name || "Attività"}
             subtitle="Quello che scrivete qui è quello che le famiglie leggono nella scheda."
@@ -857,7 +851,7 @@ export default function ActivityEditForm({
           <div className={`space-y-3 ${ui.card}`} id="posizione">
             <h2 className={ui.cardTitle}>Dove si svolge</h2>
             <p className={ui.intro}>
-              Scrivete il nome del posto o la via e sceglietelo dai suggerimenti: la mappa delle famiglie si aggiorna da sola.
+              Scrivete il nome del posto o via e numero, poi sceglietelo dai suggerimenti: il numero resta e la mappa delle famiglie si aggiorna da sola.
             </p>
             <Field label="Indirizzo">
               <PlaceAutocomplete
@@ -868,9 +862,9 @@ export default function ActivityEditForm({
                   update("lat", Number(place.lat.toFixed(5)));
                   update("lng", Number(place.lng.toFixed(5)));
                 }}
-                pickText={(place) => placeLocationText(place)}
+                pickText={(place) => fullAddressText(place, form.address)}
                 enabled={placeSearch}
-                placeholder="Es. Via Roma 12, Milano"
+                placeholder="Es. Via Padova 21, Milano"
                 className={ui.input}
               />
             </Field>

@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { createActivityFromTemplateAction } from "@/app/actions/center-activities-v2";
 import type { ActivityTemplate } from "@/lib/centers/activity-templates";
@@ -67,9 +66,7 @@ export default function TemplateActivityForm({
 
   return (
     <div className="mx-auto flex max-w-xl flex-col gap-5 animate-fade-in">
-      <Link href="/center/activities" className="inline-flex items-center gap-1 text-[13px] font-semibold text-partner-accent-ink">
-        <i className="ti ti-arrow-left" aria-hidden="true" /> Attività
-      </Link>
+      {/* "‹" in alto lo mette il guscio (29/10/2026). */}
 
       <div className="flex items-start gap-3">
         <span className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-2xl bg-partner-soft text-[26px]" aria-hidden="true">

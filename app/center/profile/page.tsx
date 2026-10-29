@@ -100,19 +100,13 @@ export default async function CenterProfilePage() {
     : "Modifica qui sotto";
 
   // PORTALE CENTRI V2 (29/10/2026), Fabrizio: "anche la sezione profilo è
-  // vecchio stile". Col guscio: titolo come le altre sezioni, ritorno a
-  // Centro (da cui si arriva), niente riquadri di riepilogo (stanno già in
+  // vecchio stile". Col guscio: titolo come le altre sezioni, "‹" dal guscio,
+  // niente riquadri di riepilogo (stanno già in
   // Centro), form a riquadri con l'indirizzo suggerito.
   if (await partnerShellEnabledForCurrentUser()) {
     return (
       <div className="flex max-w-2xl flex-col gap-5">
-        <Link
-          href="/center/centro"
-          data-testid="profile-back-centro"
-          className="inline-flex min-h-[40px] items-center gap-1 self-start text-[14px] font-semibold text-partner-primary"
-        >
-          <i className="ti ti-chevron-left text-[18px]" aria-hidden="true" /> Centro
-        </Link>
+        {/* "‹" in alto lo mette il guscio (torna alla pagina di prima, Centro se dietro non c'è niente). */}
         <PartnerPageHeader
           testId="center-profile-header"
           titleTestId="center-profile-name"

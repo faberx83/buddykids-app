@@ -13,7 +13,8 @@ import {
   familyPreviewReturnHref,
   FAMILY_PREVIEW_RETURN_HREF,
 } from "../../lib/center/family-preview";
-import { partnerBackLink } from "../../lib/centers/partner-shell";
+import { nextPartnerStack, partnerBackLink, partnerBackTarget, partnerPageLabel } from "../../lib/centers/partner-shell";
+import { fullAddressText, streetAddressText, typedHouseNumber, type PlaceSuggestion } from "../../lib/places/search";
 import { sanitizeBetaFeedbackClientContext } from "../../lib/nextgen/beta-feedback-shared";
 
 const ROOT = path.resolve(__dirname, "..", "..");
@@ -107,6 +108,7 @@ test.describe("Affondo V2 — Attività e Profilo", () => {
     expect(f).toContain("<PlaceAutocomplete");
     expect(f).toContain('update("lat", Number(place.lat.toFixed(5)));');
     expect(f).toContain("enabled={placeSearch}");
+    expect(f).toContain("pickText={(place) => fullAddressText(place, form.address)}");
     expect(f).toContain('showToast("Attività salvata");');
     expect(f).toContain('router.push("/center/activities");');
     expect(f).toContain('data-testid="activity-save-bar"');
@@ -127,6 +129,7 @@ test.describe("Affondo V2 — Attività e Profilo", () => {
     }
     expect(c).toContain("<PlaceAutocomplete");
     expect(c).toContain('if (place.city) update("city", place.city);');
+    expect(c).toContain("pickText={(place) => streetAddressText(place, form.address)}");
     expect(c).toContain('router.push("/center?salvato=profilo");');
     expect(c).toContain('data-testid="profile-save-bar"');
     const p = read("app/center/profile/page.tsx");
@@ -149,31 +152,90 @@ test.describe("Affondo V2 — Attività e Profilo", () => {
 });
 
 test.describe("Affondo V2 — tornare indietro", () => {
-  test("PA-13 ogni pagina interna ha '‹ provenienza', le sezioni no, niente doppioni", () => {
-    expect(partnerBackLink("/center")).toBeNull();
-    expect(partnerBackLink("/center/prenotazioni")).toBeNull();
-    expect(partnerBackLink("/center/activities")).toBeNull();
-    expect(partnerBackLink("/center/centro/")).toBeNull();
-    // già con il loro "indietro" nella pagina
-    expect(partnerBackLink("/center/profile")).toBeNull();
-    expect(partnerBackLink("/center/activities/pomeriggi")).toBeNull();
-    expect(partnerBackLink("/center/activities/pomeriggi/calendar")).toBeNull();
-    expect(partnerBackLink("/center/activities/new")).toBeNull();
-    expect(partnerBackLink("/center/account/sicurezza")).toBeNull();
-    // pagine aperte dalle righe
-    expect(partnerBackLink("/center/attendance")).toEqual({ href: "/center", label: "Oggi" });
-    expect(partnerBackLink("/center/report-presenze")).toEqual({ href: "/center/centro", label: "Centro" });
-    expect(partnerBackLink("/center/invites")).toEqual({ href: "/center/centro", label: "Centro" });
-    expect(partnerBackLink("/center/servizi-consigliati")).toEqual({ href: "/center/centro", label: "Centro" });
-    expect(partnerBackLink("/center/account")).toEqual({ href: "/center/centro", label: "Centro" });
-    expect(partnerBackLink("/center/promotions")).toEqual({ href: "/center/activities", label: "Attività" });
-    expect(partnerBackLink("/center/richieste/abc")).toEqual({ href: "/center/prenotazioni?tipo=messaggi", label: "Richieste" });
+  // 29/10/2026, Fabrizio: "L'indietro - es. quello del registro presenze - dovrebbe portare alla pagina prima non ad oggi".
+  test("PA-13 '‹' torna alla pagina di prima, col suo nome", () => {
+    let stack: string[] = [];
+    stack = nextPartnerStack(stack, "/center/centro", false);
+    stack = nextPartnerStack(stack, "/center/attendance", false);
+    expect(partnerBackTarget("/center/attendance", stack)).toEqual({ href: "/center/centro", label: "Centro", history: true });
+    // stessa pagina dall'altra strada
+    let fromOggi = nextPartnerStack([], "/center", false);
+    fromOggi = nextPartnerStack(fromOggi, "/center/attendance", false);
+    expect(partnerBackTarget("/center/attendance", fromOggi)?.label).toBe("Oggi");
+    // tornando indietro la pagina esce dalla pila; stessa pagina due volte = una
+    expect(nextPartnerStack(stack, "/center/centro", true)).toEqual(["/center/centro"]);
+    expect(nextPartnerStack(stack, "/center/attendance/", false)).toBe(stack);
+    // profilo aperto dalla card di Oggi → "‹ Oggi"; attività aperta da Oggi → "‹ Oggi"
+    expect(partnerBackTarget("/center/profile", ["/center", "/center/profile"])?.label).toBe("Oggi");
+    expect(partnerPageLabel("/center/activities/pomeriggi/calendar")).toBe("Date e posti");
+    expect(partnerPageLabel("/center/account/sicurezza")).toBe("Il mio account");
+    expect(partnerPageLabel("/center/qualcosa")).toBe("Indietro");
   });
 
-  test("PA-14 il guscio mostra il link, con destinazione fissa (mai la cronologia)", () => {
+  test("PA-14 senza pagina dietro (email, notifica, ricarica): pagina madre; le sezioni senza '‹'", () => {
+    for (const p of ["/center", "/center/prenotazioni", "/center/activities", "/center/centro/"]) {
+      expect(partnerBackTarget(p, [p]), p).toBeNull();
+    }
+    expect(partnerBackTarget("/center/account/sicurezza", [])).toBeNull(); // ha il suo PageHeader
+    const madre = (p: string) => partnerBackTarget(p, [p]);
+    expect(madre("/center/attendance")).toEqual({ href: "/center", label: "Oggi", history: false });
+    expect(madre("/center/report-presenze")).toEqual({ href: "/center/centro", label: "Centro", history: false });
+    expect(madre("/center/profile")).toEqual({ href: "/center/centro", label: "Centro", history: false });
+    expect(madre("/center/promotions")).toEqual({ href: "/center/activities", label: "Attività", history: false });
+    expect(madre("/center/activities/pomeriggi")).toEqual({ href: "/center/activities", label: "Attività", history: false });
+    expect(madre("/center/activities/pomeriggi/calendar")).toEqual({ href: "/center/activities/pomeriggi", label: "Attività", history: false });
+    expect(madre("/center/richieste/abc")).toEqual({ href: "/center/prenotazioni?tipo=messaggi", label: "Richieste", history: false });
+    expect(partnerBackLink("/center/invites")).toEqual({ href: "/center/centro", label: "Centro" });
+  });
+
+  test("PA-15 il guscio usa la cronologia vera e un solo '‹' per pagina", () => {
     const shell = read("components/center/PartnerShellV2.tsx");
-    expect(shell).toContain("const back = partnerBackLink(pathname);");
+    expect(shell).toContain("const back = partnerBackTarget(pathname, stack);");
+    expect(shell).toContain('window.addEventListener("popstate", onPop);');
+    expect(shell).toContain("router.back();");
     expect(shell).toContain('data-testid="partner-back"');
-    expect(code(read("lib/centers/partner-shell.ts"))).not.toContain("history");
+    // le pagine ridisegnate non hanno più un loro "‹" (sarebbe doppio)
+    for (const f of [
+      "app/center/activities/[id]/ActivityEditForm.tsx",
+      "app/center/activities/[id]/calendar/page.tsx",
+      "app/center/profile/page.tsx",
+      "components/center/TemplateActivityForm.tsx",
+    ]) {
+      const src = read(f);
+      const v2Part = f.endsWith("TemplateActivityForm.tsx") ? src : src.slice(src.indexOf("PartnerPageHeader"));
+      expect(code(v2Part), f).not.toContain("ti-chevron-left");
+    }
+  });
+});
+
+test.describe("Affondo V2 — indirizzo con il numero civico", () => {
+  // 29/10/2026, Fabrizio: "se metto una via, non mi fa mettere civico, e mi riporta 20153 Milano".
+  const via: PlaceSuggestion = { name: "Via Padova", address: "20153 Milano", lat: 45.5, lng: 9.2, kind: "highway:residential", city: "Milano" };
+  const civico: PlaceSuggestion = { name: "Via Padova 21", address: "Via Padova 21, 20127 Milano", lat: 45.49, lng: 9.21, kind: "place:house", city: "Milano" };
+  const posto: PlaceSuggestion = {
+    name: "Oratorio San Luigi",
+    address: "Via Roma 5, 20100 Milano",
+    lat: 45.4,
+    lng: 9.1,
+    kind: "amenity:community_centre",
+    city: "Milano",
+  };
+
+  test("PA-16 via scelta dai suggerimenti: resta la via, col numero scritto", () => {
+    expect(streetAddressText(via, "via padova 21")).toBe("Via Padova 21");
+    expect(streetAddressText(via, "Via Padova, 21/a")).toBe("Via Padova 21/a");
+    expect(streetAddressText(via, "via padova")).toBe("Via Padova");
+    expect(streetAddressText(civico, "via padova 21")).toBe("Via Padova 21");
+    expect(streetAddressText(posto, "oratorio san luigi")).toBe("Via Roma 5");
+    // mai il CAP né un numero che fa parte del nome della via
+    expect(typedHouseNumber("via padova 20153", "Via Padova")).toBeNull();
+    expect(typedHouseNumber("viale 4 novembre", "Viale 4 Novembre")).toBeNull();
+    expect(typedHouseNumber("viale 4 novembre 12", "Viale 4 Novembre")).toBe("12");
+  });
+
+  test("PA-17 indirizzo dell'attività in un campo solo: posto, via e numero, CAP e città", () => {
+    expect(fullAddressText(via, "via padova 21")).toBe("Via Padova 21, 20153 Milano");
+    expect(fullAddressText(posto, "oratorio")).toBe("Oratorio San Luigi, Via Roma 5, 20100 Milano");
+    expect(fullAddressText(civico, "")).toBe("Via Padova 21, 20127 Milano");
   });
 });

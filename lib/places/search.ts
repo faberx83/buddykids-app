@@ -98,6 +98,52 @@ export function placeLocationText(p: Pick<PlaceSuggestion, "name" | "address">):
   return `${p.name}, ${p.address}`;
 }
 
+// ─── 29/10/2026 — indirizzi del portale centri ───
+// Fabrizio (profilo del centro): "se metto una via, non mi fa mettere civico,
+// e mi riporta 20153 Milano". Per una VIA OpenStreetMap dà il nome della via
+// in `name` e niente `street`: l'indirizzo costruito sopra resta solo
+// "20153 Milano". Qui si ricompone "Via Padova 21": la via dal suggerimento
+// e, se il suggerimento non ha il civico, quello scritto dal gestore.
+
+/** "Via Padova" (o "Via Castellino da Castello 10") dal suggerimento. */
+export function suggestionStreet(p: Pick<PlaceSuggestion, "name" | "address" | "kind">): string {
+  const comma = p.address.indexOf(", ");
+  if (comma > 0) return p.address.slice(0, comma);
+  if (p.kind.startsWith("highway:")) return p.name;
+  if (!p.address || /^\d{5}\b/.test(p.address)) return p.name;
+  return p.address;
+}
+
+/** "20153 Milano" dal suggerimento (vuoto se non noto). */
+export function suggestionLocality(p: Pick<PlaceSuggestion, "address" | "city">): string {
+  const comma = p.address.indexOf(", ");
+  if (comma > 0) return p.address.slice(comma + 2);
+  if (/^\d{5}\b/.test(p.address) || (p.city && p.address === p.city)) return p.address;
+  return p.city ?? "";
+}
+
+/** Ultimo numero civico scritto ("21", "21/a", "12B") che la via non contiene già. CAP (5 cifre) esclusi. */
+export function typedHouseNumber(typed: string, street: string): string | null {
+  const inStreet = new Set(street.toLowerCase().split(/[\s,]+/));
+  const found = typed.match(/(?:^|[\s,])(\d{1,4}(?:\/?[a-zA-Z](?![a-zA-Z]))?(?:\/\d{1,3})?)(?=$|[\s,])/g) ?? [];
+  const numbers = found.map((m) => m.replace(/^[\s,]+/, "")).filter((n) => !inStreet.has(n.toLowerCase()));
+  return numbers.length > 0 ? numbers[numbers.length - 1] : null;
+}
+
+/** Campo "Via e numero": "Via Padova 21". */
+export function streetAddressText(p: Pick<PlaceSuggestion, "name" | "address" | "kind">, typed: string): string {
+  const street = suggestionStreet(p);
+  const number = typedHouseNumber(typed, street);
+  return number ? `${street} ${number}` : street;
+}
+
+/** Indirizzo completo in un campo solo: "Oratorio San Luigi, Via Roma 5, 20100 Milano" / "Via Padova 21, 20153 Milano". */
+export function fullAddressText(p: Pick<PlaceSuggestion, "name" | "address" | "kind" | "city">, typed: string): string {
+  const street = streetAddressText(p, typed);
+  const place = !p.kind.startsWith("highway:") && !street.toLowerCase().startsWith(p.name.toLowerCase()) ? p.name : "";
+  return [place, street, suggestionLocality(p)].filter(Boolean).join(", ");
+}
+
 // ─── 22/10/2026 — scuole che OpenStreetMap non registra come "scuola" ───
 // Ritest di Fabrizio: "non trovo ancora Fondazione Grossman". Il ripiego
 // del 21/10 cercava fra tutti i luoghi solo se fra le scuole non c'era

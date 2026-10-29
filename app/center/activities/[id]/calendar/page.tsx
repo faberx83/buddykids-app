@@ -28,15 +28,10 @@ export default async function CenterActivityCalendarPage({
   if (await partnerShellEnabledForCurrentUser()) {
     return (
       <div className="flex flex-col gap-5">
-        <Link
-          href={`/center/activities/${activity.id}`}
-          className="inline-flex min-h-[40px] items-center gap-1 self-start text-[14px] font-semibold text-partner-primary"
-        >
-          <i className="ti ti-chevron-left text-[18px]" aria-hidden="true" /> {activity.name}
-        </Link>
+        {/* "‹" in alto lo mette il guscio (torna alla pagina di prima). */}
         <PartnerPageHeader
           title="Date e posti"
-          subtitle={`Aprite o chiudete i giorni, aggiornate i posti e gli sconti. ${weeksCount} ${weeksCount === 1 ? "settimana pubblicata" : "settimane pubblicate"}.`}
+          subtitle={`${activity.name}. Aprite o chiudete i giorni, aggiornate i posti e gli sconti. ${weeksCount} ${weeksCount === 1 ? "settimana pubblicata" : "settimane pubblicate"}.`}
         />
         <section aria-labelledby="cal-occupazione" className="rounded-[18px] border border-partner-line bg-white p-4">
           <div className="mb-1 flex flex-wrap items-center justify-between gap-2">

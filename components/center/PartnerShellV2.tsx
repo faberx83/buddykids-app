@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import PageLoadIndicator from "@/components/PageLoadIndicator";
 import { NextgenToastProvider } from "@/components/nextgen/NextgenToastProvider";
 import {
@@ -16,7 +16,8 @@ import {
   PARTNER_TABS,
   activeSubTab,
   badgeLabel,
-  partnerBackLink,
+  nextPartnerStack,
+  partnerBackTarget,
   sectionForPath,
   type PartnerBadges,
   type PartnerSection,
@@ -109,7 +110,25 @@ export default function PartnerShellV2({
   const section = sectionForPath(pathname);
   const subTabs = PARTNER_SUBTABS[section] ?? [];
   const activeSub = activeSubTab(pathname);
-  const back = partnerBackLink(pathname);
+  const router = useRouter();
+  // "‹" torna alla pagina di prima (Fabrizio, 29/10): pagine visitate in
+  // questa scheda, aggiornate a ogni cambio di pagina; un "popstate" (indietro
+  // del telefono/browser o "‹") toglie l'ultima invece di aggiungerne una.
+  const [stack, setStack] = useState<string[]>([]);
+  const poppedPath = useRef<string | null>(null);
+  useEffect(() => {
+    const onPop = () => {
+      poppedPath.current = window.location.pathname;
+    };
+    window.addEventListener("popstate", onPop);
+    return () => window.removeEventListener("popstate", onPop);
+  }, []);
+  useEffect(() => {
+    const wasBack = poppedPath.current === pathname;
+    poppedPath.current = null;
+    setStack((prev) => nextPartnerStack(prev, pathname, wasBack));
+  }, [pathname]);
+  const back = partnerBackTarget(pathname, stack);
 
   const badgeFor = (key: PartnerSection) => (key === "richieste" ? badges.richieste : key === "oggi" ? badges.oggi : 0);
   const badgeText = (key: PartnerSection, n: number) =>
@@ -201,6 +220,13 @@ export default function PartnerShellV2({
           {back && (
             <Link
               href={back.href}
+              onClick={(e) => {
+                // Pagina di prima nella cronologia: si torna davvero indietro
+                // (stessa posizione, niente pagina nuova nella cronologia).
+                if (!back.history || e.metaKey || e.ctrlKey) return;
+                e.preventDefault();
+                router.back();
+              }}
               data-testid="partner-back"
               className="-mt-1 mb-3 inline-flex min-h-[40px] items-center gap-1 text-[14px] font-semibold text-partner-primary"
             >
