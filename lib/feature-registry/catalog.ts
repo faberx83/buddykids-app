@@ -1268,6 +1268,8 @@ export const FEATURE_CATALOG: FeatureCatalogEntry[] = [
       "lib/nextgen/nodi.ts",
       "components/nextgen/Nodi.tsx",
       "components/nextgen/PlannerDayFocus.tsx",
+      "components/nextgen/ChiENodi.tsx",
+      "app/nextgen/trama/page.tsx",
       "lib/nextgen/nodi-manifest.json",
       "app/nextgen/layout.tsx",
       "public/assets/nodi/",
@@ -1275,7 +1277,9 @@ export const FEATURE_CATALOG: FeatureCatalogEntry[] = [
     note:
       "Asset del pacchetto TRAMA_NODI_THREAD_REFERENCE_PACK_v2 (versione approvata, 28/10 sera): 18 PNG 1x/@2x copiati " +
       "senza modifiche in public/assets/nodi; mappa stato → file in lib/nextgen/nodi-manifest.json. Statici. Misure dal " +
-      "manifest (NODI_SIZE). Il pacchetto non ha varianti navy né micro: su fondo scuro e sotto 32 px Nodi non compare.",
+      "manifest, alzate di poco il 29/10 (NODI_SIZE). Il pacchetto non ha varianti navy né micro: su fondo scuro e sotto 32 px " +
+      "Nodi non compare. Dal 29/10 si vede solo la parte con Nodi (NODI_CROP: fuori i frammenti della tavola) e la pagina " +
+      "Cos'è TRAMA ha il riquadro 'Chi è Nodi'.",
     riskLevel: "low",
     releaseEligible: true,
   },

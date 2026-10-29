@@ -5,6 +5,8 @@
 // dà il testo: niente segnaposto visibili agli utenti.
 
 import Link from "next/link";
+// 29/10/2026 — "Chi è Nodi", solo con NODI_ENABLED (il componente decide da sé).
+import ChiENodi from "@/components/nextgen/ChiENodi";
 
 const STEPS = [
   { title: "Mettete in fila le settimane", body: "Quello che i figli fanno già, anche fuori da TRAMA." },
@@ -56,6 +58,8 @@ export default function CosETramaPage() {
           ))}
         </ol>
       </section>
+
+      <ChiENodi />
 
       <nav aria-label="Informazioni" className="flex flex-col rounded-2xl border border-trama-line bg-white">
         <Link href="/nextgen/profile" className="flex min-h-[50px] items-center justify-between border-b border-[#F0F2F5] px-4 text-[14px] font-semibold text-trama-accent-ink">

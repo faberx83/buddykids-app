@@ -7,10 +7,13 @@ import path from "path";
 import crypto from "crypto";
 import { test, expect } from "@playwright/test";
 import {
+  CHI_E_NODI_COPY,
   NODI_COPY,
   NODI_FLAG,
+  NODI_CROP,
   NODI_MAX_PX,
   NODI_SIZE,
+  nodiCropLayout,
   NODI_STATES,
   isPlannerWeekEmpty,
   nodiAfterAssign,
@@ -63,16 +66,21 @@ test.describe("TRAMA — Nodi Thread [no browser]", () => {
     // il pacchetto v2 non ha varianti per fondo scuro né una versione senza volto
     expect(nodiAsset("success", 32, true)).toBeNull();
     expect(nodiAsset("success", 31)).toBeNull();
-    // misure dei posti = max_px del manifest
-    expect(NODI_SIZE).toEqual({
-      onboarding: manifest.placement.onboarding_children.max_px,
-      plannerEmpty: manifest.placement.planner_empty_day.max_px,
-      groupsEmpty: manifest.placement.groups_empty.max_px,
-      homeHint: manifest.placement.home_get_started.max_px,
-      problem: manifest.placement.who_does_what.max_px,
-      discoverEmpty: manifest.placement.discover_no_results.max_px,
-      toast: manifest.placement.assignment_success.max_px,
-    });
+    // misure dei posti: max_px del manifest, alzate di 4–8 px il 29/10 ("un pelino più grande e visibile");
+    // "Chi fa cosa" resta 34 (prende il posto di un'icona da 34) e nessun posto supera 88
+    const m = (k: string) => manifest.placement[k].max_px as number;
+    expect(NODI_SIZE.problem).toBe(m("who_does_what"));
+    expect(NODI_SIZE.toast).toBe(m("assignment_success"));
+    for (const [k, key] of [
+      ["onboarding", "onboarding_children"],
+      ["plannerEmpty", "planner_empty_day"],
+      ["groupsEmpty", "groups_empty"],
+      ["homeHint", "home_get_started"],
+      ["discoverEmpty", "discover_no_results"],
+    ] as const) {
+      expect(NODI_SIZE[k], k).toBeGreaterThanOrEqual(m(key));
+      expect(NODI_SIZE[k], k).toBeLessThanOrEqual(m(key) + 8);
+    }
   });
 
   test("NODI-03 dopo Chi accompagna: settimana completa o giorno completo = conferma (stato success), altrimenti niente", () => {
@@ -130,11 +138,17 @@ test.describe("TRAMA — Nodi Thread [no browser]", () => {
     expect(src).toMatch(/fallback = null,/);
     expect(src).toMatch(/<img/);
     expect(src).toContain("srcSet={`${asset.src} 1x, ${asset.src2x} 2x`}");
-    expect(src).toContain("object-contain");
+    // si vede solo la parte con Nodi: quadrato con overflow nascosto, posizione da nodiCropLayout
+    expect(src).toContain("overflow-hidden");
+    expect(src).toContain("const fit = nodiCropLayout(asset);");
     expect(src).toMatch(/aria-hidden=\{decorative \? true : undefined\}/);
-    expect(src).toMatch(/alt=\{decorative \? "" :/);
-    // nessuna ricostruzione della mascotte e nessun ritocco via CSS
-    expect(src).not.toMatch(/<svg|<path|filter:|invert\(|hue-rotate|clip-path/);
+    // 29/10: il nome accessibile sta sul quadrato (role img) quando non è decorativo; l'immagine dentro è muta
+    expect(src).toContain("aria-label={decorative ? undefined : `Nodi: ${state}`}");
+    expect(src).toMatch(/<img[\s\S]*?alt=""/);
+    // nessuna ricostruzione della mascotte e nessun ritocco del colore via CSS;
+    // l'unico clip-path è quello calcolato da NODI_CROP (angolo del fumetto di state-03)
+    expect(src).not.toMatch(/<svg|<path|filter:|invert\(|hue-rotate|clip-path:/);
+    expect(src).toContain("...(fit.clipPath ? { clipPath: fit.clipPath } : null)");
     expect(read("lib/nextgen/nodi.ts")).not.toMatch(/<svg|<path/);
   });
 
@@ -182,14 +196,16 @@ test.describe("TRAMA — Nodi Thread [no browser]", () => {
 
   test("NODI-11 presenza, non protagonista: misure piccole, nessuna card nuova, stessa struttura senza Nodi", () => {
     // misure "mobile" del ritocco (l'app vive in una cornice telefono)
-    expect(NODI_SIZE.onboarding).toBeLessThanOrEqual(72);
+    // 29/10: "un pelino più grande" — onboarding max 80 (era 72), empty 64, contestuali 48–56
+    expect(NODI_SIZE.onboarding).toBeLessThanOrEqual(80);
     expect(NODI_SIZE.plannerEmpty).toBeGreaterThanOrEqual(56);
     expect(NODI_SIZE.plannerEmpty).toBeLessThanOrEqual(64);
     expect(NODI_SIZE.groupsEmpty).toBeLessThanOrEqual(72);
     expect(NODI_SIZE.homeHint).toBeLessThanOrEqual(48);
     expect(NODI_SIZE.problem).toBeGreaterThanOrEqual(32);
     expect(NODI_SIZE.problem).toBeLessThanOrEqual(48);
-    expect(NODI_SIZE.discoverEmpty).toBeLessThanOrEqual(48);
+    expect(NODI_SIZE.discoverEmpty).toBeLessThanOrEqual(56);
+    expect(NODI_SIZE.about).toBeLessThanOrEqual(64);
     expect(NODI_SIZE.toast).toBeGreaterThanOrEqual(24);
     expect(NODI_SIZE.toast).toBeLessThanOrEqual(32);
     for (const v of Object.values(NODI_SIZE)) expect(v).toBeLessThanOrEqual(NODI_MAX_PX);
@@ -209,7 +225,7 @@ test.describe("TRAMA — Nodi Thread [no browser]", () => {
     const planner = read("app/nextgen/planner/PlannerV2Client.tsx");
     expect(planner).not.toContain("nodi-problem-card");
     expect(planner).not.toContain("nodi-planner-empty");
-    // un solo Nodi per posto: sei posizionamenti in tutta l'app famiglie (l'avviso non ne ha)
+    // un solo Nodi per posto: sette posizionamenti (sei momenti + "Chi è Nodi"; l'avviso non ne ha)
     const uses = [
       "components/nextgen/OnboardingV2.tsx",
       "components/nextgen/SeasonSummaryCard.tsx",
@@ -217,8 +233,9 @@ test.describe("TRAMA — Nodi Thread [no browser]", () => {
       "components/nextgen/PlannerDayFocus.tsx",
       "components/GroupsClient.tsx",
       "app/nextgen/search/SearchDiscoveryClient.tsx",
+      "components/nextgen/ChiENodi.tsx",
     ].reduce((n, f) => n + (read(f).match(/<Nodi /g)?.length ?? 0), 0);
-    expect(uses).toBe(6);
+    expect(uses).toBe(7);
     // senza Nodi (flag spento) il componente rende il ripiego: stessa struttura di prima
     const comp = read("components/nextgen/Nodi.tsx");
     expect(comp).toContain("if (!enabled) return <>{fallback}</>;");
@@ -237,5 +254,43 @@ test.describe("TRAMA — Nodi Thread [no browser]", () => {
     }
     // il logo dell'onboarding resta quello di TRAMA
     expect(read("components/nextgen/OnboardingV2.tsx")).toMatch(/src="\/brand\/trama-logo-mark\.png"/);
+  });
+  test("NODI-12 ritaglio (29/10): solo Nodi, senza i pezzi dei vicini; file intatti; Chi è Nodi solo col flag", () => {
+    // ogni asset del manifest ha il suo ritaglio, dentro l'immagine
+    for (const key of Object.keys(manifest.assets)) {
+      const c = NODI_CROP[key];
+      expect(c, key).toBeTruthy();
+      expect(c.x).toBeGreaterThanOrEqual(0);
+      expect(c.y).toBeGreaterThanOrEqual(0);
+      expect(c.x + c.w).toBeLessThanOrEqual(1.0001);
+      expect(c.y + c.h).toBeLessThanOrEqual(1.0001);
+    }
+    // i frammenti delle etichette stanno in fondo alla tavola: il ritaglio li lascia fuori
+    for (const key of ["nodi-thread-state-05", "nodi-thread-state-06", "nodi-thread-state-07", "nodi-thread-state-08"]) {
+      expect(NODI_CROP[key].y + NODI_CROP[key].h, key).toBeLessThan(0.9);
+    }
+    // state-03: fumetto tagliato nascosto con l'angolo in alto a destra
+    expect(NODI_CROP["nodi-thread-state-03"].hideTopRight).toEqual({ x: 0.6856, y: 0.285 });
+    // posizione: il ritaglio riempie il quadrato (lato lungo = size) ed è centrato
+    const a = nodiAsset("discover-empty", 56)!;
+    const f = nodiCropLayout(a);
+    const cw = a.crop.w * f.width;
+    const ch = a.crop.h * f.height;
+    expect(Math.max(cw, ch)).toBeCloseTo(56, 0);
+    expect(f.left + a.crop.x * f.width).toBeCloseTo((56 - cw) / 2, 0);
+    expect(f.top + a.crop.y * f.height).toBeCloseTo((56 - ch) / 2, 0);
+    expect(f.clipPath).toBeNull();
+    expect(nodiCropLayout(nodiAsset("problem", 34)!).clipPath).toBe("polygon(0 0, 68.6% 0, 68.6% 28.5%, 100% 28.5%, 100% 100%, 0 100%)");
+
+    // "Chi è Nodi" nella pagina Cos'è TRAMA, solo con NODI_ENABLED, stessa forma di "Come funziona"
+    const chi = read("components/nextgen/ChiENodi.tsx");
+    expect(chi).toContain("if (!enabled) return null;");
+    expect(chi).toContain('className="flex flex-col gap-3 rounded-2xl border border-trama-line bg-white p-[18px]"');
+    expect(chi).toMatch(/<Nodi state="welcome" size=\{NODI_SIZE\.about\} \/>/);
+    expect(CHI_E_NODI_COPY.title).toBe("Chi è Nodi");
+    for (const v of Object.values(CHI_E_NODI_COPY)) expect(v).not.toMatch(/\bio\b|sono Nodi|posso aiutarti|!/i);
+    const page = read("app/nextgen/trama/page.tsx");
+    expect(page.indexOf("<ChiENodi />")).toBeGreaterThan(page.indexOf('id="come-h"'));
+    expect(page.indexOf("<ChiENodi />")).toBeLessThan(page.indexOf('aria-label="Informazioni"'));
   });
 });

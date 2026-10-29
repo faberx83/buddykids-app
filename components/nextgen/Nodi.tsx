@@ -11,15 +11,17 @@
 // - Flag spento (o fuori dal provider): <Nodi> rende solo il ripiego
 //   (`fallback`, di solito l'icona che sostituisce) e useNodiEnabled() è
 //   false, così ogni punto dell'app resta com'era.
-// - L'immagine sta dentro un quadrato di `size` px (object-fit: contain): non
-//   si deforma e occupa lo stesso posto di prima.
+// - L'immagine sta dentro un quadrato di `size` px e non si deforma.
+// - 29/10: del PNG si vede solo la parte con Nodi (NODI_CROP): i frammenti dei
+//   vicini rimasti nel ritaglio della tavola restano fuori. Il file è intatto:
+//   il quadrato nasconde il resto (overflow hidden), stesso posto di prima.
 // - Decorativo per default (alt vuoto, aria-hidden): il testo accanto dice
 //   già tutto.
 // - Nessuna animazione. Presenza, non protagonista: si inserisce negli
 //   elementi che esistono già, senza card nuove e senza cambiare spaziature.
 
 import { createContext, useContext } from "react";
-import { nodiAsset, type NodiState } from "@/lib/nextgen/nodi";
+import { nodiAsset, nodiCropLayout, type NodiState } from "@/lib/nextgen/nodi";
 
 const NodiContext = createContext<boolean>(false);
 
@@ -54,19 +56,31 @@ export default function Nodi({
   if (!enabled) return <>{fallback}</>;
   const asset = nodiAsset(state, size, navy);
   if (!asset) return <>{fallback}</>;
+  const fit = nodiCropLayout(asset);
   return (
-    // eslint-disable-next-line @next/next/no-img-element -- PNG statico del pacchetto, nessuna ottimizzazione da fare
-    <img
-      src={asset.src}
-      srcSet={`${asset.src} 1x, ${asset.src2x} 2x`}
-      width={asset.size}
-      height={asset.size}
-      className={`pointer-events-none block flex-shrink-0 select-none object-contain ${className}`}
+    <span
+      className={`pointer-events-none relative block flex-shrink-0 select-none overflow-hidden ${className}`}
       style={{ width: asset.size, height: asset.size }}
-      alt={decorative ? "" : `Nodi: ${state}`}
       aria-hidden={decorative ? true : undefined}
+      role={decorative ? undefined : "img"}
+      aria-label={decorative ? undefined : `Nodi: ${state}`}
       data-nodi={state}
-      draggable={false}
-    />
+    >
+      {/* eslint-disable-next-line @next/next/no-img-element -- PNG statico del pacchetto, nessuna ottimizzazione da fare */}
+      <img
+        src={asset.src}
+        srcSet={`${asset.src} 1x, ${asset.src2x} 2x`}
+        alt=""
+        draggable={false}
+        className="absolute max-w-none"
+        style={{
+          width: fit.width,
+          height: fit.height,
+          left: fit.left,
+          top: fit.top,
+          ...(fit.clipPath ? { clipPath: fit.clipPath } : null),
+        }}
+      />
+    </span>
   );
 }
