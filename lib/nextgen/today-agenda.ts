@@ -207,6 +207,19 @@ export interface DayCoordinationSummary {
   missingCount: number;
   /** Persone coinvolte, senza ripetizioni, nell'ordine in cui compaiono. */
   people: string[];
+  /**
+   * 29/10/2026 (UX-PARENT-024): con "chi accompagna per passaggio" acceso, i
+   * passaggi della giornata per figlio, contati come nel Planner (scuola
+   * compresa). Presente = la Home usa questi, non la tabella Porta/Ritira.
+   */
+  passageKids?: PassageKidSummary[];
+}
+
+export interface PassageKidSummary {
+  kidId: string;
+  kidName: string;
+  chips: { key: string; time: string | null; label: string | null }[];
+  missing: number;
 }
 
 export function summarizeDayCoordination(slots: DayCoordinationSlotInput[]): DayCoordinationSummary {

@@ -7,6 +7,7 @@ import { createClient } from "@/lib/supabase/server";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
 import { resolveFeatureFlag, resolveFeatureFlagVisibility } from "@/lib/feature-flags/resolve";
 import { generateCorrelationId } from "@/lib/telemetry/correlation";
+import { PARENT_UX_FIX_FLAG } from "@/lib/nextgen/parent-ux-fix";
 import PhoneShell from "@/components/PhoneShell";
 import ModificaPrenotazioneClient from "./ModificaPrenotazioneClient";
 
@@ -31,6 +32,8 @@ export default async function ModificaPrenotazionePage({
   // 20/10/2026 — Modifica V2: stesso flag e stessa regola di "Richiedi un
   // posto" (app/booking/[id]/page.tsx): solo dentro TRAMA ONE.
   let v2 = false;
+  // 29/10/2026 (UX-PARENT-025): stessi giorni della scheda attività, anche dopo l'estate.
+  let uxFix = false;
   if (isSupabaseConfigured) {
     const supabase = await createClient();
     const {
@@ -44,6 +47,13 @@ export default async function ModificaPrenotazionePage({
       tenant: "family",
       correlationId: generateCorrelationId(),
     });
+    uxFix = await resolveFeatureFlag({
+      flagName: PARENT_UX_FIX_FLAG,
+      userId: user.id,
+      role: "parent",
+      tenant: "family",
+      correlationId: generateCorrelationId(),
+    }).catch(() => false);
     if (nextgen) {
       v2 = await resolveFeatureFlagVisibility({
         flagName: "BOOKINGS_V2_ENABLED",
@@ -83,7 +93,7 @@ export default async function ModificaPrenotazionePage({
   // diversa per lo stesso concetto.
   const [weeks, days, bookedDayDecisions] = await Promise.all([
     getWeeksForActivity(activity),
-    booking.isDayBased ? getActivityDays(activity) : Promise.resolve([]),
+    booking.isDayBased ? getActivityDays(activity, { includeAfterSeason: uxFix }) : Promise.resolve([]),
     booking.isDayBased && activity.dbId
       ? getBookedDayDecisionsForActivity(activity.dbId)
       : Promise.resolve(new Map()),
