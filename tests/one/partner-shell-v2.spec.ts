@@ -190,5 +190,23 @@ test.describe("Portale centri V2 — Oggi", () => {
     expect(block).toContain("#0e5a63");
     expect(read("components/center/PartnerShellV2.tsx")).toContain("data-partner-v2");
   });
+
+  // 29/10/2026, Fabrizio: "mi raccomando allinea font, logo ecc.".
+  test("PS-13 marchio come le famiglie: logo a colori, campanella in alto, titoli col filo TRAMA", () => {
+    const shell = read("components/center/PartnerShellV2.tsx");
+    expect(shell).toContain('src="/brand/trama-logo-mark.png"');
+    expect(shell).not.toContain("trama-logo-mark-navy");
+    expect(shell).toContain("requestOpenNotifications()");
+    expect(shell).toContain("NextgenToastProvider");
+    expect(read("app/center/layout.tsx")).toContain('scope="partner" allowHeaderBell');
+    const header = read("components/center/PartnerPageHeader.tsx");
+    expect(header).toContain("font-poppins text-[24px] font-semibold");
+    expect(header).toContain("<TramaThread");
+    for (const f of ["components/center/OggiV2.tsx", "components/center/ActivitiesV2.tsx", "app/center/centro/page.tsx"]) {
+      expect(read(f), f).toContain("<PartnerPageHeader");
+    }
+    const css = read("app/globals.css");
+    expect(css).toContain("[data-partner-v2] h1.text-xl.font-bold::after");
+  });
 });
 

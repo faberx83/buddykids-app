@@ -1,9 +1,10 @@
 import Link from "next/link";
 import PushNotificationsPrompt from "@/components/PushNotificationsPrompt";
 import ActivationCard from "@/components/center/ActivationCard";
+import PartnerPageHeader from "@/components/center/PartnerPageHeader";
 import type { ActivationView } from "@/lib/centers/activation";
 import type { PartnerDecision } from "@/lib/booking-response/effective-decision";
-import { shortItalianDay, toAnswerSummary } from "@/lib/centers/partner-oggi";
+import { longItalianDay, toAnswerSummary } from "@/lib/centers/partner-oggi";
 
 // TRAMA — PORTALE CENTRI V2, SEZIONE "OGGI" (28/10/2026, tavola 3 del mock,
 // PARTNER_SHELL_V2_ENABLED). ADAPT della dashboard di /center: stessi dati,
@@ -73,13 +74,16 @@ export default function OggiV2({ savedProfile, activation, toAnswer, today, numb
 
   return (
     <div className="mx-auto flex max-w-2xl flex-col gap-5 animate-fade-in">
-      <div className="flex flex-wrap items-center justify-between gap-2.5">
-        <h1 className="font-poppins text-[28px] font-semibold text-ink">Oggi</h1>
-        <span className={`flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[12.5px] font-bold ${status.cls}`}>
-          <span className={`h-[7px] w-[7px] rounded-full ${status.dot}`} aria-hidden="true" />
-          {status.text}
-        </span>
-      </div>
+      <PartnerPageHeader
+        title="Oggi"
+        subtitle={longItalianDay()}
+        badge={
+          <span className={`flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[12.5px] font-bold ${status.cls}`}>
+            <span className={`h-[7px] w-[7px] rounded-full ${status.dot}`} aria-hidden="true" />
+            {status.text}
+          </span>
+        }
+      />
 
       {savedProfile && (
         <p role="status" className="flex items-center gap-2 rounded-xl bg-[#E6F6F0] px-3.5 py-2.5 text-sm font-semibold text-ink">
@@ -128,7 +132,7 @@ export default function OggiV2({ savedProfile, activation, toAnswer, today, numb
             </Link>
           }
         >
-          Al centro oggi · {shortItalianDay()}
+          Al centro oggi
         </SectionTitle>
         <div className="flex flex-col overflow-hidden rounded-[18px] border border-partner-line bg-white">
           {today.expected > 0 ? (

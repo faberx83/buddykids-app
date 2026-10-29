@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { createActivityFromTemplateAction } from "@/app/actions/center-activities-v2";
 import type { ActivityTemplate } from "@/lib/centers/activity-templates";
+import PartnerPageHeader from "@/components/center/PartnerPageHeader";
 
 // TRAMA — PORTALE CENTRI V2, "CREA DA MODELLO" (28/10/2026, tavola 6).
 // Il modello porta nome, orari, giorni della stagione e modalità a giorni
@@ -75,8 +76,7 @@ export default function TemplateActivityForm({
           {template.emoji}
         </span>
         <div className="flex flex-col gap-0.5">
-          <h1 className="font-poppins text-[24px] font-semibold leading-tight text-ink">{template.title}</h1>
-          <p className="text-[13.5px] text-ink-2">Pronta in un minuto: controllate i dati e create l&apos;attività.</p>
+          <PartnerPageHeader title={template.title} subtitle="Pronta in un minuto: controllate i dati e create l'attività." />
         </div>
       </div>
 

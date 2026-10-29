@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import LogoutButton from "@/components/LogoutButton";
+import PartnerPageHeader from "@/components/center/PartnerPageHeader";
 import { getMyCenter } from "@/lib/data/center-admin";
 import { getActivitiesForCenter } from "@/lib/data/activities";
 import { getMyCenterActivation } from "@/lib/data/center-activation";
@@ -110,7 +111,7 @@ export default async function CentroPage() {
 
   return (
     <div className="mx-auto flex max-w-2xl flex-col gap-5 animate-fade-in">
-      <h1 className="font-poppins text-[28px] font-semibold text-ink">Centro</h1>
+      <PartnerPageHeader title="Centro" subtitle="Profilo, regole, strumenti e account." />
 
       <div className="flex items-center gap-3.5 rounded-[20px] border border-partner-line bg-white p-4">
         <span className="flex h-14 w-14 flex-shrink-0 items-center justify-center overflow-hidden rounded-2xl bg-partner-soft font-poppins text-[20px] font-semibold text-partner-primary">

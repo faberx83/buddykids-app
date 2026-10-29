@@ -45,3 +45,9 @@ export function shortItalianDay(d: Date = new Date()): string {
     .format(d)
     .replace(/\./g, "");
 }
+
+/** "Giovedì 29 ottobre", fuso di Roma: la riga sotto il titolo di Oggi. */
+export function longItalianDay(d: Date = new Date()): string {
+  const s = new Intl.DateTimeFormat("it-IT", { timeZone: "Europe/Rome", weekday: "long", day: "numeric", month: "long" }).format(d);
+  return s.charAt(0).toUpperCase() + s.slice(1);
+}

@@ -1,5 +1,6 @@
 import Link from "next/link";
 import DuplicateActivityButton from "@/components/center/DuplicateActivityButton";
+import PartnerPageHeader from "@/components/center/PartnerPageHeader";
 import { ACTIVITY_TEMPLATES } from "@/lib/centers/activity-templates";
 import { buildFamilyPreviewHref } from "@/lib/center/family-preview";
 import { EMPTY_DATE_SUMMARY, type ActivityDateSummary } from "@/lib/data/activity-dates";
@@ -62,28 +63,28 @@ export default function ActivitiesV2({ activities, canCreate }: { activities: Ac
   const missing = activities.filter((a) => !a.dates.next).length;
   return (
     <div className="mx-auto flex max-w-3xl flex-col gap-5 animate-fade-in">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex flex-col gap-0.5">
-          <h1 className="font-poppins text-[28px] font-semibold text-ink">Attività</h1>
-          <p className="text-[13.5px] text-ink-2">
-            {activities.length === 0
-              ? "Ancora nessuna attività: partite da un modello, ci vuole un minuto."
-              : missing > 0
-                ? `${missing} ${missing === 1 ? "attività è" : "attività sono"} senza date: aggiungetele perché le famiglie possano iscriversi.`
-                : "Le famiglie vedono queste attività con i giorni aperti."}
-          </p>
-        </div>
-        {canCreate && (
-          <Link
-            href="/center/activities/new"
-            data-spotlight="create_activity"
-            className="flex min-h-[44px] items-center gap-1.5 rounded-xl bg-partner-primary px-4 text-[14.5px] font-semibold text-white hover:bg-partner-primary-press"
-          >
-            <i className="ti ti-plus text-[18px]" aria-hidden="true" />
-            Nuova attività
-          </Link>
-        )}
-      </div>
+      <PartnerPageHeader
+        title="Attività"
+        subtitle={
+          activities.length === 0
+            ? "Ancora nessuna attività: partite da un modello, ci vuole un minuto."
+            : missing > 0
+              ? `${missing} ${missing === 1 ? "attività è" : "attività sono"} senza date: aggiungetele perché le famiglie possano iscriversi.`
+              : "Le famiglie vedono queste attività con i giorni aperti."
+        }
+        action={
+          canCreate ? (
+            <Link
+              href="/center/activities/new"
+              data-spotlight="create_activity"
+              className="flex min-h-[44px] items-center gap-1.5 rounded-xl bg-partner-primary px-4 text-[14.5px] font-semibold text-white hover:bg-partner-primary-press"
+            >
+              <i className="ti ti-plus text-[18px]" aria-hidden="true" />
+              Nuova attività
+            </Link>
+          ) : undefined
+        }
+      />
 
       {canCreate && (
         <section aria-labelledby="att-modelli" className="flex flex-col gap-2.5">

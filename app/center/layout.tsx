@@ -241,7 +241,8 @@ export default async function CenterLayout({ children }: { children: React.React
         })}
       >
         {children}
-        <NotificationCenter initialNotifications={partnerNotifications} scope="partner" />
+        {/* 29/10/2026: campanella nell'intestazione del guscio (PartnerShellV2). */}
+        <NotificationCenter initialNotifications={partnerNotifications} scope="partner" allowHeaderBell />
         <BuildInfoBubble label={buildInfoLabel} />
         <BetaFeedbackButton appSource="gestore" />
       </PartnerShellV2>

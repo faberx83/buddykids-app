@@ -1,8 +1,16 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import PageLoadIndicator from "@/components/PageLoadIndicator";
+import { NextgenToastProvider } from "@/components/nextgen/NextgenToastProvider";
+import {
+  UNSEEN_COUNT_EVENT,
+  announceHeaderBell,
+  requestOpenNotifications,
+  type UnseenCountDetail,
+} from "@/lib/nextgen/notification-bridge";
 import {
   PARTNER_SUBTABS,
   PARTNER_TABS,
@@ -21,6 +29,50 @@ import {
 // su telefono e in alto su computer, come nell'app famiglie. Palette del
 // portale centri (petrolio e senape, tailwind "partner-*"); caratteri, raggi
 // e filo TRAMA uguali alle famiglie. Le pagine sono quelle di sempre.
+// 29/10/2026, Fabrizio: "allinea font, logo ecc.": logo a colori come nelle
+// famiglie (non più il segno blu), campanella nell'intestazione come nella
+// Home V2 (non più il pulsante che galleggia in basso), conferme brevi
+// ("Salvato") con lo stesso componente delle famiglie.
+
+function HeaderBell() {
+  const [unseen, setUnseen] = useState(0);
+  const [label, setLabel] = useState<string | null>(null);
+  useEffect(() => {
+    announceHeaderBell(true);
+    function onCount(e: Event) {
+      const detail = (e as CustomEvent<UnseenCountDetail | undefined>).detail;
+      setUnseen(detail?.count ?? 0);
+      setLabel(detail?.label ?? null);
+    }
+    window.addEventListener(UNSEEN_COUNT_EVENT, onCount);
+    return () => {
+      window.removeEventListener(UNSEEN_COUNT_EVENT, onCount);
+      announceHeaderBell(false);
+    };
+  }, []);
+  return (
+    <button
+      type="button"
+      onClick={() => {
+        requestOpenNotifications();
+        setUnseen(0);
+      }}
+      aria-label={unseen > 0 ? label ?? `Notifiche, ${unseen} da leggere` : "Notifiche"}
+      aria-haspopup="dialog"
+      className="relative flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full border border-partner-line bg-white text-partner-primary active:scale-95"
+    >
+      <i className="ti ti-bell text-[20px]" aria-hidden="true" />
+      {unseen > 0 && (
+        <span
+          aria-hidden="true"
+          className="absolute -right-0.5 -top-0.5 flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-trama-error px-1 text-[10px] font-bold text-white ring-2 ring-white"
+        >
+          {unseen > 9 ? "9+" : unseen}
+        </span>
+      )}
+    </button>
+  );
+}
 
 function SectionIcon({ icon, active }: { icon: string; active: boolean }) {
   return <i className={`ti ${icon} text-[22px] ${active ? "text-partner-primary" : "text-ink-2"}`} aria-hidden="true" />;
@@ -68,7 +120,7 @@ export default function PartnerShellV2({
       <header className="sticky top-0 z-30 border-b border-partner-line bg-white/95 backdrop-blur">
         <div className="mx-auto flex max-w-5xl items-center gap-3 px-4 py-2.5 md:px-6">
           <Link href="/center" className="flex min-w-0 flex-1 items-center gap-2.5" aria-label="Oggi, portale centri TRAMA">
-            <img src="/brand/trama-logo-mark-navy.png" alt="" style={{ height: 26, width: "auto" }} className="flex-shrink-0" />
+            <img src="/brand/trama-logo-mark.png" alt="" aria-hidden="true" className="h-[26px] w-auto flex-shrink-0" />
             <span className="flex min-w-0 flex-col leading-tight">
               <span className="text-[11px] font-bold uppercase tracking-[0.12em] text-partner-primary">Portale centri</span>
               <span className="truncate font-poppins text-[15px] font-semibold text-ink">{centerName}</span>
@@ -96,6 +148,7 @@ export default function PartnerShellV2({
             })}
           </nav>
 
+          <HeaderBell />
           <Link
             href="/center/account"
             aria-label="Il mio account"
@@ -140,7 +193,9 @@ export default function PartnerShellV2({
         )}
       </header>
 
-      <main className="mx-auto max-w-5xl px-4 pb-32 pt-5 md:px-6 md:pb-16">{children}</main>
+      <NextgenToastProvider>
+        <main className="mx-auto max-w-5xl px-4 pb-32 pt-5 md:px-6 md:pb-16">{children}</main>
+      </NextgenToastProvider>
 
       <nav
         aria-label="Sezioni del portale"

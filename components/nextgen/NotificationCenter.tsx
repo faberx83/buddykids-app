@@ -90,11 +90,14 @@ export default function NotificationCenter({
   scope = "parent",
   hideFloatingBell = false,
   uxFix = false,
+  allowHeaderBell = false,
 }: {
   initialNotifications: NotificationItem[];
   scope?: "parent" | "partner";
   /** POLISH V2 (14/10/2026): con la nuova barra le notifiche si aprono solo dalla campanella della Home. */
   hideFloatingBell?: boolean;
+  /** Portale centri V2 (29/10/2026): campanella nell'intestazione anche fuori dallo scope "parent". */
+  allowHeaderBell?: boolean;
   /** Correzioni dal test UX (21/10/2026, PARENT_UX_FIX_ENABLED), UX-PARENT-014: le Novità di TRAMA
    *  stanno a parte, non contano nel numero e diventano lette appena si apre la campanella
    *  (sul server, quindi su ogni dispositivo). false = come prima. */
@@ -186,8 +189,9 @@ export default function NotificationCenter({
   // quindi headerBellPresent resta false e il pulsante flottante è invariato.
   const [headerBellPresent, setHeaderBellPresent] = useState(false);
 
+  const headerBellAllowed = scope === "parent" || allowHeaderBell;
   useEffect(() => {
-    if (scope !== "parent") return;
+    if (!headerBellAllowed) return;
     function onHeaderBell(e: Event) {
       const detail = (e as CustomEvent<HeaderBellDetail | undefined>).detail;
       setHeaderBellPresent(Boolean(detail?.present));
@@ -212,12 +216,12 @@ export default function NotificationCenter({
       window.removeEventListener(HEADER_BELL_EVENT, onHeaderBell);
       window.removeEventListener(OPEN_NOTIFICATIONS_EVENT, onOpenRequest);
     };
-  }, [scope]);
+  }, [scope, headerBellAllowed]);
 
   useEffect(() => {
-    if (scope !== "parent" || !headerBellPresent) return;
+    if (!headerBellAllowed || !headerBellPresent) return;
     announceUnseenCount(unseenCount, uxFix ? bell.ariaLabel : undefined);
-  }, [scope, headerBellPresent, unseenCount, uxFix, bell.ariaLabel]);
+  }, [headerBellAllowed, headerBellPresent, unseenCount, uxFix, bell.ariaLabel]);
 
   useEffect(() => {
     if (!open) return;

@@ -494,3 +494,24 @@ body:has(.app-shell) {
 [data-partner-v2] .text-orange {
   color: #9a4d00;
 }
+/* 29/10/2026, Fabrizio: "allinea font, logo ecc.". Sotto i titoli delle pagine
+   di prima, il filo TRAMA come nelle pagine V2 (components/nextgen/TramaThread.tsx):
+   quattro tratti, gli stessi colori. */
+[data-partner-v2] h1.text-xl.font-bold::after {
+  content: "";
+  display: block;
+  width: 56px;
+  height: 4px;
+  margin-top: 6px;
+  border-radius: 2px;
+  background: linear-gradient(
+    to right,
+    #f66b5e 0 16px,
+    transparent 16px 19px,
+    #f6a623 19px 29px,
+    transparent 29px 32px,
+    #2dba8c 32px 45px,
+    transparent 45px 48px,
+    #6f63c5 48px 56px
+  );
+}
