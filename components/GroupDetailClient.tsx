@@ -6,6 +6,9 @@ import Link from "next/link";
 import { canGoBackInApp, goBackInApp } from "@/lib/nextgen/in-app-history";
 import TramaThread from "@/components/nextgen/TramaThread";
 import { monogramFor, threadColorFor } from "@/components/nextgen/ActivityVisual";
+// NODI THREAD (29/10/2026): il gruppo è un intreccio di famiglie — Nodi "group" al posto del monogramma, un solo posto.
+import Nodi from "@/components/nextgen/Nodi";
+import { NODI_SIZE } from "@/lib/nextgen/nodi";
 import { KidAvatar, KID_TONES } from "@/components/nextgen/AgendaItemRow";
 import { GroupDetail, CarpoolLeg } from "@/lib/types";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
@@ -337,13 +340,19 @@ export default function GroupDetailClient({
             <span className="text-[14px] text-ink-2">Gruppi</span>
           </header>
           <div className="mt-2 flex items-start gap-3">
-            <span
-              className="relative flex h-14 w-14 flex-shrink-0 items-center justify-center overflow-hidden rounded-[12px] border border-trama-line bg-[#F4F1EA] font-poppins text-[20px] font-semibold text-trama-navy/80"
-              aria-hidden="true"
-            >
-              <span className="absolute inset-x-0 top-0 h-1" style={{ background: threadColorFor(detail.name) }} />
-              {monogramFor(detail.name)}
-            </span>
+            <Nodi
+              state="group"
+              size={NODI_SIZE.groupHeader}
+              fallback={
+                <span
+                  className="relative flex h-14 w-14 flex-shrink-0 items-center justify-center overflow-hidden rounded-[12px] border border-trama-line bg-[#F4F1EA] font-poppins text-[20px] font-semibold text-trama-navy/80"
+                  aria-hidden="true"
+                >
+                  <span className="absolute inset-x-0 top-0 h-1" style={{ background: threadColorFor(detail.name) }} />
+                  {monogramFor(detail.name)}
+                </span>
+              }
+            />
             <div className="min-w-0 flex-1">
               <h1 className="font-poppins text-[24px] font-semibold leading-tight text-ink">{detail.name}</h1>
               <TramaThread className="my-1.5" />

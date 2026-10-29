@@ -438,9 +438,15 @@ function PopCard({ pop, delayMs }: { pop: OnboardingV2Pop; delayMs: number }) {
       }`}
       style={{ top: `${pop.top}%`, animationDelay: `${delayMs}ms` }}
     >
-      <span className={`flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-lg text-[13px] ${POP_TONE[pop.tone]}`}>
-        <i className={`ti ${pop.icon}`} />
-      </span>
+      {(() => {
+        const icon = (
+          <span className={`flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-lg text-[13px] ${POP_TONE[pop.tone]}`}>
+            <i className={`ti ${pop.icon}`} />
+          </span>
+        );
+        // NODI THREAD (29/10): nella schermata "chi" Nodi prende il posto dell'icona, più grande; senza flag l'icona di prima.
+        return pop.nodi ? <Nodi state={pop.nodi} size={NODI_SIZE.onboardingPop} className="-my-1 -ml-1" fallback={icon} /> : icon;
+      })()}
       <span className="min-w-0">
         <b className="block font-bold">{pop.title}</b>
         {pop.subtitle && <small className="block text-[10px] text-ink-3">{pop.subtitle}</small>}

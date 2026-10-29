@@ -1275,6 +1275,8 @@ export const FEATURE_CATALOG: FeatureCatalogEntry[] = [
       "components/nextgen/PlannerDayFocus.tsx",
       "components/nextgen/ChiENodi.tsx",
       "app/nextgen/trama/page.tsx",
+      "components/nextgen/OnboardingV2.tsx",
+      "components/GroupDetailClient.tsx",
       "lib/nextgen/nodi-manifest.json",
       "app/nextgen/layout.tsx",
       "public/assets/nodi/",
@@ -1284,7 +1286,8 @@ export const FEATURE_CATALOG: FeatureCatalogEntry[] = [
       "senza modifiche in public/assets/nodi; mappa stato → file in lib/nextgen/nodi-manifest.json. Statici. Misure dal " +
       "manifest, alzate di poco il 29/10 (NODI_SIZE). Il pacchetto non ha varianti navy né micro: su fondo scuro e sotto 32 px " +
       "Nodi non compare. Dal 29/10 si vede solo la parte con Nodi (NODI_CROP: fuori i frammenti della tavola) e la pagina " +
-      "Cos'è TRAMA ha il riquadro 'Chi è Nodi'.",
+      "Cos'è TRAMA ha il riquadro 'Chi è Nodi'. Dal 29/10 sera anche nelle due card della terza schermata dell'onboarding " +
+      "(nodo e nodo sciolto, 48 px) e in testa al dettaglio di un gruppo, al posto del monogramma.",
     riskLevel: "low",
     releaseEligible: true,
   },

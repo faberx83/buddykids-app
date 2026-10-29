@@ -30,6 +30,12 @@ export interface OnboardingV2Pop {
   side: "left" | "right";
   /** Posizione verticale nel palco, in percentuale. */
   top: number;
+  /**
+   * NODI THREAD (29/10/2026, Fabrizio: "nelle slide mettilo più grande"):
+   * con NODI_ENABLED questa card mostra Nodi al posto dell'icona. Solo nella
+   * schermata "chi": il nodo (manca chi ritira) e il nodo sciolto (risolto).
+   */
+  nodi?: "problem" | "success";
 }
 
 export interface OnboardingV2Slide {
@@ -81,8 +87,8 @@ export const ONBOARDING_V2_SLIDES: OnboardingV2Slide[] = [
     ctaLabel: "Inizia a organizzare",
     tilt: { y: -8, x: 4 },
     pops: [
-      { icon: "ti-alert-circle", tone: "amber", title: "Manca chi ritira", subtitle: "Lino · gio 18:00", side: "right", top: 14 },
-      { icon: "ti-check", tone: "green", title: "Ritira Nonna Rita", subtitle: "risolto", side: "left", top: 68 },
+      { icon: "ti-alert-circle", tone: "amber", title: "Manca chi ritira", subtitle: "Lino · gio 18:00", side: "right", top: 14, nodi: "problem" },
+      { icon: "ti-check", tone: "green", title: "Ritira Nonna Rita", subtitle: "risolto", side: "left", top: 68, nodi: "success" },
     ],
   },
 ];

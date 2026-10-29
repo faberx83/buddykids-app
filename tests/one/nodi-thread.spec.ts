@@ -22,6 +22,7 @@ import {
 import { FEATURE_FLAG_REGISTRY } from "../../lib/feature-flags/registry";
 import { FEATURE_CATALOG } from "../../lib/feature-registry/catalog";
 import { getReleaseById } from "../../lib/releases/catalog";
+import { ONBOARDING_V2_SLIDES } from "../../lib/nextgen/onboarding-v2";
 
 const root = path.join(__dirname, "../..");
 const read = (p: string) => fs.readFileSync(path.join(root, p), "utf-8");
@@ -163,7 +164,8 @@ test.describe("TRAMA — Nodi Thread [no browser]", () => {
   test("NODI-09 posizionamenti: dentro elementi che esistono già, stati e misure del ritocco", () => {
     const onb = read("components/nextgen/OnboardingV2.tsx");
     expect(onb).toMatch(/kids\.length === 0 && <Nodi state="welcome" size=\{NODI_SIZE\.onboarding\} \/>/);
-    expect(onb.match(/<Nodi /g)?.length).toBe(1);
+    // 29/10: due posti nell'onboarding — passo dei figli e card della terza schermata (stesso <Nodi> per le due card)
+    expect(onb.match(/<Nodi /g)?.length).toBe(2);
 
     const card = read("components/nextgen/SeasonSummaryCard.tsx");
     expect(card).toMatch(/\{nodi && <Nodi state="focus" size=\{NODI_SIZE\.homeHint\}/);
@@ -225,7 +227,7 @@ test.describe("TRAMA — Nodi Thread [no browser]", () => {
     const planner = read("app/nextgen/planner/PlannerV2Client.tsx");
     expect(planner).not.toContain("nodi-problem-card");
     expect(planner).not.toContain("nodi-planner-empty");
-    // un solo Nodi per posto: sette posizionamenti (sei momenti + "Chi è Nodi"; l'avviso non ne ha)
+    // un solo Nodi per posto: nove posizionamenti (sei momenti, "Chi è Nodi", onboarding terza schermata, dettaglio gruppo; l'avviso non ne ha)
     const uses = [
       "components/nextgen/OnboardingV2.tsx",
       "components/nextgen/SeasonSummaryCard.tsx",
@@ -234,8 +236,10 @@ test.describe("TRAMA — Nodi Thread [no browser]", () => {
       "components/GroupsClient.tsx",
       "app/nextgen/search/SearchDiscoveryClient.tsx",
       "components/nextgen/ChiENodi.tsx",
-    ].reduce((n, f) => n + (read(f).match(/<Nodi /g)?.length ?? 0), 0);
-    expect(uses).toBe(7);
+      "components/GroupDetailClient.tsx",
+    ].reduce((n, f) => n + (read(f).match(/<Nodi\s/g)?.length ?? 0), 0);
+    // 29/10: + card della terza schermata dell'onboarding e testa del dettaglio gruppo
+    expect(uses).toBe(9);
     // senza Nodi (flag spento) il componente rende il ripiego: stessa struttura di prima
     const comp = read("components/nextgen/Nodi.tsx");
     expect(comp).toContain("if (!enabled) return <>{fallback}</>;");
@@ -292,5 +296,25 @@ test.describe("TRAMA — Nodi Thread [no browser]", () => {
     const page = read("app/nextgen/trama/page.tsx");
     expect(page.indexOf("<ChiENodi />")).toBeGreaterThan(page.indexOf('id="come-h"'));
     expect(page.indexOf("<ChiENodi />")).toBeLessThan(page.indexOf('aria-label="Informazioni"'));
+  });
+  test("NODI-13 onboarding, terza schermata: Nodi nelle due card (nodo e nodo sciolto), più grande; dettaglio gruppo", () => {
+    const chi = ONBOARDING_V2_SLIDES.find((s) => s.key === "chi")!;
+    expect(chi.pops.map((p) => p.nodi)).toEqual(["problem", "success"]);
+    // solo la terza schermata
+    for (const s of ONBOARDING_V2_SLIDES.filter((x) => x.key !== "chi")) {
+      expect(s.pops.every((p) => !p.nodi), s.key).toBe(true);
+    }
+    expect(NODI_SIZE.onboardingPop).toBe(48);
+    expect(NODI_SIZE.groupHeader).toBe(56);
+    const onb = read("components/nextgen/OnboardingV2.tsx");
+    expect(onb).toContain("return pop.nodi ? <Nodi state={pop.nodi} size={NODI_SIZE.onboardingPop} className=\"-my-1 -ml-1\" fallback={icon} /> : icon;");
+    // il logo resta quello di TRAMA, il telefono e i testi non cambiano
+    expect(onb).toMatch(/src="\/brand\/trama-logo-mark\.png"/);
+    // dettaglio gruppo: Nodi al posto del monogramma (56 px come il riquadro), il monogramma come ripiego
+    const g = read("components/GroupDetailClient.tsx");
+    expect(g).toMatch(/<Nodi\s+state="group"\s+size=\{NODI_SIZE\.groupHeader\}\s+fallback=\{/);
+    expect(g).toContain("{monogramFor(detail.name)}");
+    // la lista dei gruppi resta con i monogrammi (più gruppi = più Nodi nella stessa schermata)
+    expect(read("components/GroupsClient.tsx")).toContain("{monogramFor(g.name)}");
   });
 });
