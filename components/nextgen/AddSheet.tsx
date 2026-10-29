@@ -12,6 +12,7 @@
 
 import { useEffect, useRef } from "react";
 import Link from "next/link";
+import { openChiAccompagna } from "@/lib/nextgen/chi-accompagna-open";
 import { usePathname, useSearchParams } from "next/navigation";
 import { newExternalItemHref } from "@/lib/planner/new-external-item-link";
 import { useCloseOnBack } from "@/lib/nextgen/use-close-on-back";
@@ -150,6 +151,11 @@ export default function AddSheet({
             href={o.href}
             onClick={(e) => {
               e.preventDefault();
+              // 29/10/2026: "Chi accompagna" si apre sopra la pagina, senza andare nel Planner.
+              if (openChiAccompagna(o.href)) {
+                onClose();
+                return;
+              }
               closeThenNavigate(o.href);
             }}
             className={`flex min-h-[64px] items-center gap-3.5 rounded-[12px] p-3 text-ink active:scale-[0.99] ${o.primary ? "bg-trama-primary-soft" : ""}`}

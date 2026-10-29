@@ -35,6 +35,7 @@ import type { PassageResponsibility } from "../../lib/nextgen/passages";
 import type { AgendaEntry } from "../../lib/nextgen/today-agenda";
 import { RESPONSIBLE_OPTIONS, type ResponsibleOption } from "../../lib/nextgen/responsibility-options";
 import { FEATURE_FLAG_REGISTRY } from "../../lib/feature-flags/registry";
+import { chiTargetFromHref, mondayOf } from "../../lib/nextgen/chi-accompagna-open";
 import { FEATURE_CATALOG } from "../../lib/feature-registry/catalog";
 import { getReleaseById } from "../../lib/releases/catalog";
 
@@ -373,5 +374,41 @@ test.describe("Chi fa cosa della settimana e foto dei figli", () => {
     expect(read("app/nextgen/planner/PlannerV2Client.tsx")).toContain("avatarUrl: k.avatarUrl ?? null");
     expect(read("lib/data/group-detail.ts")).toContain("kidPhotoUrl: isOwn ? (myKid?.avatarUrl ?? null) : null,");
     expect(read("components/GroupDetailClient.tsx")).toContain("photoUrl={k.isOwn ? k.kidPhotoUrl : null}");
+  });
+});
+
+// 29/10/2026 (Fabrizio: "il chi fa cosa dovrebbe apparire già sul giorno
+// today… non è possibile far aprire la scheda nel contesto di dove viene
+// cliccata? oggi ricarica la pagina e finisce nel planner").
+test.describe("Chi accompagna dove si tocca; la settimana parte da oggi", () => {
+  test("GP-60 dai link del Planner al foglio giusto", () => {
+    expect(chiTargetFromHref("/nextgen/planner?week=2026-10-26&assegna=2026-10-29")).toEqual({ kind: "day", date: "2026-10-29" });
+    expect(chiTargetFromHref("/nextgen/planner?week=2026-10-26&panel=chi")).toEqual({ kind: "week", monday: "2026-10-26" });
+    expect(chiTargetFromHref("/nextgen/planner?panel=chi")).toEqual({ kind: "week", monday: null });
+    expect(chiTargetFromHref("/nextgen/planner?week=2026-10-26")).toBeNull();
+    expect(chiTargetFromHref("/nextgen/search?panel=chi")).toBeNull();
+    expect(mondayOf("2026-11-01")).toBe("2026-10-26");
+  });
+
+  test("GP-61 il foglio si apre sopra la pagina; nel Planner e a release spenta si segue il link", () => {
+    const open = read("lib/nextgen/chi-accompagna-open.ts");
+    expect(open).toContain('if (window.location.pathname.startsWith("/nextgen/planner")) return false;');
+    const action = read("app/actions/chi-accompagna.ts");
+    expect(action).toContain("if (!p.passagesEnabled || !p.passagePersonFirst) return { fallback: true };");
+    const overlay = read("components/nextgen/ChiAccompagnaOverlay.tsx");
+    expect(overlay).toContain("router.push(detail.href);");
+    expect(overlay).toContain("<PassageWeekBody");
+    expect(overlay).toContain("<PassageBusyDayBody");
+    expect(read("app/nextgen/layout.tsx")).toContain("<ChiAccompagnaOverlay />");
+    expect(read("components/nextgen/AddSheet.tsx")).toContain("if (openChiAccompagna(o.href)) {");
+    expect(read("components/nextgen/DayCoordination.tsx")).toContain("openChiAccompagna(assignHref) && e.preventDefault()");
+    expect(read("components/nextgen/BuongiornoSheet.tsx")).toContain("if (openChiAccompagna(model.cta.href)) {");
+  });
+
+  test("GP-62 'Chi fa cosa' parte da oggi: i giorni passati raccolti in una riga", () => {
+    const body = read("components/nextgen/PassageWeekBody.tsx");
+    expect(body).toContain(".filter((w) => showPast || !w.day.isPast)");
+    expect(body).toContain("`Giorni passati (${pastCount})`");
+    expect(body).toContain("isToday ? `Oggi · ${w.day.label}` : w.day.label");
   });
 });

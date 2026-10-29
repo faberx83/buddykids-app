@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import type { BriefingModel } from "@/lib/nextgen/daily-briefing";
+import { openChiAccompagna } from "@/lib/nextgen/chi-accompagna-open";
 
 // TRAMA — IL BUONGIORNO IN APP (28/10/2026, Fabrizio: "si può fare che
 // cliccando sulla notifica si apra un pop-up sull'app con il buongiorno
@@ -107,6 +108,13 @@ export default function BuongiornoSheet({ model }: { model: BriefingModel }) {
           <div className="flex flex-col gap-2 pt-5">
             <Link
               href={model.cta.href}
+              onClick={(e) => {
+                // 29/10/2026: "Decidi chi accompagna" apre il foglio qui, sopra la Home.
+                if (openChiAccompagna(model.cta.href)) {
+                  e.preventDefault();
+                  close();
+                }
+              }}
               className="flex min-h-[50px] items-center justify-center rounded-[12px] bg-trama-primary px-5 text-[15px] font-semibold text-white active:bg-trama-primary-press"
             >
               {model.cta.label}
