@@ -2,6 +2,7 @@ import Link from "next/link";
 import PushNotificationsPrompt from "@/components/PushNotificationsPrompt";
 import ActivationCard from "@/components/center/ActivationCard";
 import PartnerPageHeader from "@/components/center/PartnerPageHeader";
+import PartnerFeedbackCard from "@/components/center/PartnerFeedbackCard";
 import type { ActivationView } from "@/lib/centers/activation";
 import type { PartnerDecision } from "@/lib/booking-response/effective-decision";
 import { longItalianDay, toAnswerSummary } from "@/lib/centers/partner-oggi";
@@ -234,6 +235,9 @@ export default function OggiV2({ savedProfile, activation, toAnswer, today, numb
           </p>
         )}
       </section>
+
+      {/* 29/10/2026: come la Home famiglie, "Dicci cosa ne pensi" in fondo. */}
+      <PartnerFeedbackCard source="oggi" />
     </div>
   );
 }

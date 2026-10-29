@@ -5,7 +5,8 @@ import { getActivitiesForCenter, getPromotionsForActivities } from "@/lib/data/a
 import { getCenterOnboardingState } from "@/lib/onboarding/data";
 import { CenterOnboardingStatus } from "@/lib/onboarding/types";
 import { buildFamilyPreviewHref, pickFamilyPreviewSlug } from "@/lib/center/family-preview";
-import { partnerV2EnabledForCurrentUser } from "@/lib/centers/partner-v2-flag";
+import { partnerShellEnabledForCurrentUser, partnerV2EnabledForCurrentUser } from "@/lib/centers/partner-v2-flag";
+import PartnerPageHeader from "@/components/center/PartnerPageHeader";
 import { getMyCenterActivation } from "@/lib/data/center-activation";
 import { profileChecks } from "@/lib/centers/activation";
 
@@ -97,6 +98,42 @@ export default async function CenterProfilePage() {
       ? "Telefono e logo sono facoltativi"
       : `Manca: ${missingChecks.map((c) => c.label.toLowerCase()).join(", ")}`
     : "Modifica qui sotto";
+
+  // PORTALE CENTRI V2 (29/10/2026), Fabrizio: "anche la sezione profilo è
+  // vecchio stile". Col guscio: titolo come le altre sezioni, ritorno a
+  // Centro (da cui si arriva), niente riquadri di riepilogo (stanno già in
+  // Centro), form a riquadri con l'indirizzo suggerito.
+  if (await partnerShellEnabledForCurrentUser()) {
+    return (
+      <div className="flex max-w-2xl flex-col gap-5">
+        <Link
+          href="/center/centro"
+          data-testid="profile-back-centro"
+          className="inline-flex min-h-[40px] items-center gap-1 self-start text-[14px] font-semibold text-partner-primary"
+        >
+          <i className="ti ti-chevron-left text-[18px]" aria-hidden="true" /> Centro
+        </Link>
+        <PartnerPageHeader
+          testId="center-profile-header"
+          titleTestId="center-profile-name"
+          title={center.name || "Profilo del centro"}
+          subtitle={`Profilo del centro · ${center.city ? `${center.city} · ` : ""}${ONBOARDING_STATUS_LABEL[onboarding.status]}`}
+          action={
+            previewActivitySlug ? (
+              <Link
+                href={buildFamilyPreviewHref(previewActivitySlug)}
+                data-testid="family-preview-cta"
+                className="flex min-h-[44px] items-center gap-1.5 rounded-full border border-partner-line bg-white px-4 text-[14px] font-semibold text-partner-primary hover:bg-partner-soft"
+              >
+                <i className="ti ti-eye text-[17px]" aria-hidden="true" /> Vedi come vi vedono le famiglie
+              </Link>
+            ) : undefined
+          }
+        />
+        <CenterProfileClient center={center} dbId={dbId} v2 placeSearch />
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-2xl">

@@ -20,8 +20,20 @@ export const FAMILY_PREVIEW_VALUE = "partner";
 // Ritorno dall'anteprima: la pagina da cui parte la CTA ("Il mio centro").
 export const FAMILY_PREVIEW_RETURN_HREF = "/center/profile";
 
-export function buildFamilyPreviewHref(activitySlug: string): string {
-  return `/activity/${encodeURIComponent(activitySlug)}?${FAMILY_PREVIEW_PARAM}=${FAMILY_PREVIEW_VALUE}`;
+export function buildFamilyPreviewHref(activitySlug: string, from?: FamilyPreviewOrigin): string {
+  const base = `/activity/${encodeURIComponent(activitySlug)}?${FAMILY_PREVIEW_PARAM}=${FAMILY_PREVIEW_VALUE}`;
+  return from ? `${base}&${FAMILY_PREVIEW_FROM_PARAM}=${from}` : base;
+}
+
+// Portale centri V2 (29/10/2026): l'anteprima torna alla sezione da cui è
+// partita (Centro o Attività). Solo valori noti: mai un indirizzo libero.
+export const FAMILY_PREVIEW_FROM_PARAM = "da";
+export type FamilyPreviewOrigin = "centro" | "attivita";
+const PREVIEW_RETURN: Record<FamilyPreviewOrigin, string> = { centro: "/center/centro", attivita: "/center/activities" };
+
+export function familyPreviewReturnHref(from: string | string[] | undefined | null): string {
+  const v = Array.isArray(from) ? from[0] : from;
+  return v === "centro" || v === "attivita" ? PREVIEW_RETURN[v] : FAMILY_PREVIEW_RETURN_HREF;
 }
 
 // Prima attività del centro (ordine created_at asc, come restituito da

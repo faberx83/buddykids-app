@@ -3,6 +3,7 @@ import ActivityEditForm from "./ActivityEditForm";
 import { getActivityBySlug } from "@/lib/data/activities";
 import { getTags } from "@/lib/data/tags";
 import { getCertificationsForActivityGestore } from "@/lib/data/certifications";
+import { partnerShellEnabledForCurrentUser } from "@/lib/centers/partner-v2-flag";
 
 // Forza il render dinamico per-richiesta: subito dopo "Crea attività" si
 // arriva qui via router.push con uno slug appena inserito su Supabase — la
@@ -20,7 +21,13 @@ export default async function CenterActivityEditPage({
   const [activity, tags] = await Promise.all([getActivityBySlug(id), getTags()]);
   if (!activity) return notFound();
 
-  const certifications = await getCertificationsForActivityGestore(activity.dbId);
+  const [certifications, v2] = await Promise.all([
+    getCertificationsForActivityGestore(activity.dbId),
+    partnerShellEnabledForCurrentUser(),
+  ]);
 
-  return <ActivityEditForm activity={activity} tags={tags} certifications={certifications} />;
+  // Portale centri V2 (29/10/2026): scheda ridisegnata col guscio, indirizzo
+  // con i suggerimenti (la ricerca luoghi è aperta ai gestori col guscio,
+  // vedi app/api/places/search/route.ts).
+  return <ActivityEditForm activity={activity} tags={tags} certifications={certifications} v2={v2} placeSearch={v2} />;
 }

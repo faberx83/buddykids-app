@@ -16,6 +16,7 @@ import {
   PARTNER_TABS,
   activeSubTab,
   badgeLabel,
+  partnerBackLink,
   sectionForPath,
   type PartnerBadges,
   type PartnerSection,
@@ -29,8 +30,8 @@ import {
 // su telefono e in alto su computer, come nell'app famiglie. Palette del
 // portale centri (petrolio e senape, tailwind "partner-*"); caratteri, raggi
 // e filo TRAMA uguali alle famiglie. Le pagine sono quelle di sempre.
-// 29/10/2026, Fabrizio: "allinea font, logo ecc.": logo a colori come nelle
-// famiglie (non più il segno blu), campanella nell'intestazione come nella
+// 29/10/2026, Fabrizio: "allinea font, logo ecc.", poi "il logo userei quello
+// navy e non colorato": segno TRAMA navy; campanella nell'intestazione come nella
 // Home V2 (non più il pulsante che galleggia in basso), conferme brevi
 // ("Salvato") con lo stesso componente delle famiglie.
 
@@ -108,6 +109,7 @@ export default function PartnerShellV2({
   const section = sectionForPath(pathname);
   const subTabs = PARTNER_SUBTABS[section] ?? [];
   const activeSub = activeSubTab(pathname);
+  const back = partnerBackLink(pathname);
 
   const badgeFor = (key: PartnerSection) => (key === "richieste" ? badges.richieste : key === "oggi" ? badges.oggi : 0);
   const badgeText = (key: PartnerSection, n: number) =>
@@ -120,7 +122,7 @@ export default function PartnerShellV2({
       <header className="sticky top-0 z-30 border-b border-partner-line bg-white/95 backdrop-blur">
         <div className="mx-auto flex max-w-5xl items-center gap-3 px-4 py-2.5 md:px-6">
           <Link href="/center" className="flex min-w-0 flex-1 items-center gap-2.5" aria-label="Oggi, portale centri TRAMA">
-            <img src="/brand/trama-logo-mark.png" alt="" aria-hidden="true" className="h-[26px] w-auto flex-shrink-0" />
+            <img src="/brand/trama-logo-mark-navy.png" alt="" aria-hidden="true" className="h-[26px] w-auto flex-shrink-0" />
             <span className="flex min-w-0 flex-col leading-tight">
               <span className="text-[11px] font-bold uppercase tracking-[0.12em] text-partner-primary">Portale centri</span>
               <span className="truncate font-poppins text-[15px] font-semibold text-ink">{centerName}</span>
@@ -194,7 +196,20 @@ export default function PartnerShellV2({
       </header>
 
       <NextgenToastProvider>
-        <main className="mx-auto max-w-5xl px-4 pb-32 pt-5 md:px-6 md:pb-16">{children}</main>
+        <main className="mx-auto max-w-5xl px-4 pb-32 pt-5 md:px-6 md:pb-16">
+          {/* 29/10/2026: "mancano i pulsanti per tornare indietro" (partnerBackLink). */}
+          {back && (
+            <Link
+              href={back.href}
+              data-testid="partner-back"
+              className="-mt-1 mb-3 inline-flex min-h-[40px] items-center gap-1 text-[14px] font-semibold text-partner-primary"
+            >
+              <i className="ti ti-chevron-left text-[18px]" aria-hidden="true" />
+              {back.label}
+            </Link>
+          )}
+          {children}
+        </main>
       </NextgenToastProvider>
 
       <nav

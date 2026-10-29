@@ -70,7 +70,9 @@ test.describe("TRAMA — Scheda attività V2 [no browser]", () => {
     expect(v2).toContain("Perché fa per voi");
     expect(v2).toContain("Cosa include");
     const detail = read("app/activity/[id]/DetailClient.tsx");
-    expect(detail).toContain("if (v2 && !partnerPreview) {");
+    // 29/10/2026: in anteprima del gestore la scheda V2 solo col guscio centri
+    // V2 (previewV2, deciso in page.tsx da partnerShellEnabledForCurrentUser).
+    expect(detail).toContain("if (v2 && (!partnerPreview || previewV2)) {");
     // la scheda di prima resta per Legacy e per l'anteprima Partner
     expect(detail).toContain("Recensioni ({activity.reviewsCount})");
   });

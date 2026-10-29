@@ -10,6 +10,7 @@ import { createClient } from "@/lib/supabase/server";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
 import { resolveFeatureFlag } from "@/lib/feature-flags/resolve";
 import { generateCorrelationId } from "@/lib/telemetry/correlation";
+import { PARTNER_SHELL_FLAG } from "@/lib/centers/partner-shell";
 import { buildPhotonUrl, mergeSchoolSuggestions, parsePhotonResponse, PLACE_SEARCH_FLAG, rankSchoolSuggestions, retryQuery } from "@/lib/places/search";
 
 export async function GET(request: Request) {
@@ -27,7 +28,12 @@ export async function GET(request: Request) {
     tenant: "family",
     correlationId: generateCorrelationId(),
   }).catch(() => false);
-  if (!on) return empty;
+  // 29/10/2026, portale centri V2 (Fabrizio: "qualsiasi funzionalità che abbiamo
+  // aggiunto in portale genitori che ha senso - es. autocompilazione indirizzi -
+  // va riportata anche qui"): i gestori (e l'Admin) col guscio nuovo acceso
+  // cercano l'indirizzo del centro e delle attività. La release famiglie resta
+  // com'era: per i genitori decide sempre e solo PLACE_SEARCH_ENABLED.
+  if (!on && !(await partnerCanSearchPlaces(supabase, user.id))) return empty;
 
   const url = new URL(request.url);
   const lat = Number(url.searchParams.get("lat"));
@@ -78,5 +84,22 @@ async function searchPhoton(target: string | null) {
     return parsePhotonResponse(await res.json());
   } catch {
     return [];
+  }
+}
+
+async function partnerCanSearchPlaces(supabase: Awaited<ReturnType<typeof createClient>>, userId: string): Promise<boolean> {
+  try {
+    const { data: profile } = await supabase.from("profiles").select("role").eq("id", userId).single();
+    const role = (profile?.role as string | undefined) ?? null;
+    if (role !== "center_admin" && role !== "platform_admin") return false;
+    return await resolveFeatureFlag({
+      flagName: PARTNER_SHELL_FLAG,
+      userId,
+      role,
+      tenant: "center",
+      correlationId: generateCorrelationId(),
+    });
+  } catch {
+    return false;
   }
 }

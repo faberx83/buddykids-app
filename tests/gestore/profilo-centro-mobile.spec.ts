@@ -15,7 +15,9 @@ import type { Page, Locator } from "@playwright/test";
 //
 // Comando locale: npx playwright test tests/gestore/profilo-centro-mobile.spec.ts
 
-const CTA_NAME = "Vedi come ti vedono le famiglie";
+// 29/10/2026, portale centri V2: "Vedi come vi vedono le famiglie" (col guscio)
+// o "Vedi come ti vedono le famiglie" (portale di prima). Stessa CTA, stesso link.
+const CTA_NAME = /Vedi come (ti|vi) vedono le famiglie/;
 const LONG_NAME =
   "Centro estivo prova candidatura — Associazione Sportiva Dilettantistica Polisportiva Quarto Cagnino Milano";
 const LONG_CITY = "Milano, Quarto Cagnino — Municipio 7 (zona San Siro / Baggio)";
@@ -171,7 +173,8 @@ test.describe("Gestore - Il mio centro - anteprima famiglia", () => {
     await cta.click();
     await expect(page.getByTestId("family-preview-bar")).toBeVisible();
     await page.reload();
-    await page.getByRole("button", { name: "Torna al tuo centro" }).click();
+    // Scheda di prima: "Torna al tuo centro"; scheda V2 in anteprima (guscio centri V2): "Torna al portale".
+    await page.getByRole("button", { name: /Torna al (tuo centro|portale)/ }).click();
     await page.waitForURL((url) => url.pathname === "/center/profile");
   });
 

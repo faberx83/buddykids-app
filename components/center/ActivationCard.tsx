@@ -218,7 +218,8 @@ export default function ActivationCard({ view }: { view: ActivationView }) {
         <i className="ti ti-eye mt-0.5 text-[18px] text-ink-2" aria-hidden="true" />
         <p className="text-[13px] leading-snug text-ink-2">
           Le famiglie vedono le vostre attività dopo la verifica. Intanto potete preparare tutto e vedere{" "}
-          <Link href="/center/profile" className="font-semibold text-partner-accent-ink">
+          {/* 29/10/2026: in Centro c'è "Come vi vedono le famiglie" (scheda V2 in anteprima). */}
+          <Link href="/center/centro" className="font-semibold text-partner-accent-ink">
             come vi vedranno
           </Link>
           .

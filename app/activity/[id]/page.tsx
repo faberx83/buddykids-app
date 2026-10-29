@@ -13,7 +13,8 @@ import { generateCorrelationId } from "@/lib/telemetry/correlation";
 import PhoneShell from "@/components/PhoneShell";
 import DetailClient from "./DetailClient";
 import { getCenterContext } from "@/lib/data/center-admin";
-import { resolveFamilyPreview, FAMILY_PREVIEW_PARAM } from "@/lib/center/family-preview";
+import { resolveFamilyPreview, FAMILY_PREVIEW_PARAM, FAMILY_PREVIEW_FROM_PARAM, familyPreviewReturnHref } from "@/lib/center/family-preview";
+import { partnerShellEnabledForCurrentUser } from "@/lib/centers/partner-v2-flag";
 import { getKidsForUser } from "@/lib/data/kids";
 
 export default async function ActivityDetailPage({
@@ -65,6 +66,15 @@ export default async function ActivityDetailPage({
   // scheda V2): date vere e stato coerente ("Edizione conclusa", "Posti
   // esauriti") al posto del testo libero "Settimane aperte 7 di 8".
   let uxFix = false;
+  // Portale centri V2 (29/10/2026), Fabrizio: "come vi vedono le famiglie
+  // credo punti al vecchio layout". Col guscio V2 l'anteprima del gestore è
+  // la scheda V2 delle famiglie (con date vere), in modalità anteprima.
+  const previewV2 = partnerPreview ? await partnerShellEnabledForCurrentUser() : false;
+  const previewReturnHref = familyPreviewReturnHref((await searchParams)[FAMILY_PREVIEW_FROM_PARAM]);
+  if (previewV2) {
+    v2 = true;
+    uxFix = true;
+  }
   // PLANNER BETA v1.1 (Wave 4, punto 22 "Activity Detail booking-aware") —
   // segnalazione: "Home → Prossimo appuntamento → Activity Detail" mostrava
   // ancora 'Prenota ora' anche per un'attività già prenotata (semanticamente
@@ -234,6 +244,8 @@ export default async function ActivityDetailPage({
         bookedDayDecisions={Object.fromEntries(bookedDayDecisions)}
         nextgen={nextgen}
         v2={v2}
+        previewV2={previewV2}
+        previewReturnHref={previewReturnHref}
         reasonKids={reasonKids}
         existingBooking={existingBooking}
         activityAvailable={activityAvailable}

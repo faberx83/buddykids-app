@@ -504,14 +504,15 @@ body:has(.app-shell) {
   height: 4px;
   margin-top: 6px;
   border-radius: 2px;
+  /* 29/10/2026: colori della palette del portale centri (PartnerThread). */
   background: linear-gradient(
     to right,
-    #f66b5e 0 16px,
+    #0e5a63 0 16px,
     transparent 16px 19px,
-    #f6a623 19px 29px,
+    #d9a93c 19px 29px,
     transparent 29px 32px,
-    #2dba8c 32px 45px,
+    #5e9a9f 32px 45px,
     transparent 45px 48px,
-    #6f63c5 48px 56px
+    #8a6410 48px 56px
   );
 }

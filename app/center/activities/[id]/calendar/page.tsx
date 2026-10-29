@@ -6,6 +6,8 @@ import OccupancyChart from "@/components/charts/OccupancyChart";
 import { weeklyOccupancyFromDays } from "@/lib/analytics";
 import { getActivityBySlug } from "@/lib/data/activities";
 import { getActivityDays } from "@/lib/data/activity-days";
+import PartnerPageHeader from "@/components/center/PartnerPageHeader";
+import { partnerShellEnabledForCurrentUser } from "@/lib/centers/partner-v2-flag";
 
 export default async function CenterActivityCalendarPage({
   params,
@@ -20,6 +22,45 @@ export default async function CenterActivityCalendarPage({
   const weeksCount = (weeksByActivity[activity.id] ?? defaultWeeks).length;
   const occupancy = weeklyOccupancyFromDays(days);
   const weakWeeks = occupancy.filter((w) => w.occupancyPercent < 40);
+
+  // Portale centri V2 (29/10/2026): stesso calendario, titolo e riquadri come
+  // le altre sezioni ("Date e posti", raggiunto dalla scheda attività).
+  if (await partnerShellEnabledForCurrentUser()) {
+    return (
+      <div className="flex flex-col gap-5">
+        <Link
+          href={`/center/activities/${activity.id}`}
+          className="inline-flex min-h-[40px] items-center gap-1 self-start text-[14px] font-semibold text-partner-primary"
+        >
+          <i className="ti ti-chevron-left text-[18px]" aria-hidden="true" /> {activity.name}
+        </Link>
+        <PartnerPageHeader
+          title="Date e posti"
+          subtitle={`Aprite o chiudete i giorni, aggiornate i posti e gli sconti. ${weeksCount} ${weeksCount === 1 ? "settimana pubblicata" : "settimane pubblicate"}.`}
+        />
+        <section aria-labelledby="cal-occupazione" className="rounded-[18px] border border-partner-line bg-white p-4">
+          <div className="mb-1 flex flex-wrap items-center justify-between gap-2">
+            <h2 id="cal-occupazione" className="font-poppins text-[17px] font-semibold text-ink">
+              Posti occupati per settimana
+            </h2>
+            {weakWeeks.length > 0 && (
+              <Link
+                href="/center/promotions"
+                className="flex min-h-[36px] items-center gap-1 rounded-full bg-[#FBF1DA] px-3 text-[12.5px] font-semibold text-partner-accent-ink"
+              >
+                <i className="ti ti-bolt text-[14px]" aria-hidden="true" />
+                Proponi uno sconto last-minute
+              </Link>
+            )}
+          </div>
+          <OccupancyChart data={occupancy} />
+        </section>
+        <section className="rounded-[18px] border border-partner-line bg-white p-4" data-spotlight="configure_spot_days">
+          <AvailabilityCalendar days={days} mode="edit" activityDbId={activity.dbId} />
+        </section>
+      </div>
+    );
+  }
 
   return (
     <div>

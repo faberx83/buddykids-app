@@ -160,7 +160,7 @@ export default function ActivitiesV2({ activities, canCreate }: { activities: Ac
                   </Link>
                   <DuplicateActivityButton activitySlug={a.slug} name={a.name} />
                   <Link
-                    href={buildFamilyPreviewHref(a.slug)}
+                    href={buildFamilyPreviewHref(a.slug, "attivita")}
                     className="flex min-h-[40px] items-center gap-1.5 rounded-xl border border-partner-line bg-white px-3 text-[13px] font-semibold text-partner-primary hover:bg-partner-soft"
                   >
                     <i className="ti ti-eye text-[16px]" aria-hidden="true" />

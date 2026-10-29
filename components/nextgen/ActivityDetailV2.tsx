@@ -76,6 +76,7 @@ export default function ActivityDetailV2({
   realSpotsLeft,
   existingBooking,
   bookingHref,
+  preview = null,
   dateSummary = null,
 }: {
   activity: Activity;
@@ -104,6 +105,13 @@ export default function ActivityDetailV2({
   realSpotsLeft?: number;
   existingBooking: ExistingBookingSummary | null;
   bookingHref: string;
+  /**
+   * Portale centri V2 (29/10/2026), Fabrizio: "come vi vedono le famiglie credo
+   * punti al vecchio layout". Anteprima del gestore: la stessa scheda delle
+   * famiglie, con una barra "Anteprima" in alto; Prenota, Salva e Contatta
+   * spenti (non creano dati). null = scheda normale.
+   */
+  preview?: { returnHref: string } | null;
   /** Correzioni dal test UX (21/10/2026, PARENT_UX_FIX_ENABLED): date vere e stato coerente. null = come prima. */
   dateSummary?: ActivityDateSummary | null;
 }) {
@@ -127,6 +135,28 @@ export default function ActivityDetailV2({
   return (
     <div className="flex h-full min-h-screen flex-col bg-trama-page sm:min-h-0 sm:flex-1">
       {lightbox}
+      {preview && (
+        <div
+          role="region"
+          aria-label="Anteprima famiglia"
+          data-testid="family-preview-bar"
+          className="flex flex-shrink-0 items-center gap-3 bg-[#0E5A63] px-4 pb-2.5 pt-[calc(10px+env(safe-area-inset-top,0px))] text-white"
+        >
+          <i className="ti ti-eye text-[20px]" aria-hidden="true" />
+          <div className="min-w-0 flex-1">
+            <div className="text-[13px] font-bold leading-tight">Anteprima: così vi vedono le famiglie</div>
+            <div className="text-[11.5px] leading-snug text-white/80">Prenota, Salva e Contatta qui sono spenti.</div>
+          </div>
+          <Link
+            href={preview.returnHref}
+            data-testid="family-preview-back"
+            className="flex min-h-[40px] flex-shrink-0 items-center gap-1 rounded-xl bg-white/15 px-3 text-[13px] font-semibold text-white hover:bg-white/25"
+          >
+            <i className="ti ti-arrow-left" aria-hidden="true" />
+            Torna al portale
+          </Link>
+        </div>
+      )}
       <div className="no-scrollbar flex-1 overflow-y-auto pb-6">
         {/* 1. In alto: foto vera o immagine di ripiego TRAMA */}
         <div className="relative">
@@ -140,11 +170,12 @@ export default function ActivityDetailV2({
           <button
             type="button"
             onClick={onBack}
-            aria-label="Indietro"
+            aria-label={preview ? "Torna al portale" : "Indietro"}
             className="absolute left-4 top-[calc(12px+env(safe-area-inset-top,0px))] flex h-11 w-11 items-center justify-center rounded-full bg-white/95 text-[20px] text-ink shadow-[0_1px_4px_rgba(23,42,77,0.15)] active:scale-95"
           >
             <i className="ti ti-arrow-left" aria-hidden="true" />
           </button>
+          {!preview && (
           <button
             type="button"
             onClick={onToggleFav}
@@ -154,6 +185,7 @@ export default function ActivityDetailV2({
           >
             <i className={`ti ${fav ? "ti-bookmark-filled text-trama-primary" : "ti-bookmark"} text-[20px]`} aria-hidden="true" />
           </button>
+          )}
         </div>
 
         <div className="flex flex-col gap-4 px-5 pt-[18px]">
@@ -444,11 +476,13 @@ export default function ActivityDetailV2({
             </section>
           )}
 
-          {/* 9. Scrivi al centro: azione secondaria */}
+          {/* 9. Scrivi al centro: azione secondaria (spenta in anteprima del gestore) */}
+          {!preview && (
           <section className="flex flex-col gap-2">
             <p className="text-[13.5px] text-ink-2">Hai una domanda su orari, pranzo o iscrizione?</p>
             <ContactCenterButton activityDbId={activity.dbId} />
           </section>
+          )}
         </div>
       </div>
 
@@ -462,7 +496,11 @@ export default function ActivityDetailV2({
             {daysSelected > 0 ? (daysSelected === 1 ? "1 giorno" : `${daysSelected} giorni`) : dayOnlyPriced ? "al giorno" : "a settimana"}
           </div>
         </div>
-        {daysSelected > 0 && meetsMinDays ? (
+        {preview ? (
+          <button type="button" disabled data-testid="family-preview-booking-disabled" className={CTA_DISABLED}>
+            Prenota
+          </button>
+        ) : daysSelected > 0 && meetsMinDays ? (
           <Link href={bookingHref} data-spotlight="book_activity" className={CTA}>
             Prenota
           </Link>

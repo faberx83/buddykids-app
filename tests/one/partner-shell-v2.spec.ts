@@ -193,21 +193,27 @@ test.describe("Portale centri V2 — Oggi", () => {
   });
 
   // 29/10/2026, Fabrizio: "mi raccomando allinea font, logo ecc.".
-  test("PS-13 marchio come le famiglie: logo a colori, campanella in alto, titoli col filo TRAMA", () => {
+  // 29/10/2026 (affondo), Fabrizio: "il logo userei quello navy e non colorato" e
+  // "le lineette sotto il nome delle sezioni, usa il colore della palette dei portali partner".
+  test("PS-13 marchio: logo navy, campanella in alto, titoli col filo nei colori del portale centri", () => {
     const shell = read("components/center/PartnerShellV2.tsx");
-    expect(shell).toContain('src="/brand/trama-logo-mark.png"');
-    expect(shell).not.toContain("trama-logo-mark-navy");
+    expect(shell).toContain('src="/brand/trama-logo-mark-navy.png"');
+    expect(shell).not.toContain('src="/brand/trama-logo-mark.png"');
     expect(shell).toContain("requestOpenNotifications()");
     expect(shell).toContain("NextgenToastProvider");
     expect(read("app/center/layout.tsx")).toContain('scope="partner" allowHeaderBell');
     const header = read("components/center/PartnerPageHeader.tsx");
     expect(header).toContain("font-poppins text-[24px] font-semibold");
-    expect(header).toContain("<TramaThread");
+    expect(header).toContain("<PartnerThread");
+    expect(header).not.toContain("TramaThread");
+    for (const c of ['"#0E5A63"', '"#D9A93C"', '"#5E9A9F"', '"#8A6410"']) expect(header).toContain(c);
     for (const f of ["components/center/OggiV2.tsx", "components/center/ActivitiesV2.tsx", "app/center/centro/page.tsx"]) {
       expect(read(f), f).toContain("<PartnerPageHeader");
     }
     const css = read("app/globals.css");
     expect(css).toContain("[data-partner-v2] h1.text-xl.font-bold::after");
+    const after = css.slice(css.indexOf("[data-partner-v2] h1.text-xl.font-bold::after"));
+    expect(after.slice(0, after.indexOf("}"))).toContain("#0e5a63");
   });
 });
 

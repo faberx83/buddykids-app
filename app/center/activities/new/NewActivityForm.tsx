@@ -5,9 +5,20 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { createActivityAction } from "@/app/actions/center";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
+import PartnerPageHeader from "@/components/center/PartnerPageHeader";
 
-export default function NewActivityForm({ centerReady }: { centerReady: boolean }) {
+// Portale centri V2 (29/10/2026): stesso modulo "da zero", titolo e campi del
+// portale centri quando il guscio è acceso (prop v2). Senza guscio invariato.
+const INPUT_LEGACY = "w-full rounded-md border border-[#E8EBF0] bg-bg px-3 py-2 text-sm outline-none focus:border-sky";
+const INPUT_V2 =
+  "w-full min-h-[46px] rounded-xl border border-partner-line bg-white px-3.5 py-2.5 text-[15px] text-ink outline-none focus:border-partner-primary";
+const LABEL_LEGACY = "mb-1.5 block text-xs font-semibold text-ink-2";
+const LABEL_V2 = "mb-1.5 block text-[13px] font-semibold text-ink-2";
+
+export default function NewActivityForm({ centerReady, v2 = false }: { centerReady: boolean; v2?: boolean }) {
   const router = useRouter();
+  const input = v2 ? INPUT_V2 : INPUT_LEGACY;
+  const label = v2 ? LABEL_V2 : LABEL_LEGACY;
   const [form, setForm] = useState({
     name: "",
     emoji: "⭐",
@@ -27,6 +38,21 @@ export default function NewActivityForm({ centerReady }: { centerReady: boolean 
 
   return (
     <div className="max-w-xl">
+      {v2 ? (
+        <div className="mb-5 flex flex-col gap-4">
+          <Link
+            href="/center/activities"
+            className="inline-flex min-h-[40px] items-center gap-1 self-start text-[14px] font-semibold text-partner-primary"
+          >
+            <i className="ti ti-chevron-left text-[18px]" aria-hidden="true" /> Attività
+          </Link>
+          <PartnerPageHeader
+            title="Nuova attività"
+            subtitle="Bastano nome, età, prezzo e due righe. Date, orari e servizi li aggiungete subito dopo."
+          />
+        </div>
+      ) : (
+      <>
       <Link
         href="/center/activities"
         className="mb-4 inline-flex items-center gap-1 text-xs font-medium text-sky"
@@ -39,6 +65,8 @@ export default function NewActivityForm({ centerReady }: { centerReady: boolean 
         Crea la scheda base: tag, agenda della giornata, servizi extra e calendario disponibilità
         si aggiungono subito dopo, dalla pagina di modifica.
       </p>
+      </>
+      )}
 
       {!isSupabaseConfigured && (
         <div className="mb-4 rounded-lg border border-orange-mid bg-orange-light p-4 text-sm text-ink">
@@ -76,42 +104,42 @@ export default function NewActivityForm({ centerReady }: { centerReady: boolean 
             router.push(`/center/activities/${result.activitySlug}`);
           }
         }}
-        className="space-y-4 rounded-lg border border-[#E8EBF0] bg-white p-5"
+        className={v2 ? "space-y-4 rounded-[18px] border border-partner-line bg-white p-5" : "space-y-4 rounded-lg border border-[#E8EBF0] bg-white p-5"}
       >
         <div className="flex gap-4">
           <div className="w-24 flex-shrink-0">
-            <label className="mb-1.5 block text-xs font-semibold text-ink-2">Emoji</label>
+            <label className={label}>Emoji</label>
             <input
               value={form.emoji}
               onChange={(e) => update("emoji", e.target.value)}
               maxLength={4}
-              className="w-full rounded-md border border-[#E8EBF0] bg-bg px-3 py-2 text-center text-lg outline-none focus:border-sky"
+              className={`${input} text-center text-lg`}
             />
           </div>
           <div className="flex-1">
-            <label className="mb-1.5 block text-xs font-semibold text-ink-2">Nome attività</label>
+            <label className={label}>Nome attività</label>
             <input
               required
               value={form.name}
               onChange={(e) => update("name", e.target.value)}
               placeholder="Es. Laboratorio Arti Creative"
-              className="w-full rounded-md border border-[#E8EBF0] bg-bg px-3 py-2 text-sm outline-none focus:border-sky"
+              className={input}
             />
           </div>
         </div>
 
-        <div className="grid grid-cols-2 gap-4">
+        <div className={v2 ? "grid gap-4 sm:grid-cols-2" : "grid grid-cols-2 gap-4"}>
           <div>
-            <label className="mb-1.5 block text-xs font-semibold text-ink-2">Fascia d&apos;età</label>
+            <label className={label}>Fascia d&apos;età</label>
             <input
               value={form.ageRange}
               onChange={(e) => update("ageRange", e.target.value)}
               placeholder="6-12"
-              className="w-full rounded-md border border-[#E8EBF0] bg-bg px-3 py-2 text-sm outline-none focus:border-sky"
+              className={input}
             />
           </div>
           <div>
-            <label className="mb-1.5 block text-xs font-semibold text-ink-2">
+            <label className={label}>
               Prezzo a settimana (€)
             </label>
             <input
@@ -120,27 +148,31 @@ export default function NewActivityForm({ centerReady }: { centerReady: boolean 
               required
               value={form.pricePerWeek}
               onChange={(e) => update("pricePerWeek", Number(e.target.value))}
-              className="w-full rounded-md border border-[#E8EBF0] bg-bg px-3 py-2 text-sm outline-none focus:border-sky"
+              className={input}
             />
           </div>
         </div>
 
         <div>
-          <label className="mb-1.5 block text-xs font-semibold text-ink-2">Descrizione</label>
+          <label className={label}>Descrizione</label>
           <textarea
             rows={4}
             value={form.description}
             onChange={(e) => update("description", e.target.value)}
             placeholder="Racconta ai genitori cosa faranno i bambini durante questa attività…"
-            className="w-full rounded-md border border-[#E8EBF0] bg-bg px-3 py-2 text-sm outline-none focus:border-sky"
+            className={input}
           />
         </div>
 
-        <div className="flex items-center gap-3 border-t border-[#E8EBF0] pt-4">
+        <div className={`flex items-center gap-3 border-t pt-4 ${v2 ? "border-partner-line" : "border-[#E8EBF0]"}`}>
           <button
             type="submit"
             disabled={saving || !canSubmit}
-            className="rounded-md bg-sky px-5 py-2.5 text-sm font-bold text-white transition-colors hover:bg-[#3A9FDC] disabled:cursor-not-allowed disabled:opacity-60"
+            className={
+              v2
+                ? "min-h-[48px] rounded-full bg-partner-primary px-6 text-[15px] font-bold text-white hover:bg-partner-primary-press disabled:cursor-not-allowed disabled:opacity-60"
+                : "rounded-md bg-sky px-5 py-2.5 text-sm font-bold text-white transition-colors hover:bg-[#3A9FDC] disabled:cursor-not-allowed disabled:opacity-60"
+            }
           >
             {saving ? "Creo…" : "Crea attività"}
           </button>

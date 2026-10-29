@@ -244,7 +244,10 @@ export default async function CenterLayout({ children }: { children: React.React
         {/* 29/10/2026: campanella nell'intestazione del guscio (PartnerShellV2). */}
         <NotificationCenter initialNotifications={partnerNotifications} scope="partner" allowHeaderBell />
         <BuildInfoBubble label={buildInfoLabel} />
-        <BetaFeedbackButton appSource="gestore" />
+        {/* 29/10/2026, "le segnalazioni facciamole come lato genitori": niente
+            pulsante flottante, pannello come le famiglie aperto da Oggi e Centro
+            (PartnerFeedbackCard). */}
+        <BetaFeedbackButton appSource="gestore" partnerV2 hideFab />
       </PartnerShellV2>
     );
   }

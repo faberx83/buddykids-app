@@ -2,6 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import LogoutButton from "@/components/LogoutButton";
 import PartnerPageHeader from "@/components/center/PartnerPageHeader";
+import PartnerFeedbackCard from "@/components/center/PartnerFeedbackCard";
 import { getMyCenter } from "@/lib/data/center-admin";
 import { getActivitiesForCenter } from "@/lib/data/activities";
 import { getMyCenterActivation } from "@/lib/data/center-activation";
@@ -133,7 +134,7 @@ export default async function CentroPage() {
 
       {previewSlug ? (
         <Link
-          href={buildFamilyPreviewHref(previewSlug)}
+          href={buildFamilyPreviewHref(previewSlug, "centro")}
           className="flex min-h-[46px] items-center justify-center gap-2 rounded-xl border border-partner-line bg-white text-[14.5px] font-semibold text-partner-primary hover:bg-partner-soft"
         >
           <i className="ti ti-eye text-[18px]" aria-hidden="true" />
@@ -202,6 +203,8 @@ export default async function CentroPage() {
             : []),
         ]}
       />
+
+      <PartnerFeedbackCard source="centro" />
 
       <LogoutButton className="flex min-h-[48px] items-center justify-center gap-2 rounded-xl border border-partner-line bg-white text-[14.5px] font-semibold text-[#B4361F] hover:bg-[#FFF4F1]" />
     </div>

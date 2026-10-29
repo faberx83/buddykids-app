@@ -6,7 +6,8 @@
 export const OPEN_BETA_FEEDBACK_EVENT = "trama:open-beta-feedback";
 
 // 15/10/2026: "home" = riga "Dicci cosa ne pensi" in fondo alla Home V2.
-export type FeedbackOpenSource = "floating" | "profilo" | "novita" | "home";
+// 29/10/2026: "centro" e "oggi" dal portale centri V2 (components/center/PartnerFeedbackCard.tsx).
+export type FeedbackOpenSource = "floating" | "profilo" | "novita" | "home" | "centro" | "oggi";
 
 export function openBetaFeedback(source: FeedbackOpenSource): void {
   if (typeof window === "undefined") return;

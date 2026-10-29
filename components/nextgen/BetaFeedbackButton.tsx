@@ -28,6 +28,23 @@ const FAMILY_COPY = {
   successSub: "Lo leggiamo tutto, anche quando non rispondiamo subito.",
 } as const;
 
+// PORTALE CENTRI V2 (29/10/2026). Fabrizio: "le segnalazioni facciamole come
+// lato genitori". Col guscio nuovo (prop partnerV2) il gestore ha lo stesso
+// pannello delle famiglie (tipo facoltativo, dettatura dalla tastiera,
+// contesto automatico, conferma dentro il pannello), con parole e colori del
+// portale centri, aperto da una riga in Oggi e in Centro (PartnerFeedbackCard)
+// invece che dal pulsante flottante. Senza guscio il pannello Partner di
+// sempre, invariato.
+const PARTNER_COPY = {
+  title: "Aiutaci a migliorare TRAMA",
+  intro: "Il portale centri è in prova: problemi, idee e cose che mancano ci aiutano a costruirlo con voi.",
+  placeholder: "Racconta cosa non ha funzionato o cosa vi servirebbe…",
+  dictationHint: "Scrivi oppure usa il microfono della tastiera per dettare.",
+  submit: "Invia",
+  success: "Grazie! Abbiamo ricevuto il vostro messaggio.",
+  successSub: "Lo leggiamo tutto, e se serve vi rispondiamo per email.",
+} as const;
+
 // SPRINT 5 (NEXTGEN) — "Segnala un problema" (feedback Fabrizio: floating CTA
 // draggabile presente su ogni pagina dell'app genitori durante la BETA, per
 // raccogliere bug/suggerimenti). Montata UNA sola volta in
@@ -104,8 +121,11 @@ function containerBounds(el: HTMLElement | null): { width: number; height: numbe
 export default function BetaFeedbackButton({
   appSource = "genitori",
   hideFab = false,
+  partnerV2 = false,
 }: {
   appSource?: "genitori" | "gestore";
+  /** Portale centri V2 (29/10/2026): pannello come le famiglie, colori del portale centri. */
+  partnerV2?: boolean;
   /** POLISH V2 (14/10/2026): con la nuova barra niente pulsante flottante; il pannello si apre da Profilo → "Aiutaci a migliorare TRAMA". */
   hideFab?: boolean;
 } = {}) {
@@ -145,6 +165,12 @@ export default function BetaFeedbackButton({
   const [category, setCategory] = useState<BetaFeedbackCategory | null>(null);
   const [openSource, setOpenSource] = useState<FeedbackOpenSource>("floating");
   const isFamily = appSource === "genitori";
+  // Pannello "ricco" (tipo, dettatura, contesto, conferma): famiglie e guscio centri V2.
+  const richPanel = isFamily || (appSource === "gestore" && partnerV2);
+  const copy = isFamily ? FAMILY_COPY : PARTNER_COPY;
+  const tone = isFamily
+    ? { solid: "bg-trama-violet", text: "text-trama-violet", border: "border-trama-violet", soft: "bg-trama-violet/10", focus: "focus:border-trama-violet", ok: "text-trama-green" }
+    : { solid: "bg-partner-primary", text: "text-partner-primary", border: "border-partner-primary", soft: "bg-partner-soft", focus: "focus:border-partner-primary", ok: "text-partner-primary" };
   const dragState = useRef<{ startX: number; startY: number; originX: number; originY: number; dragged: boolean } | null>(null);
 
   useEffect(() => {
@@ -167,7 +193,7 @@ export default function BetaFeedbackButton({
   // Apertura da Profilo / Novità (solo famiglie): stessa istanza, nessun
   // secondo pannello montato altrove.
   useEffect(() => {
-    if (!isFamily) return;
+    if (!richPanel) return;
     function onOpen(e: Event) {
       const source = (e as CustomEvent<{ source?: FeedbackOpenSource }>).detail?.source ?? "floating";
       openPanel(source);
@@ -175,7 +201,7 @@ export default function BetaFeedbackButton({
     window.addEventListener(OPEN_BETA_FEEDBACK_EVENT, onOpen);
     return () => window.removeEventListener(OPEN_BETA_FEEDBACK_EVENT, onOpen);
     // eslint-disable-next-line react-hooks/exhaustive-deps -- listener registrato una volta; openPanel usa solo setter stabili
-  }, [isFamily]);
+  }, [richPanel]);
 
   // Sprint 0 (solo istanza genitore): /nextgen/admin e /nextgen/center erano
   // ancora placeholder che condividevano questo stesso layout genitore —
@@ -263,7 +289,7 @@ export default function BetaFeedbackButton({
     setSubmitting(true);
     setError(null);
     const area = areaLabel(pathname ?? "");
-    const result = isFamily
+    const result = richPanel
       ? await submitBetaFeedbackAction(area, pathname ?? "", message, appSource, { category, clientContext: clientContext() })
       : await submitBetaFeedbackAction(area, pathname ?? "", message, appSource);
     setSubmitting(false);
@@ -272,7 +298,7 @@ export default function BetaFeedbackButton({
       return;
     }
     setMessage("");
-    if (isFamily) {
+    if (richPanel) {
       // Conferma chiara dentro il pannello (stato di successo esplicito),
       // l'utente lo chiude quando vuole.
       setSubmitted(true);
@@ -328,7 +354,7 @@ export default function BetaFeedbackButton({
           >
             <div className="mb-1 flex items-center justify-between gap-3">
               <div id="beta-feedback-title" className="text-[15px] font-bold text-ink">
-                {isFamily ? FAMILY_COPY.title : "Segnala un problema"}
+                {richPanel ? copy.title : "Segnala un problema"}
               </div>
               <button
                 type="button"
@@ -339,13 +365,13 @@ export default function BetaFeedbackButton({
                 <i className="ti ti-x text-[18px]" />
               </button>
             </div>
-            {submitted && isFamily ? (
+            {submitted && richPanel ? (
               <div data-testid="beta-feedback-success" className="py-3">
-                <p className="flex items-center gap-1.5 text-[14px] font-semibold text-trama-green">
+                <p className={`flex items-center gap-1.5 text-[14px] font-semibold ${tone.ok}`}>
                   <i className="ti ti-circle-check-filled text-[18px]" />
-                  {FAMILY_COPY.success}
+                  {copy.success}
                 </p>
-                <p className="mt-1 text-[12.5px] text-ink-2">{FAMILY_COPY.successSub}</p>
+                <p className="mt-1 text-[12.5px] text-ink-2">{copy.successSub}</p>
                 <button
                   type="button"
                   onClick={closePanel}
@@ -359,9 +385,9 @@ export default function BetaFeedbackButton({
                 <i className="ti ti-circle-check-filled text-[16px]" />
                 Segnalazione inviata, grazie!
               </p>
-            ) : isFamily ? (
+            ) : richPanel ? (
               <>
-                <p className="mb-3 text-[12px] leading-snug text-ink-2">{FAMILY_COPY.intro}</p>
+                <p className="mb-3 text-[12px] leading-snug text-ink-2">{copy.intro}</p>
                 <div role="group" aria-label="Tipo di messaggio" className="mb-3 flex flex-wrap gap-1.5">
                   {BETA_FEEDBACK_CATEGORIES.map((c) => (
                     <button
@@ -371,7 +397,7 @@ export default function BetaFeedbackButton({
                       onClick={() => setCategory((prev) => (prev === c.value ? null : c.value))}
                       className={`flex min-h-[36px] items-center gap-1 rounded-full border px-3 text-[12.5px] font-semibold transition-colors ${
                         category === c.value
-                          ? "border-trama-violet bg-trama-violet/10 text-trama-violet"
+                          ? `${tone.border} ${tone.soft} ${tone.text}`
                           : "border-[#E8EBF0] text-ink-2"
                       }`}
                     >
@@ -387,26 +413,26 @@ export default function BetaFeedbackButton({
                   id="beta-feedback-message"
                   value={message}
                   onChange={(e) => setMessage(e.target.value)}
-                  placeholder={FAMILY_COPY.placeholder}
+                  placeholder={copy.placeholder}
                   rows={4}
                   autoCapitalize="sentences"
                   spellCheck
                   aria-describedby="beta-feedback-dictation"
                   // 16px: sotto questa soglia iOS Safari zooma la pagina al focus.
-                  className="w-full resize-none rounded-xl border border-[#E8EBF0] px-3 py-2.5 text-[16px] leading-snug text-ink outline-none focus:border-trama-violet"
+                  className={`w-full resize-none rounded-xl border border-[#E8EBF0] px-3 py-2.5 text-[16px] leading-snug text-ink outline-none ${tone.focus}`}
                 />
                 <p id="beta-feedback-dictation" className="mt-1.5 flex items-center gap-1 text-[11.5px] text-ink-3">
                   <i className="ti ti-microphone text-[13px]" aria-hidden="true" />
-                  {FAMILY_COPY.dictationHint}
+                  {copy.dictationHint}
                 </p>
                 {error && <p className="mt-2 text-[12px] font-medium text-orange">{error}</p>}
                 <button
                   type="button"
                   disabled={submitting}
                   onClick={handleSubmit}
-                  className="mt-3 min-h-[44px] w-full rounded-full bg-trama-violet text-[14px] font-bold text-white active:scale-[0.97] disabled:opacity-50"
+                  className={`mt-3 min-h-[44px] w-full rounded-full ${tone.solid} text-[14px] font-bold text-white active:scale-[0.97] disabled:opacity-50`}
                 >
-                  {submitting ? "Invio…" : FAMILY_COPY.submit}
+                  {submitting ? "Invio…" : copy.submit}
                 </button>
                 <p className="mt-2 text-center text-[10.5px] text-ink-3">
                   Insieme al messaggio salviamo la pagina ({areaLabel(pathname ?? "")}) e il tipo di dispositivo, per capire il contesto.

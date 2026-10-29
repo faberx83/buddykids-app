@@ -40,6 +40,8 @@ export default function DetailClient({
   realSpotsLeft = undefined,
   partnerPreview = false,
   v2 = false,
+  previewV2 = false,
+  previewReturnHref = FAMILY_PREVIEW_RETURN_HREF,
   reasonKids = [],
 }: {
   activity: Activity;
@@ -123,6 +125,9 @@ export default function DetailClient({
   partnerPreview?: boolean;
   /** SCHEDA ATTIVITÀ V2 (DISCOVER_V2_ENABLED, mai in anteprima Partner): disegna ActivityDetailV2. */
   v2?: boolean;
+  /** Portale centri V2 (29/10/2026): anteprima del gestore sulla scheda V2. */
+  previewV2?: boolean;
+  previewReturnHref?: string;
   /** Figli del genitore (nome, età, interessi) per "Perché fa per voi" — solo V2. */
   reasonKids?: { name: string; age: number; interests?: string[] }[];
 }) {
@@ -290,7 +295,7 @@ export default function DetailClient({
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
   const reasonsV2 = useMemo(() => (v2 ? activityDetailReasons(activity, reasonKids) : []), [v2, activity, reasonKids]);
 
-  if (v2 && !partnerPreview) {
+  if (v2 && (!partnerPreview || previewV2)) {
     return (
       <ActivityDetailV2
         activity={activity}
@@ -298,6 +303,7 @@ export default function DetailClient({
         services={includedServices(activity)}
         fav={fav}
         onToggleFav={() => {
+          if (partnerPreview) return;
           const next = !fav;
           setFav(next);
           if (activity.dbId && isSupabaseConfigured) {
@@ -308,7 +314,8 @@ export default function DetailClient({
           }
         }}
         onBack={() => {
-          if (window.history.length > 1) router.back();
+          if (partnerPreview) router.push(previewReturnHref);
+          else if (window.history.length > 1) router.back();
           else router.push("/nextgen/search");
         }}
         coverImageUrl={activity.coverImageUrl}
@@ -336,6 +343,7 @@ export default function DetailClient({
         dateSummary={dateSummary}
         existingBooking={existingBooking}
         bookingHref={bookingHref}
+        preview={partnerPreview ? { returnHref: previewReturnHref } : null}
       />
     );
   }

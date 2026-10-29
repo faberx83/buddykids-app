@@ -19,11 +19,12 @@ export default async function NewActivityPage({
   // modello, il modulo di sempre.
   const modello = (await searchParams).modello;
   const template = getTemplate(typeof modello === "string" ? modello : null);
-  if (template && centerDbId && (await partnerShellEnabledForCurrentUser())) {
+  const shell = await partnerShellEnabledForCurrentUser();
+  if (template && centerDbId && shell) {
     const today = new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Rome" }).format(new Date());
     const dates = templateDates(template.key, today);
     return <TemplateActivityForm template={template} datesCount={dates.length} datesLabel={describeDates(dates)} />;
   }
 
-  return <NewActivityForm centerReady={!!centerDbId} />;
+  return <NewActivityForm centerReady={!!centerDbId} v2={shell} />;
 }
