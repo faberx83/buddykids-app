@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import LogoutButton from "@/components/LogoutButton";
 import PartnerPageHeader from "@/components/center/PartnerPageHeader";
 import PartnerFeedbackCard from "@/components/center/PartnerFeedbackCard";
+import { profileSectionHref } from "@/lib/centers/profile-v2";
 import { getMyCenter } from "@/lib/data/center-admin";
 import { getActivitiesForCenter } from "@/lib/data/activities";
 import { getMyCenterActivation } from "@/lib/data/center-activation";
@@ -150,16 +151,16 @@ export default async function CentroPage() {
         id="c-profilo"
         title="Profilo del centro"
         rows={[
-          { label: "Nome, zona e contatti", href: "/center/profile#contatti", state: done("contacts") },
-          { label: "Indirizzo e mappa", href: "/center/profile#indirizzo", state: done("address") },
+          { label: "Nome, zona e contatti", href: profileSectionHref("contatti", "centro"), state: done("contacts") },
+          { label: "Indirizzo e mappa", href: profileSectionHref("indirizzo", "centro"), state: done("address") },
           {
             label: "Descrizione e logo",
-            href: "/center/profile#descrizione",
+            href: profileSectionHref("descrizione", "centro"),
             state: done("description"),
             hint: done("description") === "todo" ? "Almeno 30 caratteri" : undefined,
           },
-          { label: "Accessibilità e punto ristoro", href: "/center/profile#accessibilita", state: "optional" },
-          { label: "Sito e social", href: "/center/profile#social", state: "optional" },
+          { label: "Accessibilità e punto ristoro", href: profileSectionHref("accessibilita", "centro"), state: "optional" },
+          { label: "Sito e social", href: profileSectionHref("social", "centro"), state: "optional" },
         ]}
       />
 
@@ -167,8 +168,8 @@ export default async function CentroPage() {
         id="c-regole"
         title="Regole"
         rows={[
-          { label: "Cancellazioni e modifiche", href: "/center/profile#cancellazioni", state: done("cancellation") },
-          { label: "Sconti per più settimane, fratelli e gruppi", href: "/center/profile#sconti", state: "optional" },
+          { label: "Cancellazioni e modifiche", href: profileSectionHref("cancellazioni", "centro"), state: done("cancellation") },
+          { label: "Sconti per più settimane, fratelli e gruppi", href: profileSectionHref("sconti", "centro"), state: "optional" },
           { label: "Promozioni", href: "/center/promotions", state: "link" },
         ]}
       />

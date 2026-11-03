@@ -59,6 +59,9 @@ export const MIN_DESCRIPTION = 30;
 
 const filled = (v: string | null | undefined) => Boolean(v && v.trim().length > 0);
 
+// 03/11/2026: ogni controllo apre solo la sua parte del profilo (portale V2 a
+// sezioni) e dopo il salvataggio si torna a Oggi (?da=oggi). Senza guscio il
+// profilo di sempre ignora i parametri e mostra tutto il modulo.
 export function profileChecks(p: CenterProfileFacts): ProfileCheck[] {
   return [
     {
@@ -66,7 +69,7 @@ export function profileChecks(p: CenterProfileFacts): ProfileCheck[] {
       label: "Nome, zona e contatti",
       hint: "Un'email o un telefono a cui le famiglie possono scrivervi",
       done: filled(p.name) && filled(p.city) && (filled(p.contactEmail) || filled(p.contactPhone)),
-      href: "/center/profile",
+      href: "/center/profile?sezione=contatti&da=oggi",
       cta: "Completa",
     },
     {
@@ -77,7 +80,7 @@ export function profileChecks(p: CenterProfileFacts): ProfileCheck[] {
           ? `Almeno ${MIN_DESCRIPTION} caratteri: ne mancano ${MIN_DESCRIPTION - (p.description ?? "").trim().length}`
           : `Chi siete e cosa fate, almeno ${MIN_DESCRIPTION} caratteri`,
       done: (p.description ?? "").trim().length >= MIN_DESCRIPTION,
-      href: "/center/profile",
+      href: "/center/profile?sezione=descrizione&da=oggi",
       cta: "Scrivi",
     },
     {
@@ -85,7 +88,7 @@ export function profileChecks(p: CenterProfileFacts): ProfileCheck[] {
       label: "Indirizzo",
       hint: "Serve alla mappa e alla distanza da casa",
       done: filled(p.address),
-      href: "/center/profile",
+      href: "/center/profile?sezione=indirizzo&da=oggi",
       cta: "Aggiungi",
     },
     {
@@ -96,7 +99,7 @@ export function profileChecks(p: CenterProfileFacts): ProfileCheck[] {
           ? `Si annulla senza costi fino a ${p.cancellationWindowDays} ${p.cancellationWindowDays === 1 ? "giorno" : "giorni"} prima`
           : "Entro quanti giorni si annulla senza costi",
       done: p.cancellationConfirmed,
-      href: "/center/profile",
+      href: "/center/profile?sezione=cancellazioni&da=oggi",
       cta: "Conferma",
     },
     {

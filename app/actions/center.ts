@@ -1,6 +1,7 @@
 "use server";
 
 import { activityNameError } from "@/lib/centers/activity-edit-v2";
+import { centerNameError } from "@/lib/centers/profile-v2";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
@@ -420,6 +421,12 @@ export interface CenterProfileUpdateInput {
   // Giorni di preavviso per annullare/modificare una prenotazione in
   // autonomia (domanda di Fabrizio sulla policy di cancellazione).
   cancellationWindowDays: number;
+  /**
+   * Portale V2 a sezioni (03/11/2026): salvare vale come conferma delle regole
+   * di cancellazione solo dalla loro sezione. Assente = come prima (il modulo
+   * unico contiene sempre le regole).
+   */
+  confirmsCancellation?: boolean;
 }
 
 export async function updateCenterProfileAction(
@@ -431,6 +438,9 @@ export async function updateCenterProfileAction(
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) return { error: "Non autenticato" };
+  // Stessa regola delle attività (UX-PARTNER-003): il nome del centro non si svuota.
+  const centerNameProblem = centerNameError(input.name ?? "");
+  if (centerNameProblem) return { error: centerNameProblem };
 
   const { error } = await supabase
     .from("centers")
@@ -459,7 +469,8 @@ export async function updateCenterProfileAction(
   // "Cancellazioni e modifiche", vale come conferma delle regole di
   // cancellazione per l'attivazione (stessa voce della checklist di sempre).
   // Best-effort: un errore qui non cambia il salvataggio del profilo.
-  try {
+  // 03/11/2026: col profilo a sezioni solo dalla sezione "Cancellazioni".
+  if (input.confirmsCancellation !== false) try {
     await supabase.from("center_onboarding_checklist_completions").upsert(
       {
         center_id: input.centerDbId,

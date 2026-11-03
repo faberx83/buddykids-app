@@ -124,23 +124,29 @@ test.describe("Affondo V2 — Attività e Profilo", () => {
     expect(r.match(/^export /gm)).toHaveLength(1);
   });
 
-  test("PA-11 profilo V2: riquadri con le ancore di Centro, indirizzo suggerito, ritorno a Oggi invariato", () => {
-    const c = read("app/center/profile/CenterProfileClient.tsx");
-    for (const id of ["contatti", "indirizzo", "descrizione", "accessibilita", "social", "sconti", "cancellazioni"]) {
-      expect(c, id).toContain(`id="${id}"`);
-    }
-    expect(c).toContain("<PlaceAutocomplete");
-    expect(c).toContain('if (place.city) update("city", place.city);');
-    expect(c).toContain("pickText={(place) => streetAddressText(place, form.address)}");
-    expect(c).toContain('router.push("/center?salvato=profilo");');
-    expect(c).toContain('data-testid="profile-save-bar"');
+  // 03/11/2026: il profilo V2 diventa a sezioni (components/center/CenterProfileV2.tsx), come la scheda attività.
+  test("PA-11 profilo V2 a sezioni: elenco con sintesi, una parte alla volta, ritorno alla pagina di partenza", () => {
+    const v2 = read("components/center/CenterProfileV2.tsx");
+    expect(v2).toContain("PROFILE_SECTIONS.filter");
+    expect(v2).toContain("<PlaceAutocomplete");
+    expect(v2).toContain('if (place.city) update("city", place.city);');
+    expect(v2).toContain("pickText={(place) => streetAddressText(place, form.address)}");
+    expect(v2).toContain("router.replace(returnHref);");
+    expect(v2).toContain('confirmsCancellation: section === "cancellazioni"');
+    expect(v2).toContain('data-testid="profile-save-bar"');
     const p = read("app/center/profile/page.tsx");
     expect(p).toContain("partnerShellEnabledForCurrentUser()");
     expect(p).toContain('testId="center-profile-header"');
     expect(p).toContain('titleTestId="center-profile-name"');
-    expect(p).toContain("<CenterProfileClient center={center} dbId={dbId} v2 placeSearch />");
-    // il profilo di prima resta per chi non ha il guscio
+    expect(p).toContain("<CenterProfileV2");
+    // il profilo di prima resta, invariato, per chi non ha il guscio (ancore comprese)
     expect(p).toContain("<CenterProfileClient center={center} dbId={dbId} />");
+    const legacy = read("app/center/profile/CenterProfileClient.tsx");
+    for (const id of ["contatti", "indirizzo", "descrizione", "accessibilita", "social", "sconti", "cancellazioni"]) {
+      expect(legacy, id).toContain(`id="${id}"`);
+    }
+    expect(legacy).toContain('router.push("/center?salvato=profilo");');
+    expect(legacy).not.toContain("V2_UI");
   });
 
   test("PA-12 Date e posti e Nuova attività col titolo del portale", () => {

@@ -7,6 +7,8 @@ import { CenterOnboardingStatus } from "@/lib/onboarding/types";
 import { buildFamilyPreviewHref, pickFamilyPreviewSlug } from "@/lib/center/family-preview";
 import { partnerShellEnabledForCurrentUser, partnerV2EnabledForCurrentUser } from "@/lib/centers/partner-v2-flag";
 import PartnerPageHeader from "@/components/center/PartnerPageHeader";
+import CenterProfileV2 from "@/components/center/CenterProfileV2";
+import { PROFILE_SECTIONS, profileReturnHref, profileSectionFromQuery } from "@/lib/centers/profile-v2";
 import { getMyCenterActivation } from "@/lib/data/center-activation";
 import { profileChecks } from "@/lib/centers/activation";
 
@@ -27,7 +29,11 @@ const ONBOARDING_STATUS_LABEL: Record<CenterOnboardingStatus, string> = {
   SUSPENDED: "Sospeso",
 };
 
-export default async function CenterProfilePage() {
+export default async function CenterProfilePage({
+  searchParams,
+}: {
+  searchParams?: Promise<{ sezione?: string | string[]; da?: string | string[] }>;
+}) {
   const { center, dbId } = await getMyCenter();
 
   // FINAL PRE-FREEZE WAVE (sez. 10-15, 08/09/2026) — "Il mio centro" resta
@@ -99,21 +105,30 @@ export default async function CenterProfilePage() {
       : `Manca: ${missingChecks.map((c) => c.label.toLowerCase()).join(", ")}`
     : "Modifica qui sotto";
 
-  // PORTALE CENTRI V2 (29/10/2026), Fabrizio: "anche la sezione profilo è
-  // vecchio stile". Col guscio: titolo come le altre sezioni, "‹" dal guscio,
-  // niente riquadri di riepilogo (stanno già in
-  // Centro), form a riquadri con l'indirizzo suggerito.
+  // PORTALE CENTRI V2 (03/11/2026), Fabrizio (30/10): "Profilo e attività
+  // sono ancora vecchio style". Col guscio il profilo è a sezioni come la
+  // scheda attività: senza ?sezione l'elenco delle parti con la sintesi; con
+  // ?sezione=… solo quella parte, poi si torna da dove si è partiti (?da=oggi
+  // → Oggi, ?da=centro → Centro). "‹" lo mette il guscio.
   if (await partnerShellEnabledForCurrentUser()) {
+    const sp = (await searchParams) ?? {};
+    const section = profileSectionFromQuery(sp.sezione);
+    const fromRaw = Array.isArray(sp.da) ? sp.da[0] : sp.da;
+    const from = fromRaw === "centro" ? "centro" : fromRaw === "oggi" || fromRaw === "attivazione" ? "oggi" : null;
+    const sectionTitle = section ? PROFILE_SECTIONS.find((p) => p.key === section)?.title : null;
     return (
       <div className="flex max-w-2xl flex-col gap-5">
-        {/* "‹" in alto lo mette il guscio (torna alla pagina di prima, Centro se dietro non c'è niente). */}
         <PartnerPageHeader
           testId="center-profile-header"
           titleTestId="center-profile-name"
-          title={center.name || "Profilo del centro"}
-          subtitle={`Profilo del centro · ${center.city ? `${center.city} · ` : ""}${ONBOARDING_STATUS_LABEL[onboarding.status]}`}
+          title={sectionTitle ?? (center.name || "Profilo del centro")}
+          subtitle={
+            sectionTitle
+              ? center.name
+              : `Profilo del centro · ${center.city ? `${center.city} · ` : ""}${ONBOARDING_STATUS_LABEL[onboarding.status]}`
+          }
           action={
-            previewActivitySlug ? (
+            !section && previewActivitySlug ? (
               <Link
                 href={buildFamilyPreviewHref(previewActivitySlug)}
                 data-testid="family-preview-cta"
@@ -124,7 +139,7 @@ export default async function CenterProfilePage() {
             ) : undefined
           }
         />
-        <CenterProfileClient center={center} dbId={dbId} v2 placeSearch />
+        <CenterProfileV2 center={center} dbId={dbId} section={section} from={from} returnHref={profileReturnHref(fromRaw)} />
       </div>
     );
   }
