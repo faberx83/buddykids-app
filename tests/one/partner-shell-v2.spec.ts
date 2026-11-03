@@ -120,12 +120,11 @@ test.describe("Portale centri V2 — guscio: flusso (controlli sul sorgente)", (
 
   test("PS-09 sezione Centro: righe verso le pagine esistenti, ancore nel profilo, uscita", () => {
     const p = read("app/center/centro/page.tsx");
+    // 03/11/2026: ogni riga del profilo apre solo la sua sezione e poi si torna a Centro.
+    for (const key of ["contatti", "indirizzo", "descrizione", "accessibilita", "social", "cancellazioni", "sconti"]) {
+      expect(p, key).toContain(`profileSectionHref("${key}", "centro")`);
+    }
     for (const href of [
-      "/center/profile#contatti",
-      "/center/profile#indirizzo",
-      "/center/profile#descrizione",
-      "/center/profile#cancellazioni",
-      "/center/profile#sconti",
       "/center/promotions",
       "/center/attendance",
       "/center/report-presenze",

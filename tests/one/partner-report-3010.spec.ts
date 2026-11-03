@@ -175,3 +175,49 @@ test.describe("UX-PARTNER-008 e revisioni REV-PARTNER-001/002", () => {
     expect(p).toContain('onChange={(e) => update("hasBar", e.target.checked)}');
   });
 });
+
+test.describe("Profilo del centro a sezioni (03/11/2026)", () => {
+  test("RPP-14 sezioni, ritorno alla pagina di partenza, conferma delle cancellazioni solo dalla sua sezione", async () => {
+    const { profileSectionFromQuery, profileSectionHref, profileReturnHref, profileSummaries, centerNameError } = await import(
+      "../../lib/centers/profile-v2"
+    );
+    expect(profileSectionFromQuery("indirizzo")).toBe("indirizzo");
+    expect(profileSectionFromQuery(["sconti"])).toBe("sconti");
+    expect(profileSectionFromQuery("../admin")).toBeNull();
+    expect(profileSectionHref("contatti", "centro")).toBe("/center/profile?sezione=contatti&da=centro");
+    expect(profileReturnHref("oggi")).toBe("/center");
+    expect(profileReturnHref("attivazione")).toBe("/center");
+    expect(profileReturnHref("centro")).toBe("/center/centro");
+    expect(profileReturnHref("https://altro")).toBe("/center/profile");
+    expect(centerNameError("  ")).not.toBeNull();
+    const s = profileSummaries(
+      {
+        name: "Ludoteca",
+        city: "Milano",
+        address: "",
+        description: "corta",
+        contactEmail: "",
+        contactPhone: "",
+        accessible: true,
+        hasBar: true,
+        socialLinks: {},
+        cancellationWindowDays: 3,
+        multiweekDiscountPercent: 5,
+        familyDiscountTiers: [10, 15, 20],
+      },
+      30
+    );
+    expect(s.contatti.todo).toBe(true);
+    expect(s.indirizzo).toEqual({ text: "Da indicare", todo: true });
+    expect(s.descrizione).toEqual({ text: "Mancano 25 caratteri", todo: true });
+    expect(s.accessibilita.text).toBe("Accessibile · punto ristoro");
+    expect(s.cancellazioni.text).toBe("Si annulla in app fino a 3 giorni prima");
+    expect(s.sconti.text).toBe("Più settimane 5% · fratelli 10/15/20%");
+    const actions = read("app/actions/center.ts");
+    expect(actions).toContain("if (input.confirmsCancellation !== false) try {");
+    expect(actions).toContain("centerNameError(input.name");
+    // i controlli dell'attivazione aprono la loro sezione e tornano a Oggi
+    const act = read("lib/centers/activation.ts");
+    for (const sec of ["contatti", "descrizione", "indirizzo", "cancellazioni"]) expect(act, sec).toContain(`/center/profile?sezione=${sec}&da=oggi`);
+  });
+});
