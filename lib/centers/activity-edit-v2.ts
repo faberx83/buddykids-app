@@ -1,0 +1,152 @@
+// TRAMA — PORTALE CENTRI V2, ATTIVITÀ APERTA (30/10/2026, tavola 7 del mock).
+// Fabrizio: "Profilo e attività sono ancora vecchio style". La scheda di
+// un'attività non è più un modulo lungo: è un elenco di righe (Informazioni,
+// Date e posti, Come ci si iscrive, Prezzi, Servizi extra, La giornata tipo,
+// Luogo, Foto, Il centro) con una riga di sintesi ciascuna; toccando una riga
+// si aprono solo quei campi. Qui la logica pura: sezioni, sintesi, etichette.
+
+import type { MealOption, ServiceOption } from "@/lib/types";
+import type { ActivityDateSummary } from "@/lib/data/activity-dates";
+
+export type ActivitySectionKey =
+  | "info"
+  | "iscrizione"
+  | "prezzi"
+  | "servizi"
+  | "giornata"
+  | "luogo"
+  | "foto"
+  | "centro";
+
+export type BookingMode = "week_only" | "day_only" | "mixed";
+
+export interface ActivityEditState {
+  name: string;
+  ageRange: string;
+  description: string;
+  tagIds: string[];
+  bookingMode: BookingMode;
+  minDaysPerBooking: number | null;
+  spotsLeft: number;
+  showExactSpots: boolean;
+  pricePerWeek: number;
+  shuttlePrice: number;
+  preService: ServiceOption;
+  postService: ServiceOption;
+  mealOption: MealOption;
+  mealPriceExtra: number;
+  dietaryOptions: string[];
+  schedule: { time: string; label: string; color: string }[];
+  address: string;
+  coverImageUrl: string | null;
+  galleryUrls: string[];
+  hasBar: boolean;
+  accessible: boolean;
+}
+
+export const ACTIVITY_SECTIONS: { key: ActivitySectionKey; title: string; icon: string }[] = [
+  { key: "info", title: "Informazioni", icon: "ti-info-circle" },
+  { key: "iscrizione", title: "Come ci si iscrive", icon: "ti-user-check" },
+  { key: "prezzi", title: "Prezzi", icon: "ti-receipt-euro" },
+  { key: "servizi", title: "Servizi extra e pranzo", icon: "ti-tools-kitchen-2" },
+  { key: "giornata", title: "La giornata tipo", icon: "ti-clock" },
+  { key: "luogo", title: "Luogo", icon: "ti-map-pin" },
+  { key: "foto", title: "Foto", icon: "ti-photo" },
+  { key: "centro", title: "Accessibilità e punto ristoro", icon: "ti-building" },
+];
+
+export const BOOKING_MODE_V2: Record<BookingMode, { label: string; hint: string }> = {
+  mixed: { label: "Settimane e giorni singoli", hint: "Le famiglie possono prenotare settimane intere oppure solo alcuni giorni." },
+  week_only: { label: "Solo settimane", hint: "Le famiglie prenotano solo settimane intere." },
+  day_only: { label: "Solo giorni singoli", hint: "Le famiglie scelgono i giorni dal calendario, senza settimane intere." },
+};
+
+export const MEAL_V2: Record<MealOption, string> = {
+  included: "Pranzo incluso",
+  packed: "Pranzo al sacco",
+  none: "Pranzo non previsto",
+};
+
+const euro = (n: number) => `€${Number.isInteger(n) ? n : n.toFixed(2)}`;
+
+export function formatShortDay(isoDate: string): string {
+  return new Intl.DateTimeFormat("it-IT", { timeZone: "UTC", weekday: "short", day: "numeric", month: "short" })
+    .format(new Date(`${isoDate}T00:00:00Z`))
+    .replace(/\./g, "");
+}
+
+/** Riga "Date e posti": prossima data e quante, oppure che mancano. */
+export function datesSummary(d: ActivityDateSummary): { text: string; missing: boolean } {
+  if (!d.next) return { text: "Mancano le date: le famiglie non possono iscriversi", missing: true };
+  const amount =
+    d.openDays > 0
+      ? `${d.openDays} ${d.openDays === 1 ? "giorno aperto" : "giorni aperti"}`
+      : `${d.weeks} ${d.weeks === 1 ? "settimana" : "settimane"}`;
+  return { text: `Prossimo ${formatShortDay(d.next)} · ${amount}`, missing: false };
+}
+
+export interface SectionSummary {
+  text: string;
+  /** Da completare: la riga lo dice. */
+  todo?: boolean;
+}
+
+/** Una riga di sintesi per ogni sezione (quello che c'è, o cosa manca). */
+export function sectionSummaries(
+  f: ActivityEditState,
+  tagLabel: (id: string) => string | undefined
+): Record<ActivitySectionKey, SectionSummary> {
+  const tags = f.tagIds.map(tagLabel).filter(Boolean) as string[];
+  const desc = f.description.trim();
+  const info = [f.ageRange ? `${f.ageRange} anni` : "", tags.length ? tags.slice(0, 2).join(", ") + (tags.length > 2 ? ` +${tags.length - 2}` : "") : ""]
+    .filter(Boolean)
+    .join(" · ");
+
+  const iscrizione = [
+    BOOKING_MODE_V2[f.bookingMode].label,
+    f.bookingMode !== "week_only" && f.minDaysPerBooking ? `minimo ${f.minDaysPerBooking} ${f.minDaysPerBooking === 1 ? "giorno" : "giorni"}` : "",
+    f.showExactSpots ? `${f.spotsLeft} posti mostrati` : "",
+  ]
+    .filter(Boolean)
+    .join(" · ");
+
+  const prezzi = f.pricePerWeek
+    ? [`${euro(f.pricePerWeek)} a settimana`, f.shuttlePrice ? `navetta ${euro(f.shuttlePrice)}` : ""].filter(Boolean).join(" · ")
+    : "";
+
+  const servizi = [
+    f.preService.available ? `entrata dalle ${f.preService.time}` : "",
+    f.postService.available ? `uscita fino alle ${f.postService.time}` : "",
+    f.mealOption !== "none" ? MEAL_V2[f.mealOption].toLowerCase() : "",
+    f.dietaryOptions.length ? `${f.dietaryOptions.length} ${f.dietaryOptions.length === 1 ? "dieta" : "diete"}` : "",
+  ].filter(Boolean);
+
+  const giornata = f.schedule
+    .filter((s) => s.label.trim())
+    .slice(0, 2)
+    .map((s) => `${s.time} ${s.label}`.trim());
+
+  const photos = f.galleryUrls.length;
+  const foto = f.coverImageUrl
+    ? `Copertina${photos ? ` e ${photos} ${photos === 1 ? "foto" : "foto"}` : ""}`
+    : photos
+      ? `${photos} foto, senza copertina`
+      : "";
+
+  const centro = [f.accessible ? "accessibile" : "", f.hasBar ? "punto ristoro" : ""].filter(Boolean).join(" · ");
+
+  return {
+    info: desc ? { text: info || "Nome e descrizione" } : { text: "Manca la descrizione", todo: true },
+    iscrizione: { text: iscrizione },
+    prezzi: prezzi ? { text: prezzi } : { text: "Prezzo da indicare", todo: true },
+    servizi: { text: servizi.length ? capitalize(servizi.join(" · ")) : "Nessun servizio extra" },
+    giornata: giornata.length ? { text: giornata.join(", ") + (f.schedule.length > 2 ? "…" : "") } : { text: "Da raccontare (facoltativo)" },
+    luogo: f.address.trim() ? { text: f.address.trim() } : { text: "Indirizzo da indicare", todo: true },
+    foto: foto ? { text: foto } : { text: "Nessuna foto: le famiglie vedono un'immagine generica" },
+    centro: { text: centro ? capitalize(centro) + " · vale per tutto il centro" : "Facoltativo · vale per tutto il centro" },
+  };
+}
+
+function capitalize(s: string): string {
+  return s ? s[0].toUpperCase() + s.slice(1) : s;
+}

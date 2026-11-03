@@ -1,8 +1,7 @@
 "use client";
 
-import { createContext, useContext, useState } from "react";
+import { useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { Activity, CertificationItem, MealOption, ServiceOption, Tag } from "@/lib/types";
 import { categories as mockCategories } from "@/lib/mock-data";
 import { DemoBadge } from "@/components/StatusBadge";
@@ -14,62 +13,6 @@ import {
 } from "@/app/actions/certifications";
 import { uploadCertificationDocument } from "@/lib/storage";
 import CoverAndGalleryUploader from "@/components/CoverAndGalleryUploader";
-import PartnerPageHeader from "@/components/center/PartnerPageHeader";
-import PlaceAutocomplete from "@/components/nextgen/PlaceAutocomplete";
-import { useNextgenToast } from "@/components/nextgen/NextgenToastProvider";
-import { buildFamilyPreviewHref } from "@/lib/center/family-preview";
-import { fullAddressText } from "@/lib/places/search";
-
-// PORTALE CENTRI V2 (29/10/2026). Fabrizio: "anche la sezione attività è
-// vecchio stile". Col guscio nuovo (prop v2, letta in page.tsx) stessa scheda,
-// stessi campi e stessa azione di salvataggio, ma: titolo come le altre
-// sezioni, riquadri e campi del portale centri, "giorni singoli" al posto di
-// "Giorni spot", indirizzo con i suggerimenti (come lato famiglie, coordinate
-// prese dal luogo scelto) e, dopo il salvataggio, ritorno all'elenco con una
-// conferma. Senza guscio tutto come prima: le classi di sempre sono in LEGACY_UI.
-const LEGACY_UI = {
-  input: "w-full rounded-md border border-[#E8EBF0] bg-bg px-3 py-2 text-sm outline-none focus:border-sky",
-  card: "rounded-lg border border-[#E8EBF0] bg-white p-5",
-  cardTitle: "text-sm font-bold text-ink",
-  chip: "rounded-full border px-3 py-1.5 text-xs font-semibold transition-colors",
-  chipOn: "border-sky bg-sky-light text-sky",
-  chipOff: "border-[#E8EBF0] bg-bg text-ink-2",
-  checkRow: "flex items-start gap-2.5 rounded-md bg-bg p-3 text-sm text-ink",
-  label: "mb-1.5 block text-xs font-semibold text-ink-2",
-  intro: "text-xs text-ink-2",
-  smallInput: "rounded-md border border-[#E8EBF0] bg-bg px-2 py-1.5 text-xs outline-none focus:border-sky",
-  serviceBox: "rounded-md bg-bg p-3",
-  serviceInput: "w-full rounded-md border border-[#E8EBF0] bg-white px-2 py-1.5 text-xs outline-none focus:border-sky",
-  softButton: "rounded-md bg-sky-light px-2.5 py-1.5 text-xs font-semibold text-sky",
-  primaryButton: "rounded-md bg-sky px-3.5 py-2 text-xs font-bold text-white disabled:opacity-60",
-  link: "text-xs font-semibold text-sky",
-};
-
-const V2_UI: typeof LEGACY_UI = {
-  input:
-    "w-full min-h-[46px] rounded-xl border border-partner-line bg-white px-3.5 py-2.5 text-[15px] text-ink outline-none focus:border-partner-primary disabled:bg-partner-page",
-  card: "rounded-[18px] border border-partner-line bg-white p-5",
-  cardTitle: "font-poppins text-[17px] font-semibold text-ink",
-  chip: "min-h-[38px] rounded-full border px-3.5 py-1.5 text-[13.5px] font-semibold transition-colors",
-  chipOn: "border-partner-primary bg-partner-soft text-partner-primary",
-  chipOff: "border-partner-line bg-white text-ink-2 hover:bg-partner-page",
-  checkRow:
-    "flex items-start gap-3 rounded-xl border border-partner-line bg-partner-page p-3.5 text-[14.5px] text-ink [&_input]:h-[18px] [&_input]:w-[18px] [&_input]:accent-[#0E5A63]",
-  label: "mb-1.5 block text-[13px] font-semibold text-ink-2",
-  intro: "text-[13.5px] leading-snug text-ink-2",
-  smallInput:
-    "min-h-[42px] rounded-xl border border-partner-line bg-white px-3 py-2 text-[14px] text-ink outline-none focus:border-partner-primary",
-  serviceBox: "rounded-xl border border-partner-line bg-partner-page p-3.5 [&_input[type=checkbox]]:accent-[#0E5A63]",
-  serviceInput:
-    "w-full min-h-[42px] rounded-xl border border-partner-line bg-white px-3 py-2 text-[14px] text-ink outline-none focus:border-partner-primary",
-  softButton:
-    "flex min-h-[38px] items-center gap-1 rounded-full border border-partner-line bg-white px-3.5 text-[13.5px] font-semibold text-partner-primary hover:bg-partner-soft",
-  primaryButton:
-    "min-h-[44px] rounded-full bg-partner-primary px-4 text-[14px] font-bold text-white hover:bg-partner-primary-press disabled:opacity-60",
-  link: "text-[13.5px] font-semibold text-partner-primary",
-};
-
-const UiContext = createContext(LEGACY_UI);
 
 const CERTIFICATION_STATUS_LABEL: Record<CertificationItem["status"], { label: string; cls: string }> = {
   pending: { label: "In verifica", cls: "bg-orange-light text-trama-orange" },
@@ -103,22 +46,6 @@ const bookingModeLabels: Record<"week_only" | "day_only" | "mixed", { label: str
   },
 };
 
-// Stesse tre modalità, parole del portale V2: niente "Giorni spot".
-const bookingModeLabelsV2: typeof bookingModeLabels = {
-  mixed: {
-    label: "Settimane e giorni singoli",
-    hint: "Le famiglie possono prenotare settimane intere oppure solo alcuni giorni.",
-  },
-  week_only: {
-    label: "Solo settimane",
-    hint: "Le famiglie prenotano solo settimane intere.",
-  },
-  day_only: {
-    label: "Solo giorni singoli",
-    hint: "Le famiglie scelgono i giorni dal calendario, senza settimane intere.",
-  },
-};
-
 // Diete/intolleranze che il servizio pranzo dichiara di saper gestire — è una
 // capacità del servizio (dichiarata dal gestore), non un dato sanitario di un
 // bambino specifico: quello resta fuori scope (vedi piano Privacy/Compliance).
@@ -136,21 +63,11 @@ export default function ActivityEditForm({
   activity,
   tags = mockCategories,
   certifications = [],
-  v2 = false,
-  placeSearch = false,
 }: {
   activity: Activity;
   tags?: Tag[];
   certifications?: CertificationItem[];
-  /** Portale centri V2 (guscio acceso). */
-  v2?: boolean;
-  /** Suggerimenti di indirizzo (solo V2). */
-  placeSearch?: boolean;
 }) {
-  const ui = v2 ? V2_UI : LEGACY_UI;
-  const modeLabels = v2 ? bookingModeLabelsV2 : bookingModeLabels;
-  const router = useRouter();
-  const showToast = useNextgenToast();
   const [certList, setCertList] = useState(certifications);
   const [certLabel, setCertLabel] = useState("");
   const [certFile, setCertFile] = useState<File | null>(null);
@@ -333,33 +250,7 @@ export default function ActivityEditForm({
   }%2C${form.lng + 0.01}%2C${form.lat + 0.01}&layer=mapnik&marker=${form.lat}%2C${form.lng}`;
 
   return (
-    <UiContext.Provider value={ui}>
-    <div className={v2 ? "flex max-w-2xl flex-col gap-5 pb-24" : "max-w-2xl"}>
-      {v2 ? (
-        <>
-          {/* "‹" in alto lo mette il guscio (torna alla pagina di prima). */}
-          <PartnerPageHeader
-            title={activity.name || "Attività"}
-            subtitle="Quello che scrivete qui è quello che le famiglie leggono nella scheda."
-            badge={!activity.dbId ? <DemoBadge /> : undefined}
-          />
-          <div className="flex flex-wrap gap-2">
-            <Link
-              href={`/center/activities/${activity.id}/calendar`}
-              className="flex min-h-[44px] items-center gap-1.5 rounded-full bg-partner-primary px-4 text-[14px] font-bold text-white hover:bg-partner-primary-press"
-            >
-              <i className="ti ti-calendar-event text-[17px]" aria-hidden="true" /> Date e posti
-            </Link>
-            <Link
-              href={buildFamilyPreviewHref(activity.id, "attivita")}
-              className="flex min-h-[44px] items-center gap-1.5 rounded-full border border-partner-line bg-white px-4 text-[14px] font-semibold text-partner-primary hover:bg-partner-soft"
-            >
-              <i className="ti ti-eye text-[17px]" aria-hidden="true" /> Come la vedono le famiglie
-            </Link>
-          </div>
-        </>
-      ) : (
-      <>
+    <div className="max-w-2xl">
       <Link
         href="/center/activities"
         className="mb-4 inline-flex items-center gap-1 text-xs font-medium text-sky"
@@ -383,8 +274,6 @@ export default function ActivityEditForm({
           Calendario disponibilità →
         </Link>
       </div>
-      </>
-      )}
 
       <form
         onSubmit={async (e) => {
@@ -428,26 +317,20 @@ export default function ActivityEditForm({
             return;
           }
           setSaved(true);
-          if (v2) {
-            // Come il profilo: salvato, si torna all'elenco con una conferma.
-            showToast("Attività salvata");
-            router.push("/center/activities");
-            router.refresh();
-          }
         }}
-        className={v2 ? "space-y-5" : "space-y-6"}
+        className="space-y-6"
       >
         <div
-          className={`space-y-4 ${ui.card}`}
+          className="space-y-4 rounded-lg border border-[#E8EBF0] bg-white p-5"
           data-spotlight="configure_weeks"
         >
-          <h2 className={ui.cardTitle}>Informazioni generali</h2>
+          <div className="text-sm font-bold text-ink">Informazioni generali</div>
 
           <Field label="Nome attività">
             <input
               value={form.name}
               onChange={(e) => update("name", e.target.value)}
-              className={ui.input}
+              className="w-full rounded-md border border-[#E8EBF0] bg-bg px-3 py-2 text-sm outline-none focus:border-sky"
             />
           </Field>
 
@@ -456,7 +339,7 @@ export default function ActivityEditForm({
               <input
                 value={form.ageRange}
                 onChange={(e) => update("ageRange", e.target.value)}
-                className={ui.input}
+                className="w-full rounded-md border border-[#E8EBF0] bg-bg px-3 py-2 text-sm outline-none focus:border-sky"
               />
             </Field>
             <Field label="Posti rimasti (in evidenza)">
@@ -466,12 +349,12 @@ export default function ActivityEditForm({
                 disabled={!form.showExactSpots}
                 value={form.spotsLeft}
                 onChange={(e) => update("spotsLeft", Number(e.target.value))}
-                className={`${ui.input} disabled:opacity-50`}
+                className="w-full rounded-md border border-[#E8EBF0] bg-bg px-3 py-2 text-sm outline-none focus:border-sky disabled:opacity-50"
               />
             </Field>
           </div>
 
-          <label className={ui.checkRow}>
+          <label className="flex items-start gap-2.5 rounded-md bg-bg p-3 text-sm text-ink">
             <input
               type="checkbox"
               checked={form.showExactSpots}
@@ -494,7 +377,7 @@ export default function ActivityEditForm({
                 min={0}
                 value={form.pricePerWeek}
                 onChange={(e) => update("pricePerWeek", Number(e.target.value))}
-                className={ui.input}
+                className="w-full rounded-md border border-[#E8EBF0] bg-bg px-3 py-2 text-sm outline-none focus:border-sky"
               />
             </Field>
             <Field label="Navetta (€/sett., 0 = non disponibile)">
@@ -503,7 +386,7 @@ export default function ActivityEditForm({
                 min={0}
                 value={form.shuttlePrice}
                 onChange={(e) => update("shuttlePrice", Number(e.target.value))}
-                className={ui.input}
+                className="w-full rounded-md border border-[#E8EBF0] bg-bg px-3 py-2 text-sm outline-none focus:border-sky"
               />
             </Field>
           </div>
@@ -513,24 +396,20 @@ export default function ActivityEditForm({
               value={form.description}
               onChange={(e) => update("description", e.target.value)}
               rows={4}
-              className={ui.input}
+              className="w-full rounded-md border border-[#E8EBF0] bg-bg px-3 py-2 text-sm outline-none focus:border-sky"
             />
           </Field>
         </div>
 
-        <div className={`space-y-4 ${ui.card}`}>
-          <h2 className={ui.cardTitle}>Modalità di prenotazione</h2>
-          {v2 ? (
-            <p className={ui.intro}>Come le famiglie possono prenotare. Le date e i posti si scelgono in &quot;Date e posti&quot;.</p>
-          ) : (
-          <p className={ui.intro}>
+        <div className="space-y-4 rounded-lg border border-[#E8EBF0] bg-white p-5">
+          <div className="text-sm font-bold text-ink">Modalità di prenotazione</div>
+          <p className="text-xs text-ink-2">
             Scegli come i genitori possono prenotare questa attività. Il calendario
             disponibilità (Giorni spot) resta configurabile da qui sotto — questa scelta
             determina solo quali modalità sono ammesse in ricerca/prenotazione.
           </p>
-          )}
           <div className="flex flex-wrap gap-2">
-            {(Object.entries(modeLabels) as [keyof typeof bookingModeLabels, { label: string; hint: string }][]).map(
+            {(Object.entries(bookingModeLabels) as [keyof typeof bookingModeLabels, { label: string; hint: string }][]).map(
               ([value, { label }]) => {
                 const active = form.bookingMode === value;
                 return (
@@ -538,7 +417,9 @@ export default function ActivityEditForm({
                     key={value}
                     type="button"
                     onClick={() => update("bookingMode", value)}
-                    className={`${ui.chip} ${active ? ui.chipOn : ui.chipOff}`}
+                    className={`rounded-full border px-3 py-1.5 text-xs font-semibold transition-colors ${
+                      active ? "border-sky bg-sky-light text-sky" : "border-[#E8EBF0] bg-bg text-ink-2"
+                    }`}
                   >
                     {label}
                   </button>
@@ -546,10 +427,10 @@ export default function ActivityEditForm({
               }
             )}
           </div>
-          <p className={v2 ? "text-[13px] text-ink-2" : "text-[11px] text-ink-3"}>{modeLabels[form.bookingMode].hint}</p>
+          <p className="text-[11px] text-ink-3">{bookingModeLabels[form.bookingMode].hint}</p>
 
           {form.bookingMode !== "week_only" && (
-            <Field label={v2 ? "Minimo di giorni per prenotazione (facoltativo)" : "Minimo giorni per prenotazione a Giorni spot (facoltativo)"}>
+            <Field label="Minimo giorni per prenotazione a Giorni spot (facoltativo)">
               <input
                 type="number"
                 min={0}
@@ -558,15 +439,15 @@ export default function ActivityEditForm({
                 onChange={(e) =>
                   update("minDaysPerBooking", e.target.value === "" ? null : Number(e.target.value))
                 }
-                className={ui.input}
+                className="w-full rounded-md border border-[#E8EBF0] bg-bg px-3 py-2 text-sm outline-none focus:border-sky"
               />
             </Field>
           )}
         </div>
 
-        <div className={`space-y-4 ${ui.card}`}>
-          <h2 className={ui.cardTitle}>Immagini</h2>
-          <p className={ui.intro}>
+        <div className="space-y-4 rounded-lg border border-[#E8EBF0] bg-white p-5">
+          <div className="text-sm font-bold text-ink">Immagini</div>
+          <p className="text-xs text-ink-2">
             Copertina e galleria mostrate ai genitori nella scheda attività — se non carichi una
             copertina resta il gradiente colorato di default.
           </p>
@@ -579,9 +460,9 @@ export default function ActivityEditForm({
           />
         </div>
 
-        <div className={`space-y-3 ${ui.card}`}>
-          <h2 className={ui.cardTitle}>Tag</h2>
-          <p className={ui.intro}>
+        <div className="space-y-3 rounded-lg border border-[#E8EBF0] bg-white p-5">
+          <div className="text-sm font-bold text-ink">Tag</div>
+          <p className="text-xs text-ink-2">
             Seleziona uno o più tag: aiutano i genitori a trovare la tua attività nella ricerca.
             La lista dei tag disponibili è gestita dall&apos;Admin piattaforma.
           </p>
@@ -593,7 +474,11 @@ export default function ActivityEditForm({
                   key={c.id}
                   type="button"
                   onClick={() => toggleTag(c.id)}
-                  className={`flex items-center gap-1.5 ${ui.chip} ${active ? ui.chipOn : ui.chipOff}`}
+                  className={`flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-semibold transition-colors ${
+                    active
+                      ? "border-sky bg-sky-light text-sky"
+                      : "border-[#E8EBF0] bg-bg text-ink-2"
+                  }`}
                 >
                   <span>{c.emoji}</span>
                   {c.label}
@@ -603,9 +488,9 @@ export default function ActivityEditForm({
           </div>
         </div>
 
-        <div className={`space-y-3 ${ui.card}`}>
-          <h2 className={ui.cardTitle}>Certificazioni servizio</h2>
-          <p className={ui.intro}>
+        <div className="space-y-3 rounded-lg border border-[#E8EBF0] bg-white p-5">
+          <div className="text-sm font-bold text-ink">Certificazioni servizio</div>
+          <p className="text-xs text-ink-2">
             Certificazioni specifiche del servizio esposto (es. &quot;Istruttori certificati FISE
             per equitazione&quot;, &quot;Allenatrici FIG&quot;) — non un elenco fisso, scrivi
             l&apos;etichetta che descrive la certificazione. Ogni richiesta viene verificata da un
@@ -616,7 +501,7 @@ export default function ActivityEditForm({
             {certList.map((cert) => (
               <div
                 key={cert.id}
-                className={`flex flex-wrap items-center gap-2.5 ${ui.serviceBox}`}
+                className="flex flex-wrap items-center gap-2.5 rounded-md bg-bg p-3"
               >
                 <div className="min-w-0 flex-1">
                   <div className="text-sm font-semibold text-ink">{cert.label}</div>
@@ -628,7 +513,7 @@ export default function ActivityEditForm({
                   <button
                     type="button"
                     onClick={() => viewCertificationDocument(cert.documentPath!)}
-                    className={ui.link}
+                    className="text-xs font-semibold text-sky"
                   >
                     <i className="ti ti-file-text" /> Documento
                   </button>
@@ -651,16 +536,16 @@ export default function ActivityEditForm({
               </div>
             ))}
             {certList.length === 0 && (
-              <p className={ui.intro}>Nessuna certificazione richiesta finora.</p>
+              <p className="text-xs text-ink-2">Nessuna certificazione richiesta finora.</p>
             )}
           </div>
 
-          <div className={`grid gap-2 border border-dashed p-3 sm:grid-cols-[1fr_auto_auto] ${v2 ? "rounded-xl border-partner-line" : "rounded-md border-[#E8EBF0]"}`}>
+          <div className="grid gap-2 rounded-md border border-dashed border-[#E8EBF0] p-3 sm:grid-cols-[1fr_auto_auto]">
             <input
               value={certLabel}
               onChange={(e) => setCertLabel(e.target.value)}
               placeholder="Es. Istruttori certificati FISE per equitazione"
-              className={ui.input}
+              className="w-full rounded-md border border-[#E8EBF0] bg-bg px-3 py-2 text-sm outline-none focus:border-sky"
             />
             <input
               type="file"
@@ -672,7 +557,7 @@ export default function ActivityEditForm({
               type="button"
               onClick={() => submitCertification()}
               disabled={certSaving || !certLabel.trim()}
-              className={ui.primaryButton}
+              className="rounded-md bg-sky px-3.5 py-2 text-xs font-bold text-white disabled:opacity-60"
             >
               {certSaving ? "Invio…" : "Invia richiesta"}
             </button>
@@ -685,10 +570,10 @@ export default function ActivityEditForm({
         </div>
 
         <div
-          className={`space-y-4 ${ui.card}`}
+          className="space-y-4 rounded-lg border border-[#E8EBF0] bg-white p-5"
           data-spotlight="configure_pricing"
         >
-          <h2 className={ui.cardTitle}>Servizi extra e pasto</h2>
+          <div className="text-sm font-bold text-ink">Servizi extra e pasto</div>
 
           <div className="grid grid-cols-2 gap-4">
             <ServiceField
@@ -709,7 +594,7 @@ export default function ActivityEditForm({
             <select
               value={form.mealOption}
               onChange={(e) => update("mealOption", e.target.value as MealOption)}
-              className={ui.input}
+              className="w-full rounded-md border border-[#E8EBF0] bg-bg px-3 py-2 text-sm outline-none focus:border-sky"
             >
               {(Object.entries(mealLabels) as [MealOption, string][]).map(([value, label]) => (
                 <option key={value} value={value}>
@@ -726,7 +611,7 @@ export default function ActivityEditForm({
                 min={0}
                 value={form.mealPriceExtra}
                 onChange={(e) => update("mealPriceExtra", Number(e.target.value))}
-                className={ui.input}
+                className="w-full rounded-md border border-[#E8EBF0] bg-bg px-3 py-2 text-sm outline-none focus:border-sky"
               />
               <p className="mt-1 text-[11px] text-ink-3">
                 Sopra 0€: il genitore la sceglie esplicitamente in prenotazione (come pre/post-scuola).
@@ -735,7 +620,7 @@ export default function ActivityEditForm({
             </Field>
           )}
 
-          <label className={ui.checkRow}>
+          <label className="flex items-start gap-2.5 rounded-md bg-bg p-3 text-sm text-ink">
             <input
               type="checkbox"
               checked={form.hasBar}
@@ -752,7 +637,7 @@ export default function ActivityEditForm({
             </span>
           </label>
 
-          <label className={ui.checkRow}>
+          <label className="flex items-start gap-2.5 rounded-md bg-bg p-3 text-sm text-ink">
             <input
               type="checkbox"
               checked={form.accessible}
@@ -774,7 +659,7 @@ export default function ActivityEditForm({
                 value={form.accessibleNote}
                 onChange={(e) => update("accessibleNote", e.target.value)}
                 placeholder="Es. Rampa d'accesso, bagno attrezzato"
-                className={ui.input}
+                className="w-full rounded-md border border-[#E8EBF0] bg-bg px-3 py-2 text-sm outline-none focus:border-sky"
               />
             </Field>
           )}
@@ -795,7 +680,11 @@ export default function ActivityEditForm({
                     key={option}
                     type="button"
                     onClick={() => toggleDietaryOption(option)}
-                    className={`${ui.chip} ${active ? ui.chipOn : ui.chipOff}`}
+                    className={`rounded-full border px-3 py-1.5 text-xs font-semibold transition-colors ${
+                      active
+                        ? "border-sky bg-sky-light text-sky"
+                        : "border-[#E8EBF0] bg-bg text-ink-2"
+                    }`}
                   >
                     {option}
                   </button>
@@ -805,13 +694,13 @@ export default function ActivityEditForm({
           </div>
         </div>
 
-        <div className={`space-y-3 ${ui.card}`}>
+        <div className="space-y-3 rounded-lg border border-[#E8EBF0] bg-white p-5">
           <div className="flex items-center justify-between">
-            <h2 className={ui.cardTitle}>Agenda della giornata</h2>
+            <div className="text-sm font-bold text-ink">Agenda della giornata</div>
             <button
               type="button"
               onClick={addScheduleRow}
-              className={ui.softButton}
+              className="rounded-md bg-sky-light px-2.5 py-1.5 text-xs font-semibold text-sky"
             >
               + Aggiungi
             </button>
@@ -824,13 +713,13 @@ export default function ActivityEditForm({
                   value={s.time}
                   onChange={(e) => updateScheduleRow(i, { time: e.target.value })}
                   placeholder="08:00"
-                  className={`w-20 flex-shrink-0 ${ui.smallInput}`}
+                  className="w-20 flex-shrink-0 rounded-md border border-[#E8EBF0] bg-bg px-2 py-1.5 text-xs outline-none focus:border-sky"
                 />
                 <input
                   value={s.label}
                   onChange={(e) => updateScheduleRow(i, { label: e.target.value })}
                   placeholder="Attività"
-                  className={`min-w-0 flex-1 ${ui.smallInput}`}
+                  className="flex-1 rounded-md border border-[#E8EBF0] bg-bg px-2 py-1.5 text-xs outline-none focus:border-sky"
                 />
                 <button
                   type="button"
@@ -842,65 +731,14 @@ export default function ActivityEditForm({
               </div>
             ))}
             {form.schedule.length === 0 && (
-              <p className={ui.intro}>Nessuna voce in agenda — aggiungine una.</p>
+              <p className="text-xs text-ink-2">Nessuna voce in agenda — aggiungine una.</p>
             )}
           </div>
         </div>
 
-        {v2 ? (
-          <div className={`space-y-3 ${ui.card}`} id="posizione">
-            <h2 className={ui.cardTitle}>Dove si svolge</h2>
-            <p className={ui.intro}>
-              Scrivete il nome del posto o via e numero, poi sceglietelo dai suggerimenti: il numero resta e la mappa delle famiglie si aggiorna da sola.
-            </p>
-            <Field label="Indirizzo">
-              <PlaceAutocomplete
-                id="activity-address"
-                value={form.address}
-                onChange={(text) => update("address", text)}
-                onPick={(place) => {
-                  update("lat", Number(place.lat.toFixed(5)));
-                  update("lng", Number(place.lng.toFixed(5)));
-                }}
-                pickText={(place) => fullAddressText(place, form.address)}
-                enabled={placeSearch}
-                placeholder="Es. Via Padova 21, Milano"
-                className={ui.input}
-              />
-            </Field>
-            <div className="overflow-hidden rounded-xl border border-partner-line">
-              <iframe key={mapSrc} title="Anteprima mappa" src={mapSrc} className="h-48 w-full" loading="lazy" />
-            </div>
-            <details className="text-[13px] text-ink-2">
-              <summary className="cursor-pointer select-none py-1 font-semibold text-partner-primary">
-                Il punto sulla mappa non è giusto?
-              </summary>
-              <div className="mt-2 space-y-3">
-                <button
-                  type="button"
-                  onClick={useMyLocation}
-                  disabled={locating}
-                  className={ui.softButton}
-                >
-                  <i className={`ti ${locating ? "ti-loader-2 animate-spin" : "ti-map-pin"} text-[16px]`} aria-hidden="true" />
-                  {locating ? "Localizzo…" : "Usa la posizione di questo dispositivo"}
-                </button>
-                {locateError && <p className="text-[12.5px] text-[#B4361F]">{locateError}</p>}
-                <div className="grid grid-cols-2 gap-3">
-                  <Field label="Latitudine">
-                    <input type="number" step="0.0001" value={form.lat} onChange={(e) => update("lat", Number(e.target.value))} className={ui.input} />
-                  </Field>
-                  <Field label="Longitudine">
-                    <input type="number" step="0.0001" value={form.lng} onChange={(e) => update("lng", Number(e.target.value))} className={ui.input} />
-                  </Field>
-                </div>
-              </div>
-            </details>
-          </div>
-        ) : (
-        <div className={`space-y-3 ${ui.card}`}>
+        <div className="space-y-3 rounded-lg border border-[#E8EBF0] bg-white p-5">
           <div className="flex items-center justify-between">
-            <h2 className={ui.cardTitle}>Posizione</h2>
+            <div className="text-sm font-bold text-ink">Posizione</div>
             <button
               type="button"
               onClick={useMyLocation}
@@ -916,7 +754,7 @@ export default function ActivityEditForm({
             <input
               value={form.address}
               onChange={(e) => update("address", e.target.value)}
-              className={ui.input}
+              className="w-full rounded-md border border-[#E8EBF0] bg-bg px-3 py-2 text-sm outline-none focus:border-sky"
             />
           </Field>
           <div className="grid grid-cols-2 gap-4">
@@ -926,7 +764,7 @@ export default function ActivityEditForm({
                 step="0.0001"
                 value={form.lat}
                 onChange={(e) => update("lat", Number(e.target.value))}
-                className={ui.input}
+                className="w-full rounded-md border border-[#E8EBF0] bg-bg px-3 py-2 text-sm outline-none focus:border-sky"
               />
             </Field>
             <Field label="Longitudine">
@@ -935,7 +773,7 @@ export default function ActivityEditForm({
                 step="0.0001"
                 value={form.lng}
                 onChange={(e) => update("lng", Number(e.target.value))}
-                className={ui.input}
+                className="w-full rounded-md border border-[#E8EBF0] bg-bg px-3 py-2 text-sm outline-none focus:border-sky"
               />
             </Field>
           </div>
@@ -954,34 +792,6 @@ export default function ActivityEditForm({
           </p>
         </div>
 
-        )}
-
-        {v2 ? (
-          <div
-            className="sticky bottom-[calc(76px+env(safe-area-inset-bottom))] z-20 flex flex-wrap items-center gap-3 rounded-[18px] border border-partner-line bg-white/95 p-3 shadow-[0_6px_24px_rgba(14,90,99,0.10)] backdrop-blur md:bottom-4"
-            data-testid="activity-save-bar"
-          >
-            <button
-              type="submit"
-              disabled={saving}
-              data-spotlight="publish"
-              className="min-h-[48px] flex-1 rounded-full bg-partner-primary px-5 text-[15px] font-bold text-white hover:bg-partner-primary-press disabled:opacity-60 sm:flex-none"
-            >
-              {saving ? "Salvo…" : "Salva modifiche"}
-            </button>
-            <Link href="/center/activities" className="min-h-[44px] px-2 py-3 text-[14px] font-semibold text-ink-2">
-              Annulla
-            </Link>
-            {saveError && (
-              <p role="alert" className="w-full text-[13px] font-medium text-[#B4361F]">
-                {saveError}
-              </p>
-            )}
-            {saved && !saveError && !activity.dbId && (
-              <p className="w-full text-[13px] text-ink-2">Salvato (demo), non viene registrato.</p>
-            )}
-          </div>
-        ) : (
         <div className="flex items-center gap-3 rounded-lg border border-[#E8EBF0] bg-white p-5">
           <button
             type="submit"
@@ -1000,18 +810,15 @@ export default function ActivityEditForm({
             </span>
           )}
         </div>
-        )}
       </form>
     </div>
-    </UiContext.Provider>
   );
 }
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
-  const ui = useContext(UiContext);
   return (
     <div>
-      <label className={ui.label}>{label}</label>
+      <label className="mb-1.5 block text-xs font-semibold text-ink-2">{label}</label>
       {children}
     </div>
   );
@@ -1028,9 +835,8 @@ function ServiceField({
   onChange: (patch: Partial<ServiceOption>) => void;
   timeLabel: string;
 }) {
-  const ui = useContext(UiContext);
   return (
-    <div className={ui.serviceBox}>
+    <div className="rounded-md bg-bg p-3">
       <label className="mb-2 flex items-center justify-between text-xs font-semibold text-ink">
         {title}
         <input
@@ -1048,7 +854,7 @@ function ServiceField({
               type="time"
               value={value.time}
               onChange={(e) => onChange({ time: e.target.value })}
-              className={ui.serviceInput}
+              className="w-full rounded-md border border-[#E8EBF0] bg-white px-2 py-1.5 text-xs outline-none focus:border-sky"
             />
           </div>
           <div>
@@ -1058,7 +864,7 @@ function ServiceField({
               min={0}
               value={value.priceExtra}
               onChange={(e) => onChange({ priceExtra: Number(e.target.value) })}
-              className={ui.serviceInput}
+              className="w-full rounded-md border border-[#E8EBF0] bg-white px-2 py-1.5 text-xs outline-none focus:border-sky"
             />
           </div>
         </div>

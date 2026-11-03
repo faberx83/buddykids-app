@@ -4,6 +4,8 @@ import { getActivityBySlug } from "@/lib/data/activities";
 import { getTags } from "@/lib/data/tags";
 import { getCertificationsForActivityGestore } from "@/lib/data/certifications";
 import { partnerShellEnabledForCurrentUser } from "@/lib/centers/partner-v2-flag";
+import ActivityEditV2 from "@/components/center/ActivityEditV2";
+import { getActivityDateSummaries, EMPTY_DATE_SUMMARY } from "@/lib/data/activity-dates";
 
 // Forza il render dinamico per-richiesta: subito dopo "Crea attività" si
 // arriva qui via router.push con uno slug appena inserito su Supabase — la
@@ -26,8 +28,13 @@ export default async function CenterActivityEditPage({
     partnerShellEnabledForCurrentUser(),
   ]);
 
-  // Portale centri V2 (29/10/2026): scheda ridisegnata col guscio, indirizzo
-  // con i suggerimenti (la ricerca luoghi è aperta ai gestori col guscio,
-  // vedi app/api/places/search/route.ts).
-  return <ActivityEditForm activity={activity} tags={tags} certifications={certifications} v2={v2} placeSearch={v2} />;
+  // Portale centri V2 (30/10/2026, tavola 7): la scheda è un elenco di righe,
+  // ogni riga apre solo i suoi campi (components/center/ActivityEditV2.tsx);
+  // indirizzo con i suggerimenti (ricerca luoghi aperta ai gestori col
+  // guscio, app/api/places/search/route.ts). Senza guscio il modulo di sempre.
+  if (v2) {
+    const dates = activity.dbId ? ((await getActivityDateSummaries([activity.dbId]))[activity.dbId] ?? EMPTY_DATE_SUMMARY) : EMPTY_DATE_SUMMARY;
+    return <ActivityEditV2 activity={activity} tags={tags} certifications={certifications} dates={dates} placeSearch />;
+  }
+  return <ActivityEditForm activity={activity} tags={tags} certifications={certifications} />;
 }

@@ -57,7 +57,7 @@ test.describe("Affondo V2 — anteprima famiglia sulla scheda V2", () => {
   test("PA-04 i link all'anteprima del portale V2 dicono da dove partono", () => {
     expect(read("components/center/ActivitiesV2.tsx")).toContain('buildFamilyPreviewHref(a.slug, "attivita")');
     expect(read("app/center/centro/page.tsx")).toContain('buildFamilyPreviewHref(previewSlug, "centro")');
-    expect(read("app/center/activities/[id]/ActivityEditForm.tsx")).toContain('buildFamilyPreviewHref(activity.id, "attivita")');
+    expect(read("components/center/ActivityEditV2.tsx")).toContain('buildFamilyPreviewHref(activity.id, "attivita")');
   });
 });
 
@@ -89,29 +89,31 @@ test.describe("Affondo V2 — segnalazioni come lato famiglie", () => {
 });
 
 test.describe("Affondo V2 — Attività e Profilo", () => {
-  test("PA-08 scheda attività V2: titolo del portale, campi nuovi, parole senza 'Giorni spot'", () => {
-    const f = read("app/center/activities/[id]/ActivityEditForm.tsx");
-    expect(f).toContain("const ui = v2 ? V2_UI : LEGACY_UI;");
-    expect(f).toContain("<PartnerPageHeader");
-    expect(f).toContain("const bookingModeLabelsV2");
-    const v2Labels = f.slice(f.indexOf("const bookingModeLabelsV2"), f.indexOf("// Diete/intolleranze"));
-    expect(v2Labels).not.toMatch(/Giorni spot/);
-    expect(v2Labels).toContain("Solo giorni singoli");
-    // senza guscio le parole e le classi di prima
-    expect(f).toContain('label: "Settimana e Giorni spot"');
-    expect(f).toContain('input: "w-full rounded-md border border-[#E8EBF0] bg-bg px-3 py-2 text-sm outline-none focus:border-sky"');
-    expect(read("app/center/activities/[id]/page.tsx")).toContain("v2={v2} placeSearch={v2}");
+  // 30/10/2026, Fabrizio: "Profilo e attività sono ancora vecchio style" → tavola 7 del mock:
+  // righe con la sintesi, ogni riga apre solo i suoi campi (components/center/ActivityEditV2.tsx).
+  test("PA-08 scheda attività V2: righe con sintesi, un foglio per sezione; modulo di prima senza guscio", () => {
+    const page = read("app/center/activities/[id]/page.tsx");
+    expect(page).toContain("<ActivityEditV2");
+    expect(page).toContain("<ActivityEditForm activity={activity} tags={tags} certifications={certifications} />");
+    const v2 = read("components/center/ActivityEditV2.tsx");
+    expect(v2).toContain("ACTIVITY_SECTIONS.map");
+    expect(v2).toContain("<PartnerSheet");
+    expect(v2).toContain('data-testid="activity-dates-row"');
+    // chiudere senza salvare torna alla versione salvata
+    expect(v2).toContain("function closeSection() {\n    setForm(saved);");
+    expect(code(read("lib/centers/activity-edit-v2.ts"))).not.toMatch(/Giorni spot/);
+    // il modulo di prima è tornato quello del 29/10 mattina (nessun ramo V2 dentro)
+    expect(read("app/center/activities/[id]/ActivityEditForm.tsx")).not.toContain("V2_UI");
   });
 
-  test("PA-09 indirizzo attività con i suggerimenti, coordinate dal luogo scelto; salvato → elenco con conferma", () => {
-    const f = read("app/center/activities/[id]/ActivityEditForm.tsx");
-    expect(f).toContain("<PlaceAutocomplete");
-    expect(f).toContain('update("lat", Number(place.lat.toFixed(5)));');
-    expect(f).toContain("enabled={placeSearch}");
-    expect(f).toContain("pickText={(place) => fullAddressText(place, form.address)}");
-    expect(f).toContain('showToast("Attività salvata");');
-    expect(f).toContain('router.push("/center/activities");');
-    expect(f).toContain('data-testid="activity-save-bar"');
+  test("PA-09 luogo con suggerimenti e coordinate dal luogo scelto; salvato → conferma e dati aggiornati", () => {
+    const v2 = read("components/center/ActivityEditV2.tsx");
+    expect(v2).toContain("<PlaceAutocomplete");
+    expect(v2).toContain('update("lat", Number(place.lat.toFixed(5)));');
+    expect(v2).toContain("pickText={(place) => fullAddressText(place, form.address)}");
+    expect(v2).toContain("updateActivityAction({");
+    expect(v2).toContain('showToast("Salvato");');
+    expect(v2).toContain("router.refresh();");
   });
 
   test("PA-10 ricerca luoghi aperta ai gestori col guscio, per le famiglie decide sempre la release", () => {
@@ -237,5 +239,44 @@ test.describe("Affondo V2 — indirizzo con il numero civico", () => {
     expect(fullAddressText(via, "via padova 21")).toBe("Via Padova 21, 20153 Milano");
     expect(fullAddressText(posto, "oratorio")).toBe("Oratorio San Luigi, Via Roma 5, 20100 Milano");
     expect(fullAddressText(civico, "")).toBe("Via Padova 21, 20127 Milano");
+  });
+});
+
+test.describe("Attività V2 — sintesi delle righe (logica pura)", () => {
+  test("PA-18 ogni riga dice cosa c'è o cosa manca", async () => {
+    const { sectionSummaries, datesSummary } = await import("../../lib/centers/activity-edit-v2");
+    const base = {
+      name: "Pomeriggi",
+      ageRange: "6-11",
+      description: "",
+      tagIds: ["t1"],
+      bookingMode: "day_only" as const,
+      minDaysPerBooking: 2,
+      spotsLeft: 0,
+      showExactSpots: false,
+      pricePerWeek: 0,
+      shuttlePrice: 0,
+      preService: { available: true, time: "07:30", priceExtra: 0 },
+      postService: { available: false, time: "18:00", priceExtra: 0 },
+      mealOption: "packed" as const,
+      mealPriceExtra: 0,
+      dietaryOptions: [],
+      schedule: [],
+      address: "",
+      coverImageUrl: null,
+      galleryUrls: [],
+      hasBar: true,
+      accessible: false,
+    };
+    const s = sectionSummaries(base, (id) => (id === "t1" ? "Arte" : undefined));
+    expect(s.info).toEqual({ text: "Manca la descrizione", todo: true });
+    expect(s.iscrizione.text).toBe("Solo giorni singoli · minimo 2 giorni");
+    expect(s.prezzi.todo).toBe(true);
+    expect(s.servizi.text).toBe("Entrata dalle 07:30 · pranzo al sacco");
+    expect(s.luogo.todo).toBe(true);
+    expect(s.centro.text).toBe("Punto ristoro · vale per tutto il centro");
+    expect(sectionSummaries({ ...base, description: "Laboratori", address: "Via Padova 21" }, () => "Arte").info.text).toBe("6-11 anni · Arte");
+    expect(datesSummary({ openDays: 0, weeks: 0, next: null, last: null }).missing).toBe(true);
+    expect(datesSummary({ openDays: 2, weeks: 0, next: "2026-12-07", last: "2026-12-08" }).text).toBe("Prossimo lun 7 dic · 2 giorni aperti");
   });
 });
