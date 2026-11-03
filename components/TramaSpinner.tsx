@@ -47,6 +47,8 @@ const WORDMARK: Record<"color" | "navy" | "white", string> = {
 /** Schermo del caricamento (famiglie e Partner): a tutto schermo, sfondo delle pagine. */
 export const LOADER_SCREEN = "fixed inset-0 z-[80] flex items-center justify-center bg-trama-page";
 /** Admin: stesso schermo sul fondo scuro dell'app Admin. */
+/** Portale centri (03/11/2026): sfondo della palette petrolio e senape. */
+export const LOADER_SCREEN_PARTNER = "fixed inset-0 z-[80] flex items-center justify-center bg-partner-page";
 export const LOADER_SCREEN_ADMIN = "fixed inset-0 z-[80] flex items-center justify-center bg-[#1A1D2E]";
 
 export default function TramaSpinner({
@@ -56,6 +58,7 @@ export default function TramaSpinner({
   wordmark = true,
   thread = true,
   still = false,
+  palette = "family",
 }: {
   size?: number;
   tone?: "color" | "navy" | "white";
@@ -65,6 +68,12 @@ export default function TramaSpinner({
   thread?: boolean;
   /** true = logo fermo (splash d'apertura, che dura meno di un giro dell'animazione). */
   still?: boolean;
+  /**
+   * Colori del filo che scorre sotto la scritta. 03/11/2026, Fabrizio: "nel
+   * loader del portale centri dovresti cambiare il colore della barra con i
+   * colori del centro": "partner" = petrolio e senape (come il filo dei titoli).
+   */
+  palette?: "family" | "partner";
 }) {
   const width = Math.round(size * 0.8);
   return (
@@ -82,7 +91,9 @@ export default function TramaSpinner({
       {thread && (
         <span
           aria-hidden="true"
-          className={`trama-loader-thread mt-[18px] block h-1 overflow-hidden rounded-full ${tone === "white" ? "bg-white/15" : "bg-[#ECE8E0]"}`}
+          className={`trama-loader-thread mt-[18px] block h-1 overflow-hidden rounded-full ${
+            palette === "partner" ? "trama-loader-thread--partner bg-partner-line" : tone === "white" ? "bg-white/15" : "bg-[#ECE8E0]"
+          }`}
           style={{ width }}
         >
           <span className="block h-full w-full rounded-full" />

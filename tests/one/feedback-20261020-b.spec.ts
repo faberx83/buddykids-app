@@ -61,9 +61,13 @@ test.describe("TRAMA — Loader e ritorno alla Home [no browser]", () => {
     expect(s).toContain("const width = Math.round(size * 0.8);");
     expect(s).not.toContain("trama-loader-glow");
     expect(s).toContain('export const LOADER_SCREEN = "fixed inset-0 z-[80] flex items-center justify-center bg-trama-page";');
-    for (const p of ["app/nextgen/loading.tsx", "app/(main)/loading.tsx", "app/center/loading.tsx"]) {
+    for (const p of ["app/nextgen/loading.tsx", "app/(main)/loading.tsx"]) {
       expect(read(p), p).toContain("<div className={LOADER_SCREEN}>");
     }
+    // 03/11/2026, Fabrizio: il loader del portale centri nei colori del centro (sfondo e filo).
+    expect(read("app/center/loading.tsx")).toContain("<div className={LOADER_SCREEN_PARTNER}>");
+    expect(read("app/center/loading.tsx")).toContain('<TramaSpinner size={220} tone="navy" palette="partner" />');
+    expect(s).toContain('export const LOADER_SCREEN_PARTNER = "fixed inset-0 z-[80] flex items-center justify-center bg-partner-page";');
     expect(read("app/admin/loading.tsx")).toContain("<div className={LOADER_SCREEN_ADMIN}>");
     expect(read("app/nextgen/loading.tsx")).toContain("<TramaSpinner size={220} />");
     // Lo splash d'apertura usa lo stesso disegno, sullo stesso sfondo.
