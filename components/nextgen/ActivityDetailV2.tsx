@@ -24,7 +24,8 @@ import type { BookedDayDecision } from "@/lib/data/activity-days";
 import ActivityVisual from "@/components/nextgen/ActivityVisual";
 import TramaThread from "@/components/nextgen/TramaThread";
 import ContactCenterButton from "@/components/ContactCenterButton";
-import { dailyRateFor, dayPrice } from "@/lib/day-pricing";
+import { dayPrice } from "@/lib/day-pricing";
+import { activityPrice, formatEuro } from "@/lib/nextgen/activity-price";
 import { navigationDestination, placeLine, type ActivityService } from "@/lib/nextgen/activity-detail-v2";
 import { longDateIt, shortRangeIt, unavailableCtaLabel, type ActivityDateSummary } from "@/lib/nextgen/parent-ux-fix";
 
@@ -120,8 +121,9 @@ export default function ActivityDetailV2({
     activity.hours ? { icon: "ti-clock", text: activity.hours } : null,
   ].filter(Boolean) as { icon: string; text: string }[];
   const daysSelected = selectedDayDates.length;
-  // UX-PARENT-025: solo con le correzioni UX (dateSummary presente) e un'attività solo a giornate.
-  const dayOnlyPriced = Boolean(dateSummary) && activity.bookingMode === "day_only";
+  // UX-PARENT-025 / UX-CROSS-001 (03/11/2026): il prezzo con la stessa regola delle card
+  // (lib/nextgen/activity-price.ts): un'attività solo a giornate ha il prezzo al giorno.
+  const price = activityPrice(activity);
   const spotsText = !activityAvailable
     ? dateSummary
       ? unavailableCtaLabel(dateSummary)
@@ -310,7 +312,7 @@ export default function ActivityDetailV2({
                 <dt className="text-[14px] text-ink-2">Prezzo</dt>
                 {/* 29/10/2026 (UX-PARENT-025): un'attività solo a giornate ha il prezzo al giorno. */}
                 <dd className="text-[14.5px] font-bold text-trama-navy">
-                  {dayOnlyPriced ? `€${dailyRateFor(activity.pricePerWeek)} al giorno` : `€${activity.pricePerWeek} a settimana`}
+                  {price.label}
                 </dd>
               </div>
               {/* Correzioni dal test UX (21/10/2026), UX-PARENT-003: le date
@@ -490,10 +492,10 @@ export default function ActivityDetailV2({
       <div className="flex flex-shrink-0 items-center justify-between gap-3 border-t border-trama-line bg-white px-5 pb-[calc(12px+env(safe-area-inset-bottom,0px))] pt-3">
         <div className="min-w-0">
           <div className="text-[20px] font-bold text-trama-navy">
-            €{daysSelected > 0 ? daysCost : dayOnlyPriced ? dailyRateFor(activity.pricePerWeek) : activity.pricePerWeek}
+            {daysSelected > 0 ? formatEuro(daysCost) : price.amount === null ? "" : formatEuro(price.amount)}
           </div>
           <div className="text-[12px] text-ink-2">
-            {daysSelected > 0 ? (daysSelected === 1 ? "1 giorno" : `${daysSelected} giorni`) : dayOnlyPriced ? "al giorno" : "a settimana"}
+            {daysSelected > 0 ? (daysSelected === 1 ? "1 giorno" : `${daysSelected} giorni`) : price.amount === null ? price.label : price.unit}
           </div>
         </div>
         {preview ? (

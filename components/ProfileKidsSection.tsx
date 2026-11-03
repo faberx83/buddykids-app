@@ -236,9 +236,16 @@ export default function ProfileKidsSection({
   }
 
   async function handleAvatarUploaded(kidId: string, url: string) {
+    // 03/11/2026 (REV-PARENT-002): se il salvataggio non riesce si torna alla foto di prima e
+    // l'errore arriva al pulsante (niente "Foto aggiornata" falso).
+    const before = kids.find((k) => k.id === kidId)?.avatarUrl;
     setKids((prev) => prev.map((k) => (k.id === kidId ? { ...k, avatarUrl: url } : k)));
     if (isSupabaseConfigured) {
-      await updateKidAvatarAction(kidId, url);
+      const res = await updateKidAvatarAction(kidId, url).catch(() => ({ error: "Non siamo riusciti a salvare la foto, riprova." }));
+      if (res.error) {
+        setKids((prev) => prev.map((k) => (k.id === kidId ? { ...k, avatarUrl: before } : k)));
+        throw new Error(res.error);
+      }
     }
   }
 

@@ -8,7 +8,6 @@ import { createClient } from "@/lib/supabase/server";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
 import { resolveFeatureFlag, resolveFeatureFlagVisibility } from "@/lib/feature-flags/resolve";
 import { generateCorrelationId } from "@/lib/telemetry/correlation";
-import { PARENT_UX_FIX_FLAG } from "@/lib/nextgen/parent-ux-fix";
 import PhoneShell from "@/components/PhoneShell";
 import BookingClient from "./BookingClient";
 
@@ -43,8 +42,6 @@ export default async function BookingPage({
   // stessa visibilità di Prenotazioni V2 (BOOKINGS_V2_ENABLED), solo dentro
   // TRAMA ONE. Fail-closed: qualunque errore → flusso di prima.
   let v2 = false;
-  // 29/10/2026 (UX-PARENT-025): stessi giorni della scheda attività, anche dopo l'estate.
-  let uxFix = false;
   if (isSupabaseConfigured) {
     const supabase = await createClient();
     const {
@@ -58,13 +55,6 @@ export default async function BookingPage({
       tenant: "family",
       correlationId: generateCorrelationId(),
     });
-    uxFix = await resolveFeatureFlag({
-      flagName: PARENT_UX_FIX_FLAG,
-      userId: user.id,
-      role: "parent",
-      tenant: "family",
-      correlationId: generateCorrelationId(),
-    }).catch(() => false);
     if (nextgen) {
       v2 = await resolveFeatureFlagVisibility({
         flagName: "BOOKINGS_V2_ENABLED",
@@ -93,7 +83,7 @@ export default async function BookingPage({
       ? getBookedWeekIdsForActivity(activity.dbId, requestedKidId)
       : Promise.resolve(new Set<string>()),
     getEligibleInviteDiscount(),
-    wantsDayAvailability ? getActivityDays(activity, { includeAfterSeason: uxFix }) : Promise.resolve([]),
+    wantsDayAvailability ? getActivityDays(activity, { includeAfterSeason: true }) /* 03/11/2026: stessa offerta della scheda (UX-CROSS-002) */ : Promise.resolve([]),
   ]);
   const bookedWeekIds = Array.from(bookedWeekIdsSet);
 

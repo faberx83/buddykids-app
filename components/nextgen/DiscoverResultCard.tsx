@@ -14,6 +14,7 @@ import type { Activity } from "@/lib/types";
 import { toggleFavoriteAction } from "@/app/actions/favorites";
 import { markFirstUsefulAction } from "@/lib/nextgen/first-action";
 import ActivityVisual from "@/components/nextgen/ActivityVisual";
+import { activityPrice, formatEuro } from "@/lib/nextgen/activity-price";
 
 export default function DiscoverResultCard({
   activity,
@@ -36,6 +37,7 @@ export default function DiscoverResultCard({
   dateLine?: { text: string; tone: "ok" | "warn" | "muted" } | null;
 }) {
   const [fav, setFav] = useState(initialFavorite ?? false);
+  const price = activityPrice(activity);
   const params = new URLSearchParams();
   params.set("source", "nextgen_search");
   if (correlationId) params.set("cid", correlationId);
@@ -88,7 +90,15 @@ export default function DiscoverResultCard({
           )}
           <span className="mt-1.5 flex items-center justify-between">
             <span className="text-[15px] font-bold text-trama-navy">
-              €{activity.pricePerWeek} <span className="text-[12.5px] font-medium text-ink-2">a settimana</span>
+              {/* 03/11/2026 (UX-CROSS-001): stessa regola del dettaglio (solo giorni → al giorno). */}
+              {price.amount === null ? (
+                <span className="text-[13px] font-semibold text-ink-2">{price.label}</span>
+              ) : (
+                <>
+                  {formatEuro(price.amount)} <span className="text-[12.5px] font-medium text-ink-2">{price.unit}</span>
+                  {price.alt && <span className="text-[12.5px] font-medium text-ink-2"> · o {formatEuro(price.alt.amount)} al giorno</span>}
+                </>
+              )}
             </span>
             <span className="flex min-h-[44px] items-center rounded-[12px] bg-trama-primary px-4 text-[14px] font-bold text-white">Vedi</span>
           </span>

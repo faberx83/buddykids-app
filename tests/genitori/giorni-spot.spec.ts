@@ -39,7 +39,8 @@ test.describe("Genitori - Giorni spot", () => {
 
     // Prezzo di partenza mostrato in barra inferiore: quello a settimana
     // (nessun giorno ancora selezionato).
-    const priceBar = page.locator("text=per settimana").locator("..");
+    // 03/11/2026 (UX-CROSS-001): l'unità ora viene dalla regola condivisa ("a settimana", come in Scopri e nella scheda V2).
+    const priceBar = page.locator("text=a settimana").locator("..");
     await expect(priceBar).toContainText("€120");
 
     // Seleziona il primo giorno disponibile (bottone con "€" nel testo,

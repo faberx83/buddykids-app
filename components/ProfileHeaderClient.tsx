@@ -106,9 +106,15 @@ export default function ProfileHeaderClient({
   const highlightText = accent === "violet" ? "text-trama-orange" : "text-orange";
 
   async function handleAvatarUploaded(url: string) {
+    // 03/11/2026 (REV-PARENT-002): in errore si torna alla foto di prima e l'errore arriva al pulsante.
+    const before = avatarUrl;
     setAvatarUrl(url);
     if (isSupabaseConfigured) {
-      await updateParentAvatarAction(url);
+      const res = await updateParentAvatarAction(url).catch(() => ({ error: "Non siamo riusciti a salvare la foto, riprova." }));
+      if (res.error) {
+        setAvatarUrl(before);
+        throw new Error(res.error);
+      }
     }
   }
 

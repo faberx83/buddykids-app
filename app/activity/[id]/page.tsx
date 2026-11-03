@@ -181,7 +181,10 @@ export default async function ActivityDetailPage({
     getPromotionsForActivity(activity),
     getFavoriteActivityIds(),
     getApprovedCertificationsForActivity(activity.dbId),
-    wantsDayAvailability ? getActivityDays(activity, { includeAfterSeason: uxFix }) : Promise.resolve([]),
+    // 03/11/2026 (UX-CROSS-002, "stesso link, esperienza commerciale diversa"): l'offerta pubblica
+    // (giorni, posti, prenotabilità) non dipende da chi guarda né dal tracciamento: anche chi apre il
+    // link senza accesso vede i giorni dopo l'estate (prima solo con PARENT_UX_FIX_ENABLED, cioè loggato).
+    wantsDayAvailability ? getActivityDays(activity, { includeAfterSeason: true }) : Promise.resolve([]),
     // Segnalazione 25/08/2026 (Fabrizio): i giorni già prenotati per questa
     // attività devono distinguersi visivamente nella scheda "Giorni spot",
     // altrimenti sembra che il genitore non abbia prenotato nulla.

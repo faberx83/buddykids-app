@@ -102,9 +102,10 @@ test.describe("UX-PARENT-025 scheda, date, riepilogo e pulsante dicono la stessa
   test("R025-01 i giorni dopo l'estate restano (con le correzioni UX) nella scheda, nella richiesta e nella modifica", () => {
     const d = read("lib/data/activity-days.ts");
     expect(d).toContain("if (opts.includeAfterSeason) return (data as RawDayRow[]).map(mapRow);");
-    expect(read("app/activity/[id]/page.tsx")).toContain("getActivityDays(activity, { includeAfterSeason: uxFix })");
-    expect(read("app/booking/[id]/page.tsx")).toContain("getActivityDays(activity, { includeAfterSeason: uxFix })");
-    expect(read("app/prenotazioni/[id]/modifica/page.tsx")).toContain("getActivityDays(activity, { includeAfterSeason: uxFix })");
+    // 03/11/2026 (UX-CROSS-002): per tutti, anche senza accesso — l'offerta pubblica non dipende da chi guarda.
+    expect(read("app/activity/[id]/page.tsx")).toContain("getActivityDays(activity, { includeAfterSeason: true })");
+    expect(read("app/booking/[id]/page.tsx")).toContain("getActivityDays(activity, { includeAfterSeason: true })");
+    expect(read("app/prenotazioni/[id]/modifica/page.tsx")).toContain("getActivityDays(activity, { includeAfterSeason: true })");
   });
 
   test("R025-02 ponte 7–8 dicembre a giornate: 'open'; esaurito, concluso e senza date con la causa vera", () => {
@@ -124,7 +125,8 @@ test.describe("UX-PARENT-025 scheda, date, riepilogo e pulsante dicono la stessa
 
   test("R025-03 attività solo a giornate: prezzo al giorno", () => {
     const v = read("components/nextgen/ActivityDetailV2.tsx");
-    expect(v).toContain('const dayOnlyPriced = Boolean(dateSummary) && activity.bookingMode === "day_only";');
-    expect(v).toContain('dayOnlyPriced ? "al giorno" : "a settimana"');
+    // 03/11/2026 (UX-CROSS-001): ora con la regola condivisa delle card (lib/nextgen/activity-price.ts).
+    expect(v).toContain("const price = activityPrice(activity);");
+    expect(v).toContain("{price.label}");
   });
 });

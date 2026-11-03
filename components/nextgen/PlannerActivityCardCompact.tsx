@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { Activity } from "@/lib/types";
+import { activityPrice, formatEuro } from "@/lib/nextgen/activity-price";
 
 // TRAMA BETA v1.1.1 (UI Refinement, punto 8 — "Week Detail: ActivityCard
 // compact variant") — components/ActivityCard.tsx (Scopri, NON toccata:
@@ -45,7 +46,13 @@ export default function PlannerActivityCardCompact({
         </span>
       </span>
       <span className="flex-shrink-0 text-right">
-        <span className="block text-[11.5px] font-bold text-ink">€{activity.pricePerWeek}/sett.</span>
+        {/* 03/11/2026 (UX-CROSS-001): stessa regola di Scopri e del dettaglio. */}
+        <span className="block text-[11.5px] font-bold text-ink">
+          {(() => {
+            const p = activityPrice(activity);
+            return p.amount === null ? p.label : `${formatEuro(p.amount)}${p.short}`;
+          })()}
+        </span>
         {typeof matchPercent === "number" && (
           <span className="block text-[10px] font-semibold text-trama-violet">{matchPercent}% match</span>
         )}

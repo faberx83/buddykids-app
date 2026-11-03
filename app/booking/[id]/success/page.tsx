@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import { getActivityBySlug } from "@/lib/data/activities";
 import { getBookingSummary } from "@/lib/data/bookings";
+import { bookingWhenLabel } from "@/lib/nextgen/booking-receipt";
 import PhoneShell from "@/components/PhoneShell";
 import BookingSuccessActions from "@/components/BookingSuccessActions";
 import { createClient } from "@/lib/supabase/server";
@@ -102,7 +103,10 @@ export default async function BookingSuccessPage({
             <div className="mb-6 w-full rounded-2xl border border-trama-line bg-white px-4 py-3">
               <SRow label="Attività" value={activity.name} />
               <SRow label="Per" value={summary.kidNames} />
-              <SRow label="Quando" value={summary.weeksLabel} />
+              {/* 03/11/2026 (UX-CROSS-003): giorni o settimane della richiesta, orario, stato. */}
+              <SRow label="Quando" value={bookingWhenLabel({ weeksLabel: summary.weeksLabel, dayDates: summary.dayDates })} />
+              {activity.hours && <SRow label="Orario" value={activity.hours.replace(/\s*-\s*/, "–")} />}
+              <SRow label="Stato" value="In attesa del centro" />
               {summary.preServiceIncluded && <SRow label="Ingresso anticipato" value="Richiesto" />}
               {summary.postServiceIncluded && <SRow label="Uscita posticipata" value="Richiesta" />}
               {summary.mealIncluded && <SRow label="Mensa" value="Richiesta" />}

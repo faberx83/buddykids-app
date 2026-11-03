@@ -22,6 +22,7 @@ import ActivityDetailV2 from "@/components/nextgen/ActivityDetailV2";
 import type { ActivityDateSummary } from "@/lib/nextgen/parent-ux-fix";
 import { activityDetailReasons, includedServices } from "@/lib/nextgen/activity-detail-v2";
 import { markFirstUsefulAction } from "@/lib/nextgen/first-action";
+import { activityPrice, formatEuro } from "@/lib/nextgen/activity-price";
 
 const weekdayLabels = ["lunedì", "martedì", "mercoledì", "giovedì", "venerdì"];
 const weekdayShort = ["Lun", "Mar", "Mer", "Gio", "Ven", "Sab", "Dom"];
@@ -692,8 +693,9 @@ export default function DetailClient({
           </>
         )}
 
-        <InfoRow icon="ti-coin-euro" label="Costo settimana" value={`€${activity.pricePerWeek}`} valueColor={accentText} />
-        <InfoRow icon="ti-calendar" label="Settimane disponibili" value={activity.weeksAvailable} />
+        {/* 03/11/2026 (UX-CROSS-001/002): stesso prezzo e stessa unità della scheda V2 e di Scopri. */}
+        <InfoRow icon="ti-coin-euro" label="Costo" value={activityPrice(activity).label} valueColor={accentText} />
+        {activity.bookingMode !== "day_only" && <InfoRow icon="ti-calendar" label="Settimane disponibili" value={activity.weeksAvailable} />}
         <InfoRow
           icon="ti-users"
           label="Posti rimasti"
@@ -843,8 +845,17 @@ export default function DetailClient({
           </div>
         ) : (
           <div>
-            <div className="text-xl font-bold text-ink">€{activity.pricePerWeek}</div>
-            <div className="text-[11px] text-ink-2">per settimana</div>
+            {(() => {
+              const p = activityPrice(activity);
+              return p.amount === null ? (
+                <div className="text-[13px] font-semibold text-ink-2">{p.label}</div>
+              ) : (
+                <>
+                  <div className="text-xl font-bold text-ink">{formatEuro(p.amount)}</div>
+                  <div className="text-[11px] text-ink-2">{p.unit}</div>
+                </>
+              );
+            })()}
           </div>
         )}
         {partnerPreview ? (

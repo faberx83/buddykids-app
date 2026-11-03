@@ -154,15 +154,27 @@ export function bookingsToFix(upcoming: BookingV2Input[]): BookingToFix[] {
   return out.sort((a, b) => rank[a.kind] - rank[b.kind]);
 }
 
-/** "3 in corso · €288 spesi quest'anno". */
+/**
+ * "1 in arrivo · €30 di prenotazioni confermate nel 2026".
+ * 03/11/2026 (report Parent del 30/10, REV-PARENT-001): prima "€30 spesi
+ * quest'anno" dopo un'accettazione senza alcun pagamento. TRAMA non registra
+ * pagamenti: è il valore delle prenotazioni CONFERMATE dal centro (in attesa,
+ * rifiutate e annullate escluse), non una spesa.
+ */
 export function bookingsSummaryLine(bookings: BookingV2Input[], todayIso: string): string {
   const { upcoming: active } = splitBookings(bookings, todayIso);
   const year = todayIso.slice(0, 4);
-  const spent = bookings
-    .filter((b) => b.status !== "cancelled" && b.partnerDecision !== "rejected" && (bookingSpan(b).first ?? "").startsWith(year))
-    .reduce((s, b) => s + netPrice(b), 0);
+  const confirmed = bookings
+    .filter(
+      (b) =>
+        b.status !== "cancelled" &&
+        (b.partnerDecision === "accepted" || b.partnerDecision === "partial") &&
+        (bookingSpan(b).first ?? "").startsWith(year)
+    )
+    // Confermata in parte: solo la quota dei giorni accettati.
+    .reduce((s, b) => s + (b.partnerDecision === "partial" && b.totalDayCount > 0 ? Math.round((netPrice(b) * b.acceptedDayCount) / b.totalDayCount) : netPrice(b)), 0);
   const parts = [active.length === 0 ? "Niente in arrivo" : active.length === 1 ? "1 in arrivo" : `${active.length} in arrivo`];
-  if (spent > 0) parts.push(`€${spent.toLocaleString("it-IT")} spesi quest'anno`);
+  if (confirmed > 0) parts.push(`€${confirmed.toLocaleString("it-IT")} di prenotazioni confermate nel ${year}`);
   return parts.join(" · ");
 }
 

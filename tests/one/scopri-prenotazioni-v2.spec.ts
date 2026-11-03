@@ -91,7 +91,10 @@ test.describe("PRENOTAZIONI-V2", () => {
 
   test("SPV2-05: riga di riepilogo e stato spiegato", () => {
     const line = bookingsSummaryLine([b(), b({ id: "x", dayDates: ["2026-03-02"], totalAmount: 200 })], TODAY);
-    expect(line).toBe("1 in arrivo · €290 spesi quest'anno");
+    // 03/11/2026 (REV-PARENT-001): valore delle prenotazioni confermate, non "spesi" (nessun pagamento registrato).
+    expect(line).toBe("1 in arrivo · €290 di prenotazioni confermate nel 2026");
+    // In attesa del centro: non conta.
+    expect(bookingsSummaryLine([b({ status: "pending", partnerDecision: "pending" })], TODAY)).toBe("1 in arrivo");
     expect(bookingStatusExplainer(b({ status: "pending", partnerDecision: "pending" }))).toContain("Ti avvisiamo");
     expect(bookingStatusExplainer(b())).toBeNull();
   });

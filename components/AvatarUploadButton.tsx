@@ -37,6 +37,7 @@ export default function AvatarUploadButton({
   const galleryInputRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [saved, setSaved] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   // Coordinate viewport del menu (BUG CORRETTO 06/08/2026, seconda ondata —
   // vedi commento esteso più sotto sul perché è un portale).
@@ -79,12 +80,22 @@ export default function AvatarUploadButton({
     // dedicato (URL firmato, non pubblico) — vedi lib/storage.ts. Per ogni
     // altro folder (avatars/centers/partner-offers) niente cambia.
     const result = folder === "kids" ? await uploadKidAvatar(file) : await uploadImage(folder, file);
-    setUploading(false);
     if (result.error || !result.url) {
+      setUploading(false);
       setError(result.error || "Errore nel caricamento");
       return;
     }
-    await onUploaded(result.url);
+    // 03/11/2026 (REV-PARENT-002, report del 30/10: "la chiusura della modale è il principale segnale
+    // finale"): "Foto aggiornata" solo dopo il salvataggio riuscito; in errore il messaggio e la foto di prima.
+    try {
+      await onUploaded(result.url);
+      setSaved(true);
+      window.setTimeout(() => setSaved(false), 3000);
+    } catch (e) {
+      setError(e instanceof Error && e.message ? e.message : "Non siamo riusciti a salvare la foto, riprova.");
+    } finally {
+      setUploading(false);
+    }
   }
 
   function handleFileSelected(file: File | undefined) {
@@ -213,7 +224,10 @@ export default function AvatarUploadButton({
         />
       )}
 
-      {error && <p className="mt-1 max-w-[120px] text-center text-[10px] font-medium text-orange">{error}</p>}
+      {error && <p role="alert" className="mt-1 max-w-[120px] text-center text-[10px] font-medium text-orange">{error}</p>}
+      <p role="status" aria-live="polite" className="mt-1 min-h-0 max-w-[120px] text-center text-[11px] font-semibold text-[#146B4F]">
+        {saved && !error ? "Foto aggiornata" : ""}
+      </p>
     </div>
   );
 }

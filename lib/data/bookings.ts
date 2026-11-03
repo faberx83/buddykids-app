@@ -18,6 +18,8 @@ export interface BookingSummary {
   startDate: string | null; // ISO, inizio della settimana piu antica -- per "Aggiungi al calendario"
   endDate: string | null; // ISO, fine della settimana piu recente
   activityName: string | null;
+  /** 03/11/2026 (UX-CROSS-003): i giorni scelti, per le richieste a giornate. */
+  dayDates: string[];
 }
 
 interface RawBookingSummaryRow {
@@ -36,6 +38,7 @@ interface RawBookingSummaryRow {
           | null;
       }[]
     | null;
+  booking_days?: { activity_days: { date: string } | { date: string }[] | null }[] | null;
 }
 
 // Migration 37 — vedi commento esteso in lib/data/activities.ts sopra
@@ -43,9 +46,9 @@ interface RawBookingSummaryRow {
 // più, ritenta senza SOLO se 42703, mai una regressione sulla schermata di
 // conferma già in produzione).
 const SELECT_BASE =
-  "total_amount, shuttle_included, activities ( name ), booking_kids ( kids ( name ) ), booking_weeks ( activity_weeks ( label, start_date, end_date ) )";
+  "total_amount, shuttle_included, activities ( name ), booking_kids ( kids ( name ) ), booking_weeks ( activity_weeks ( label, start_date, end_date ) ), booking_days ( activity_days ( date ) )";
 const SELECT_WITH_SERVICES =
-  "total_amount, shuttle_included, pre_service_included, post_service_included, meal_included, activities ( name ), booking_kids ( kids ( name ) ), booking_weeks ( activity_weeks ( label, start_date, end_date ) )";
+  "total_amount, shuttle_included, pre_service_included, post_service_included, meal_included, activities ( name ), booking_kids ( kids ( name ) ), booking_weeks ( activity_weeks ( label, start_date, end_date ) ), booking_days ( activity_days ( date ) )";
 
 function firstOf<T>(value: T | T[] | null): T | null {
   if (!value) return null;
@@ -93,8 +96,14 @@ export async function getBookingSummary(bookingId: string): Promise<BookingSumma
       .map((w) => `${w.label} (${formatDateShort(w.start_date)}–${formatDateShort(w.end_date)})`)
       .join(", ") || "—";
 
-  const startDate = weekRows[0]?.start_date ?? null;
-  const endDate = weekRows[weekRows.length - 1]?.end_date ?? null;
+  // 03/11/2026 (UX-CROSS-003): anche i giorni (richieste a giornate), prima ignorati.
+  const dayDates = (row.booking_days ?? [])
+    .map((bd) => firstOf(bd.activity_days)?.date)
+    .filter((d): d is string => Boolean(d))
+    .sort();
+
+  const startDate = weekRows[0]?.start_date ?? dayDates[0] ?? null;
+  const endDate = weekRows[weekRows.length - 1]?.end_date ?? dayDates[dayDates.length - 1] ?? null;
 
   return {
     kidNames,
@@ -107,5 +116,6 @@ export async function getBookingSummary(bookingId: string): Promise<BookingSumma
     startDate,
     endDate,
     activityName: firstOf(row.activities)?.name ?? null,
+    dayDates,
   };
 }
