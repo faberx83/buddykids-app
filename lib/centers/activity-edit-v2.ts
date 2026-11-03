@@ -85,6 +85,35 @@ export function datesSummary(d: ActivityDateSummary): { text: string; missing: b
   return { text: `Prossimo ${formatShortDay(d.next)} · ${amount}`, missing: false };
 }
 
+// UX-PARTNER-002 (report 30/10): l'editor mostrava "Prezzo a settimana 150"
+// su un'attività solo a giorni venduta a €30 al giorno. Il prezzo di un
+// giorno è sempre un quinto di quello della settimana (lib/day-pricing.ts,
+// dailyRateFor, la stessa regola di scheda, richiesta e card): qui si
+// scrive e si legge nell'unità della modalità scelta.
+export function dayRate(pricePerWeek: number): number {
+  return Math.round((pricePerWeek / 5) * 100) / 100;
+}
+
+/** Prezzo a settimana da salvare partendo dal prezzo di un giorno. */
+export function weekPriceFromDay(dayPrice: number): number {
+  return Math.round(dayPrice * 5 * 100) / 100;
+}
+
+/** Sintesi del prezzo nell'unità della modalità; la navetta conta solo per le settimane. */
+export function priceSummary(f: Pick<ActivityEditState, "bookingMode" | "pricePerWeek" | "shuttlePrice">): string {
+  if (!f.pricePerWeek) return "";
+  if (f.bookingMode === "day_only") return `${euro(dayRate(f.pricePerWeek))} al giorno`;
+  const parts = [`${euro(f.pricePerWeek)} a settimana`];
+  if (f.bookingMode === "mixed") parts.push(`${euro(dayRate(f.pricePerWeek))} al giorno`);
+  if (f.shuttlePrice) parts.push(`navetta ${euro(f.shuttlePrice)}`);
+  return parts.join(" · ");
+}
+
+/** UX-PARTNER-003: il nome non può essere vuoto (né fatto di soli spazi). */
+export function activityNameError(name: string): string | null {
+  return name.trim().length === 0 ? "Scrivete il nome dell'attività: è quello che leggono le famiglie." : null;
+}
+
 export interface SectionSummary {
   text: string;
   /** Da completare: la riga lo dice. */
@@ -110,9 +139,7 @@ export function sectionSummaries(
     .filter(Boolean)
     .join(" · ");
 
-  const prezzi = f.pricePerWeek
-    ? [`${euro(f.pricePerWeek)} a settimana`, f.shuttlePrice ? `navetta ${euro(f.shuttlePrice)}` : ""].filter(Boolean).join(" · ")
-    : "";
+  const prezzi = priceSummary(f);
 
   const servizi = [
     f.preService.available ? `entrata dalle ${f.preService.time}` : "",
@@ -149,4 +176,16 @@ export function sectionSummaries(
 
 function capitalize(s: string): string {
   return s ? s[0].toUpperCase() + s.slice(1) : s;
+}
+
+/**
+ * UX-PARTNER-005 (report 30/10): nell'editor del centro i tag di prova
+ * ("Test", "Test 1786…", tags.is_test_fixture) non si propongono, come già
+ * lato famiglie (familyVisibleTags). Un tag di prova già assegnato a questa
+ * attività resta visibile, per poterlo togliere: nessuna associazione
+ * cancellata alla cieca.
+ */
+export function partnerSelectableTags<T extends { id: string; isTestFixture?: boolean }>(tags: T[], assigned: string[]): T[] {
+  const keep = new Set(assigned);
+  return tags.filter((t) => t.isTestFixture !== true || keep.has(t.id));
 }

@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import type { AttendanceWeekGroup, AttendanceDayStatus, AttendanceStatusValue } from "@/lib/data/attendance";
 import { setAttendanceAction } from "@/app/actions/attendance";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
+import { attendanceCounts, attendanceSummaryText, isFutureDay, romeToday } from "@/lib/centers/attendance-summary";
 
 type AttendanceStatus = AttendanceStatusValue;
 type AttendanceMap = Record<string, AttendanceStatus>; // key: `${kidId}:${date}`
@@ -161,24 +162,21 @@ export default function AttendanceClient({
   // (altrimenti si rischia di guardare Lunedì e non vedere un check-in del
   // genitore fatto oggi, magari di Giovedì — segnalazione di Fabrizio: "non
   // si vede l'info del check-in").
-  const todayIso = new Date().toISOString().slice(0, 10);
+  // Oggi a Roma (prima: UTC, che a mezzanotte cambiava giorno un'ora prima).
+  const todayIso = romeToday();
   const defaultDay = days.includes(todayIso) ? todayIso : days[0];
   const activeDay = selectedDay && days.includes(selectedDay) ? selectedDay : defaultDay;
 
   // Riepilogo "arrivati su prenotati" per il giorno attivo (richiesto da
-  // Fabrizio) — un bambino conta come presente solo se esplicitamente
-  // marcato tale: lo stato di default (nessun record) è "assente", quindi
-  // il conteggio "assenti" include sia chi è stato marcato assente sia chi
-  // non è ancora stato spuntato per niente.
+  // Fabrizio). UX-PARTNER-006 (report 30/10): "assente" è solo chi è stato
+  // segnato assente; chi non ha ancora una registrazione è "da registrare"
+  // (prima contava come assente, anche per un giorno futuro). Nei giorni
+  // non ancora arrivati le presenze non si segnano (lib/centers/attendance-summary.ts).
   const bookedCount = selectedGroup?.kids.length ?? 0;
-  const presentKids = selectedGroup
-    ? selectedGroup.kids.filter((k) => attendance[`${k.kidId}:${activeDay}`] === "presente")
-    : [];
-  const lateKids = selectedGroup
-    ? selectedGroup.kids.filter((k) => attendance[`${k.kidId}:${activeDay}`] === "in_ritardo")
-    : [];
+  const activeIsFuture = activeDay ? isFutureDay(activeDay, todayIso) : false;
+  const counts = attendanceCounts(selectedGroup?.kids.map((k) => k.kidId) ?? [], attendance, activeDay ?? "");
   const absentKids = selectedGroup
-    ? selectedGroup.kids.filter((k) => (attendance[`${k.kidId}:${activeDay}`] ?? "assente") === "assente")
+    ? selectedGroup.kids.filter((k) => attendance[`${k.kidId}:${activeDay}`] === "assente")
     : [];
 
   // Il gestore può impostare direttamente uno dei 3 stati (non più solo un
@@ -196,7 +194,9 @@ export default function AttendanceClient({
     const weekId = selectedGroup.weekId;
     const activityDayId = selectedGroup.activityDayId ?? null;
     const key = `${kidId}:${date}`;
-    const current = attendance[key] ?? "assente";
+    // Nessuna registrazione = undefined (non "assente"): segnare "Assente" la prima volta ora scrive davvero.
+    if (isFutureDay(date, todayIso)) return;
+    const current = attendance[key];
     const currentParentReport = parentReport[key] ?? false;
     // FIX (segnalazione Fabrizio 05/09/2026, "come si toglie il bollino 2..
     // con quale flusso?"): questa guardia bloccava anche il caso più comune
@@ -230,7 +230,12 @@ export default function AttendanceClient({
     setSavingKey(null);
     if (result.error) {
       // rollback in caso di errore
-      setAttendance((prev) => ({ ...prev, [key]: current }));
+      setAttendance((prev) => {
+        const next = { ...prev };
+        if (current === undefined) delete next[key];
+        else next[key] = current;
+        return next;
+      });
       setParentReport((prev) => ({ ...prev, [key]: currentParentReport }));
     }
   }
@@ -410,13 +415,9 @@ export default function AttendanceClient({
                     di questa wave qui c'era una nota placeholder che
                     dichiarava un aggiornamento database "non ancora
                     applicato": non più vero, rimossa. */}
-                <div className="mb-3 flex items-center justify-between rounded-md bg-bg px-3.5 py-2.5">
-                  <div className="text-sm font-semibold text-ink">
-                    <span className="text-partner">{presentKids.length}</span> presenti su {bookedCount}{" "}
-                    prenotati
-                    {lateKids.length > 0 && (
-                      <span className="ml-2 font-normal text-orange">· {lateKids.length} in ritardo</span>
-                    )}
+                <div className="mb-3 flex items-center justify-between gap-3 rounded-md bg-bg px-3.5 py-2.5">
+                  <div className="text-sm font-semibold text-ink" data-testid="attendance-summary" data-booked={bookedCount}>
+                    {attendanceSummaryText(counts, activeIsFuture)}
                   </div>
                   {absentKids.length > 0 && (
                     <div className="max-w-[60%] truncate text-right text-xs text-ink-2">
@@ -428,7 +429,7 @@ export default function AttendanceClient({
                 <div className="divide-y divide-[#F0F2F5]">
                   {selectedGroup.kids.map((kid) => {
                     const key = `${kid.kidId}:${activeDay}`;
-                    const status = attendance[key] ?? "assente";
+                    const status = attendance[key];
                     const fromParent = parentReport[key] ?? false;
                     return (
                       <div key={kid.kidId} className="flex flex-col gap-2 py-2.5">
@@ -444,6 +445,11 @@ export default function AttendanceClient({
                               {/* Segnala che l'ULTIMO stato arriva dal check-in del genitore
                                   (Home), non da una spunta del gestore — utile soprattutto per
                                   "in ritardo", che il gestore può poi confermare/correggere. */}
+                              {!status && !activeIsFuture && (
+                                <span className="ml-1.5 rounded-full border border-dashed border-[#B9C6C2] px-2 py-0.5 text-[10px] font-medium text-ink-2">
+                                  Da registrare
+                                </span>
+                              )}
                               {fromParent && (
                                 <span className="ml-1.5 rounded-full bg-sky-light px-2 py-0.5 text-[10px] font-medium text-sky">
                                   Segnalato dal genitore
@@ -466,8 +472,10 @@ export default function AttendanceClient({
                           {(["presente", "in_ritardo", "assente"] as const).map((s) => (
                             <button
                               key={s}
+                              type="button"
                               onClick={() => setStatus(kid.kidId, activeDay, s)}
-                              disabled={savingKey === key}
+                              disabled={savingKey === key || activeIsFuture}
+                              aria-pressed={status === s}
                               className={`flex-1 rounded-md px-3 py-1.5 text-xs font-bold transition-colors disabled:opacity-60 ${
                                 status === s
                                   ? s === "presente"

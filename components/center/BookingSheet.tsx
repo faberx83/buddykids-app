@@ -434,10 +434,10 @@ export default function BookingSheet({
           </div>
         </section>
 
-        <div className="flex items-center gap-2 rounded-2xl border border-dashed border-[#B9C6C2] px-4 py-3">
-          <span className="flex-1 text-[13px] text-ink-2">Note della famiglia per il centro (allergie, esigenze)</span>
-          <span className="rounded-full border border-dashed border-[#B9C6C2] px-2 py-0.5 text-[11.5px] font-semibold text-ink-2">In programma</span>
-        </div>
+        {/* Report 30/10 (matrice: "Deleghe e note esigenze — procedure esterne esplicite"): la procedura di oggi, non una promessa. */}
+        <p className="rounded-2xl bg-partner-page px-4 py-3 text-[13px] leading-snug text-ink-2">
+          Note della famiglia per il centro (allergie, esigenze): TRAMA non le raccoglie ancora. Chiedetele alla famiglia come fate oggi.
+        </p>
 
         {error && (
           <p role="alert" className="text-[13.5px] font-medium text-[#B4361F]">

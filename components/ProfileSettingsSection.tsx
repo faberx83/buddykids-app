@@ -30,7 +30,10 @@ export default function ProfileSettingsSection({ basePath }: { basePath: string 
           metterei dentro le preferenze") — non è più una voce separata,
           /notifiche ora reindirizza qui per eventuali link vecchi.
           Visual Acceptance Gate (§15, DEC-73) — richiesta di Fabrizio: "Nel
-          sottotitolo del menu 'Preferenze' va indicato anche tour guidato",
+          sottotitolo del menu 'Preferenze' va indicato anche tour guidato".
+          03/11/2026, REV-PARTNER-002 (report 30/10): il tour nel percorso del
+          pilota non c'è (CP-17) e lingua e tema non sono ancora attivi: il
+          sottotitolo dice solo ciò che la pagina permette davvero.
           perché è lì (app/center/account/preferenze/page.tsx,
           WalkthroughRestartButton) che si può riavviare il percorso guidato
           Partner. Menzione SOLO lato Center (basePath="/center/account"):
@@ -45,7 +48,7 @@ export default function ProfileSettingsSection({ basePath }: { basePath: string 
         iconBg="#FFF3E6"
         iconColor="#E08A2D"
         main="Preferenze"
-        sub={basePath.startsWith("/center") ? "Lingua, tema, notifiche, tour guidato" : "Lingua, tema, notifiche"}
+        sub={basePath.startsWith("/center") ? "Notifiche (lingua e tema in arrivo)" : "Lingua, tema, notifiche"}
         href={`${basePath}/preferenze`}
       />
       {/* comingSoon: nessun metodo di pagamento reale è ancora integrato

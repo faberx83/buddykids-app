@@ -160,7 +160,6 @@ export default async function CentroPage() {
           },
           { label: "Accessibilità e punto ristoro", href: "/center/profile#accessibilita", state: "optional" },
           { label: "Sito e social", href: "/center/profile#social", state: "optional" },
-          { label: "Più sedi", state: "soon" },
         ]}
       />
 
@@ -181,7 +180,8 @@ export default async function CentroPage() {
           { label: "Registro presenze", href: "/center/attendance", state: "link" },
           { label: "Report presenze", href: "/center/report-presenze", state: "link" },
           { label: "Invita le vostre famiglie", href: "/center/invites", state: "link" },
-          { label: "Servizi consigliati", href: "/center/servizi-consigliati", state: "link" },
+          // UX-PARTNER-008 (report 30/10): "Servizi consigliati" ha contenuti provvisori e
+          // link incoerenti → fuori dalla navigazione della beta finché non è curata.
         ]}
       />
 
@@ -189,7 +189,6 @@ export default async function CentroPage() {
         id="c-account"
         title="Account"
         rows={[
-          { label: "Persone del centro e permessi", state: "soon" },
           { label: "Il mio account e le notifiche", href: "/center/account", state: "link" },
           ...(contact
             ? [
@@ -201,6 +200,19 @@ export default async function CentroPage() {
                 },
               ]
             : []),
+        ]}
+      />
+
+      {/* REV-PARTNER-002 (report 30/10): le funzioni non ancora disponibili tutte qui,
+          in fondo e separate da quelle che si usano. Nessuna promessa nelle sezioni operative. */}
+      <Section
+        id="c-arrivo"
+        title="In arrivo"
+        rows={[
+          { label: "Più sedi", state: "soon" },
+          { label: "Persone del centro e permessi", state: "soon", hint: "Per ora un responsabile per centro: non condividete la password." },
+          { label: "Deleghe per il ritiro", state: "soon", hint: "Per ora controllate le deleghe come fate oggi." },
+          { label: "Cosa cercano le famiglie della vostra zona", state: "soon" },
         ]}
       />
 

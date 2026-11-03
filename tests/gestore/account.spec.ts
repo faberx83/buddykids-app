@@ -46,7 +46,8 @@ test.describe("Gestore - Il mio account", () => {
     // WalkthroughRestartButton) — testo diverso dal profilo genitore, che
     // non ha ancora un tour da riavviare (vedi tests/genitori/profilo.spec.ts,
     // invariato).
-    await expect(page.getByText("Lingua, tema, notifiche, tour guidato")).toBeVisible();
+    // 03/11/2026, REV-PARTNER-002: il sottotitolo dice solo ciò che la pagina permette (niente tour nel pilota, lingua e tema non attivi).
+    await expect(page.getByText("Notifiche (lingua e tema in arrivo)")).toBeVisible();
     await expect(page.getByRole("link", { name: /Privacy e account/ })).toBeVisible();
 
     // Il selettore "Sei: Padre/Madre/Tutore" non ha senso per un gestore.

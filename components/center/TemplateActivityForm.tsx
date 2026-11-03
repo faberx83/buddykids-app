@@ -5,6 +5,9 @@ import { useRouter } from "next/navigation";
 import { createActivityFromTemplateAction } from "@/app/actions/center-activities-v2";
 import type { ActivityTemplate } from "@/lib/centers/activity-templates";
 import PartnerPageHeader from "@/components/center/PartnerPageHeader";
+import DraftRestoredNote from "@/components/center/DraftRestoredNote";
+import { useActivityDraft } from "@/components/center/useActivityDraft";
+import { activityNameError } from "@/lib/centers/activity-edit-v2";
 
 // TRAMA — PORTALE CENTRI V2, "CREA DA MODELLO" (28/10/2026, tavola 6).
 // Il modello porta nome, orari, giorni della stagione e modalità a giorni
@@ -36,7 +39,8 @@ export default function TemplateActivityForm({
   datesLabel: string;
 }) {
   const router = useRouter();
-  const [form, setForm] = useState({
+  // UX-PARTNER-007: bozza ripresa se si esce e si torna (useActivityDraft).
+  const draft = useActivityDraft(`modello-${template.key}`, {
     name: template.name,
     ageMin: 6,
     ageMax: 11,
@@ -45,6 +49,7 @@ export default function TemplateActivityForm({
     hours: template.hours,
     description: template.description,
   });
+  const { form, setForm } = draft;
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const set = <K extends keyof typeof form>(k: K, v: (typeof form)[K]) => {
@@ -55,12 +60,19 @@ export default function TemplateActivityForm({
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
+    const nameProblem = activityNameError(form.name);
+    if (nameProblem) {
+      setError(nameProblem);
+      document.getElementById("tpl-name")?.focus();
+      return;
+    }
     setSaving(true);
     const res = await createActivityFromTemplateAction({ templateKey: template.key, ...form }).catch(
       () => ({ error: "Non siamo riusciti a creare l'attività, riprovate." }) as { error: string; activitySlug?: string }
     );
     setSaving(false);
     if (res.error || !res.activitySlug) return setError(res.error ?? "Non siamo riusciti a creare l'attività, riprovate.");
+    draft.clear();
     router.push(`/center/activities/${res.activitySlug}`);
   }
 
@@ -90,6 +102,8 @@ export default function TemplateActivityForm({
           </span>
         </div>
       </div>
+
+      {draft.restored && <DraftRestoredNote onDiscard={draft.discard} />}
 
       <form onSubmit={submit} className="flex flex-col gap-4 rounded-[20px] border border-partner-line bg-white p-5">
         <Field label="Nome dell'attività" htmlFor="tpl-name">

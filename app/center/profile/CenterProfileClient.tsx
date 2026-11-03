@@ -350,6 +350,17 @@ export default function CenterProfileClient({
             />
             <span>♿ Il centro è accessibile (rampe, bagno attrezzato, ecc.)</span>
           </label>
+          {/* Report 30/10: "Accessibilità e punto ristoro" in Centro, ma il ristoro si
+              trovava solo nella modifica di un'attività. È un dato del centro: anche qui. */}
+          <label className={`mt-2 ${ui.checkRow}`}>
+            <input
+              type="checkbox"
+              checked={Boolean(form.hasBar)}
+              onChange={(e) => update("hasBar", e.target.checked)}
+              className="mt-0.5"
+            />
+            <span>C&apos;è un bar o un punto ristoro</span>
+          </label>
           {form.accessible && (
             <div className="mt-3">
               <Field label="Nota accessibilità (facoltativa)" labelClass={ui.label}>

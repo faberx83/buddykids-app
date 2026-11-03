@@ -13,8 +13,9 @@ import {
 } from "@/app/actions/invites";
 
 const STATUS_LABEL: Record<InviteStatus, string> = {
-  pending: "Da inviare",
-  sent: "Inviato",
+  // REV-PARTNER-001 (report 30/10): mai "inviato" sulla sola creazione del link.
+  pending: "Link da condividere",
+  sent: "Email partita",
   registered: "Registrato",
   redeemed: "Sconto usato",
   expired: "Scaduto",
@@ -270,6 +271,14 @@ export default function InvitesClient({
                 >
                   Copia
                 </button>
+                <a
+                  href={`https://wa.me/?text=${encodeURIComponent(`Vi invitiamo su TRAMA, dove trovate le nostre attività e potete prenotare: ${lastResult.link}`)}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex-shrink-0 rounded border border-[#E8EBF0] bg-white px-2.5 py-1.5 text-[11px] font-semibold text-ink"
+                >
+                  WhatsApp
+                </a>
               </div>
             </div>
           )}
@@ -381,7 +390,7 @@ export default function InvitesClient({
 
       <p className="mt-5 text-[11px] text-ink-3">
         {isSupabaseConfigured
-          ? "L'invio email automatico richiede una chiave Resend configurata lato sviluppo — finché non è impostata, copia il link e invialo tu (WhatsApp, SMS, email personale…)."
+          ? "Ogni invito ha il suo link. Se l'email non parte da sola lo stato resta \"Link da condividere\": copiate il link e mandatelo voi (WhatsApp, SMS, email)."
           : "Modalità demo: gli inviti creati qui non vengono salvati — collega Supabase per renderli reali."}
       </p>
     </div>
