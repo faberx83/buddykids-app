@@ -89,7 +89,8 @@ test.describe("Gestore - Inviti", () => {
     await expect(row).toBeVisible({ timeout: 10_000 });
     // Lo stato deve essere uno tra "Da inviare" (fallback) o "Inviato" (Resend
     // configurato) — mai vuoto/altro, coerente con STATUS_LABEL.
-    await expect(row.getByText(/^(Da inviare|Inviato)$/)).toBeVisible();
+    // 03/11/2026, REV-PARTNER-001: "Link da condividere" (nessuna email partita) / "Email partita".
+    await expect(row.getByText(/^(Link da condividere|Email partita)$/)).toBeVisible();
   });
 
   // Priorita: Media | Precondizioni: Almeno un invito per stato
@@ -104,7 +105,7 @@ test.describe("Gestore - Inviti", () => {
     // Ogni riga con dati reali (non la riga vuota "Nessun invito...") ha
     // esattamente un badge di stato tra quelli noti.
     const statusBadges = page.locator("td span", {
-      hasText: /^(Da inviare|Inviato|Registrato|Sconto usato|Scaduto)$/,
+      hasText: /^(Link da condividere|Email partita|Registrato|Sconto usato|Scaduto)$/,
     });
     await expect(statusBadges.first()).toBeVisible();
   });

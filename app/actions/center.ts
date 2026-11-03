@@ -1,5 +1,6 @@
 "use server";
 
+import { activityNameError } from "@/lib/centers/activity-edit-v2";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
@@ -107,6 +108,9 @@ export async function createActivityAction(
   input: ActivityCreateInput
 ): Promise<{ activitySlug?: string; error?: string }> {
   if (!isSupabaseConfigured) return { error: "Supabase non configurato" };
+  // UX-PARTNER-003 (report 30/10): nome obbligatorio anche lato server, stessa regola in creazione e modifica.
+  const nameProblem = activityNameError(input.name ?? "");
+  if (nameProblem) return { error: nameProblem };
   const supabase = await createClient();
   const {
     data: { user },
@@ -277,6 +281,10 @@ export interface ActivityUpdateInput {
 
 export async function updateActivityAction(input: ActivityUpdateInput): Promise<{ error?: string }> {
   if (!isSupabaseConfigured) return { error: "Supabase non configurato" };
+  // UX-PARTNER-003 (report 30/10): un nome vuoto o di soli spazi non si salva
+  // (prima la lista mostrava un link senza testo). Nessuna scrittura parziale.
+  const nameProblem = activityNameError(input.name ?? "");
+  if (nameProblem) return { error: nameProblem };
   const supabase = await createClient();
   const {
     data: { user },

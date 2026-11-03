@@ -1,11 +1,12 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
-import { defaultWeeks, weeksByActivity } from "@/lib/mock-data";
 import AvailabilityCalendar from "@/components/AvailabilityCalendar";
 import OccupancyChart from "@/components/charts/OccupancyChart";
 import { weeklyOccupancyFromDays } from "@/lib/analytics";
 import { getActivityBySlug } from "@/lib/data/activities";
 import { getActivityDays } from "@/lib/data/activity-days";
+import { EMPTY_DATE_SUMMARY, getActivityDateSummaries } from "@/lib/data/activity-dates";
+import { datesSummary } from "@/lib/centers/activity-edit-v2";
 import PartnerPageHeader from "@/components/center/PartnerPageHeader";
 import { partnerShellEnabledForCurrentUser } from "@/lib/centers/partner-v2-flag";
 
@@ -18,8 +19,18 @@ export default async function CenterActivityCalendarPage({
   const activity = await getActivityBySlug(id);
   if (!activity) return notFound();
 
-  const days = await getActivityDays(activity);
-  const weeksCount = (weeksByActivity[activity.id] ?? defaultWeeks).length;
+  // UX-PARTNER-001 (report 30/10, "Date e posti vuoto" su Ponte 7–8 dic e
+  // Laboratorio DEMO dal 2 nov). Causa verificata: getActivityDays toglie i
+  // giorni dopo la fine dell'estate (taglio pensato per le famiglie, già
+  // superato lato famiglie il 29/10 con PARENT_UX_FIX_ENABLED); il centro
+  // vedeva quindi il calendario vuoto per tutte le date d'autunno e inverno.
+  // Il centro gestisce sempre tutti i suoi giorni. E "N settimane pubblicate"
+  // veniva dai dati finti di esempio (lib/mock-data): ora conta i dati veri.
+  const [days, summaries] = await Promise.all([
+    getActivityDays(activity, { includeAfterSeason: true }),
+    activity.dbId ? getActivityDateSummaries([activity.dbId]) : Promise.resolve({} as Awaited<ReturnType<typeof getActivityDateSummaries>>),
+  ]);
+  const dateLine = datesSummary((activity.dbId && summaries[activity.dbId]) || EMPTY_DATE_SUMMARY);
   const occupancy = weeklyOccupancyFromDays(days);
   const weakWeeks = occupancy.filter((w) => w.occupancyPercent < 40);
 
@@ -31,7 +42,7 @@ export default async function CenterActivityCalendarPage({
         {/* "‹" in alto lo mette il guscio (torna alla pagina di prima). */}
         <PartnerPageHeader
           title="Date e posti"
-          subtitle={`${activity.name}. Aprite o chiudete i giorni, aggiornate i posti e gli sconti. ${weeksCount} ${weeksCount === 1 ? "settimana pubblicata" : "settimane pubblicate"}.`}
+          subtitle={`${activity.name} · ${dateLine.text}. Aprite o chiudete i giorni, aggiornate i posti e gli sconti.`}
         />
         <section aria-labelledby="cal-occupazione" className="rounded-[18px] border border-partner-line bg-white p-4">
           <div className="mb-1 flex flex-wrap items-center justify-between gap-2">
@@ -70,7 +81,7 @@ export default async function CenterActivityCalendarPage({
         <h1 className="text-xl font-bold text-ink">Calendario disponibilità</h1>
         <p className="text-sm text-ink-2">
           Apri o chiudi singoli giorni, aggiorna i posti e imposta sconti mirati o promo
-          last-minute — {weeksCount} settimane pubblicate.
+          last-minute — {dateLine.text}.
         </p>
       </div>
 

@@ -6,6 +6,9 @@ import Link from "next/link";
 import { createActivityAction } from "@/app/actions/center";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
 import PartnerPageHeader from "@/components/center/PartnerPageHeader";
+import DraftRestoredNote from "@/components/center/DraftRestoredNote";
+import { useActivityDraft } from "@/components/center/useActivityDraft";
+import { activityNameError } from "@/lib/centers/activity-edit-v2";
 
 // Portale centri V2 (29/10/2026): stesso modulo "da zero", titolo e campi del
 // portale centri quando il guscio è acceso (prop v2). Senza guscio invariato.
@@ -19,13 +22,15 @@ export default function NewActivityForm({ centerReady, v2 = false }: { centerRea
   const router = useRouter();
   const input = v2 ? INPUT_V2 : INPUT_LEGACY;
   const label = v2 ? LABEL_V2 : LABEL_LEGACY;
-  const [form, setForm] = useState({
+  // UX-PARTNER-007: bozza ripresa se si esce e si torna (useActivityDraft).
+  const draft = useActivityDraft("libera", {
     name: "",
     emoji: "⭐",
     ageRange: "6-12",
     pricePerWeek: 150,
     description: "",
   });
+  const { form, setForm } = draft;
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -82,11 +87,18 @@ export default function NewActivityForm({ centerReady, v2 = false }: { centerRea
         </div>
       )}
 
+      {draft.restored && <DraftRestoredNote onDiscard={draft.discard} legacy={!v2} />}
+
       <form
         onSubmit={async (e) => {
           e.preventDefault();
           setError(null);
           if (!canSubmit) return;
+          const nameProblem = activityNameError(form.name);
+          if (nameProblem) {
+            setError(nameProblem);
+            return;
+          }
           setSaving(true);
           const result = await createActivityAction(form);
           setSaving(false);
@@ -95,6 +107,7 @@ export default function NewActivityForm({ centerReady, v2 = false }: { centerRea
             return;
           }
           if (result.activitySlug) {
+            draft.clear();
             router.push(`/center/activities/${result.activitySlug}`);
           }
         }}

@@ -27,6 +27,8 @@ export interface DailyAttendanceStat {
   inRitardo: number;
   assente: number;
   totale: number;
+  /** UX-PARTNER-006: giorni passati senza nessuna registrazione (non sono assenze). Solo report del centro. */
+  nonRegistrato?: number;
 }
 
 export interface ActivityAttendanceStat {
@@ -36,6 +38,8 @@ export interface ActivityAttendanceStat {
   presente: number;
   inRitardo: number;
   assente: number;
+  /** UX-PARTNER-006: senza registrazione, non contati come assenze. */
+  nonRegistrato?: number;
   assenzaRate: number; // percentuale 0-100
   ritardoRate: number; // percentuale 0-100
 }
@@ -142,6 +146,7 @@ export function buildAttendanceReport(
         presente: 0,
         inRitardo: 0,
         assente: 0,
+        nonRegistrato: 0,
         assenzaRate: 0,
         ritardoRate: 0,
       });
@@ -150,20 +155,23 @@ export function buildAttendanceReport(
 
     for (const day of days) {
       if (!byDateMap.has(day)) {
-        byDateMap.set(day, { date: day, dateLabel: dateLabel(day), presente: 0, inRitardo: 0, assente: 0, totale: 0 });
+        byDateMap.set(day, { date: day, dateLabel: dateLabel(day), presente: 0, inRitardo: 0, assente: 0, totale: 0, nonRegistrato: 0 });
       }
       const dayStat = byDateMap.get(day)!;
 
       for (const kid of group.kids) {
         const record = recordMap.get(`${kid.kidId}:${day}`);
-        // Nessun record = mai segnato dal gestore/genitore: coerente con
-        // AttendanceClient.tsx, che tratta l'assenza di scrittura come
-        // "assente" di default (stato iniziale dei bottoni presenza).
-        const status = record?.status ?? "assente";
+        // UX-PARTNER-006 (report 30/10): nessun record = presenza non
+        // registrata, NON un'assenza (prima valeva "assente" di default, come
+        // nel registro). Si conta a parte e non entra in tassi né "da contattare".
+        const status = record?.status ?? null;
 
         dayStat.totale += 1;
         activityStat.totale += 1;
-        if (status === "presente") {
+        if (status === null) {
+          dayStat.nonRegistrato = (dayStat.nonRegistrato ?? 0) + 1;
+          activityStat.nonRegistrato = (activityStat.nonRegistrato ?? 0) + 1;
+        } else if (status === "presente") {
           dayStat.presente += 1;
           activityStat.presente += 1;
         } else if (status === "in_ritardo") {
@@ -199,8 +207,10 @@ export function buildAttendanceReport(
   }
 
   for (const stat of byActivityMap.values()) {
-    stat.assenzaRate = stat.totale > 0 ? Math.round((stat.assente / stat.totale) * 100) : 0;
-    stat.ritardoRate = stat.totale > 0 ? Math.round((stat.inRitardo / stat.totale) * 100) : 0;
+    // Tassi sui soli giorni registrati: un giorno non segnato non è né assenza né presenza.
+    const registered = stat.totale - (stat.nonRegistrato ?? 0);
+    stat.assenzaRate = registered > 0 ? Math.round((stat.assente / registered) * 100) : 0;
+    stat.ritardoRate = registered > 0 ? Math.round((stat.inRitardo / registered) * 100) : 0;
   }
 
   const byDate = Array.from(byDateMap.values()).sort((a, b) => a.date.localeCompare(b.date));

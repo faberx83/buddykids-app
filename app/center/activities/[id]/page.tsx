@@ -5,6 +5,7 @@ import { getTags } from "@/lib/data/tags";
 import { getCertificationsForActivityGestore } from "@/lib/data/certifications";
 import { partnerShellEnabledForCurrentUser } from "@/lib/centers/partner-v2-flag";
 import ActivityEditV2 from "@/components/center/ActivityEditV2";
+import { partnerSelectableTags } from "@/lib/centers/activity-edit-v2";
 import { getActivityDateSummaries, EMPTY_DATE_SUMMARY } from "@/lib/data/activity-dates";
 
 // Forza il render dinamico per-richiesta: subito dopo "Crea attività" si
@@ -20,8 +21,10 @@ export default async function CenterActivityEditPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const [activity, tags] = await Promise.all([getActivityBySlug(id), getTags()]);
+  const [activity, allTags] = await Promise.all([getActivityBySlug(id), getTags()]);
   if (!activity) return notFound();
+  // UX-PARTNER-005: niente tag di prova proposti al centro (quelli già assegnati restano).
+  const tags = partnerSelectableTags(allTags, activity.tagIds);
 
   const [certifications, v2] = await Promise.all([
     getCertificationsForActivityGestore(activity.dbId),

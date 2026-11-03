@@ -130,11 +130,12 @@ test.describe("Portale centri V2 — guscio: flusso (controlli sul sorgente)", (
       "/center/attendance",
       "/center/report-presenze",
       "/center/invites",
-      "/center/servizi-consigliati",
       "/center/account",
     ]) {
       expect(p, href).toContain(href);
     }
+    // 03/11/2026, UX-PARTNER-008 (report 30/10): "Servizi consigliati" fuori dalla navigazione della beta.
+    expect(p).not.toContain('href: "/center/servizi-consigliati"');
     expect(p).toContain('redirect("/center/profile")');
     expect(p).toContain("LogoutButton");
     // 28/10/2026: la casella di TRAMA dalla configurazione, mai nel codice (EMM-06).

@@ -7,6 +7,8 @@ import { getAttendanceReportForCenter } from "@/lib/data/attendance-report";
 // attività, elenco "ritardatari abituali" — vedi lib/data/attendance-report.ts.
 export default async function ReportPresenzePage() {
   const report = await getAttendanceReportForCenter();
+  // UX-PARTNER-006: giorni passati senza registrazione, detti a parte (non sono assenze).
+  const notRecorded = report.byDate.reduce((n, d) => n + (d.nonRegistrato ?? 0), 0);
 
   return (
     <div>
@@ -22,6 +24,13 @@ export default async function ReportPresenzePage() {
         <div className="mb-5 rounded-lg border border-orange-mid bg-orange-light p-4 text-sm text-ink">
           Nessun giorno di camp è ancora trascorso: il report si popola man mano che passano i
           giorni delle settimane prenotate.
+        </div>
+      )}
+
+      {notRecorded > 0 && (
+        <div className="mb-4 rounded-lg border border-[#DCE6E3] bg-white p-4 text-sm text-ink" data-testid="report-not-recorded">
+          {notRecorded === 1 ? "1 presenza passata non è stata registrata" : `${notRecorded} presenze passate non sono state registrate`}:
+          non contano come assenze. Si possono segnare dal Registro presenze.
         </div>
       )}
 

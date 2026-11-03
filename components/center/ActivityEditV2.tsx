@@ -29,8 +29,11 @@ import {
   ACTIVITY_SECTIONS,
   BOOKING_MODE_V2,
   MEAL_V2,
+  activityNameError,
   datesSummary,
+  dayRate,
   sectionSummaries,
+  weekPriceFromDay,
   type ActivityEditState,
   type ActivitySectionKey,
   type BookingMode,
@@ -120,6 +123,7 @@ export default function ActivityEditV2({
   const [open, setOpen] = useState<ActivitySectionKey | null>(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [nameError, setNameError] = useState<string | null>(null);
   const [locating, setLocating] = useState(false);
   const [locateError, setLocateError] = useState<string | null>(null);
 
@@ -143,6 +147,7 @@ export default function ActivityEditV2({
   function openSection(key: ActivitySectionKey) {
     setForm(saved);
     setError(null);
+    setNameError(null);
     setOpen(key);
   }
   function closeSection() {
@@ -153,6 +158,15 @@ export default function ActivityEditV2({
 
   async function save() {
     setError(null);
+    // UX-PARTNER-003: nome obbligatorio, controllato prima di salvare (e di nuovo sul server).
+    const nameProblem = activityNameError(form.name);
+    if (nameProblem) {
+      setNameError(nameProblem);
+      if (open !== "info") setOpen("info");
+      requestAnimationFrame(() => document.getElementById("a-name")?.focus());
+      return;
+    }
+    setNameError(null);
     if (!activity.dbId) {
       setSaved(form);
       setOpen(null);
@@ -437,7 +451,23 @@ export default function ActivityEditV2({
           {open === "info" && (
             <>
               <Field label="Nome dell'attività" htmlFor="a-name">
-                <input id="a-name" value={form.name} onChange={(e) => update("name", e.target.value)} className={INPUT} />
+                <input
+                  id="a-name"
+                  value={form.name}
+                  onChange={(e) => {
+                    update("name", e.target.value);
+                    if (nameError) setNameError(null);
+                  }}
+                  required
+                  aria-invalid={nameError ? true : undefined}
+                  aria-describedby={nameError ? "a-name-error" : undefined}
+                  className={`${INPUT} ${nameError ? "border-[#B4361F]" : ""}`}
+                />
+                {nameError && (
+                  <p id="a-name-error" role="alert" className="mt-1.5 text-[13px] font-medium text-[#B4361F]">
+                    {nameError}
+                  </p>
+                )}
               </Field>
               <Field label="Età" htmlFor="a-age" hint="Per esempio 6-11.">
                 <input id="a-age" value={form.ageRange} onChange={(e) => update("ageRange", e.target.value)} className={INPUT} />
@@ -530,28 +560,62 @@ export default function ActivityEditV2({
 
           {open === "prezzi" && (
             <>
-              <Field label="Prezzo a settimana (€)" htmlFor="a-price" hint="I prezzi dei singoli giorni si cambiano in Date e posti.">
-                <input
-                  id="a-price"
-                  type="number"
-                  inputMode="decimal"
-                  min={0}
-                  value={form.pricePerWeek}
-                  onChange={(e) => update("pricePerWeek", Number(e.target.value))}
-                  className={INPUT}
-                />
-              </Field>
-              <Field label="Navetta, a settimana (€)" htmlFor="a-shuttle" hint="0 = navetta non disponibile.">
-                <input
-                  id="a-shuttle"
-                  type="number"
-                  inputMode="decimal"
-                  min={0}
-                  value={form.shuttlePrice}
-                  onChange={(e) => update("shuttlePrice", Number(e.target.value))}
-                  className={INPUT}
-                />
-              </Field>
+              {/* UX-PARTNER-002: il prezzo si scrive nell'unità della modalità (giorno = un quinto della settimana, lib/day-pricing.ts). */}
+              {form.bookingMode === "day_only" ? (
+                <Field
+                  label="Prezzo al giorno (€)"
+                  htmlFor="a-price-day"
+                  hint="È quello che le famiglie vedono e pagano per ogni giorno. Gli sconti di un giorno preciso si mettono in Date e posti."
+                >
+                  <input
+                    id="a-price-day"
+                    type="number"
+                    inputMode="decimal"
+                    min={0}
+                    step="0.5"
+                    value={dayRate(form.pricePerWeek)}
+                    onChange={(e) => update("pricePerWeek", weekPriceFromDay(Number(e.target.value)))}
+                    className={INPUT}
+                  />
+                </Field>
+              ) : (
+                <Field
+                  label="Prezzo a settimana (€)"
+                  htmlFor="a-price"
+                  hint={
+                    form.bookingMode === "mixed"
+                      ? `Un giorno singolo costa un quinto: €${dayRate(form.pricePerWeek)}. Gli sconti di un giorno preciso si mettono in Date e posti.`
+                      : undefined
+                  }
+                >
+                  <input
+                    id="a-price"
+                    type="number"
+                    inputMode="decimal"
+                    min={0}
+                    value={form.pricePerWeek}
+                    onChange={(e) => update("pricePerWeek", Number(e.target.value))}
+                    className={INPUT}
+                  />
+                </Field>
+              )}
+              {form.bookingMode !== "day_only" && (
+                <Field
+                  label="Navetta, a settimana (€)"
+                  htmlFor="a-shuttle"
+                  hint={`0 = navetta non disponibile.${form.bookingMode === "mixed" ? " Si sceglie solo prenotando settimane intere." : ""}`}
+                >
+                  <input
+                    id="a-shuttle"
+                    type="number"
+                    inputMode="decimal"
+                    min={0}
+                    value={form.shuttlePrice}
+                    onChange={(e) => update("shuttlePrice", Number(e.target.value))}
+                    className={INPUT}
+                  />
+                </Field>
+              )}
               <p className="text-[13px] text-ink-2">
                 Sconti per più settimane e fratelli valgono per tutto il centro:{" "}
                 <Link href="/center/profile?sezione=sconti" className="font-semibold text-partner-primary">
@@ -568,6 +632,13 @@ export default function ActivityEditV2({
 
           {open === "servizi" && (
             <>
+              {form.bookingMode !== "week_only" && (
+                <p className="rounded-xl bg-partner-page px-3.5 py-3 text-[13px] leading-snug text-ink-2">
+                  {form.bookingMode === "day_only"
+                    ? "Con i giorni singoli questi servizi si vedono nella scheda ma le famiglie non li aggiungono né pagano in app: i costi si concordano con voi."
+                    : "I costi si aggiungono solo a chi prenota settimane intere; con i giorni singoli i servizi si concordano con voi."}
+                </p>
+              )}
               {(
                 [
                   ["preService", "Ingresso anticipato", "Dalle"],

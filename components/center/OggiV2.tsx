@@ -173,12 +173,10 @@ export default function OggiV2({ savedProfile, activation, toAnswer, today, numb
               </span>
             </Link>
           ))}
-          <div className="flex items-center gap-2 border-t border-[#EEF2F1] px-4 py-2.5">
-            <span className="text-[12.5px] text-ink-2">Chi ritira, con le deleghe dei genitori</span>
-            <span className="rounded-full border border-dashed border-[#B9C6C2] px-2 py-0.5 text-[11.5px] font-semibold text-ink-2">
-              In programma
-            </span>
-          </div>
+          {/* REV-PARTNER-002 / report 30/10: niente promesse in Oggi, la procedura vera. */}
+          <p className="border-t border-[#EEF2F1] px-4 py-2.5 text-[12.5px] leading-snug text-ink-2">
+            Chi ritira: controllate le deleghe come fate oggi. TRAMA non le raccoglie ancora.
+          </p>
         </div>
       </section>
 
@@ -193,12 +191,6 @@ export default function OggiV2({ savedProfile, activation, toAnswer, today, numb
             label={numbers.expiringPromotions === 1 ? "promozione in scadenza" : "promozioni in scadenza"}
             href="/center/promotions"
           />
-        </div>
-        <div className="flex flex-col gap-1 rounded-2xl border border-dashed border-[#B9C6C2] px-4 py-3">
-          <span className="text-[11.5px] font-bold uppercase tracking-[0.08em] text-ink-2">In programma</span>
-          <span className="text-[14px] text-ink">
-            Cosa cercano le famiglie della vostra zona: giorni, orari ed età richiesti, e quante vi hanno salvato.
-          </span>
         </div>
       </section>
 
