@@ -221,3 +221,43 @@ test.describe("Profilo del centro a sezioni (03/11/2026)", () => {
     for (const sec of ["contatti", "descrizione", "indirizzo", "cancellazioni"]) expect(act, sec).toContain(`/center/profile?sezione=${sec}&da=oggi`);
   });
 });
+
+test.describe("Conversazione aperta dal centro (migration 57, 03/11/2026)", () => {
+  test("RPP-15 migration additiva: solo famiglie che hanno prenotato un'attività del centro, ripiego documentato", () => {
+    const sql = read("supabase/migration_57_conversazione_dal_centro.sql");
+    expect(sql).toContain("-- STATO: PREPARATA, NON APPLICATA");
+    const statements = sql
+      .split("\n")
+      .filter((l) => !l.trim().startsWith("--"))
+      .join("\n");
+    expect(statements).toContain("add column if not exists opened_by text not null default 'parent'");
+    expect(statements).toContain("check (opened_by in ('parent', 'center'))");
+    expect(statements).toContain("for insert");
+    expect(statements).toContain("a.center_id = public.current_center_id()");
+    expect(statements).toContain("from public.bookings b");
+    expect(statements).toContain("b.parent_id = activity_inquiries.parent_id");
+    // il nome della regola sta nei 63 caratteri di Postgres
+    const name = statements.match(/create policy "([^"]+)"/)?.[1] ?? "";
+    expect(name.length).toBeGreaterThan(0);
+    expect(name.length).toBeLessThanOrEqual(63);
+    expect(sql).toContain("--   drop policy if exists");
+    expect(sql).toContain("--   alter table public.activity_inquiries drop column if exists opened_by;");
+  });
+
+  test("RPP-16 azione: continua la conversazione aperta, altrimenti la apre; senza migration offre l'email", () => {
+    const a = read("app/actions/inquiries.ts");
+    const fn = a.slice(a.indexOf("export async function startConversationWithFamilyAction"));
+    expect(fn).toContain("findOpenInquiryForActivity(supabase");
+    expect(fn).toContain("replyToInquiryAction({ inquiryId: existing");
+    expect(fn).toContain('opened_by: "center"');
+    expect(fn).toContain('appendMessage(supabase, inquiryId, user.id, "center"');
+    expect(fn).toContain("fallbackEmail: true");
+    expect(fn).toContain("sendPushToUser(");
+    const sheet = read("components/center/BookingSheet.tsx");
+    expect(sheet).toContain("startConversationWithFamilyAction({ bookingId: booking.id, message: writeText })");
+    expect(sheet).toContain('data-testid="booking-write-family"');
+    // l'email resta solo come ripiego quando la conversazione non si può aprire
+    const mailto = sheet.indexOf("mailto:");
+    expect(mailto).toBeGreaterThan(sheet.indexOf("emailFallback && b.parentEmail"));
+  });
+});

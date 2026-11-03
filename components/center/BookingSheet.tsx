@@ -2,6 +2,8 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { startConversationWithFamilyAction } from "@/app/actions/inquiries";
 import PartnerSheet from "@/components/center/PartnerSheet";
 import { useNextgenToast } from "@/components/nextgen/NextgenToastProvider";
 import {
@@ -63,6 +65,32 @@ export default function BookingSheet({
   const [proposalOpen, setProposalOpen] = useState(false);
   const [proposal, setProposal] = useState("");
   const [confirmCancel, setConfirmCancel] = useState<string | null>(null);
+  // 03/11/2026: "Scrivi" apre un messaggio in TRAMA (conversazione), non l'email.
+  const router = useRouter();
+  const [writeOpen, setWriteOpen] = useState(false);
+  const [writeText, setWriteText] = useState("");
+  const [writeBusy, setWriteBusy] = useState(false);
+  const [writeError, setWriteError] = useState<string | null>(null);
+  const [emailFallback, setEmailFallback] = useState(false);
+
+  async function sendToFamily() {
+    if (!booking) return;
+    setWriteError(null);
+    setWriteBusy(true);
+    const res = await startConversationWithFamilyAction({ bookingId: booking.id, message: writeText }).catch(() => ({
+      error: "Messaggio non inviato, riprovate.",
+    }) as { error: string; inquiryId?: string; fallbackEmail?: boolean });
+    setWriteBusy(false);
+    if (res.error || !res.inquiryId) {
+      setWriteError(res.error ?? "Messaggio non inviato, riprovate.");
+      if (res.fallbackEmail) setEmailFallback(true);
+      return;
+    }
+    setWriteOpen(false);
+    setWriteText("");
+    toast("Messaggio inviato alla famiglia");
+    router.push(`/center/richieste/${res.inquiryId}`);
+  }
 
   const pendingDayIds = useMemo(
     () => (booking?.days ?? []).filter((d) => d.partnerDecision === "pending").map((d) => d.activityDayId),
@@ -77,6 +105,10 @@ export default function BookingSheet({
     setProposalOpen(false);
     setProposal("");
     setConfirmCancel(null);
+    setWriteOpen(false);
+    setWriteText("");
+    setWriteError(null);
+    setEmailFallback(false);
     if (!booking.readByCenter) {
       void markBookingsReadAction({ ids: [booking.id], side: "center", read: true }).catch(() => undefined);
       onChange({ ...booking, readByCenter: true });
@@ -258,13 +290,54 @@ export default function BookingSheet({
               <i className="ti ti-message-circle text-[16px]" aria-hidden="true" />
               Messaggi
             </Link>
-          ) : b.parentEmail ? (
-            <a href={`mailto:${b.parentEmail}`} className="flex min-h-[40px] items-center gap-1 rounded-xl border border-partner-line bg-white px-3 text-[13px] font-semibold text-partner-primary">
-              <i className="ti ti-mail text-[16px]" aria-hidden="true" />
+          ) : (
+            <button
+              type="button"
+              onClick={() => setWriteOpen((v) => !v)}
+              aria-expanded={writeOpen}
+              data-testid="booking-write-family"
+              className="flex min-h-[40px] items-center gap-1 rounded-xl border border-partner-line bg-white px-3 text-[13px] font-semibold text-partner-primary"
+            >
+              <i className="ti ti-message-circle text-[16px]" aria-hidden="true" />
               Scrivi
-            </a>
-          ) : null}
+            </button>
+          )}
         </section>
+
+        {writeOpen && !conversationHref && (
+          <section aria-label="Messaggio alla famiglia" className="flex flex-col gap-2 rounded-2xl border border-partner-line px-4 py-3">
+            <label htmlFor={`write-${b.id}`} className="text-[13px] font-semibold text-ink-2">
+              Messaggio per {b.parentName || "la famiglia"}
+            </label>
+            <textarea
+              id={`write-${b.id}`}
+              rows={3}
+              value={writeText}
+              onChange={(e) => setWriteText(e.target.value)}
+              placeholder="Es. Per lunedì portate le scarpe da ginnastica."
+              className="w-full rounded-xl border border-partner-line px-3.5 py-2.5 text-[15px] text-ink outline-none focus:border-partner-primary"
+            />
+            <span className="text-[12px] text-ink-2">Arriva nei messaggi di TRAMA della famiglia, con una notifica. Le risposte le trovate in Richieste.</span>
+            {writeError && (
+              <p role="alert" className="text-[13px] font-medium text-[#B4361F]">
+                {writeError}{" "}
+                {emailFallback && b.parentEmail && (
+                  <a href={`mailto:${b.parentEmail}`} className="font-semibold text-partner-primary underline">
+                    Scrivi per email
+                  </a>
+                )}
+              </p>
+            )}
+            <button
+              type="button"
+              onClick={sendToFamily}
+              disabled={writeBusy || !writeText.trim()}
+              className="min-h-[44px] self-start rounded-full bg-partner-primary px-5 text-[14px] font-bold text-white hover:bg-partner-primary-press disabled:opacity-60"
+            >
+              {writeBusy ? "Invio…" : "Invia"}
+            </button>
+          </section>
+        )}
 
         {b.partnerDecision === "proposed" && b.partnerProposalNote && (
           <section className="flex flex-col gap-1 rounded-2xl border border-partner-line px-4 py-3">

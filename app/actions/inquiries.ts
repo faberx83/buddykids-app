@@ -327,3 +327,85 @@ export async function getContactContextAction(activityDbId: string): Promise<{
   if (!threads) return { threads: false, existingInquiryId: null };
   return { threads, existingInquiryId: await findOpenInquiryForActivity(supabase, user.id, activityDbId) };
 }
+
+// ─────────────────────────────────────────────────────────────────────────
+// 03/11/2026 — Fabrizio (30/10): "perché scrivi alla famiglia è con mail e
+// non con i messaggi conversazione?". Dal foglio di una prenotazione il
+// centro scrive alla famiglia in TRAMA: se c'è già una conversazione aperta
+// su quell'attività si continua quella, altrimenti se ne apre una nuova
+// (opened_by = 'center', migration 57: solo con famiglie che hanno prenotato
+// un'attività del centro). Prima della migration l'inserimento viene
+// rifiutato e si risponde con fallbackEmail: il portale offre l'email.
+export async function startConversationWithFamilyAction(input: {
+  bookingId: string;
+  message: string;
+}): Promise<{ error?: string; inquiryId?: string; fallbackEmail?: boolean }> {
+  if (!isSupabaseConfigured) return { error: "Supabase non configurato" };
+  const clean = cleanMessageBody(input.message);
+  if (!clean.ok) return { error: clean.error };
+
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { error: "Non autenticato" };
+
+  // La prenotazione si legge con le regole di sempre: il centro vede solo quelle delle sue attività.
+  const { data: booking } = await supabase
+    .from("bookings")
+    .select("id, parent_id, activity_id")
+    .eq("id", input.bookingId)
+    .maybeSingle();
+  if (!booking?.parent_id || !booking.activity_id) return { error: "Prenotazione non trovata." };
+
+  const existing = await findOpenInquiryForActivity(supabase, booking.parent_id as string, booking.activity_id as string);
+  if (existing) {
+    const res = await replyToInquiryAction({ inquiryId: existing, reply: clean.body });
+    return res.error ? { error: res.error } : { inquiryId: existing };
+  }
+
+  const at = new Date().toISOString();
+  const { last_message_at: _at, ...header } = headerAfterMessage("center", clean.body, at);
+  void _at;
+  const { data: created, error } = await supabase
+    .from("activity_inquiries")
+    .insert({
+      activity_id: booking.activity_id,
+      parent_id: booking.parent_id,
+      message: clean.body,
+      opened_by: "center",
+      ...header,
+      replied_by: user.id,
+      last_message_at: at,
+    })
+    .select("id")
+    .single();
+  if (error || !created) {
+    // 42501 = regola di accesso (migration 57 non applicata), 42703 = colonna opened_by mancante.
+    const notYet = error?.code === "42501" || error?.code === "42703" || /opened_by|row-level security/i.test(error?.message ?? "");
+    return notYet
+      ? { error: "Per ora potete scrivere a questa famiglia solo per email.", fallbackEmail: true }
+      : { error: error?.message || "Messaggio non inviato, riprovate." };
+  }
+
+  const inquiryId = created.id as string;
+  const stored = await appendMessage(supabase, inquiryId, user.id, "center", clean.body, at);
+  if (stored.error) console.error(`[startConversationWithFamilyAction] messaggio non salvato: ${stored.error}`);
+
+  revalidatePath("/center/prenotazioni");
+  revalidatePath("/center/richieste");
+  revalidatePath("/nextgen/richieste");
+
+  try {
+    const { data: activity } = await supabase.from("activities").select("name").eq("id", booking.activity_id).maybeSingle();
+    await sendPushToUser(booking.parent_id as string, {
+      title: `Messaggio dal centro: ${activity?.name ?? "la vostra prenotazione"}`,
+      body: clean.body,
+      deepLink: `/nextgen/richieste/${inquiryId}`,
+    });
+  } catch (e) {
+    console.error("[startConversationWithFamilyAction] Errore inatteso durante la push al genitore:", e);
+  }
+
+  return { inquiryId };
+}
