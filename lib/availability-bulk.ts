@@ -1,4 +1,5 @@
 import type { DayAvailability } from "@/lib/types";
+import { spotsAfterCapacityChange } from "@/lib/capacity/day-inventory";
 
 // OD-02 / PT-MVP-08 (TRAMA — QA Remediation, poi "REVISIONE DECISIONE OD-02:
 // FIX PRIMA DELLA BETA", 06/08/2026): logica pura del pannello di modifica
@@ -75,7 +76,9 @@ export function bulkDraftHasChanges(draft: BulkDraft): boolean {
 export function applyBulkPatch(
   days: DayAvailability[],
   selected: ReadonlySet<string>,
-  draft: BulkDraft
+  draft: BulkDraft,
+  /** Test browser 03/11/2026: posti già confermati per data, per non ignorarli cambiando la capienza. */
+  confirmedByDate: Readonly<Record<string, number>> = {}
 ): DayAvailability[] {
   return days.map((d) => {
     if (!selected.has(d.date)) return d;
@@ -87,10 +90,12 @@ export function applyBulkPatch(
     }
     if (draft.capacity.include) {
       patch.capacity = draft.capacity.value;
-      // Stesso comportamento già in uso nel pannello a giorno singolo e
-      // nel bulk pre-esistente: cambiare la capienza totale resetta i
-      // posti liberi al nuovo totale.
-      patch.spotsLeft = draft.capacity.value;
+      // Test browser 03/11/2026: prima i liberi diventavano uguali ai nuovi
+      // totali, ignorando i posti già confermati (un giorno con 1 confermato
+      // portato a 15 offriva 15 posti in più). Ora si spostano della stessa
+      // differenza e restano tra 0 e totali − confermati; se i totali
+      // scendono sotto i confermati il calendario lo segnala e non si salva.
+      patch.spotsLeft = spotsAfterCapacityChange(d, draft.capacity.value, confirmedByDate[d.date] ?? 0);
     }
     if (draft.discountPercent.include) {
       patch.discountPercent = draft.discountPercent.value || undefined;

@@ -57,7 +57,7 @@ export async function getGroupDetail(groupId: string): Promise<GroupDetail | nul
   const { data: groupRow, error: groupError } = await supabase
     .from("groups")
     .select(
-      "id, name, created_by, is_public, activity_id, activities ( name, center_id, centers ( name, group_discount_tiers ) )"
+      "id, name, created_by, is_public, activity_id, activities ( name, slug, center_id, centers ( name, group_discount_tiers ) )"
     )
     .eq("id", groupId)
     .maybeSingle();
@@ -263,6 +263,8 @@ export async function getGroupDetail(groupId: string): Promise<GroupDetail | nul
     isPublic: groupRow.is_public ?? false,
     activityId: groupRow.activity_id,
     activityName: activity?.name ?? null,
+    // 03/11/2026: per "scegli i giorni" dopo una Proposta di gruppo accettata.
+    activitySlug: (activity as { slug?: string | null } | null)?.slug ?? null,
     centerName: center?.name ?? null,
     kids,
     subgroups,

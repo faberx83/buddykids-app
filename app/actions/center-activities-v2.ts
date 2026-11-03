@@ -225,3 +225,51 @@ export async function duplicateActivityAction(activitySlug: string): Promise<{ a
   revalidateActivities();
   return { activitySlug: data.slug };
 }
+
+// ─────────────────────────────────────────────────────────────────────────
+// 03/11/2026 — test browser e report del 30/10 (UX-PARTNER-004): il centro
+// sospende o riapre le NUOVE richieste di un'attività. Non cancella né cambia
+// le prenotazioni esistenti (migration 59: il database rifiuta solo le nuove).
+// La scheda resta visibile alle famiglie con "Nuove richieste sospese".
+export async function setActivityRequestsPausedAction(
+  activitySlug: string,
+  paused: boolean
+): Promise<{ error?: string; pausedAt?: string | null }> {
+  if (!isSupabaseConfigured) return { error: "Non disponibile in questo ambiente." };
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { error: "Sessione scaduta: rientrate nel portale." };
+  const { centerDbId } = await getCenterContext();
+  if (!centerDbId) return { error: "Questo account non è ancora collegato a un centro." };
+
+  const pausedAt = paused ? new Date().toISOString() : null;
+  const { data, error } = await supabase
+    .from("activities")
+    .update({ requests_paused_at: pausedAt })
+    .eq("slug", activitySlug)
+    .eq("center_id", centerDbId)
+    .select("id");
+  if (error) {
+    if (error.code === "42703" || /requests_paused_at/.test(error.message)) {
+      return { error: "Sospendere le richieste non è ancora disponibile: manca un aggiornamento del database (migration 59)." };
+    }
+    return { error: "Non siamo riusciti a salvare, riprovate." };
+  }
+  if (!data || data.length === 0) return { error: "Attività non trovata in questo centro." };
+
+  await logGestoreAction(supabase, {
+    actorId: user.id,
+    centerId: centerDbId,
+    action: paused ? "activity_requests_paused" : "activity_requests_resumed",
+    entityType: "activity",
+    entityId: (data[0] as { id: string }).id,
+  });
+
+  revalidatePath("/center/activities");
+  revalidatePath(`/center/activities/${activitySlug}`);
+  revalidatePath("/activity/[id]", "page");
+  revalidatePath("/nextgen/search");
+  return { pausedAt };
+}

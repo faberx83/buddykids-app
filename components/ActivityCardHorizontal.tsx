@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { Activity } from "@/lib/types";
 import { pillClasses } from "@/lib/colors";
+import { distanceText } from "@/lib/geo";
 
 export default function ActivityCardHorizontal({
   activity,
@@ -93,7 +94,7 @@ export default function ActivityCardHorizontal({
         <div className="text-[13px] font-bold text-ink">{activity.name}</div>
         <div className="flex items-center gap-1.5 text-[11px] text-ink-2">
           <i className="ti ti-map-pin" />
-          {activity.distanceKm} km · {activity.ageRange}
+          {[distanceText(activity.distanceKm), activity.ageRange].filter(Boolean).join(" · ")}
         </div>
         <div className="my-0.5 flex flex-wrap gap-1">
           {activity.tags.slice(0, 2).map((tag) => (

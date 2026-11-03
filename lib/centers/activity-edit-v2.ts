@@ -110,6 +110,17 @@ export function priceSummary(f: Pick<ActivityEditState, "bookingMode" | "pricePe
 }
 
 /** UX-PARTNER-003: il nome non può essere vuoto (né fatto di soli spazi). */
+/**
+ * Età leggibile: "6-11 anni". Test browser 03/11/2026: ageRange arriva già
+ * con "anni" (lib/data/activities.ts) e sottotitolo e Informazioni
+ * aggiungevano un altro "anni" → "6-11 anni anni". Si aggiunge solo se manca.
+ */
+export function ageLabel(ageRange: string | null | undefined): string {
+  const v = (ageRange ?? "").trim();
+  if (!v) return "";
+  return /\banni\b/i.test(v) ? v : `${v} anni`;
+}
+
 export function activityNameError(name: string): string | null {
   return name.trim().length === 0 ? "Scrivete il nome dell'attività: è quello che leggono le famiglie." : null;
 }
@@ -127,7 +138,7 @@ export function sectionSummaries(
 ): Record<ActivitySectionKey, SectionSummary> {
   const tags = f.tagIds.map(tagLabel).filter(Boolean) as string[];
   const desc = f.description.trim();
-  const info = [f.ageRange ? `${f.ageRange} anni` : "", tags.length ? tags.slice(0, 2).join(", ") + (tags.length > 2 ? ` +${tags.length - 2}` : "") : ""]
+  const info = [ageLabel(f.ageRange), tags.length ? tags.slice(0, 2).join(", ") + (tags.length > 2 ? ` +${tags.length - 2}` : "") : ""]
     .filter(Boolean)
     .join(" · ");
 

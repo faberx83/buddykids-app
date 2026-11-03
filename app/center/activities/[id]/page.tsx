@@ -6,6 +6,7 @@ import { getCertificationsForActivityGestore } from "@/lib/data/certifications";
 import { partnerShellEnabledForCurrentUser } from "@/lib/centers/partner-v2-flag";
 import ActivityEditV2 from "@/components/center/ActivityEditV2";
 import { partnerSelectableTags } from "@/lib/centers/activity-edit-v2";
+import { getRequestsPausedAt } from "@/lib/data/activity-pause";
 import { getActivityDateSummaries, EMPTY_DATE_SUMMARY } from "@/lib/data/activity-dates";
 
 // Forza il render dinamico per-richiesta: subito dopo "Crea attività" si
@@ -36,8 +37,21 @@ export default async function CenterActivityEditPage({
   // indirizzo con i suggerimenti (ricerca luoghi aperta ai gestori col
   // guscio, app/api/places/search/route.ts). Senza guscio il modulo di sempre.
   if (v2) {
-    const dates = activity.dbId ? ((await getActivityDateSummaries([activity.dbId]))[activity.dbId] ?? EMPTY_DATE_SUMMARY) : EMPTY_DATE_SUMMARY;
-    return <ActivityEditV2 activity={activity} tags={tags} certifications={certifications} dates={dates} placeSearch />;
+    const [summaries, paused] = await Promise.all([
+      activity.dbId ? getActivityDateSummaries([activity.dbId]) : Promise.resolve({} as Record<string, typeof EMPTY_DATE_SUMMARY>),
+      activity.dbId ? getRequestsPausedAt([activity.dbId]) : Promise.resolve({} as Record<string, string>),
+    ]);
+    const dates = (activity.dbId && summaries[activity.dbId]) || EMPTY_DATE_SUMMARY;
+    return (
+      <ActivityEditV2
+        activity={activity}
+        tags={tags}
+        certifications={certifications}
+        dates={dates}
+        placeSearch
+        requestsPausedAt={(activity.dbId && paused[activity.dbId]) || null}
+      />
+    );
   }
   return <ActivityEditForm activity={activity} tags={tags} certifications={certifications} />;
 }

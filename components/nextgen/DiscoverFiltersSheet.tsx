@@ -16,8 +16,11 @@ import { useCloseOnBack } from "@/lib/nextgen/use-close-on-back";
 
 import {
   AGE_PRESETS,
-  PRICE_PRESETS,
   SERVICE_OPTIONS,
+  priceCapUnit,
+  priceCapTitle,
+  priceCapNote,
+  pricePresetsFor,
   type DiscoverCoverageMode,
   type DiscoverFilterServices,
 } from "@/lib/nextgen/discover-filters";
@@ -138,7 +141,11 @@ export default function DiscoverFiltersSheet({
   if (!open) return null;
 
   const agePreset = AGE_PRESETS.find((p) => p.min === minAge && p.max === maxAge);
-  const pricePreset = PRICE_PRESETS.find((p) => p.value === maxPrice);
+  // Test browser 03/11/2026: l'unità del budget segue la copertura scelta
+  // ("Giorni singoli" → al giorno), vedi lib/nextgen/discover-filters.ts.
+  const priceUnit = priceCapUnit(coverageModes, onlyDaySpots);
+  const pricePresets = pricePresetsFor(priceUnit);
+  const pricePreset = pricePresets.find((p) => p.value === maxPrice);
 
   return (
     <div className="fixed inset-0 z-[70] flex flex-col justify-end" role="presentation">
@@ -179,14 +186,15 @@ export default function DiscoverFiltersSheet({
             </div>
           </Section>
 
-          <Section title="Prezzo a settimana" hint={pricePreset ? undefined : `fino a €${maxPrice}`}>
-            <div className="flex flex-wrap gap-2">
-              {PRICE_PRESETS.map((p) => (
+          <Section title={priceCapTitle(priceUnit)} hint={pricePreset ? undefined : `fino a €${maxPrice}`}>
+            <div className="flex flex-wrap gap-2" data-testid="price-cap" data-unit={priceUnit}>
+              {pricePresets.map((p) => (
                 <Chip key={p.value} on={maxPrice === p.value} onClick={() => onMaxPriceChange(p.value)}>
                   {p.label}
                 </Chip>
               ))}
             </div>
+            <p className="text-[12px] leading-snug text-ink-3" data-testid="price-cap-note">{priceCapNote(priceUnit)}</p>
           </Section>
 
           <Section title="Zona">

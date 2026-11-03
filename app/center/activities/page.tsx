@@ -6,6 +6,7 @@ import { isSupabaseConfigured } from "@/lib/supabase/env";
 import ActivitiesV2 from "@/components/center/ActivitiesV2";
 import { getActivityDateSummaries, EMPTY_DATE_SUMMARY } from "@/lib/data/activity-dates";
 import { partnerShellEnabledForCurrentUser } from "@/lib/centers/partner-v2-flag";
+import { getRequestsPausedAt } from "@/lib/data/activity-pause";
 
 // Difensivo, vedi nota in app/center/activities/[id]/page.tsx.
 export const dynamic = "force-dynamic";
@@ -15,7 +16,8 @@ export default async function CenterActivitiesPage() {
   const myActivities = await getActivitiesForCenter(centerDbId, centerSlug);
 
   if (centerDbId && (await partnerShellEnabledForCurrentUser())) {
-    const dates = await getActivityDateSummaries(myActivities.map((a) => a.dbId ?? "").filter(Boolean));
+    const ids = myActivities.map((a) => a.dbId ?? "").filter(Boolean);
+    const [dates, paused] = await Promise.all([getActivityDateSummaries(ids), getRequestsPausedAt(ids)]);
     return (
       <ActivitiesV2
         canCreate={isSupabaseConfigured}
@@ -29,6 +31,7 @@ export default async function CenterActivitiesPage() {
           hours: a.hours ?? null,
           pricePerWeek: a.pricePerWeek,
           dates: (a.dbId && dates[a.dbId]) || EMPTY_DATE_SUMMARY,
+          paused: Boolean(a.dbId && paused[a.dbId]),
         }))}
       />
     );

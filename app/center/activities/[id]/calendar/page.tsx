@@ -7,6 +7,7 @@ import { getActivityBySlug } from "@/lib/data/activities";
 import { getActivityDays } from "@/lib/data/activity-days";
 import { EMPTY_DATE_SUMMARY, getActivityDateSummaries } from "@/lib/data/activity-dates";
 import { datesSummary } from "@/lib/centers/activity-edit-v2";
+import { getConfirmedSpotsByDate } from "@/lib/data/day-confirmed";
 import PartnerPageHeader from "@/components/center/PartnerPageHeader";
 import { partnerShellEnabledForCurrentUser } from "@/lib/centers/partner-v2-flag";
 
@@ -26,9 +27,11 @@ export default async function CenterActivityCalendarPage({
   // vedeva quindi il calendario vuoto per tutte le date d'autunno e inverno.
   // Il centro gestisce sempre tutti i suoi giorni. E "N settimane pubblicate"
   // veniva dai dati finti di esempio (lib/mock-data): ora conta i dati veri.
-  const [days, summaries] = await Promise.all([
+  const [days, summaries, confirmedByDate] = await Promise.all([
     getActivityDays(activity, { includeAfterSeason: true }),
     activity.dbId ? getActivityDateSummaries([activity.dbId]) : Promise.resolve({} as Awaited<ReturnType<typeof getActivityDateSummaries>>),
+    // Test browser 03/11/2026: i confermati per data, per non scendere sotto e ricalcolare i liberi.
+    getConfirmedSpotsByDate(activity.dbId),
   ]);
   const dateLine = datesSummary((activity.dbId && summaries[activity.dbId]) || EMPTY_DATE_SUMMARY);
   const occupancy = weeklyOccupancyFromDays(days);
@@ -62,7 +65,7 @@ export default async function CenterActivityCalendarPage({
           <OccupancyChart data={occupancy} />
         </section>
         <section className="rounded-[18px] border border-partner-line bg-white p-4" data-spotlight="configure_spot_days">
-          <AvailabilityCalendar days={days} mode="edit" activityDbId={activity.dbId} />
+          <AvailabilityCalendar days={days} mode="edit" activityDbId={activity.dbId} confirmedByDate={confirmedByDate} />
         </section>
       </div>
     );
@@ -102,7 +105,7 @@ export default async function CenterActivityCalendarPage({
       </div>
 
       <div className="rounded-lg border border-[#E8EBF0] bg-white p-4" data-spotlight="configure_spot_days">
-        <AvailabilityCalendar days={days} mode="edit" activityDbId={activity.dbId} />
+        <AvailabilityCalendar days={days} mode="edit" activityDbId={activity.dbId} confirmedByDate={confirmedByDate} />
       </div>
     </div>
   );

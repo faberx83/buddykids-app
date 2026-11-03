@@ -7,6 +7,7 @@ import PartnerSheet from "@/components/center/PartnerSheet";
 import BookingSheet from "@/components/center/BookingSheet";
 import { useNextgenToast } from "@/components/nextgen/NextgenToastProvider";
 import { respondGroupRequestAction } from "@/app/actions/groups";
+import { GROUP_PROPOSAL_NAME, GROUP_PROPOSAL_PARTNER_HINT, GROUP_PROPOSAL_STATUS } from "@/lib/groups/group-proposal";
 import { respondToBookingAction, respondToBookingDaysAction } from "@/app/actions/booking-response";
 import type { CenterBooking } from "@/lib/data/center-bookings";
 import { bookingNeedsAction } from "@/lib/booking-response/effective-decision";
@@ -178,7 +179,7 @@ export default function InboxV2({
     if (r.error) return setGroupError("Non siamo riusciti a salvare la risposta, riprovate.");
     setGroups((prev) => prev.map((g) => (g.id === openGroup.id ? { ...g, status: accept ? "accepted" : "rejected" } : g)));
     setOpenGroupId(null);
-    toast(accept ? "Richiesta di gruppo accettata" : "Richiesta di gruppo rifiutata");
+    toast(accept ? "Proposta di gruppo accettata" : "Proposta di gruppo rifiutata");
   }
 
   function renderRow(item: InboxItem) {
@@ -380,7 +381,7 @@ export default function InboxV2({
           setOpenGroupId(null);
           setGroupError(null);
         }}
-        title={openGroup?.groupName ?? "Richiesta di gruppo"}
+        title={openGroup?.groupName ?? GROUP_PROPOSAL_NAME}
         subtitle={openGroup?.activityName}
         footer={
           openGroup?.status === "pending" ? (
@@ -391,7 +392,7 @@ export default function InboxV2({
                 disabled={groupBusy}
                 className="min-h-[48px] flex-1 rounded-xl bg-partner-primary px-4 text-[15px] font-semibold text-white disabled:bg-[#B9C6C2]"
               >
-                {groupBusy ? "Invio…" : "Accetta"}
+                {groupBusy ? "Invio…" : "Accetta la proposta"}
               </button>
               <button
                 type="button"
@@ -408,9 +409,14 @@ export default function InboxV2({
         {openGroup && (
           <div className="flex flex-col gap-4 text-[14.5px]">
             <p className="text-ink">
-              Un gruppo di famiglie ({openGroup.kidsCount} {openGroup.kidsCount === 1 ? "bambino" : "bambini"}) chiede di iscriversi insieme
-              {openGroup.discountPercent > 0 ? `, con lo sconto di gruppo del ${openGroup.discountPercent}%` : ""}.
+              {GROUP_PROPOSAL_NAME}: un gruppo di famiglie ({openGroup.kidsCount} {openGroup.kidsCount === 1 ? "bambino" : "bambini"}) vorrebbe
+              venire insieme{openGroup.discountPercent > 0 ? `, con lo sconto di gruppo del ${openGroup.discountPercent}%` : ""}.
             </p>
+            {/* Test browser 03/11/2026: cosa accetta il centro, detto prima del sì. */}
+            <p className="rounded-2xl bg-partner-soft px-4 py-3 text-[13.5px] leading-snug text-ink" data-testid="group-proposal-hint">
+              {GROUP_PROPOSAL_PARTNER_HINT}
+            </p>
+            <p className="text-[13px] font-semibold text-ink">Stato: {GROUP_PROPOSAL_STATUS[openGroup.status].partner}</p>
             {openGroup.message && (
               <blockquote className="rounded-2xl bg-partner-page px-4 py-3 text-ink">“{openGroup.message}”</blockquote>
             )}

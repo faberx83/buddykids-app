@@ -13,6 +13,14 @@ import { KidAvatar, KID_TONES } from "@/components/nextgen/AgendaItemRow";
 import { GroupDetail, CarpoolLeg } from "@/lib/types";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
 import { discountForGroupSize, GROUP_DISCOUNT_TIERS } from "@/lib/groups";
+import {
+  GROUP_BY_PREFERENCE_LABEL,
+  GROUP_PROPOSAL_MEANING,
+  GROUP_PROPOSAL_NAME,
+  GROUP_PROPOSAL_STATUS,
+  groupProposalNextStep,
+  groupingByPreferenceUseful,
+} from "@/lib/groups/group-proposal";
 import { buildCarpoolMatches } from "@/lib/carpool";
 import { familyOriginFromLocation } from "@/lib/public-links";
 import {
@@ -758,10 +766,13 @@ function GruppoTab({
 
       {showAdvanced && (
       <>
-      {/* Aggregazioni */}
-      <div className={cardFlushCls}>
+      {/* Aggregazioni — test browser 03/11/2026: "Raggruppa per attività
+          preferita", solo quando serve (almeno due preferenze diverse) o se
+          ci sono già sottogruppi da mostrare. */}
+      {(groupingByPreferenceUseful(detail.kids) || detail.subgroups.length > 0) && (
+      <div className={cardFlushCls} data-testid="group-by-preference">
         <div className="flex items-center justify-between border-b border-[#F0F2F5] px-3.5 py-2.5">
-          <span className={titleCls}>Aggregazioni proposte</span>
+          <span className={titleCls}>Sottogruppi per attività preferita</span>
           <button
             onClick={async () => {
               setGenerating(true);
@@ -772,7 +783,7 @@ function GruppoTab({
             disabled={!canSubmit || generating || kidsCount === 0}
             className={`text-xs font-semibold ${accentText} disabled:opacity-60`}
           >
-            {generating ? "Genero…" : "Genera aggregazioni"}
+            {generating ? "Raggruppo…" : GROUP_BY_PREFERENCE_LABEL}
           </button>
         </div>
         <p className="px-3.5 pt-2.5 text-xs text-ink-2">
@@ -799,16 +810,18 @@ function GruppoTab({
           ))}
           {detail.subgroups.length === 0 && (
             <p className="px-3.5 py-4 text-center text-sm text-ink-2">
-              Nessuna aggregazione ancora — genera dopo aver aggiunto qualche bambino con
-              preferenza.
+              Nessun sottogruppo ancora: i bambini hanno preferenze diverse, potete raggrupparli.
             </p>
           )}
         </div>
       </div>
+      )}
 
       {/* Richiesta Gruppo */}
       <div className={cardCls}>
-        <div className={`mb-1 ${titleCls}`}>Richiesta Gruppo al centro</div>
+        <div className={`mb-1 ${titleCls}`}>{GROUP_PROPOSAL_NAME} al centro</div>
+        {/* Test browser 03/11/2026: una definizione sola con il portale centri (lib/groups/group-proposal.ts). */}
+        <p className="mb-1.5 text-xs font-semibold text-ink">{GROUP_PROPOSAL_MEANING}</p>
         <p className="mb-2.5 text-xs text-ink-2">
           {uxFix ? "Sconto possibile in base ai bambini iscritti, se il centro lo accetta: " : "Sconto proporzionale al numero di bambini iscritti: "}
           {groupDiscountTiers.map((t) => `${t.minKids}+ → ${t.percent}%`).join(" · ")}.
@@ -825,12 +838,23 @@ function GruppoTab({
         {detail.request ? (
           <div className="rounded-md border border-[#E8EBF0] bg-bg p-3 text-sm">
             <div className="mb-1 flex items-center justify-between">
-              <span className="font-semibold text-ink">Ultima richiesta inviata</span>
+              <span className="font-semibold text-ink">Proposta inviata</span>
               <StatusPill status={detail.request.status} />
             </div>
             <p className="text-xs text-ink-2">
-              {detail.request.kidsCount} bambini · sconto richiesto {detail.request.discountPercent}%
+              {detail.request.kidsCount} bambini · sconto di gruppo {detail.request.discountPercent}%
             </p>
+            <p className="mt-1.5 text-xs leading-snug text-ink" data-testid="group-proposal-next">
+              {groupProposalNextStep(detail.request.status)}
+            </p>
+            {detail.request.status !== "pending" && detail.activitySlug && (
+              <Link
+                href={`/activity/${detail.activitySlug}`}
+                className={`mt-2 inline-flex min-h-[40px] items-center gap-1.5 ${btnShape} ${accentBg} px-3.5 text-[13px] font-bold text-white`}
+              >
+                Scegli i giorni{detail.activityName ? ` di ${detail.activityName}` : ""}
+              </Link>
+            )}
             {detail.request.message && (
               <p className="mt-1 text-xs italic text-ink-2">&quot;{detail.request.message}&quot;</p>
             )}
@@ -860,7 +884,7 @@ function GruppoTab({
               disabled={!canSubmit || sendingRequest || kidsCount === 0}
               className={`${btnShape} ${accentBg} px-4 py-2.5 text-sm font-bold text-white disabled:opacity-60`}
             >
-              {sendingRequest ? "Invio…" : "Invia Richiesta Gruppo"}
+              {sendingRequest ? "Invio…" : "Invia la proposta di gruppo"}
             </button>
           </div>
         )}
@@ -873,9 +897,9 @@ function GruppoTab({
 
 function StatusPill({ status }: { status: "pending" | "accepted" | "rejected" }) {
   const map = {
-    pending: { label: "In attesa", cls: "bg-orange-light text-trama-orange" },
-    accepted: { label: "Accettata", cls: "bg-green-light text-[#2d8f52]" },
-    rejected: { label: "Rifiutata", cls: "bg-[#FBEAEA] text-[#C0392B]" },
+    pending: { label: GROUP_PROPOSAL_STATUS.pending.family, cls: "bg-orange-light text-trama-orange" },
+    accepted: { label: GROUP_PROPOSAL_STATUS.accepted.family, cls: "bg-green-light text-[#2d8f52]" },
+    rejected: { label: GROUP_PROPOSAL_STATUS.rejected.family, cls: "bg-[#FBEAEA] text-[#C0392B]" },
   } as const;
   const s = map[status];
   return (

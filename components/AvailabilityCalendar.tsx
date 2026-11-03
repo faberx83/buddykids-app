@@ -11,6 +11,13 @@ import {
   summarizeSpecialDay,
   type BulkDraft,
 } from "@/lib/availability-bulk";
+import {
+  inventorySummary,
+  spotsAfterCapacityChange,
+  validateCalendar,
+  type DayInventoryIssue,
+  type InventoryField,
+} from "@/lib/capacity/day-inventory";
 
 const SPECIAL_DAY_EMOJIS = ["🏊", "💦", "🎉", "🎨", "🌳", "🏆"];
 
@@ -60,12 +67,18 @@ export default function AvailabilityCalendar({
   highlightDates,
   onChange,
   activityDbId,
+  confirmedByDate = {},
 }: {
   days: DayAvailability[];
   mode: "edit" | "view";
   highlightDates?: string[];
   onChange?: (updated: DayAvailability[]) => void;
   activityDbId?: string;
+  /**
+   * Test browser 03/11/2026: posti già confermati per data (dal server). Servono
+   * a non scendere sotto chi è confermato e a ricalcolare i liberi correttamente.
+   */
+  confirmedByDate?: Record<string, number>;
 }) {
   const [localDays, setLocalDays] = useState(days);
   const [selected, setSelected] = useState<string | null>(null);
@@ -76,16 +89,35 @@ export default function AvailabilityCalendar({
   const [bulkMode, setBulkMode] = useState(false);
   const [bulkSelected, setBulkSelected] = useState<Set<string>>(new Set());
   const [bulkDraft, setBulkDraft] = useState<BulkDraft>(defaultBulkDraft());
+  const [serverIssues, setServerIssues] = useState<DayInventoryIssue[]>([]);
+
+  // Test browser 03/11/2026 (HIGH): mai salvare un giorno impossibile (liberi
+  // > totali, negativi, non interi, sotto i confermati). Stesse regole del
+  // server (lib/capacity/day-inventory.ts): qui si vedono subito, vicino al campo.
+  const issues = useMemo(() => {
+    const local = validateCalendar(localDays, confirmedByDate);
+    return local.length > 0 ? local : serverIssues;
+  }, [localDays, confirmedByDate, serverIssues]);
+  const issueFor = (date: string, field: InventoryField) => issues.find((i) => i.date === date && i.field === field)?.message ?? null;
+  const invalidDates = useMemo(() => new Set(issues.map((i) => i.date)), [issues]);
 
   async function handleSaveAll() {
     if (!activityDbId) return;
+    if (validateCalendar(localDays, confirmedByDate).length > 0) {
+      // Il pulsante è già spento: difesa in più, niente parte verso il server.
+      setSaveError(inventorySummary(validateCalendar(localDays, confirmedByDate), formatDate));
+      return;
+    }
     setSaving(true);
     setSaveError(null);
     setSavedOk(false);
+    setServerIssues([]);
     const result = await saveActivityDaysAction(activityDbId, localDays);
     setSaving(false);
     if (result.error) {
-      setSaveError(result.error);
+      setServerIssues(result.issues ?? []);
+      setSaveError(result.issues?.length ? inventorySummary(result.issues, formatDate) : result.error);
+      if (result.issues?.[0]) setSelected(result.issues[0].date);
       return;
     }
     setDirty(false);
@@ -106,6 +138,7 @@ export default function AvailabilityCalendar({
     setLocalDays(updated);
     setDirty(true);
     setSavedOk(false);
+    setServerIssues([]);
     onChange?.(updated);
   }
 
@@ -140,7 +173,8 @@ export default function AvailabilityCalendar({
   function applyBulkDraft() {
     if (bulkSelected.size === 0) return;
     if (!bulkDraftHasChanges(bulkDraft)) return;
-    const updated = applyBulkPatch(localDays, bulkSelected, bulkDraft);
+    const updated = applyBulkPatch(localDays, bulkSelected, bulkDraft, confirmedByDate);
+    setServerIssues([]);
     setLocalDays(updated);
     setDirty(true);
     setSavedOk(false);
@@ -264,11 +298,14 @@ export default function AvailabilityCalendar({
                           if (bulkMode) toggleBulkDate(day.date);
                           else setSelected(day.date);
                         }}
+                        aria-invalid={invalidDates.has(day.date) ? true : undefined}
                         className={`relative flex h-16 w-full flex-col items-center justify-center gap-0.5 rounded-md border text-[11px] font-semibold transition-all ${cellTone(
                           day
                         )} ${mode === "edit" ? "cursor-pointer hover:brightness-95" : "cursor-default"} ${
                           isSelected ? "ring-2 ring-sky" : ""
-                        } ${isHighlighted ? "outline outline-2 outline-offset-1 outline-sky" : ""}`}
+                        } ${isHighlighted ? "outline outline-2 outline-offset-1 outline-sky" : ""} ${
+                          invalidDates.has(day.date) ? "!border-[#B4361F] ring-2 ring-[#B4361F]" : ""
+                        }`}
                       >
                         <span>{formatDate(day.date)}</span>
                         <span className="text-[10px] font-normal">
@@ -555,28 +592,53 @@ export default function AvailabilityCalendar({
               <div className="mb-1 text-xs text-ink-2">Posti totali</div>
               <input
                 type="number"
-                min={0}
-                value={selectedDay.capacity}
+                min={confirmedByDate[selectedDay.date] ?? 0}
+                step={1}
+                inputMode="numeric"
+                value={Number.isNaN(selectedDay.capacity) ? "" : selectedDay.capacity}
+                aria-invalid={issueFor(selectedDay.date, "capacity") ? true : undefined}
+                aria-describedby={`cap-msg-${selectedDay.date}`}
                 onChange={(e) => {
-                  const capacity = Number(e.target.value);
+                  const capacity = e.target.value === "" ? Number.NaN : Number(e.target.value);
                   updateSelectedDay({
                     capacity,
-                    spotsLeft: Math.min(selectedDay.spotsLeft, capacity),
+                    // Si sposta della stessa differenza e resta tra 0 e totali − confermati.
+                    spotsLeft: Number.isInteger(capacity) && capacity >= 0
+                      ? spotsAfterCapacityChange(selectedDay, capacity, confirmedByDate[selectedDay.date] ?? 0)
+                      : selectedDay.spotsLeft,
                   });
                 }}
                 className="w-full bg-transparent text-sm font-semibold text-ink outline-none"
               />
+              <div id={`cap-msg-${selectedDay.date}`} className="mt-1 text-[11px] leading-snug">
+                {issueFor(selectedDay.date, "capacity") ? (
+                  <span role="alert" className="font-medium text-[#B4361F]">{issueFor(selectedDay.date, "capacity")}</span>
+                ) : (confirmedByDate[selectedDay.date] ?? 0) > 0 ? (
+                  <span className="text-ink-2">
+                    {confirmedByDate[selectedDay.date]} già {confirmedByDate[selectedDay.date] === 1 ? "confermato" : "confermati"}
+                  </span>
+                ) : null}
+              </div>
             </label>
             <label className="rounded-md bg-bg px-3 py-2.5 text-sm">
               <div className="mb-1 text-xs text-ink-2">Posti liberi</div>
               <input
                 type="number"
                 min={0}
-                max={selectedDay.capacity}
-                value={selectedDay.spotsLeft}
-                onChange={(e) => updateSelectedDay({ spotsLeft: Number(e.target.value) })}
+                step={1}
+                inputMode="numeric"
+                max={Math.max(0, selectedDay.capacity - (confirmedByDate[selectedDay.date] ?? 0))}
+                value={Number.isNaN(selectedDay.spotsLeft) ? "" : selectedDay.spotsLeft}
+                aria-invalid={issueFor(selectedDay.date, "spotsLeft") ? true : undefined}
+                aria-describedby={`spots-msg-${selectedDay.date}`}
+                onChange={(e) => updateSelectedDay({ spotsLeft: e.target.value === "" ? Number.NaN : Number(e.target.value) })}
                 className="w-full bg-transparent text-sm font-semibold text-ink outline-none"
               />
+              <div id={`spots-msg-${selectedDay.date}`} className="mt-1 text-[11px] leading-snug">
+                {issueFor(selectedDay.date, "spotsLeft") && (
+                  <span role="alert" className="font-medium text-[#B4361F]">{issueFor(selectedDay.date, "spotsLeft")}</span>
+                )}
+              </div>
             </label>
             <label className="col-span-2 rounded-md bg-bg px-3 py-2.5 text-sm">
               <div className="mb-1 text-xs text-ink-2">Sconto sul giorno (%)</div>
@@ -645,12 +707,18 @@ export default function AvailabilityCalendar({
               <button
                 type="button"
                 onClick={handleSaveAll}
-                disabled={saving || !dirty}
+                disabled={saving || !dirty || validateCalendar(localDays, confirmedByDate).length > 0}
                 className="rounded-md bg-sky px-4 py-2 text-xs font-bold text-white transition-colors hover:bg-[#3A9FDC] disabled:cursor-not-allowed disabled:opacity-50"
               >
                 {saving ? "Salvo…" : "Salva calendario"}
               </button>
-              {saveError && <span className="text-xs font-medium text-orange">{saveError}</span>}
+              {saveError ? (
+                <span role="alert" className="text-xs font-medium text-[#B4361F]">{saveError}</span>
+              ) : issues.length > 0 ? (
+                <span role="alert" className="text-xs font-medium text-[#B4361F]" data-testid="calendar-invalid">
+                  {inventorySummary(issues, formatDate).replace(" Niente è stato salvato.", "")}
+                </span>
+              ) : null}
               {savedOk && !dirty && (
                 <span className="text-xs font-medium text-green">Salvato ✓</span>
               )}

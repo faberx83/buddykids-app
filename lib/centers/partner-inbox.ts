@@ -8,6 +8,7 @@
 
 import { bookingNeedsAction, effectiveDayBasedDecision } from "@/lib/booking-response/effective-decision";
 import type { CenterBooking, DayPartnerDecision, PartnerDecision } from "@/lib/data/center-bookings";
+import { GROUP_PROPOSAL_STATUS } from "@/lib/groups/group-proposal";
 
 export type InboxKind = "prenotazione" | "messaggio" | "gruppo";
 export type InboxFilter = "tutte" | InboxKind;
@@ -192,12 +193,8 @@ export function buildInboxItems(input: {
       at: g.createdAt,
       needsAnswer: g.status === "pending",
       unread: g.status === "pending",
-      status:
-        g.status === "pending"
-          ? { label: "Da rispondere", tone: "todo" }
-          : g.status === "accepted"
-            ? { label: "Accettata", tone: "done" }
-            : { label: "Rifiutata", tone: "closed" },
+      // 03/11/2026: stessa definizione delle famiglie (lib/groups/group-proposal.ts).
+      status: { label: GROUP_PROPOSAL_STATUS[g.status].partner, tone: GROUP_PROPOSAL_STATUS[g.status].tone },
     });
   }
   // Da rispondere: la più vecchia prima (chi aspetta da più tempo). Il resto: la più recente prima.

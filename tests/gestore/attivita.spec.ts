@@ -28,7 +28,8 @@ test.describe("Gestore - Attivita", () => {
     const name = `[TEST] Attività auto ${Date.now()}`;
     await page.getByPlaceholder("Es. Laboratorio Arti Creative").fill(name);
     await page.locator('input[type="number"]').fill("100");
-    await page.getByRole("button", { name: "Crea attività" }).click();
+    // 03/11/2026: col portale V2 l'azione dice che la scheda si pubblica subito ("Crea e pubblica").
+    await page.getByRole("button", { name: /^(Crea attività|Crea e pubblica)$/ }).click();
 
     await expect(page).toHaveURL(/\/center\/activities\/.+/, { timeout: 15_000 });
     // Locator semantico sull'heading reale della pagina (ActivityEditForm.tsx:260,

@@ -5,6 +5,7 @@ import { useState } from "react";
 import { Activity } from "@/lib/types";
 import { pillClasses } from "@/lib/colors";
 import { toggleFavoriteAction } from "@/app/actions/favorites";
+import { distanceText } from "@/lib/geo";
 
 export default function ActivityCard({
   activity,
@@ -129,10 +130,12 @@ export default function ActivityCard({
       <div className="p-3">
         <div className="mb-1 text-sm font-bold text-ink">{activity.name}</div>
         <div className="mb-2 flex flex-wrap items-center gap-2">
-          <span className="flex items-center gap-1 text-[11px] text-ink-2">
-            <i className="ti ti-map-pin text-[13px] text-ink-3" />
-            {activity.distanceKm} km
-          </span>
+          {distanceText(activity.distanceKm) && (
+            <span className="flex items-center gap-1 text-[11px] text-ink-2">
+              <i className="ti ti-map-pin text-[13px] text-ink-3" />
+              {distanceText(activity.distanceKm)}
+            </span>
+          )}
           <span className="flex items-center gap-1 text-[11px] text-ink-2">
             <i className="ti ti-users text-[13px] text-ink-3" />
             {activity.ageRange}

@@ -560,9 +560,9 @@ export default function HomeDashboardClient({
         >
           <i className="ti ti-discount-2 flex-shrink-0 text-lg text-trama-violet" />
           <span className="text-[13px] font-medium text-ink-2">
-            Il centro ha accettato la richiesta del gruppo{" "}
+            Proposta di gruppo accettata per{" "}
             <b className="font-bold text-ink">{coordinationSignal.groupName}</b> — sconto{" "}
-            {coordinationSignal.discountPercent}%
+            {coordinationSignal.discountPercent}%. Ora scegliete i giorni: i posti non sono ancora prenotati
           </span>
           <i className="ti ti-chevron-right ml-auto flex-shrink-0 text-ink-3" />
         </Link>

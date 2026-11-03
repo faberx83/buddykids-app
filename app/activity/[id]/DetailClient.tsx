@@ -23,6 +23,7 @@ import type { ActivityDateSummary } from "@/lib/nextgen/parent-ux-fix";
 import { activityDetailReasons, includedServices } from "@/lib/nextgen/activity-detail-v2";
 import { markFirstUsefulAction } from "@/lib/nextgen/first-action";
 import { activityPrice, formatEuro } from "@/lib/nextgen/activity-price";
+import { distanceText } from "@/lib/geo";
 
 const weekdayLabels = ["lunedì", "martedì", "mercoledì", "giovedì", "venerdì"];
 const weekdayShort = ["Lun", "Mar", "Mer", "Gio", "Ven", "Sab", "Dom"];
@@ -37,6 +38,7 @@ export default function DetailClient({
   nextgen = false,
   existingBooking = null,
   activityAvailable = true,
+  requestsPaused = false,
   dateSummary = null,
   realSpotsLeft = undefined,
   partnerPreview = false,
@@ -108,6 +110,8 @@ export default function DetailClient({
   // undefined = non calcolato (non dovrebbe succedere dalla page.tsx reale,
   // ma teniamo un default sicuro "true" per non introdurre falsi negativi).
   activityAvailable?: boolean;
+  /** Migration 59: il centro ha sospeso le nuove richieste (la scheda resta visibile). */
+  requestsPaused?: boolean;
   /** Correzioni dal test UX (21/10/2026), solo scheda V2: stato vero delle date. null = come prima. */
   dateSummary?: ActivityDateSummary | null;
   // Posti liberi REALI (minimo tra le settimane offerte non esaurite) — da
@@ -340,6 +344,7 @@ export default function DetailClient({
         daysCost={daysCost}
         meetsMinDays={meetsMinDays}
         activityAvailable={activityAvailable}
+        requestsPaused={requestsPaused}
         realSpotsLeft={realSpotsLeft}
         dateSummary={dateSummary}
         existingBooking={existingBooking}
@@ -423,7 +428,7 @@ export default function DetailClient({
         <div className="mb-3 flex flex-wrap gap-2.5">
           <span className="flex items-center gap-1 text-xs text-ink-2">
             <i className="ti ti-map-pin text-sm text-ink-3" />
-            {activity.distanceKm} km · {activity.address}
+            {[distanceText(activity.distanceKm), activity.address].filter(Boolean).join(" · ")}
           </span>
           <span className="flex items-center gap-1 text-xs text-ink-2">
             <i className="ti ti-users text-sm text-ink-3" />
@@ -705,7 +710,9 @@ export default function DetailClient({
           // (showExactSpots) resta solo per decidere SE mostrare il numero
           // o un generico "Posti disponibili", mai per inventarne uno.
           value={
-            !activityAvailable
+            requestsPaused
+              ? "Nuove richieste sospese dal centro"
+              : !activityAvailable
               ? "Al momento non disponibile"
               : activity.showExactSpots && realSpotsLeft !== undefined
               ? `⚠️ Solo ${realSpotsLeft}!`
@@ -788,11 +795,15 @@ export default function DetailClient({
               ActivityCard.tsx/ActivityCardHorizontal.tsx: qui non c'era un
               problema di colore (ServiceTag è sempre verde/grigio, uniforme
               per tutti i servizi), solo di testo. */}
+          {/* Test browser 03/11/2026: senza accessibilità dichiarata usciva
+              "Nessuna limitazione non disponibile". Stessa parola della scheda
+              V2 ("Accessibile", tests/one/scheda-v2.spec.ts SV2-03). */}
           <ServiceTag
             icon="ti-heart-handshake"
-            label="Nessuna limitazione"
+            label={activity.centerAccessible ? "Accessibile" : "Accessibilità"}
             available={Boolean(activity.centerAccessible)}
             detail={activity.centerAccessible ? activity.centerAccessibleNote : undefined}
+            unavailableText="da verificare con il centro"
           />
         </div>
 
@@ -938,7 +949,7 @@ export default function DetailClient({
               <div className="text-[11px] text-ink-2">Per modifiche, usa &quot;Contatta il gestore&quot; sopra</div>
             </div>
           )
-        ) : selectedDayDates.length === 0 && !activityAvailable ? (
+        ) : (selectedDayDates.length === 0 || requestsPaused) && !activityAvailable ? (
           // FIX (TRAMA FINAL HARDENING §1) — "Se disponibilità <= 0, la CTA
           // 'Prenota ora' NON deve essere attiva": prima di questo fix la
           // CTA era SEMPRE attiva qui indipendentemente dalla disponibilità
@@ -952,7 +963,7 @@ export default function DetailClient({
             disabled
             className="cursor-not-allowed rounded-lg bg-[#C5CDD8] px-7 py-3.5 text-[15px] font-bold text-white"
           >
-            Al momento non disponibile
+            {requestsPaused ? "Nuove richieste sospese dal centro" : "Al momento non disponibile"}
           </button>
         ) : selectedDayDates.length > 0 && !meetsMinDays ? (
           <button
@@ -993,11 +1004,13 @@ function ServiceTag({
   label,
   available,
   detail,
+  unavailableText = "non disponibile",
 }: {
   icon: string;
   label: string;
   available: boolean;
   detail?: string;
+  unavailableText?: string;
 }) {
   return (
     <div
@@ -1008,7 +1021,7 @@ function ServiceTag({
       <i className={`ti ${available ? icon : "ti-x"} text-[13px]`} />
       {label}
       {available && detail && <span className="font-normal">· {detail}</span>}
-      {!available && <span className="font-normal">non disponibile</span>}
+      {!available && <span className="font-normal">{unavailableText}</span>}
     </div>
   );
 }

@@ -356,6 +356,8 @@ export interface GroupDetail {
   isPublic: boolean;
   activityId: string | null; // dbId dell'attività target, se collegata
   activityName: string | null;
+  /** Slug dell'attività collegata, per il link alla sua scheda (03/11/2026). */
+  activitySlug?: string | null;
   centerName: string | null;
   kids: GroupKidEntry[];
   subgroups: GroupSubgroup[];

@@ -50,6 +50,14 @@ import {
   sortDiscoveryLeadsForDisplay,
   type DiscoveryLeadRecord,
 } from "@/lib/discovery/real-dataset";
+import {
+  PRICE_ANY,
+  matchesPriceCap,
+  priceCapChipLabel,
+  priceCapUnit,
+  pricePresetsFor,
+  weeklyCapForLeads,
+} from "@/lib/nextgen/discover-filters";
 // TRAMA — REAL DISCOVERY PILOT · COMPLETION PASS (17/09/2026). Gli eventi
 // curated_listing_viewed / curated_listing_external_clicked sono tracciati
 // DENTRO DiscoveryLeadCard.tsx (dove il "view" e il "click CTA" avvengono
@@ -580,6 +588,19 @@ export default function SearchDiscoveryClient({
     const covParam = searchParams.get("cov");
     return covParam && ["week_only", "day_only", "mixed"].includes(covParam) ? [covParam as CoverageMode] : [];
   });
+  // Test browser 03/11/2026 (Parent #1): l'unità del budget segue la
+  // copertura ("Giorni singoli" → prezzo al giorno). Cambiando unità, una
+  // soglia dell'altra unità (es. €150 a settimana) non ha senso: si torna a
+  // "Qualsiasi". Regola e test: lib/nextgen/discover-filters.ts.
+  // (Aggiornamento durante il render, schema React "stato che segue un
+  // valore": niente setState dentro un effetto.)
+  const priceUnit = priceCapUnit(selectedCoverageModes, onlyDaySpots);
+  const [priceUnitSeen, setPriceUnitSeen] = useState(priceUnit);
+  if (priceUnitSeen !== priceUnit) {
+    setPriceUnitSeen(priceUnit);
+    if (!pricePresetsFor(priceUnit).some((p) => p.value === maxPrice)) setMaxPrice(PRICE_ANY);
+  }
+  const leadsWeeklyCap = weeklyCapForLeads(maxPrice, priceUnit);
 
   // TRAMA — DISCOVERY LIVE UX BUGFIX (22/09/2026), §6 "PROPONI INVITO FROM
   // MAP — BUG". Stato del dialog di conferma "Proponi invito", ESTRATTO dal
@@ -695,6 +716,7 @@ export default function SearchDiscoveryClient({
     minAge,
     maxAge,
     maxPrice,
+    priceUnit,
     zone,
     selectedTagIds,
     selectedCoverageModes,
@@ -721,7 +743,7 @@ export default function SearchDiscoveryClient({
         return false;
       }
       if (!isDiscoveryLeadCompatibleWithAgeRange(lead, minAge, maxAge)) return false;
-      if (!isDiscoveryLeadCompatibleWithPriceCap(lead, maxPrice)) return false;
+      if (!isDiscoveryLeadCompatibleWithPriceCap(lead, leadsWeeklyCap)) return false;
       if (!isDiscoveryLeadCompatibleWithZoneQuery(lead, zone)) return false;
       if (!isDiscoveryLeadCompatibleWithCategoryTags(lead, selectedTagIds)) return false;
       if (
@@ -753,6 +775,7 @@ export default function SearchDiscoveryClient({
     minAge,
     maxAge,
     maxPrice,
+    priceUnit,
     zone,
     selectedTagIds,
     query,
@@ -775,7 +798,7 @@ export default function SearchDiscoveryClient({
     const list = filterCommunityDiscoveries(communityDiscoveries, {
       minAge,
       maxAge,
-      maxPrice,
+      maxPrice: leadsWeeklyCap,
       zone,
       query,
       selectedTagIds,
@@ -785,7 +808,7 @@ export default function SearchDiscoveryClient({
     const inPeriod = activePeriod ? list.filter((d) => discoveryOpenIn(d, activePeriod)) : list;
     // Correzioni UX (21/10): senza date note → "Date da verificare", non qui.
     return temporalRange ? inPeriod.filter((d) => !isUndated(d)) : inPeriod;
-  }, [communityDiscoveries, seasonYear, selectedWeekStarts, minAge, maxAge, maxPrice, zone, query, selectedTagIds, selectedCoverageModes, onlyDaySpots, activePeriod, temporalRange]);
+  }, [communityDiscoveries, seasonYear, selectedWeekStarts, minAge, maxAge, maxPrice, priceUnit, zone, query, selectedTagIds, selectedCoverageModes, onlyDaySpots, activePeriod, temporalRange]);
 
   // TRAMA — CORREZIONI DAL TEST UX (21/10/2026), UX-PARENT-001: le scoperte
   // senza date che restano possibili per il periodo, con tutti gli altri
@@ -798,27 +821,27 @@ export default function SearchDiscoveryClient({
           isUndated(lead) &&
           periodFit({ startDate: lead.startDate, endDate: lead.endDate, title: lead.activityTitle }, temporalRange) === "to_verify" &&
           isDiscoveryLeadCompatibleWithAgeRange(lead, minAge, maxAge) &&
-          isDiscoveryLeadCompatibleWithPriceCap(lead, maxPrice) &&
+          isDiscoveryLeadCompatibleWithPriceCap(lead, leadsWeeklyCap) &&
           isDiscoveryLeadCompatibleWithZoneQuery(lead, zone) &&
           isDiscoveryLeadCompatibleWithCategoryTags(lead, selectedTagIds) &&
           matchesSearch([lead.activityTitle, lead.organizerName, lead.shortDescription], query) &&
           isDiscoveryLeadCompatibleWithCoverage(lead, { selectedCoverageModes, onlyDaySpots })
       )
     );
-  }, [temporalRange, realDiscoveryLeads, minAge, maxAge, maxPrice, zone, selectedTagIds, query, selectedCoverageModes, onlyDaySpots]);
+  }, [temporalRange, realDiscoveryLeads, minAge, maxAge, maxPrice, priceUnit, zone, selectedTagIds, query, selectedCoverageModes, onlyDaySpots]);
   const communityToVerify = useMemo(() => {
     if (!temporalRange || communityDiscoveries.length === 0) return [];
     return filterCommunityDiscoveries(communityDiscoveries, {
       minAge,
       maxAge,
-      maxPrice,
+      maxPrice: leadsWeeklyCap,
       zone,
       query,
       selectedTagIds,
       selectedWeekRanges: [],
       coverageFilterActive: selectedCoverageModes.length > 0 || onlyDaySpots,
     }).filter((d) => isUndated(d) && periodFit({ startDate: d.startDate, endDate: d.endDate, title: d.title }, temporalRange) === "to_verify");
-  }, [temporalRange, communityDiscoveries, minAge, maxAge, maxPrice, zone, query, selectedTagIds, selectedCoverageModes, onlyDaySpots]);
+  }, [temporalRange, communityDiscoveries, minAge, maxAge, maxPrice, priceUnit, zone, query, selectedTagIds, selectedCoverageModes, onlyDaySpots]);
   const toVerifyCount = leadsToVerify.length + communityToVerify.length;
   const communityIdsInPlannerSet = useMemo(() => new Set(communityIdsInPlanner), [communityIdsInPlanner]);
   // Contenuto condiviso da un'altra app (Android share_target, vedi
@@ -971,7 +994,7 @@ export default function SearchDiscoveryClient({
 
   const activeFiltersCount =
     (minAge > 0 || maxAge < 18 ? 1 : 0) +
-    (maxPrice < 500 ? 1 : 0) +
+    (maxPrice < PRICE_ANY ? 1 : 0) +
     (zone.trim() ? 1 : 0) +
     (hasGeo ? 1 : 0) +
     (selectedWeekStarts.length > 0 ? 1 : 0) +
@@ -1010,7 +1033,7 @@ export default function SearchDiscoveryClient({
       }
       const [ageMin, ageMax] = parseAgeRange(a.ageRange);
       if (ageMax < minAge || ageMin > maxAge) return false;
-      if (a.pricePerWeek > maxPrice) return false;
+      if (!matchesPriceCap(a, maxPrice, priceUnit)) return false;
       if (zone.trim() && !`${a.address} ${a.center}`.toLowerCase().includes(zone.trim().toLowerCase())) return false;
       if (services.preScuola && !a.preService?.available) return false;
       if (services.postScuola && !a.postService?.available) return false;
@@ -1042,6 +1065,7 @@ export default function SearchDiscoveryClient({
     minAge,
     maxAge,
     maxPrice,
+    priceUnit,
     zone,
     services,
     selectedTagIds,
@@ -1339,7 +1363,7 @@ export default function SearchDiscoveryClient({
         return n > 0 ? `Servizi (${n})` : "Servizi";
       })(),
     },
-    { key: "prezzo", icon: "ti-coin-euro", label: maxPrice < 500 ? `Prezzo (≤${maxPrice}€)` : "Prezzo" },
+    { key: "prezzo", icon: "ti-coin-euro", label: priceCapChipLabel(maxPrice, priceUnit) },
   ];
 
   return (

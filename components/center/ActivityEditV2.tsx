@@ -20,6 +20,7 @@ import CoverAndGalleryUploader from "@/components/CoverAndGalleryUploader";
 import PartnerPageHeader from "@/components/center/PartnerPageHeader";
 import PartnerSheet from "@/components/center/PartnerSheet";
 import DuplicateActivityButton from "@/components/center/DuplicateActivityButton";
+import { setActivityRequestsPausedAction } from "@/app/actions/center-activities-v2";
 import PlaceAutocomplete from "@/components/nextgen/PlaceAutocomplete";
 import { useNextgenToast } from "@/components/nextgen/NextgenToastProvider";
 import { buildFamilyPreviewHref } from "@/lib/center/family-preview";
@@ -30,8 +31,10 @@ import {
   BOOKING_MODE_V2,
   MEAL_V2,
   activityNameError,
+  ageLabel,
   datesSummary,
   dayRate,
+  formatShortDay,
   sectionSummaries,
   weekPriceFromDay,
   type ActivityEditState,
@@ -80,15 +83,43 @@ export default function ActivityEditV2({
   certifications,
   dates,
   placeSearch,
+  requestsPausedAt = null,
 }: {
   activity: Activity;
   tags: Tag[];
   certifications: CertificationItem[];
   dates: ActivityDateSummary;
   placeSearch: boolean;
+  /** Migration 59: quando il centro ha sospeso le nuove richieste (null = le riceve). */
+  requestsPausedAt?: string | null;
 }) {
   const router = useRouter();
   const showToast = useNextgenToast();
+
+  // 03/11/2026 (test browser, UX-PARTNER-004): stato dell'attività e
+  // sospensione delle nuove richieste, ben visibili. Sospendere non tocca le
+  // prenotazioni già fatte.
+  const [pausedAt, setPausedAt] = useState<string | null>(requestsPausedAt);
+  const [pauseConfirm, setPauseConfirm] = useState(false);
+  const [pauseBusy, setPauseBusy] = useState(false);
+  const [pauseError, setPauseError] = useState<string | null>(null);
+  async function togglePause(next: boolean) {
+    setPauseBusy(true);
+    setPauseError(null);
+    const res = await setActivityRequestsPausedAction(activity.id, next).catch(() => ({ error: "Non siamo riusciti a salvare, riprovate." }) as {
+      error?: string;
+      pausedAt?: string | null;
+    });
+    setPauseBusy(false);
+    if (res.error) {
+      setPauseError(res.error);
+      return;
+    }
+    setPausedAt(res.pausedAt ?? null);
+    setPauseConfirm(false);
+    showToast(next ? "Nuove richieste sospese" : "Richieste riaperte");
+    router.refresh();
+  }
 
   const initial: FormState = {
     name: activity.name,
@@ -302,7 +333,7 @@ export default function ActivityEditV2({
     <div className="flex max-w-2xl flex-col gap-5" data-testid="activity-edit-v2">
       <PartnerPageHeader
         title={saved.name || "Attività"}
-        subtitle={[saved.ageRange ? `${saved.ageRange} anni` : "", BOOKING_MODE_V2[saved.bookingMode].label.toLowerCase()].filter(Boolean).join(" · ")}
+        subtitle={[ageLabel(saved.ageRange), BOOKING_MODE_V2[saved.bookingMode].label.toLowerCase()].filter(Boolean).join(" · ")}
       />
 
       <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap">
@@ -314,6 +345,69 @@ export default function ActivityEditV2({
         </Link>
         <DuplicateActivityButton activitySlug={activity.id} name={saved.name} />
       </div>
+
+      <section
+        aria-labelledby="att-stato"
+        data-testid="activity-status"
+        data-paused={pausedAt ? "true" : "false"}
+        className={`flex flex-col gap-2 rounded-[18px] border px-4 py-3 ${pausedAt ? "border-[#E8C77A] bg-[#FFF8E8]" : "border-partner-line bg-white"}`}
+      >
+        <div className="flex items-start gap-3">
+          <span
+            className={`mt-0.5 flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full ${
+              pausedAt ? "bg-[#FFF3DC] text-[#7A4F00]" : "bg-[#E6F6F0] text-[#146B4F]"
+            }`}
+          >
+            <i className={`ti ${pausedAt ? "ti-player-pause" : "ti-world"} text-[18px]`} aria-hidden="true" />
+          </span>
+          <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+            <h2 id="att-stato" className="text-[15px] font-semibold text-ink">
+              {pausedAt ? `Nuove richieste sospese dal ${formatShortDay(pausedAt.slice(0, 10))}` : "Pubblicata: riceve richieste"}
+            </h2>
+            <p className="text-[13px] leading-snug text-ink-2">
+              {pausedAt
+                ? "Le famiglie vedono la scheda ma non possono chiedere un posto. Le prenotazioni già fatte restano valide."
+                : "Le famiglie la trovano in Scopri e possono chiedere un posto; ogni richiesta la confermate voi."}
+            </p>
+          </div>
+        </div>
+        {pauseConfirm ? (
+          <div className="flex flex-col gap-2 rounded-xl bg-partner-page px-3 py-2.5">
+            <p className="text-[13px] text-ink">
+              Sospendere le nuove richieste? Nessuna prenotazione viene annullata e potete riaprire quando volete.
+            </p>
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={() => togglePause(true)}
+                disabled={pauseBusy}
+                data-testid="activity-pause-confirm"
+                className="min-h-[40px] rounded-full bg-partner-primary px-4 text-[13.5px] font-bold text-white disabled:opacity-60"
+              >
+                {pauseBusy ? "Sospendo…" : "Sospendi"}
+              </button>
+              <button type="button" onClick={() => setPauseConfirm(false)} className="min-h-[40px] px-3 text-[13.5px] font-semibold text-ink-2">
+                Annulla
+              </button>
+            </div>
+          </div>
+        ) : (
+          <button
+            type="button"
+            onClick={() => (pausedAt ? togglePause(false) : setPauseConfirm(true))}
+            disabled={pauseBusy}
+            data-testid="activity-pause-toggle"
+            className="min-h-[40px] self-start rounded-full border border-partner-line bg-white px-4 text-[13.5px] font-semibold text-partner-primary hover:bg-partner-soft disabled:opacity-60"
+          >
+            {pausedAt ? (pauseBusy ? "Riapro…" : "Riapri le richieste") : "Sospendi le nuove richieste"}
+          </button>
+        )}
+        {pauseError && (
+          <p role="alert" className="text-[13px] font-medium text-[#B4361F]">
+            {pauseError}
+          </p>
+        )}
+      </section>
 
       {/* Date e posti: la riga più importante, in evidenza se mancano */}
       <Link

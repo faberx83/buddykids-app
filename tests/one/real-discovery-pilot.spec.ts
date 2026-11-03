@@ -27,6 +27,7 @@ import {
 import { FEATURE_FLAG_REGISTRY } from "../../lib/feature-flags/registry";
 import { KNOWN_PRODUCT_EVENTS } from "../../lib/telemetry/known-events";
 import type { SmartMatch } from "../../lib/nextgen/smart-search";
+import { priceCapChipLabel } from "../../lib/nextgen/discover-filters";
 
 // TRAMA — REAL DISCOVERY PILOT (16/09/2026, esteso 17/09/2026 · COMPLETION
 // PASS). Stesso principio "[no browser]" già seguito da
@@ -1588,8 +1589,13 @@ test.describe("DISCOVERY LIVE UX BUGFIX — chip filtro Età/Servizi/Prezzo most
   test("GHOST-03: il chip Prezzo mostra il tetto quando maxPrice è sotto il default (500)", () => {
     const source = readSource("../../app/nextgen/search/SearchDiscoveryClient.tsx");
     const block = source.slice(source.indexOf('key: "prezzo"') - 20, source.indexOf('key: "prezzo"') + 150);
-    expect(block).toContain("maxPrice < 500");
-    expect(block).toContain("`Prezzo (≤${maxPrice}€)`");
+    // Test browser 03/11/2026: il chip dice anche l'unità del tetto (al giorno
+    // o a settimana); la regola è in lib/nextgen/discover-filters.ts e il
+    // tetto sotto "Qualsiasi" (500) resta visibile nel chip.
+    expect(block).toContain("priceCapChipLabel(maxPrice, priceUnit)");
+    expect(priceCapChipLabel(150, "week")).toBe("Prezzo (≤€150/sett.)");
+    expect(priceCapChipLabel(30, "day")).toBe("Prezzo (≤€30/giorno)");
+    expect(priceCapChipLabel(500, "week")).toBe("Prezzo");
   });
 });
 

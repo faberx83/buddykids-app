@@ -261,7 +261,7 @@ test.describe("Wave 3 - Notification Center UI", () => {
     await page.goto("/nextgen");
     const bannerCount =
       (await page.getByText(/accetta o rifiuta/).count()) +
-      (await page.getByText(/ha accettato la richiesta del gruppo/).count()) +
+      (await page.getByText(/ha accettato la richiesta del gruppo|Proposta di gruppo accettata per/).count()) +
       (await page.getByText(/stanno valutando/).count());
     expect(bannerCount).toBeLessThanOrEqual(1);
   });

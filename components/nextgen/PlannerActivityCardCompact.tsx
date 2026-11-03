@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { Activity } from "@/lib/types";
 import { activityPrice, formatEuro } from "@/lib/nextgen/activity-price";
+import { distanceText } from "@/lib/geo";
 
 // TRAMA BETA v1.1.1 (UI Refinement, punto 8 — "Week Detail: ActivityCard
 // compact variant") — components/ActivityCard.tsx (Scopri, NON toccata:
@@ -42,7 +43,7 @@ export default function PlannerActivityCardCompact({
       <span className="min-w-0 flex-1">
         <span className="block truncate text-[12.5px] font-semibold text-ink">{activity.name}</span>
         <span className="block truncate text-[11px] text-ink-2">
-          {activity.center} · {activity.distanceKm} km
+          {[activity.center, distanceText(activity.distanceKm)].filter(Boolean).join(" · ")}
         </span>
       </span>
       <span className="flex-shrink-0 text-right">

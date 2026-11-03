@@ -50,7 +50,10 @@ function chunkIntoWeeks(days: DayAvailability[]): DayAvailability[][] {
 function summarizeWeek(days: DayAvailability[], label: string): WeekOccupancy {
   const openDays = days.filter((d) => d.isOpen);
   const capacity = openDays.reduce((sum, d) => sum + d.capacity, 0);
-  const spotsLeft = openDays.reduce((sum, d) => sum + d.spotsLeft, 0);
+  // Test browser 03/11/2026: un dato vecchio con liberi > totali dava "−25%".
+  // Ora quel dato non si salva più (lib/capacity/day-inventory.ts); qui per
+  // sicurezza ogni giorno conta al massimo i suoi posti totali.
+  const spotsLeft = openDays.reduce((sum, d) => sum + Math.min(Math.max(d.spotsLeft, 0), Math.max(d.capacity, 0)), 0);
   const occupancyPercent = capacity > 0 ? Math.round(((capacity - spotsLeft) / capacity) * 100) : 0;
   return { label, capacity, spotsLeft, occupancyPercent };
 }

@@ -2,6 +2,8 @@
 
 import { activityNameError } from "@/lib/centers/activity-edit-v2";
 import { centerNameError } from "@/lib/centers/profile-v2";
+import { validateCalendar, type DayInventoryIssue } from "@/lib/capacity/day-inventory";
+import { getConfirmedSpotsByDate } from "@/lib/data/day-confirmed";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
@@ -191,13 +193,23 @@ export async function createActivityAction(
 export async function saveActivityDaysAction(
   activityDbId: string,
   days: DayAvailability[]
-): Promise<{ error?: string }> {
+): Promise<{ error?: string; issues?: DayInventoryIssue[] }> {
   if (!isSupabaseConfigured) return { error: "Supabase non configurato" };
   const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) return { error: "Non autenticato" };
+
+  // Test browser 03/11/2026 (HIGH): "posti totali 2, liberi 3" veniva salvato.
+  // Stesse regole della pagina (lib/capacity/day-inventory.ts), qui sul
+  // server: con un solo giorno impossibile non si scrive NIENTE (nessun
+  // salvataggio a metà). I confermati si leggono dal database, non dal browser.
+  const confirmedByDate = await getConfirmedSpotsByDate(activityDbId);
+  const issues = validateCalendar(days, confirmedByDate);
+  if (issues.length > 0) {
+    return { error: "Alcuni giorni hanno posti impossibili: niente è stato salvato.", issues };
+  }
 
   const rows = days.map((d) => ({
     activity_id: activityDbId,

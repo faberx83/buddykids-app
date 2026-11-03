@@ -22,6 +22,8 @@ export interface ActivityRowV2 {
   hours: string | null;
   pricePerWeek: number;
   dates: ActivityDateSummary;
+  /** Migration 59: nuove richieste sospese dal centro. */
+  paused?: boolean;
 }
 
 function formatDay(isoDate: string): string {
@@ -137,6 +139,12 @@ export default function ActivitiesV2({ activities, canCreate }: { activities: Ac
                       {a.hours ? ` · ${a.hours}` : ""} · {priceLabel(a)}
                     </span>
                     <DatesLine d={a.dates ?? EMPTY_DATE_SUMMARY} />
+                    {a.paused && (
+                      <span className="flex items-center gap-1.5 self-start rounded-full bg-[#FFF3DC] px-2.5 py-1 text-[12px] font-bold text-[#7A4F00]" data-testid="activity-paused-badge">
+                        <i className="ti ti-player-pause text-[14px]" aria-hidden="true" />
+                        Nuove richieste sospese
+                      </span>
+                    )}
                   </div>
                 </div>
                 <div className="flex flex-wrap gap-2">

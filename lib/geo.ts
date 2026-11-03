@@ -59,3 +59,14 @@ export function clearStoredGeo(): void {
     // storage non disponibile, non blocchiamo l'azione
   }
 }
+
+/**
+ * "2,4 km" solo se la distanza è reale. Test browser 03/11/2026: distanceKm
+ * arriva 0 quando manca (lib/data/activities.ts: Number(distance_km ?? 0)) e
+ * la scheda mostrava "0 km". Con 0, null o valori non validi → null: la
+ * distanza non si mostra.
+ */
+export function distanceText(km: number | null | undefined): string | null {
+  if (km === null || km === undefined || !Number.isFinite(km) || km <= 0) return null;
+  return `${km.toLocaleString("it-IT", { maximumFractionDigits: 1 })} km`;
+}

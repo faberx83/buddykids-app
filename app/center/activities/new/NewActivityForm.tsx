@@ -171,6 +171,16 @@ export default function NewActivityForm({ centerReady, v2 = false }: { centerRea
           />
         </div>
 
+        {v2 && (
+          // Test browser 03/11/2026 (UX-PARTNER-004): la pubblicazione è immediata, va detto prima.
+          <div className="flex items-start gap-2.5 rounded-xl bg-partner-soft px-3.5 py-3" data-testid="publish-notice">
+            <i className="ti ti-world mt-0.5 text-[18px] text-partner-primary" aria-hidden="true" />
+            <p className="text-[13px] leading-snug text-ink">
+              <strong>Si pubblica subito:</strong> le famiglie la trovano in Scopri e possono chiedere un posto appena aggiungete le date; ogni
+              richiesta la confermate voi. Potete sospendere le nuove richieste dalla scheda dell&apos;attività.
+            </p>
+          </div>
+        )}
         <div className={`flex items-center gap-3 border-t pt-4 ${v2 ? "border-partner-line" : "border-[#E8EBF0]"}`}>
           <button
             type="submit"
@@ -181,7 +191,7 @@ export default function NewActivityForm({ centerReady, v2 = false }: { centerRea
                 : "rounded-md bg-sky px-5 py-2.5 text-sm font-bold text-white transition-colors hover:bg-[#3A9FDC] disabled:cursor-not-allowed disabled:opacity-60"
             }
           >
-            {saving ? "Creo…" : "Crea attività"}
+            {saving ? "Creo…" : v2 ? "Crea e pubblica" : "Crea attività"}
           </button>
           {error && <span className="text-xs font-medium text-orange">{error}</span>}
         </div>

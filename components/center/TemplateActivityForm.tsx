@@ -178,12 +178,20 @@ export default function TemplateActivityForm({
           </p>
         )}
 
+        {/* Test browser 03/11/2026 (UX-PARTNER-004): la pubblicazione è immediata, va detto prima. */}
+        <div className="flex items-start gap-2.5 rounded-xl bg-partner-soft px-3.5 py-3" data-testid="publish-notice">
+          <i className="ti ti-world mt-0.5 text-[18px] text-partner-primary" aria-hidden="true" />
+          <p className="text-[13px] leading-snug text-ink">
+            <strong>Si pubblica subito:</strong> le famiglie la trovano in Scopri e possono chiedere un posto nei giorni aperti; ogni richiesta la
+            confermate voi. Se volete prima sistemare foto e luogo, potete sospendere le nuove richieste dalla scheda dell&apos;attività.
+          </p>
+        </div>
         <button
           type="submit"
           disabled={saving || datesCount === 0}
           className="min-h-[50px] rounded-xl bg-partner-primary px-5 text-[15px] font-semibold text-white hover:bg-partner-primary-press disabled:bg-[#B9C6C2]"
         >
-          {saving ? "Creo l'attività…" : "Crea l'attività"}
+          {saving ? "Pubblico l'attività…" : "Crea e pubblica"}
         </button>
         <span className="text-center text-[12.5px] text-ink-2">Dopo potete aggiungere foto, servizi extra e il luogo esatto.</span>
       </form>

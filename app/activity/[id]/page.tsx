@@ -12,6 +12,7 @@ import { resolveFeatureFlag } from "@/lib/feature-flags/resolve";
 import { generateCorrelationId } from "@/lib/telemetry/correlation";
 import PhoneShell from "@/components/PhoneShell";
 import DetailClient from "./DetailClient";
+import { getRequestsPausedAt } from "@/lib/data/activity-pause";
 import { getCenterContext } from "@/lib/data/center-admin";
 import { resolveFamilyPreview, FAMILY_PREVIEW_PARAM, FAMILY_PREVIEW_FROM_PARAM, familyPreviewReturnHref } from "@/lib/center/family-preview";
 import { partnerShellEnabledForCurrentUser } from "@/lib/centers/partner-v2-flag";
@@ -221,12 +222,17 @@ export default async function ActivityDetailPage({
   // che devono concordare per costruzione.
   const todayIso = new Date().toISOString().slice(0, 10);
   const hasAvailableDay = days.some((d) => d.isOpen && d.date >= todayIso && d.singleDayBookable && d.spotsLeft > 0);
+  // Migration 59 (03/11/2026): il centro può sospendere le nuove richieste.
+  // La scheda resta visibile ma non si può chiedere un posto (il database
+  // rifiuta comunque una nuova prenotazione).
+  const requestsPaused = activity.dbId ? Boolean((await getRequestsPausedAt([activity.dbId]))[activity.dbId]) : false;
   const activityAvailable =
-    activity.bookingMode === "day_only"
+    !requestsPaused &&
+    (activity.bookingMode === "day_only"
       ? hasAvailableDay
       : activity.bookingMode === "mixed"
       ? hasAvailableWeek || hasAvailableDay
-      : hasAvailableWeek; // "week_only" o bookingMode non configurato (comportamento storico)
+      : hasAvailableWeek); // "week_only" o bookingMode non configurato (comportamento storico)
   const availableWeekSpots = offeredWeeks.filter((w) => !w.soldOut).map((w) => w.spots);
   let dateSummary: ActivityDateSummary | null = null;
   if (uxFix && activity.dbId) {
@@ -252,6 +258,7 @@ export default async function ActivityDetailPage({
         reasonKids={reasonKids}
         existingBooking={existingBooking}
         activityAvailable={activityAvailable}
+        requestsPaused={requestsPaused}
         realSpotsLeft={realSpotsLeft}
         dateSummary={dateSummary}
       />

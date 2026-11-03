@@ -68,7 +68,7 @@ test.describe("Wave 2 - Home Coordination Signal", () => {
     await page.goto("/nextgen");
     // Nessuno dei tre testi-firma delle varianti deve comparire.
     await expect(page.getByText("accetta o rifiuta")).toHaveCount(0);
-    await expect(page.getByText(/ha accettato la richiesta del gruppo/)).toHaveCount(0);
+    await expect(page.getByText(/ha accettato la richiesta del gruppo|Proposta di gruppo accettata per/)).toHaveCount(0);
     await expect(page.getByText(/stanno valutando/)).toHaveCount(0);
   });
 
@@ -102,7 +102,7 @@ test.describe("Wave 2 - Home Coordination Signal", () => {
     await page.goto("/nextgen");
     const bannerCount =
       (await page.getByText(/accetta o rifiuta/).count()) +
-      (await page.getByText(/ha accettato la richiesta del gruppo/).count()) +
+      (await page.getByText(/ha accettato la richiesta del gruppo|Proposta di gruppo accettata per/).count()) +
       (await page.getByText(/stanno valutando/).count());
     expect(bannerCount).toBeLessThanOrEqual(1);
   });

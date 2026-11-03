@@ -25,6 +25,7 @@ import {
   profileSummaries,
   type ProfileSectionKey,
 } from "@/lib/centers/profile-v2";
+import { DISCOUNT_RULES } from "@/lib/centers/discount-rules";
 
 const INPUT =
   "w-full min-h-[46px] rounded-xl border border-partner-line bg-white px-3.5 py-2.5 text-[15px] text-ink outline-none focus:border-partner-primary";
@@ -424,6 +425,17 @@ export default function CenterProfileV2({
                   </div>
                 ))}
               </div>
+            </div>
+            <div className="rounded-[14px] border border-partner-line bg-partner-soft/40 p-3.5" data-testid="discount-rules">
+              <p className="mb-2 text-[13.5px] font-semibold text-ink">Come si applicano</p>
+              <dl className="flex flex-col gap-2">
+                {DISCOUNT_RULES.map((r) => (
+                  <div key={r.key}>
+                    <dt className="text-[13px] font-semibold text-ink">{r.title}</dt>
+                    <dd className="text-[13px] leading-snug text-ink-2">{r.text}</dd>
+                  </div>
+                ))}
+              </dl>
             </div>
             <p className="text-[12.5px] text-ink-2">
               Le promozioni di un periodo preciso sono in{" "}

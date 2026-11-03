@@ -74,6 +74,7 @@ export default function ActivityDetailV2({
   daysCost,
   meetsMinDays,
   activityAvailable,
+  requestsPaused = false,
   realSpotsLeft,
   existingBooking,
   bookingHref,
@@ -103,6 +104,8 @@ export default function ActivityDetailV2({
   daysCost: number;
   meetsMinDays: boolean;
   activityAvailable: boolean;
+  /** Migration 59 (03/11/2026): il centro ha sospeso le nuove richieste. */
+  requestsPaused?: boolean;
   realSpotsLeft?: number;
   existingBooking: ExistingBookingSummary | null;
   bookingHref: string;
@@ -124,7 +127,9 @@ export default function ActivityDetailV2({
   // UX-PARENT-025 / UX-CROSS-001 (03/11/2026): il prezzo con la stessa regola delle card
   // (lib/nextgen/activity-price.ts): un'attività solo a giornate ha il prezzo al giorno.
   const price = activityPrice(activity);
-  const spotsText = !activityAvailable
+  const spotsText = requestsPaused
+    ? "Nuove richieste sospese dal centro"
+    : !activityAvailable
     ? dateSummary
       ? unavailableCtaLabel(dateSummary)
       : "Al momento non disponibile"
@@ -302,10 +307,11 @@ export default function ActivityDetailV2({
             </section>
           )}
 
-          {/* 6. Settimane e posti */}
+          {/* 6. Settimane e posti — "Date e posti" per le attività solo a
+              giornate (test browser 03/11/2026, Parent #3). */}
           <section className={CARD} aria-labelledby="settimane-h">
-            <h2 id="settimane-h" className={SECTION_TITLE}>
-              Settimane e posti
+            <h2 id="settimane-h" className={SECTION_TITLE} data-testid="dates-spots-title">
+              {activity.bookingMode === "day_only" ? "Date e posti" : "Settimane e posti"}
             </h2>
             <dl className="mt-1.5 flex flex-col">
               <div className="flex items-center justify-between py-2.5">
@@ -501,6 +507,12 @@ export default function ActivityDetailV2({
         {preview ? (
           <button type="button" disabled data-testid="family-preview-booking-disabled" className={CTA_DISABLED}>
             Prenota
+          </button>
+        ) : requestsPaused && !existingBooking ? (
+          // Test browser 03/11/2026: il centro ha sospeso le nuove richieste;
+          // chi ha già prenotato continua a vedere "Modifica prenotazione".
+          <button type="button" disabled data-testid="requests-paused-cta" className={CTA_DISABLED}>
+            Richieste sospese
           </button>
         ) : daysSelected > 0 && meetsMinDays ? (
           <Link href={bookingHref} data-spotlight="book_activity" className={CTA}>
