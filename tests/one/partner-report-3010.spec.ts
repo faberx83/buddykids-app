@@ -158,6 +158,9 @@ test.describe("UX-PARTNER-008 e revisioni REV-PARTNER-001/002", () => {
     expect(inv).toContain('pending: "Link da condividere"');
     expect(inv).toContain('sent: "Email partita"');
     expect(inv).toContain("https://wa.me/?text=");
+    // dopo l'import il riepilogo resta: niente ricarica della pagina
+    expect(code(inv)).not.toContain("window.location.reload()");
+    expect(inv).toContain("router.refresh();");
   });
 
   test("RPP-12 Preferenze promette solo quello che c'è; note della famiglia: la procedura di oggi", () => {

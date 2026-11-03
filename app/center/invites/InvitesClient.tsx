@@ -1,6 +1,8 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useRouter } from "next/navigation";
+
+import { useRef, useState, useEffect } from "react";
 import { DemoBadge } from "@/components/StatusBadge";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
 import { InviteItem, InviteStatus } from "@/lib/data/invites";
@@ -63,6 +65,12 @@ export default function InvitesClient({
   hasCenterId: boolean;
 }) {
   const [invites, setInvites] = useState(initialInvites);
+  const router = useRouter();
+  // Dopo l'import la lista arriva dal server (router.refresh): si riallinea qui
+  // senza ricaricare la pagina, così il riepilogo dell'import resta visibile.
+  useEffect(() => {
+    setInvites(initialInvites);
+  }, [initialInvites]);
   const [contactName, setContactName] = useState("");
   const [contactEmail, setContactEmail] = useState("");
   const [contactPhone, setContactPhone] = useState("");
@@ -140,7 +148,8 @@ export default function InvitesClient({
     );
     // Ricarica la lista dal server per semplicità (più affidabile che
     // ricostruire N righe lato client con i loro codici reali).
-    window.location.reload();
+    // REV-PARTNER-001: prima la pagina si ricaricava e il riepilogo ("N creati, righe non valide…") spariva.
+    router.refresh();
   }
 
   async function handleToggleActive(id: string, active: boolean) {
