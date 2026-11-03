@@ -261,3 +261,17 @@ test.describe("Conversazione aperta dal centro (migration 57, 03/11/2026)", () =
     expect(mailto).toBeGreaterThan(sheet.indexOf("emailFallback && b.parentEmail"));
   });
 });
+
+test.describe("Loader del portale centri (03/11/2026)", () => {
+  test("RPP-17 filo del caricamento in petrolio e senape, solo nel portale centri", () => {
+    const css = read("app/globals.css");
+    const rule = css.slice(css.indexOf(".trama-loader-thread--partner > span"));
+    expect(rule.slice(0, rule.indexOf("}"))).toContain("linear-gradient(90deg, #0e5a63, #5e9a9f, #d9a93c, #8a6410)");
+    // il filo delle famiglie resta quello di sempre
+    expect(css).toContain("background: linear-gradient(90deg, #f66b5e, #f6a623, #2dba8c, #6f63c5);");
+    const spinner = read("components/TramaSpinner.tsx");
+    expect(spinner).toContain('palette = "family",');
+    expect(spinner).toContain('palette === "partner" ? "trama-loader-thread--partner bg-partner-line"');
+    expect(read("app/nextgen/loading.tsx")).not.toContain('palette="partner"');
+  });
+});
