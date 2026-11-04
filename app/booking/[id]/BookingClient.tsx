@@ -17,6 +17,7 @@ import { buildFamilyTiers, familyDiscountAmount } from "@/lib/family-discount";
 import { calculateDayBookingCost, dayPrice } from "@/lib/day-pricing";
 import type { EligibleInviteDiscount } from "@/lib/data/invites";
 import { markFirstUsefulAction } from "@/lib/nextgen/first-action";
+import { shortfallMessage, spotsShortfall, type SpotsSlot } from "@/lib/capacity/request-check";
 
 const paymentMethodMap: Record<string, "card" | "apple_pay" | "bank_transfer"> = {
   card: "card",
@@ -282,6 +283,18 @@ export default function BookingClient({
 
   const nWeeks = selectedWeeks.length || 1;
   const kidsCount = selectedKids.length || 1;
+  // Decisione di Fabrizio 04/11/2026: ogni bambino occupa un posto; la
+  // richiesta non parte se un giorno/settimana ha meno posti liberi dei
+  // bambini scelti (lib/capacity/request-check.ts, stessa regola sul server).
+  const spotsSlots: SpotsSlot[] = dayBookingMode
+    ? selectedDayRows.map((d) => ({
+        key: d.date,
+        label: new Date(d.date + "T00:00:00Z").toLocaleDateString("it-IT", { day: "numeric", month: "short", timeZone: "UTC" }),
+        spotsLeft: d.spotsLeft,
+      }))
+    : weeks.filter((w) => selectedWeeks.includes(w.id)).map((w) => ({ key: w.id, label: w.label, spotsLeft: w.spots }));
+  const spotsShort = spotsShortfall(spotsSlots, kidsCount);
+  const spotsShortText = shortfallMessage(spotsShort, kidsCount);
   // Prezzo di UN bambino, usato come base sia per il totale sia per
   // calcolare lo sconto famiglia dal 2° bambino — a settimane (× prezzo a
   // settimana) come sempre, OPPURE a Giorni spot (somma dei giorni scelti,
@@ -675,6 +688,12 @@ export default function BookingClient({
               />
             ))}
 
+            {spotsShortText && (
+              <p role="alert" data-testid="spots-shortfall" className="mb-2.5 rounded-md bg-orange-light px-3 py-2.5 text-[13px] font-medium text-ink">
+                {spotsShortText}
+              </p>
+            )}
+
             {showAddKid ? (
               <AddKidForm
                 onAdded={(kid) => {
@@ -875,7 +894,8 @@ export default function BookingClient({
             // settimana da associare. Stesso principio già applicato al
             // ramo giorni (riga sopra), qui semplicemente mancava.
             (currentStepKind === "weeks" && !dayBookingMode && selectedWeeks.length === 0) ||
-            (currentStepKind === "kids" && selectedKids.length === 0)
+            (currentStepKind === "kids" && selectedKids.length === 0) ||
+            (currentStepKind === "kids" && spotsShort.length > 0)
           }
           className={
             v2

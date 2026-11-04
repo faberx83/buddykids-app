@@ -11,8 +11,11 @@ import fs from "fs";
 import path from "path";
 import { test, expect } from "@playwright/test";
 import { confirmedByDate, planRelease, planReserve, unitsForKids, unitsToRelease } from "../../lib/capacity/units";
-import { amountBeforeDiscount, amountDue, amountsAfterDayRemoval, dayBookingTotals } from "../../lib/booking-amounts";
-import { bookingsSummaryLine, netPrice, priceBeforeDiscount, type BookingV2Input } from "../../lib/nextgen/bookings-v2";
+import { amountBeforeDiscount, amountDue, amountsAfterDayRemoval, amountsForCountedDays, dayBookingTotals } from "../../lib/booking-amounts";
+import { bookingsSummaryLine, confirmedShare, netPrice, priceBeforeDiscount, type BookingV2Input } from "../../lib/nextgen/bookings-v2";
+import { buildHomeInbox } from "../../lib/nextgen/home-inbox";
+import { shortfallMessage, spotsShortfall } from "../../lib/capacity/request-check";
+import { amountsAfterDecisions, datesLabel, dayDecisionsMessage, partialNotificationText } from "../../lib/booking-response/day-decisions-message";
 import { buildFamilyTiers } from "../../lib/family-discount";
 import { inventoryBlockingSummary, validateDayInventory } from "../../lib/capacity/day-inventory";
 import { groupDiscountSuffix } from "../../lib/groups/group-proposal";
@@ -176,7 +179,7 @@ test.describe("EXTRA-01 importi: total_amount è già scontato", () => {
     }
     const resp = read("app/actions/booking-response.ts");
     expect(resp).not.toContain("booking.total_amount - day.price");
-    expect(resp).toContain("amountsAfterDayRemoval(");
+    expect(resp).toContain("amountsForCountedDays(");
     expect(resp).toContain("discount_amount: newAmounts.discountAmount");
     expect(read("app/actions/bookings.ts")).toContain("dayBookingTotals(");
     expect(read("components/center/BookingSheet.tsx")).toContain("r.totalAmount ??");
@@ -214,5 +217,121 @@ test.describe("Checklist 04/11", () => {
     expect(groupDiscountSuffix(7.5, " · ")).toBe(" · sconto 7,5%");
     expect(read("lib/data/notifications.ts")).toContain("groupDiscountSuffix(req.discountPercent)");
     expect(read("app/nextgen/HomeDashboardClient.tsx")).toContain("groupDiscountSuffix(coordinationSignal.discountPercent)");
+  });
+});
+
+// ─────────────────────────────────────────────
+// Decisioni di Fabrizio del 04/11 sui requisiti da chiarire
+// ─────────────────────────────────────────────
+test.describe("Decisioni 04/11: Home, posti per la richiesta, conferma parziale", () => {
+  test("QA-15 Home V2: 'Proposta di gruppo accettata' in Da fare, con 'Scegli i giorni'", () => {
+    const res = buildHomeInbox({
+      bookings: [],
+      upcomingCoordination: null,
+      groupInvites: [],
+      acceptedGroupProposals: [{ id: "r1", groupId: "g1", groupName: "Famiglie UX Test — demo", discountPercent: 0 }],
+      profileIncomplete: false,
+      pushInactive: false,
+    });
+    expect(res.all).toHaveLength(1);
+    expect(res.all[0]).toMatchObject({
+      kind: "group_proposal_accepted",
+      title: "Proposta di gruppo accettata",
+      detail: "Famiglie UX Test — demo · i posti non sono ancora prenotati",
+      ctaLabel: "Scegli i giorni",
+      href: "/nextgen/groups/g1",
+    });
+    // Senza il dato (comportamento di prima) nessuna voce.
+    expect(buildHomeInbox({ bookings: [], upcomingCoordination: null, groupInvites: [], profileIncomplete: false, pushInactive: false }).all).toHaveLength(0);
+    const data = read("app/nextgen/home-v2-data.ts");
+    expect(data).toContain("getRecentAcceptedGroupRequests(");
+    expect(data).toContain("bookedActivities.has(g.activityId)"); // sparisce quando l'attività è prenotata
+    expect(read("app/nextgen/HomeDashboardV2Client.tsx")).toContain('group_proposal_accepted: "ti-discount-2"');
+  });
+
+  test("QA-16 richiesta: ogni bambino un posto; con meno posti liberi dei bambini non parte", () => {
+    const slots = [
+      { key: "a", label: "7 dic", spotsLeft: 2 },
+      { key: "b", label: "8 dic", spotsLeft: 1 },
+      { key: "c", label: "9 dic", spotsLeft: 0 },
+    ];
+    expect(spotsShortfall(slots, 1).map((s) => s.key)).toEqual(["c"]);
+    expect(spotsShortfall(slots, 2).map((s) => s.key)).toEqual(["b", "c"]);
+    expect(spotsShortfall(slots.slice(0, 1), 2)).toEqual([]);
+    expect(shortfallMessage([slots[1]], 2)).toBe(
+      "8 dic: 1 posto libero per 2 bambini. Ogni bambino occupa un posto: potete chiederlo per 1 bambino, oppure scegliete un altro giorno."
+    );
+    expect(shortfallMessage([slots[2]], 1)).toBe("9 dic: nessun posto libero per 1 bambino. Ogni bambino occupa un posto: scegliete un altro giorno.");
+    expect(shortfallMessage(slots.slice(1), 2)).toContain("8 dic, 9 dic: meno posti liberi dei 2 bambini scelti");
+    expect(shortfallMessage([], 2)).toBe("");
+    const client = read("app/booking/[id]/BookingClient.tsx");
+    expect(client).toContain('data-testid="spots-shortfall"');
+    expect(client).toContain('(currentStepKind === "kids" && spotsShort.length > 0)');
+    const action = read("app/booking/[id]/actions.ts");
+    expect(action).toContain("const shortfall = await requestSpotsShortfall(supabase, input);");
+    expect(action.indexOf("requestSpotsShortfall(supabase, input)")).toBeLessThan(action.indexOf("const bookingInsert"));
+  });
+
+  test("QA-17 conferma parziale: l'importo salvato conta solo i giorni non rifiutati (uguale nei due portali), idempotente", () => {
+    // 2 bambini, 3 giorni da €30, sconto fratelli 10%: 180 − 9 = 171. Il centro rifiuta 1 giorno.
+    const start = dayBookingTotals([30, 30, 30], 2, TIERS);
+    expect(start.total).toBe(171);
+    const days = [
+      { date: "2026-12-07", price: 30, decision: "accepted" as const },
+      { date: "2026-12-08", price: 30, decision: "accepted" as const },
+      { date: "2026-12-09", price: 30, decision: "rejected" as const },
+    ];
+    const after = amountsAfterDecisions({ previous: { totalAmount: 171, discountAmount: 9 }, days, kidsCount: 2, familyTiers: TIERS });
+    expect(after).toEqual({ totalAmount: 114, discountAmount: 6 });
+    // Seconda volta (stesso stato): nessun cambiamento.
+    expect(amountsAfterDecisions({ previous: after, days, kidsCount: 2, familyTiers: TIERS })).toEqual(after);
+    // "Prova FP" in produzione: 1 bambino, 5 giorni da €32, 1 rifiutato → €128.
+    expect(amountsForCountedDays({ previous: { totalAmount: 160, discountAmount: 0 }, countedDayPrices: [32, 32, 32, 32], kidsCount: 1, familyTiers: TIERS })).toEqual({ totalAmount: 128, discountAmount: 0 });
+    // Quota confermata per la famiglia: tutto quando non resta nulla in attesa; in proporzione ai giorni in gioco altrimenti.
+    const partial = booking({ partnerDecision: "partial", totalAmount: 114, discountAmount: 6, acceptedDayCount: 2, totalDayCount: 3, stillPendingDayCount: 0 });
+    expect(confirmedShare(partial)).toBe(114);
+    expect(confirmedShare({ ...partial, acceptedDayCount: 1, stillPendingDayCount: 1 })).toBe(57);
+  });
+
+  test("QA-18 una sola email chiara: confermati, non accettati, importo aggiornato", () => {
+    expect(datesLabel(["2026-12-08", "2026-12-07"])).toBe("7 e 8 dicembre");
+    expect(datesLabel(["2026-11-30", "2026-12-01", "2026-12-02"])).toBe("30 novembre, 1 e 2 dicembre");
+    const msg = dayDecisionsMessage({
+      firstName: "Genitore",
+      activityName: "UX DEMO",
+      days: [
+        { date: "2026-12-07", price: 30, decision: "accepted" },
+        { date: "2026-12-08", price: 30, decision: "accepted" },
+        { date: "2026-12-09", price: 30, decision: "rejected" },
+      ],
+      totalAmount: 114,
+      previousTotal: 171,
+    });
+    expect(msg.subject).toBe("Confermata in parte: UX DEMO");
+    expect(msg.paragraphs).toEqual([
+      "Ciao Genitore,",
+      "Confermati: 7 e 8 dicembre.",
+      "Non accettati: 9 dicembre. Questi giorni non si pagano.",
+      "Importo aggiornato: €114 (prima €171).",
+    ]);
+    expect(
+      dayDecisionsMessage({ firstName: null, activityName: "X", days: [{ date: "2026-12-07", price: 30, decision: "accepted" }, { date: "2026-12-08", price: 30, decision: "pending" }], totalAmount: 60, previousTotal: 60 }).paragraphs
+    ).toEqual(["Ciao,", "Confermati: 7 dicembre.", "Il centro deve ancora rispondere per: 8 dicembre.", "Importo: €60."]);
+    expect(dayDecisionsMessage({ firstName: null, activityName: "X", days: [{ date: "2026-12-07", price: 30, decision: "rejected" }], totalAmount: 0, previousTotal: 30 }).subject).toBe("Prenotazione non accettata: X");
+  });
+
+  test("QA-19 notifica in app: 'Confermata in parte' (non più 'Il centro ha una proposta')", () => {
+    expect(partialNotificationText({ activityName: "UX DEMO", acceptedDayCount: 2, totalDayCount: 3, stillPendingDayCount: 0, totalAmount: 114 })).toEqual({
+      title: "Confermata in parte: UX DEMO",
+      body: "Confermati 2 giorni su 3. Importo aggiornato: €114; i giorni non accettati non si pagano.",
+    });
+    const notif = read("lib/data/notifications.ts");
+    expect(notif.indexOf('booking.partnerDecision === "partial"')).toBeLessThan(notif.indexOf("`Il centro ha una proposta per te: ${booking.activityName}`"));
+    const resp = read("app/actions/booking-response.ts");
+    expect(resp.match(/applyDayDecision\([^)]*\{ notify: false \}\)/g)?.length).toBe(2);
+    expect(resp.match(/finalizeDayDecisions\(supabase, input\.bookingId, \{ notify: true \}\)/g)?.length).toBe(2);
+    const plan = read("supabase/riconciliazione_61_importi_conferme_parziali.sql");
+    expect(plan).not.toMatch(/^-- STATO: PREPARATA, NON APPLICATA/m);
+    expect(plan).toContain("DA DECIDERE");
   });
 });

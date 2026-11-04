@@ -1,6 +1,7 @@
 "use server";
 
 import { createClient } from "@/lib/supabase/server";
+import { shortfallMessage, spotsShortfall, type SpotsSlot } from "@/lib/capacity/request-check";
 import { createServiceClient } from "@/lib/supabase/service";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
 import { getSeasonWeekRanges, overlaps } from "@/lib/season-weeks";
@@ -169,6 +170,31 @@ async function findWeekOverlapConflicts(
   return conflicts;
 }
 
+async function requestSpotsShortfall(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  input: Pick<CreateBookingInput, "kidIds" | "weekIds" | "dayBookings">
+): Promise<string | null> {
+  const kids = Math.max(1, input.kidIds.length);
+  const slots: SpotsSlot[] = [];
+  const dayIds = (input.dayBookings ?? []).map((d) => d.activityDayId).filter(isUuid);
+  if (dayIds.length > 0) {
+    const { data } = await supabase.from("activity_days").select("id, date, spots_left").in("id", dayIds);
+    for (const r of (data ?? []) as { id: string; date: string; spots_left: number }[]) {
+      const label = new Date(r.date + "T00:00:00Z").toLocaleDateString("it-IT", { day: "numeric", month: "short", timeZone: "UTC" });
+      slots.push({ key: r.id, label, spotsLeft: r.spots_left });
+    }
+  }
+  const weekIds = input.weekIds.filter(isUuid);
+  if (weekIds.length > 0) {
+    const { data } = await supabase.from("activity_weeks").select("id, label, spots_left").in("id", weekIds);
+    for (const r of (data ?? []) as { id: string; label: string | null; spots_left: number }[]) {
+      slots.push({ key: r.id, label: r.label || "Questa settimana", spotsLeft: r.spots_left });
+    }
+  }
+  const short = spotsShortfall(slots, kids);
+  return short.length > 0 ? shortfallMessage(short, kids) : null;
+}
+
 export async function createBookingAction(
   input: CreateBookingInput
 ): Promise<{ bookingId?: string; error?: string; conflicts?: BookingWeekConflict[] }> {
@@ -190,6 +216,12 @@ export async function createBookingAction(
     );
     if (conflicts.length > 0) return { conflicts };
   }
+
+  // Decisione di Fabrizio 04/11/2026: ogni bambino occupa un posto in ogni
+  // giorno/settimana; se i posti liberi non bastano la richiesta non parte
+  // (stessa regola della pagina, lib/capacity/request-check.ts).
+  const shortfall = await requestSpotsShortfall(supabase, input);
+  if (shortfall) return { error: shortfall };
 
   const bookingInsert: Record<string, unknown> = {
     parent_id: user.id,

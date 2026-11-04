@@ -74,3 +74,27 @@ export function amountsAfterDayRemoval(input: {
   const discountAmount = after.familyDiscount + otherAfter;
   return { totalAmount: Math.max(0, after.subtotal - discountAmount), discountAmount };
 }
+
+/**
+ * Importi per i giorni che contano (per esempio dopo che il centro ne ha
+ * rifiutato qualcuno). Idempotente: il "prima" si ricava da ciò che è
+ * salvato (dovuto + sconti = pieno), non da quali giorni contavano prima;
+ * quindi applicarla due volte dà lo stesso risultato. Lo sconto fratelli si
+ * ricalcola; un altro sconto già presente (invito) resta in proporzione.
+ */
+export function amountsForCountedDays(input: {
+  previous: StoredAmounts;
+  countedDayPrices: number[];
+  kidsCount: number;
+  familyTiers: number[];
+}): StoredAmounts {
+  const kids = Math.max(1, Math.floor(input.kidsCount || 1));
+  const grossBefore = amountBeforeDiscount(input.previous);
+  return amountsAfterDayRemoval({
+    previous: input.previous,
+    previousDayPrices: [grossBefore / kids],
+    remainingDayPrices: input.countedDayPrices,
+    kidsCount: kids,
+    familyTiers: input.familyTiers,
+  });
+}

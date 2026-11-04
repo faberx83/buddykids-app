@@ -25,6 +25,8 @@ export interface BookingV2Input {
   acceptedDayCount: number;
   totalDayCount: number;
   waitlistedDayCount: number;
+  /** Giorni ancora senza risposta (in attesa o in lista d'attesa). Assente = come prima. */
+  stillPendingDayCount?: number;
   partnerProposalNote: string | null;
 }
 
@@ -48,6 +50,22 @@ export function bookingSpan(b: Pick<BookingV2Input, "weeks" | "dayDates">): { fi
  */
 export function netPrice(b: Pick<BookingV2Input, "totalAmount" | "discountAmount">): number {
   return amountDue(b);
+}
+
+/**
+ * Quota confermata di una prenotazione. 04/11/2026: per le conferme parziali
+ * l'importo salvato conta già solo i giorni non rifiutati (accettati + ancora
+ * in attesa, lib/booking-response/day-decisions-message.ts), quindi la quota
+ * è sui giorni ancora in gioco, non su tutti quelli chiesti.
+ */
+export function confirmedShare(b: Pick<BookingV2Input, "partnerDecision" | "totalAmount" | "discountAmount" | "acceptedDayCount" | "totalDayCount" | "stillPendingDayCount">): number {
+  const amount = netPrice(b);
+  if (b.partnerDecision !== "partial") return amount;
+  if (b.stillPendingDayCount === undefined) {
+    return b.totalDayCount > 0 ? Math.round((amount * b.acceptedDayCount) / b.totalDayCount) : amount;
+  }
+  const inPlay = b.acceptedDayCount + b.stillPendingDayCount;
+  return inPlay > 0 ? Math.round((amount * b.acceptedDayCount) / inPlay) : 0;
 }
 
 /** Prezzo prima degli sconti (barrato). */
@@ -183,7 +201,7 @@ export function bookingsSummaryLine(bookings: BookingV2Input[], todayIso: string
         (bookingSpan(b).first ?? "").startsWith(year)
     )
     // Confermata in parte: solo la quota dei giorni accettati.
-    .reduce((s, b) => s + (b.partnerDecision === "partial" && b.totalDayCount > 0 ? Math.round((netPrice(b) * b.acceptedDayCount) / b.totalDayCount) : netPrice(b)), 0);
+    .reduce((s, b) => s + confirmedShare(b), 0);
   const parts = [active.length === 0 ? "Niente in arrivo" : active.length === 1 ? "1 in arrivo" : `${active.length} in arrivo`];
   if (confirmed > 0) parts.push(`€${confirmed.toLocaleString("it-IT")} di prenotazioni confermate nel ${year}`);
   return parts.join(" · ");

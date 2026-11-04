@@ -140,3 +140,49 @@ export async function notifyParentOfBookingResponse(
     );
   }
 }
+
+
+/**
+ * 04/11/2026 — email unica dopo una risposta del centro sui giorni (testo da
+ * lib/booking-response/day-decisions-message.ts). Stesso invio e stesso
+ * registro di consegna di notifyParentOfBookingResponse.
+ */
+export async function notifyParentWithMessage(
+  supabase: SupabaseClientLike,
+  bookingId: string,
+  parentId: string | null,
+  build: (firstName: string | null) => { subject: string; paragraphs: string[] }
+) {
+  if (!isEmailConfigured) {
+    try {
+      await recordEmailDeliveryStatus(supabase, bookingId, "not_configured");
+    } catch {
+      /* best effort */
+    }
+    return;
+  }
+  try {
+    if (!parentId) {
+      await recordEmailDeliveryStatus(supabase, bookingId, "no_recipient");
+      return;
+    }
+    const { data: parentRow } = await supabase.from("profiles").select("email, full_name").eq("id", parentId).single();
+    if (!parentRow?.email) {
+      await recordEmailDeliveryStatus(supabase, bookingId, "no_recipient");
+      return;
+    }
+    const msg = build(parentRow.full_name ? parentRow.full_name.split(" ")[0] : null);
+    const html = tramaEmailHtml({
+      title: msg.subject,
+      paragraphs: msg.paragraphs,
+      cta: { label: "Vedi le prenotazioni", href: `${EMAIL_PUBLIC_ORIGIN}/nextgen/prenotazioni` },
+    });
+    const result = await sendEmail({ to: parentRow.email, subject: msg.subject, html });
+    if (result.error) {
+      console.error(`[booking-response] Email riepilogo giorni fallita (bookingId=${bookingId}): ${result.error}`);
+    }
+    await recordEmailDeliveryStatus(supabase, bookingId, result.error ? "failed" : "sent", result.error);
+  } catch (e) {
+    console.error(`[booking-response] Errore inatteso nell'email riepilogo giorni (bookingId=${bookingId}):`, e);
+  }
+}

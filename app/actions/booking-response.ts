@@ -14,7 +14,8 @@
 import { createClient } from "@/lib/supabase/server";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
 import { revalidatePath } from "next/cache";
-import { amountsAfterDayRemoval } from "@/lib/booking-amounts";
+import { amountsForCountedDays } from "@/lib/booking-amounts";
+import { finalizeDayDecisions } from "@/lib/booking-response/finalize-day-decisions";
 import { buildFamilyTiers } from "@/lib/family-discount";
 // TRAMA ONE Build Sprint 6 (backlog vincolante P1, Capacity) — reserve/release
 // centralizzati in lib/capacity/service.ts, con idempotenza esplicita
@@ -239,8 +240,10 @@ export async function respondToBookingDayAction(input: {
   } = await supabase.auth.getUser();
   if (!user) return { error: "Non autenticato" };
 
-  const result = await applyDayDecision(supabase, input.bookingId, input.activityDayId, input.decision);
+  const result = await applyDayDecision(supabase, input.bookingId, input.activityDayId, input.decision, { notify: false });
   if (result.status === "error") return { error: result.error };
+  // 04/11/2026: importo riallineato ai giorni non rifiutati + una email chiara.
+  await finalizeDayDecisions(supabase, input.bookingId, { notify: true });
 
   revalidateBookingPaths();
   return { result: result.status };
@@ -291,13 +294,19 @@ export async function respondToBookingDaysAction(input: {
   // clicca un bottone, non è un percorso ad alta frequenza), stesso
   // principio prudente già seguito da releaseAllWeekCapacityForBooking.
   for (const activityDayId of input.activityDayIds) {
-    const result = await applyDayDecision(supabase, input.bookingId, activityDayId, input.decision);
+    const result = await applyDayDecision(supabase, input.bookingId, activityDayId, input.decision, { notify: false });
     summary.results[activityDayId] = result.status;
     if (result.status === "error") summary.failed++;
     else if (result.status === "accepted") summary.accepted++;
     else if (result.status === "rejected") summary.rejected++;
     else if (result.status === "waitlisted") summary.waitlisted++;
     else if (result.status === "waitlisted_unavailable") summary.waitlistUnavailable++;
+  }
+
+  // 04/11/2026: una sola email per tutta la risposta (non una per giorno) e
+  // importo riallineato ai giorni non rifiutati.
+  if (summary.accepted + summary.rejected + summary.waitlisted > 0) {
+    await finalizeDayDecisions(supabase, input.bookingId, { notify: true });
   }
 
   revalidateBookingPaths();
@@ -396,7 +405,7 @@ export async function cancelBookingDayAction(input: {
 
   const { data: booking, error: bookingError } = await supabase
     .from("bookings")
-    .select("total_amount, discount_amount, status, booking_kids ( kid_id ), booking_days ( activity_day_id, price ), activities ( centers ( family_discount_tiers ) )")
+    .select("total_amount, discount_amount, status, booking_kids ( kid_id ), booking_days ( activity_day_id, price, partner_decision ), activities ( centers ( family_discount_tiers ) )")
     .eq("id", input.bookingId)
     .single();
   if (bookingError || !booking) return { error: "Prenotazione non trovata" };
@@ -424,16 +433,18 @@ export async function cancelBookingDayAction(input: {
     total_amount: number;
     discount_amount: number | null;
     booking_kids: { kid_id: string }[] | null;
-    booking_days: { activity_day_id: string; price: number }[] | null;
+    booking_days: { activity_day_id: string; price: number; partner_decision: string | null }[] | null;
     activities: { centers: { family_discount_tiers: number[] | null } | { family_discount_tiers: number[] | null }[] | null } | { centers: unknown }[] | null;
   };
   const activityRef = Array.isArray(bookingRow.activities) ? bookingRow.activities[0] : bookingRow.activities;
   const centerRef = activityRef && (Array.isArray(activityRef.centers) ? activityRef.centers[0] : activityRef.centers);
   const allDays = bookingRow.booking_days ?? [];
-  const newAmounts = amountsAfterDayRemoval({
+  // Contano i giorni rimasti e non rifiutati (come dopo una risposta del centro).
+  const newAmounts = amountsForCountedDays({
     previous: { totalAmount: Number(bookingRow.total_amount) || 0, discountAmount: Number(bookingRow.discount_amount) || 0 },
-    previousDayPrices: allDays.map((d) => Number(d.price) || 0),
-    remainingDayPrices: allDays.filter((d) => d.activity_day_id !== input.activityDayId).map((d) => Number(d.price) || 0),
+    countedDayPrices: allDays
+      .filter((d) => d.activity_day_id !== input.activityDayId && d.partner_decision !== "rejected")
+      .map((d) => Number(d.price) || 0),
     kidsCount: (bookingRow.booking_kids ?? []).length,
     familyTiers: buildFamilyTiers((centerRef as { family_discount_tiers?: number[] | null } | null)?.family_discount_tiers ?? null),
   });

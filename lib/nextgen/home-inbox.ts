@@ -11,12 +11,14 @@
 // "Da fare" — la Home non deve tornare a riempirsi di banner.
 
 import type { Moment } from "@/lib/nextgen/responsibility-options";
+import { GROUP_PROPOSAL_STATUS, groupDiscountSuffix } from "@/lib/groups/group-proposal";
 
 export type HomeInboxKind =
   | "booking_rejected"
   | "coordination_soon"
   | "booking_partial"
   | "group_invite"
+  | "group_proposal_accepted"
   | "school_missing"
   | "profile_incomplete"
   | "push_inactive";
@@ -27,6 +29,7 @@ export const HOME_INBOX_PRIORITY: readonly HomeInboxKind[] = [
   "coordination_soon",
   "booking_partial",
   "group_invite",
+  "group_proposal_accepted",
   "school_missing",
   "profile_incomplete",
   "push_inactive",
@@ -68,6 +71,20 @@ export interface HomeInboxGroupInviteInput {
   activityName: string | null;
 }
 
+/**
+ * Proposta di gruppo accettata dal centro (decisione di Fabrizio, 04/11/2026:
+ * "aggiungerei alla home"). Il passo successivo è della famiglia: scegliere
+ * i giorni. Sparisce quando la famiglia ha già una prenotazione attiva per
+ * quell'attività (lo filtra chi costruisce l'input) o dopo 14 giorni (stessa
+ * finestra di Notifiche e Home di prima, lib/data/coordination-signal.ts).
+ */
+export interface HomeInboxGroupProposalInput {
+  id: string;
+  groupId: string;
+  groupName: string;
+  discountPercent: number;
+}
+
 /** Passaggi (andata/ritorno) ancora da assegnare nei prossimi giorni, OGGI ESCLUSO. */
 export interface HomeInboxUpcomingCoordinationInput {
   missingCount: number;
@@ -81,6 +98,8 @@ export interface HomeInboxInput {
   bookings: HomeInboxBookingInput[];
   upcomingCoordination: HomeInboxUpcomingCoordinationInput | null;
   groupInvites: HomeInboxGroupInviteInput[];
+  /** Assente = nessuna voce (comportamento di prima). */
+  acceptedGroupProposals?: HomeInboxGroupProposalInput[];
   profileIncomplete: boolean;
   pushInactive: boolean;
   /** Correzioni dal test UX (21/10/2026, PARENT_UX_FIX_ENABLED), UX-PARENT-006:
@@ -198,6 +217,17 @@ export function buildHomeInbox(input: HomeInboxInput): HomeInboxResult {
       detail: detail || "Accetta o rifiuta l'invito",
       ctaLabel: "Rispondi",
       href: "/nextgen/groups",
+    });
+  }
+
+  for (const p of input.acceptedGroupProposals ?? []) {
+    items.push({
+      id: `group_proposal_accepted:${p.id}`,
+      kind: "group_proposal_accepted",
+      title: GROUP_PROPOSAL_STATUS.accepted.family,
+      detail: `${p.groupName}${groupDiscountSuffix(p.discountPercent)} · i posti non sono ancora prenotati`,
+      ctaLabel: "Scegli i giorni",
+      href: `/nextgen/groups/${p.groupId}`,
     });
   }
 

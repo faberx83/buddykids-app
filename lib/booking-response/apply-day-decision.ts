@@ -49,7 +49,11 @@ export async function applyDayDecision(
   supabase: SupabaseClientLike,
   bookingId: string,
   activityDayId: string,
-  requestedDecision: "accepted" | "rejected"
+  requestedDecision: "accepted" | "rejected",
+  // 04/11/2026: le azioni del centro mandano UNA email riepilogativa alla
+  // fine (lib/booking-response/finalize-day-decisions.ts) invece di una per
+  // giorno; chi passa notify:false se ne fa carico.
+  opts: { notify?: boolean } = {}
 ): Promise<DayDecisionResult> {
   const { data: day, error: fetchError } = await supabase
     .from("booking_days")
@@ -108,15 +112,17 @@ export async function applyDayDecision(
   // Task #360 (PT-MVP-12/backlog #355): email al genitore anche per la
   // risposta a singolo giorno (non solo a livello di intera prenotazione).
   // Estesa il 02/09/2026 per coprire anche l'esito 'waitlisted'.
-  const { data: activityDay } = await supabase
-    .from("activity_days")
-    .select("date")
-    .eq("id", activityDayId)
-    .single();
-  const dayLabel = activityDay?.date
-    ? new Date(activityDay.date + "T00:00:00").toLocaleDateString("it-IT", { day: "numeric", month: "long" })
-    : undefined;
-  await notifyParentOfBookingResponse(supabase, bookingId, finalDecision, undefined, dayLabel);
+  if (opts.notify !== false) {
+    const { data: activityDay } = await supabase
+      .from("activity_days")
+      .select("date")
+      .eq("id", activityDayId)
+      .single();
+    const dayLabel = activityDay?.date
+      ? new Date(activityDay.date + "T00:00:00").toLocaleDateString("it-IT", { day: "numeric", month: "long" })
+      : undefined;
+    await notifyParentOfBookingResponse(supabase, bookingId, finalDecision, undefined, dayLabel);
+  }
 
   return { status: finalDecision };
 }

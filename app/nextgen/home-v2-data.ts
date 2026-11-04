@@ -40,6 +40,7 @@ import { PLANNER_DAY_VIEW_FLAG } from "@/lib/nextgen/planner-day";
 import { passageDayCoordination } from "@/lib/nextgen/passage-busy-day";
 import { getPassageResponsibilitiesForParent } from "@/lib/data/passage-responsibilities";
 import { NEW_EXTERNAL_ITEM_HREF } from "@/lib/planner/new-external-item-link";
+import { getRecentAcceptedGroupRequests } from "@/lib/data/coordination-signal";
 import type { Activity, Kid, GroupInviteItem } from "@/lib/types";
 import type { ExternalPlannerItem } from "@/lib/data/external-planner-items";
 import type HomeDashboardV2Client from "./HomeDashboardV2Client";
@@ -298,6 +299,20 @@ export async function loadHomeV2Props({
     inboxInput.schoolMissingKids = schoolCoverageModel.missing;
   }
   if (uxFixEnabled) inboxInput.noKidsYet = kidList.length === 0;
+
+  // ── Proposta di gruppo accettata (decisione di Fabrizio, 04/11/2026): in
+  // "Da fare" finché la famiglia non ha prenotato quell'attività (14 giorni).
+  try {
+    const accepted = await getRecentAcceptedGroupRequests(await createClient(), userId, 5);
+    const bookedActivities = new Set(
+      bookings.filter((b) => b.status !== "cancelled" && b.activityDbId).map((b) => b.activityDbId as string)
+    );
+    inboxInput.acceptedGroupProposals = accepted
+      .filter((g) => !(g.activityId && bookedActivities.has(g.activityId)))
+      .map((g) => ({ id: g.id, groupId: g.groupId, groupName: g.groupName, discountPercent: Number(g.discountPercent) || 0 }));
+  } catch {
+    // best effort: senza questa voce la Home resta come prima
+  }
 
   // ── Riepilogo del periodo ──
   const activeBookings = bookings.filter((b) => b.status !== "cancelled");

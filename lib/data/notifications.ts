@@ -26,6 +26,7 @@ import { getInquiriesForParent } from "@/lib/data/inquiries";
 import { getMyBookingsForParent } from "@/lib/data/my-bookings";
 import { getRecentAcceptedGroupRequests } from "@/lib/data/coordination-signal";
 import { GROUP_PROPOSAL_STATUS, groupDiscountSuffix } from "@/lib/groups/group-proposal";
+import { partialNotificationText } from "@/lib/booking-response/day-decisions-message";
 import { getCarpoolMatchSignals } from "@/lib/data/carpool-signals";
 import { NotificationItem, makeNotificationId, sortNotifications } from "@/lib/notifications/model";
 // TRAMA — POST-DISCOVERY CONSOLIDATION (23/09/2026), NOVITÀ TRAMA — LEVEL 1
@@ -119,6 +120,30 @@ export async function getParentNotifications(): Promise<NotificationItem[]> {
   for (const booking of bookings) {
     if (booking.readByParent || booking.partnerDecision === "pending") continue;
     const isProposal = booking.partnerDecision === "proposed";
+    // 04/11/2026: una conferma parziale finiva nel ramo "proposta"
+    // ("Il centro ha una proposta per te"). Ora dice cosa è confermato e
+    // l'importo aggiornato (lib/booking-response/day-decisions-message.ts).
+    if (booking.partnerDecision === "partial") {
+      const text = partialNotificationText({
+        activityName: booking.activityName,
+        acceptedDayCount: booking.acceptedDayCount,
+        totalDayCount: booking.totalDayCount,
+        stillPendingDayCount: booking.stillPendingDayCount,
+        totalAmount: booking.totalAmount,
+      });
+      items.push({
+        id: makeNotificationId("booking_response", booking.id),
+        type: "booking_response",
+        priority: "important",
+        title: text.title,
+        body: text.body,
+        relevantAt: booking.respondedAt ?? booking.createdAt,
+        isSeen: false,
+        requiresAction: false,
+        deepLink: `/nextgen/prenotazioni?bookingId=${booking.id}`,
+      });
+      continue;
+    }
     const title =
       booking.partnerDecision === "accepted"
         ? `Prenotazione confermata: ${booking.activityName}`

@@ -45,6 +45,8 @@ export interface AcceptedGroupRequestSignal {
   groupName: string;
   discountPercent: number;
   respondedAt: string;
+  /** Attività della proposta (per non insistere quando la famiglia l'ha già prenotata). */
+  activityId: string | null;
 }
 
 // TRAMA — Wave 3 (31/08/2026, "coerenza con Coordination Signal", refactor
@@ -66,7 +68,7 @@ export async function getRecentAcceptedGroupRequests(
   const since = new Date(Date.now() - GROUP_REQUEST_RECENCY_DAYS * 86_400_000).toISOString();
   const { data: acceptedRows } = await supabase
     .from("group_requests")
-    .select("id, group_id, discount_percent, responded_at, groups ( name )")
+    .select("id, group_id, activity_id, discount_percent, responded_at, groups ( name )")
     .in("group_id", groupIds)
     .eq("status", "accepted")
     .gte("responded_at", since)
@@ -76,6 +78,7 @@ export async function getRecentAcceptedGroupRequests(
   return ((acceptedRows ?? []) as {
     id: string;
     group_id: string;
+    activity_id: string | null;
     discount_percent: number;
     responded_at: string;
     groups: { name: string } | { name: string }[] | null;
@@ -85,6 +88,7 @@ export async function getRecentAcceptedGroupRequests(
     groupName: firstOf(row.groups)?.name ?? "il tuo gruppo",
     discountPercent: row.discount_percent,
     respondedAt: row.responded_at,
+    activityId: row.activity_id ?? null,
   }));
 }
 

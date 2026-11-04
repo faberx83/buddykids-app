@@ -544,6 +544,7 @@ function TodoRow({ item, onPush, pushBusy }: { item: HomeInboxItem; onPush: () =
     coordination_soon: "ti-car",
     booking_partial: "ti-calendar-minus",
     group_invite: "ti-users",
+    group_proposal_accepted: "ti-discount-2",
     school_missing: "ti-school",
     profile_incomplete: "ti-user-circle",
     push_inactive: "ti-bell-ringing",
