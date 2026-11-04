@@ -14,6 +14,8 @@
 import { createClient } from "@/lib/supabase/server";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
 import { revalidatePath } from "next/cache";
+import { amountsAfterDayRemoval } from "@/lib/booking-amounts";
+import { buildFamilyTiers } from "@/lib/family-discount";
 // TRAMA ONE Build Sprint 6 (backlog vincolante P1, Capacity) — reserve/release
 // centralizzati in lib/capacity/service.ts, con idempotenza esplicita
 // (booking_weeks/booking_days.capacity_decremented) invece della logica
@@ -375,7 +377,7 @@ export async function cancelBookingDayAction(input: {
   bookingId: string;
   activityDayId: string;
   cancelledBy: "parent" | "center";
-}): Promise<{ error?: string }> {
+}): Promise<{ error?: string; totalAmount?: number; discountAmount?: number }> {
   if (!isSupabaseConfigured) return { error: "Supabase non configurato" };
 
   const supabase = await createClient();
@@ -394,7 +396,7 @@ export async function cancelBookingDayAction(input: {
 
   const { data: booking, error: bookingError } = await supabase
     .from("bookings")
-    .select("total_amount, status")
+    .select("total_amount, discount_amount, status, booking_kids ( kid_id ), booking_days ( activity_day_id, price ), activities ( centers ( family_discount_tiers ) )")
     .eq("id", input.bookingId)
     .single();
   if (bookingError || !booking) return { error: "Prenotazione non trovata" };
@@ -415,13 +417,35 @@ export async function cancelBookingDayAction(input: {
     .eq("activity_day_id", input.activityDayId);
   if (delError) return { error: delError.message };
 
-  const newTotal = Math.max(0, booking.total_amount - day.price);
+  // QA 04/11/2026 (EXTRA-01): prima si toglieva il prezzo di UN bambino e
+  // lo sconto restava com'era. Ora stessa regola della prenotazione sui
+  // giorni rimasti (lib/booking-amounts.ts).
+  const bookingRow = booking as unknown as {
+    total_amount: number;
+    discount_amount: number | null;
+    booking_kids: { kid_id: string }[] | null;
+    booking_days: { activity_day_id: string; price: number }[] | null;
+    activities: { centers: { family_discount_tiers: number[] | null } | { family_discount_tiers: number[] | null }[] | null } | { centers: unknown }[] | null;
+  };
+  const activityRef = Array.isArray(bookingRow.activities) ? bookingRow.activities[0] : bookingRow.activities;
+  const centerRef = activityRef && (Array.isArray(activityRef.centers) ? activityRef.centers[0] : activityRef.centers);
+  const allDays = bookingRow.booking_days ?? [];
+  const newAmounts = amountsAfterDayRemoval({
+    previous: { totalAmount: Number(bookingRow.total_amount) || 0, discountAmount: Number(bookingRow.discount_amount) || 0 },
+    previousDayPrices: allDays.map((d) => Number(d.price) || 0),
+    remainingDayPrices: allDays.filter((d) => d.activity_day_id !== input.activityDayId).map((d) => Number(d.price) || 0),
+    kidsCount: (bookingRow.booking_kids ?? []).length,
+    familyTiers: buildFamilyTiers((centerRef as { family_discount_tiers?: number[] | null } | null)?.family_discount_tiers ?? null),
+  });
   const { count: remainingDays } = await supabase
     .from("booking_days")
     .select("*", { count: "exact", head: true })
     .eq("booking_id", input.bookingId);
 
-  const bookingUpdate: Record<string, unknown> = { total_amount: newTotal };
+  const bookingUpdate: Record<string, unknown> = {
+    total_amount: newAmounts.totalAmount,
+    discount_amount: newAmounts.discountAmount,
+  };
   // Se era l'ultimo giorno rimasto, l'intera prenotazione è di fatto vuota:
   // annullala esplicitamente invece di lasciare una prenotazione "confirmed"
   // senza alcun giorno prenotato.
@@ -436,7 +460,7 @@ export async function cancelBookingDayAction(input: {
   if (updError) return { error: updError.message };
 
   revalidateBookingPaths();
-  return {};
+  return { totalAmount: newAmounts.totalAmount, discountAmount: newAmounts.discountAmount };
 }
 
 // ─────────────────────────────────────────────

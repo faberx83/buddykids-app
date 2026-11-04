@@ -12,6 +12,7 @@ import PageHeader from "@/components/PageHeader";
 import { ComingSoonBadge } from "@/components/StatusBadge";
 import ContactCenterButton from "@/components/ContactCenterButton";
 import DecorativeIntroCard from "@/components/nextgen/DecorativeIntroCard";
+import { amountBeforeDiscount, amountDue } from "@/lib/booking-amounts";
 
 // "Le mie prenotazioni" ridisegnata da Fabrizio come dashboard di
 // pianificazione familiare (non più un semplice elenco): "L'obiettivo è
@@ -170,8 +171,9 @@ const SORT_OPTIONS: { key: SortKey; label: string }[] = [
   { key: "place", label: "Luogo" },
 ];
 
+// QA 04/11/2026 (EXTRA-01): total_amount è già scontato (lib/booking-amounts.ts).
 function netPrice(b: MyBooking): number {
-  return b.totalAmount - b.discountAmount;
+  return amountDue(b);
 }
 
 function compareBookings(a: MyBooking, b: MyBooking, sortKey: SortKey): number {
@@ -873,7 +875,7 @@ function BookingCard({
           )}
           <div className="mt-1 text-xs font-semibold text-ink">
             €{netPrice(b)}
-            {b.discountAmount > 0 && <span className="ml-1 font-normal text-ink-3 line-through">€{b.totalAmount}</span>}
+            {b.discountAmount > 0 && <span className="ml-1 font-normal text-ink-3 line-through">€{amountBeforeDiscount(b)}</span>}
           </div>
         </div>
       </div>

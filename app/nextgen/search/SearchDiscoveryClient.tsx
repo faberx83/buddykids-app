@@ -1556,7 +1556,7 @@ export default function SearchDiscoveryClient({
 
         {/* SCOPRI V2: per chi + "Filtri · N" che apre la riga dei filtri esistenti. */}
         {v2 && (
-          <div className="mb-3 flex items-center gap-2">
+          <div className="mb-3 flex flex-wrap items-center gap-2">
             {kids.length > 0 && (
               <button
                 type="button"
@@ -1585,6 +1585,20 @@ export default function SearchDiscoveryClient({
               <i className="ti ti-adjustments-horizontal text-[16px]" aria-hidden="true" />
               {activeFiltersCount > 0 ? `Filtri · ${activeFiltersCount}` : "Filtri"}
             </button>
+            {/* QA 04/11/2026 (F1b): il tetto di prezzo applicato si vede fuori
+                dal foglio, con l'unità, e si toglie da solo. */}
+            {maxPrice < PRICE_ANY && (
+              <button
+                type="button"
+                data-testid="price-cap-chip"
+                onClick={() => setMaxPrice(PRICE_ANY)}
+                aria-label={`Togli il filtro ${priceCapChipLabel(maxPrice, priceUnit)}`}
+                className="flex min-h-[38px] items-center gap-1.5 rounded-full bg-trama-primary-soft px-3 text-[13px] font-semibold text-trama-primary"
+              >
+                {priceCapChipLabel(maxPrice, priceUnit)}
+                <i className="ti ti-x text-[14px]" aria-hidden="true" />
+              </button>
+            )}
           </div>
         )}
 

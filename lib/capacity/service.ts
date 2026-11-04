@@ -19,6 +19,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { logTelemetryEvent } from "@/lib/telemetry/correlation";
 import { notifyAvailabilityBackInStock } from "@/lib/notifications/availability-push";
+import { planRelease, planReserve, unitsForKids, unitsToRelease } from "@/lib/capacity/units";
 
 type SupabaseClientLike = Awaited<ReturnType<typeof createClient>>;
 
@@ -69,17 +70,88 @@ export function clampSpotsLeft(value: number, capacity: number): number {
 // qualunque ambiente, non richiede un deploy reale).
 const MAX_CAS_ATTEMPTS = 5;
 
+// ─────────────────────────────────────────────
+// QA in produzione 04/11/2026 (EXTRA-02): un posto per bambino.
+// ─────────────────────────────────────────────
+
+/** Bambini della prenotazione → posti da togliere (almeno 1). */
+async function bookingUnits(supabase: SupabaseClientLike, bookingId: string): Promise<number> {
+  try {
+    const { count, error } = await supabase
+      .from("booking_kids")
+      .select("kid_id", { count: "exact", head: true })
+      .eq("booking_id", bookingId);
+    if (error) return 1;
+    return unitsForKids(count);
+  } catch {
+    return 1;
+  }
+}
+
+type LinkTable = "booking_days" | "booking_weeks";
+
+/** Riga di collegamento con quanti posti ha tolto; senza migration 60 la colonna non c'è e vale 1. */
+async function readLinkRow(
+  supabase: SupabaseClientLike,
+  table: LinkTable,
+  bookingId: string,
+  key: { col: "activity_day_id" | "week_id"; value: string }
+): Promise<{ capacity_decremented: boolean; capacity_units: number | null } | null> {
+  const withUnits = await supabase
+    .from(table)
+    .select("capacity_decremented, capacity_units")
+    .eq("booking_id", bookingId)
+    .eq(key.col, key.value)
+    .single();
+  if (!withUnits.error) return withUnits.data as { capacity_decremented: boolean; capacity_units: number | null } | null;
+  if (withUnits.error.code !== "42703") return null;
+  const legacy = await supabase
+    .from(table)
+    .select("capacity_decremented")
+    .eq("booking_id", bookingId)
+    .eq(key.col, key.value)
+    .single();
+  return legacy.data ? { capacity_decremented: Boolean(legacy.data.capacity_decremented), capacity_units: null } : null;
+}
+
+/** Segna la riga come riservata (units) o rilasciata (0). Senza migration 60 scrive solo il flag. */
+async function markLinkRow(
+  supabase: SupabaseClientLike,
+  table: LinkTable,
+  bookingId: string,
+  key: { col: "activity_day_id" | "week_id"; value: string },
+  decremented: boolean,
+  units: number
+): Promise<void> {
+  const res = await supabase
+    .from(table)
+    .update({ capacity_decremented: decremented, capacity_units: decremented ? units : 0 })
+    .eq("booking_id", bookingId)
+    .eq(key.col, key.value);
+  if (res && res.error && res.error.code === "42703") {
+    await supabase
+      .from(table)
+      .update({ capacity_decremented: decremented })
+      .eq("booking_id", bookingId)
+      .eq(key.col, key.value);
+  }
+}
+
 async function reserveSpot(
   supabase: SupabaseClientLike,
   table: "activity_weeks" | "activity_days",
   id: string,
-  logContext: { event: string; correlationId?: string | null }
+  logContext: { event: string; correlationId?: string | null },
+  units = 1
 ): Promise<CapacityMutationResult> {
   for (let attempt = 0; attempt < MAX_CAS_ATTEMPTS; attempt++) {
     const { data: row } = await supabase.from(table).select("spots_left, capacity").eq("id", id).single();
     if (!row) return { applied: false, spotsLeft: 0 };
 
-    if (row.spots_left <= 0) {
+    // QA 04/11/2026 (EXTRA-02): servono tanti posti quanti bambini; se non
+    // ci sono tutti la riserva non riesce (mai metà famiglia).
+    const plan = planReserve(row.spots_left, row.capacity, units);
+    if (!plan.ok) {
       // Non è un errore applicativo silenzioso: un tentativo di reserve su
       // capacità già esaurita è un segnale utile (race condition tra due
       // risposte quasi simultanee, o UI che non ha ricaricato lo stato) — lo
@@ -88,12 +160,12 @@ async function reserveSpot(
       logTelemetryEvent({
         event: logContext.event,
         correlationId: logContext.correlationId,
-        detail: `reserve rifiutata: spots_left già a 0 (${table}#${id.slice(0, 8)})`,
+        detail: `reserve rifiutata: spots_left ${row.spots_left} < ${units} posti richiesti (${table}#${id.slice(0, 8)})`,
       });
       return { applied: false, spotsLeft: row.spots_left };
     }
 
-    const next = clampSpotsLeft(row.spots_left - 1, row.capacity ?? row.spots_left);
+    const next = plan.next;
     const { data: updated } = await supabase
       .from(table)
       .update({ spots_left: next })
@@ -123,14 +195,15 @@ async function reserveSpot(
 async function releaseSpot(
   supabase: SupabaseClientLike,
   table: "activity_weeks" | "activity_days",
-  id: string
+  id: string,
+  units = 1
 ): Promise<CapacityMutationResult> {
   for (let attempt = 0; attempt < MAX_CAS_ATTEMPTS; attempt++) {
     const { data: row } = await supabase.from(table).select("spots_left, capacity").eq("id", id).single();
     if (!row) return { applied: false, spotsLeft: 0 };
 
     const wasZero = row.spots_left === 0;
-    const next = clampSpotsLeft(row.spots_left + 1, row.capacity ?? row.spots_left + 1);
+    const next = planRelease(row.spots_left, row.capacity, units);
     const { data: updated } = await supabase
       .from(table)
       .update({ spots_left: next })
@@ -164,24 +237,20 @@ export async function reserveWeekCapacity(
   weekId: string,
   correlationId?: string | null
 ): Promise<CapacityMutationResult> {
-  const { data: bw } = await supabase
-    .from("booking_weeks")
-    .select("capacity_decremented")
-    .eq("booking_id", bookingId)
-    .eq("week_id", weekId)
-    .single();
+  const key = { col: "week_id" as const, value: weekId };
+  const bw = await readLinkRow(supabase, "booking_weeks", bookingId, key);
   if (!bw || bw.capacity_decremented) return { applied: false, spotsLeft: -1 };
 
-  const result = await reserveSpot(supabase, "activity_weeks", weekId, {
-    event: "capacity.week.reserve_rejected",
-    correlationId,
-  });
+  const units = await bookingUnits(supabase, bookingId);
+  const result = await reserveSpot(
+    supabase,
+    "activity_weeks",
+    weekId,
+    { event: "capacity.week.reserve_rejected", correlationId },
+    units
+  );
   if (result.applied) {
-    await supabase
-      .from("booking_weeks")
-      .update({ capacity_decremented: true })
-      .eq("booking_id", bookingId)
-      .eq("week_id", weekId);
+    await markLinkRow(supabase, "booking_weeks", bookingId, key, true, units);
   }
   return result;
 }
@@ -196,21 +265,13 @@ export async function releaseWeekCapacity(
   bookingId: string,
   weekId: string
 ): Promise<CapacityMutationResult> {
-  const { data: bw } = await supabase
-    .from("booking_weeks")
-    .select("capacity_decremented")
-    .eq("booking_id", bookingId)
-    .eq("week_id", weekId)
-    .single();
+  const key = { col: "week_id" as const, value: weekId };
+  const bw = await readLinkRow(supabase, "booking_weeks", bookingId, key);
   if (!bw || !bw.capacity_decremented) return { applied: false, spotsLeft: -1 };
 
-  const result = await releaseSpot(supabase, "activity_weeks", weekId);
+  const result = await releaseSpot(supabase, "activity_weeks", weekId, unitsToRelease(bw));
   if (result.applied) {
-    await supabase
-      .from("booking_weeks")
-      .update({ capacity_decremented: false })
-      .eq("booking_id", bookingId)
-      .eq("week_id", weekId);
+    await markLinkRow(supabase, "booking_weeks", bookingId, key, false, 0);
     // TRAMA FINAL HARDENING §4-8 — trigger event-driven della push
     // "è tornato un posto" SOLO sulla vera transizione 0→disponibile (vedi
     // commento su CapacityMutationResult.wasZeroBeforeRelease sopra e la
@@ -258,24 +319,20 @@ export async function reserveDayCapacity(
   activityDayId: string,
   correlationId?: string | null
 ): Promise<CapacityMutationResult> {
-  const { data: bd } = await supabase
-    .from("booking_days")
-    .select("capacity_decremented")
-    .eq("booking_id", bookingId)
-    .eq("activity_day_id", activityDayId)
-    .single();
+  const key = { col: "activity_day_id" as const, value: activityDayId };
+  const bd = await readLinkRow(supabase, "booking_days", bookingId, key);
   if (!bd || bd.capacity_decremented) return { applied: false, spotsLeft: -1 };
 
-  const result = await reserveSpot(supabase, "activity_days", activityDayId, {
-    event: "capacity.day.reserve_rejected",
-    correlationId,
-  });
+  const units = await bookingUnits(supabase, bookingId);
+  const result = await reserveSpot(
+    supabase,
+    "activity_days",
+    activityDayId,
+    { event: "capacity.day.reserve_rejected", correlationId },
+    units
+  );
   if (result.applied) {
-    await supabase
-      .from("booking_days")
-      .update({ capacity_decremented: true })
-      .eq("booking_id", bookingId)
-      .eq("activity_day_id", activityDayId);
+    await markLinkRow(supabase, "booking_days", bookingId, key, true, units);
   }
   return result;
 }
@@ -285,21 +342,13 @@ export async function releaseDayCapacity(
   bookingId: string,
   activityDayId: string
 ): Promise<CapacityMutationResult> {
-  const { data: bd } = await supabase
-    .from("booking_days")
-    .select("capacity_decremented")
-    .eq("booking_id", bookingId)
-    .eq("activity_day_id", activityDayId)
-    .single();
+  const key = { col: "activity_day_id" as const, value: activityDayId };
+  const bd = await readLinkRow(supabase, "booking_days", bookingId, key);
   if (!bd || !bd.capacity_decremented) return { applied: false, spotsLeft: -1 };
 
-  const result = await releaseSpot(supabase, "activity_days", activityDayId);
+  const result = await releaseSpot(supabase, "activity_days", activityDayId, unitsToRelease(bd));
   if (result.applied) {
-    await supabase
-      .from("booking_days")
-      .update({ capacity_decremented: false })
-      .eq("booking_id", bookingId)
-      .eq("activity_day_id", activityDayId);
+    await markLinkRow(supabase, "booking_days", bookingId, key, false, 0);
     // TRAMA FINAL HARDENING §4-8 — stesso trigger di releaseWeekCapacity
     // sopra, per il ramo "Giorni spot".
     if (result.wasZeroBeforeRelease) {

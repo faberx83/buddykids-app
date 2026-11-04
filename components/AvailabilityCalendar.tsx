@@ -12,6 +12,7 @@ import {
   type BulkDraft,
 } from "@/lib/availability-bulk";
 import {
+  inventoryBlockingSummary,
   inventorySummary,
   spotsAfterCapacityChange,
   validateCalendar,
@@ -289,6 +290,9 @@ export default function AvailabilityCalendar({
                 {week.map((day) => {
                   const isHighlighted = highlightDates?.includes(day.date);
                   const isSelected = bulkMode ? bulkSelected.has(day.date) : selected === day.date;
+                  // QA 04/11/2026 (P1a): un giorno con un errore è rosso anche se selezionato
+                  // (prima l'anello blu della selezione copriva quello rosso) e non mostra il numero impossibile.
+                  const isInvalid = invalidDates.has(day.date);
                   return (
                     <td key={day.date}>
                       <button
@@ -298,18 +302,19 @@ export default function AvailabilityCalendar({
                           if (bulkMode) toggleBulkDate(day.date);
                           else setSelected(day.date);
                         }}
-                        aria-invalid={invalidDates.has(day.date) ? true : undefined}
-                        className={`relative flex h-16 w-full flex-col items-center justify-center gap-0.5 rounded-md border text-[11px] font-semibold transition-all ${cellTone(
-                          day
-                        )} ${mode === "edit" ? "cursor-pointer hover:brightness-95" : "cursor-default"} ${
-                          isSelected ? "ring-2 ring-sky" : ""
-                        } ${isHighlighted ? "outline outline-2 outline-offset-1 outline-sky" : ""} ${
-                          invalidDates.has(day.date) ? "!border-[#B4361F] ring-2 ring-[#B4361F]" : ""
-                        }`}
+                        aria-invalid={isInvalid ? true : undefined}
+                        data-invalid={isInvalid ? "true" : undefined}
+                        className={`relative flex h-16 w-full flex-col items-center justify-center gap-0.5 rounded-md border text-[11px] font-semibold transition-all ${
+                          isInvalid ? "border-[#B4361F] bg-[#FDECEA] text-[#B4361F]" : cellTone(day)
+                        } ${mode === "edit" ? "cursor-pointer hover:brightness-95" : "cursor-default"} ${
+                          isInvalid ? "ring-2 ring-[#B4361F]" : isSelected ? "ring-2 ring-sky" : ""
+                        } ${isHighlighted ? "outline outline-2 outline-offset-1 outline-sky" : ""}`}
                       >
                         <span>{formatDate(day.date)}</span>
                         <span className="text-[10px] font-normal">
-                          {!day.isOpen
+                          {isInvalid
+                            ? "⚠ Da correggere"
+                            : !day.isOpen
                             ? "Chiuso"
                             : day.spotsLeft === 0
                             ? "Pieno"
@@ -716,7 +721,7 @@ export default function AvailabilityCalendar({
                 <span role="alert" className="text-xs font-medium text-[#B4361F]">{saveError}</span>
               ) : issues.length > 0 ? (
                 <span role="alert" className="text-xs font-medium text-[#B4361F]" data-testid="calendar-invalid">
-                  {inventorySummary(issues, formatDate).replace(" Niente è stato salvato.", "")}
+                  {inventoryBlockingSummary(issues, formatDate)}
                 </span>
               ) : null}
               {savedOk && !dirty && (

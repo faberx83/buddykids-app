@@ -90,3 +90,14 @@ export function inventorySummary(issues: DayInventoryIssue[], formatDate: (iso: 
   const list = dates.slice(0, 3).map(formatDate).join(", ") + (dates.length > 3 ? ` e altri ${dates.length - 3}` : "");
   return `Da correggere prima di salvare: ${list}. Niente è stato salvato.`;
 }
+
+/**
+ * Riga accanto a "Salva calendario" mentre ci sono errori (prima di salvare).
+ * QA 04/11/2026 (P1a): diceva solo "Da correggere prima di salvare: 8 dic.";
+ * ora dice anche che non si salva nulla finché c'è un errore.
+ */
+export function inventoryBlockingSummary(issues: DayInventoryIssue[], formatDate: (iso: string) => string): string {
+  const base = inventorySummary(issues, formatDate);
+  if (!base) return "";
+  return base.replace(" Niente è stato salvato.", " Finché c'è un errore non si salva niente.");
+}

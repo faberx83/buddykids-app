@@ -19,6 +19,7 @@ import {
   GROUP_PROPOSAL_NAME,
   GROUP_PROPOSAL_STATUS,
   groupProposalNextStep,
+  groupDiscountSuffix,
   groupingByPreferenceUseful,
 } from "@/lib/groups/group-proposal";
 import { buildCarpoolMatches } from "@/lib/carpool";
@@ -842,7 +843,7 @@ function GruppoTab({
               <StatusPill status={detail.request.status} />
             </div>
             <p className="text-xs text-ink-2">
-              {detail.request.kidsCount} bambini · sconto di gruppo {detail.request.discountPercent}%
+              {detail.request.kidsCount} bambini{groupDiscountSuffix(detail.request.discountPercent, " · ")}
             </p>
             <p className="mt-1.5 text-xs leading-snug text-ink" data-testid="group-proposal-next">
               {groupProposalNextStep(detail.request.status)}

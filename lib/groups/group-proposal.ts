@@ -51,3 +51,9 @@ export function groupingByPreferenceUseful(kids: { preferredTagId: string | null
   const prefs = new Set(kids.map((k) => k.preferredTagId).filter((t): t is string => Boolean(t)));
   return prefs.size >= 2;
 }
+
+/** " — sconto 10%" solo se c'è uno sconto: con 0% non si scrive (QA 04/11/2026, gruppo demo a 0%). */
+export function groupDiscountSuffix(percent: number | string | null | undefined, sep = " — "): string {
+  const n = Number(percent);
+  return Number.isFinite(n) && n > 0 ? `${sep}sconto ${Number.isInteger(n) ? n : n.toFixed(1).replace(".", ",")}%` : "";
+}

@@ -18,6 +18,7 @@ import { createClient } from "@/lib/supabase/server";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
 import { revalidatePath } from "next/cache";
 import { buildFamilyTiers, familyDiscountAmount } from "@/lib/family-discount";
+import { dayBookingTotals } from "@/lib/booking-amounts";
 // TRAMA ONE Build Sprint 6 (backlog vincolante P1, Capacity) — reserve/
 // release centralizzati in lib/capacity/service.ts. Qui chiudiamo due gap
 // concreti trovati leggendo questo file: (1) cancelBookingAction non
@@ -449,12 +450,10 @@ export async function updateBookingDaysAction(
   // ricalcolato in fase di modifica "di test").
   const keptPrices = keptDays.map((bd) => bd.price);
   const newPrices = newRowsToInsert.map((r) => r.price);
-  const perChildSubtotal = [...keptPrices, ...newPrices].reduce((sum, p) => sum + p, 0);
+  // Stessa regola condivisa di annullamento giorno e prenotazione (lib/booking-amounts.ts).
   const kidsCount = Math.max(1, (row.booking_kids ?? []).length);
-  const subtotal = perChildSubtotal * kidsCount;
   const familyTiers = buildFamilyTiers(center?.family_discount_tiers ?? null);
-  const familyDiscount = familyDiscountAmount(perChildSubtotal, kidsCount, familyTiers);
-  const total = subtotal - familyDiscount;
+  const { familyDiscount, total } = dayBookingTotals([...keptPrices, ...newPrices], kidsCount, familyTiers);
 
   const { error: updError } = await supabase
     .from("bookings")

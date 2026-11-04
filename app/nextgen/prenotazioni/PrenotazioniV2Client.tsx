@@ -28,6 +28,7 @@ import {
   futureBookings,
   groupByMonth,
   netPrice,
+  priceBeforeDiscount,
   splitBookings,
   type BookingTone,
 } from "@/lib/nextgen/bookings-v2";
@@ -357,7 +358,7 @@ function BookingDetail({
         </Row>
         <Row label="Totale" last>
           <span className="text-[15px] font-bold text-trama-navy">€{netPrice(b)}</span>
-          {b.discountAmount > 0 && <span className="ml-1.5 font-normal text-ink-3 line-through">€{b.totalAmount}</span>}
+          {b.discountAmount > 0 && <span className="ml-1.5 font-normal text-ink-3 line-through">€{priceBeforeDiscount(b)}</span>}
         </Row>
       </section>
 

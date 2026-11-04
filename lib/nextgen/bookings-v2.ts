@@ -5,6 +5,7 @@
 // Testata in tests/one/scopri-prenotazioni-v2.spec.ts.
 
 import { compactDateRange } from "@/lib/nextgen/home-inbox";
+import { amountBeforeDiscount, amountDue } from "@/lib/booking-amounts";
 
 const MONTHS_IT = ["gennaio", "febbraio", "marzo", "aprile", "maggio", "giugno", "luglio", "agosto", "settembre", "ottobre", "novembre", "dicembre"];
 const WD_SHORT = ["DOM", "LUN", "MAR", "MER", "GIO", "VEN", "SAB"];
@@ -40,8 +41,18 @@ export function bookingSpan(b: Pick<BookingV2Input, "weeks" | "dayDates">): { fi
   return { first: starts[0] ?? null, last: ends[ends.length - 1] ?? null };
 }
 
+/**
+ * Quanto paga la famiglia. QA 04/11/2026 (EXTRA-01): total_amount è già
+ * scontato; prima qui si toglieva di nuovo discount_amount (€57 → €54).
+ * Regola unica: lib/booking-amounts.ts.
+ */
 export function netPrice(b: Pick<BookingV2Input, "totalAmount" | "discountAmount">): number {
-  return b.totalAmount - b.discountAmount;
+  return amountDue(b);
+}
+
+/** Prezzo prima degli sconti (barrato). */
+export function priceBeforeDiscount(b: Pick<BookingV2Input, "totalAmount" | "discountAmount">): number {
+  return amountBeforeDiscount(b);
 }
 
 export function bookingChip(b: BookingV2Input): BookingChip {

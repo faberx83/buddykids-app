@@ -287,7 +287,14 @@ export default function PrenotazioniClient({
     }
     setBookings((prev) =>
       prev.map((b) =>
-        b.id !== bookingId ? b : { ...b, days: b.days.filter((d) => d.activityDayId !== activityDayId) }
+        b.id !== bookingId
+          ? b
+          : {
+              ...b,
+              days: b.days.filter((d) => d.activityDayId !== activityDayId),
+              totalAmount: result.totalAmount ?? b.totalAmount,
+              discountAmount: result.discountAmount ?? b.discountAmount,
+            }
       )
     );
   }

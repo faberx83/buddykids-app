@@ -25,7 +25,7 @@ import { getMyGroupInvites } from "@/lib/data/groups";
 import { getInquiriesForParent } from "@/lib/data/inquiries";
 import { getMyBookingsForParent } from "@/lib/data/my-bookings";
 import { getRecentAcceptedGroupRequests } from "@/lib/data/coordination-signal";
-import { GROUP_PROPOSAL_STATUS } from "@/lib/groups/group-proposal";
+import { GROUP_PROPOSAL_STATUS, groupDiscountSuffix } from "@/lib/groups/group-proposal";
 import { getCarpoolMatchSignals } from "@/lib/data/carpool-signals";
 import { NotificationItem, makeNotificationId, sortNotifications } from "@/lib/notifications/model";
 // TRAMA — POST-DISCOVERY CONSOLIDATION (23/09/2026), NOVITÀ TRAMA — LEVEL 1
@@ -154,7 +154,7 @@ export async function getParentNotifications(): Promise<NotificationItem[]> {
       priority: "important",
       // 03/11/2026: è una Proposta di gruppo (lib/groups/group-proposal.ts): niente posti riservati.
       title: GROUP_PROPOSAL_STATUS.accepted.family,
-      body: `Il centro ha accettato la proposta del gruppo "${req.groupName}" — sconto ${req.discountPercent}%. I posti non sono ancora prenotati: scegliete i giorni dalla scheda dell'attività.`,
+      body: `Il centro ha accettato la proposta del gruppo "${req.groupName}"${groupDiscountSuffix(req.discountPercent)}. I posti non sono ancora prenotati: scegliete i giorni dalla scheda dell'attività.`,
       relevantAt: req.respondedAt,
       isSeen: false,
       requiresAction: false,

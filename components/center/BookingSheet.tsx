@@ -188,7 +188,9 @@ export default function BookingSheet({
   async function cancelDay(dayId: string) {
     setError(null);
     setBusy(`cancel:${dayId}`);
-    const r = await cancelBookingDayAction({ bookingId: b.id, activityDayId: dayId, cancelledBy: "center" }).catch(() => ({ error: "x" }));
+    const r = await cancelBookingDayAction({ bookingId: b.id, activityDayId: dayId, cancelledBy: "center" }).catch(
+      (): { error?: string; totalAmount?: number; discountAmount?: number } => ({ error: "x" })
+    );
     setBusy(null);
     setConfirmCancel(null);
     if (r.error) return setError("Non siamo riusciti ad annullare il giorno, riprovate.");
@@ -197,7 +199,9 @@ export default function BookingSheet({
     onChange({
       ...b,
       days,
-      totalAmount: Math.max(0, b.totalAmount - (removed?.price ?? 0)),
+      // QA 04/11/2026: importi ricalcolati dal server (bambini e sconti inclusi).
+      totalAmount: r.totalAmount ?? Math.max(0, b.totalAmount - (removed?.price ?? 0)),
+      discountAmount: r.discountAmount ?? b.discountAmount,
       ...(days.length === 0 ? { status: "cancelled" as const, cancelledBy: "center" as const } : {}),
     });
     toast("Giorno annullato");
