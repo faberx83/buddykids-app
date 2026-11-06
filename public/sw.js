@@ -44,9 +44,11 @@ self.addEventListener("push", (event) => {
   const title = data.title || "TRAMA";
   const options = {
     body: data.body || "",
-    // Icona grande (mostrata nel corpo della notifica espansa): riusa
-    // l'asset PWA già esistente, va bene a colori pieni.
-    icon: "/icon-nextgen-192.png",
+    // 06/11/2026 (Fabrizio: "Le notifiche raddoppiano il logo a dx e Sn.. io
+    // lo toglierei a dx per dare più spazio al testo..vale anche lato
+    // partner"): niente più `icon` (su Android è l'immagine grande a destra);
+    // a sinistra resta l'icona dell'app. Un solo service worker: vale per
+    // famiglie, centri e Admin.
     // Badge (l'iconcina in barra di stato Android): segnalato da Fabrizio
     // il 01/09/2026, "non vedo alcuna icona, solo scorrendo dall'alto trovo
     // la notifica" — icon-nextgen-192.png è RGB SENZA canale alpha (nessuna
@@ -107,7 +109,6 @@ self.addEventListener("notificationclick", (event) => {
           if (!res.ok) throw new Error("azione rapida check-in fallita");
           return self.registration.showNotification("Check-in registrato", {
             body: "Grazie, abbiamo salvato la tua risposta.",
-            icon: "/icon-nextgen-192.png",
             badge: "/push-badge-96.png",
           });
         })

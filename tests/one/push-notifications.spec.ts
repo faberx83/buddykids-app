@@ -81,3 +81,11 @@ test.describe("Push notifications: UI attiva/disattiva", () => {
 //   gruppo, nuova prenotazione): verificabili solo end-to-end con due
 //   account reali e VAPID configurate, QA manuale con Fabrizio.
 // ────────────────────────────────────────────────────────────────
+
+// 06/11/2026 (Fabrizio: "Le notifiche raddoppiano il logo a dx e Sn.. io lo
+// toglierei a dx per dare più spazio al testo..vale anche lato partner").
+test("PUSH-P20 [no browser] - una sola icona: niente `icon` (immagine a destra su Android), resta il badge", () => {
+  const sw = fs.readFileSync(path.join(__dirname, "../../public/sw.js"), "utf-8");
+  expect(sw).not.toMatch(/^\s*icon:/m);
+  expect(sw).toContain('badge: "/push-badge-96.png",');
+});
