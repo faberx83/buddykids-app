@@ -133,6 +133,18 @@ export async function getMyCenterLeads(): Promise<CenterLeadItem[]> {
 export async function getAllCenterLeadsForAdmin(): Promise<CenterLeadItem[]> {
   if (!isSupabaseConfigured) return [];
   const supabase = await createClient();
+  // Retest Admin 12/11/2026 ("accesso negato ai non-Admin tramite URL
+  // diretto"): un genitore che apre /admin/center-leads (o Oggi) dal dominio
+  // famiglie vede l'AccessGate, ma la pagina server gira comunque e il
+  // payload conteneva le SUE segnalazioni con la nota dell'Admin (mapRow(…,
+  // true)), che la vista genitore non deve mai mostrare. Stesso principio di
+  // lib/data/pilot-users.ts: niente dati Admin a chi non è platform_admin.
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return [];
+  const { data: me } = await supabase.from("profiles").select("role").eq("id", user.id).maybeSingle();
+  if (me?.role !== "platform_admin") return [];
   const { data, error } = await supabase
     .from("center_leads")
     .select(ADMIN_SELECT_COLUMNS)

@@ -36,6 +36,8 @@ export interface QueueInput {
   alwaysHigh?: boolean;
   /** Elementi nascosti perché di prova (mostrati come nota). */
   hiddenDemo?: number;
+  /** Link alla stessa coda con le prove visibili (?demo=1). Retest 12/11/2026. */
+  demoHref?: string;
 }
 
 export interface OggiQueue {
@@ -54,6 +56,7 @@ export interface OggiQueue {
   href: string;
   preview: QueueItem[];
   hiddenDemo: number;
+  demoHref: string | null;
   /** Riga breve per la card: "più vecchia: 5 giorni fa · prima data: tra 3 giorni". */
   detail: string | null;
 }
@@ -103,6 +106,7 @@ export function buildQueue(input: QueueInput, todayIso: string, previewSize = 3)
     href: input.href,
     preview,
     hiddenDemo: input.hiddenDemo ?? 0,
+    demoHref: input.demoHref ?? null,
     detail: parts.length > 0 ? parts.join(" · ") : null,
   };
 }

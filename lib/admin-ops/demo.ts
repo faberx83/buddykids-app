@@ -31,3 +31,26 @@ export function isDemoRecord(r: {
 }): boolean {
   return isDemoCenter({ name: r.centerName, isTestFixture: r.centerIsTestFixture }) || looksLikeDemoName(r.activityName);
 }
+
+// ADMIN OPERATIVO, retest del 12/11/2026 (Fabrizio): "La home dichiara che i
+// dati di prova non sono contati, ma nelle anteprime di Candidature,
+// Segnalazioni centri e Onboarding compaiono record [TEST]". Stessa regola
+// anche per queste code; la pagina di destinazione la applica uguale e mostra
+// le prove solo con ?demo=1.
+
+/** Candidatura o segnalazione di un centro di prova (nome "[TEST] …", "Test …"). */
+export function isDemoLead(l: { suggestedName?: string | null }): boolean {
+  return looksLikeDemoName(l.suggestedName);
+}
+
+/** Certificazione di un centro o di un'attività di prova. */
+export function isDemoCertification(c: { centerName?: string | null; activityName?: string | null }): boolean {
+  return isDemoRecord({ centerName: c.centerName, activityName: c.activityName });
+}
+
+/** "?demo=1" aggiunto a un link interno, con o senza query e ancora. */
+export function withDemo(href: string): string {
+  const [base, hash] = href.split("#");
+  const sep = base.includes("?") ? "&" : "?";
+  return `${base}${sep}demo=1${hash !== undefined ? `#${hash}` : ""}`;
+}

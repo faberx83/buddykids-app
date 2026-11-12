@@ -96,7 +96,7 @@ test.describe("TRAMA ONE — Command Center Admin (Sprint 6, E08)", () => {
     // Il riepilogo testuale in cima alla pagina deve sempre menzionare
     // "elementi in sospeso" (anche se il conteggio totale è zero) — prova
     // che la funzione di summarizzazione gira senza errori sui dati reali.
-    await expect(page.getByText(/elementi in sospeso su tutte le code/)).toBeVisible();
+    await expect(page.getByText(/(elemento|elementi) in sospeso su tutte le code/)).toBeVisible();
 
     // La sezione Walkthrough preesistente (Sprint 1) deve restare visibile:
     // il Command Center è additivo, non ha rimosso capability esistenti
@@ -155,6 +155,6 @@ test.describe("TRAMA ONE — Command Center Admin (Sprint 6, E08)", () => {
 
     await navLink.first().click();
     await expect(page).toHaveURL(/\/admin$/);
-    await expect(page.getByText(/elementi in sospeso su tutte le code/)).toBeVisible();
+    await expect(page.getByText(/(elemento|elementi) in sospeso su tutte le code/)).toBeVisible();
   });
 });

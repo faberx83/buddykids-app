@@ -175,6 +175,8 @@ async function isPlatformAdmin(supabase: Awaited<ReturnType<typeof createClient>
 export interface AdminCenterActivation extends CenterActivation {
   source: string | null; // da dove è arrivata la candidatura
   adminEmails: string[];
+  /** centers.is_test_fixture (migration 47); false se la colonna non c'è. Retest Admin del 12/11/2026. */
+  isTestFixture: boolean;
 }
 
 /** Tutti i centri con uno stato di attivazione (Admin → Centri da attivare). */
@@ -186,11 +188,18 @@ export async function getCentersForActivation(): Promise<AdminCenterActivation[]
     const { data: states } = await supabase.from("center_onboarding_state").select("center_id");
     const ids = ((states ?? []) as { center_id: string }[]).map((s) => s.center_id);
     if (ids.length === 0) return [];
-    const [rows, leadsRes, adminsRes] = await Promise.all([
+    const [rows, leadsRes, adminsRes, fixtureRes] = await Promise.all([
       readActivations(supabase, ids),
       supabase.from("center_leads").select("claimed_center_id, demand_context").eq("lead_type", "self_candidacy").in("claimed_center_id", ids),
       supabase.from("profiles").select("center_id, email").eq("role", "center_admin").in("center_id", ids),
+      // Retest Admin 12/11/2026: per escludere i centri di prova da "Oggi" e
+      // da Centri da attivare. Lettura a parte: senza migration 47 fallisce da
+      // sola e vale false, senza toccare il resto.
+      supabase.from("centers").select("id, is_test_fixture").in("id", ids),
     ]);
+    const fixtures = new Set(
+      ((fixtureRes.error ? [] : fixtureRes.data ?? []) as { id: string; is_test_fixture: boolean | null }[]).filter((c) => c.is_test_fixture).map((c) => c.id)
+    );
     const sourceBy = new Map<string, string | null>();
     for (const l of (leadsRes.data ?? []) as { claimed_center_id: string; demand_context: { campaignSource?: string } | null }[]) {
       sourceBy.set(l.claimed_center_id, l.demand_context?.campaignSource ?? "candidatura");
@@ -200,7 +209,12 @@ export async function getCentersForActivation(): Promise<AdminCenterActivation[]
       if (!a.email) continue;
       adminsBy.set(a.center_id, [...(adminsBy.get(a.center_id) ?? []), a.email]);
     }
-    return rows.map((r) => ({ ...r, source: sourceBy.get(r.centerId) ?? null, adminEmails: adminsBy.get(r.centerId) ?? [] }));
+    return rows.map((r) => ({
+      ...r,
+      source: sourceBy.get(r.centerId) ?? null,
+      adminEmails: adminsBy.get(r.centerId) ?? [],
+      isTestFixture: fixtures.has(r.centerId),
+    }));
   } catch {
     return [];
   }

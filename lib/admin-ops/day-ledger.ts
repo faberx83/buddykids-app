@@ -102,7 +102,7 @@ export function buildDayLedger(day: LedgerDay, rows: LedgerRow[], groupRequests:
         kind: "units_mismatch",
         severity: "errore",
         bookingId: r.bookingId,
-        message: `${r.ref}: ${bambini(kids)} ma ${posti(took)} preso. Accettata prima della regola "un posto per bambino" (04/11): dato storico da riconciliare (supabase/riconciliazione_60_posti_per_bambino.sql).`,
+        message: `${r.ref}: ${bambini(kids)} ma ${posti(took)} ${took === 1 ? "preso" : "presi"}. Accettata prima della regola "un posto per bambino" (04/11): dato storico da riconciliare (supabase/riconciliazione_60_posti_per_bambino.sql).`,
       });
     }
     if (!live(r)) {
@@ -128,7 +128,7 @@ export function buildDayLedger(day: LedgerDay, rows: LedgerRow[], groupRequests:
     issues.push({
       kind: "overbooked_store",
       severity: "errore",
-      message: `Posti liberi salvati ${spotsLeft}, ma con ${posti(occupied)} presi su ${capacity} i liberi possono essere al massimo ${Math.max(0, capacity - occupied)}.`,
+      message: `Posti liberi salvati ${spotsLeft}, ma con ${posti(occupied)} ${occupied === 1 ? "preso" : "presi"} su ${capacity} i liberi possono essere al massimo ${Math.max(0, capacity - occupied)}.`,
     });
   } else if (spotsLeft < capacity - occupied) {
     issues.push({

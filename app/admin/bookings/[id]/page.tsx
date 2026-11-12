@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { getAdminBooking } from "@/lib/data/admin-ops";
 import { ACTOR_LABEL, BOOKING_STATE_LABEL, romeTodayIso, viewAdminBooking } from "@/lib/admin-ops/bookings";
 import { activityPrice, formatEuro } from "@/lib/nextgen/activity-price";
+import { countOf } from "@/lib/admin-ops/text";
 
 export const dynamic = "force-dynamic";
 
@@ -55,7 +56,7 @@ export default async function AdminBookingDetailPage({ params, searchParams }: {
           <span className="text-[#7A4500]"> · {v.nextStep}</span>
           <span className="block text-xs text-[#7A4500]">
             Richiesta da {v.ageDays} {v.ageDays === 1 ? "giorno" : "giorni"}
-            {v.dueInDays !== null ? ` · prima data ${v.dueInDays === 0 ? "oggi" : `tra ${v.dueInDays} giorni`}` : ""}
+            {v.dueInDays !== null ? ` · prima data ${v.dueInDays === 0 ? "oggi" : `tra ${countOf(v.dueInDays, "giorno", "giorni")}`}` : ""}
           </span>
         </div>
       )}
@@ -138,7 +139,7 @@ export default async function AdminBookingDetailPage({ params, searchParams }: {
               {row.weeks.map((w) => (
                 <tr key={w.weekId} className="border-b border-[#F0F2F5] last:border-0">
                   <td className="px-4 py-2 text-ink">{w.startDate ? `${d(w.startDate)} → ${d(w.endDate || w.startDate)}` : "—"}</td>
-                  <td className="px-4 py-2 text-ink-2">{w.capacityDecremented ? `occupa ${Math.max(1, w.units ?? 1)} posti` : "non occupa posti"}</td>
+                  <td className="px-4 py-2 text-ink-2">{w.capacityDecremented ? `occupa ${countOf(Math.max(1, w.units ?? 1), "posto", "posti")}` : "non occupa posti"}</td>
                 </tr>
               ))}
             </tbody>

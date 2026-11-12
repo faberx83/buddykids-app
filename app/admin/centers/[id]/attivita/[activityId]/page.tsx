@@ -5,6 +5,7 @@ import { summarizeDays, ledgerRowsForWeek } from "@/lib/admin-ops/activity-days"
 import { buildDayLedger } from "@/lib/admin-ops/day-ledger";
 import { bookingsHref, romeTodayIso } from "@/lib/admin-ops/bookings";
 import { activityPrice } from "@/lib/nextgen/activity-price";
+import { countOf } from "@/lib/admin-ops/text";
 
 export const dynamic = "force-dynamic";
 
@@ -44,7 +45,7 @@ export default async function AdminActivityPage({ params, searchParams }: { para
   const { activity } = detail;
   const today = romeTodayIso();
   const showPast = sp.passati === "1";
-  const groupRows = detail.groupRequests.map((g) => ({ id: g.id, status: g.status, kidsCount: g.kidsCount, label: `Richiesta di gruppo · ${g.kidsCount} bambini` }));
+  const groupRows = detail.groupRequests.map((g) => ({ id: g.id, status: g.status, kidsCount: g.kidsCount, label: `Richiesta di gruppo · ${countOf(g.kidsCount, "bambino", "bambini")}` }));
   const days = summarizeDays(detail.days, detail.bookings, []).filter((s) => showPast || s.date >= today);
   const pastCount = detail.days.filter((x) => x.date < today).length;
   const price = activityPrice({ pricePerWeek: activity.pricePerWeek, bookingMode: activity.bookingMode });
@@ -111,7 +112,7 @@ export default async function AdminActivityPage({ params, searchParams }: { para
                   <td className="px-4 py-2 text-ink">{s.ledger.occupied}</td>
                   <td className="px-4 py-2 text-ink">{s.ledger.spotsLeft}</td>
                   <td className="px-4 py-2 text-ink">{s.ledger.confirmedParticipants}</td>
-                  <td className="px-4 py-2 text-ink-2">{s.ledger.pendingParticipants > 0 ? `${s.ledger.pendingParticipants} bambini` : "—"}</td>
+                  <td className="px-4 py-2 text-ink-2">{s.ledger.pendingParticipants > 0 ? countOf(s.ledger.pendingParticipants, "bambino", "bambini") : "—"}</td>
                   <td className="px-4 py-2 text-xs">
                     {s.ledger.consistent ? <span className="text-[#2d8f52]">torna</span> : <span className="font-semibold text-[#C0392B]">da vedere</span>}
                   </td>

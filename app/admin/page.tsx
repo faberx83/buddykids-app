@@ -6,6 +6,7 @@ import { getCommandCenterQueues, summarizeCommandCenterQueues } from "@/lib/data
 import { QueuePriority } from "@/lib/command-center/priority";
 import { ageLabel, dueLabel } from "@/lib/admin-ops/queues";
 import { daysBetween, romeTodayIso } from "@/lib/admin-ops/bookings";
+import { oggiSummary } from "@/lib/admin-ops/text";
 
 // Code reali per l'Admin loggato (RLS e controllo platform_admin nei data
 // layer): mai in cache.
@@ -50,11 +51,9 @@ export default async function AdminOggiPage() {
       <div className="mb-5">
         <h1 className="text-xl font-bold text-white">Oggi</h1>
         <p className="mt-1 text-sm text-navy-text2">
-          {todayLabel.charAt(0).toUpperCase() + todayLabel.slice(1)} · {summary.totalOpen} elementi in sospeso su tutte le code
-          {summary.criticalQueueCount > 0
-            ? `, ${summary.criticalQueueCount} coda${summary.criticalQueueCount === 1 ? "" : "e"} in priorità alta`
-            : ""}
-          . I centri e le attività di prova non sono contati.
+          {todayLabel.charAt(0).toUpperCase() + todayLabel.slice(1)} · {oggiSummary(summary.totalOpen, summary.criticalQueueCount)}.
+          Prenotazioni, messaggi, centri, candidature e certificazioni di prova non sono contati (ogni coda ha il link per vederli);
+          segnalazioni BETA, lista d&apos;attesa e flag sono contati tutti.
         </p>
       </div>
 
@@ -123,10 +122,10 @@ export default async function AdminOggiPage() {
                 <Link href={q.href} className="font-semibold text-sky">
                   Apri la coda ({q.count}) →
                 </Link>
-                {q.hiddenDemo > 0 && (
-                  <span className="text-ink-3">
-                    + {q.hiddenDemo} di prova non {q.hiddenDemo === 1 ? "contata" : "contate"}
-                  </span>
+                {q.hiddenDemo > 0 && q.demoHref && (
+                  <Link href={q.demoHref} className="text-ink-3 underline">
+                    + {q.hiddenDemo} di prova non {q.hiddenDemo === 1 ? "contata" : "contate"}: mostrale
+                  </Link>
                 )}
               </div>
             </section>
@@ -139,7 +138,7 @@ export default async function AdminOggiPage() {
           <h2 className="mb-2 text-[13px] font-bold text-white">Code vuote</h2>
           <div className="flex flex-wrap gap-2">
             {empty.map((q) => (
-              <Link key={q.key} href={q.href} className="rounded-full border border-navy-3 px-3 py-1 text-xs text-navy-text2 no-underline hover:text-white">
+              <Link key={q.key} href={q.hiddenDemo > 0 && q.demoHref ? q.demoHref : q.href} className="rounded-full border border-navy-3 px-3 py-1 text-xs text-navy-text2 no-underline hover:text-white">
                 {q.label} · 0
                 {q.hiddenDemo > 0 ? ` (+${q.hiddenDemo} di prova)` : ""}
               </Link>

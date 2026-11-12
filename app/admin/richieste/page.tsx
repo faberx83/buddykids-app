@@ -2,6 +2,7 @@ import Link from "next/link";
 import { getAdminInquiries } from "@/lib/data/admin-ops";
 import { romeTodayIso } from "@/lib/admin-ops/bookings";
 import { aggregateByCenter, filterInquiries, inquiriesHref, parseInquiryFilters, viewInquiry } from "@/lib/admin-ops/inquiries";
+import { countOf } from "@/lib/admin-ops/text";
 
 export const dynamic = "force-dynamic";
 
@@ -108,7 +109,7 @@ export default async function AdminRichiestePage({ searchParams }: { searchParam
                   <td className="px-4 py-3">
                     {c.oldestOpenDays !== null ? (
                       <span className={`font-semibold ${c.oldestOpenDays > 3 ? "text-[#C0392B]" : "text-ink-2"}`}>
-                        {c.oldestOpenDays >= 1 ? `${c.oldestOpenDays} giorni` : "meno di 1 giorno"}
+                        {c.oldestOpenDays >= 1 ? countOf(c.oldestOpenDays, "giorno", "giorni") : "meno di 1 giorno"}
                       </span>
                     ) : (
                       <span className="text-ink-2">—</span>

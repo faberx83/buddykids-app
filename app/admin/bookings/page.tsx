@@ -15,6 +15,7 @@ import {
   type BookingStateKey,
 } from "@/lib/admin-ops/bookings";
 import { formatEuro } from "@/lib/nextgen/activity-price";
+import { countOf } from "@/lib/admin-ops/text";
 
 export const dynamic = "force-dynamic";
 
@@ -289,7 +290,7 @@ export default async function AdminBookingsPage({ searchParams }: { searchParams
                       )}
                     </td>
                     <td className="px-4 py-3 text-ink-2">{c.imminent}</td>
-                    <td className="px-4 py-3 text-ink-2">{c.oldest === null ? "—" : c.oldest >= 1 ? `${c.oldest} giorni` : "meno di 1 giorno"}</td>
+                    <td className="px-4 py-3 text-ink-2">{c.oldest === null ? "—" : c.oldest >= 1 ? countOf(c.oldest, "giorno", "giorni") : "meno di 1 giorno"}</td>
                   </tr>
                 ))}
               </tbody>

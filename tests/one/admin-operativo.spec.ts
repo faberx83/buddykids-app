@@ -471,7 +471,8 @@ test.describe("Centri da attivare: stesso processo dell'onboarding TRAMA ONE", (
 
   test("AO-28 filtro e centro nell'URL; vista di prima rimanda alla coda unica", () => {
     const c = read("app/admin/centri-attivazione/ActivationAdminClient.tsx");
-    expect(c).toContain("router.replace(`/admin/centri-attivazione?f=${f}${c ? `&c=${c}` : \"\"}`");
+    // Retest 12/11/2026: l'URL conserva anche ?demo=1 (prove visibili).
+    expect(c).toContain("router.replace(`/admin/centri-attivazione?f=${f}${c ? `&c=${c}` : \"\"}${demo ? \"&demo=1\" : \"\"}`");
     expect(c).toContain("Ultima azione:");
     expect(c).toContain('"Tocca a TRAMA"');
     expect(read("app/admin/one/onboarding/page.tsx")).toContain('href="/admin/centri-attivazione?f=trama"');

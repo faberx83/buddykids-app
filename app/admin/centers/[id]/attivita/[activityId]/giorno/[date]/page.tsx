@@ -4,6 +4,7 @@ import { getAdminActivityDetail } from "@/lib/data/admin-ops";
 import { ledgerRowsForDay } from "@/lib/admin-ops/activity-days";
 import { buildDayLedger, type LedgerRow } from "@/lib/admin-ops/day-ledger";
 import { bookingsHref } from "@/lib/admin-ops/bookings";
+import { countOf, daySummary } from "@/lib/admin-ops/text";
 
 export const dynamic = "force-dynamic";
 
@@ -44,7 +45,7 @@ export default async function AdminActivityDayPage({ params }: { params: Params 
 
       <div className="mb-5 rounded-lg border border-[#E8EBF0] bg-white p-4 text-sm text-ink" data-testid="day-explanation">
         <div className="text-base font-bold">
-          {ledger.capacity} posti totali · {ledger.occupied} occupati · {ledger.spotsLeft} liberi per le famiglie
+          {daySummary(ledger.capacity, ledger.occupied, ledger.spotsLeft)}
         </div>
         <div className="mt-1 text-ink-2">
           {ledger.occupying.length === 0
@@ -52,7 +53,7 @@ export default async function AdminActivityDayPage({ params }: { params: Params 
             : `Occupati da: ${ledger.occupying.map((r) => `${r.ref} (${took(r)} ${took(r) === 1 ? "posto" : "posti"}, ${Math.max(1, r.kidsCount)} ${r.kidsCount === 1 ? "bambino" : "bambini"})`).join(", ")}.`}
         </div>
         <div className="mt-1 text-ink-2">
-          Bambini confermati: {ledger.confirmedParticipants}. Richieste ancora da decidere: {ledger.pendingParticipants} bambini (non occupano posti).
+          Bambini confermati: {ledger.confirmedParticipants}. Richieste ancora da decidere: {countOf(ledger.pendingParticipants, "bambino", "bambini")} (non occupano posti).
         </div>
       </div>
 
@@ -75,19 +76,19 @@ export default async function AdminActivityDayPage({ params }: { params: Params 
           <tbody>
             <tr className="border-b border-[#F0F2F5]">
               <td className="px-4 py-2 text-ink">Famiglie (disponibilità)</td>
-              <td className="px-4 py-2 font-semibold text-ink">{ledger.portals.parentFree} liberi</td>
+              <td className="px-4 py-2 font-semibold text-ink">{countOf(ledger.portals.parentFree, "libero", "liberi")}</td>
               <td className="px-4 py-2 text-xs text-ink-2">activity_days.spots_left</td>
             </tr>
             <tr className="border-b border-[#F0F2F5]">
               <td className="px-4 py-2 text-ink">Centro, Date e posti</td>
               <td className="px-4 py-2 font-semibold text-ink">
-                {ledger.portals.partnerConfirmed} confermati su {ledger.capacity}
+                {countOf(ledger.portals.partnerConfirmed, "confermato", "confermati")} su {ledger.capacity}
               </td>
               <td className="px-4 py-2 text-xs text-ink-2">posti presi dalle prenotazioni accettate</td>
             </tr>
             <tr className="border-b border-[#F0F2F5]">
               <td className="px-4 py-2 text-ink">Centro, registro presenze</td>
-              <td className="px-4 py-2 font-semibold text-ink">{ledger.portals.partnerRegister} bambini</td>
+              <td className="px-4 py-2 font-semibold text-ink">{countOf(ledger.portals.partnerRegister, "bambino", "bambini")}</td>
               <td className="px-4 py-2 text-xs text-ink-2">bambini delle prenotazioni accettate</td>
             </tr>
             <tr>

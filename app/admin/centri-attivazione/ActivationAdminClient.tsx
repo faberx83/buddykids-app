@@ -63,10 +63,13 @@ export default function ActivationAdminClient({
   rows,
   initialFilter,
   initialSelected,
+  demo = false,
 }: {
   rows: AdminActivationRow[];
   initialFilter?: string;
   initialSelected?: string;
+  /** Retest 12/11/2026: prove visibili (?demo=1), da conservare nell'URL. */
+  demo?: boolean;
 }) {
   const router = useRouter();
   const counts = useMemo(() => {
@@ -85,7 +88,7 @@ export default function ActivationAdminClient({
   const shown = rows.filter((r) => r.bucket === filter);
   const [selectedId, setSelectedIdState] = useState<string | null>(preselected?.centerId ?? shown[0]?.centerId ?? null);
   function syncUrl(f: AdminBucket, c: string | null) {
-    router.replace(`/admin/centri-attivazione?f=${f}${c ? `&c=${c}` : ""}`, { scroll: false });
+    router.replace(`/admin/centri-attivazione?f=${f}${c ? `&c=${c}` : ""}${demo ? "&demo=1" : ""}`, { scroll: false });
   }
   const setFilter = (f: AdminBucket) => {
     setFilterState(f);

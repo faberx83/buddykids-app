@@ -24,6 +24,12 @@ import "server-only";
 //     la stessa regola "attive" della pagina (suggested, qualified, contacted);
 //   - lista d'attesa da invitare;
 //   - i centri e le attività di prova sono esclusi di default (nota sulla card).
+//   - retest del 12/11/2026: lo stesso vale per centri da attivare,
+//     candidature, segnalazioni di centri e certificazioni (prima entravano
+//     nei conteggi e nelle anteprime record "[TEST]"); ogni card ha il link
+//     alla stessa coda con le prove (?demo=1), che la pagina applica uguale.
+//     Segnalazioni BETA, lista d'attesa e flag non hanno un concetto di prova
+//     e sono contati tutti (la home lo dice).
 // Sola lettura: le azioni restano nelle pagine per dominio.
 
 import { getCentersForActivation } from "@/lib/data/center-activation";
@@ -44,6 +50,7 @@ import {
 } from "@/lib/admin-ops/bookings";
 import { filterInquiries, inquiriesHref, viewInquiry } from "@/lib/admin-ops/inquiries";
 import { buildOggiQueues, type OggiQueue, type QueueInput } from "@/lib/admin-ops/queues";
+import { isDemoCenter, isDemoCertification, isDemoLead, withDemo } from "@/lib/admin-ops/demo";
 
 export type CommandCenterQueue = OggiQueue;
 
@@ -86,11 +93,15 @@ export async function getCommandCenterQueues(): Promise<CommandCenterQueue[]> {
   const openInq = filterInquiries(inquiryViews, { centro: "", stato: "aperta", demo: false });
   const openInqAll = filterInquiries(inquiryViews, { centro: "", stato: "aperta", demo: true });
 
-  const toVerify = activations.filter((c) => adminBucket(c.facts.status) === "trama");
+  const toVerifyAll = activations.filter((c) => adminBucket(c.facts.status) === "trama");
+  const toVerify = toVerifyAll.filter((c) => !isDemoCenter({ name: c.name, isTestFixture: c.isTestFixture }));
   const activeLead = (s: string) => (ACTIVE_LEAD_STATUSES as readonly string[]).includes(s);
-  const candidacies = centerLeads.filter((l) => l.leadType === "self_candidacy" && activeLead(l.status));
-  const referrals = centerLeads.filter((l) => l.leadType !== "self_candidacy" && activeLead(l.status));
-  const certsPending = certifications.filter((c) => c.status === "pending");
+  const candidaciesAll = centerLeads.filter((l) => l.leadType === "self_candidacy" && activeLead(l.status));
+  const candidacies = candidaciesAll.filter((l) => !isDemoLead(l));
+  const referralsAll = centerLeads.filter((l) => l.leadType !== "self_candidacy" && activeLead(l.status));
+  const referrals = referralsAll.filter((l) => !isDemoLead(l));
+  const certsPendingAll = certifications.filter((c) => c.status === "pending");
+  const certsPending = certsPendingAll.filter((c) => !isDemoCertification(c));
   const feedbackNew = betaFeedback.filter((f) => f.status === "nuovo");
   const flagAlerts = featureFlags.filter((f) => f.hasAlert);
   const waitlistNew = waitlist.items.filter((w) => w.status === "nuovo");
@@ -104,6 +115,7 @@ export async function getCommandCenterQueues(): Promise<CommandCenterQueue[]> {
       nextStep: "Sentire il centro oggi: la data è entro 7 giorni",
       items: imminent.map(bookingItem),
       hiddenDemo: imminentAll.length - imminent.length,
+      demoHref: bookingsHref({ ...imminentFilter, demo: true }),
     },
     {
       key: "bookings",
@@ -113,6 +125,7 @@ export async function getCommandCenterQueues(): Promise<CommandCenterQueue[]> {
       nextStep: "Il centro accetta o rifiuta; dopo 2 giorni, sollecitarlo",
       items: pending.map(bookingItem),
       hiddenDemo: pendingAll.length - pending.length,
+      demoHref: bookingsHref({ ...pendingFilter, demo: true }),
     },
     {
       key: "inquiries",
@@ -128,6 +141,7 @@ export async function getCommandCenterQueues(): Promise<CommandCenterQueue[]> {
         href: `/admin/richieste?caso=${v.row.id}#caso-${v.row.id}`,
       })),
       hiddenDemo: openInqAll.length - openInq.length,
+      demoHref: inquiriesHref({ stato: "aperta", demo: true }),
     },
     {
       key: "onboarding",
@@ -142,6 +156,8 @@ export async function getCommandCenterQueues(): Promise<CommandCenterQueue[]> {
         createdAt: c.facts.submittedAt ?? c.createdAt,
         href: `/admin/centri-attivazione?f=trama&c=${c.centerId}`,
       })),
+      hiddenDemo: toVerifyAll.length - toVerify.length,
+      demoHref: withDemo("/admin/centri-attivazione?f=trama"),
     },
     {
       key: "candidacies",
@@ -150,6 +166,8 @@ export async function getCommandCenterQueues(): Promise<CommandCenterQueue[]> {
       href: "/admin/center-leads?tipo=candidature",
       nextStep: "Telefonare al centro, poi Approva e crea centro o Rifiuta",
       items: candidacies.map((l) => ({ id: l.id, title: l.suggestedName, sub: l.suggestedLocality ?? null, createdAt: l.createdAt, href: "/admin/center-leads?tipo=candidature" })),
+      hiddenDemo: candidaciesAll.length - candidacies.length,
+      demoHref: withDemo("/admin/center-leads?tipo=candidature"),
     },
     {
       key: "center-leads",
@@ -158,6 +176,8 @@ export async function getCommandCenterQueues(): Promise<CommandCenterQueue[]> {
       href: "/admin/center-leads?tipo=segnalazioni",
       nextStep: "Valutare la segnalazione: qualificare, unire a un doppione o scartare",
       items: referrals.map((l) => ({ id: l.id, title: l.suggestedName, sub: l.suggestedLocality ?? null, createdAt: l.createdAt, href: "/admin/center-leads?tipo=segnalazioni" })),
+      hiddenDemo: referralsAll.length - referrals.length,
+      demoHref: withDemo("/admin/center-leads?tipo=segnalazioni"),
     },
     {
       key: "certifications",
@@ -166,6 +186,8 @@ export async function getCommandCenterQueues(): Promise<CommandCenterQueue[]> {
       href: "/admin/certifications",
       nextStep: "Controllare il documento e approvare o rifiutare",
       items: certsPending.map((c) => ({ id: c.id, title: c.label, sub: `${c.centerName} · ${c.activityName}`, createdAt: c.createdAt, href: "/admin/certifications" })),
+      hiddenDemo: certsPendingAll.length - certsPending.length,
+      demoHref: withDemo("/admin/certifications"),
     },
     {
       key: "beta-feedback",

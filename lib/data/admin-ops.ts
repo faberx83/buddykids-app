@@ -18,6 +18,7 @@ import "server-only";
 // 47): se mancano (errore 42703) si rilegge senza, come nel resto del codice.
 
 import { createClient } from "@/lib/supabase/server";
+import { createServiceClient } from "@/lib/supabase/service";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
 import type { AdminBookingRow, BookingStatus, DayDecision } from "@/lib/admin-ops/bookings";
 import type { AdminInquiryRow, InquiryStatus } from "@/lib/admin-ops/inquiries";
@@ -373,7 +374,12 @@ export async function getAdminFamilyFunnel(): Promise<AdminFamilyFunnelData | nu
   const [wl, prof, fm, codes, settings, cohort] = await Promise.all([
     supabase.from("beta_waitlist").select("id, email, status, created_at, invited_at, comune").order("created_at", { ascending: false }).limit(1000),
     supabase.from("profiles").select("id, email, created_at, beta_invited_by_code, role").eq("role", "parent").limit(5000),
-    supabase.from("family_members").select("family_id, parent_id").limit(10000),
+    // Retest 12/11/2026: family_members non ha il bypass Admin nella RLS
+    // (is_family_member): col client di sessione l'Admin vedeva solo la
+    // propria famiglia e ogni altro genitore contava come famiglia a sé. Dopo
+    // il controllo platform_admin qui sopra, come fa il cockpit, si legge col
+    // client di servizio (sola lettura, solo id). Senza chiave: come prima.
+    (createServiceClient() ?? supabase).from("family_members").select("family_id, parent_id").limit(10000),
     supabase.from("beta_invite_codes").select("code, label, active, redeemed_count, max_redemptions, expires_at").order("created_at", { ascending: false }),
     supabase.from("beta_cockpit_settings").select("excluded_user_ids").eq("id", 1).maybeSingle(),
     supabase.from("beta_cohort_memberships").select("user_id").eq("cohort_key", "internal-preview").eq("active", true),

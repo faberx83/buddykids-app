@@ -68,7 +68,11 @@ test.describe("TRAMA ONE — CenterLead: suggerimento centro non iscritto (Sprin
     test.skip(!isRealDeployment, "Richiede un deploy con Supabase configurato e l'account platform_admin di test.");
 
     await loginAs(page, "platform_admin");
-    await page.goto("/admin/center-leads");
+    // Retest Admin 12/11/2026: le segnalazioni "[TEST] …" sono di prova e la
+    // coda le nasconde di default (come "Oggi"); si aprono con ?demo=1. La
+    // scheda "segnalazioni" è quella delle famiglie (dal 27/10 la prima è
+    // "Candidature dei centri"). Stessa garanzia di prima sulla riga creata.
+    await page.goto("/admin/center-leads?tipo=segnalazioni&demo=1");
 
     const row = page.getByText(UNIQUE_NAME).locator("..").locator("..");
     await expect(row.getByText("Nuova")).toBeVisible();
@@ -78,7 +82,11 @@ test.describe("TRAMA ONE — CenterLead: suggerimento centro non iscritto (Sprin
     test.skip(!isRealDeployment, "Richiede un deploy con Supabase configurato e l'account platform_admin di test.");
 
     await loginAs(page, "platform_admin");
-    await page.goto("/admin/center-leads");
+    // Retest Admin 12/11/2026: le segnalazioni "[TEST] …" sono di prova e la
+    // coda le nasconde di default (come "Oggi"); si aprono con ?demo=1. La
+    // scheda "segnalazioni" è quella delle famiglie (dal 27/10 la prima è
+    // "Candidature dei centri"). Stessa garanzia di prima sulla riga creata.
+    await page.goto("/admin/center-leads?tipo=segnalazioni&demo=1");
 
     // Tre livelli: dal testo del nome (D) al contenitore riga (C) al blocco
     // nome+badge (B) alla card intera (A), che è l'unico livello che include
@@ -95,7 +103,11 @@ test.describe("TRAMA ONE — CenterLead: suggerimento centro non iscritto (Sprin
     test.skip(!isRealDeployment, "Richiede un deploy con Supabase configurato e l'account platform_admin di test.");
 
     await loginAs(page, "platform_admin");
-    await page.goto("/admin/center-leads");
+    // Retest Admin 12/11/2026: le segnalazioni "[TEST] …" sono di prova e la
+    // coda le nasconde di default (come "Oggi"); si aprono con ?demo=1. La
+    // scheda "segnalazioni" è quella delle famiglie (dal 27/10 la prima è
+    // "Candidature dei centri"). Stessa garanzia di prima sulla riga creata.
+    await page.goto("/admin/center-leads?tipo=segnalazioni&demo=1");
 
     const card = page.getByText(UNIQUE_NAME).locator("..").locator("..").locator("..");
     // Qualunque centro reale della select: il claim collega, non crea nulla

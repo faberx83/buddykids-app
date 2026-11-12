@@ -1,6 +1,8 @@
 import { getCentersForActivation } from "@/lib/data/center-activation";
 import { activationView, adminBucket, canApprove, daysWaiting } from "@/lib/centers/activation";
 import ActivationAdminClient, { type AdminActivationRow } from "./ActivationAdminClient";
+import DemoToggle from "@/components/admin/DemoToggle";
+import { isDemoCenter } from "@/lib/admin-ops/demo";
 
 // TRAMA — PORTALE CENTRI V2, FASE 1 (27/10/2026): Admin → Centri da attivare
 // (tavola 9 del mock "TRAMA Partner V2"). Versione V2 di /admin/one/onboarding,
@@ -18,7 +20,11 @@ export default async function CentriAttivazionePage({
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
   const sp = await searchParams;
-  const centers = await getCentersForActivation();
+  // Retest 12/11/2026: i centri di prova (is_test_fixture o nome) sono
+  // nascosti di default, come in Oggi; visibili con ?demo=1.
+  const showDemo = sp.demo === "1";
+  const allCenters = await getCentersForActivation();
+  const centers = showDemo ? allCenters : allCenters.filter((c) => !isDemoCenter({ name: c.name, isTestFixture: c.isTestFixture }));
   const rows: AdminActivationRow[] = centers.map((c) => {
     const view = activationView(c.facts);
     return {
@@ -40,11 +46,17 @@ export default async function CentriAttivazionePage({
       history: c.history.slice(0, 12),
     };
   });
+  const f = typeof sp.f === "string" ? `f=${sp.f}` : "";
+  const q = (demo: boolean) => `/admin/centri-attivazione?${[f, demo ? "demo=1" : ""].filter(Boolean).join("&")}`;
   return (
-    <ActivationAdminClient
-      rows={rows}
-      initialFilter={typeof sp.f === "string" ? sp.f : undefined}
-      initialSelected={typeof sp.c === "string" ? sp.c : undefined}
-    />
+    <div>
+      <DemoToggle hidden={allCenters.length - centers.length} showing={showDemo} showHref={q(true)} hideHref={q(false)} />
+      <ActivationAdminClient
+        rows={rows}
+        initialFilter={typeof sp.f === "string" ? sp.f : undefined}
+        initialSelected={typeof sp.c === "string" ? sp.c : undefined}
+        demo={showDemo}
+      />
+    </div>
   );
 }
