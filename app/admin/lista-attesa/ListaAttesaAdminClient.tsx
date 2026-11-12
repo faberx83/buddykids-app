@@ -4,6 +4,10 @@
 // di benvenuto. Per ognuno: "Scrivi l'invito" apre l'email già pronta con il
 // link di un codice Inviti Beta attivo (o, se non ce n'è, senza link), poi
 // "Segna invitato". Stato locale seedato dal server, aggiornamento ottimistico.
+// ADMIN OPERATIVO (12/11/2026): "copiare un link non equivale a inviarlo" —
+// "Scrivi l'invito" prepara soltanto (apre la posta); la riga diventa
+// "Invito inviato" solo con "Segna come inviato", da premere dopo l'invio.
+// Funnel completo in /admin/famiglie.
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
@@ -12,7 +16,7 @@ import { updateWaitlistStatusAction } from "@/app/actions/waitlist-admin";
 
 const STATUS: Record<WaitlistStatus, { label: string; cls: string }> = {
   nuovo: { label: "Nuova", cls: "bg-orange-light text-trama-orange" },
-  invitato: { label: "Invitata", cls: "bg-green-light text-[#2d8f52]" },
+  invitato: { label: "Invito inviato", cls: "bg-green-light text-[#2d8f52]" },
   archiviato: { label: "Archiviata", cls: "bg-[#EEF0F4] text-[#6B7280]" },
 };
 
@@ -67,7 +71,7 @@ export default function ListaAttesaAdminClient({ data, inviteCode }: { data: Wai
       <div className="mb-6">
         <h1 className="text-xl font-bold text-white">Lista d&apos;attesa</h1>
         <p className="text-sm text-navy-text2">
-          Chi ha chiesto un invito dalla pagina di benvenuto (tramapp.it/benvenuto). Scrivi l&apos;invito, poi segnalo come invitato.
+          Chi ha chiesto un invito dalla pagina di benvenuto (tramapp.it/benvenuto). &quot;Scrivi l&apos;invito&quot; prepara l&apos;email; dopo averla spedita, premi &quot;Segna come inviato&quot;. Fasi complete in Famiglie → Inviti e registrazioni.
         </p>
       </div>
 
@@ -136,11 +140,11 @@ export default function ListaAttesaAdminClient({ data, inviteCode }: { data: Wai
               {i.note && <p className="mt-2 whitespace-pre-line rounded-md bg-[#F7F9FC] p-2 text-[13px]">{i.note}</p>}
               <div className="mt-3 flex flex-wrap gap-2">
                 <a href={inviteMailto(i, inviteCode)} className="rounded-md bg-trama-primary px-3 py-1.5 text-xs font-bold text-white">
-                  Scrivi l&apos;invito
+                  Scrivi l&apos;invito (prepara)
                 </a>
                 {i.status !== "invitato" && (
                   <button type="button" disabled={busy === i.id} onClick={() => setStatus(i.id, "invitato")} className="rounded-md border border-[#E8EBF0] px-3 py-1.5 text-xs font-semibold disabled:opacity-60">
-                    Segna invitata
+                    Segna come inviato
                   </button>
                 )}
                 {i.status !== "archiviato" && (

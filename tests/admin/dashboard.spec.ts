@@ -4,13 +4,17 @@ import { test, expect, loginAs, isRealDeployment } from "../fixtures/roles";
 // NOTA: "volutamente demo" (task #19) - dati sempre da lib/mock-data.ts.
 // Convertito da gotoAsRole a loginAs: /admin reindirizza a /auth/login se
 // Supabase è configurato e non c'è sessione reale.
+// ADMIN OPERATIVO (12/11/2026): la dashboard dimostrativa si è spostata da
+// /admin (ora "Oggi", dati reali) a /admin/demo, senza modifiche al
+// contenuto; il titolo è "Dashboard piattaforma (dimostrativa)". Stesse
+// garanzie (titolo, sottotitolo, contrasto); il logo resta su /admin.
 
 test.describe("Admin - Dashboard", () => {
   // TC-082 - Dashboard Admin
-  test("TC-082 - /admin mostra la panoramica piattaforma", async ({ page }) => {
+  test("TC-082 - /admin/demo mostra la panoramica piattaforma (dimostrativa)", async ({ page }) => {
     test.skip(!isRealDeployment, "Richiede un deploy con Supabase configurato e l'account Admin di test.");
     await loginAs(page, "platform_admin");
-    await page.goto("/admin");
+    await page.goto("/admin/demo");
     await expect(page.getByRole("heading", { name: "Dashboard piattaforma" })).toBeVisible();
     await expect(page.getByText("Panoramica su tutti i centri e le attività di TRAMA")).toBeVisible();
   });
@@ -24,7 +28,7 @@ test.describe("Admin - Dashboard", () => {
   test("TC-214 - Titolo Dashboard Admin ha testo chiaro leggibile sullo sfondo navy", async ({ page }) => {
     test.skip(!isRealDeployment, "Richiede un deploy con Supabase configurato e l'account Admin di test.");
     await loginAs(page, "platform_admin");
-    await page.goto("/admin");
+    await page.goto("/admin/demo");
     const heading = page.getByRole("heading", { name: "Dashboard piattaforma" });
     const color = await heading.evaluate((el) => getComputedStyle(el).color);
     // text-white -> rgb(255, 255, 255). Il bug era rgb(26, 29, 46) (#1A1D2E,

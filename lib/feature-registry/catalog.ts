@@ -1218,6 +1218,28 @@ export const FEATURE_CATALOG: FeatureCatalogEntry[] = [
     releaseEligible: true,
   },
   {
+    // TRAMA — AVVISO SOVRAPPOSIZIONI NEL PLANNER (12/11/2026).
+    key: "planner_overlap_warning",
+    label: "Planner — avviso orari sovrapposti in Chi accompagna",
+    area: "parent",
+    status: "INTERNAL_PREVIEW",
+    flagName: "PLANNER_OVERLAP_WARNING_ENABLED",
+    description:
+      "Nel foglio 'Chi accompagna' del Planner, prima di assegnare i passaggi: 'Lino ha due impegni negli stessi orari " +
+      "(16:30–17:00): Ritmica e Piscina. Controllate prima di decidere chi accompagna.' Solo avviso, il flusso non si blocca.",
+    sourceFiles: [
+      "lib/nextgen/kid-overlaps.ts",
+      "components/nextgen/KidOverlapNotice.tsx",
+      "app/nextgen/planner/PlannerV2Client.tsx",
+      "app/nextgen/planner/planner-v2-data.ts",
+    ],
+    note:
+      "Nessuna migration, nessuna scrittura: legge le voci della giornata già nel Planner. Contano solo voci con orario, " +
+      "confermate (non 'In attesa del centro'), scuola esclusa. Tutti e tre i fogli (per giorno, per passaggio, giornate piene).",
+    riskLevel: "low",
+    releaseEligible: true,
+  },
+  {
     // TRAMA — CORREZIONI DAL TEST UX PARENT (21/10/2026). ADAPT di Scopri V2,
     // scheda attività V2, Home V2, Planner V2 (Stagione) e La tua famiglia:
     // nessuna tabella nuova. Iniziativa: claude/INIZIATIVA_parent_ux_fix_2110.md.

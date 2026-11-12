@@ -3,6 +3,8 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
 import { getCenterOnboardingState, getOnboardingAuditLog } from "@/lib/onboarding/data";
+import { activityPrice } from "@/lib/nextgen/activity-price";
+import { bookingsHref } from "@/lib/admin-ops/bookings";
 import {
   getOnboardingStatusLabel,
   getOnboardingStatusBadgeClassName,
@@ -16,6 +18,16 @@ import {
 // dashboard analytics"): info centro + attività reali + stato/storico
 // attivazione. Il dettaglio prenotazioni resta in /admin/bookings (già
 // reale, Sprint 4) — non duplicato qui.
+//
+// TRAMA — ADMIN OPERATIVO (12/11/2026). Richiesta di Fabrizio: "Dal dettaglio
+// centro apri le prenotazioni di quel centro … Dal centro rendi apribile
+// ciascuna attività, poi la singola giornata" e "la stessa attività
+// risultava '€150/settimana' mentre Parent mostrava '€30 al giorno'. Usa
+// prezzo e unità effettivi dell'attività; se una tariffa non è configurata,
+// mostra lo stato esplicito". Il prezzo ora passa dalla regola unica di
+// Parent e Partner (lib/nextgen/activity-price.ts: solo giorni → al giorno,
+// mista → settimana e giorno, mancante → "Prezzo da chiedere"); prima qui
+// c'era sempre price_per_week + "/settimana".
 export default async function AdminCenterDetailPage({
   params,
 }: {
@@ -36,7 +48,7 @@ export default async function AdminCenterDetailPage({
 
   const { data: activities } = await supabase
     .from("activities")
-    .select("id, slug, name, price_per_week, rating, reviews_count")
+    .select("id, slug, name, price_per_week, booking_mode, rating, reviews_count")
     .eq("center_id", id)
     .order("name", { ascending: true });
 
@@ -91,17 +103,26 @@ export default async function AdminCenterDetailPage({
         </div>
         <div className="divide-y divide-[#F0F2F5]">
           {(activities ?? []).map((a) => (
-            <div key={a.id} className="flex items-center gap-3 px-4 py-3">
+            <Link key={a.id} href={`/admin/centers/${center.id}/attivita/${a.id}`} className="flex items-center gap-3 px-4 py-3 no-underline hover:bg-bg">
               <div className="min-w-0 flex-1">
                 <div className="truncate text-sm font-semibold text-ink">{a.name}</div>
-                <div className="text-xs text-ink-2">€{a.price_per_week}/settimana</div>
+                <div className="text-xs text-ink-2">
+                  {
+                    activityPrice({
+                      pricePerWeek: a.price_per_week === null || a.price_per_week === undefined ? null : Number(a.price_per_week),
+                      bookingMode: a.booking_mode === "day_only" || a.booking_mode === "mixed" || a.booking_mode === "week_only" ? a.booking_mode : null,
+                    }).label
+                  }
+                  {a.booking_mode === "day_only" ? " · solo giorni" : a.booking_mode === "mixed" ? " · settimane o giorni" : " · settimane"}
+                </div>
               </div>
               {a.reviews_count > 0 && (
                 <span className="text-xs font-semibold text-ink-2">
                   ⭐ {a.rating} ({a.reviews_count})
                 </span>
               )}
-            </div>
+              <i className="ti ti-chevron-right text-ink-3" />
+            </Link>
           ))}
           {(activities ?? []).length === 0 && (
             <div className="px-4 py-6 text-center text-sm text-ink-2">Nessuna attività per questo centro.</div>
@@ -130,12 +151,20 @@ export default async function AdminCenterDetailPage({
         </div>
       </div>
 
-      <Link
-        href="/admin/bookings"
-        className="inline-flex items-center gap-1 text-xs font-semibold text-sky"
-      >
-        Vedi le prenotazioni di tutti i centri →
-      </Link>
+      <div className="flex flex-wrap gap-4">
+        <Link href={bookingsHref({ centro: center.id, demo: true })} className="inline-flex items-center gap-1 text-xs font-semibold text-sky">
+          Prenotazioni di questo centro →
+        </Link>
+        <Link href={bookingsHref({ centro: center.id, stato: "da_rispondere", demo: true })} className="inline-flex items-center gap-1 text-xs font-semibold text-sky">
+          Da rispondere →
+        </Link>
+        <Link href={`/admin/richieste?centro=${center.id}&demo=1#casi`} className="inline-flex items-center gap-1 text-xs font-semibold text-sky">
+          Messaggi delle famiglie →
+        </Link>
+        <Link href={`/admin/centri-attivazione?c=${center.id}`} className="inline-flex items-center gap-1 text-xs font-semibold text-sky">
+          Attivazione →
+        </Link>
+      </div>
     </div>
   );
 }

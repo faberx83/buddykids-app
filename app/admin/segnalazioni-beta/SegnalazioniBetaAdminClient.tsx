@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import type { BetaFeedbackItem, BetaFeedbackStatus, BetaFeedbackSource } from "@/lib/nextgen/beta-feedback-shared";
 import { computeBetaFeedbackCounts, betaFeedbackCategoryLabel } from "@/lib/nextgen/beta-feedback-shared";
 import { updateBetaFeedbackStatusAction, confirmBetaFeedbackForPipelineAction } from "@/app/actions/beta-feedback";
@@ -38,12 +39,45 @@ const PIPELINE_LABEL: Partial<Record<"confirmed" | "in_progress" | "done", { lab
 
 type StatusFilter = BetaFeedbackStatus | "tutti";
 
-export default function SegnalazioniBetaAdminClient({ initialItems }: { initialItems: BetaFeedbackItem[] }) {
+// ADMIN OPERATIVO (12/11/2026): "collega gli aggregati ai singoli casi" e
+// "filtri URL persistenti". Stato e area arrivano dall'URL (?stato=&area=),
+// ogni cambio aggiorna l'URL (router.replace, senza ricaricare) e i
+// riquadri di sintesi e le righe per area aprono l'elenco filtrato. Stati e
+// passaggio in pipeline invariati.
+const STATUS_FILTERS: StatusFilter[] = ["tutti", "nuovo", "in_gestione", "risolto"];
+
+export default function SegnalazioniBetaAdminClient({
+  initialItems,
+  initialStatus = "tutti",
+  initialArea = "tutte",
+}: {
+  initialItems: BetaFeedbackItem[];
+  initialStatus?: string;
+  initialArea?: string;
+}) {
+  const router = useRouter();
   const [items, setItems] = useState(initialItems);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [noteDraft, setNoteDraft] = useState<Record<string, string>>({});
-  const [statusFilter, setStatusFilter] = useState<StatusFilter>("tutti");
-  const [areaFilter, setAreaFilter] = useState<string>("tutte");
+  const [statusFilter, setStatusFilterState] = useState<StatusFilter>(
+    (STATUS_FILTERS as string[]).includes(initialStatus) ? (initialStatus as StatusFilter) : "tutti"
+  );
+  const [areaFilter, setAreaFilterState] = useState<string>(initialArea || "tutte");
+  function syncUrl(stato: StatusFilter, area: string) {
+    const p = new URLSearchParams();
+    if (stato !== "tutti") p.set("stato", stato);
+    if (area !== "tutte") p.set("area", area);
+    const q = p.toString();
+    router.replace(`/admin/segnalazioni-beta${q ? `?${q}` : ""}`, { scroll: false });
+  }
+  const setStatusFilter = (s: StatusFilter) => {
+    setStatusFilterState(s);
+    syncUrl(s, areaFilter);
+  };
+  const setAreaFilter = (a: string) => {
+    setAreaFilterState(a);
+    syncUrl(statusFilter, a);
+  };
 
   const counts = useMemo(() => computeBetaFeedbackCounts(items), [items]);
   const areaOptions = useMemo(() => ["tutte", ...counts.byArea.map((a) => a.area)], [counts]);
@@ -98,15 +132,15 @@ export default function SegnalazioniBetaAdminClient({ initialItems }: { initialI
           <div className="text-xs text-ink-2">Totale</div>
           <div className="text-xl font-bold text-ink">{counts.total}</div>
         </div>
-        <div className="rounded-lg border border-[#E8EBF0] bg-white p-3">
+        <div role="button" tabIndex={0} onClick={() => setStatusFilter("nuovo")} className="cursor-pointer rounded-lg border border-[#E8EBF0] bg-white p-3 hover:border-trama-violet">
           <div className="text-xs text-ink-2">Nuove</div>
           <div className="text-xl font-bold text-trama-orange">{counts.byStatus.nuovo}</div>
         </div>
-        <div className="rounded-lg border border-[#E8EBF0] bg-white p-3">
+        <div role="button" tabIndex={0} onClick={() => setStatusFilter("in_gestione")} className="cursor-pointer rounded-lg border border-[#E8EBF0] bg-white p-3 hover:border-trama-violet">
           <div className="text-xs text-ink-2">In gestione</div>
           <div className="text-xl font-bold text-[#9a6b00]">{counts.byStatus.in_gestione}</div>
         </div>
-        <div className="rounded-lg border border-[#E8EBF0] bg-white p-3">
+        <div role="button" tabIndex={0} onClick={() => setStatusFilter("risolto")} className="cursor-pointer rounded-lg border border-[#E8EBF0] bg-white p-3 hover:border-trama-violet">
           <div className="text-xs text-ink-2">Risolte</div>
           <div className="text-xl font-bold text-[#2d8f52]">{counts.byStatus.risolto}</div>
         </div>
@@ -117,12 +151,17 @@ export default function SegnalazioniBetaAdminClient({ initialItems }: { initialI
           <div className="border-b border-[#E8EBF0] px-4 py-3 text-sm font-bold text-ink">Per area/sottosezione</div>
           <div className="divide-y divide-[#F0F2F5]">
             {counts.byArea.map((a) => (
-              <div key={a.area} className="flex items-center justify-between px-4 py-2.5 text-sm">
+              <button
+                type="button"
+                key={a.area}
+                onClick={() => setAreaFilter(a.area)}
+                className="flex w-full items-center justify-between px-4 py-2.5 text-left text-sm hover:bg-bg"
+              >
                 <span className="font-semibold text-ink">{a.area}</span>
                 <span className="text-xs text-ink-2">
                   {a.total} totali · {a.nuovo} nuove · {a.inGestione} in gestione · {a.risolto} risolte
                 </span>
-              </div>
+              </button>
             ))}
           </div>
         </div>
@@ -130,7 +169,7 @@ export default function SegnalazioniBetaAdminClient({ initialItems }: { initialI
 
       {/* Filtri */}
       <div className="mb-4 flex flex-wrap gap-2">
-        {(["tutti", "nuovo", "in_gestione", "risolto"] as StatusFilter[]).map((s) => (
+        {STATUS_FILTERS.map((s) => (
           <button
             key={s}
             type="button"

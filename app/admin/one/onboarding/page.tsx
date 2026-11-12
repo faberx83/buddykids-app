@@ -1,3 +1,4 @@
+import Link from "next/link";
 import AdminOnboardingReviewClient from "./AdminOnboardingReviewClient";
 import { listCentersForAdminReview, getIdentityVerification, getOnboardingAuditLog } from "@/lib/onboarding/data";
 import { getTrustSignalsForCenters } from "@/lib/data/trust-signals";
@@ -32,11 +33,27 @@ export default async function AdminOnboardingReviewPage() {
     getTrustSignalsForCenters(centers.map((c) => c.centerId)),
   ]);
   const trustSignals = Array.from(trustSignalsMap.values());
+  // ADMIN OPERATIVO (12/11/2026): "Verifica se 'Centri da attivare' e
+  // 'Onboarding centri — TRAMA ONE' gestiscono lo stesso processo. Se sì,
+  // consolida la coda". Verificato: stessa macchina a stati
+  // (center_onboarding_state) e stesso storico. La coda di lavoro è
+  // /admin/centri-attivazione (anche la card di Oggi porta lì); questa
+  // pagina resta per i segnali di fiducia e la verifica d'identità con
+  // documento (DEC-22, sostituita dalla spunta "referente confermato").
   return (
-    <AdminOnboardingReviewClient
-      initialCenters={centers}
-      initialDetails={details}
-      initialTrustSignals={trustSignals}
-    />
+    <div>
+      <div className="mb-4 rounded-lg border-2 border-[#E0A040] bg-[#FFF8EC] px-4 py-3 text-sm text-[#7A4500]">
+        Questa è la vista di prima dello stesso processo. Per verificare e approvare i centri usa{" "}
+        <Link href="/admin/centri-attivazione?f=trama" className="font-bold underline">
+          Centri da attivare
+        </Link>
+        : stessa coda, con &quot;Tocca a TRAMA / Tocca al centro&quot;, motivo del blocco e storico.
+      </div>
+      <AdminOnboardingReviewClient
+        initialCenters={centers}
+        initialDetails={details}
+        initialTrustSignals={trustSignals}
+      />
+    </div>
   );
 }

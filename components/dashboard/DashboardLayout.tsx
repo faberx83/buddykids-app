@@ -2,6 +2,7 @@
 
 import { useRef, useState } from "react";
 import Link from "next/link";
+import { pickActiveHref } from "@/lib/navigation/active-nav";
 import { usePathname, useRouter } from "next/navigation";
 import { useDemoRole } from "@/components/DemoRoleProvider";
 import { Role } from "@/lib/types";
@@ -102,16 +103,13 @@ function brandRoleLabel(brand: string): string {
   return brand.replace(/^TRAMA\s*/i, "").trim() || "TRAMA";
 }
 
-// Attivo su corrispondenza esatta OPPURE su sotto-rotte (es.
-// /center/activities/[id] deve evidenziare "Attività" come
-// /center/activities) — tranne per la voce "radice" della sezione (Dashboard,
-// primo item dell'array), che altrimenti risulterebbe SEMPRE attiva insieme a
-// qualunque altra voce (ogni altra rotta comincia per forza con lo stesso
-// prefisso "/center/", "/admin/", ecc.).
-function isNavItemActive(pathname: string, href: string, rootHref: string): boolean {
-  if (href === rootHref) return pathname === href;
-  return pathname === href || pathname.startsWith(`${href}/`);
-}
+// Voce attiva: una sola. Prima ogni voce si accendeva su corrispondenza
+// esatta OPPURE sulle sotto-rotte (es. /center/activities/[id] evidenzia
+// "Attività"), con la voce radice (Dashboard, primo item) attiva solo sul
+// percorso esatto. ADMIN OPERATIVO (12/11/2026): "Evidenzia una sola voce
+// corrente" — con voci annidate (/admin/beta e /admin/beta/report) se ne
+// accendevano due. Stessa regola, ma vince il prefisso più lungo (alias
+// compresi): lib/navigation/active-nav.ts#pickActiveHref.
 
 interface NavItem {
   href: string;
@@ -132,6 +130,9 @@ interface NavItem {
   // Opzionale e innocuo per ogni altra voce/variante (Admin incluso): un
   // attributo `data-*` assente non altera resa o comportamento.
   spotlightTarget?: string;
+  // ADMIN OPERATIVO (12/11/2026): percorsi fuori menu che appartengono a
+  // questa voce (es. /admin/demo sotto "Analisi e crescita").
+  matchPrefixes?: string[];
 }
 
 // Tema visivo del pannello: "partner" (Gestore centro, teal chiaro) o
@@ -171,6 +172,7 @@ export default function DashboardLayout({
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
+  const activeHref = pickActiveHref(pathname ?? "", navItems, navItems[0]?.href ?? null);
   const { role: demoRole } = useDemoRole();
   const usingRealAuth = realRole !== undefined;
   const effectiveRole = usingRealAuth ? realRole : demoRole;
@@ -237,7 +239,7 @@ export default function DashboardLayout({
   // duplicate). "onNavigate" chiude il cassetto mobile dopo un click; è
   // undefined nella sidebar desktop, dove non serve.
   function renderNavItem(item: NavItem, i: number, onNavigate?: () => void) {
-    const active = isNavItemActive(pathname, item.href, navItems[0]?.href ?? item.href);
+    const active = activeHref === item.href;
     const showSectionHeader = item.sectionLabel && item.sectionLabel !== navItems[i - 1]?.sectionLabel;
     return (
       <div key={item.href}>

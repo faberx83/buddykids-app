@@ -6,10 +6,8 @@ import { Role } from "@/lib/types";
 import { resolveFeatureFlag } from "@/lib/feature-flags/resolve";
 import { generateCorrelationId } from "@/lib/telemetry/correlation";
 // Notifica "ultimo deploy ok/ko" — vedi supabase/migration_33_deploy_events.sql,
-// app/internal/deploy-notify/route.ts (chiamato da deploy.sh a fine
-// esecuzione) e components/admin/DeployStatusBanner.tsx.
-import { getLatestDeployEvent } from "@/lib/data/deploy-events";
-import DeployStatusBanner from "@/components/admin/DeployStatusBanner";
+// app/internal/deploy-notify/route.ts e components/admin/DeployStatusBanner.tsx:
+// dal 12/11/2026 il banner è in "Oggi" e lo storico in /admin/sistema.
 // BUILD_INFO_BUBBLE — test pipeline nuovo account (30/09/2026), temporaneo.
 import BuildInfoBubble from "@/components/BuildInfoBubble";
 import { resolveBuildInfoBubbleLabel } from "@/lib/build-info-bubble";
@@ -19,46 +17,77 @@ import { resolveBuildInfoBubbleLabel } from "@/lib/build-info-bubble";
 // pannelli cross-centro (SLA Richieste, confronto Presenze, Preferiti come
 // segnale di domanda) — vedi lib/data/admin-inquiries.ts,
 // lib/data/admin-attendance.ts, lib/data/admin-favorites.ts.
+//
+// TRAMA — ADMIN OPERATIVO (12/11/2026). Richiesta di Fabrizio: "Organizza il
+// menu in: Oggi, Famiglie, Centri, Prenotazioni, Segnalazioni, Analisi e
+// crescita, Impostazioni. Evidenzia una sola voce corrente. Conserva i link
+// esistenti … Togli le dashboard con dati statici dal menu operativo. Sposta
+// deploy, branch e commit in 'Stato sistema'; Tag, feature flag e documenti
+// legali in Impostazioni; Preferiti in Analisi come segnale di domanda. Rendi
+// Fornitori secondario." Nessuna pagina tolta: Dashboard e Analisi su dati
+// finti e l'elenco Attività dimostrativo si aprono da Analisi e crescita
+// (/admin/crescita); /admin/one resta alias di Oggi. Una voce sola accesa:
+// lib/navigation/active-nav.ts. Gruppi con sectionLabel (DashboardLayout).
+type AdminNavItem = { href: string; label: string; icon: string; matchPrefixes?: string[] };
+
+const group = (sectionLabel: string, items: AdminNavItem[]) => items.map((i) => ({ ...i, sectionLabel }));
+
 const baseNavItems = [
-  { href: "/admin", label: "Dashboard", icon: "ti-layout-dashboard" },
-  // TRAMA — ADMIN BETA COCKPIT (20/10/2026): la beta famiglie, una riga per
-  // famiglia, con il report navigabile (/admin/beta/report).
-  { href: "/admin/beta", label: "Beta Famiglie", icon: "ti-heart-handshake" },
-  { href: "/admin/analytics", label: "Analisi", icon: "ti-chart-bar" },
-  { href: "/admin/centers", label: "Centri", icon: "ti-building-community" },
-  // Portale centri V2 (27/10/2026): attivazione dei centri (timeline, verifiche, approva).
-  { href: "/admin/centri-attivazione", label: "Centri da attivare", icon: "ti-rosette" },
-  { href: "/admin/activities", label: "Attività", icon: "ti-list-details" },
-  { href: "/admin/tags", label: "Tag", icon: "ti-tags" },
-  { href: "/admin/bookings", label: "Prenotazioni", icon: "ti-ticket" },
-  { href: "/admin/group-requests", label: "Richieste Gruppo", icon: "ti-users-group" },
-  { href: "/admin/richieste", label: "Richieste (SLA)", icon: "ti-message-circle-2" },
-  { href: "/admin/certifications", label: "Certificazioni", icon: "ti-certificate" },
-  { href: "/admin/presenze", label: "Presenze", icon: "ti-clipboard-check" },
-  { href: "/admin/preferiti", label: "Preferiti", icon: "ti-heart" },
-  { href: "/admin/partner-offers", label: "Fornitori", icon: "ti-truck-delivery" },
-  // SPRINT 5 (NEXTGEN) — coda "Segnala un problema" della floating CTA
-  // BETA (richiesta di Fabrizio): stessa lista flat, nessuna sotto-voce.
-  { href: "/admin/segnalazioni-beta", label: "Segnalazioni BETA", icon: "ti-message-report" },
-  // TRAMA ONE Build Sprint 5 — coda CenterLead (J11, suggerimento centro non
-  // iscritto): stessa lista flat, nessuna sotto-voce.
-  { href: "/admin/center-leads", label: "Segnalazioni centri", icon: "ti-map-pin-plus" },
-  { href: "/admin/radar", label: "Radar community", icon: "ti-radar" },
-  { href: "/admin/feature-flags", label: "Feature flag", icon: "ti-flag-3" },
-  // TRAMA — SCHOOL CALENDAR INTELLIGENCE (14/09/2026, §B11) — dataset
-  // calendari/eventi scolastici (region/anno scolastico/eventi di
-  // chiusura), usato dal Planner SOLO se SCHOOL_CALENDAR_INTELLIGENCE_ENABLED
-  // risolve true per l'utente e solo per regioni con un calendario
-  // pubblicato.
-  { href: "/admin/school-calendar", label: "Calendari scolastici", icon: "ti-school" },
-  // Codici invito Beta (migration_30_beta_invite_codes.sql, 27/08/2026) —
-  // auto-iscrizione alla Controlled Beta Cohort via link ?beta=CODICE.
-  { href: "/admin/beta-invites", label: "Inviti Beta", icon: "ti-user-plus" },
-  // 20/10/2026 — richieste "Chiedi un invito" dalla pagina di benvenuto.
-  { href: "/admin/lista-attesa", label: "Lista d'attesa", icon: "ti-mail-heart" },
-  // PRE-MICRO-PILOT CLOSURE GATE (task #574, 25/08/2026) — vista view-only
-  // su legal_documents (Termini/Privacy Notice), non un CMS.
-  { href: "/admin/legal", label: "Documenti legali", icon: "ti-file-shield" },
+  ...group("Oggi", [
+    // Ex Command Center (TRAMA ONE Sprint 6, E08), ora per ogni Admin.
+    { href: "/admin", label: "Oggi", icon: "ti-target-arrow", matchPrefixes: ["/admin/one"] },
+  ]),
+  ...group("Famiglie", [
+    // TRAMA — ADMIN BETA COCKPIT (20/10/2026): la beta famiglie, una riga per
+    // famiglia, con il report navigabile (/admin/beta/report).
+    { href: "/admin/beta", label: "Beta Famiglie", icon: "ti-heart-handshake" },
+    // Dalla richiesta all'attivazione: persone, famiglie, inviti.
+    { href: "/admin/famiglie", label: "Inviti e registrazioni", icon: "ti-route" },
+    // 20/10/2026 — richieste "Chiedi un invito" dalla pagina di benvenuto.
+    { href: "/admin/lista-attesa", label: "Lista d'attesa", icon: "ti-mail-heart" },
+    // Codici invito Beta (migration_30_beta_invite_codes.sql, 27/08/2026) —
+    // auto-iscrizione alla Controlled Beta Cohort via link ?beta=CODICE.
+    { href: "/admin/beta-invites", label: "Inviti Beta", icon: "ti-user-plus" },
+  ]),
+  ...group("Centri", [
+    { href: "/admin/centers", label: "Centri", icon: "ti-building-community" },
+    // Portale centri V2 (27/10/2026): attivazione dei centri (timeline, verifiche, approva).
+    // Coda unica del processo: /admin/one/onboarding è la vista di prima.
+    { href: "/admin/centri-attivazione", label: "Centri da attivare", icon: "ti-rosette", matchPrefixes: ["/admin/one/onboarding"] },
+    // TRAMA ONE Build Sprint 5 — coda CenterLead (J11) + candidature dei centri.
+    { href: "/admin/center-leads", label: "Candidature e segnalazioni", icon: "ti-map-pin-plus" },
+    { href: "/admin/certifications", label: "Certificazioni", icon: "ti-certificate" },
+    { href: "/admin/presenze", label: "Presenze", icon: "ti-clipboard-check" },
+    // Secondaria: servizi consigliati ai centri, non una coda operativa.
+    { href: "/admin/partner-offers", label: "Fornitori", icon: "ti-truck-delivery" },
+  ]),
+  ...group("Prenotazioni", [
+    { href: "/admin/bookings", label: "Prenotazioni", icon: "ti-ticket" },
+    { href: "/admin/group-requests", label: "Richieste Gruppo", icon: "ti-users-group" },
+    { href: "/admin/richieste", label: "Messaggi e SLA", icon: "ti-message-circle-2" },
+  ]),
+  ...group("Segnalazioni", [
+    // SPRINT 5 (NEXTGEN) — coda "Segnala un problema" della floating CTA BETA.
+    { href: "/admin/segnalazioni-beta", label: "Segnalazioni BETA", icon: "ti-message-report" },
+    { href: "/admin/radar", label: "Radar community", icon: "ti-radar" },
+  ]),
+  ...group("Analisi e crescita", [
+    { href: "/admin/crescita", label: "Analisi e crescita", icon: "ti-chart-bar", matchPrefixes: ["/admin/demo", "/admin/analytics", "/admin/activities"] },
+    { href: "/admin/preferiti", label: "Preferiti (domanda)", icon: "ti-heart" },
+  ]),
+  ...group("Impostazioni", [
+    { href: "/admin/feature-flags", label: "Feature flag", icon: "ti-flag-3" },
+    { href: "/admin/tags", label: "Tag", icon: "ti-tags" },
+    // TRAMA — SCHOOL CALENDAR INTELLIGENCE (14/09/2026, §B11) — dataset
+    // calendari/eventi scolastici, usato dal Planner SOLO se
+    // SCHOOL_CALENDAR_INTELLIGENCE_ENABLED risolve true.
+    { href: "/admin/school-calendar", label: "Calendari scolastici", icon: "ti-school" },
+    // PRE-MICRO-PILOT CLOSURE GATE (task #574, 25/08/2026) — vista view-only
+    // su legal_documents (Termini/Privacy Notice), non un CMS.
+    { href: "/admin/legal", label: "Documenti legali", icon: "ti-file-shield" },
+    // Ultimi deploy, ramo e commit (prima: banner su ogni pagina).
+    { href: "/admin/sistema", label: "Stato sistema", icon: "ti-server" },
+  ]),
 ];
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
@@ -75,7 +104,6 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   // il flag risolve a false la voce semplicemente non compare, nessun'altra
   // voce/redirect è toccata).
   let navItems = baseNavItems;
-  let deployEvent: Awaited<ReturnType<typeof getLatestDeployEvent>> = null;
   // BUILD_INFO_BUBBLE
   let buildInfoLabel: string | null = null;
 
@@ -102,23 +130,21 @@ export default async function AdminLayout({ children }: { children: React.ReactN
       correlationId: generateCorrelationId(),
     });
     if (oneEnabled) {
-      // R-01 (Wave 1, 24/08/2026): Command Center promosso a PRIMA voce (era
-      // in coda) per convergere la superficie Admin canonica su /admin/one
-      // senza rimuovere o redirectare le pagine storiche (nessun codice
-      // eliminato, nessuna route toccata — solo ordine del menu).
+      // R-01 (Wave 1, 24/08/2026) il Command Center era la prima voce con il
+      // flag acceso. ADMIN OPERATIVO (12/11/2026): ora è "Oggi" per tutti;
+      // col flag acceso si aggiunge il Pilota (/admin/one/pilot), che vive
+      // sotto lo stesso gate di /admin/one.
+      const idx = navItems.findIndex((i) => i.href === "/admin/beta-invites");
       navItems = [
-        { href: "/admin/one", label: "Command Center", icon: "ti-target-arrow" },
-        ...baseNavItems,
+        ...navItems.slice(0, idx + 1),
+        { href: "/admin/one/pilot", label: "Pilota", icon: "ti-users", sectionLabel: "Famiglie" },
+        ...navItems.slice(idx + 1),
       ];
     }
 
-    // Notifica "ultimo deploy ok/ko" (richiesta di Fabrizio) — solo per un
-    // platform_admin reale: getLatestDeployEvent() è comunque protetto da
-    // RLS (is_platform_admin()), questo controllo evita solo una query
-    // superflua per gli altri ruoli.
-    if (realRole === "platform_admin") {
-      deployEvent = await getLatestDeployEvent();
-    }
+    // Notifica "ultimo deploy ok/ko" (richiesta di Fabrizio): ADMIN OPERATIVO
+    // (12/11/2026) il banner compare solo in "Oggi" (app/admin/page.tsx) e lo
+    // storico in Impostazioni → Stato sistema; qui non si legge più.
 
     // BUILD_INFO_BUBBLE
     buildInfoLabel = await resolveBuildInfoBubbleLabel({ userId: user.id, role: realRole, tenant: "admin" });
@@ -132,7 +158,6 @@ export default async function AdminLayout({ children }: { children: React.ReactN
       realRole={realRole}
       variant="admin"
     >
-      <DeployStatusBanner event={deployEvent} />
       {/* BUILD_INFO_BUBBLE */}
       <BuildInfoBubble label={buildInfoLabel} />
       {children}

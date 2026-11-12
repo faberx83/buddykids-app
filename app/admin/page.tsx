@@ -1,108 +1,163 @@
 import Link from "next/link";
-import StatCard from "@/components/dashboard/StatCard";
-import StatusBadge from "@/components/dashboard/StatusBadge";
-import OccupancyChart from "@/components/charts/OccupancyChart";
-import { activities, bookingsMock, centers } from "@/lib/mock-data";
-import { aggregateWeeklyOccupancy } from "@/lib/analytics";
-import AdminMockDataBanner from "@/components/admin/AdminMockDataBanner";
+import PushNotificationsPrompt from "@/components/PushNotificationsPrompt";
+import DeployStatusBanner from "@/components/admin/DeployStatusBanner";
+import { getLatestDeployEvent } from "@/lib/data/deploy-events";
+import { getCommandCenterQueues, summarizeCommandCenterQueues } from "@/lib/data/command-center";
+import { QueuePriority } from "@/lib/command-center/priority";
+import { ageLabel, dueLabel } from "@/lib/admin-ops/queues";
+import { daysBetween, romeTodayIso } from "@/lib/admin-ops/bookings";
 
-export default function AdminDashboardPage() {
-  const confirmedBookings = bookingsMock.filter((b) => b.status === "confirmed");
-  const revenue = confirmedBookings.reduce((sum, b) => sum + b.totalAmount, 0);
-  const recent = [...bookingsMock].sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1)).slice(0, 5);
-  const occupancy = aggregateWeeklyOccupancy(activities.map((a) => a.id));
+// Code reali per l'Admin loggato (RLS e controllo platform_admin nei data
+// layer): mai in cache.
+export const dynamic = "force-dynamic";
+
+// TRAMA — ADMIN OPERATIVO (12/11/2026): "Oggi", la home Admin. Richiesta di
+// Fabrizio: "Fai del Command Center la home Admin e chiamala 'Oggi'. Ogni
+// contatore apre la coda già filtrata e il conteggio deve corrispondere alle
+// righe risultanti, a parità di filtri. Per ogni coda mostra chi deve agire,
+// anzianità, eventuale scadenza e prossimo passo. Dai evidenza alle attività
+// imminenti rimaste senza risposta." Iniziativa:
+// claude/INIZIATIVA_admin_operativo.md.
+//
+// Prima: /admin era una dashboard su dati finti (ora /admin/demo) e il
+// Command Center viveva in /admin/one solo con TRAMA_ONE_ENABLED. Ora le
+// code sono qui, per ogni Admin; /admin/one rimanda qui. Le etichette delle
+// code sono quelle di prima (tests/one/command-center.spec.ts). Il funnel del
+// walkthrough è in Analisi e crescita. Il banner dell'ultimo deploy compare
+// solo qui; lo storico è in Impostazioni → Stato sistema.
+const PRIORITY_LABEL: Record<QueuePriority, string> = { alta: "Alta", media: "Media", bassa: "Bassa" };
+const PRIORITY_CLASS: Record<QueuePriority, string> = {
+  alta: "bg-[#FBEAEA] text-[#C0392B]",
+  media: "bg-orange-light text-trama-orange",
+  bassa: "bg-green-light text-[#2d8f52]",
+};
+const ACTOR_CLASS: Record<string, string> = {
+  centro: "bg-[#E8F6FD] text-[#1C6E9E]",
+  famiglia: "bg-[#F0EEFF] text-[#6F63C5]",
+  trama: "bg-[#FFF3E0] text-[#8A4B00]",
+};
+
+export default async function AdminOggiPage() {
+  const [queues, deployEvent] = await Promise.all([getCommandCenterQueues(), getLatestDeployEvent()]);
+  const summary = summarizeCommandCenterQueues(queues);
+  const today = romeTodayIso();
+  const todayLabel = new Date(today + "T12:00:00Z").toLocaleDateString("it-IT", { weekday: "long", day: "numeric", month: "long", timeZone: "UTC" });
+  const open = queues.filter((q) => q.count > 0);
+  const empty = queues.filter((q) => q.count === 0);
 
   return (
     <div>
-      <div className="mb-6">
-        {/* FIX CONTRASTO ADMIN: text-ink==bg-navy, vedi analytics/page.tsx */}
-        <h1 className="text-xl font-bold text-white">Dashboard piattaforma</h1>
-        <p className="text-sm text-navy-text2">Panoramica su tutti i centri e le attività di TRAMA</p>
+      <div className="mb-5">
+        <h1 className="text-xl font-bold text-white">Oggi</h1>
+        <p className="mt-1 text-sm text-navy-text2">
+          {todayLabel.charAt(0).toUpperCase() + todayLabel.slice(1)} · {summary.totalOpen} elementi in sospeso su tutte le code
+          {summary.criticalQueueCount > 0
+            ? `, ${summary.criticalQueueCount} coda${summary.criticalQueueCount === 1 ? "" : "e"} in priorità alta`
+            : ""}
+          . I centri e le attività di prova non sono contati.
+        </p>
       </div>
 
-      {/* R-01 (Wave 1): questa pagina legge SOLO lib/mock-data.ts, mai
-          Supabase — vedi AdminMockDataBanner per il perché. Per operare
-          davvero durante la Beta, usare il Command Center. */}
-      <AdminMockDataBanner cta={{ href: "/admin/one", label: "Vai al Command Center (dati reali)" }} />
+      <DeployStatusBanner event={deployEvent} />
+      <PushNotificationsPrompt />
 
-      <div className="mb-6 grid grid-cols-2 gap-3 md:grid-cols-4">
-        <StatCard label="Centri attivi" value={String(centers.length)} icon="ti-building-community" iconBg="#E8F6FD" iconColor="#4DAFEF" />
-        <StatCard label="Attività pubblicate" value={String(activities.length)} icon="ti-list-details" iconBg="#E3F9F5" iconColor="#3ECFB2" />
-        <StatCard label="Prenotazioni totali" value={String(bookingsMock.length)} icon="ti-ticket" iconBg="#FFF0EA" iconColor="#FF8C5A" />
-        <StatCard label="Fatturato confermato" value={`€${revenue}`} icon="ti-coin-euro" iconBg="#F0EEFF" iconColor="#8B7CF8" />
-      </div>
-
-      <div className="mb-5 rounded-lg border border-[#E8EBF0] bg-white p-4">
-        <div className="mb-1 flex items-center justify-between">
-          <span className="text-sm font-bold text-ink">Occupazione settimanale — tutta la piattaforma</span>
-          <Link href="/admin/analytics" className="text-xs font-medium text-sky">
-            Analisi completa →
-          </Link>
+      {open.length === 0 ? (
+        <div className="mb-6 rounded-lg border border-dashed border-navy-3 p-6 text-center">
+          <p className="text-sm text-navy-text2">Niente da fare in nessuna coda.</p>
         </div>
-        <OccupancyChart data={occupancy} />
-      </div>
-
-      <div className="grid gap-5 lg:grid-cols-[2fr_1fr]">
-        <div className="rounded-lg border border-[#E8EBF0] bg-white">
-          <div className="flex items-center justify-between border-b border-[#E8EBF0] px-4 py-3">
-            <span className="text-sm font-bold text-ink">Prenotazioni recenti</span>
-            <Link href="/admin/bookings" className="text-xs font-medium text-sky">
-              Vedi tutte
-            </Link>
-          </div>
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="text-left text-xs text-ink-3">
-                <th className="px-4 py-2 font-medium">Bambino</th>
-                <th className="px-4 py-2 font-medium">Attività</th>
-                <th className="px-4 py-2 font-medium">Totale</th>
-                <th className="px-4 py-2 font-medium">Stato</th>
-              </tr>
-            </thead>
-            <tbody>
-              {recent.map((b) => {
-                const activity = activities.find((a) => a.id === b.activityId);
-                return (
-                  <tr key={b.id} className="border-t border-[#F0F2F5]">
-                    <td className="px-4 py-2.5 font-medium text-ink">{b.kidName}</td>
-                    <td className="px-4 py-2.5 text-ink-2">{activity?.name}</td>
-                    <td className="px-4 py-2.5 font-semibold text-ink">€{b.totalAmount}</td>
-                    <td className="px-4 py-2.5">
-                      <StatusBadge status={b.status} />
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
+      ) : (
+        <div className="mb-6 grid gap-3" data-testid="oggi-queues">
+          {open.map((q) => (
+            <section
+              key={q.key}
+              data-queue={q.key}
+              className={`rounded-lg border bg-white px-4 py-3 ${q.key === "bookings-imminent" ? "border-[#E8543E]" : "border-[#E8EBF0]"}`}
+            >
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                <div className="min-w-0">
+                  <Link href={q.href} className="text-sm font-semibold text-ink no-underline hover:underline">
+                    {q.label}
+                  </Link>
+                  <div className="mt-1 flex flex-wrap items-center gap-1.5 text-xs text-ink-2">
+                    <span className={`rounded-full px-2 py-0.5 text-[11px] font-bold ${ACTOR_CLASS[q.actor]}`}>{q.actorLabel}</span>
+                    {q.detail && <span>{q.detail}</span>}
+                  </div>
+                  <div className="mt-1 text-xs text-ink-2">
+                    <span className="font-semibold text-ink">Prossimo passo:</span> {q.nextStep}
+                  </div>
+                </div>
+                <div className="flex flex-shrink-0 items-center gap-2.5">
+                  <span className={`rounded-full px-2 py-0.5 text-[11px] font-bold ${PRIORITY_CLASS[q.priority]}`}>{PRIORITY_LABEL[q.priority]}</span>
+                  <Link
+                    href={q.href}
+                    aria-label={`Apri la coda ${q.label}: ${q.count}`}
+                    className="min-w-[28px] text-right text-lg font-bold text-ink no-underline hover:underline"
+                  >
+                    {q.count}
+                  </Link>
+                </div>
+              </div>
+              {q.preview.length > 0 && (
+                <ul className="mt-2 divide-y divide-[#F0F2F5] border-t border-[#F0F2F5]">
+                  {q.preview.map((it) => {
+                    const age = it.createdAt ? ageLabel(Math.max(0, daysBetween(it.createdAt, today))) : null;
+                    const due = it.dueDate ? dueLabel(daysBetween(today, it.dueDate)) : null;
+                    return (
+                      <li key={it.id}>
+                        <Link href={it.href} className="flex items-center justify-between gap-3 py-1.5 text-xs no-underline hover:bg-bg">
+                          <span className="min-w-0">
+                            <span className="block truncate font-medium text-ink">{it.title}</span>
+                            {it.sub && <span className="block truncate text-ink-2">{it.sub}</span>}
+                          </span>
+                          <span className="flex-shrink-0 text-right text-ink-2">
+                            {due && <span className="block font-semibold text-[#C0392B]">data {due}</span>}
+                            {age && <span className="block">arrivata {age}</span>}
+                          </span>
+                        </Link>
+                      </li>
+                    );
+                  })}
+                </ul>
+              )}
+              <div className="mt-2 flex flex-wrap items-center justify-between gap-2 text-xs">
+                <Link href={q.href} className="font-semibold text-sky">
+                  Apri la coda ({q.count}) →
+                </Link>
+                {q.hiddenDemo > 0 && (
+                  <span className="text-ink-3">
+                    + {q.hiddenDemo} di prova non {q.hiddenDemo === 1 ? "contata" : "contate"}
+                  </span>
+                )}
+              </div>
+            </section>
+          ))}
         </div>
+      )}
 
-        <div className="rounded-lg border border-[#E8EBF0] bg-white">
-          <div className="border-b border-[#E8EBF0] px-4 py-3">
-            <span className="text-sm font-bold text-ink">Centri</span>
-          </div>
-          <div className="divide-y divide-[#F0F2F5]">
-            {centers.map((c) => (
-              <Link
-                key={c.id}
-                href={`/admin/centers/${c.id}`}
-                className="flex items-center gap-3 px-4 py-3 transition-colors hover:bg-bg"
-              >
-                <div
-                  className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full text-lg"
-                  style={{ background: c.gradient }}
-                >
-                  {c.emoji}
-                </div>
-                <div className="min-w-0 flex-1">
-                  <div className="truncate text-sm font-semibold text-ink">{c.name}</div>
-                  <div className="text-xs text-ink-2">{c.city}</div>
-                </div>
-                <i className="ti ti-chevron-right text-ink-3" />
+      {empty.length > 0 && (
+        <div className="mb-6">
+          <h2 className="mb-2 text-[13px] font-bold text-white">Code vuote</h2>
+          <div className="flex flex-wrap gap-2">
+            {empty.map((q) => (
+              <Link key={q.key} href={q.href} className="rounded-full border border-navy-3 px-3 py-1 text-xs text-navy-text2 no-underline hover:text-white">
+                {q.label} · 0
+                {q.hiddenDemo > 0 ? ` (+${q.hiddenDemo} di prova)` : ""}
               </Link>
             ))}
           </div>
         </div>
+      )}
+
+      <div className="flex flex-wrap gap-4 text-xs">
+        <Link href="/admin/beta" className="font-semibold text-white underline underline-offset-2">
+          Beta Famiglie →
+        </Link>
+        <Link href="/admin/famiglie" className="font-semibold text-white underline underline-offset-2">
+          Inviti e registrazioni →
+        </Link>
+        <Link href="/admin/sistema" className="font-semibold text-white underline underline-offset-2">
+          Stato sistema →
+        </Link>
       </div>
     </div>
   );

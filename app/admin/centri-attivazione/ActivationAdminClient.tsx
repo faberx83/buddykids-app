@@ -6,6 +6,7 @@ import { approveActivationAction, requestActivationChangesAction, setActivationC
 import type { ActivationStep, AdminBucket } from "@/lib/centers/activation";
 import type { CenterOnboardingStatus } from "@/lib/onboarding/types";
 import type { ActivationHistoryEntry } from "@/lib/data/center-activation";
+import { blockReason } from "@/lib/admin-ops/activation";
 
 // TRAMA — PORTALE CENTRI V2, FASE 1 (27/10/2026): Admin → Centri da attivare.
 // Filtri (tocca a TRAMA / tocca al centro / attivi / sospesi), elenco con la
@@ -58,16 +59,43 @@ function historyLine(h: ActivationHistoryEntry): string {
   return h.note ? `${to} · ${h.note}` : to;
 }
 
-export default function ActivationAdminClient({ rows }: { rows: AdminActivationRow[] }) {
+export default function ActivationAdminClient({
+  rows,
+  initialFilter,
+  initialSelected,
+}: {
+  rows: AdminActivationRow[];
+  initialFilter?: string;
+  initialSelected?: string;
+}) {
   const router = useRouter();
   const counts = useMemo(() => {
     const c: Record<AdminBucket, number> = { trama: 0, centro: 0, attivi: 0, sospesi: 0 };
     for (const r of rows) c[r.bucket] += 1;
     return c;
   }, [rows]);
-  const [filter, setFilter] = useState<AdminBucket>(counts.trama > 0 ? "trama" : "centro");
+  // ADMIN OPERATIVO (12/11/2026): filtro e centro scelto vivono nell'URL
+  // (?f=trama&c=<id>), così "Oggi" apre la coda già filtrata e tornando
+  // indietro si ritrova lo stesso centro. Senza parametri: come prima.
+  const preselected = rows.find((r) => r.centerId === initialSelected);
+  const validFilter = FILTERS.some((f) => f.key === initialFilter) ? (initialFilter as AdminBucket) : null;
+  const [filter, setFilterState] = useState<AdminBucket>(
+    validFilter ?? preselected?.bucket ?? (counts.trama > 0 ? "trama" : "centro")
+  );
   const shown = rows.filter((r) => r.bucket === filter);
-  const [selectedId, setSelectedId] = useState<string | null>(shown[0]?.centerId ?? null);
+  const [selectedId, setSelectedIdState] = useState<string | null>(preselected?.centerId ?? shown[0]?.centerId ?? null);
+  function syncUrl(f: AdminBucket, c: string | null) {
+    router.replace(`/admin/centri-attivazione?f=${f}${c ? `&c=${c}` : ""}`, { scroll: false });
+  }
+  const setFilter = (f: AdminBucket) => {
+    setFilterState(f);
+    const first = rows.find((r) => r.bucket === f)?.centerId ?? null;
+    syncUrl(f, first);
+  };
+  const setSelectedId = (id: string | null) => {
+    setSelectedIdState(id);
+    syncUrl(filter, id);
+  };
   const selected = rows.find((r) => r.centerId === selectedId) ?? shown[0] ?? null;
   const [note, setNote] = useState("");
   const [busy, setBusy] = useState<string | null>(null);
@@ -122,7 +150,7 @@ export default function ActivationAdminClient({ rows }: { rows: AdminActivationR
               aria-selected={filter === f.key}
               onClick={() => {
                 setFilter(f.key);
-                setSelectedId(rows.find((r) => r.bucket === f.key)?.centerId ?? null);
+                setSelectedIdState(rows.find((r) => r.bucket === f.key)?.centerId ?? null);
                 setMessage(null);
               }}
               className={`min-h-[38px] rounded-full px-3.5 text-[13.5px] font-semibold ${
@@ -182,8 +210,14 @@ export default function ActivationAdminClient({ rows }: { rows: AdminActivationR
                   ))}
                 </span>
                 <span className="self-start rounded-full bg-trama-accent-soft px-2.5 py-0.5 text-[12px] font-bold text-trama-accent-ink">
-                  {STATUS_LABEL[r.status ?? "APPROVED"]}
+                  {r.bucket === "trama" ? "Tocca a TRAMA" : r.bucket === "centro" ? "Tocca al centro" : STATUS_LABEL[r.status ?? "APPROVED"]}
                 </span>
+                {blockReason(r) && <span className="text-[13px] text-ink">{blockReason(r)}</span>}
+                {r.history[0] && (
+                  <span className="text-[12px] text-ink-2">
+                    Ultima azione: {historyLine(r.history[0])} · {when(r.history[0].createdAt)}
+                  </span>
+                )}
               </button>
             );
           })}

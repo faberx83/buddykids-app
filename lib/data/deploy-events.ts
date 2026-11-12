@@ -64,3 +64,27 @@ export async function getLatestDeployEvent(): Promise<DeployEvent | null> {
     createdAt: row.created_at,
   };
 }
+
+// TRAMA — ADMIN OPERATIVO (12/11/2026): "Sposta deploy, branch e commit in
+// 'Stato sistema'". Ultimi N eventi per /admin/sistema, stessa RLS e stessa
+// tolleranza di getLatestDeployEvent (tabella assente → elenco vuoto).
+export async function getRecentDeployEvents(limit = 15): Promise<DeployEvent[]> {
+  if (!isSupabaseConfigured) return [];
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("deploy_events")
+    .select("id, status, branch, commit_sha, test_scope, test_result, message, created_at")
+    .order("created_at", { ascending: false })
+    .limit(limit);
+  if (error || !data) return [];
+  return (data as RawDeployEventRow[]).map((row) => ({
+    id: row.id,
+    status: row.status === "ok" ? "ok" : "ko",
+    branch: row.branch,
+    commitSha: row.commit_sha,
+    testScope: row.test_scope,
+    testResult: row.test_result,
+    message: row.message,
+    createdAt: row.created_at,
+  }));
+}

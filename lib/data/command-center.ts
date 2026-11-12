@@ -4,165 +4,199 @@ import "server-only";
 // command center", ACR-008 "Code domanda e supply", ACR-015 "Unified
 // support queue" — SPRINT_GOVERNANCE.md, DEC-51).
 //
-// Handbook Admin 1.1 (§1 Executive Summary): "L'Admin non è un pannello
-// CRUD: è la Control Room... La capacità Admin deve crescere per code e
-// SLA, senza trasformare l'esperienza Partner in un controllo burocratico."
-// Classificazione ADAPT (FEATURE_PARITY_MATRIX.md riga 21): questo modulo
-// NON introduce nuove tabelle né sostituisce le pagine Admin per dominio
-// esistenti (onboarding, prenotazioni, richieste, centri-lead,
-// certificazioni, segnalazioni BETA, feature flag) — le AGGREGA in
-// un'unica vista prioritizzata, riusando esclusivamente le funzioni di
-// lettura già esistenti di ciascun dominio (reuse-first, CLAUDE.md §2).
-// Le pagine per dominio restano raggiungibili e complete in parallelo
-// (rollback gate esplicito di SPRINT_GOVERNANCE.md): il Command Center è
-// solo un punto di ingresso più rapido con priorità calcolata.
+// TRAMA — ADMIN OPERATIVO (12/11/2026): il Command Center diventa la home
+// Admin "Oggi" (app/admin/page.tsx). Richiesta di Fabrizio: "Ogni contatore
+// apre la coda già filtrata e il conteggio deve corrispondere alle righe
+// risultanti, a parità di filtri. Per ogni coda mostra chi deve agire,
+// anzianità, eventuale scadenza e prossimo passo."
 //
-// Ogni coda qui sotto corrisponde a un dominio già costruito in uno sprint
-// precedente:
-//  - Onboarding centri (Sprint 1)      -> lib/onboarding/data.ts
-//  - Prenotazioni non gestite (Sprint 4) -> lib/data/admin-bookings.ts
-//  - Richieste genitore aperte (Sprint 4) -> lib/data/admin-inquiries.ts
-//  - Segnalazioni centro non iscritto (Sprint 5) -> lib/data/center-leads.ts
-//  - Certificazioni da approvare (pre-TRAMA ONE) -> lib/data/certifications.ts
-//  - Feedback BETA nuovi (Sprint 5 NextGen) -> lib/data/beta-feedback.ts
-//  - Allarmi feature flag (Sprint 6 P1)  -> lib/data/feature-flag-overrides.ts
-//
-// Nessuna nuova query SQL: ogni conteggio deriva da dati già letti da questi
-// moduli, solo riaggregati qui. Nessuna migrazione richiesta per questo file.
+// Cosa è cambiato rispetto allo Sprint 6 (stesse code, stesse etichette):
+//   - ogni coda riceve le RIGHE con la stessa regola e la stessa fonte della
+//     pagina di destinazione, e il numero è items.length (lib/admin-ops/
+//     queues.ts). Prima "Prenotazioni in attesa" contava bookings.
+//     partner_decision = 'pending', che per le prenotazioni a giorni resta
+//     'pending' dopo le risposte: in produzione il 12/11 la card diceva 11,
+//     l'elenco ne aveva 4 da decidere (tutte di prova);
+//   - nuova coda in cima: date imminenti senza risposta;
+//   - onboarding centri → "Centri da attivare" (?f=trama), che è la stessa
+//     macchina a stati (center_onboarding_state) di /admin/one/onboarding;
+//   - candidature dei centri separate dalle segnalazioni delle famiglie, con
+//     la stessa regola "attive" della pagina (suggested, qualified, contacted);
+//   - lista d'attesa da invitare;
+//   - i centri e le attività di prova sono esclusi di default (nota sulla card).
+// Sola lettura: le azioni restano nelle pagine per dominio.
 
-import { listCentersForAdminReview } from "@/lib/onboarding/data";
-import { getBookingsSlaOverview } from "./admin-bookings";
-import { getInquiriesSlaOverview } from "./admin-inquiries";
+import { getCentersForActivation } from "@/lib/data/center-activation";
+import { adminBucket } from "@/lib/centers/activation";
 import { getAllCenterLeadsForAdmin } from "./center-leads";
 import { getAllCertificationsForAdmin } from "./certifications";
 import { getAllBetaFeedbackForAdmin } from "./beta-feedback";
 import { getFeatureFlagOverridesForAdmin } from "./feature-flag-overrides";
-import { computeQueuePriority, compareQueuesByPriority, QueuePriority } from "@/lib/command-center/priority";
+import { getWaitlistForAdmin } from "./waitlist";
+import { getAdminBookings, getAdminInquiries } from "./admin-ops";
+import {
+  DEFAULT_BOOKING_FILTERS,
+  bookingsHref,
+  filterAdminBookings,
+  romeTodayIso,
+  viewAdminBooking,
+  type AdminBookingView,
+} from "@/lib/admin-ops/bookings";
+import { filterInquiries, inquiriesHref, viewInquiry } from "@/lib/admin-ops/inquiries";
+import { buildOggiQueues, type OggiQueue, type QueueInput } from "@/lib/admin-ops/queues";
 
-export interface CommandCenterQueue {
-  key: string;
-  label: string;
-  count: number;
-  priority: QueuePriority;
-  /** Dettaglio breve in linguaggio naturale (es. "più vecchia: 5 giorni") — null se la coda è vuota o non ha un concetto di età. */
-  detail: string | null;
-  href: string;
+export type CommandCenterQueue = OggiQueue;
+
+/** Righe "attive" della pagina Candidature e segnalazioni centri (stessa regola del client). */
+export const ACTIVE_LEAD_STATUSES = ["suggested", "qualified", "contacted"] as const;
+
+function bookingItem(v: AdminBookingView) {
+  return {
+    id: v.row.id,
+    title: `${v.ref} · ${v.row.activityName}`,
+    sub: `${v.row.centerName}${v.nextDate ? ` · ${new Date(v.nextDate + "T00:00:00Z").toLocaleDateString("it-IT", { day: "numeric", month: "short", timeZone: "UTC" })}` : ""}`,
+    createdAt: v.row.createdAt,
+    dueDate: v.nextDate,
+    href: `/admin/bookings/${v.row.id}`,
+  };
 }
 
-function formatOldestDetail(oldestDays: number | null, noun: string): string | null {
-  if (oldestDays === null) return null;
-  const rounded = Math.floor(oldestDays);
-  if (rounded <= 0) return `${noun} più vecchia: oggi`;
-  return `${noun} più vecchia: ${rounded} giorn${rounded === 1 ? "o" : "i"} fa`;
-}
-
-/**
- * Aggrega tutte le code operative Admin già esistenti in un'unica lista
- * prioritizzata (alta -> media -> bassa, poi per conteggio decrescente).
- * Read-only per costruzione: nessuna azione qui, solo link verso le pagine
- * per dominio già esistenti dove l'Admin agisce davvero (coerente con
- * "Separation of duties", Handbook Admin 1.1 §1.2).
- */
 export async function getCommandCenterQueues(): Promise<CommandCenterQueue[]> {
-  const [onboardingCenters, bookingsSla, inquiriesSla, centerLeads, certifications, betaFeedback, featureFlags] =
-    await Promise.all([
-      listCentersForAdminReview(),
-      getBookingsSlaOverview(),
-      getInquiriesSlaOverview(),
-      getAllCenterLeadsForAdmin(),
-      getAllCertificationsForAdmin(),
-      getAllBetaFeedbackForAdmin(),
-      getFeatureFlagOverridesForAdmin(),
-    ]);
+  const today = romeTodayIso();
+  const [activations, centerLeads, certifications, betaFeedback, featureFlags, waitlist, bookings, inquiries] = await Promise.all([
+    getCentersForActivation(),
+    getAllCenterLeadsForAdmin(),
+    getAllCertificationsForAdmin(),
+    getAllBetaFeedbackForAdmin(),
+    getFeatureFlagOverridesForAdmin(),
+    getWaitlistForAdmin(),
+    getAdminBookings(),
+    getAdminInquiries(),
+  ]);
 
-  const onboardingPending = onboardingCenters.filter((c) => c.status === "SUBMITTED");
-  const onboardingOldestDays =
-    onboardingPending.length > 0
-      ? Math.max(
-          ...onboardingPending.map((c) =>
-            c.updatedAt ? (Date.now() - new Date(c.updatedAt).getTime()) / (1000 * 60 * 60 * 24) : 0
-          )
-        )
-      : null;
+  const bookingViews = bookings.map((b) => viewAdminBooking(b, today));
+  const pendingFilter = { ...DEFAULT_BOOKING_FILTERS, stato: "da_rispondere" as const };
+  const imminentFilter = { ...pendingFilter, imminenti: true };
+  const pending = filterAdminBookings(bookingViews, pendingFilter);
+  const pendingAll = filterAdminBookings(bookingViews, { ...pendingFilter, demo: true });
+  const imminent = filterAdminBookings(bookingViews, imminentFilter);
+  const imminentAll = filterAdminBookings(bookingViews, { ...imminentFilter, demo: true });
 
-  const bookingOldestDays =
-    bookingsSla.centers.length > 0
-      ? Math.max(0, ...bookingsSla.centers.map((c) => c.oldestPendingDays ?? 0))
-      : null;
+  const inquiryViews = inquiries.map((r) => viewInquiry(r, today));
+  const openInq = filterInquiries(inquiryViews, { centro: "", stato: "aperta", demo: false });
+  const openInqAll = filterInquiries(inquiryViews, { centro: "", stato: "aperta", demo: true });
 
-  const inquiryOldestDays =
-    inquiriesSla.centers.length > 0 ? Math.max(0, ...inquiriesSla.centers.map((c) => c.oldestOpenDays ?? 0)) : null;
-
-  const leadsPending = centerLeads.filter((l) => l.status === "suggested" || l.status === "qualified");
+  const toVerify = activations.filter((c) => adminBucket(c.facts.status) === "trama");
+  const activeLead = (s: string) => (ACTIVE_LEAD_STATUSES as readonly string[]).includes(s);
+  const candidacies = centerLeads.filter((l) => l.leadType === "self_candidacy" && activeLead(l.status));
+  const referrals = centerLeads.filter((l) => l.leadType !== "self_candidacy" && activeLead(l.status));
   const certsPending = certifications.filter((c) => c.status === "pending");
   const feedbackNew = betaFeedback.filter((f) => f.status === "nuovo");
   const flagAlerts = featureFlags.filter((f) => f.hasAlert);
+  const waitlistNew = waitlist.items.filter((w) => w.status === "nuovo");
 
-  const queues: CommandCenterQueue[] = [
+  const inputs: QueueInput[] = [
     {
-      key: "onboarding",
-      label: "Onboarding centri in revisione",
-      count: onboardingPending.length,
-      priority: computeQueuePriority(onboardingPending.length, onboardingOldestDays),
-      detail: formatOldestDetail(onboardingOldestDays, "Candidatura"),
-      href: "/admin/one/onboarding",
+      key: "bookings-imminent",
+      label: "Date imminenti senza risposta del centro",
+      actor: "centro",
+      href: bookingsHref(imminentFilter),
+      nextStep: "Sentire il centro oggi: la data è entro 7 giorni",
+      items: imminent.map(bookingItem),
+      hiddenDemo: imminentAll.length - imminent.length,
     },
     {
       key: "bookings",
       label: "Prenotazioni in attesa di risposta Partner",
-      count: bookingsSla.platformPendingCount,
-      priority: computeQueuePriority(bookingsSla.platformPendingCount, bookingOldestDays),
-      detail: formatOldestDetail(bookingOldestDays, "Prenotazione"),
-      href: "/admin/bookings",
+      actor: "centro",
+      href: bookingsHref(pendingFilter),
+      nextStep: "Il centro accetta o rifiuta; dopo 2 giorni, sollecitarlo",
+      items: pending.map(bookingItem),
+      hiddenDemo: pendingAll.length - pending.length,
     },
     {
       key: "inquiries",
       label: "Richieste genitore aperte",
-      count: inquiriesSla.platformOpenCount,
-      priority: computeQueuePriority(inquiriesSla.platformOpenCount, inquiryOldestDays),
-      detail: formatOldestDetail(inquiryOldestDays, "Richiesta"),
-      href: "/admin/richieste",
+      actor: "centro",
+      href: inquiriesHref({ stato: "aperta" }),
+      nextStep: "Il centro risponde al messaggio; dopo 2 giorni, sollecitarlo",
+      items: openInq.map((v) => ({
+        id: v.row.id,
+        title: `${v.row.activityName}`,
+        sub: `${v.row.centerName} · ${v.row.parentName}`,
+        createdAt: v.row.createdAt,
+        href: `/admin/richieste?caso=${v.row.id}#caso-${v.row.id}`,
+      })),
+      hiddenDemo: openInqAll.length - openInq.length,
+    },
+    {
+      key: "onboarding",
+      label: "Onboarding centri in revisione",
+      actor: "trama",
+      href: "/admin/centri-attivazione?f=trama",
+      nextStep: "Confermare referente e attività, poi Approva o Chiedi una modifica",
+      items: toVerify.map((c) => ({
+        id: c.centerId,
+        title: c.name,
+        sub: c.city,
+        createdAt: c.facts.submittedAt ?? c.createdAt,
+        href: `/admin/centri-attivazione?f=trama&c=${c.centerId}`,
+      })),
+    },
+    {
+      key: "candidacies",
+      label: "Candidature dei centri da valutare",
+      actor: "trama",
+      href: "/admin/center-leads?tipo=candidature",
+      nextStep: "Telefonare al centro, poi Approva e crea centro o Rifiuta",
+      items: candidacies.map((l) => ({ id: l.id, title: l.suggestedName, sub: l.suggestedLocality ?? null, createdAt: l.createdAt, href: "/admin/center-leads?tipo=candidature" })),
     },
     {
       key: "center-leads",
       label: "Segnalazioni centro non iscritto da qualificare",
-      count: leadsPending.length,
-      // Nessun campo di età per i CenterLead ad oggi (fuori scope Sprint 5) —
-      // priorità basata solo sul conteggio (mai "alta" per età, al più "media").
-      priority: leadsPending.length > 0 ? "media" : "bassa",
-      detail: null,
-      href: "/admin/center-leads",
+      actor: "trama",
+      href: "/admin/center-leads?tipo=segnalazioni",
+      nextStep: "Valutare la segnalazione: qualificare, unire a un doppione o scartare",
+      items: referrals.map((l) => ({ id: l.id, title: l.suggestedName, sub: l.suggestedLocality ?? null, createdAt: l.createdAt, href: "/admin/center-leads?tipo=segnalazioni" })),
     },
     {
       key: "certifications",
       label: "Certificazioni servizio da approvare",
-      count: certsPending.length,
-      priority: certsPending.length > 0 ? "media" : "bassa",
-      detail: null,
+      actor: "trama",
       href: "/admin/certifications",
+      nextStep: "Controllare il documento e approvare o rifiutare",
+      items: certsPending.map((c) => ({ id: c.id, title: c.label, sub: `${c.centerName} · ${c.activityName}`, createdAt: c.createdAt, href: "/admin/certifications" })),
     },
     {
       key: "beta-feedback",
       label: "Segnalazioni BETA nuove",
-      count: feedbackNew.length,
-      priority: feedbackNew.length > 0 ? "media" : "bassa",
-      detail: null,
-      href: "/admin/segnalazioni-beta",
+      actor: "trama",
+      href: "/admin/segnalazioni-beta?stato=nuovo",
+      nextStep: "Leggere e smistare: in gestione, risolta o pipeline",
+      items: feedbackNew.map((f) => ({ id: f.id, title: f.message.slice(0, 70), sub: f.area, createdAt: f.createdAt, href: "/admin/segnalazioni-beta?stato=nuovo" })),
+    },
+    {
+      key: "waitlist",
+      label: "Famiglie in lista d'attesa da invitare",
+      actor: "trama",
+      href: "/admin/lista-attesa",
+      nextStep: "Scrivere l'invito, poi segnarlo come inviato",
+      items: waitlistNew.map((w) => ({ id: w.id, title: w.email, sub: w.comune, createdAt: w.createdAt, href: "/admin/lista-attesa" })),
     },
     {
       key: "feature-flags",
       label: "Allarmi feature flag (override scaduti/in scadenza)",
-      count: flagAlerts.length,
-      // Un override enabled=true scaduto è per definizione un incidente
-      // silenzioso già in corso (DEC-48, TC-N409) — sempre "alta" se > 0,
-      // mai declassato a "media" solo perché è un conteggio piccolo.
-      priority: flagAlerts.length > 0 ? "alta" : "bassa",
-      detail: null,
+      actor: "trama",
       href: "/admin/feature-flags",
+      nextStep: "Rinnovare o chiudere l'override",
+      // Un override enabled=true scaduto è per definizione un incidente
+      // silenzioso già in corso (DEC-48, TC-N409): sempre "alta" se > 0.
+      alwaysHigh: true,
+      items: flagAlerts.map((f) => ({ id: f.flagName, title: f.flagName, createdAt: null, href: "/admin/feature-flags" })),
     },
   ];
 
-  return [...queues].sort(compareQueuesByPriority);
+  return buildOggiQueues(inputs, today);
 }
 
 export interface CommandCenterSummary {
@@ -170,9 +204,13 @@ export interface CommandCenterSummary {
   criticalQueueCount: number;
 }
 
+/**
+ * Totale degli elementi in sospeso. La coda delle date imminenti è un
+ * sottoinsieme delle prenotazioni in attesa: non si somma due volte.
+ */
 export function summarizeCommandCenterQueues(queues: CommandCenterQueue[]): CommandCenterSummary {
   return {
-    totalOpen: queues.reduce((sum, q) => sum + q.count, 0),
+    totalOpen: queues.filter((q) => q.key !== "bookings-imminent").reduce((sum, q) => sum + q.count, 0),
     criticalQueueCount: queues.filter((q) => q.priority === "alta" && q.count > 0).length,
   };
 }

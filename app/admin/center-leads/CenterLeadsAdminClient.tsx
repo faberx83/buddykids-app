@@ -35,9 +35,11 @@ const REWARD_LABEL: Record<CenterLeadRewardStatus, string> = {
 export default function CenterLeadsAdminClient({
   initialLeads,
   centers,
+  initialKind = "candidacy",
 }: {
   initialLeads: CenterLeadItem[];
   centers: { id: string; name: string }[];
+  initialKind?: "candidacy" | "referral" | "all";
 }) {
   const [leads, setLeads] = useState(initialLeads);
   const [busyId, setBusyId] = useState<string | null>(null);
@@ -143,7 +145,7 @@ export default function CenterLeadsAdminClient({
 
   // 27/10/2026 (revisione del processo di candidatura): le candidature dei
   // centri separate dalle segnalazioni delle famiglie, candidature per prime.
-  const [kind, setKind] = useState<"candidacy" | "referral" | "all">("candidacy");
+  const [kind, setKind] = useState<"candidacy" | "referral" | "all">(initialKind);
   const candidacyCount = leads.filter((l) => l.leadType === "self_candidacy").length;
   const shown = leads.filter((l) =>
     kind === "all" ? true : kind === "candidacy" ? l.leadType === "self_candidacy" : l.leadType !== "self_candidacy"

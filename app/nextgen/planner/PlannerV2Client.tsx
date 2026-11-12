@@ -100,6 +100,7 @@ import { markFirstUsefulAction } from "@/lib/nextgen/first-action";
 import ProfileChip from "@/components/nextgen/ProfileChip";
 import PlannerDayFocus from "@/components/nextgen/PlannerDayFocus";
 import { buildKidPassageChains, defaultDayIso } from "@/lib/nextgen/planner-day";
+import KidOverlapNotice from "@/components/nextgen/KidOverlapNotice";
 import PassageAssignBody from "@/components/nextgen/PassageAssignBody";
 import PassageBusyDayBody from "@/components/nextgen/PassageBusyDayBody";
 import PassageWeekBody from "@/components/nextgen/PassageWeekBody";
@@ -169,6 +170,7 @@ export default function PlannerV2Client({
   passagesEnabled = false,
   passagePersonFirst = false,
   passageResponsibilities = [],
+  overlapWarningEnabled = false,
   showDiagnostics = false,
   calendarExportEnabled,
   calendarExportItems,
@@ -217,6 +219,8 @@ export default function PlannerV2Client({
   /** 21/10/2026 — release "planner-giorno" (PLANNER_DAY_VIEW_ENABLED): la Settimana un giorno alla volta. */
   dayViewEnabled?: boolean;
   /** 22/10/2026 — release "chi-accompagna-per-passaggio" (con planner-giorno): chi porta e chi ritira per passaggio. */
+  /** 12/11/2026 — avviso orari sovrapposti nel foglio "Chi accompagna" (PLANNER_OVERLAP_WARNING_ENABLED). */
+  overlapWarningEnabled?: boolean;
   passagesEnabled?: boolean;
   /** 28/10/2026 — Chi accompagna nelle giornate piene (PASSAGE_PERSON_FIRST_ENABLED). */
   passagePersonFirst?: boolean;
@@ -846,6 +850,7 @@ export default function PlannerV2Client({
       )}
       {panel !== null && typeof panel === "object" && "assign" in panel && passages && (
         <PassageAssignSheet
+          overlapWarning={overlapWarningEnabled}
           day={weekShown.days.find((d) => d.dateIso === panel.assign) ?? null}
           kids={visibleKids}
           kidOrder={kidOrder}
@@ -876,6 +881,7 @@ export default function PlannerV2Client({
       )}
       {panel !== null && typeof panel === "object" && "assign" in panel && !passages && (
         <AssignSheet
+          overlapWarning={overlapWarningEnabled}
           day={week.days.find((d) => d.dateIso === panel.assign) ?? null}
           mondayIso={monday}
           kidOrder={kidOrder}
@@ -1814,7 +1820,10 @@ function AssignSheet({
   partnerOnTrama = false,
   onShareWeek,
   ownHistoryEntry = true,
+  overlapWarning = false,
 }: {
+  /** 12/11/2026 — avviso orari sovrapposti prima di assegnare (spento = come prima). */
+  overlapWarning?: boolean;
   day: WeekDayModel | null;
   mondayIso: string;
   kidOrder: string[];
@@ -1963,6 +1972,7 @@ function AssignSheet({
 
   return (
     <Sheet title={`Chi accompagna · ${day.label}`} onClose={close} ownHistoryEntry={ownHistoryEntry}>
+      <KidOverlapNotice entries={day.entries} enabled={overlapWarning} />
       <div className="flex flex-col gap-5">
         {kidsToday.length === 0 && <p className="text-[13.5px] text-ink-2">Nessun passaggio da organizzare in questa giornata.</p>}
         {kidsToday.map((kid) => (
@@ -2072,6 +2082,7 @@ function PassageAssignSheet({
   onClose,
   partnerOnTrama,
   personFirst = false,
+  overlapWarning = false,
   ...body
 }: Omit<Parameters<typeof PassageAssignBody>[0], "day" | "renderOffer"> & {
   day: WeekDayModel | null;
@@ -2079,17 +2090,21 @@ function PassageAssignSheet({
   onShareWeek?: () => void;
   /** 28/10/2026 — prima chi, poi i passaggi (PassageBusyDayBody); spento = come prima. */
   personFirst?: boolean;
+  /** 12/11/2026 — avviso orari sovrapposti prima di assegnare (spento = come prima). */
+  overlapWarning?: boolean;
 }) {
   if (!day) return null;
   if (personFirst) {
     return (
       <Sheet title={`Chi accompagna · ${day.label}`} onClose={onClose} ownHistoryEntry={ownHistoryEntry}>
+        <KidOverlapNotice entries={day.entries} enabled={overlapWarning} />
         <PassageBusyDayBody {...body} day={day} partnerOnTrama={partnerOnTrama} onShareWeek={onShareWeek} onClose={onClose} />
       </Sheet>
     );
   }
   return (
     <Sheet title={`Chi accompagna · ${day.label}`} onClose={onClose} ownHistoryEntry={ownHistoryEntry}>
+      <KidOverlapNotice entries={day.entries} enabled={overlapWarning} />
       <PassageAssignBody
         {...body}
         day={day}

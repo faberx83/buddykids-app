@@ -418,6 +418,17 @@ export const FEATURE_FLAG_REGISTRY = {
     defaultValue: false,
     allowedScopes: ["global", "environment", "user", "role", "cohort"],
   },
+  // TRAMA — AVVISO SOVRAPPOSIZIONI NEL PLANNER (12/11/2026), release "avviso-sovrapposizioni".
+  // Iniziativa: claude/INIZIATIVA_admin_operativo.md (Lotto 1, retest Parent).
+  PLANNER_OVERLAP_WARNING_ENABLED: {
+    name: "PLANNER_OVERLAP_WARNING_ENABLED",
+    description:
+      "Planner, foglio 'Chi accompagna': se nello stesso giorno un figlio ha due impegni confermati con orari che si " +
+      "sovrappongono (prenotazioni accettate e impegni del Planner, scuola esclusa), un avviso in cima al foglio prima di " +
+      "assegnare i passaggi. Solo avviso, nessun blocco. Default false: nessun avviso, come prima.",
+    defaultValue: false,
+    allowedScopes: ["global", "environment", "user", "role", "cohort"],
+  },
   // TRAMA — CORREZIONI DAL TEST UX PARENT (21/10/2026), release "correzioni-test-ux".
   // Iniziativa: claude/INIZIATIVA_parent_ux_fix_2110.md (cicli 1–4).
   PARENT_UX_FIX_ENABLED: {

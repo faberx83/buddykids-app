@@ -158,7 +158,12 @@ test.describe("Candidatura dei centri: flusso (controlli sul sorgente)", () => {
 
   test("CP-18 Admin: candidature dei centri separate dalle segnalazioni delle famiglie, candidature per prime", () => {
     const c = read("app/admin/center-leads/CenterLeadsAdminClient.tsx");
-    expect(c).toContain('useState<"candidacy" | "referral" | "all">("candidacy")');
+    // ADMIN OPERATIVO (12/11/2026): la scheda iniziale arriva dall'URL
+    // (?tipo=candidature|segnalazioni|tutte) per i link di "Oggi"; senza
+    // parametro restano le candidature per prime, come prima.
+    expect(c).toContain('initialKind = "candidacy"');
+    expect(c).toContain('useState<"candidacy" | "referral" | "all">(initialKind)');
+    expect(read("app/admin/center-leads/page.tsx")).toContain(': "candidacy";');
     expect(c).toContain("arrivata da: ${lead.demandContext.campaignSource}");
   });
 });

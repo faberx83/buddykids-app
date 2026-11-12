@@ -225,7 +225,7 @@ export default function BetaInvitesAdminClient({ initialCodes }: { initialCodes:
                   onClick={() => copyLink(row)}
                   className="rounded-md border border-[#E8EBF0] px-3 py-1.5 text-xs font-semibold text-ink"
                 >
-                  {copiedId === row.id ? "Copiato ✓" : "Copia link invito"}
+                  {copiedId === row.id ? "Copiato: ora invialo tu" : "Copia link invito"}
                 </button>
                 <button
                   onClick={() => toggleActive(row)}

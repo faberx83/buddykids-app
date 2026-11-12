@@ -75,13 +75,17 @@ test.describe("Sprint 6 - Walkthrough funnel: computeWalkthroughFunnel (no brows
 });
 
 test.describe("TRAMA ONE — Command Center: funnel Walkthrough (Sprint 6, hardening)", () => {
-  test("TC-N613 - Admin: /admin/one mostra il funnel Walkthrough con colonne Raggiunti/Abbandono", async ({
+  // ADMIN OPERATIVO (12/11/2026): il Command Center è diventato "Oggi"
+  // (/admin) e /admin/one rimanda lì; il funnel del walkthrough si è spostato
+  // in Analisi e crescita (/admin/crescita). Stessa garanzia: titolo, colonne
+  // e paragrafo sui riavvii visibili all'Admin.
+  test("TC-N613 - Admin: /admin/crescita mostra il funnel Walkthrough con colonne Raggiunti/Abbandono", async ({
     page,
   }) => {
     test.skip(!isRealDeployment, "Richiede un deploy con Supabase configurato e l'account platform_admin di test.");
 
     await loginAs(page, "platform_admin");
-    await page.goto("/admin/one");
+    await page.goto("/admin/crescita");
 
     await expect(
       page.getByText('Walkthrough "Benvenuto in TRAMA ONE" — avanzamento e funnel (Sprint 6, hardening)')

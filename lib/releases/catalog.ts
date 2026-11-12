@@ -394,6 +394,21 @@ export const RELEASE_CATALOG: ReleaseCatalogEntry[] = [
     notes: "Creata il 28/10/2026 dal mock approvato da Fabrizio; v2 lo stesso giorno (il bambino al centro; l'opzione 'Io' ora si chiama 'Tu' ovunque). Ripiego: flag spento = foglio per passaggio di prima; le scelte salvate restano.",
   },
   {
+    // TRAMA — AVVISO SOVRAPPOSIZIONI NEL PLANNER (12/11/2026), retest Parent.
+    id: "avviso-sovrapposizioni",
+    label: "TRAMA — Avviso orari sovrapposti nel Planner",
+    shortDescription:
+      "Nel foglio Chi accompagna del Planner, un avviso quando un figlio ha due impegni confermati negli stessi orari, prima di decidere chi accompagna. Non blocca nulla.",
+    targetAudience: ["parent"],
+    featureKeys: ["planner_overlap_warning"],
+    knownLimitations: [
+      "planner_overlap_warning: le voci senza orario o 'tutto il giorno' non si confrontano (l'orario non si sa); le prenotazioni prendono l'orario dell'attività.",
+      "planner_overlap_warning: solo nel Planner V2 (foglio Chi accompagna); la Home non mostra ancora l'avviso.",
+      "planner_overlap_warning: nessuna regola di blocco: è una decisione di prodotto ancora da prendere.",
+    ],
+    notes: "Creata il 12/11/2026. Ripiego: flag spento = nessun avviso, come prima.",
+  },
+  {
     // TRAMA — CORREZIONI DAL TEST UX PARENT (21/10/2026).
     id: "correzioni-test-ux",
     label: "TRAMA — Correzioni dal test UX (21/10)",

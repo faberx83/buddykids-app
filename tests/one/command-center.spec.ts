@@ -73,6 +73,10 @@ test.describe("TRAMA ONE — Command Center Admin (Sprint 6, E08)", () => {
       "Richiede un deploy con Supabase configurato e l'account platform_admin di test."
     );
 
+    // ADMIN OPERATIVO (12/11/2026): il Command Center è la home "Oggi"
+    // (/admin); /admin/one ne resta un alias (stessa pagina). Stesse code,
+    // stesse etichette. Le code vuote compaiono come pastiglie in "Code
+    // vuote" con la stessa etichetta, quindi il testo resta visibile.
     await loginAs(page, "platform_admin");
     await page.goto("/admin/one");
 
@@ -102,17 +106,22 @@ test.describe("TRAMA ONE — Command Center Admin (Sprint 6, E08)", () => {
     // tests/one/walkthrough-funnel.spec.ts), il titolo esatto è cambiato di
     // conseguenza; resta comunque visibile sotto le code del Command
     // Center, invariante verificata da questo stesso test.
+    // ADMIN OPERATIVO: il funnel del walkthrough è in Analisi e crescita,
+    // sempre raggiungibile da "Oggi" tramite il menu (nessuna capability tolta).
+    await page.goto("/admin/crescita");
     await expect(
       page.getByText('Walkthrough "Benvenuto in TRAMA ONE" — avanzamento e funnel (Sprint 6, hardening)')
     ).toBeVisible();
+    await page.goto("/admin");
 
     // Ogni coda deve linkare alla pagina Admin per dominio già esistente
-    // (rollback gate: nessuna pagina viene sostituita).
-    await expect(page.getByRole("link", { name: /Onboarding centri in revisione/ })).toHaveAttribute(
+    // (rollback gate: nessuna pagina viene sostituita). L'onboarding porta
+    // alla coda consolidata "Centri da attivare" già filtrata su "Tocca a TRAMA".
+    await expect(page.getByRole("link", { name: /Onboarding centri in revisione/ }).first()).toHaveAttribute(
       "href",
-      "/admin/one/onboarding"
+      "/admin/centri-attivazione?f=trama"
     );
-    await expect(page.getByRole("link", { name: /Allarmi feature flag/ })).toHaveAttribute(
+    await expect(page.getByRole("link", { name: /Allarmi feature flag/ }).first()).toHaveAttribute(
       "href",
       "/admin/feature-flags"
     );
@@ -126,7 +135,7 @@ test.describe("TRAMA ONE — Command Center Admin (Sprint 6, E08)", () => {
   // (DEC-59), quindi la voce "Command Center" è stata aggiunta al menu
   // Admin (app/admin/layout.tsx), condizionata a TRAMA_ONE_ENABLED come
   // ogni altro accesso a questa route.
-  test("TC-N418 - Admin: la voce 'Command Center' compare nel menu quando il flag è attivo e porta a /admin/one", async ({
+  test("TC-N418 - Admin: la voce 'Oggi' (ex Command Center) compare nel menu e porta alle code", async ({
     page,
   }) => {
     test.skip(
@@ -134,14 +143,18 @@ test.describe("TRAMA ONE — Command Center Admin (Sprint 6, E08)", () => {
       "Richiede un deploy con Supabase configurato e l'account platform_admin di test."
     );
 
+    // ADMIN OPERATIVO (12/11/2026): la voce si chiama "Oggi" ed è la prima del
+    // menu, per ogni Admin (non più solo con TRAMA_ONE_ENABLED). Stessa
+    // garanzia: dal menu si arriva alle code operative.
     await loginAs(page, "platform_admin");
-    await page.goto("/admin");
+    await page.goto("/admin/bookings");
 
-    const navLink = page.getByRole("link", { name: "Command Center" });
-    await expect(navLink).toBeVisible();
-    await expect(navLink).toHaveAttribute("href", "/admin/one");
+    const navLink = page.getByRole("link", { name: "Oggi", exact: true });
+    await expect(navLink.first()).toBeVisible();
+    await expect(navLink.first()).toHaveAttribute("href", "/admin");
 
-    await navLink.click();
-    await expect(page).toHaveURL(/\/admin\/one$/);
+    await navLink.first().click();
+    await expect(page).toHaveURL(/\/admin$/);
+    await expect(page.getByText(/elementi in sospeso su tutte le code/)).toBeVisible();
   });
 });

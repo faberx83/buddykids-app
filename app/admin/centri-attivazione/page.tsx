@@ -8,7 +8,16 @@ import ActivationAdminClient, { type AdminActivationRow } from "./ActivationAdmi
 // (getCentersForActivation): chi non è Admin riceve un elenco vuoto.
 export const dynamic = "force-dynamic";
 
-export default async function CentriAttivazionePage() {
+// ADMIN OPERATIVO (12/11/2026): ?f=trama|centro|attivi|sospesi e ?c=<id>
+// aprono la coda filtrata e il centro scelto (link da "Oggi" e dal centro).
+// È l'unica coda del processo di attivazione: /admin/one/onboarding legge la
+// stessa macchina a stati (center_onboarding_state) e rimanda qui.
+export default async function CentriAttivazionePage({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
+  const sp = await searchParams;
   const centers = await getCentersForActivation();
   const rows: AdminActivationRow[] = centers.map((c) => {
     const view = activationView(c.facts);
@@ -31,5 +40,11 @@ export default async function CentriAttivazionePage() {
       history: c.history.slice(0, 12),
     };
   });
-  return <ActivationAdminClient rows={rows} />;
+  return (
+    <ActivationAdminClient
+      rows={rows}
+      initialFilter={typeof sp.f === "string" ? sp.f : undefined}
+      initialSelected={typeof sp.c === "string" ? sp.c : undefined}
+    />
+  );
 }

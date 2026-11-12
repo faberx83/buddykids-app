@@ -5,6 +5,7 @@
 // passaggio da una settimana all'altra avviene sul client (logica pura in
 // lib/nextgen/planner-week.ts), quindi qui si legge tutto una volta sola.
 
+import { PLANNER_OVERLAP_WARNING_FLAG } from "@/lib/nextgen/kid-overlaps";
 import { getPlannerData } from "@/lib/data/planner";
 import { getMyBookingsForParent } from "@/lib/data/my-bookings";
 import { getKidsForUser } from "@/lib/data/kids";
@@ -96,6 +97,9 @@ export async function loadPlannerV2Props({
   // 28/10/2026 — Chi accompagna nelle giornate piene: prima chi, poi i
   // passaggi; "Come mercoledì scorso" guarda fino a 4 settimane indietro.
   const passagePersonFirst = passagesEnabled ? await flagOn(PASSAGE_PERSON_FIRST_FLAG, userId, role) : false;
+  // 12/11/2026 — avviso orari sovrapposti nel foglio "Chi accompagna"
+  // (retest Parent; lib/nextgen/kid-overlaps.ts). Spento = come prima.
+  const overlapWarningEnabled = await flagOn(PLANNER_OVERLAP_WARNING_FLAG, userId, role);
   const passageResponsibilities = passagesEnabled
     ? await getPassageResponsibilitiesForParent(addDaysIso(todayIso, passagePersonFirst ? -PERSON_FIRST_HISTORY_DAYS : -14))
     : [];
@@ -321,6 +325,7 @@ export async function loadPlannerV2Props({
     passagesEnabled,
     passagePersonFirst,
     passageResponsibilities,
+    overlapWarningEnabled,
     placeSearchEnabled,
     // POLISH V2 (14/10/2026): il dettaglio tecnico degli errori lo vede solo l'Admin piattaforma.
     showDiagnostics: role === "platform_admin",
