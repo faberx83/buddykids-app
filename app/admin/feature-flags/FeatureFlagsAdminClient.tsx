@@ -16,6 +16,8 @@ import {
   batchDeactivateBetaFeaturesAction,
 } from "@/app/actions/feature-flag-overrides";
 import ReleaseAdminSection from "./ReleaseAdminSection";
+import FlagBulkSection from "./FlagBulkSection";
+import type { FlagBulkHistoryRow } from "@/app/actions/flag-bulk";
 import { ReleaseAdminEntry } from "@/lib/data/releases";
 
 // TRAMA ONE Build Sprint 6 (backlog vincolante P1, "Feature flag override
@@ -348,9 +350,11 @@ function FeatureCatalogSection() {
 export default function FeatureFlagsAdminClient({
   initialEntries,
   initialReleases,
+  initialHistory = [],
 }: {
   initialEntries: FeatureFlagAdminEntry[];
   initialReleases: ReleaseAdminEntry[];
+  initialHistory?: FlagBulkHistoryRow[];
 }) {
   const [entries, setEntries] = useState(initialEntries);
   const [busyId, setBusyId] = useState<string | null>(null);
@@ -480,6 +484,9 @@ export default function FeatureFlagsAdminClient({
 
       <ReleaseAdminSection initialReleases={initialReleases} />
 
+      {/* 13/11/2026 — vista Per area / Per release e azioni in blocco (solo Anteprima interna e Pilot). */}
+      <FlagBulkSection entries={entries} releases={initialReleases} history={initialHistory} />
+
       <BatchBetaControls />
       <FeatureCatalogSection />
 
@@ -488,6 +495,7 @@ export default function FeatureFlagsAdminClient({
         return (
           <div
             key={entry.flagName}
+            id={`flag-${entry.flagName}`}
             data-testid={`flag-card-${entry.flagName}`}
             className="mb-5 rounded-lg border border-[#E8EBF0] bg-white"
           >
