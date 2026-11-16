@@ -272,6 +272,34 @@ export default function DiscoveryLeadCard({
   }
 
   // POLISH V2 (14/10/2026): in V2 pulsanti alti 44, navy per l'azione principale.
+  // 16/11/2026, Fabrizio (screenshot): "correggi anche la grafica della modale
+  // che si apre con 'aggiungi al planner'… è ancora vecchio stile". Pannelli
+  // inline (Planner, Proponi invito) in grafica V2: card bianca, testi e campi
+  // alla misura del resto dell'app. Fuori dalla V2 resta lo stile di prima.
+  const panel = v2
+    ? {
+        box: "rounded-2xl border border-trama-line bg-white p-4 shadow-[0_2px_10px_rgba(23,42,77,0.06)]",
+        title: "mb-1 font-poppins text-[16px] font-semibold text-ink",
+        body: "mb-3 text-[13.5px] leading-snug text-ink-2",
+        label: "mb-1.5 text-[13px] font-semibold text-ink",
+        fieldLabel: "mb-1 block text-[12.5px] text-ink-2",
+        input:
+          "min-h-[48px] w-full rounded-[12px] border-[1.5px] border-trama-line bg-white px-3 text-[16px] text-ink outline-none focus:border-trama-primary",
+        chipOn: "min-h-[44px] rounded-full bg-trama-navy px-4 text-[14px] font-semibold text-white",
+        chipOff: "min-h-[44px] rounded-full border-[1.5px] border-trama-line bg-white px-4 text-[14px] font-semibold text-ink",
+        error: "mb-2 text-[13px] font-medium text-trama-orange",
+      }
+    : {
+        box: "rounded-lg border border-[#E8EBF0] bg-bg p-3",
+        title: "mb-1.5 text-[12.5px] font-semibold text-ink",
+        body: "mb-2 text-[11.5px] text-ink-2",
+        label: "mb-1.5 text-[11px] font-semibold text-ink-2",
+        fieldLabel: "mb-1 block text-[10.5px] text-ink-3",
+        input: "w-full rounded-lg border border-[#E8EBF0] px-2.5 py-1.5 text-[12.5px]",
+        chipOn: "rounded-full bg-trama-violet px-3 py-1.5 text-[12px] font-semibold text-white",
+        chipOff: "rounded-full border border-[#E8EBF0] px-3 py-1.5 text-[12px] font-semibold text-ink-2",
+        error: "mb-2 text-[11.5px] font-medium text-trama-orange",
+      };
   const btn = v2
     ? {
         // a tutta larghezza: "Aggiungi al Planner" non va mai a capo; le azioni secondarie sotto
@@ -544,9 +572,9 @@ export default function DiscoveryLeadCard({
             leggero INLINE, stesso pattern di "Proponi invito" sotto: scelta
             bambini (obbligatoria, sezione 3/4) prima della conferma. */}
         {plannerEnabled && (planState === "confirm" || planState === "submitting" || planState === "error") && (
-          <div className="rounded-lg border border-[#E8EBF0] bg-bg p-3">
-            <p className="mb-1.5 text-[12.5px] font-semibold text-ink">Aggiungi al Planner</p>
-            <p className="mb-2 text-[11.5px] text-ink-2">
+          <div data-testid="lead-planner-panel" className={panel.box}>
+            <p className={panel.title}>Aggiungi al Planner</p>
+            <p className={panel.body}>
               Salviamo i dati di questa Scoperta nel tuo Planner (titolo, data, luogo) — resteranno anche se
               cambia il catalogo TRAMA.
             </p>
@@ -557,7 +585,7 @@ export default function DiscoveryLeadCard({
                 inserisce lui, stesso principio del resto della card
                 ("Prezzo non indicato dalla fonte" sopra). */}
             <div className="mb-2.5">
-              <p className="mb-1.5 text-[11px] font-semibold text-ink-2">
+              <p className={panel.label}>
                 {hasKnownDates ? "Quando si svolge" : "Quando si svolge? Non indicato dalla fonte."}
               </p>
               {!hasKnownDates && periodHint && (
@@ -578,7 +606,7 @@ export default function DiscoveryLeadCard({
               )}
               <div className="grid grid-cols-2 gap-2">
                 <label className="block">
-                  <span className="mb-1 block text-[10.5px] text-ink-3">Dal</span>
+                  <span className={panel.fieldLabel}>Dal</span>
                   <input
                     type="date"
                     value={planStartDate}
@@ -592,36 +620,35 @@ export default function DiscoveryLeadCard({
                       // a mano.
                       if (planEndDate && planEndDate < next) setPlanEndDate(next);
                     }}
-                    className="w-full rounded-lg border border-[#E8EBF0] px-2.5 py-1.5 text-[12.5px]"
+                    className={panel.input}
                   />
                 </label>
                 <label className="block">
-                  <span className="mb-1 block text-[10.5px] text-ink-3">Al</span>
+                  <span className={panel.fieldLabel}>Al</span>
                   <input
                     type="date"
                     value={planEndDate}
                     min={planStartDate || undefined}
                     onChange={(e) => setPlanEndDate(e.target.value)}
-                    className="w-full rounded-lg border border-[#E8EBF0] px-2.5 py-1.5 text-[12.5px]"
+                    className={panel.input}
                   />
                 </label>
               </div>
             </div>
-            <div className="mb-2.5 flex flex-wrap gap-1.5">
+            <div className={v2 ? "mb-3 flex flex-wrap gap-2" : "mb-2.5 flex flex-wrap gap-1.5"}>
               {kids.map((kid) => (
                 <button
                   key={kid.id}
                   type="button"
                   onClick={() => togglePlanKid(kid.id)}
-                  className={`rounded-full px-3 py-1.5 text-[12px] font-semibold ${
-                    planKidIds.includes(kid.id) ? "bg-trama-violet text-white" : "border border-[#E8EBF0] text-ink-2"
-                  }`}
+                  aria-pressed={planKidIds.includes(kid.id)}
+                  className={planKidIds.includes(kid.id) ? panel.chipOn : panel.chipOff}
                 >
                   <KidName kid={kid} />
                 </button>
               ))}
             </div>
-            {planError && <p className="mb-2 text-[11.5px] font-medium text-trama-orange">{planError}</p>}
+            {planError && <p className={panel.error}>{planError}</p>}
             <div className="flex gap-2">
               <button
                 type="button"
@@ -651,12 +678,12 @@ export default function DiscoveryLeadCard({
             su TRAMA? Segnalaci il tuo interesse..." + Annulla/Sì proponilo.
             Nessun form, nessuna domanda aggiuntiva. */}
         {invitable && (proposeState === "confirm" || proposeState === "submitting" || proposeState === "error") && (
-          <div className="rounded-lg border border-[#E8EBF0] bg-bg p-3">
-            <p className="mb-1 text-[12.5px] font-semibold text-ink">Vuoi trovare questo centro su TRAMA?</p>
-            <p className="mb-3 text-[11.5px] text-ink-2">
+          <div data-testid="lead-propose-panel" className={panel.box}>
+            <p className={panel.title}>Vuoi trovare questo centro su TRAMA?</p>
+            <p className={panel.body}>
               Segnalaci il tuo interesse: ci aiuterà a capire quali centri invitare sulla piattaforma.
             </p>
-            {proposeError && <p className="mb-2 text-[11.5px] font-medium text-trama-orange">{proposeError}</p>}
+            {proposeError && <p className={panel.error}>{proposeError}</p>}
             <div className="flex gap-2">
               <button
                 type="button"

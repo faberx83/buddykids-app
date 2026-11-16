@@ -49,6 +49,10 @@ import {
   isCoverageModeCompatibleWithFilter,
   sortDiscoveryLeadsForDisplay,
   type DiscoveryLeadRecord,
+  // 16/11/2026: filtro per tipo di proposta.
+  DISCOVERY_KIND_LABELS,
+  leadKind,
+  type DiscoveryLeadKind,
 } from "@/lib/discovery/real-dataset";
 import {
   PRICE_ANY,
@@ -96,6 +100,7 @@ import Nodi, { useNodiEnabled } from "@/components/nextgen/Nodi";
 import { NODI_SIZE } from "@/lib/nextgen/nodi";
 // RC 20/11 (16/11/2026), Lotto B: badge DEMO anche nel popup della mappa.
 import { isDemoActivity, DEMO_BADGE } from "@/lib/nextgen/demo-label";
+
 
 // Leaflet usa `window`, quindi la mappa va caricata solo lato client — stesso
 // pattern già usato in LEGACY (app/(main)/search/SearchClient.tsx) e nel
@@ -438,6 +443,12 @@ export default function SearchDiscoveryClient({
     return Number.isFinite(v) && v > 0 ? v : 500;
   });
   const [zone, setZone] = useState(() => searchParams.get("zona") ?? "");
+  // 16/11/2026, Fabrizio: "ha senso introdurre un filtro ad hoc per le tipologie?".
+  // null = tutto. Le attività dei centri contano come "campus".
+  const [kindFilter, setKindFilter] = useState<DiscoveryLeadKind | null>(() => {
+    const t = searchParams.get("tipo");
+    return t === "campus" || t === "evento" || t === "laboratorio" ? t : null;
+  });
   const [services, setServices] = useState<ServiceFilters>(() => {
     const svcParam = searchParams.get("svc");
     if (!svcParam) return EMPTY_SERVICES;
@@ -675,6 +686,7 @@ export default function SearchDiscoveryClient({
     if (maxAge !== 18) params.set("maxAge", String(maxAge));
     if (maxPrice !== 500) params.set("price", String(maxPrice));
     if (zone) params.set("zona", zone);
+    if (kindFilter) params.set("tipo", kindFilter);
     if (selectedTagIds.length > 0) params.set("tags", selectedTagIds.join(","));
     if (selectedCoverageModes.length > 0) params.set("cov", selectedCoverageModes[0]);
     if (onlyDaySpots) params.set("spot", "1");
@@ -723,6 +735,7 @@ export default function SearchDiscoveryClient({
     maxPrice,
     priceUnit,
     zone,
+    kindFilter,
     selectedTagIds,
     selectedCoverageModes,
     onlyDaySpots,
@@ -767,6 +780,7 @@ export default function SearchDiscoveryClient({
       // lib/discovery/real-dataset.ts per la motivazione completa.
       if (!isDiscoveryLeadCompatibleWithCoverage(lead, { selectedCoverageModes, onlyDaySpots })) return false;
       if (activePeriod && !discoveryOpenIn(lead, activePeriod)) return false;
+      if (kindFilter && leadKind(lead) !== kindFilter) return false;
       return true;
     });
 
@@ -774,6 +788,7 @@ export default function SearchDiscoveryClient({
   }, [
     todayIso,
     familyRegion,
+    kindFilter,
     uxFix,
     temporalRange,
     realDiscoveryLeads,
@@ -832,10 +847,13 @@ export default function SearchDiscoveryClient({
           isDiscoveryLeadCompatibleWithZoneQuery(lead, zone) &&
           isDiscoveryLeadCompatibleWithCategoryTags(lead, selectedTagIds) &&
           matchesSearch([lead.activityTitle, lead.organizerName, lead.shortDescription], query) &&
-          isDiscoveryLeadCompatibleWithCoverage(lead, { selectedCoverageModes, onlyDaySpots })
-      )
+          isDiscoveryLeadCompatibleWithCoverage(lead, { selectedCoverageModes, onlyDaySpots }) &&
+          (!kindFilter || leadKind(lead) === kindFilter)
+      ),
+      todayIso,
+      familyRegion
     );
-  }, [temporalRange, realDiscoveryLeads, minAge, maxAge, maxPrice, priceUnit, zone, selectedTagIds, query, selectedCoverageModes, onlyDaySpots]);
+  }, [temporalRange, realDiscoveryLeads, minAge, maxAge, maxPrice, priceUnit, zone, selectedTagIds, query, selectedCoverageModes, onlyDaySpots, kindFilter, todayIso, familyRegion]);
   const communityToVerify = useMemo(() => {
     if (!temporalRange || communityDiscoveries.length === 0) return [];
     return filterCommunityDiscoveries(communityDiscoveries, {
@@ -1090,11 +1108,14 @@ export default function SearchDiscoveryClient({
     const list = computeSmartMatches(filteredActivities, selectedKids, { geo, uncoveredWeekStart, availabilityByWeek });
     // Correzioni UX (21/10), UX-PARENT-003: le attività con date future
     // prima, quelle concluse o senza date in fondo (ordine stabile).
+    // 16/11/2026: le attività dei centri sono campus e giornate; con un altro
+    // tipo scelto restano fuori.
+    if (kindFilter && kindFilter !== "campus") return [];
     if (!uxFix || !parentUxFix) return list;
     const summaries = parentUxFix.dateSummaries;
     const rank = (m: SmartMatch) => dateStateRank(m.activity.dbId ? summaries[m.activity.dbId] : undefined);
     return list.slice().sort((a, b) => rank(a) - rank(b));
-  }, [filteredActivities, selectedKids, geo, uncoveredWeekStart, availabilityByWeek, uxFix, parentUxFix]);
+  }, [filteredActivities, selectedKids, geo, uncoveredWeekStart, availabilityByWeek, uxFix, parentUxFix, kindFilter]);
 
   // Se c'è una posizione, dividiamo "Nella tua zona" / "Fuori dalla tua
   // zona" invece di escludere del tutto le attività fuori raggio (stesso
@@ -1222,8 +1243,16 @@ export default function SearchDiscoveryClient({
   const activityResultsCount = totalResultsCount;
 
   // Senza geo attiva: un'unica lista intercalata su TUTTI i risultati.
+  // 16/11/2026, Fabrizio: "ed un ordinamento in generale?". Prima le proposte
+  // vere (centri reali intercalati con le Scoperte), poi le attività DEMO.
+  const withDemoLast = (list: SmartMatch[], leads: DiscoveryLeadRecord[], community: typeof compatibleCommunityDiscoveries): DiscoveryResult[] => {
+    const real = list.filter((m) => !isDemoActivity(m.activity));
+    const demo = list.filter((m) => isDemoActivity(m.activity));
+    return [...interleaveDiscoveryResults(real, leads, 2, community), ...interleaveDiscoveryResults(demo, [])];
+  };
   const unifiedResults = useMemo(
-    () => interleaveDiscoveryResults(matches, compatibleRealDiscoveryLeads, 2, compatibleCommunityDiscoveries),
+    () => withDemoLast(matches, compatibleRealDiscoveryLeads, compatibleCommunityDiscoveries),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     [matches, compatibleRealDiscoveryLeads, compatibleCommunityDiscoveries]
   );
 
@@ -1234,9 +1263,10 @@ export default function SearchDiscoveryClient({
   // zona", intercalati con i Partner fuori zona — mai nel gruppo "Nella tua
   // zona", che resta 100% Partner con coordinate verificate entro il
   // raggio scelto. Comportamento documentato nel report ANALYSIS PASS §15.
-  const nearbyResults = useMemo(() => interleaveDiscoveryResults(nearby, []), [nearby]);
+  const nearbyResults = useMemo(() => withDemoLast(nearby, [], []), [nearby]); // eslint-disable-line react-hooks/exhaustive-deps
   const farResults = useMemo(
-    () => interleaveDiscoveryResults(far, compatibleRealDiscoveryLeads, 2, compatibleCommunityDiscoveries),
+    () => withDemoLast(far, compatibleRealDiscoveryLeads, compatibleCommunityDiscoveries),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     [far, compatibleRealDiscoveryLeads, compatibleCommunityDiscoveries]
   );
 
@@ -1415,6 +1445,27 @@ export default function SearchDiscoveryClient({
             </div>
             <ProfileChip />
           </header>
+        )}
+        {/* 16/11/2026: filtro per tipo di proposta (campus, spettacoli, laboratori). */}
+        {v2 && realDiscoveryLeads.length > 0 && (
+          <div role="group" aria-label="Tipo di proposta" data-testid="discover-kind-filter" className="no-scrollbar -mx-5 mb-3 flex gap-2 overflow-x-auto px-5">
+            {([null, "campus", "evento", "laboratorio"] as const).map((k) => {
+              const active = kindFilter === k;
+              return (
+                <button
+                  key={k ?? "tutto"}
+                  type="button"
+                  aria-pressed={active}
+                  onClick={() => setKindFilter(k)}
+                  className={`min-h-[40px] flex-shrink-0 rounded-full px-4 text-[13.5px] font-semibold ${
+                    active ? "bg-trama-navy text-white" : "border-[1.5px] border-trama-line bg-white text-ink"
+                  }`}
+                >
+                  {k ? DISCOVERY_KIND_LABELS[k] : "Tutto"}
+                </button>
+              );
+            })}
+          </div>
         )}
         {/* TRAMA — FINAL BETA CHROME CLEANUP (15/09/2026): ProductStatusChip
             sostituisce NextgenBadge — vedi HomeDashboardClient.tsx per la

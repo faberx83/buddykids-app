@@ -95,6 +95,18 @@ export interface DiscoveryLeadSource {
   url: string;
 }
 
+export type DiscoveryLeadKind = "campus" | "evento" | "laboratorio";
+
+export const DISCOVERY_KIND_LABELS: Record<DiscoveryLeadKind, string> = {
+  campus: "Campus e giornate",
+  evento: "Spettacoli ed eventi",
+  laboratorio: "Laboratori",
+};
+
+export function leadKind(lead: Pick<DiscoveryLeadRecord, "kind">): DiscoveryLeadKind {
+  return lead.kind ?? "campus";
+}
+
 export interface DiscoveryLeadRecord {
   id: string;
   organizerName: string;
@@ -130,6 +142,11 @@ export interface DiscoveryLeadRecord {
   // Facoltativa: assente = non riverificata dopo l'inserimento (la card non
   // mostra la riga "Verificata il …"). Mai una data senza una lettura reale.
   verifiedOn?: string | null;
+  // 16/11/2026, Fabrizio: "ha senso introdurre un filtro ad hoc per le
+  // tipologie?". Tipo di proposta per il filtro di Scopri: "campus" (campus,
+  // centri e giornate), "evento" (spettacoli, villaggi, eventi singoli),
+  // "laboratorio". Assente = "campus" (la maggior parte del dataset).
+  kind?: DiscoveryLeadKind;
   // DISCOVERY UNIFICATION + PROPONI INVITO (21/09/2026) — vedi commento di
   // testa del file per la definizione completa di entrambi i campi.
   invitable: boolean;
@@ -1397,6 +1414,7 @@ const WINTER_DISCOVERY_LEADS: DiscoveryLeadRecord[] = [
   },
   {
     id: "milano-villaggio-delle-meraviglie-2026",
+    kind: "evento",
     organizerName: "Sceniko Events",
     activityTitle: "Villaggio delle Meraviglie",
     shortDescription:
@@ -1473,6 +1491,7 @@ const WINTER_DISCOVERY_LEADS: DiscoveryLeadRecord[] = [
   // la pagina dell'organizzatore è stata letta; il resto resta "da riconfermare".
   {
     id: "milano-colla-canto-di-natale-2026",
+    kind: "evento",
     organizerName: "Compagnia Marionette Carlo Colla & Figli",
     activityTitle: "Il canto di Natale (marionette)",
     shortDescription:
@@ -1508,6 +1527,7 @@ const WINTER_DISCOVERY_LEADS: DiscoveryLeadRecord[] = [
   },
   {
     id: "milano-manzoni-grinch-2026",
+    kind: "evento",
     organizerName: "Teatro Manzoni",
     activityTitle: "La favolosa storia del Grinch che rubò il Natale",
     shortDescription:
@@ -1543,6 +1563,7 @@ const WINTER_DISCOVERY_LEADS: DiscoveryLeadRecord[] = [
   },
   {
     id: "milano-martinitt-burro-marmellata-natale-2026",
+    kind: "evento",
     organizerName: "Teatro Martinitt",
     activityTitle: "Teatro, Burro e Marmellata: le domeniche di Natale",
     shortDescription:
@@ -1583,6 +1604,7 @@ const WINTER_DISCOVERY_LEADS: DiscoveryLeadRecord[] = [
   },
   {
     id: "rho-tfamily-bosco-storie-natale-2026",
+    kind: "evento",
     organizerName: "Teatro Civico Roberto de Silva — Comune di Rho",
     activityTitle: "Il bosco delle storie di Natale (T_Family)",
     shortDescription:
@@ -1624,6 +1646,7 @@ const WINTER_DISCOVERY_LEADS: DiscoveryLeadRecord[] = [
   },
   {
     id: "rho-tfamily-bella-mai-addormentata-2027",
+    kind: "evento",
     organizerName: "Teatro Civico Roberto de Silva — Comune di Rho",
     activityTitle: "La Bella mai addormentata (T_Family)",
     shortDescription:
@@ -1665,6 +1688,7 @@ const WINTER_DISCOVERY_LEADS: DiscoveryLeadRecord[] = [
   },
   {
     id: "milano-casa-note-natale-in-musica-2026",
+    kind: "laboratorio",
     organizerName: "La Casa delle Note APS con il Municipio 4",
     activityTitle: "Natale in Musica: laboratori per bambini",
     shortDescription:
@@ -1740,6 +1764,7 @@ const WINTER_DISCOVERY_LEADS: DiscoveryLeadRecord[] = [
   },
   {
     id: "bari-casa-pulcinella-natale-2026",
+    kind: "evento",
     organizerName: "Teatro Casa di Pulcinella",
     activityTitle: "Teatro per bambini a Natale alla Casa di Pulcinella",
     shortDescription:
@@ -1776,6 +1801,7 @@ const WINTER_DISCOVERY_LEADS: DiscoveryLeadRecord[] = [
   },
   {
     id: "rutigliano-presepi-pastorelle-2026",
+    kind: "evento",
     organizerName: "Comune di Rutigliano",
     activityTitle: "Presepi e pastorelle per le vie del centro",
     shortDescription:
@@ -2159,8 +2185,21 @@ export function sortDiscoveryLeadsForDisplay(
   // GEO DISCOVERY (16/11/2026): prima le Scoperte della regione della famiglia
   // (dal profilo scuola), poi le altre. Nessun filtro: nessuna regione sparisce.
   const far = (l: DiscoveryLeadRecord) => (preferredRegion && l.region !== preferredRegion ? 1 : 0);
+  // 16/11/2026, Fabrizio: "ed un ordinamento in generale?". Con la data di
+  // oggi: prima le date più vicine (un evento in corso conta come oggi),
+  // poi le verificate, poi quelle senza date; a parità, la confidenza.
+  const nextDate = (l: DiscoveryLeadRecord) => {
+    if (!todayIso || (!l.startDate && !l.endDate)) return "9999-12-31";
+    const start = l.startDate ?? l.endDate!;
+    return start < todayIso ? todayIso : start;
+  };
+  const verified = (l: DiscoveryLeadRecord) => (l.verifiedOn ? 0 : 1);
   return [...leads].sort(
-    (a, b) => far(a) - far(b) || ended(a) - ended(b) || CONFIDENCE_RANK[a.confidence] - CONFIDENCE_RANK[b.confidence]
+    (a, b) =>
+      far(a) - far(b) ||
+      ended(a) - ended(b) ||
+      (todayIso ? nextDate(a).localeCompare(nextDate(b)) || verified(a) - verified(b) : 0) ||
+      CONFIDENCE_RANK[a.confidence] - CONFIDENCE_RANK[b.confidence]
   );
 }
 

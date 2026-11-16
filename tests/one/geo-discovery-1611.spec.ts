@@ -151,3 +151,50 @@ test.describe("Catalogo stagionale della beta", () => {
     expect(pul.temporalNote).toMatch(/non a Rutigliano/);
   });
 });
+
+// 16/11/2026, Fabrizio: "ha senso introdurre un filtro ad hoc per le
+// tipologie? ed un ordinamento in generale?… correggi anche la grafica della
+// modale che si apre con 'aggiungi al planner'".
+import { DISCOVERY_KIND_LABELS, leadKind } from "../../lib/discovery/real-dataset";
+
+test.describe("Scopri: tipo di proposta, ordinamento, pannello Planner V2", () => {
+  test("ogni Scoperta del catalogo ha un tipo; eventi e laboratori marcati", () => {
+    expect(Object.keys(DISCOVERY_KIND_LABELS)).toEqual(["campus", "evento", "laboratorio"]);
+    const byId = (id: string) => REAL_DISCOVERY_LEADS.find((l) => l.id === id)!;
+    expect(leadKind(byId("milano-garegnano-winter-camp-2026"))).toBe("campus");
+    expect(leadKind(byId("milano-manzoni-grinch-2026"))).toBe("evento");
+    expect(leadKind(byId("bari-casa-pulcinella-natale-2026"))).toBe("evento");
+    expect(leadKind(byId("milano-casa-note-natale-in-musica-2026"))).toBe("laboratorio");
+  });
+
+  test("ordinamento: prima le date più vicine, in corso = oggi, senza date in fondo", () => {
+    const base = REAL_DISCOVERY_LEADS[0];
+    const mk = (id: string, startDate: string | null, endDate: string | null, verifiedOn?: string) =>
+      ({ ...base, id, region: "Lombardia", confidence: "high", startDate, endDate, verifiedOn }) as DiscoveryLeadRecord;
+    const sorted = sortDiscoveryLeadsForDisplay(
+      [mk("undated", null, null), mk("jan", "2027-01-10", "2027-01-10", "2026-11-16"), mk("ongoing", "2026-11-05", "2026-11-29", "2026-11-16"), mk("dec", "2026-12-12", "2026-12-20")],
+      TODAY,
+      "Lombardia"
+    ).map((l) => l.id);
+    expect(sorted).toEqual(["ongoing", "dec", "jan", "undated"]);
+  });
+
+  test("Scopri: chip Tutto / Campus / Spettacoli / Laboratori, filtro anche su 'Date da verificare', DEMO in fondo", () => {
+    const src = read("app/nextgen/search/SearchDiscoveryClient.tsx");
+    expect(src).toContain('data-testid="discover-kind-filter"');
+    expect(src).toContain("if (kindFilter && leadKind(lead) !== kindFilter) return false;");
+    expect(src).toContain("(!kindFilter || leadKind(lead) === kindFilter)");
+    expect(src).toContain('if (kindFilter && kindFilter !== "campus") return [];');
+    expect(src).toContain("...interleaveDiscoveryResults(real, leads, 2, community), ...interleaveDiscoveryResults(demo, [])");
+    expect(src).toContain('if (kindFilter) params.set("tipo", kindFilter);');
+  });
+
+  test("pannello 'Aggiungi al Planner' in grafica V2 (card bianca, campi 48px, chip 44px)", () => {
+    const src = read("components/nextgen/DiscoveryLeadCard.tsx");
+    expect(src).toContain('data-testid="lead-planner-panel" className={panel.box}');
+    expect(src).toContain('box: "rounded-2xl border border-trama-line bg-white p-4');
+    expect(src).toContain("min-h-[48px] w-full rounded-[12px] border-[1.5px] border-trama-line");
+    expect(src).toContain('chipOn: "min-h-[44px] rounded-full bg-trama-navy');
+    expect(src).toContain("aria-pressed={planKidIds.includes(kid.id)}");
+  });
+});

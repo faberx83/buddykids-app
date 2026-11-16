@@ -170,7 +170,8 @@ test.describe("RADAR esperienza — controlli statici", () => {
     expect(client).toContain("Aggiungi una scoperta");
     expect(client).toContain("<CommunityDiscoveryCard");
     // Nessuna scoperta community in "Nella tua zona" (nessuna coordinata).
-    expect(client).toContain("interleaveDiscoveryResults(nearby, [])");
+    // 16/11/2026: "Nella tua zona" passa da withDemoLast (DEMO in fondo), sempre senza Scoperte né community.
+    expect(client).toContain("withDemoLast(nearby, [], [])");
   });
 
   test("STA-02: card e scheda mostrano sempre il badge community e mai un 'Prenota'", () => {
