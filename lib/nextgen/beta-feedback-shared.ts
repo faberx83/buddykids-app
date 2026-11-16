@@ -8,7 +8,8 @@
 // cosi il codice server-side resta invariato.
 
 export type BetaFeedbackStatus = "nuovo" | "in_gestione" | "risolto";
-export type BetaFeedbackSource = "genitori" | "gestore";
+// Lotto P0 (16/11/2026): "accesso" = dalla pagina di accesso, senza account (migration 62).
+export type BetaFeedbackSource = "genitori" | "gestore" | "accesso";
 // SPRINT 8 — stato della pipeline di lavorazione automatica, SEPARATO da
 // BetaFeedbackStatus sopra (quello resta il dialogo Admin<->genitore).
 // "none" = non ancora confermata per la pipeline; "confirmed" = l'admin ha
@@ -91,6 +92,8 @@ export interface BetaFeedbackItem {
   pipelineStatus: BetaFeedbackPipelineStatus;
   /** null per i feedback storici o finché la migration 40 non è applicata. */
   category?: BetaFeedbackCategory | null;
+  /** Solo segnalazioni "accesso" (migration 62): email lasciata per la risposta. */
+  contactEmail?: string | null;
   clientContext?: (BetaFeedbackClientContext & { role?: string; build?: string }) | null;
 }
 

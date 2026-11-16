@@ -15,6 +15,7 @@ import { toggleFavoriteAction } from "@/app/actions/favorites";
 import { markFirstUsefulAction } from "@/lib/nextgen/first-action";
 import ActivityVisual from "@/components/nextgen/ActivityVisual";
 import { activityPrice, formatEuro } from "@/lib/nextgen/activity-price";
+import { activitySourceBadge } from "@/lib/nextgen/demo-label";
 
 export default function DiscoverResultCard({
   activity,
@@ -38,6 +39,8 @@ export default function DiscoverResultCard({
 }) {
   const [fav, setFav] = useState(initialFavorite ?? false);
   const price = activityPrice(activity);
+  // Lotto P0 (16/11/2026): le attività dei centri di prova portano "DEMO", non "Partner TRAMA".
+  const badge = activitySourceBadge(activity);
   const params = new URLSearchParams();
   params.set("source", "nextgen_search");
   if (correlationId) params.set("cid", correlationId);
@@ -58,7 +61,12 @@ export default function DiscoverResultCard({
       <Link href={href} data-spotlight="activity_card" className="flex flex-col text-ink">
         {/* POLISH V2: foto vera se c'è, altrimenti monogramma + filo TRAMA (niente emoji gigante). */}
         <ActivityVisual title={activity.name} imageUrl={activity.coverImageUrl} className="h-[120px]">
-          <span className="absolute left-3 top-3 rounded-full bg-white px-2.5 py-1 text-[11.5px] font-bold text-[#146B4F]">Partner TRAMA</span>
+          <span
+            data-testid={badge.demo ? "demo-badge" : undefined}
+            className={`absolute left-3 top-3 rounded-full px-2.5 py-1 text-[11.5px] font-bold ${badge.demo ? "bg-[#FEF3C7] text-[#92400E]" : "bg-white text-[#146B4F]"}`}
+          >
+            {badge.label}
+          </span>
         </ActivityVisual>
         <span className="flex flex-col gap-1.5 px-4 pb-[15px] pt-[13px]">
           <span className="text-[16px] font-semibold leading-snug">{activity.name}</span>

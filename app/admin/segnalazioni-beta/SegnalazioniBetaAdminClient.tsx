@@ -25,6 +25,8 @@ const STATUS_LABEL: Record<BetaFeedbackStatus, { label: string; cls: string }> =
 const SOURCE_LABEL: Record<BetaFeedbackSource, { label: string; cls: string }> = {
   genitori: { label: "App genitori", cls: "bg-[#F0EEFF] text-[#6F63C5]" },
   gestore: { label: "App gestori", cls: "bg-[#E8F6FD] text-[#4DAFEF]" },
+  // Lotto P0 (16/11/2026): "Problemi ad accedere?" dalla pagina di accesso, senza account.
+  accesso: { label: "Accesso (senza account)", cls: "bg-[#FEF3C7] text-[#92400E]" },
 };
 
 // SPRINT 8 — "conferma -> lavorazione automatica": pipeline_status è SEPARATO
@@ -227,7 +229,7 @@ export default function SegnalazioniBetaAdminClient({
                 </div>
                 <div className="text-sm text-ink">{item.message}</div>
                 <div className="mt-0.5 text-[11px] text-ink-3">
-                  {item.parentName || "Genitore"} · {item.pagePath} · {new Date(item.createdAt).toLocaleDateString("it-IT")}
+                  {item.appSource === "accesso" ? `Senza account${item.contactEmail ? ` · risposta a ${item.contactEmail}` : " · nessuna email"}` : item.parentName || "Genitore"} · {item.pagePath} · {new Date(item.createdAt).toLocaleDateString("it-IT")}
                 </div>
                 {item.clientContext && (
                   <div className="mt-0.5 text-[10.5px] text-ink-3">

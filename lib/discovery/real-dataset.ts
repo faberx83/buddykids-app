@@ -124,6 +124,11 @@ export interface DiscoveryLeadRecord {
   seasonYear: number;
   confidence: DiscoveryLeadConfidence;
   temporalNote: string;
+  // LOTTO P0 BETA READINESS (16/11/2026): data (YYYY-MM-DD) dell'ultima
+  // verifica sulla fonte ufficiale, fatta a mano da chi aggiorna il dataset.
+  // Facoltativa: assente = non riverificata dopo l'inserimento (la card non
+  // mostra la riga "Verificata il …"). Mai una data senza una lettura reale.
+  verifiedOn?: string | null;
   // DISCOVERY UNIFICATION + PROPONI INVITO (21/09/2026) — vedi commento di
   // testa del file per la definizione completa di entrambi i campi.
   invitable: boolean;
@@ -959,7 +964,8 @@ const WINTER_DISCOVERY_LEADS: DiscoveryLeadRecord[] = [
     sources: [{ label: "Leone XIII Sport — Christmas Camp", url: "https://leonexiiisport.it/camp-2025/christmas-camp/" }],
     seasonYear: 2026,
     confidence: "high",
-    temporalNote: "Edizione 2026 pubblicata dall'organizzatore (letta il 26/10/2026). Età: nati dal 2014 al 2023.",
+    temporalNote: "Edizione 2026 pubblicata dall'organizzatore (letta il 26/10/2026, riletta il 16/11/2026). Età: nati dal 2014 al 2023.",
+    verifiedOn: "2026-11-16",
     invitable: true,
     officialUrlIsOrganizerSite: true,
     lat: null,
@@ -1577,4 +1583,13 @@ export function secondaryLinkLabelForLead(
   lead: Pick<DiscoveryLeadRecord, "officialUrlIsOrganizerSite">
 ): "Sito dell'organizzatore" | "Vedi la fonte" {
   return lead.officialUrlIsOrganizerSite ? "Sito dell'organizzatore" : "Vedi la fonte";
+}
+
+// LOTTO P0 (16/11/2026): "Verificata il 16/11/2026" dalla data ISO. null se
+// assente o malformata (mai una data inventata).
+export function verifiedOnLabel(verifiedOn: string | null | undefined): string | null {
+  if (!verifiedOn) return null;
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(verifiedOn);
+  if (!m) return null;
+  return `Verificata il ${m[3]}/${m[2]}/${m[1]}`;
 }

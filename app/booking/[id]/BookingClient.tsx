@@ -18,6 +18,7 @@ import { calculateDayBookingCost, dayPrice } from "@/lib/day-pricing";
 import type { EligibleInviteDiscount } from "@/lib/data/invites";
 import { markFirstUsefulAction } from "@/lib/nextgen/first-action";
 import { shortfallMessage, spotsShortfall, type SpotsSlot } from "@/lib/capacity/request-check";
+import { isDemoActivity, DEMO_BADGE, DEMO_NOTE } from "@/lib/nextgen/demo-label";
 
 const paymentMethodMap: Record<string, "card" | "apple_pay" | "bank_transfer"> = {
   card: "card",
@@ -730,6 +731,7 @@ export default function BookingClient({
                 ]}
                 kidNames={kidNames}
                 total={total}
+                demo={isDemoActivity(activity)}
               />
             )}
             {!v2 && (
@@ -983,10 +985,13 @@ function RequestSummaryV2({
   lines,
   kidNames,
   total,
+  demo = false,
 }: {
   lines: { label: string; value: string; green?: boolean }[];
   kidNames: string[];
   total: number;
+  /** Lotto P0 (16/11/2026): attività di un centro di prova. */
+  demo?: boolean;
 }) {
   return (
     <div className="mt-6 rounded-2xl border border-trama-line bg-white p-4">
@@ -1009,6 +1014,11 @@ function RequestSummaryV2({
         Nessun pagamento adesso: il centro riceve la richiesta e ti risponde. Se accetta, i dettagli li concordi
         direttamente con lui.
       </p>
+      {demo && (
+        <p data-testid="demo-booking-note" className="mt-2 rounded-xl bg-[#FEF3C7] px-3 py-2 text-[12.5px] leading-snug text-[#92400E]">
+          <strong>{DEMO_BADGE}</strong> · {DEMO_NOTE}
+        </p>
+      )}
     </div>
   );
 }

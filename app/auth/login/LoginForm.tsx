@@ -619,6 +619,20 @@ export default function LoginForm({
               Torna al login
             </button>
           )}
+          {/* Lotto P0 (16/11/2026): segnalazione senza account, nella stessa coda Admin delle segnalazioni beta. */}
+          {!isAdmin && (
+            <Link
+              href="/auth/problemi"
+              data-testid="login-access-problem-link"
+              className={
+                isFamily
+                  ? "mt-1 flex min-h-[44px] w-full items-center justify-center text-[13.5px] font-medium text-ink-2 underline underline-offset-2"
+                  : "mt-3 block w-full text-center text-xs font-medium text-ink-2 underline underline-offset-2"
+              }
+            >
+              Problemi ad accedere?
+            </Link>
+          )}
       </div>
 
       {!isSupabaseConfigured && (

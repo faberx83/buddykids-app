@@ -35,7 +35,7 @@
 
 import { useEffect, useState } from "react";
 import type { DiscoveryLeadRecord } from "@/lib/discovery/real-dataset";
-import { isDiscoveryLeadInvitable, secondaryLinkLabelForLead } from "@/lib/discovery/real-dataset";
+import { isDiscoveryLeadInvitable, secondaryLinkLabelForLead, verifiedOnLabel } from "@/lib/discovery/real-dataset";
 // TRAMA — REAL DISCOVERY PILOT · COMPLETION PASS (17/09/2026), §10
 // "ANALYTICS MINIMUM". Stesso pattern già in uso da
 // components/spotlight/SpotlightOverlay.tsx (Server Action invocata
@@ -399,6 +399,10 @@ export default function DiscoveryLeadCard({
           Informazioni raccolte da fonti pubbliche
           {lead.confidence === "medium" ? " e da riconfermare" : ""}. Verifica disponibilità e dettagli sul
           sito dell&apos;organizzatore.
+          {/* Lotto P0 (16/11/2026): data dell'ultima verifica sulla fonte, se c'è. */}
+          {verifiedOnLabel(lead.verifiedOn) && (
+            <span data-testid="lead-verified-on" className="font-semibold"> {verifiedOnLabel(lead.verifiedOn)} sulla fonte ufficiale.</span>
+          )}
         </p>
 
         {/* TRAMA — EXTERNAL PLANNER ITEMS (sezione 16 del task "CTA

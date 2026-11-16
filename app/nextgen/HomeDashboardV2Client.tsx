@@ -38,6 +38,7 @@ import SeasonSummaryCard, { type SeasonSummaryAction, type SeasonSummaryWelcome 
 import NextgenCheckinCard from "@/components/nextgen/NextgenCheckinCard";
 import MockDataBanner from "@/components/MockDataBanner";
 import { openBetaFeedback } from "@/lib/nextgen/feedback-open";
+import { isDemoActivity, DEMO_BADGE } from "@/lib/nextgen/demo-label";
 
 export interface HomeV2NextClosure {
   startDate: string;
@@ -487,7 +488,12 @@ export default function HomeDashboardV2Client({
                     Per {r.kidName}
                     {r.activity.center ? ` · ${r.activity.center}` : ""}
                   </span>
-                  <span className="mt-0.5 text-[12px] font-semibold text-[#146B4F]">Partner TRAMA</span>
+                  {/* Lotto P0 (16/11/2026): centri di prova con "DEMO", non "Partner TRAMA". */}
+                  {isDemoActivity(r.activity) ? (
+                    <span data-testid="demo-badge" className="mt-0.5 self-start rounded-full bg-[#FEF3C7] px-2 py-[1px] text-[11.5px] font-bold text-[#92400E]">{DEMO_BADGE}</span>
+                  ) : (
+                    <span className="mt-0.5 text-[12px] font-semibold text-[#146B4F]">Partner TRAMA</span>
+                  )}
                 </div>
               </Link>
             ))}

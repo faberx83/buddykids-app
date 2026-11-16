@@ -36,6 +36,8 @@ interface RawRow {
   // Migration 40 (family-first beta pass): assenti finché non è applicata.
   category?: string | null;
   client_context?: Record<string, unknown> | null;
+  // Migration 62 (Lotto P0, 16/11/2026): assente finché non è applicata.
+  contact_email?: string | null;
 }
 
 function firstOf<T>(value: T | T[] | null | undefined): T | null {
@@ -59,6 +61,7 @@ function mapRow(row: RawRow): BetaFeedbackItem {
     pipelineStatus: row.pipeline_status,
     category: isBetaFeedbackCategory(row.category) ? row.category : null,
     clientContext: row.client_context ?? null,
+    contactEmail: row.contact_email ?? null,
   };
 }
 
@@ -91,12 +94,22 @@ export async function getAllBetaFeedbackForAdmin(): Promise<BetaFeedbackItem[]> 
 
   const supabase = await createClient();
   const baseColumns = "id, app_source, area, page_path, message, status, admin_note, created_at, pipeline_status, profiles ( full_name )";
-  const attempt = await supabase
+  // Migration 62 (segnalazioni "accesso" con email di contatto): se manca,
+  // stessa lista di prima senza email.
+  const withContact = await supabase
     .from("beta_feedback")
-    .select(`${baseColumns}, category, client_context`)
+    .select(`${baseColumns}, category, client_context, contact_email`)
     .order("created_at", { ascending: false });
-  let data = attempt.data as unknown as RawRow[] | null;
-  let error = attempt.error;
+  let data = withContact.data as unknown as RawRow[] | null;
+  let error = withContact.error;
+  if (error && isMissingColumnError(error)) {
+    const attempt = await supabase
+      .from("beta_feedback")
+      .select(`${baseColumns}, category, client_context`)
+      .order("created_at", { ascending: false });
+    data = attempt.data as unknown as RawRow[] | null;
+    error = attempt.error;
+  }
 
   // Migration 40 non ancora applicata: stessa lista di prima, senza categoria.
   if (error && isMissingColumnError(error)) {

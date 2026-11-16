@@ -27,6 +27,7 @@ import ContactCenterButton from "@/components/ContactCenterButton";
 import { dayPrice } from "@/lib/day-pricing";
 import { activityPrice, formatEuro } from "@/lib/nextgen/activity-price";
 import { navigationDestination, placeLine, type ActivityService } from "@/lib/nextgen/activity-detail-v2";
+import { isDemoActivity, DEMO_BADGE, DEMO_NOTE } from "@/lib/nextgen/demo-label";
 import { longDateIt, shortRangeIt, unavailableCtaLabel, type ActivityDateSummary } from "@/lib/nextgen/parent-ux-fix";
 
 const WEEKDAY_SHORT = ["Lun", "Mar", "Mer", "Gio", "Ven", "Sab", "Dom"];
@@ -203,6 +204,13 @@ export default function ActivityDetailV2({
               <TramaThread className="mt-1.5" />
             </div>
             <p className="text-[14px] text-ink-2">{placeLine(activity)}</p>
+            {/* Lotto P0 (16/11/2026): un'attività di un centro di prova non è un'offerta reale. */}
+            {isDemoActivity(activity) && (
+              <p data-testid="demo-notice" className="flex items-start gap-2 rounded-2xl bg-[#FEF3C7] px-3.5 py-2.5 text-[13px] leading-snug text-[#92400E]">
+                <span className="rounded-full bg-white px-2 py-[1px] text-[11px] font-bold">{DEMO_BADGE}</span>
+                <span>{DEMO_NOTE}</span>
+              </p>
+            )}
             {/* Correzioni dal test UX (21/10/2026), UX-PARENT-012: dove si
                 va davvero. "Apri mappa" con l'indirizzo o le coordinate; se
                 l'indirizzo non ha un numero civico lo diciamo. */}
