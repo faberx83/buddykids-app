@@ -146,7 +146,7 @@ export default async function HomePage({
           <span className="text-sm text-ink-3">Cerca attività...</span>
           <div className="ml-auto flex items-center gap-1 whitespace-nowrap rounded-full bg-sky-light px-2.5 py-1 text-xs font-medium text-sky">
             <i className="ti ti-map-pin text-[11px]" />
-            Milano
+            La tua zona
           </div>
         </Link>
       </div>

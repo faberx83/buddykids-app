@@ -27,7 +27,7 @@ import { resolveFeatureFlagVisibility } from "@/lib/feature-flags/resolve";
 import { anyResolvedViaInternalPreview } from "@/lib/feature-flags/internal-preview";
 import { generateCorrelationId } from "@/lib/telemetry/correlation";
 import { persistProductEvent } from "@/lib/telemetry/events";
-import { REAL_DISCOVERY_LEADS, type DiscoveryLeadRecord } from "@/lib/discovery/real-dataset";
+import { REAL_DISCOVERY_LEADS, discoveryRegionFor, type DiscoveryLeadRecord } from "@/lib/discovery/real-dataset";
 // TRAMA — EXTERNAL PLANNER ITEMS (sezioni 7/15/16 del task): "Aggiungi al
 // Planner" da una Scoperta TRAMA. Stesso pattern Dark Release delle altre
 // capability gated di questa pagina — flag risolto server-side, dataset
@@ -44,7 +44,7 @@ import { getActivityOpenRanges, getActivityDateRows, getTestFixtureCenterIds } f
 import { getInactiveCenterIdsForViewer, unionCenterIds } from "@/lib/data/center-activation";
 // TRAMA — CORREZIONI DAL TEST UX (21/10/2026): date vere su card e periodi.
 import { PARENT_UX_FIX_FLAG, summarizeActivityDates, withoutTestFixtures, type ActivityDateSummary } from "@/lib/nextgen/parent-ux-fix";
-import { getKidClosureIntervalsForParent } from "@/lib/data/school-calendar";
+import { getKidClosureIntervalsForParent, getKidSchoolProfilesForParent } from "@/lib/data/school-calendar";
 import { listClosurePeriods } from "@/lib/nextgen/holiday-summary";
 import { buildDiscoverPeriods, type DiscoverPeriod } from "@/lib/nextgen/discover-v2";
 import { getSeasonWeekRanges, isoDate } from "@/lib/season-weeks";
@@ -100,6 +100,7 @@ export default async function NextgenSearchPage() {
   // in produzione (Calendar Export, School Calendar Intelligence, Global
   // Action Progress).
   let realDiscoveryLeads: DiscoveryLeadRecord[] = [];
+  let familyRegion: string | null = null;
   let realDiscoveryBadgeVisible = false;
   // TRAMA — EXTERNAL PLANNER ITEMS: stessi 2 default sicuri delle altre
   // capability gated di questa pagina.
@@ -231,6 +232,12 @@ export default async function NextgenSearchPage() {
       // settimana selezionata resta lato client (SearchDiscoveryClient già
       // legge il query param "week", stesso pattern di §14 del report).
       realDiscoveryLeads = REAL_DISCOVERY_LEADS;
+      // GEO DISCOVERY (16/11/2026): la regione del profilo scuola mette prima le
+      // Scoperte vicine (Milano o Rutigliano), senza nascondere le altre.
+      if (user && kids.length > 0) {
+        const profiles = await getKidSchoolProfilesForParent(kids.map((k) => k.id)).catch(() => ({}) as Record<string, { region: string }>);
+        familyRegion = discoveryRegionFor(Object.values(profiles).map((p) => p.region));
+      }
     }
     externalPlannerItemsEnabled = externalPlannerItemsDetail.enabled;
     if (externalPlannerItemsEnabled) {
@@ -264,6 +271,7 @@ export default async function NextgenSearchPage() {
       todayIso={todayIso}
       favoriteActivityIds={Array.from(favoriteActivityIds)}
       realDiscoveryLeads={realDiscoveryLeads}
+      familyRegion={familyRegion}
       realDiscoveryBadgeVisible={realDiscoveryBadgeVisible}
       curatedFavoriteLeadIds={Array.from(curatedFavoriteLeadIds)}
       externalPlannerItemsEnabled={externalPlannerItemsEnabled}

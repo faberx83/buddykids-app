@@ -55,8 +55,8 @@ const FAQ = [
     a: "Vedete solo quello che serve per gestire la richiesta e la presenza. I dati restano su TRAMA e non si usano per altro.",
   },
   {
-    q: "Funziona solo a Milano?",
-    a: "Il pilota parte da Milano e dintorni. Se siete altrove candidatevi lo stesso: vi scriviamo quando arriviamo nella vostra zona.",
+    q: "Funziona solo in alcune città?",
+    a: "Il pilota parte da alcune aree selezionate e crescerà man mano. Se siete altrove candidatevi lo stesso: vi scriviamo quando arriviamo nella vostra zona.",
   },
 ];
 
@@ -79,7 +79,7 @@ export default function CentriView({ candidatiHref, contactEmail }: { candidatiH
       <main>
         <section className="mx-auto flex max-w-5xl flex-col gap-5 px-5 pb-14 pt-8 md:pt-16">
           <span className="self-start rounded-full bg-trama-accent-soft px-3 py-1 text-[12.5px] font-bold text-trama-accent-ink">
-            Per i centri · pilota a Milano
+            Per i centri · pilota in aree selezionate
           </span>
           <h1 className="max-w-[18ch] text-balance font-poppins text-[clamp(32px,8vw,50px)] font-semibold leading-[1.05] tracking-[-0.02em] text-trama-navy">
             Le famiglie organizzano la settimana su TRAMA. Fatevi trovare quando serve.
@@ -148,7 +148,7 @@ export default function CentriView({ candidatiHref, contactEmail }: { candidatiH
               </h2>
               <p className="max-w-[56ch] text-[15px] leading-relaxed text-white/80">
                 In cambio vi chiediamo qualche parere su cosa migliorare: le prossime funzioni del portale le decidiamo con voi. Posti
-                limitati a Milano e dintorni.
+                limitati alle aree del pilota.
               </p>
             </div>
             <Link

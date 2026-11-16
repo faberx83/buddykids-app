@@ -100,7 +100,7 @@ export default function BenvenutoView({
           <ol className="mt-6 grid gap-4 md:grid-cols-3">
             {[
               { t: "Chiedi un invito", d: "Ci lasci la tua email qui sotto: bastano dieci secondi." },
-              { t: "Ti scriviamo", d: "Stiamo aprendo TRAMA a poche famiglie alla volta: appena c'è posto ricevi il link per entrare." },
+              { t: "Ti scriviamo", d: "Stiamo iniziando da alcune aree selezionate, con poche famiglie alla volta: appena c'è posto ricevi il link per entrare." },
               { t: "Organizzi la settimana", d: "Aggiungi i figli e i loro impegni, poi decidi con chi ti aiuta chi porta e chi ritira." },
             ].map((step, i) => (
               <li key={step.t} className="flex flex-col gap-2 rounded-[20px] border border-trama-line bg-white p-5">
@@ -113,8 +113,9 @@ export default function BenvenutoView({
             ))}
           </ol>
           <p className="mt-5 max-w-[70ch] text-[14.5px] leading-relaxed text-ink-2">
-            TRAMA è gratuita durante la beta. In TRAMA non si paga nulla: le iscrizioni alle attività le concordi direttamente con il
-            centro.
+            TRAMA sta muovendo i primi passi con un piccolo gruppo di famiglie in alcune aree pilota: le attività disponibili si
+            arricchiranno man mano. È gratuita durante la beta. In TRAMA non si paga nulla: le iscrizioni alle attività le concordi
+            direttamente con il centro.
           </p>
         </section>
 
@@ -127,8 +128,9 @@ export default function BenvenutoView({
               </h2>
               <TramaThread />
               <p className="max-w-[40ch] text-[16px] leading-relaxed text-ink-2">
-                Lasciaci la tua email: ti mandiamo l&apos;invito appena c&apos;è posto. Se hai già ricevuto un link d&apos;invito, aprilo
-                dal telefono e crea il tuo account da lì.
+                TRAMA è in beta privata in alcune aree selezionate. Lasciaci la tua email: ti mandiamo l&apos;invito appena c&apos;è
+                posto, anche quando apriamo nella tua zona. Se hai già ricevuto un link d&apos;invito, aprilo dal telefono e crea il tuo
+                account da lì.
               </p>
             </div>
             <WaitlistForm source={source} />

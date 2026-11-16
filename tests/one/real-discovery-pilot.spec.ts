@@ -429,9 +429,12 @@ test.describe("DISCOVERY UNIFICATION — classificazione invitable (dataset, §8
   // (REAL_DISCOVERY_LEADS = estivo + Natale, vedi WD-01…): stesso controllo sui 13 estivi.
   test("RD-53: esattamente 7 record invitabili e 6 source-only su 13 totali (dataset estivo)", () => {
     const invitableCount = SUMMER_DISCOVERY_LEADS.filter((l) => isDiscoveryLeadInvitable(l)).length;
+    // GEO DISCOVERY (16/11/2026): +1 source-only, la Colonia estiva comunale di
+    // Rutigliano (servizio del Comune, non un centro da invitare).
     expect(invitableCount).toBe(7);
-    expect(SUMMER_DISCOVERY_LEADS.length - invitableCount).toBe(6);
-    expect(SUMMER_DISCOVERY_LEADS.length).toBe(13);
+    expect(SUMMER_DISCOVERY_LEADS.length - invitableCount).toBe(7);
+    expect(SUMMER_DISCOVERY_LEADS.length).toBe(14);
+    expect(isDiscoveryLeadInvitable(SUMMER_DISCOVERY_LEADS.find((l) => l.id === "rutigliano-colonia-estiva-comunale")!)).toBe(false);
   });
 
   test("RD-54: i 7 id attesi sono invitabili", () => {
@@ -1650,7 +1653,12 @@ test.describe("SCOPERTE DI NATALE — primo giro (26/10/2026)", () => {
       }
     }
     const dated = WINTER_DISCOVERY_LEADS.filter((l) => l.startDate);
-    expect(dated.map((l) => l.id)).toEqual(["milano-leone-xiii-christmas-camp-2026"]);
+    // GEO DISCOVERY (16/11/2026): date strutturate solo dove l'organizzatore ha
+    // pubblicato l'edizione 2026/27 (letta il 16/11); il resto resta senza date.
+    expect(dated.map((l) => l.id).sort()).toEqual(
+      ["milano-chiaravalle-campus-natale-2026", "milano-garegnano-winter-camp-2026", "milano-leone-xiii-christmas-camp-2026"].sort()
+    );
+    for (const l of dated) expect(l.verifiedOn, l.id).toBe("2026-11-16");
   });
 
   test("WD-04: nessuna coordinata inventata e nessun prezzo a settimana per campus a giornata", () => {
@@ -1663,7 +1671,8 @@ test.describe("SCOPERTE DI NATALE — primo giro (26/10/2026)", () => {
       expect(l.priceUnit === null || l.priceUnit === "per_settimana" || l.priceUnit === "al_giorno", l.id).toBe(true);
       if (l.price !== null) expect(l.priceUnit, l.id).not.toBeNull();
       if (l.bookingMode === "daily") expect(l.priceUnit, l.id).not.toBe("per_settimana");
-      if (l.price !== null) expect(l.id).toBe("milano-leone-xiii-christmas-camp-2026");
+      // GEO DISCOVERY (16/11/2026): prezzo strutturato solo dove la fonte lo dà al giorno.
+      if (l.price !== null) expect(["milano-leone-xiii-christmas-camp-2026", "milano-chiaravalle-campus-natale-2026"]).toContain(l.id);
       expect(l.shortDescription.length, l.id).toBeLessThanOrEqual(280);
     }
   });

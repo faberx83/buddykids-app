@@ -281,6 +281,7 @@ export default function SearchDiscoveryClient({
   todayIso,
   favoriteActivityIds = [],
   realDiscoveryLeads = [],
+  familyRegion = null,
   realDiscoveryBadgeVisible = false,
   curatedFavoriteLeadIds = [],
   contextualAnnouncement = null,
@@ -351,6 +352,8 @@ export default function SearchDiscoveryClient({
   // delle settimane per-attività coi dati seed di demo). Calcolato
   // server-side in page.tsx, stesso pattern di app/nextgen/planner/page.tsx.
   todayIso: string;
+  /** GEO DISCOVERY (16/11/2026): regione del profilo scuola; prima le Scoperte di quella regione. */
+  familyRegion?: string | null;
   // TRAMA — SCOPRI V2 (14/10/2026): null = Scopri attuale, invariato. Con
   // DISCOVER_V2_ENABLED: "Per quando" (periodi + intervalli aperti per
   // attività) e la presentazione delle tavole V2.
@@ -767,9 +770,10 @@ export default function SearchDiscoveryClient({
       return true;
     });
 
-    return sortDiscoveryLeadsForDisplay(filtered, todayIso);
+    return sortDiscoveryLeadsForDisplay(filtered, todayIso, familyRegion);
   }, [
     todayIso,
+    familyRegion,
     uxFix,
     temporalRange,
     realDiscoveryLeads,
@@ -1383,6 +1387,10 @@ export default function SearchDiscoveryClient({
             <div className="flex flex-1 flex-col">
               <h1 className="font-poppins text-[24px] font-semibold leading-tight text-ink">Scopri</h1>
               <TramaThread className="mt-1.5" />
+              {/* GEO DISCOVERY (16/11/2026): niente promessa di catalogo completo, niente città unica. */}
+              <p data-testid="scopri-intro" className="mt-1.5 text-[13px] leading-snug text-ink-2">
+                Le attività della tua zona: in questa fase il catalogo si aggiorna man mano.
+              </p>
             </div>
             <div role="tablist" aria-label="Vista" className="grid grid-cols-2 gap-[3px] rounded-full bg-[#EEF0F4] p-[3px]">
               {(

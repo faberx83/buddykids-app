@@ -863,6 +863,48 @@ export const SUMMER_DISCOVERY_LEADS: DiscoveryLeadRecord[] = [
     geoPrecision: null,
     bookingMode: null,
   },
+  // Ricognizione del 16/11/2026: programma 2027 non ancora pubblicato,
+  // l'edizione 2026 resta come riferimento (Scopri: "Date 2027 da verificare").
+  {
+    id: "rutigliano-colonia-estiva-comunale",
+    organizerName: "Comune di Rutigliano (gestione Cooperativa Sociale Soleluna nel 2026)",
+    activityTitle: "Colonia estiva comunale",
+    shortDescription:
+      "Colonia estiva del Comune per bambini residenti dai 5 ai 12 anni, con attività all'aperto e uscite in piscina o al mare. Nel 2026: dal 15/6 al 10/7, lun–ven 8:30–13:30, 50 posti in graduatoria ISEE, domanda online entro il 3 giugno. Edizione 2027 non ancora pubblicata.",
+    category: "educativo",
+    ageMin: 5,
+    ageMax: 12,
+    locationName: null,
+    address: null,
+    comune: "Rutigliano",
+    region: "Puglia",
+    startDate: null,
+    endDate: null,
+    weeklyStructure: "Nel 2026: 15 giugno – 10 luglio, lunedì–venerdì 8:30–13:30, due turni da 25 bambini. Solo residenti a Rutigliano.",
+    price: null,
+    priceUnit: null,
+    registrationUrl: null,
+    officialUrl:
+      "https://www.comune.rutigliano.ba.it/novita/colonia-estiva-comunale-scintille-di-stupore-un-viaggio-educativo-tra-scoperta-gioco-e-meraviglia/",
+    contact: null,
+    image: null,
+    sourceType: "primary_official",
+    sources: [
+      {
+        label: "Comune di Rutigliano, 26/05/2026 — Colonia estiva comunale 2026",
+        url: "https://www.comune.rutigliano.ba.it/novita/colonia-estiva-comunale-scintille-di-stupore-un-viaggio-educativo-tra-scoperta-gioco-e-meraviglia/",
+      },
+    ],
+    seasonYear: 2027,
+    confidence: "medium",
+    temporalNote: "Edizione 2026 letta sul sito del Comune il 16/11/2026. Il programma 2027 non è ancora uscito: di solito il bando è a fine maggio.",
+    invitable: false,
+    officialUrlIsOrganizerSite: true,
+    lat: null,
+    lng: null,
+    geoPrecision: null,
+    bookingMode: "weekly",
+  },
 ];
 
 // ════════════════════════════════════════════════════════════════════════
@@ -1051,9 +1093,9 @@ const WINTER_DISCOVERY_LEADS: DiscoveryLeadRecord[] = [
   {
     id: "rho-campus-invernale-comune-lafucina",
     organizerName: "Cooperativa Sociale LaFucina per il Comune di Rho",
-    activityTitle: "Campus invernale di Rho",
+    activityTitle: "Campus invernale di Rho 2026/27",
     shortDescription:
-      "Campus delle vacanze di Natale del Comune di Rho, gestito dalla cooperativa LaFucina. Nel 2025: dal 22/12 al 5/1 nei giorni feriali, 8–16, 20 € al giorno (18 € dal quarto); iscrizioni online a inizio novembre. Date 2026 non ancora uscite.",
+      "Campus di Natale del Comune di Rho (coop. LaFucina), solo per residenti. Edizione 2026/27 secondo la stampa: 23/12–5/1 nei feriali, 8–16, 20 € al giorno (18 € dal quarto); iscrizioni chiuse il 15/11. Date non ancora uscite sul sito del Comune.",
     category: "educativo",
     ageMin: 3,
     ageMax: 10,
@@ -1063,23 +1105,28 @@ const WINTER_DISCOVERY_LEADS: DiscoveryLeadRecord[] = [
     region: "Lombardia",
     startDate: null,
     endDate: null,
-    weeklyStructure: "Nel 2025: 22, 23, 24, 29, 30, 31 dicembre, 2 e 5 gennaio, 8:00–16:00 (fino alle 18 su richiesta)",
+    weeklyStructure: "23, 24, 28, 29, 30, 31 dicembre 2026, 4 e 5 gennaio 2027, 8:00–16:00 (fino alle 18 con almeno 25 richieste). Solo residenti a Rho.",
     price: null,
     priceUnit: null,
     registrationUrl: null,
-    officialUrl: "https://www.legnanonews.com/aree-geografiche/rhodense/2025/10/23/campus-invernale-di-rho-un-tempo-di-gioco-e-condivisione-nelle-vacanza-di-natale/1371484/",
-    contact: "cooperativalafucina@gmail.com",
+    officialUrl: "https://www.mi-lorenteggio.com/2026/10/21/campus-invernale-2025-2026-dal-3-novembre-aprono-le-iscrizioni/",
+    contact: "cooperativalafucina@gmail.com · 02 9302697",
     image: null,
     sourceType: "secondary_corroborated",
     sources: [
       {
-        label: "LegnanoNews, 23/10/2025 — Campus invernale di Rho",
+        label: "MI-Lorenteggio, 21/10/2026 — Campus invernale 2026/2027 del Comune di Rho",
+        url: "https://www.mi-lorenteggio.com/2026/10/21/campus-invernale-2025-2026-dal-3-novembre-aprono-le-iscrizioni/",
+      },
+      {
+        label: "LegnanoNews, 23/10/2025 — edizione 2025",
         url: "https://www.legnanonews.com/aree-geografiche/rhodense/2025/10/23/campus-invernale-di-rho-un-tempo-di-gioco-e-condivisione-nelle-vacanza-di-natale/1371484/",
       },
     ],
     seasonYear: 2026,
     confidence: "medium",
-    temporalNote: NATALE_2026_NOTE,
+    temporalNote:
+      "Edizione 2026/27 da un articolo di stampa locale del 21/10/2026 (letto il 16/11/2026), non dalla pagina del Comune. Iscrizioni chiuse il 15/11/2026: utile come riferimento e per il prossimo anno.",
     invitable: true,
     officialUrlIsOrganizerSite: false,
     lat: null,
@@ -1131,19 +1178,44 @@ const WINTER_DISCOVERY_LEADS: DiscoveryLeadRecord[] = [
     officialUrl: "https://www.spaziopositivoimpresasociale.it/pre-iscrizione-campus-natale-2025/",
     officialUrlIsOrganizerSite: true,
   }),
-  natale2025({
+  {
     id: "milano-idea-parco-nord-campus-natale",
-    organizerName: "Associazione IDEA",
+    organizerName: "Associazione Culturale IDEA ETS",
     activityTitle: "Campus di Natale al Parco Nord",
-    shortDescription: "Campus all'aperto al Parco Nord (\"Campioni tra i ghiacci\" nel 2025). Nel 2025: 22, 23, 24, 29, 30, 31 dicembre, 8:30–17 (il 24 e il 31 fino alle 14). Date 2026 non ancora uscite.",
+    shortDescription:
+      "Campus all'aperto al Parco Nord (Cascina Centro Parco). Su un portale di campus: 28–31 dicembre e 4–5 gennaio, 8:30–17 (il 31 fino alle 14), 35 € al giorno più 5 € di tessera. Date non ancora uscite sul sito dell'associazione.",
     category: "educativo",
     ageMin: 6,
     ageMax: 12,
-    locationName: "Parco Nord Milano",
+    locationName: "Parco Nord Milano — Cascina Centro Parco",
+    address: "Via Giancarlo Clerici 150, Milano",
     comune: "Milano",
-    weeklyStructure: "Nel 2025: 22, 23, 24, 29, 30, 31 dicembre, 8:30–17:00",
+    region: "Lombardia",
+    startDate: null,
+    endDate: null,
+    weeklyStructure: "28, 29, 30, 31 dicembre 2026, 4 e 5 gennaio 2027, 8:30–17:00 (31 dicembre fino alle 14). Pranzo al sacco.",
+    price: null,
+    priceUnit: null,
+    registrationUrl: null,
+    officialUrl: "https://www.tuttocampiestivi.com/it/campi-invernali-e-primaverili/campus-al-parco-nord-milano",
     contact: "laura.colosio@gmail.com",
-  }),
+    image: null,
+    sourceType: "secondary_corroborated",
+    sources: [
+      { label: "Tutto Campi Estivi — Campus Natale Parco Nord Milano 2026/27", url: "https://www.tuttocampiestivi.com/it/campi-invernali-e-primaverili/campus-al-parco-nord-milano" },
+      { label: "Radiomamma — Campus di Natale 2025 a Milano (edizione precedente)", url: RADIOMAMMA_NATALE_2025 },
+    ],
+    seasonYear: 2026,
+    confidence: "medium",
+    temporalNote:
+      "Date 2026/27 lette il 16/11/2026 su un portale che raccoglie i campus, non ancora sul sito dell'associazione: da riconfermare con l'organizzatore.",
+    invitable: true,
+    officialUrlIsOrganizerSite: false,
+    lat: null,
+    lng: null,
+    geoPrecision: null,
+    bookingMode: "daily",
+  },
   natale2025({
     id: "milano-pingus-english-loreto-winter-camp",
     organizerName: "Pingu's English Milano Loreto",
@@ -1249,6 +1321,152 @@ const WINTER_DISCOVERY_LEADS: DiscoveryLeadRecord[] = [
     contact: "oltreleimpronte@gmail.com",
   }),
 
+  // ── Ricognizione del 16/11/2026 (brief "GEO DISCOVERY & CONTENT
+  // INTELLIGENCE"): solo record con fonte letta; verifiedOn solo dove la
+  // pagina dell'organizzatore pubblica l'edizione 2026/27.
+  {
+    id: "milano-garegnano-winter-camp-2026",
+    organizerName: "Polisportiva Garegnano",
+    activityTitle: "Winter Camp 26/27",
+    shortDescription:
+      "Camp sportivo delle vacanze di Natale per la scuola primaria, tra le palestre del Centro Sportivo Cappelli Sforza e la palestra di via Donadoni. Due turni: 28–30 dicembre (120 €) e 4–5 gennaio (80 €), pranzo, merende e assicurazione inclusi; +25 € di tessera per i non soci.",
+    category: "multisport",
+    ageMin: 6,
+    ageMax: 11,
+    locationName: "Centro Sportivo Cappelli Sforza",
+    address: "Via Lampugnano 80, 20151 Milano",
+    comune: "Milano",
+    region: "Lombardia",
+    startDate: "2026-12-28",
+    endDate: "2027-01-05",
+    weeklyStructure: "1° turno 28, 29, 30 dicembre 2026; 2° turno 4 e 5 gennaio 2027. Ingresso 8:30–8:45, uscita 16:15–16:30 da via Lampugnano 80.",
+    price: null,
+    priceUnit: null,
+    registrationUrl: "https://www.cloud32.it/GES/pub/iscricorso/180222/3224",
+    officialUrl: "https://polisportivagaregnano.it/winter-camp-26-27/",
+    contact: "02 33497485 · segreteria@polisportivagaregnano.it",
+    image: null,
+    sourceType: "primary_organizer",
+    sources: [{ label: "Polisportiva Garegnano — Winter Camp 26/27", url: "https://polisportivagaregnano.it/winter-camp-26-27/" }],
+    seasonYear: 2026,
+    confidence: "high",
+    temporalNote:
+      "Edizione 26/27 pubblicata dall'organizzatore (letta il 16/11/2026): la pagina indica i giorni senza l'anno, l'edizione 26/27 li colloca a dicembre 2026 e gennaio 2027. Serve il certificato per attività non agonistica.",
+    verifiedOn: "2026-11-16",
+    invitable: true,
+    officialUrlIsOrganizerSite: true,
+    lat: null,
+    lng: null,
+    geoPrecision: null,
+    bookingMode: null,
+  },
+  {
+    id: "milano-chiaravalle-campus-natale-2026",
+    organizerName: "Koinè Cooperativa Sociale con l'Abbazia di Chiaravalle",
+    activityTitle: "Campus di Natale al Mulino di Chiaravalle",
+    shortDescription:
+      "Prima edizione del campus di Natale nelle sale del Mulino dell'Abbazia di Chiaravalle (Milano sud-est). 38 € al giorno con pranzo (36 € per il secondo fratello e dalla seconda giornata). Ogni giornata parte con almeno 15 iscritti.",
+    category: "educativo",
+    ageMin: 6,
+    ageMax: 13,
+    locationName: "Mulino dell'Abbazia di Chiaravalle",
+    address: "Via Sant'Arialdo 102, 20139 Milano",
+    comune: "Milano",
+    region: "Lombardia",
+    startDate: "2026-12-23",
+    endDate: "2027-01-05",
+    weeklyStructure: "23, 28, 29 dicembre 2026, 4 e 5 gennaio 2027, 8:30–17:30 con entrata e uscita flessibili. Iscrizioni online entro il 16/12 (per il 23), il 22/12 (28–29) e il 29/12 (4–5 gennaio).",
+    price: 38,
+    priceUnit: "al_giorno",
+    registrationUrl: null,
+    officialUrl: "https://abbaziadichiaravalle.it/eventi-visite/campus-di-natale/",
+    contact: "02 84930432 · infopoint@monasterochiaravalle.it",
+    image: null,
+    sourceType: "primary_organizer",
+    sources: [{ label: "Abbazia di Chiaravalle — Campus di Natale 2026", url: "https://abbaziadichiaravalle.it/eventi-visite/campus-di-natale/" }],
+    seasonYear: 2026,
+    confidence: "high",
+    temporalNote: "Edizione 2026/27 pubblicata sulla pagina dell'Abbazia (letta il 16/11/2026). L'avvio di ogni giornata è confermato alla chiusura delle iscrizioni.",
+    verifiedOn: "2026-11-16",
+    invitable: true,
+    officialUrlIsOrganizerSite: true,
+    lat: null,
+    lng: null,
+    geoPrecision: null,
+    bookingMode: "daily",
+  },
+  {
+    id: "milano-villaggio-delle-meraviglie-2026",
+    organizerName: "Sceniko Events",
+    activityTitle: "Villaggio delle Meraviglie",
+    shortDescription:
+      "Villaggio di Natale ai Giardini Montanelli: pista di pattinaggio con area bimbi, casa di Babbo Natale, la Befana dal 4 al 6 gennaio, giostre. Ingresso libero. Dal 20/11/2026 al 10/1/2027 secondo la stampa; date non ancora uscite su un sito ufficiale letto.",
+    category: "educativo",
+    ageMin: null,
+    ageMax: null,
+    locationName: "Giardini Indro Montanelli",
+    address: "Porta Venezia, Milano",
+    comune: "Milano",
+    region: "Lombardia",
+    startDate: null,
+    endDate: null,
+    weeklyStructure: "Tutti i giorni 10:00–21:00, dal 20 novembre 2026 al 10 gennaio 2027.",
+    price: null,
+    priceUnit: null,
+    registrationUrl: null,
+    officialUrl: "https://www.mentelocale.it/milano/145974-villaggio-delle-meraviglie-milano-christmas-village-il-parco-a-tema-tra-casa-di-babbo-natale-elfi-e-la-mascotte-renny.htm",
+    contact: null,
+    image: null,
+    sourceType: "secondary_corroborated",
+    sources: [
+      { label: "Mentelocale, 30/10/2026 — Villaggio delle Meraviglie 2026", url: "https://www.mentelocale.it/milano/145974-villaggio-delle-meraviglie-milano-christmas-village-il-parco-a-tema-tra-casa-di-babbo-natale-elfi-e-la-mascotte-renny.htm" },
+      { label: "Sky TG24, 06/11/2026 — Mercatini di Natale a Milano 2026", url: "https://tg24.sky.it/lifestyle/2026/11/06/mercatini-natale-milano-2026" },
+    ],
+    seasonYear: 2026,
+    confidence: "medium",
+    temporalNote: "Date 2026/27 concordi in due articoli (letti il 16/11/2026); sito dell'organizzatore non consultato. Prezzi della pista non indicati.",
+    invitable: false,
+    officialUrlIsOrganizerSite: false,
+    lat: null,
+    lng: null,
+    geoPrecision: null,
+    bookingMode: null,
+  },
+  {
+    id: "vanzago-idea-campus-natale-oasi-wwf",
+    organizerName: "Associazione Culturale IDEA ETS",
+    activityTitle: "Campus di Natale all'Oasi WWF di Vanzago",
+    shortDescription:
+      "Campus all'aperto nell'Oasi Bosco WWF di Vanzago, vicino a Rho. Su un portale di campus: 28–31 dicembre e 4–5 gennaio, 8:30–17 (il 31 fino alle 14), 35 € al giorno più 5 € di tessera. Date non ancora uscite sul sito dell'associazione.",
+    category: "educativo",
+    ageMin: 6,
+    ageMax: 12,
+    locationName: "Oasi Bosco WWF di Vanzago",
+    address: "Via Tre Campane 21, Vanzago (MI)",
+    comune: "Vanzago",
+    region: "Lombardia",
+    startDate: null,
+    endDate: null,
+    weeklyStructure: "28, 29, 30, 31 dicembre 2026, 4 e 5 gennaio 2027, 8:30–17:00 (31 dicembre fino alle 14). Ritrovo al cancello dell'Oasi.",
+    price: null,
+    priceUnit: null,
+    registrationUrl: null,
+    officialUrl: "https://www.tuttocampiestivi.com/it/campi-invernali-e-primaverili/campus-al-bosco-wwf-di-vanzago",
+    contact: null,
+    image: null,
+    sourceType: "secondary_corroborated",
+    sources: [{ label: "Tutto Campi Estivi — Campus Natale Oasi Bosco WWF di Vanzago 2026/27", url: "https://www.tuttocampiestivi.com/it/campi-invernali-e-primaverili/campus-al-bosco-wwf-di-vanzago" }],
+    seasonYear: 2026,
+    confidence: "medium",
+    temporalNote:
+      "Date 2026/27 lette il 16/11/2026 su un portale che raccoglie i campus, non ancora sul sito dell'associazione: da riconfermare con l'organizzatore.",
+    invitable: true,
+    officialUrlIsOrganizerSite: false,
+    lat: null,
+    lng: null,
+    geoPrecision: null,
+    bookingMode: "daily",
+  },
   // ============ BARI E DINTORNI ============
   {
     id: "bari-cus-xmas-vacanze",
@@ -1283,6 +1501,41 @@ const WINTER_DISCOVERY_LEADS: DiscoveryLeadRecord[] = [
     lng: null,
     geoPrecision: null,
     bookingMode: "mixed",
+  },
+  {
+    id: "rutigliano-centro-anchio",
+    organizerName: "Occupazione e Solidarietà — Cooperativa Sociale",
+    activityTitle: "C'entro Anch'io — Centro aperto per ragazzi",
+    shortDescription:
+      "Centro aperto per ragazzi dai 6 ai 18 anni: compiti, sport, laboratori. Lun–ven 15:30–19:30 tutto l'anno tranne agosto, costi in base all'ISEE. Programma 2026/27 non ancora uscito online: da riconfermare.",
+    category: "educativo",
+    ageMin: 6,
+    ageMax: 18,
+    locationName: "C'entro Anch'io",
+    address: "Via San Francesco d'Assisi 114, Rutigliano (BA)",
+    comune: "Rutigliano",
+    region: "Puglia",
+    startDate: null,
+    endDate: null,
+    weeklyStructure: "Lunedì–venerdì 15:30–19:30, tutto l'anno tranne agosto. Ogni anno \"La notte delle lanterne\" il 13 dicembre.",
+    price: null,
+    priceUnit: null,
+    registrationUrl: null,
+    officialUrl: "https://occusol.org/centro-aperto-polivalente-per-minori-centro-anchio/",
+    contact: "080 5580129 · occusol@occusol.org",
+    image: null,
+    sourceType: "primary_organizer",
+    sources: [{ label: "Occupazione e Solidarietà — C'entro Anch'io", url: "https://occusol.org/centro-aperto-polivalente-per-minori-centro-anchio/" }],
+    seasonYear: 2026,
+    confidence: "medium",
+    temporalNote:
+      "Servizio annuale secondo la pagina del gestore (letta il 16/11/2026, senza data e con © 2022): da riconfermare che sia attivo nel 2026/27 e che la festa del 13 dicembre si tenga quest'anno.",
+    invitable: true,
+    officialUrlIsOrganizerSite: true,
+    lat: null,
+    lng: null,
+    geoPrecision: null,
+    bookingMode: null,
   },
 ];
 
@@ -1560,10 +1813,29 @@ export function isDiscoveryLeadCompatibleWithCategoryTags(
  */
 const CONFIDENCE_RANK: Record<DiscoveryLeadConfidence, number> = { high: 0, medium: 1 };
 
-export function sortDiscoveryLeadsForDisplay(leads: DiscoveryLeadRecord[], todayIso?: string): DiscoveryLeadRecord[] {
+export function sortDiscoveryLeadsForDisplay(
+  leads: DiscoveryLeadRecord[],
+  todayIso?: string,
+  preferredRegion?: string | null
+): DiscoveryLeadRecord[] {
   // RC 20/11 (16/11/2026), Lotto C2: con la data di oggi, le edizioni concluse vanno in fondo.
   const ended = (l: DiscoveryLeadRecord) => (todayIso && isDiscoveryLeadEnded(l, todayIso) ? 1 : 0);
-  return [...leads].sort((a, b) => ended(a) - ended(b) || CONFIDENCE_RANK[a.confidence] - CONFIDENCE_RANK[b.confidence]);
+  // GEO DISCOVERY (16/11/2026): prima le Scoperte della regione della famiglia
+  // (dal profilo scuola), poi le altre. Nessun filtro: nessuna regione sparisce.
+  const far = (l: DiscoveryLeadRecord) => (preferredRegion && l.region !== preferredRegion ? 1 : 0);
+  return [...leads].sort(
+    (a, b) => far(a) - far(b) || ended(a) - ended(b) || CONFIDENCE_RANK[a.confidence] - CONFIDENCE_RANK[b.confidence]
+  );
+}
+
+/** GEO DISCOVERY (16/11/2026): la regione del dataset (Lombardia / Puglia) che corrisponde a quella del profilo scuola, se c'è. */
+export function discoveryRegionFor(regions: (string | null | undefined)[]): DiscoveryLeadRecord["region"] | null {
+  for (const r of regions) {
+    const v = (r ?? "").trim().toLowerCase();
+    if (v === "lombardia") return "Lombardia";
+    if (v === "puglia") return "Puglia";
+  }
+  return null;
 }
 
 /** RC 20/11, Lotto C2: l'edizione documentata è finita (data di fine nota e passata). */

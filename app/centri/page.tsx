@@ -19,10 +19,10 @@ export const dynamic = "force-dynamic";
 export const metadata: Metadata = {
   title: "TRAMA per i centri — Fatevi trovare quando la scuola chiude",
   description:
-    "Iscrizioni anche per giorni singoli, richieste e presenze in un posto solo, le famiglie nel momento giusto. Pilota a Milano: gratuito per i centri fondatori.",
+    "Iscrizioni anche per giorni singoli, richieste e presenze in un posto solo, le famiglie nel momento giusto. Pilota in aree selezionate: gratuito per i centri fondatori.",
   openGraph: {
     title: "TRAMA per i centri",
-    description: "Pilota a Milano: gratuito per i centri fondatori. Iscrizioni, richieste e presenze in un posto solo.",
+    description: "Pilota in aree selezionate: gratuito per i centri fondatori. Iscrizioni, richieste e presenze in un posto solo.",
     images: [{ url: "/og/trama-private-beta.png", width: 1200, height: 630 }],
   },
 };
