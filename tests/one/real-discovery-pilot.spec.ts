@@ -1679,9 +1679,21 @@ test.describe("SCOPERTE DI NATALE — primo giro (26/10/2026)", () => {
   });
 
   test("WD-04: nessuna coordinata inventata e nessun prezzo a settimana per campus a giornata", () => {
+    // 16/11/2026: unica eccezione documentata, la sede della Casa di Pulcinella
+    // (POI OpenStreetMap 7426825648, coordinate fornite da Fabrizio con la fonte).
+    const WITH_SOURCED_COORDS: Record<string, [number, number]> = {
+      "bari-casa-pulcinella-natale-2026": [41.13209, 16.83973],
+      // Sede della parrocchia (fonte di terzi), programma da riconfermare.
+      "conversano-villaggio-natale-santandrea-2026": [40.969917, 17.111156],
+    };
     for (const l of WINTER_DISCOVERY_LEADS) {
-      expect(l.lat, l.id).toBeNull();
-      expect(l.lng, l.id).toBeNull();
+      if (WITH_SOURCED_COORDS[l.id]) {
+        expect([l.lat, l.lng], l.id).toEqual(WITH_SOURCED_COORDS[l.id]);
+        expect(l.geoPrecision, l.id).toBe("venue");
+      } else {
+        expect(l.lat, l.id).toBeNull();
+        expect(l.lng, l.id).toBeNull();
+      }
       // RC 20/11 (16/11/2026): ammesso il prezzo AL GIORNO dichiarato dalla fonte
       // (Leone XIII, 60 € al giorno, priceUnit "al_giorno"). La garanzia resta:
       // mai un prezzo senza unità e mai un prezzo a settimana per un campus a giornata.

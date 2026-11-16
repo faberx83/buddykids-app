@@ -10,7 +10,7 @@ import { categories } from "@/lib/mock-data";
 import { getSeasonWeekRanges, isoDate, formatShortRange, SeasonWeekRange } from "@/lib/season-weeks";
 import ActivityCard from "@/components/ActivityCard";
 import DiscoverResultCard from "@/components/nextgen/DiscoverResultCard";
-import { mapFocusPoints } from "@/lib/nextgen/map-focus";
+import { mapFocusPoints, nothingNearFamily } from "@/lib/nextgen/map-focus";
 import TramaThread from "@/components/nextgen/TramaThread";
 import { activityOpenIn, discoveryOpenIn, periodForWeek, type DiscoverPeriod } from "@/lib/nextgen/discover-v2";
 // TRAMA — CORREZIONI DAL TEST UX (21/10/2026, PARENT_UX_FIX_ENABLED), ciclo 1-A.
@@ -1222,6 +1222,10 @@ export default function SearchDiscoveryClient({
   // che esiste anche `mapMarkersCount` — vedi uso più sotto nella
   // microcopy Mappa e nell'empty state).
   const mapMarkersCount = mapMarkerItems.length;
+  // Legenda: solo i tipi di pallino presenti sulla mappa (16/11/2026).
+  const legendHasTrama = mapMarkerItems.some((i) => i.markerKind === "partner");
+  const legendHasInvite = mapMarkerItems.some((i) => i.markerKind === "curated_invitable");
+  const legendHasSource = mapMarkerItems.some((i) => i.markerKind === "curated_source");
   const mappedActivitiesCount = partnerMapItems.length + countMappedCuratedActivities(compatibleRealDiscoveryLeads);
 
   // TRAMA — DISCOVERY UNIFICATION (21/09/2026), §2-3-5 del prompt: le due
@@ -2251,16 +2255,32 @@ export default function SearchDiscoveryClient({
                     della vista Mappa, perché non ha uno stato proprio. */}
                 {mapMarkerItems.length > 0 && (
                   <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 rounded-md bg-[#F8F9FC] px-2.5 py-1.5 text-[10.5px] text-ink-2">
-                    <span className="flex items-center gap-1">
-                      <span className="inline-block h-2 w-2 rounded-full bg-[#6F63C5]" /> TRAMA
-                    </span>
-                    <span className="flex items-center gap-1">
-                      <span className="inline-block h-2 w-2 rounded-full bg-[#F2994A]" /> Da invitare
-                    </span>
-                    <span className="flex items-center gap-1">
-                      <span className="inline-block h-2 w-2 rounded-full bg-[#8B93A3]" /> Fonte pubblica
-                    </span>
+                    {/* 16/11/2026, Fabrizio: "i pallini arancione viola e grigio… hanno perso di significato".
+                        Solo le voci che compaiono davvero sulla mappa. */}
+                    {legendHasTrama && (
+                      <span className="flex items-center gap-1">
+                        <span className="inline-block h-2 w-2 rounded-full bg-[#6F63C5]" /> TRAMA
+                      </span>
+                    )}
+                    {legendHasInvite && (
+                      <span className="flex items-center gap-1">
+                        <span className="inline-block h-2 w-2 rounded-full bg-[#F2994A]" /> Da invitare
+                      </span>
+                    )}
+                    {legendHasSource && (
+                      <span className="flex items-center gap-1">
+                        <span className="inline-block h-2 w-2 rounded-full bg-[#8B93A3]" /> Fonte pubblica
+                      </span>
+                    )}
+                    {!legendHasInvite && !legendHasSource && (
+                      <span>Le Scoperte TRAMA compaiono sulla mappa quando hanno un indirizzo verificato: per ora sono in Elenco.</span>
+                    )}
                   </div>
+                )}
+                {v2 && geo && nothingNearFamily(mapMarkerItems.map((i) => [i.lat, i.lng] as [number, number]), [geo.lat, geo.lng]) && (
+                  <p data-testid="map-nothing-near" className="pt-2 text-center text-[12.5px] text-ink-2">
+                    Vicino a te non ci sono ancora attività con una posizione sulla mappa: quelle della tua zona sono in Elenco.
+                  </p>
                 )}
                 {/* §13 "MAP COUNT / MISSING GEO": microcopy esplicita invece
                     di un conteggio generico silenzioso quando Lista e Mappa

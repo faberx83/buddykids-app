@@ -8,7 +8,7 @@ import fs from "fs";
 import path from "path";
 import { test, expect } from "@playwright/test";
 import { itemsInWeek } from "../../lib/nextgen/planner-week";
-import { mapFocusPoints, distanceKm } from "../../lib/nextgen/map-focus";
+import { mapFocusPoints, distanceKm, nothingNearFamily } from "../../lib/nextgen/map-focus";
 import { monogramFor, threadColorFor } from "../../components/nextgen/ActivityVisual";
 import { profileV2Sections } from "../../lib/nextgen/profile-v2";
 
@@ -111,8 +111,13 @@ test.describe("TRAMA — Polish V2 [no browser]", () => {
     const all = [...milano, ...puglia];
     expect(mapFocusPoints(all)).toEqual(milano);
     expect(mapFocusPoints(all, [41.0, 17.0])).toEqual(puglia);
-    // nessun punto vicino alla famiglia: i più vicini
+    // nessun punto vicino alla famiglia: i più vicini (se entro 150 km)
     expect(mapFocusPoints(all, [44.4, 8.9]).length).toBe(5);
+    // 16/11/2026: tutto lontano (oltre 150 km) → la mappa resta sulla famiglia.
+    expect(mapFocusPoints(milano, [41.0, 17.0])).toEqual([[41.0, 17.0]]);
+    expect(nothingNearFamily(milano, [41.0, 17.0])).toBe(true);
+    expect(nothingNearFamily(milano, [45.5, 9.2])).toBe(false);
+    expect(nothingNearFamily(milano, null)).toBe(false);
     expect(Math.round(distanceKm([45.4642, 9.19], [41.9028, 12.4964]))).toBeGreaterThan(400);
     const src = read("app/nextgen/search/SearchDiscoveryClient.tsx");
     expect(src).toContain("fitPoints={mapFocus}");

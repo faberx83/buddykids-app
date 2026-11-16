@@ -198,3 +198,71 @@ test.describe("Scopri: tipo di proposta, ordinamento, pannello Planner V2", () =
     expect(src).toContain("aria-pressed={planKidIds.includes(kid.id)}");
   });
 });
+
+// 16/11/2026, Fabrizio: "Esegui infine un test della mappa con una famiglia
+// localizzata a Rutigliano e verifica che gli eventi di Bari e Conversano
+// siano geograficamente corretti e visibili quando rientrano nell'area di
+// ricerca… evitando pin sovrapposti non selezionabili."
+import { buildDiscoveryMapItems } from "../../lib/discovery/result-model";
+import { distanceKm, mapFocusPoints, nothingNearFamily } from "../../lib/nextgen/map-focus";
+
+test.describe("Mappa: famiglia a Rutigliano", () => {
+  // Posizione di prova della famiglia (centro di Rutigliano): dato di test, non pubblicato.
+  const RUTIGLIANO: [number, number] = [41.0095, 17.0066];
+  const catalog = seasonalCatalogLeads(TODAY);
+  const items = buildDiscoveryMapItems([], catalog);
+  const curated = items.filter((i) => i.kind !== "partner") as Extract<(typeof items)[number], { lead: unknown }>[];
+  const byId = (id: string) => curated.find((i) => i.lead.id === id);
+
+  test("Bari e Conversano hanno un pin nel posto giusto; Bari è 'Da invitare', Conversano 'Fonte pubblica'", () => {
+    const bari = byId("bari-casa-pulcinella-natale-2026")!;
+    const conv = byId("conversano-villaggio-natale-santandrea-2026")!;
+    expect([bari.lat, bari.lng]).toEqual([41.13209, 16.83973]);
+    expect([conv.lat, conv.lng]).toEqual([40.969917, 17.111156]);
+    expect(bari.kind).toBe("curated_invitable");
+    expect(conv.kind).toBe("curated_source");
+    // Comuni giusti: Bari ~19 km e Conversano ~10 km da Rutigliano, non a Rutigliano.
+    expect(distanceKm(RUTIGLIANO, [bari.lat, bari.lng])).toBeGreaterThan(15);
+    expect(distanceKm(RUTIGLIANO, [bari.lat, bari.lng])).toBeLessThan(25);
+    expect(distanceKm(RUTIGLIANO, [conv.lat, conv.lng])).toBeGreaterThan(5);
+    expect(distanceKm(RUTIGLIANO, [conv.lat, conv.lng])).toBeLessThan(15);
+  });
+
+  test("nel raggio di ricerca (30 km) la mappa inquadra Bari e Conversano, non Milano", () => {
+    const points = items.map((i) => [i.lat, i.lng] as [number, number]);
+    const focus = mapFocusPoints(points, RUTIGLIANO, 30);
+    expect(focus).toContainEqual([41.13209, 16.83973]);
+    expect(focus).toContainEqual([40.969917, 17.111156]);
+    for (const p of focus) expect(distanceKm(RUTIGLIANO, p)).toBeLessThanOrEqual(30);
+    expect(nothingNearFamily(points, RUTIGLIANO)).toBe(false);
+    // Raggio di 5 km: nulla dentro, ma Bari e Conversano sono entro 150 km →
+    // la mappa mostra i più vicini (Conversano per primo), non Milano.
+    const small = mapFocusPoints(points, RUTIGLIANO, 5);
+    expect(small[0]).toEqual([40.969917, 17.111156]);
+    for (const p of small) expect(distanceKm(RUTIGLIANO, p)).toBeLessThan(150);
+  });
+
+  test("nessun pin per eventi diffusi, servizi in archivio o 2027 non confermato", () => {
+    for (const id of ["rutigliano-presepi-pastorelle-2026", "rutigliano-centro-anchio", "rutigliano-colonia-estiva-comunale"]) {
+      expect(byId(id), id).toBeUndefined();
+    }
+    const presepi = REAL_DISCOVERY_LEADS.find((l) => l.id === "rutigliano-presepi-pastorelle-2026")!;
+    expect(presepi.lat).toBeNull();
+    expect(presepi.lng).toBeNull();
+  });
+
+  test("un solo pin per sede: gli spettacoli della Casa di Pulcinella sono una sola Scoperta, nessun pin sovrapposto", () => {
+    const keys = items.map((i) => `${i.lat.toFixed(5)},${i.lng.toFixed(5)}`);
+    expect(new Set(keys).size).toBe(keys.length);
+    expect(curated.filter((i) => i.lead.organizerName === "Teatro Casa di Pulcinella").length).toBe(1);
+  });
+
+  test("Conversano: pin sulla sede ma programma da riconfermare (niente date strutturate né verifica)", () => {
+    const conv = REAL_DISCOVERY_LEADS.find((l) => l.id === "conversano-villaggio-natale-santandrea-2026")!;
+    expect(conv.confidence).toBe("medium");
+    expect(conv.verifiedOn ?? null).toBeNull();
+    expect(conv.startDate).toBeNull();
+    expect(conv.geoPrecision).toBe("venue");
+    expect(leadTemporalLabel(conv, TODAY)).toEqual({ text: "Date 2026 da verificare", tone: "warn" });
+  });
+});
