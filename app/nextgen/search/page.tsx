@@ -27,7 +27,7 @@ import { resolveFeatureFlagVisibility } from "@/lib/feature-flags/resolve";
 import { anyResolvedViaInternalPreview } from "@/lib/feature-flags/internal-preview";
 import { generateCorrelationId } from "@/lib/telemetry/correlation";
 import { persistProductEvent } from "@/lib/telemetry/events";
-import { REAL_DISCOVERY_LEADS, discoveryRegionFor, type DiscoveryLeadRecord } from "@/lib/discovery/real-dataset";
+import { discoveryRegionFor, seasonalCatalogLeads, type DiscoveryLeadRecord } from "@/lib/discovery/real-dataset";
 // TRAMA — EXTERNAL PLANNER ITEMS (sezioni 7/15/16 del task): "Aggiungi al
 // Planner" da una Scoperta TRAMA. Stesso pattern Dark Release delle altre
 // capability gated di questa pagina — flag risolto server-side, dataset
@@ -231,7 +231,9 @@ export default async function NextgenSearchPage() {
       // lib/discovery/real-dataset.ts. Il filtro per compatibilità con la
       // settimana selezionata resta lato client (SearchDiscoveryClient già
       // legge il query param "week", stesso pattern di §14 del report).
-      realDiscoveryLeads = REAL_DISCOVERY_LEADS;
+      // Integrazione stagionale (16/11/2026): per la beta solo contenuti
+      // stagionali; corsi e servizi continuativi restano in archivio.
+      realDiscoveryLeads = seasonalCatalogLeads(todayIso);
       // GEO DISCOVERY (16/11/2026): la regione del profilo scuola mette prima le
       // Scoperte vicine (Milano o Rutigliano), senza nascondere le altre.
       if (user && kids.length > 0) {

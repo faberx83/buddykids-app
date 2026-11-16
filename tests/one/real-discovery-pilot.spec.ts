@@ -3,6 +3,7 @@ import path from "path";
 import { test, expect } from "@playwright/test";
 import {
   REAL_DISCOVERY_LEADS,
+  ARCHIVE_DISCOVERY_LEADS,
   SUMMER_DISCOVERY_LEADS,
   WINTER_DISCOVERY_LEADS,
   REJECTED_DISCOVERY_LEADS,
@@ -176,7 +177,9 @@ test.describe("REAL DISCOVERY PILOT — gating Dark Release (default OFF)", () =
     // di posizione: la riga che assegna REAL_DISCOVERY_LEADS deve comparire
     // dopo il controllo "if (realDiscoveryDetail.enabled)".
     const gateIndex = source.indexOf("if (realDiscoveryDetail.enabled)");
-    const assignIndex = source.indexOf("realDiscoveryLeads = REAL_DISCOVERY_LEADS");
+    // Integrazione stagionale (16/11/2026): il dataset passa dal catalogo
+    // stagionale (seasonalCatalogLeads), stessa garanzia di posizione.
+    const assignIndex = source.indexOf("realDiscoveryLeads = seasonalCatalogLeads(todayIso)");
     expect(gateIndex).toBeGreaterThan(-1);
     expect(assignIndex).toBeGreaterThan(gateIndex);
   });
@@ -1625,7 +1628,8 @@ test.describe("DISCOVERY LIVE UX BUGFIX — pannello Settimane di camp vuoto a f
 // dataset estivo: fonte per ogni record, niente dati inventati.
 test.describe("SCOPERTE DI NATALE — primo giro (26/10/2026)", () => {
   test("WD-01: estivo + Natale, nessun id doppio", () => {
-    expect(REAL_DISCOVERY_LEADS.length).toBe(SUMMER_DISCOVERY_LEADS.length + WINTER_DISCOVERY_LEADS.length);
+    // Integrazione stagionale (16/11/2026): + archivio dei servizi continuativi (fuori da Scopri).
+    expect(REAL_DISCOVERY_LEADS.length).toBe(SUMMER_DISCOVERY_LEADS.length + WINTER_DISCOVERY_LEADS.length + ARCHIVE_DISCOVERY_LEADS.length);
     const ids = REAL_DISCOVERY_LEADS.map((l) => l.id);
     expect(new Set(ids).size).toBe(ids.length);
     expect(WINTER_DISCOVERY_LEADS.length).toBeGreaterThanOrEqual(15);
@@ -1648,7 +1652,9 @@ test.describe("SCOPERTE DI NATALE — primo giro (26/10/2026)", () => {
         expect(l.startDate >= "2026-11-01" && (l.endDate ?? "") <= "2027-01-31", l.id).toBe(true);
         expect(l.confidence).toBe("high");
       } else {
-        expect(l.shortDescription, l.id).toMatch(/non ancora usc/);
+        // Integrazione stagionale (16/11/2026): ammesso anche "non ancora ricontrollat…"
+        // quando la pagina ufficiale non si apre da qui; l'incertezza resta dichiarata.
+        expect(l.shortDescription, l.id).toMatch(/non ancora usc|non ancora ricontrollat/);
         expect(l.endDate).toBeNull();
       }
     }
@@ -1656,7 +1662,18 @@ test.describe("SCOPERTE DI NATALE — primo giro (26/10/2026)", () => {
     // GEO DISCOVERY (16/11/2026): date strutturate solo dove l'organizzatore ha
     // pubblicato l'edizione 2026/27 (letta il 16/11); il resto resta senza date.
     expect(dated.map((l) => l.id).sort()).toEqual(
-      ["milano-chiaravalle-campus-natale-2026", "milano-garegnano-winter-camp-2026", "milano-leone-xiii-christmas-camp-2026"].sort()
+      [
+        "milano-chiaravalle-campus-natale-2026",
+        "milano-garegnano-winter-camp-2026",
+        "milano-leone-xiii-christmas-camp-2026",
+        // Integrazione stagionale (16/11/2026): eventi con pagina ufficiale letta.
+        "milano-colla-canto-di-natale-2026",
+        "milano-manzoni-grinch-2026",
+        "milano-martinitt-burro-marmellata-natale-2026",
+        "rho-tfamily-bosco-storie-natale-2026",
+        "rho-tfamily-bella-mai-addormentata-2027",
+        "bari-casa-pulcinella-natale-2026",
+      ].sort()
     );
     for (const l of dated) expect(l.verifiedOn, l.id).toBe("2026-11-16");
   });
