@@ -53,6 +53,7 @@ export default async function BetaReportPage({ searchParams }: { searchParams: P
       zonesByFamily: data.zonesByFamily,
       thresholds: s.thresholds,
       betaStart: s.betaStart,
+      preRegistration: data.preRegistration,
     },
     period,
     now

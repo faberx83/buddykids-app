@@ -56,6 +56,7 @@ export default async function BetaCockpitPage({ searchParams }: { searchParams: 
       zonesByFamily: data.zonesByFamily,
       thresholds: data.settings.thresholds,
       betaStart: data.settings.betaStart,
+      preRegistration: data.preRegistration,
     },
     period,
     now

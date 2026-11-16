@@ -29,6 +29,7 @@ import {
 } from "./model";
 import { computeDemand, topOpportunities, type DemandRow, type DemandSignal } from "./demand";
 import { summarizeFeedback, type CockpitFeedbackRow, type FeedbackSummary } from "./feedback";
+import { computePreFunnel, type PreFunnelRow, type PreRegistrationRaw } from "./pre-funnel";
 import { isNegativeSurveyAnswer, SURVEYS, summarizeSurvey, type SurveyResults } from "./survey";
 
 export interface CockpitInput {
@@ -39,6 +40,8 @@ export interface CockpitInput {
   zonesByFamily: Map<string, string[]>;
   thresholds: CockpitThresholds;
   betaStart: string;
+  /** Lotto 2 (16/11/2026): passaggi prima della registrazione; assente = non mostrati. */
+  preRegistration?: PreRegistrationRaw;
 }
 
 export interface CockpitView {
@@ -51,6 +54,8 @@ export interface CockpitView {
   kpis: Kpi[];
   alerts: AlertRow[];
   funnel: FunnelRow[];
+  /** null se il chiamante non ha passato i dati prima della registrazione. */
+  preFunnel: PreFunnelRow[] | null;
   ttv: TtvStat[];
   usage: UsageRow[];
   frictions: FrictionRow[];
@@ -129,6 +134,7 @@ export function buildCockpitView(input: CockpitInput, period: Period, now: Date)
     kpis,
     alerts,
     funnel,
+    preFunnel: input.preRegistration ? computePreFunnel(input.preRegistration, period) : null,
     ttv,
     usage,
     frictions,

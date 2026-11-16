@@ -38,6 +38,8 @@ export interface QueueInput {
   hiddenDemo?: number;
   /** Link alla stessa coda con le prove visibili (?demo=1). Retest 12/11/2026. */
   demoHref?: string;
+  /** Nota breve sotto la coda (es. richieste uscite perché già registrate). Lotto 2, 16/11/2026. */
+  note?: string;
 }
 
 export interface OggiQueue {
@@ -57,6 +59,7 @@ export interface OggiQueue {
   preview: QueueItem[];
   hiddenDemo: number;
   demoHref: string | null;
+  note: string | null;
   /** Riga breve per la card: "più vecchia: 5 giorni fa · prima data: tra 3 giorni". */
   detail: string | null;
 }
@@ -107,6 +110,7 @@ export function buildQueue(input: QueueInput, todayIso: string, previewSize = 3)
     preview,
     hiddenDemo: input.hiddenDemo ?? 0,
     demoHref: input.demoHref ?? null,
+    note: input.note ?? null,
     detail: parts.length > 0 ? parts.join(" · ") : null,
   };
 }

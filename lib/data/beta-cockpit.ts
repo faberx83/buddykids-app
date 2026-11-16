@@ -39,6 +39,7 @@ import {
   type RawOpenDay,
 } from "@/lib/beta-cockpit/model";
 import type { DemandSignal } from "@/lib/beta-cockpit/demand";
+import type { PreRegistrationRaw } from "@/lib/beta-cockpit/pre-funnel";
 import { isCockpitFeedbackStatus, parseTags, type CockpitFeedbackRow } from "@/lib/beta-cockpit/feedback";
 import { resolveSurveyConfig, type SurveyConfig } from "@/lib/beta-cockpit/survey";
 import { isBetaFeedbackCategory, isMissingColumnError } from "@/lib/nextgen/beta-feedback-shared";
@@ -135,6 +136,8 @@ export interface CockpitData {
   familyLabels: Record<string, string>;
   todayIso: string;
   generatedAt: string;
+  /** Passaggi prima della registrazione (Lotto 2, 16/11/2026). */
+  preRegistration: PreRegistrationRaw;
 }
 
 function initials(fullName: string | null | undefined, fallback: string): string {
@@ -598,6 +601,38 @@ export async function loadCockpitData(service: Service, session: Session | null,
     if (c) sig(r.submitted_by, c.organizer_name ?? c.title, c.comune, "radar", r.created_at);
   }
 
+  // Lotto 2 (16/11/2026): passaggi prima della registrazione, per il Funnel.
+  // Sola lettura, con le stesse esclusioni (interni + esclusi) del cockpit.
+  const [allWaitRes, landingRes, allParentsRes] = await Promise.all([
+    service.from("beta_waitlist").select("email, status, created_at, invited_at").limit(5000),
+    service.from("product_events").select("created_at").eq("event_name", "landing_viewed").limit(50000),
+    service.from("profiles").select("id, email, created_at, beta_invited_by_code").eq("role", "parent").limit(10000),
+  ]);
+  const allParents = rows<{ id: string; email: string | null; created_at: string; beta_invited_by_code: string | null }>(allParentsRes);
+  const allWait = rows<{ email: string; status: "nuovo" | "invitato" | "archiviato"; created_at: string; invited_at: string | null }>(allWaitRes);
+  const waitEmailSet = new Set(allWait.map((w) => w.email.trim().toLowerCase()));
+  const accountEmails = new Set<string>();
+  const accountEmailRes = waitEmailSet.size
+    ? await service.from("profiles").select("email").in("email", Array.from(waitEmailSet))
+    : { data: [], error: null };
+  for (const p of rows<{ email: string | null }>(accountEmailRes)) if (p.email) accountEmails.add(p.email.trim().toLowerCase());
+  const keptParents = allParents.filter((p) => !internal.has(p.id) && !excluded.has(p.id));
+  const preRegistration: PreRegistrationRaw = {
+    landingViews: landingRes.error ? null : rows<{ created_at: string }>(landingRes).map((r) => r.created_at),
+    requests: allWait.map((w) => ({
+      createdAt: w.created_at,
+      invitedAt: w.invited_at,
+      status: w.status,
+      hasAccount: accountEmails.has(w.email.trim().toLowerCase()),
+    })),
+    accounts: keptParents.map((p) => ({
+      createdAt: p.created_at,
+      withCode: Boolean(p.beta_invited_by_code),
+      fromRequest: Boolean(p.email) && waitEmailSet.has((p.email as string).trim().toLowerCase()),
+    })),
+    excludedAccounts: allParents.length - keptParents.length,
+  };
+
   // Decision log disponibile?
   const decisionsProbe = await service.from("beta_decisions").select("id", { head: true, count: "exact" });
 
@@ -628,6 +663,7 @@ export async function loadCockpitData(service: Service, session: Session | null,
     familyLabels,
     todayIso,
     generatedAt: now.toISOString(),
+    preRegistration,
   };
 }
 

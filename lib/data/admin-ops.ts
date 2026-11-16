@@ -23,6 +23,8 @@ import { isSupabaseConfigured } from "@/lib/supabase/env";
 import type { AdminBookingRow, BookingStatus, DayDecision } from "@/lib/admin-ops/bookings";
 import type { AdminInquiryRow, InquiryStatus } from "@/lib/admin-ops/inquiries";
 import type { PartnerDecision } from "@/lib/booking-response/effective-decision";
+import type { AccountRef } from "@/lib/admin-ops/invitations";
+import { findAccountsByEmail } from "./waitlist";
 
 type Session = Awaited<ReturnType<typeof createClient>>;
 
@@ -359,7 +361,7 @@ export async function getAdminActivityDetail(activityId: string): Promise<AdminA
 // ── Famiglie: dalla richiesta alla registrazione ─────────────────────────
 
 export interface AdminFamilyFunnelData {
-  waitlist: { id: string; email: string; status: "nuovo" | "invitato" | "archiviato"; createdAt: string; invitedAt: string | null; comune: string | null }[];
+  waitlist: { id: string; email: string; status: "nuovo" | "invitato" | "archiviato"; createdAt: string; invitedAt: string | null; comune: string | null; account: AccountRef | null }[];
   parents: { id: string; email: string | null; createdAt: string; betaCode: string | null }[];
   memberships: { userId: string; familyId: string }[];
   codes: { code: string; label: string | null; active: boolean; redeemedCount: number; maxRedemptions: number | null; expiresAt: string | null }[];
@@ -385,10 +387,20 @@ export async function getAdminFamilyFunnel(): Promise<AdminFamilyFunnelData | nu
     supabase.from("beta_cohort_memberships").select("user_id").eq("cohort_key", "internal-preview").eq("active", true),
   ]);
   type W = { id: string; email: string; status: "nuovo" | "invitato" | "archiviato"; created_at: string; invited_at: string | null; comune: string | null };
+  // Lotto 2 (16/11/2026): stesso abbinamento account di Oggi e Lista d'attesa.
+  const accounts = await findAccountsByEmail(supabase, ((wl.data ?? []) as W[]).map((w) => w.email));
   type P = { id: string; email: string | null; created_at: string; beta_invited_by_code: string | null };
   type C = { code: string; label: string | null; active: boolean; redeemed_count: number | null; max_redemptions: number | null; expires_at: string | null };
   return {
-    waitlist: ((wl.data ?? []) as W[]).map((w) => ({ id: w.id, email: w.email, status: w.status, createdAt: w.created_at, invitedAt: w.invited_at, comune: w.comune })),
+    waitlist: ((wl.data ?? []) as W[]).map((w) => ({
+      id: w.id,
+      email: w.email,
+      status: w.status,
+      createdAt: w.created_at,
+      invitedAt: w.invited_at,
+      comune: w.comune,
+      account: accounts.get(w.email.trim().toLowerCase()) ?? null,
+    })),
     parents: ((prof.data ?? []) as P[]).map((p) => ({ id: p.id, email: p.email, createdAt: p.created_at, betaCode: p.beta_invited_by_code })),
     memberships: ((fm.data ?? []) as { family_id: string; parent_id: string }[]).map((m) => ({ userId: m.parent_id, familyId: m.family_id })),
     codes: ((codes.data ?? []) as C[]).map((c) => ({

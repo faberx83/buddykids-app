@@ -7,6 +7,7 @@ import { shortDate, type Period } from "@/lib/beta-cockpit/dates";
 import { DEMAND_TYPE_LABEL } from "@/lib/beta-cockpit/demand";
 import { applyFamilyFilter, hoursLabel, lastActionLabel, type FamilyFilter, type FamilyRow } from "@/lib/beta-cockpit/model";
 import type { CockpitView } from "@/lib/beta-cockpit/view";
+import { PRE_FUNNEL_NOTE, familyFunnelScope } from "@/lib/beta-cockpit/pre-funnel";
 import { Card, Empty, KpiTile, StatusBadge, YesNo, fmtDate } from "@/components/admin/beta/BetaUi";
 import { familiesHref, familyDetailHref } from "./params";
 
@@ -230,7 +231,40 @@ export function FunnelSection({ view }: { view: CockpitView }) {
   const total = view.funnel[0]?.reached ?? 0;
   return (
     <>
-      <Card title="Funnel" subtitle="Ogni passo richiede il precedente. Clicca le famiglie ferme per vederle in tabella.">
+      {view.preFunnel && (
+        // Lotto 2 (16/11/2026): passaggi prima della registrazione, ognuno con
+        // unità e periodo; i non tracciati sono scritti, non omessi.
+        <Card title="Prima della registrazione" subtitle={PRE_FUNNEL_NOTE}>
+          <div className="-mx-4 overflow-x-auto" data-testid="pre-funnel">
+            <table className="w-full min-w-[760px] border-collapse text-[13px]">
+              <thead>
+                <tr>
+                  <th className={th}>Passaggio</th>
+                  <th className={th}>Conteggio</th>
+                  <th className={th}>Unità</th>
+                  <th className={th}>Periodo</th>
+                  <th className={th}>Regola</th>
+                </tr>
+              </thead>
+              <tbody>
+                {view.preFunnel.map((r) => (
+                  <tr key={r.key} data-testid={`pre-funnel-${r.key}`}>
+                    <td className={`${td} font-semibold`}>{r.label}</td>
+                    <td className={td}>
+                      {r.value === null ? <span className="text-ink-3">Non tracciato</span> : <span className="font-semibold">{r.value}</span>}
+                      {r.detail && r.value !== null && <span className="block text-[11px] text-ink-2">{r.detail}</span>}
+                    </td>
+                    <td className={`${td} whitespace-normal text-[12px] text-ink-2`}>{r.unit}</td>
+                    <td className={`${td} whitespace-normal text-[12px] text-ink-2`}>{r.scope}</td>
+                    <td className={`${td} whitespace-normal text-[12px] text-ink-2`}>{r.rule}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </Card>
+      )}
+      <Card title="Funnel delle famiglie" subtitle={`Ogni passo richiede il precedente. Clicca le famiglie ferme per vederle in tabella. ${familyFunnelScope(view.period)}`}>
         {total === 0 ? (
           <Empty>Ancora nessuna famiglia.</Empty>
         ) : (

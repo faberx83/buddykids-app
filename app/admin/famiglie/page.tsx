@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { getAdminFamilyFunnel } from "@/lib/data/admin-ops";
-import { INVITE_STAGE_LABEL, codeUsage, countPeopleAndFamilies, invitePipeline, type InviteStage } from "@/lib/admin-ops/invitations";
+import { INVITE_QUEUE_RULE, INVITE_STAGE_LABEL, codeUsage, countPeopleAndFamilies, invitePipeline, type InviteStage } from "@/lib/admin-ops/invitations";
+import { buildJourney, type JourneyCell } from "@/lib/admin-ops/journey";
+import { getPilotUsers, isPilotLastSignInAvailable } from "@/lib/data/pilot-users";
 
 export const dynamic = "force-dynamic";
 
@@ -11,6 +13,10 @@ export const dynamic = "force-dynamic";
 // Mostra separatamente persone e famiglie. Mantieni gli invii manuali
 // attuali". Regole in lib/admin-ops/invitations.ts. Nessun invio da qui: gli
 // inviti si scrivono e si segnano in Lista d'attesa, come oggi.
+// LOTTO 2 (16/11/2026): stessa regola "Da invitare" di Oggi e Lista d'attesa;
+// per ogni richiesta registrata, link alla scheda Pilota e percorso
+// richiesta → invio segnato → registrazione → benvenuto → prima azione utile
+// → ritorno (definizioni del Pilota, lib/admin-ops/journey.ts).
 const STAGE_CLASS: Record<InviteStage, string> = {
   richiesta: "bg-orange-light text-trama-orange",
   inviato: "bg-sky-light text-sky",
@@ -26,7 +32,7 @@ type SP = Promise<Record<string, string | string[] | undefined>>;
 export default async function AdminFamigliePage({ searchParams }: { searchParams: SP }) {
   const sp = await searchParams;
   const fase = typeof sp.fase === "string" ? sp.fase : "";
-  const data = await getAdminFamilyFunnel();
+  const [data, pilotUsers] = await Promise.all([getAdminFamilyFunnel(), getPilotUsers()]);
   if (!data) {
     return <p className="text-sm text-navy-text2">Dati disponibili solo all&apos;Admin piattaforma con Supabase collegato.</p>;
   }
@@ -39,6 +45,9 @@ export default async function AdminFamigliePage({ searchParams }: { searchParams
   const shown = live.filter((r) => !fase || r.stage === fase);
   const viaCode = data.parents.filter((p) => p.betaCode && !excluded.has(p.id)).length;
   const codes = codeUsage(data.codes, data.parents);
+  const pilotById = new Map(pilotUsers.map((u) => [u.id, u]));
+  const signInMeasurable = isPilotLastSignInAvailable();
+  const notMarked = live.filter((r) => r.inviteNotMarked).length;
 
   const stages: InviteStage[] = ["richiesta", "inviato", "registrata"];
   return (
@@ -73,12 +82,16 @@ export default async function AdminFamigliePage({ searchParams }: { searchParams
           </Link>
         ))}
       </div>
+      <p className="mb-2 text-xs text-navy-text2" data-testid="invite-queue-rule">
+        {INVITE_QUEUE_RULE}
+        {notMarked > 0 ? ` ${notMarked} ${notMarked === 1 ? "registrata" : "registrate"} senza invio segnato: restano qui, fuori dalla coda.` : ""}
+      </p>
       <div className="mb-2 rounded-lg border border-dashed border-navy-3 px-4 py-2 text-xs text-navy-text2">
         Invito preparato (email aperta o link copiato): non registrato da TRAMA, quindi non si conta. Per gli inviti usa{" "}
         <Link href="/admin/lista-attesa" className="font-semibold text-white underline">Lista d&apos;attesa</Link>.
       </div>
       <div className="mb-7 overflow-x-auto rounded-lg border border-[#E8EBF0] bg-white">
-        <table className="w-full min-w-[620px] text-sm">
+        <table className="w-full min-w-[980px] text-sm">
           <thead>
             <tr className="border-b border-[#E8EBF0] text-left text-xs text-ink-3">
               <th className="px-4 py-2.5 font-medium">Email</th>
@@ -86,33 +99,52 @@ export default async function AdminFamigliePage({ searchParams }: { searchParams
               <th className="px-4 py-2.5 font-medium">Richiesta</th>
               <th className="px-4 py-2.5 font-medium">Invito segnato</th>
               <th className="px-4 py-2.5 font-medium">Registrata</th>
+              <th className="px-4 py-2.5 font-medium">Benvenuto</th>
+              <th className="px-4 py-2.5 font-medium">Prima azione utile</th>
+              <th className="px-4 py-2.5 font-medium">Ritorno</th>
               <th className="px-4 py-2.5 font-medium">Chi deve agire</th>
             </tr>
           </thead>
           <tbody>
-            {shown.map((r) => (
-              <tr key={r.waitlistId} className="border-b border-[#F0F2F5] last:border-0">
-                <td className="px-4 py-2.5 text-ink">
-                  {r.email}
-                  {r.comune ? <span className="block text-xs text-ink-2">{r.comune}</span> : null}
-                </td>
-                <td className="px-4 py-2.5">
-                  <span className={`rounded-full px-2 py-0.5 text-[11px] font-bold ${STAGE_CLASS[r.stage]}`}>{INVITE_STAGE_LABEL[r.stage]}</span>
-                </td>
-                <td className="px-4 py-2.5 text-ink-2">{day(r.requestedAt)}</td>
-                <td className="px-4 py-2.5 text-ink-2">{day(r.invitedAt)}</td>
-                <td className="px-4 py-2.5 text-ink-2">
-                  {day(r.registeredAt)}
-                  {r.usedCode ? <span className="block text-xs">codice {r.usedCode}</span> : null}
-                </td>
-                <td className="px-4 py-2.5 text-ink-2">
-                  {r.stage === "richiesta" ? "TRAMA: scrivere e inviare l'invito" : r.stage === "inviato" ? "Famiglia: creare l'account" : "—"}
-                </td>
-              </tr>
-            ))}
+            {shown.map((r) => {
+              const p = r.accountId ? pilotById.get(r.accountId) : undefined;
+              const j = buildJourney(
+                r,
+                p
+                  ? { onboardingStatus: p.onboardingStatus, firstActionAt: p.firstMeaningfulActionAt, firstActionLabel: p.firstMeaningfulActionLabel, lastSignInAt: p.lastSignInAt }
+                  : null,
+                signInMeasurable
+              );
+              return (
+                <tr key={r.waitlistId} data-testid={`invite-row-${r.waitlistId}`} className="border-b border-[#F0F2F5] align-top last:border-0">
+                  <td className="px-4 py-2.5 text-ink">
+                    {r.email}
+                    {r.comune ? <span className="block text-xs text-ink-2">{r.comune}</span> : null}
+                    {j.pilotHref ? (
+                      <Link href={j.pilotHref} className="block text-xs font-semibold text-sky">Scheda Pilota →</Link>
+                    ) : r.accountId ? (
+                      <span className="block text-xs text-ink-3">non nella coorte Pilota</span>
+                    ) : null}
+                  </td>
+                  <td className="px-4 py-2.5">
+                    <span className={`rounded-full px-2 py-0.5 text-[11px] font-bold ${STAGE_CLASS[r.stage]}`}>{INVITE_STAGE_LABEL[r.stage]}</span>
+                    {r.inviteNotMarked && <span className="mt-1 block text-[11px] text-ink-2">invio non segnato</span>}
+                  </td>
+                  <Cell c={j.requested} />
+                  <Cell c={j.inviteMarked} />
+                  <Cell c={j.registered} />
+                  <Cell c={j.walkthrough} />
+                  <Cell c={j.firstAction} />
+                  <Cell c={j.returned} />
+                  <td className="px-4 py-2.5 text-ink-2">
+                    {r.stage === "richiesta" ? "TRAMA: scrivere e inviare l'invito" : r.stage === "inviato" ? "Famiglia: creare l'account" : "—"}
+                  </td>
+                </tr>
+              );
+            })}
             {shown.length === 0 && (
               <tr>
-                <td colSpan={6} className="px-4 py-6 text-center text-ink-2">
+                <td colSpan={9} className="px-4 py-6 text-center text-ink-2">
                   Nessuna richiesta in questa fase.
                 </td>
               </tr>
@@ -157,6 +189,15 @@ export default async function AdminFamigliePage({ searchParams }: { searchParams
         <Link href="/admin/one/pilot" className="font-semibold text-white underline underline-offset-2">Pilota (per persona) →</Link>
       </div>
     </div>
+  );
+}
+
+function Cell({ c }: { c: JourneyCell }) {
+  return (
+    <td className={`px-4 py-2.5 ${c.unknown ? "text-ink-3" : "text-ink-2"}`}>
+      {c.value}
+      {c.detail ? <span className="block text-[11px] text-ink-3">{c.detail}</span> : null}
+    </td>
   );
 }
 

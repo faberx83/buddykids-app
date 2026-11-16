@@ -127,6 +127,7 @@ export default async function AdminOggiPage() {
                     + {q.hiddenDemo} di prova non {q.hiddenDemo === 1 ? "contata" : "contate"}: mostrale
                   </Link>
                 )}
+                {q.note && <span className="text-ink-3">{q.note}</span>}
               </div>
             </section>
           ))}
@@ -141,6 +142,7 @@ export default async function AdminOggiPage() {
               <Link key={q.key} href={q.hiddenDemo > 0 && q.demoHref ? q.demoHref : q.href} className="rounded-full border border-navy-3 px-3 py-1 text-xs text-navy-text2 no-underline hover:text-white">
                 {q.label} · 0
                 {q.hiddenDemo > 0 ? ` (+${q.hiddenDemo} di prova)` : ""}
+                {q.note ? ` · ${q.note}` : ""}
               </Link>
             ))}
           </div>

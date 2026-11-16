@@ -39,6 +39,7 @@ import { getAllCertificationsForAdmin } from "./certifications";
 import { getAllBetaFeedbackForAdmin } from "./beta-feedback";
 import { getFeatureFlagOverridesForAdmin } from "./feature-flag-overrides";
 import { getWaitlistForAdmin } from "./waitlist";
+import { registeredNotMarkedNote, waitlistQueue } from "@/lib/admin-ops/invitations";
 import { getAdminBookings, getAdminInquiries } from "./admin-ops";
 import {
   DEFAULT_BOOKING_FILTERS,
@@ -104,7 +105,9 @@ export async function getCommandCenterQueues(): Promise<CommandCenterQueue[]> {
   const certsPending = certsPendingAll.filter((c) => !isDemoCertification(c));
   const feedbackNew = betaFeedback.filter((f) => f.status === "nuovo");
   const flagAlerts = featureFlags.filter((f) => f.hasAlert);
-  const waitlistNew = waitlist.items.filter((w) => w.status === "nuovo");
+  // LOTTO 2 (16/11/2026): stessa regola di Lista d'attesa e Famiglie. Una
+  // richiesta con l'account già creato esce dalla coda (resta nello storico).
+  const { queue: waitlistNew, registeredNotMarked } = waitlistQueue(waitlist.items);
 
   const inputs: QueueInput[] = [
     {
@@ -204,6 +207,7 @@ export async function getCommandCenterQueues(): Promise<CommandCenterQueue[]> {
       href: "/admin/lista-attesa",
       nextStep: "Scrivere l'invito, poi segnarlo come inviato",
       items: waitlistNew.map((w) => ({ id: w.id, title: w.email, sub: w.comune, createdAt: w.createdAt, href: "/admin/lista-attesa" })),
+      note: registeredNotMarked.length > 0 ? registeredNotMarkedNote(registeredNotMarked.length) : undefined,
     },
     {
       key: "feature-flags",
