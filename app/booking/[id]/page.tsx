@@ -10,6 +10,10 @@ import { resolveFeatureFlag, resolveFeatureFlagVisibility } from "@/lib/feature-
 import { generateCorrelationId } from "@/lib/telemetry/correlation";
 import PhoneShell from "@/components/PhoneShell";
 import BookingClient from "./BookingClient";
+// RC 20/11 (16/11/2026), Lotto A: le famiglie non entrano nel flusso di un'attività DEMO.
+import Link from "next/link";
+import { getDemoAccess } from "@/lib/demo/access";
+import { DEMO_BADGE, DEMO_BLOCKED_MESSAGE } from "@/lib/nextgen/demo-label";
 
 export default async function BookingPage({
   params,
@@ -42,12 +46,14 @@ export default async function BookingPage({
   // stessa visibilità di Prenotazioni V2 (BOOKINGS_V2_ENABLED), solo dentro
   // TRAMA ONE. Fail-closed: qualunque errore → flusso di prima.
   let v2 = false;
+  let viewerId: string | null = null;
   if (isSupabaseConfigured) {
     const supabase = await createClient();
     const {
       data: { user },
     } = await supabase.auth.getUser();
     if (!user) redirect(`/auth/login?next=/booking/${id}`);
+    viewerId = user.id;
     nextgen = await resolveFeatureFlag({
       flagName: "TRAMA_ONE_ENABLED",
       userId: user.id,
@@ -70,6 +76,25 @@ export default async function BookingPage({
 
   const activity = await getActivityBySlug(id);
   if (!activity) return notFound();
+
+  const demoMode = isSupabaseConfigured ? (await getDemoAccess(activity.dbId, viewerId, { failClosed: false })).mode : "none";
+  if (demoMode === "blocked") {
+    return (
+      <PhoneShell>
+        <div data-testid="demo-booking-blocked" className="flex h-full min-h-screen flex-col justify-center gap-4 px-6 py-8 sm:min-h-0 sm:flex-1">
+          <span className="self-start rounded-full bg-[#FEF3C7] px-2.5 py-1 text-[12px] font-bold text-[#92400E]">{DEMO_BADGE}</span>
+          <h1 className="font-poppins text-[22px] font-semibold leading-tight text-ink">{activity.name}</h1>
+          <p className="text-[15px] leading-relaxed text-ink-2">{DEMO_BLOCKED_MESSAGE}</p>
+          <Link
+            href="/nextgen/search"
+            className="flex min-h-[52px] w-full items-center justify-center rounded-[12px] bg-trama-primary text-[16px] font-semibold text-white active:bg-trama-primary-press"
+          >
+            Torna a Scopri
+          </Link>
+        </div>
+      </PhoneShell>
+    );
+  }
 
   // TRAMA ONE Build Sprint 3 — "Giorni spot": stessa condizione della
   // scheda attività (app/activity/[id]/page.tsx) — solo per attività dove il
@@ -98,6 +123,7 @@ export default async function BookingPage({
         days={days}
         nextgen={nextgen}
         v2={v2}
+        demoSimulate={demoMode === "simulate"}
       />
     </PhoneShell>
   );

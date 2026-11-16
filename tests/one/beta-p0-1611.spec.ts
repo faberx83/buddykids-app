@@ -65,7 +65,7 @@ test.describe("Badge DEMO", () => {
     expect(detail).toContain('data-testid="demo-notice"');
 
     const booking = read("app/booking/[id]/BookingClient.tsx");
-    expect(booking).toContain("demo={isDemoActivity(activity)}");
+    expect(booking).toContain("demo={demoSimulate || isDemoActivity(activity)}"); // RC 20/11: anche quando lo dice il server
     expect(booking).toContain('data-testid="demo-booking-note"');
   });
 });

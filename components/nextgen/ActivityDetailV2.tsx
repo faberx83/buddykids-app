@@ -27,7 +27,7 @@ import ContactCenterButton from "@/components/ContactCenterButton";
 import { dayPrice } from "@/lib/day-pricing";
 import { activityPrice, formatEuro } from "@/lib/nextgen/activity-price";
 import { navigationDestination, placeLine, type ActivityService } from "@/lib/nextgen/activity-detail-v2";
-import { isDemoActivity, DEMO_BADGE, DEMO_NOTE } from "@/lib/nextgen/demo-label";
+import { isDemoActivity, DEMO_BADGE, DEMO_NOTE, DEMO_BLOCKED_CTA, DEMO_BLOCKED_MESSAGE, DEMO_SIMULATE_CTA, DEMO_SIMULATE_NOTE, type DemoRequestMode } from "@/lib/nextgen/demo-label";
 import { longDateIt, shortRangeIt, unavailableCtaLabel, type ActivityDateSummary } from "@/lib/nextgen/parent-ux-fix";
 
 const WEEKDAY_SHORT = ["Lun", "Mar", "Mer", "Gio", "Ven", "Sab", "Dom"];
@@ -81,6 +81,8 @@ export default function ActivityDetailV2({
   bookingHref,
   preview = null,
   dateSummary = null,
+  demoMode = "none",
+  weeksBookable = true,
 }: {
   activity: Activity;
   reasons: string[];
@@ -119,7 +121,18 @@ export default function ActivityDetailV2({
   preview?: { returnHref: string } | null;
   /** Correzioni dal test UX (21/10/2026, PARENT_UX_FIX_ENABLED): date vere e stato coerente. null = come prima. */
   dateSummary?: ActivityDateSummary | null;
+  /** RC 20/11 (16/11/2026), Lotto A: "simulate" per i collaudatori, "blocked" per le famiglie. */
+  demoMode?: DemoRequestMode;
+  /** RC 20/11, Lotto A2: almeno una settimana intera prenotabile. */
+  weeksBookable?: boolean;
 }) {
+  // Lotto A: DEMO se lo dicono i dati (demoMode dal server) o, in ripiego, il nome.
+  const isDemo = demoMode !== "none" || isDemoActivity(activity);
+  const demoBlocked = isDemo && demoMode !== "simulate";
+  const bookLabel = demoMode === "simulate" ? DEMO_SIMULATE_CTA : "Prenota";
+  // Lotto A2: senza giorni scelti, un'attività a giornate (o con le settimane
+  // esaurite) chiede prima i giorni, invece di mandare a una pagina "esaurite".
+  const needsDayChoice = showDaySelection && (activity.bookingMode === "day_only" || !weeksBookable);
   const facts = [
     activity.ageRange ? { icon: "ti-users", text: activity.ageRange } : null,
     activity.hours ? { icon: "ti-clock", text: activity.hours } : null,
@@ -205,16 +218,17 @@ export default function ActivityDetailV2({
             </div>
             <p className="text-[14px] text-ink-2">{placeLine(activity)}</p>
             {/* Lotto P0 (16/11/2026): un'attività di un centro di prova non è un'offerta reale. */}
-            {isDemoActivity(activity) && (
+            {isDemo && (
               <p data-testid="demo-notice" className="flex items-start gap-2 rounded-2xl bg-[#FEF3C7] px-3.5 py-2.5 text-[13px] leading-snug text-[#92400E]">
                 <span className="rounded-full bg-white px-2 py-[1px] text-[11px] font-bold">{DEMO_BADGE}</span>
-                <span>{DEMO_NOTE}</span>
+                <span>{demoMode === "simulate" ? DEMO_SIMULATE_NOTE : demoBlocked ? DEMO_BLOCKED_MESSAGE : DEMO_NOTE}</span>
               </p>
             )}
             {/* Correzioni dal test UX (21/10/2026), UX-PARENT-012: dove si
                 va davvero. "Apri mappa" con l'indirizzo o le coordinate; se
                 l'indirizzo non ha un numero civico lo diciamo. */}
-            {dateSummary && (() => {
+            {/* Lotto A3: nessun link esterno (mappa) per un indirizzo di prova. */}
+            {dateSummary && !isDemo && (() => {
               const destination = navigationDestination(activity.address, activity.lat, activity.lng);
               const vague = !/\d/.test(activity.address ?? "");
               return (
@@ -493,7 +507,8 @@ export default function ActivityDetailV2({
           )}
 
           {/* 9. Scrivi al centro: azione secondaria (spenta in anteprima del gestore) */}
-          {!preview && (
+          {/* Lotto A3: nessun contatto verso un centro di prova, salvo per i collaudatori. */}
+          {!preview && !demoBlocked && (
           <section className="flex flex-col gap-2">
             <p className="text-[13.5px] text-ink-2">Hai una domanda su orari, pranzo o iscrizione?</p>
             <ContactCenterButton activityDbId={activity.dbId} />
@@ -522,9 +537,14 @@ export default function ActivityDetailV2({
           <button type="button" disabled data-testid="requests-paused-cta" className={CTA_DISABLED}>
             Richieste sospese
           </button>
+        ) : demoBlocked && !existingBooking ? (
+          // Lotto A1/A2: una famiglia non inizia una richiesta DEMO (il server la rifiuterebbe comunque).
+          <button type="button" disabled data-testid="demo-blocked-cta" className={CTA_DISABLED}>
+            {DEMO_BLOCKED_CTA}
+          </button>
         ) : daysSelected > 0 && meetsMinDays ? (
           <Link href={bookingHref} data-spotlight="book_activity" className={CTA}>
-            Prenota
+            {bookLabel}
           </Link>
         ) : existingBooking ? (
           existingBooking.canCancelOrModify ? (
@@ -543,11 +563,21 @@ export default function ActivityDetailV2({
           </button>
         ) : daysSelected > 0 && !meetsMinDays ? (
           <button type="button" disabled data-spotlight="book_activity" className={CTA_DISABLED}>
-            Prenota
+            {bookLabel}
+          </button>
+        ) : needsDayChoice ? (
+          <button
+            type="button"
+            data-testid="choose-days-cta"
+            data-spotlight="book_activity"
+            onClick={() => document.getElementById("giorni-h")?.scrollIntoView({ behavior: "smooth", block: "start" })}
+            className={CTA}
+          >
+            Scegli i giorni
           </button>
         ) : (
           <Link href={bookingHref} data-spotlight="book_activity" className={CTA}>
-            Prenota
+            {bookLabel}
           </Link>
         )}
       </div>

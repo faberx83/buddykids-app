@@ -88,7 +88,9 @@ export default function DiscoveryMapPopupCard({
 }) {
   const invitable = isDiscoveryLeadInvitable(lead);
   const secondaryLabel = secondaryLinkLabelForLead(lead);
-  const ctaHref = lead.registrationUrl || lead.officialUrl;
+  // RC 20/11 (16/11/2026), Lotto C1: l'etichetta dice "Sito dell'organizzatore" / "Vedi la fonte",
+  // quindi il link porta lì (prima apriva il modulo d'iscrizione, es. un Google Form).
+  const ctaHref = lead.officialUrl;
   const age = formatAge(lead.ageMin, lead.ageMax);
   const dateRange = formatDateRange(lead.startDate, lead.endDate);
   const [fav, setFav] = useState(initialFavorite ?? false);

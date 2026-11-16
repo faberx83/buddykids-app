@@ -24,6 +24,7 @@ import { activityDetailReasons, includedServices } from "@/lib/nextgen/activity-
 import { markFirstUsefulAction } from "@/lib/nextgen/first-action";
 import { activityPrice, formatEuro } from "@/lib/nextgen/activity-price";
 import { distanceText } from "@/lib/geo";
+import type { DemoRequestMode } from "@/lib/nextgen/demo-label";
 
 const weekdayLabels = ["lunedì", "martedì", "mercoledì", "giovedì", "venerdì"];
 const weekdayShort = ["Lun", "Mar", "Mer", "Gio", "Ven", "Sab", "Dom"];
@@ -40,6 +41,8 @@ export default function DetailClient({
   activityAvailable = true,
   requestsPaused = false,
   dateSummary = null,
+  demoMode = "none",
+  weeksBookable = true,
   realSpotsLeft = undefined,
   partnerPreview = false,
   v2 = false,
@@ -114,6 +117,10 @@ export default function DetailClient({
   requestsPaused?: boolean;
   /** Correzioni dal test UX (21/10/2026), solo scheda V2: stato vero delle date. null = come prima. */
   dateSummary?: ActivityDateSummary | null;
+  /** RC 20/11, Lotto A: attività vera, simulazione DEMO (collaudatore) o DEMO non richiedibile. */
+  demoMode?: DemoRequestMode;
+  /** RC 20/11, Lotto A2: almeno una settimana intera prenotabile. */
+  weeksBookable?: boolean;
   // Posti liberi REALI (minimo tra le settimane offerte non esaurite) — da
   // mostrare al posto del vecchio activity.spotsLeft editoriale. undefined
   // se non calcolabile (es. attività a soli giorni spot, o nessuna
@@ -349,6 +356,8 @@ export default function DetailClient({
         dateSummary={dateSummary}
         existingBooking={existingBooking}
         bookingHref={bookingHref}
+        demoMode={demoMode}
+        weeksBookable={weeksBookable}
         preview={partnerPreview ? { returnHref: previewReturnHref } : null}
       />
     );

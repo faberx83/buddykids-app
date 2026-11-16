@@ -25,6 +25,9 @@ import {
   isMissingRelationError,
   type InquirySide,
 } from "@/lib/inquiries/thread";
+// RC 20/11 (16/11/2026), Lotto A1: niente messaggi ai centri DEMO da chi non collauda.
+import { getDemoAccess } from "@/lib/demo/access";
+import { DEMO_BLOCKED_MESSAGE, DEMO_DB_ERROR_TAG } from "@/lib/nextgen/demo-label";
 
 // TRAMA — MESSAGGI CON IL CENTRO COME CONVERSAZIONE (27/10/2026,
 // migration_54; approvato il 15/10, richiamato da Fabrizio il 27/10: "un
@@ -130,6 +133,9 @@ export async function createInquiryAction(input: {
   } = await supabase.auth.getUser();
   if (!user) return { error: "Non autenticato" };
 
+  const demoAccess = await getDemoAccess(input.activityDbId, user.id);
+  if (demoAccess.mode === "blocked") return { error: DEMO_BLOCKED_MESSAGE };
+
   const threads = await threadsEnabled(user.id, "parent");
   const at = new Date().toISOString();
 
@@ -138,7 +144,7 @@ export async function createInquiryAction(input: {
     if (existing) {
       const res = await sendParentMessage(supabase, user.id, existing, clean.body, at);
       if (res.error) return { error: res.error };
-      await notifyCenterOfParentMessage(supabase, user.id, input.activityDbId, existing, clean.body, false, true);
+      if (!demoAccess.demo) await notifyCenterOfParentMessage(supabase, user.id, input.activityDbId, existing, clean.body, false, true);
       revalidatePath("/nextgen/richieste");
       return { inquiryId: existing, continued: true };
     }
@@ -154,6 +160,7 @@ export async function createInquiryAction(input: {
     .select("id")
     .single();
 
+  if (error?.message?.includes(DEMO_DB_ERROR_TAG)) return { error: DEMO_BLOCKED_MESSAGE };
   if (error || !created) return { error: error?.message || "Errore nell'invio del messaggio" };
 
   // primo messaggio anche nella conversazione (se la tabella c'è)
@@ -161,7 +168,8 @@ export async function createInquiryAction(input: {
 
   revalidatePath("/richieste");
   revalidatePath("/nextgen/richieste");
-  await notifyCenterOfParentMessage(supabase, user.id, input.activityDbId, created.id as string, clean.body, true, threads);
+  // Simulazione DEMO: nessun avviso ai gestori.
+  if (!demoAccess.demo) await notifyCenterOfParentMessage(supabase, user.id, input.activityDbId, created.id as string, clean.body, true, threads);
   return { inquiryId: created.id as string };
 }
 

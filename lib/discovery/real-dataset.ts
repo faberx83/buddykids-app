@@ -111,7 +111,8 @@ export interface DiscoveryLeadRecord {
   endDate: string | null;
   weeklyStructure: string | null;
   price: number | null;
-  priceUnit: "per_settimana" | null;
+  // RC 20/11 (16/11/2026): "al_giorno" per chi pubblica solo il prezzo giornaliero.
+  priceUnit: "per_settimana" | "al_giorno" | null;
   registrationUrl: string | null;
   officialUrl: string;
   contact: string | null;
@@ -954,8 +955,8 @@ const WINTER_DISCOVERY_LEADS: DiscoveryLeadRecord[] = [
     startDate: "2026-12-28",
     endDate: "2026-12-30",
     weeklyStructure: "28, 29 e 30 dicembre 2026, 9:00–17:00 (ingresso 8:30–9:00, uscita 17:00–17:15)",
-    price: null,
-    priceUnit: null,
+    price: 60,
+    priceUnit: "al_giorno",
     registrationUrl: "https://forms.gle/DX8djQeiCh6HmBSj6",
     officialUrl: "https://leonexiiisport.it/camp-2025/christmas-camp/",
     contact: null,
@@ -964,7 +965,7 @@ const WINTER_DISCOVERY_LEADS: DiscoveryLeadRecord[] = [
     sources: [{ label: "Leone XIII Sport — Christmas Camp", url: "https://leonexiiisport.it/camp-2025/christmas-camp/" }],
     seasonYear: 2026,
     confidence: "high",
-    temporalNote: "Edizione 2026 pubblicata dall'organizzatore (letta il 26/10/2026, riletta il 16/11/2026). Età: nati dal 2014 al 2023.",
+    temporalNote: "Edizione 2026 (28–30/12/2026) pubblicata sulla pagina dell'organizzatore, aggiornata il 06/11/2026: letta il 26/10 e riletta il 16/11/2026. Prezzi e tessera dalla stessa pagina; iscrizione con il modulo indicato lì o in segreteria. Età: nati dal 2014 al 2023.",
     verifiedOn: "2026-11-16",
     invitable: true,
     officialUrlIsOrganizerSite: true,
@@ -1559,8 +1560,29 @@ export function isDiscoveryLeadCompatibleWithCategoryTags(
  */
 const CONFIDENCE_RANK: Record<DiscoveryLeadConfidence, number> = { high: 0, medium: 1 };
 
-export function sortDiscoveryLeadsForDisplay(leads: DiscoveryLeadRecord[]): DiscoveryLeadRecord[] {
-  return [...leads].sort((a, b) => CONFIDENCE_RANK[a.confidence] - CONFIDENCE_RANK[b.confidence]);
+export function sortDiscoveryLeadsForDisplay(leads: DiscoveryLeadRecord[], todayIso?: string): DiscoveryLeadRecord[] {
+  // RC 20/11 (16/11/2026), Lotto C2: con la data di oggi, le edizioni concluse vanno in fondo.
+  const ended = (l: DiscoveryLeadRecord) => (todayIso && isDiscoveryLeadEnded(l, todayIso) ? 1 : 0);
+  return [...leads].sort((a, b) => ended(a) - ended(b) || CONFIDENCE_RANK[a.confidence] - CONFIDENCE_RANK[b.confidence]);
+}
+
+/** RC 20/11, Lotto C2: l'edizione documentata è finita (data di fine nota e passata). */
+export function isDiscoveryLeadEnded(lead: Pick<DiscoveryLeadRecord, "endDate">, todayIso: string): boolean {
+  return Boolean(lead.endDate && lead.endDate < todayIso);
+}
+
+/**
+ * RC 20/11, Lotto C2: stato temporale da mostrare sulla card. Riusa le
+ * parole già in uso ("Edizione conclusa", "Date da verificare"); null quando
+ * le date mostrate sono future e bastano da sole.
+ */
+export function leadTemporalLabel(
+  lead: Pick<DiscoveryLeadRecord, "startDate" | "endDate" | "seasonYear">,
+  todayIso: string
+): { text: string; tone: "muted" | "warn" } | null {
+  if (isDiscoveryLeadEnded(lead, todayIso)) return { text: `Edizione ${lead.endDate!.slice(0, 4)} conclusa`, tone: "muted" };
+  if (!lead.startDate && !lead.endDate) return { text: `Date ${lead.seasonYear} da verificare`, tone: "warn" };
+  return null;
 }
 
 // ============ PROPONI INVITO (DISCOVERY UNIFICATION, 21/09/2026) ============

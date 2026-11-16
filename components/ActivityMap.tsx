@@ -148,6 +148,8 @@ export interface MapItem {
   // per un lead curato).
   markerKind?: "partner" | "curated_invitable" | "curated_source";
   popupContent?: ReactNode;
+  /** RC 20/11 (16/11/2026), Lotto B: etichetta nel popup di default (es. "DEMO"). */
+  badge?: string;
 }
 
 const MILAN_FALLBACK: [number, number] = [45.4642, 9.19];
@@ -386,6 +388,15 @@ export default function ActivityMap({
               <Popup>
                 {it.popupContent ?? (
                   <div style={{ fontSize: 13, lineHeight: 1.5 }}>
+                    {it.badge && (
+                      <span
+                        data-testid="map-popup-badge"
+                        style={{ display: "inline-block", marginBottom: 4, borderRadius: 999, background: "#FEF3C7", color: "#92400E", padding: "1px 8px", fontSize: 11, fontWeight: 700 }}
+                      >
+                        {it.badge}
+                      </span>
+                    )}
+                    {it.badge && <br />}
                     <strong>
                       {it.emoji} {it.name}
                     </strong>

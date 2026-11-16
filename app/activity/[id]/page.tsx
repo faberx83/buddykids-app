@@ -17,6 +17,8 @@ import { getCenterContext } from "@/lib/data/center-admin";
 import { resolveFamilyPreview, FAMILY_PREVIEW_PARAM, FAMILY_PREVIEW_FROM_PARAM, familyPreviewReturnHref } from "@/lib/center/family-preview";
 import { partnerShellEnabledForCurrentUser } from "@/lib/centers/partner-v2-flag";
 import { getKidsForUser } from "@/lib/data/kids";
+// RC 20/11 (16/11/2026), Lotto A: DEMO decisa sui dati e sul collaudatore.
+import { getDemoAccess } from "@/lib/demo/access";
 
 export default async function ActivityDetailPage({
   params,
@@ -108,11 +110,13 @@ export default async function ActivityDetailPage({
     // prenotazioni a giorni) — qui si legge, non si ricalcola nulla.
     partnerDecision: "pending" | "accepted" | "rejected" | "proposed" | "partial";
   } | null = null;
+  let viewerId: string | null = null;
   if (isSupabaseConfigured) {
     const supabase = await createClient();
     const {
       data: { user },
     } = await supabase.auth.getUser();
+    viewerId = user?.id ?? null;
     if (user) {
       const [flagResult, bookings] = await Promise.all([
         resolveFeatureFlag({
@@ -240,6 +244,8 @@ export default async function ActivityDetailPage({
     dateSummary = summarizeActivityDates(rows[activity.dbId], todayIso, activity.bookingMode);
   }
   const realSpotsLeft = availableWeekSpots.length ? Math.min(...availableWeekSpots) : undefined;
+  // Lotto A: "none" = attività vera; "simulate" = DEMO per un collaudatore; "blocked" = DEMO per le famiglie.
+  const demoMode = isSupabaseConfigured && !partnerPreview ? (await getDemoAccess(activity.dbId, viewerId, { failClosed: false })).mode : "none";
 
   return (
     <PhoneShell>
@@ -261,6 +267,8 @@ export default async function ActivityDetailPage({
         requestsPaused={requestsPaused}
         realSpotsLeft={realSpotsLeft}
         dateSummary={dateSummary}
+        demoMode={demoMode}
+        weeksBookable={hasAvailableWeek}
       />
     </PhoneShell>
   );

@@ -18,7 +18,7 @@ import { calculateDayBookingCost, dayPrice } from "@/lib/day-pricing";
 import type { EligibleInviteDiscount } from "@/lib/data/invites";
 import { markFirstUsefulAction } from "@/lib/nextgen/first-action";
 import { shortfallMessage, spotsShortfall, type SpotsSlot } from "@/lib/capacity/request-check";
-import { isDemoActivity, DEMO_BADGE, DEMO_NOTE } from "@/lib/nextgen/demo-label";
+import { isDemoActivity, DEMO_BADGE, DEMO_SIMULATE_CTA, DEMO_SIMULATE_NOTE } from "@/lib/nextgen/demo-label";
 
 const paymentMethodMap: Record<string, "card" | "apple_pay" | "bank_transfer"> = {
   card: "card",
@@ -44,7 +44,10 @@ export default function BookingClient({
   days = [],
   nextgen = false,
   v2 = false,
+  demoSimulate = false,
 }: {
+  /** RC 20/11 (16/11/2026), Lotto A: attività DEMO, collaudatore autorizzato (deciso dal server). */
+  demoSimulate?: boolean;
   activity: Activity;
   weeks: Week[];
   kids: Kid[];
@@ -513,17 +516,22 @@ export default function BookingClient({
             stato aggiornato di disponibilità. */}
         {currentStepKind === "weeks" && !dayBookingMode && !hasBookableWeeks && (
           <div>
-            <div className={`mb-1 ${titleCls}`}>Nessuna settimana disponibile</div>
+            {/* RC 20/11, Lotto A2: se ci sono giorni singoli, prima si scelgono i giorni
+                (niente "settimane esaurite" a chi non ha ancora scelto nulla). */}
+            <div className={`mb-1 ${titleCls}`}>{hasBookableDays ? "Scegli i giorni" : "Nessuna disponibilità"}</div>
             <div className="mb-4 text-[13px] text-ink-2">
               {hasBookableDays
-                ? "Le settimane intere per questa attività sono al momento esaurite, ma sono ancora disponibili singoli giorni spot."
+                ? activity.bookingMode === "day_only"
+                  ? "Questa attività si prenota a giorni singoli: scegli nella scheda i giorni che ti servono."
+                  : "Le settimane intere non sono disponibili, ma puoi scegliere singoli giorni nella scheda."
                 : "Al momento questa attività non ha disponibilità reale, né a settimana intera né a giorno singolo."}
             </div>
             <Link
-              href={`/activity/${activity.id}`}
+              href={hasBookableDays ? `/activity/${activity.id}#giorni-h` : `/activity/${activity.id}`}
+              data-testid={hasBookableDays ? "booking-choose-days" : undefined}
               className={`inline-block rounded-lg ${accentBg} px-5 py-3 text-[13px] font-bold text-white transition-all hover:scale-[0.97] ${accentHoverBg}`}
             >
-              {hasBookableDays ? "Torna alla scheda per scegliere i giorni" : "Torna alla scheda attività"}
+              {hasBookableDays ? "Scegli i giorni" : "Torna alla scheda attività"}
             </Link>
           </div>
         )}
@@ -731,7 +739,7 @@ export default function BookingClient({
                 ]}
                 kidNames={kidNames}
                 total={total}
-                demo={isDemoActivity(activity)}
+                demo={demoSimulate || isDemoActivity(activity)}
               />
             )}
             {!v2 && (
@@ -908,7 +916,9 @@ export default function BookingClient({
           {submitting
             ? "Attendere…"
             : v2 && step === totalSteps
-              ? "Invia la richiesta al centro"
+              ? demoSimulate || isDemoActivity(activity)
+                ? DEMO_SIMULATE_CTA
+                : "Invia la richiesta al centro"
               : currentStepKind === "payment"
                 ? "Conferma e paga"
                 : "Continua"}
@@ -1010,13 +1020,15 @@ function RequestSummaryV2({
         <span>Costo indicativo</span>
         <span>€{total}</span>
       </div>
-      <p className="mt-2.5 text-[12.5px] leading-snug text-ink-2">
-        Nessun pagamento adesso: il centro riceve la richiesta e ti risponde. Se accetta, i dettagli li concordi
-        direttamente con lui.
-      </p>
-      {demo && (
-        <p data-testid="demo-booking-note" className="mt-2 rounded-xl bg-[#FEF3C7] px-3 py-2 text-[12.5px] leading-snug text-[#92400E]">
-          <strong>{DEMO_BADGE}</strong> · {DEMO_NOTE}
+      {/* Lotto A2: per una DEMO nessuna frase sul centro che riceve la richiesta. */}
+      {demo ? (
+        <p data-testid="demo-booking-note" className="mt-2.5 rounded-xl bg-[#FEF3C7] px-3 py-2 text-[12.5px] leading-snug text-[#92400E]">
+          <strong>{DEMO_BADGE}</strong> · {DEMO_SIMULATE_NOTE}
+        </p>
+      ) : (
+        <p className="mt-2.5 text-[12.5px] leading-snug text-ink-2">
+          Nessun pagamento adesso: il centro riceve la richiesta e ti risponde. Se accetta, i dettagli li concordi
+          direttamente con lui.
         </p>
       )}
     </div>

@@ -35,7 +35,7 @@
 
 import { useEffect, useState } from "react";
 import type { DiscoveryLeadRecord } from "@/lib/discovery/real-dataset";
-import { isDiscoveryLeadInvitable, secondaryLinkLabelForLead, verifiedOnLabel } from "@/lib/discovery/real-dataset";
+import { isDiscoveryLeadInvitable, leadTemporalLabel, secondaryLinkLabelForLead, verifiedOnLabel } from "@/lib/discovery/real-dataset";
 // TRAMA — REAL DISCOVERY PILOT · COMPLETION PASS (17/09/2026), §10
 // "ANALYTICS MINIMUM". Stesso pattern già in uso da
 // components/spotlight/SpotlightOverlay.tsx (Server Action invocata
@@ -138,8 +138,12 @@ export default function DiscoveryLeadCard({
   const showToast = useNextgenToast();
   const [fav, setFav] = useState(initialFavorite ?? false);
   const dateRange = formatDateRange(lead.startDate, lead.endDate);
+  // RC 20/11 (16/11/2026), Lotto C2: "Edizione 2026 conclusa" / "Date 2026 da verificare".
+  const temporal = leadTemporalLabel(lead, new Date().toISOString().slice(0, 10));
   const age = formatAge(lead.ageMin, lead.ageMax);
-  const ctaHref = lead.registrationUrl || lead.officialUrl;
+  // RC 20/11 (16/11/2026), Lotto C1: l'etichetta dice "Sito dell'organizzatore" / "Vedi la fonte",
+  // quindi il link porta lì (prima apriva il modulo d'iscrizione, es. un Google Form).
+  const ctaHref = lead.officialUrl;
   const invitable = isDiscoveryLeadInvitable(lead);
   // §11 del prompt "CTA SECONDARIA": wording derivato dal dominio del link
   // (officialUrlIsOrganizerSite), MAI genericamente "sito ufficiale".
@@ -372,6 +376,11 @@ export default function DiscoveryLeadCard({
               {dateRange}
             </span>
           )}
+          {temporal && (
+            <span data-testid="lead-temporal" className={`font-semibold ${temporal.tone === "warn" ? "text-[#B54708]" : "text-ink-3"}`}>
+              {temporal.text}
+            </span>
+          )}
         </div>
 
         <p className={v2 ? "mb-2 line-clamp-3 text-[13px] leading-snug text-ink-2" : "mb-2 text-[12px] leading-snug text-ink-2"}>{lead.shortDescription}</p>
@@ -384,6 +393,7 @@ export default function DiscoveryLeadCard({
                 {lead.priceUnit === "per_settimana" && (
                   <small className="text-[11px] font-normal text-ink-2"> / settimana</small>
                 )}
+                {lead.priceUnit === "al_giorno" && <small className="text-[11px] font-normal text-ink-2"> / giorno</small>}
               </>
             ) : (
               <span className="text-[11px] font-normal text-ink-3">Prezzo non indicato dalla fonte</span>

@@ -9,6 +9,9 @@ import { createClient } from "@/lib/supabase/server";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
 import { resolveFeatureFlag, resolveFeatureFlagVisibility } from "@/lib/feature-flags/resolve";
 import { generateCorrelationId } from "@/lib/telemetry/correlation";
+// RC 20/11 (16/11/2026), Lotto A2: dopo una simulazione DEMO nessuna frase sul centro.
+import { isDemoActivityById } from "@/lib/demo/access";
+import { DEMO_BADGE, DEMO_SIMULATE_NOTE } from "@/lib/nextgen/demo-label";
 
 // FIX (FINAL MICRO-PILOT LIVE ACCEPTANCE, 01/09/2026 — segnalazione di
 // Fabrizio): "Torna alla Home" dopo una prenotazione portava sempre a "/"
@@ -72,6 +75,7 @@ export default async function BookingSuccessPage({
   if (!activity) return notFound();
 
   const summary = bookingId ? await getBookingSummary(bookingId) : null;
+  const demo = isSupabaseConfigured && activity.dbId ? await isDemoActivityById(activity.dbId, { failClosed: false }) : false;
   const homeHref = await resolveHomeHref();
   // Segnalazione di Fabrizio (01/09/2026, "grafica legacy" residua): il
   // bottone "Torna alla Home" restava sky anche per un utente NEXTGEN.
@@ -93,12 +97,20 @@ export default async function BookingSuccessPage({
           <div className="mb-5 flex h-16 w-16 items-center justify-center rounded-full bg-trama-accent-soft text-trama-accent-ink">
             <i className="ti ti-send text-[30px]" aria-hidden="true" />
           </div>
-          <h1 className="mb-2 font-poppins text-[26px] font-semibold leading-tight text-ink">Richiesta inviata</h1>
+          <h1 className="mb-2 font-poppins text-[26px] font-semibold leading-tight text-ink">{demo ? "Simulazione registrata" : "Richiesta inviata"}</h1>
+          {demo ? (
+            <p data-testid="demo-success-note" className="mb-6 text-[15px] leading-relaxed text-ink-2">
+              <span className="mr-1.5 rounded-full bg-[#FEF3C7] px-2 py-[1px] text-[12px] font-bold text-[#92400E]">{DEMO_BADGE}</span>
+              {summary ? `${summary.kidNames} · ${activity.name}. ` : `${activity.name}. `}
+              {DEMO_SIMULATE_NOTE}
+            </p>
+          ) : (
           <p className="mb-6 text-[15px] leading-relaxed text-ink-2">
             {summary ? `${summary.kidNames} · ${activity.name}. ` : `${activity.name}. `}
             Il centro la vede adesso: ti avvisiamo appena risponde. Intanto la trovi in Prenotazioni come “In attesa
             del centro”.
           </p>
+          )}
           {summary && (
             <div className="mb-6 w-full rounded-2xl border border-trama-line bg-white px-4 py-3">
               <SRow label="Attività" value={activity.name} />

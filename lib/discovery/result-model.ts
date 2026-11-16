@@ -125,6 +125,8 @@ export interface DiscoveryMapPartnerItem {
   emoji: string;
   lat: number;
   lng: number;
+  /** RC 20/11 (16/11/2026), Lotto B: attività di un centro di prova (badge DEMO nel popup). */
+  demo?: boolean;
 }
 
 export interface DiscoveryMapCuratedItem {
@@ -165,7 +167,7 @@ export type DiscoveryMapItem = DiscoveryMapPartnerItem | DiscoveryMapCuratedItem
  * generati qui: la moltiplicazione è SOLO di presentazione-Mappa.
  */
 export function buildDiscoveryMapItems(
-  partnerMapItems: { id: string; name: string; emoji: string; lat: number; lng: number }[],
+  partnerMapItems: { id: string; name: string; emoji: string; lat: number; lng: number; demo?: boolean }[],
   curatedLeads: DiscoveryLeadRecord[]
 ): DiscoveryMapItem[] {
   const partnerItems: DiscoveryMapItem[] = partnerMapItems.map((it) => ({ kind: "partner", ...it }));

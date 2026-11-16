@@ -15,6 +15,10 @@ import { sendPushToUser } from "@/lib/push/send";
 // Percorso dei centri del pilota (27/10/2026): oltre alla push, l'email ai
 // gestori (dietro CENTER_PILOT_FLOW_ENABLED, best-effort come la push).
 import { emailCenterAdminsOfNewRequest } from "@/lib/centers/notify-center";
+// RC 20/11 (16/11/2026), Lotto A1: attività DEMO solo per i collaudatori,
+// e nessun avviso ai gestori per una simulazione.
+import { getDemoAccess } from "@/lib/demo/access";
+import { DEMO_BLOCKED_MESSAGE, DEMO_DB_ERROR_TAG } from "@/lib/nextgen/demo-label";
 
 export interface CreateBookingInput {
   activityDbId: string;
@@ -206,6 +210,11 @@ export async function createBookingAction(
   } = await supabase.auth.getUser();
   if (!user) return { error: "Non autenticato" };
 
+  // Lotto A1: controllo sui dati (centers.is_demo / is_test_fixture), non sul
+  // nome; il database ripete lo stesso controllo (migration 63).
+  const demoAccess = await getDemoAccess(input.activityDbId, user.id);
+  if (demoAccess.mode === "blocked") return { error: DEMO_BLOCKED_MESSAGE };
+
   if (!input.confirmOverlap) {
     const conflicts = await findWeekOverlapConflicts(
       supabase,
@@ -259,6 +268,7 @@ export async function createBookingAction(
     ({ data: booking, error } = await supabase.from("bookings").insert(bookingInsertBase).select("id").single());
   }
 
+  if (error?.message?.includes(DEMO_DB_ERROR_TAG)) return { error: DEMO_BLOCKED_MESSAGE };
   if (error || !booking) return { error: error?.message || "Errore nella prenotazione" };
 
   const bookingId: string = booking.id;
@@ -332,10 +342,14 @@ export async function createBookingAction(
       correlationId: input.correlationId,
       tenant: "family",
       role: "parent",
-      detail: input.source ? `source=${input.source}` : null,
+      // Lotto A1: le simulazioni DEMO restano riconoscibili e fuori dai conteggi commerciali.
+      detail: demoAccess.demo ? `demo=simulazione${input.source ? `;source=${input.source}` : ""}` : input.source ? `source=${input.source}` : null,
     },
     { supabase, userId: user.id }
   );
+
+  // Simulazione DEMO: nessuna push e nessuna email ai gestori.
+  if (demoAccess.demo) return { bookingId };
 
   // Push notifications, trigger P0 "nuova prenotazione" — a TUTTI gli admin
   // del centro dell'attività (stesso principio "notifica chi può agire" già

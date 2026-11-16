@@ -1657,8 +1657,13 @@ test.describe("SCOPERTE DI NATALE — primo giro (26/10/2026)", () => {
     for (const l of WINTER_DISCOVERY_LEADS) {
       expect(l.lat, l.id).toBeNull();
       expect(l.lng, l.id).toBeNull();
-      expect(l.priceUnit === null || l.priceUnit === "per_settimana", l.id).toBe(true);
-      expect(l.price, l.id).toBeNull();
+      // RC 20/11 (16/11/2026): ammesso il prezzo AL GIORNO dichiarato dalla fonte
+      // (Leone XIII, 60 € al giorno, priceUnit "al_giorno"). La garanzia resta:
+      // mai un prezzo senza unità e mai un prezzo a settimana per un campus a giornata.
+      expect(l.priceUnit === null || l.priceUnit === "per_settimana" || l.priceUnit === "al_giorno", l.id).toBe(true);
+      if (l.price !== null) expect(l.priceUnit, l.id).not.toBeNull();
+      if (l.bookingMode === "daily") expect(l.priceUnit, l.id).not.toBe("per_settimana");
+      if (l.price !== null) expect(l.id).toBe("milano-leone-xiii-christmas-camp-2026");
       expect(l.shortDescription.length, l.id).toBeLessThanOrEqual(280);
     }
   });

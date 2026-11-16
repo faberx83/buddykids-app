@@ -94,6 +94,8 @@ import DiscoverFiltersSheet from "@/components/nextgen/DiscoverFiltersSheet";
 // NODI THREAD (28/10/2026): Scopri V2 senza risultati, dentro il riquadro che c'è già.
 import Nodi, { useNodiEnabled } from "@/components/nextgen/Nodi";
 import { NODI_SIZE } from "@/lib/nextgen/nodi";
+// RC 20/11 (16/11/2026), Lotto B: badge DEMO anche nel popup della mappa.
+import { isDemoActivity, DEMO_BADGE } from "@/lib/nextgen/demo-label";
 
 // Leaflet usa `window`, quindi la mappa va caricata solo lato client — stesso
 // pattern già usato in LEGACY (app/(main)/search/SearchClient.tsx) e nel
@@ -765,8 +767,9 @@ export default function SearchDiscoveryClient({
       return true;
     });
 
-    return sortDiscoveryLeadsForDisplay(filtered);
+    return sortDiscoveryLeadsForDisplay(filtered, todayIso);
   }, [
+    todayIso,
     uxFix,
     temporalRange,
     realDiscoveryLeads,
@@ -1119,7 +1122,7 @@ export default function SearchDiscoveryClient({
     () =>
       matches
         .filter((m) => m.activity.lat !== undefined && m.activity.lng !== undefined)
-        .map((m) => ({ id: m.activity.id, name: m.activity.name, emoji: m.activity.emoji, lat: m.activity.lat!, lng: m.activity.lng! })),
+        .map((m) => ({ id: m.activity.id, name: m.activity.name, emoji: m.activity.emoji, lat: m.activity.lat!, lng: m.activity.lng!, demo: isDemoActivity(m.activity) })),
     [matches]
   );
 
@@ -1139,7 +1142,7 @@ export default function SearchDiscoveryClient({
     () =>
       discoveryMapItems.map((item) =>
         item.kind === "partner"
-          ? { id: item.id, name: item.name, emoji: item.emoji, lat: item.lat, lng: item.lng, markerKind: "partner" }
+          ? { id: item.id, name: item.name, emoji: item.emoji, lat: item.lat, lng: item.lng, markerKind: "partner", badge: item.demo ? DEMO_BADGE : undefined }
           : {
               id: `curated-${item.id}`,
               name: item.lead.activityTitle,

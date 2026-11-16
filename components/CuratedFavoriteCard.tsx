@@ -72,6 +72,7 @@ export default function CuratedFavoriteCard({ lead }: { lead: DiscoveryLeadRecor
               <>
                 €{lead.price}
                 {lead.priceUnit === "per_settimana" && <span className="text-[10px] font-normal text-ink-2">/sett</span>}
+                {lead.priceUnit === "al_giorno" && <span className="text-[10px] font-normal text-ink-2">/giorno</span>}
               </>
             ) : (
               <span className="text-[10.5px] font-normal text-ink-3">Prezzo non indicato</span>
