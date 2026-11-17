@@ -107,7 +107,8 @@ const CENTER_STEPS: Record<Platform, { title: string; steps: React.ReactNode[]; 
 
 const TONES: Record<InstallHintVariant, { link: string; title: string; num: string; noteBox: string; cta: string }> = {
   famiglie: {
-    link: "text-trama-accent-ink",
+    // 17/11/2026: navy, come gli altri link della pagina di benvenuto (variante calda).
+    link: "text-trama-navy",
     title: "text-trama-navy",
     num: "bg-trama-primary",
     noteBox: "bg-trama-accent-soft text-trama-accent-ink",

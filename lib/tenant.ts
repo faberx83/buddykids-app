@@ -121,7 +121,8 @@ export const TENANT_CONFIG: Record<Tenant, TenantConfig> = {
     splashPrefix: "/splash/family",
     splashLogo: "/brand/trama-logo-mark.png",
     splashWordmark: "/brand/trama-wordmark.png",
-    splashClaim: "Organizing childhood. Together.",
+    // 17/11/2026: il claim delle famiglie in italiano (Fabrizio: "è il leit motiv di tutto").
+    splashClaim: "Meno cose da ricordare. Più tempo per esserci.",
   },
   partner: {
     title: "TRAMA Partner — Gestione centro",

@@ -28,7 +28,7 @@ export default function TramaLoginHeader({ animate }: { animate: boolean }) {
         className={`text-[13px] text-ink-2 ${animate ? "trama-fade-up" : ""}`}
         style={animate ? { animationDelay: "1.9s" } : undefined}
       >
-        Organizing childhood. Together.
+        Meno cose da ricordare. Più tempo per esserci.
       </p>
     </div>
   );

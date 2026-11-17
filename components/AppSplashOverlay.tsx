@@ -79,7 +79,7 @@ export default function AppSplashOverlay({
           versione (colori, blu notte, bianca); wordmarkSrc resta nelle props
           per compatibilità ma la scritta la sceglie TramaSpinner. */}
       <TramaSpinner size={200} tone={splashTone(logoSrc)} still label="TRAMA" />
-      {claim && <p className="mt-4 text-[14px] text-ink-2">{claim}</p>}
+      {claim && <p className="mt-4 max-w-[26ch] text-balance text-center text-[14px] text-ink-2">{claim}</p>}
     </div>
   );
 }
