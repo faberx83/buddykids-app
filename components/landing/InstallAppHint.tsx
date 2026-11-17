@@ -10,10 +10,20 @@
 // Una riga sotto i pulsanti; tocca → foglietto con due schede (iPhone,
 // Android), quella del telefono in uso già aperta. Aperta dall'icona
 // (display-mode standalone) la riga non compare. Nessun dato salvato.
+// 17/11/2026, Fabrizio: "la stessa nota … deve esserci anche lato centri" →
+// variante "centri" (pagina /centri e login del portale centri), nei colori
+// del portale. Attenzione: l'app dei centri è partner.tramapp.it (manifest
+// "TRAMA Partner"); aggiunta da tramapp.it/centri sarebbe l'app delle
+// famiglie, quindi il primo passo porta al portale centri. Il portale centri
+// non manda notifiche push (le richieste arrivano per email): niente nota
+// sulle notifiche.
 
 import { useEffect, useState } from "react";
 
 type Platform = "ios" | "android";
+export type InstallHintVariant = "famiglie" | "centri";
+
+const PARTNER_URL = "https://partner.tramapp.it";
 
 function detectPlatform(): Platform {
   if (typeof navigator === "undefined") return "android";
@@ -31,7 +41,7 @@ function isStandalone(): boolean {
   );
 }
 
-const STEPS: Record<Platform, { title: string; steps: React.ReactNode[]; note: string }> = {
+const FAMILY_STEPS: Record<Platform, { title: string; steps: React.ReactNode[]; note: string }> = {
   ios: {
     title: "Su iPhone",
     steps: [
@@ -60,7 +70,59 @@ const STEPS: Record<Platform, { title: string; steps: React.ReactNode[]; note: s
   },
 };
 
-export default function InstallAppHint() {
+const partnerLink = (
+  <a href={`${PARTNER_URL}/auth/login`} className="font-semibold underline underline-offset-2">
+    partner.tramapp.it
+  </a>
+);
+
+const CENTER_STEPS: Record<Platform, { title: string; steps: React.ReactNode[]; note: string }> = {
+  ios: {
+    title: "Su iPhone",
+    steps: [
+      <>Apri {partnerLink} con <b>Safari</b>.</>,
+      <>
+        Tocca <i className="ti ti-share-2" aria-hidden="true" /> <b>Condividi</b> (in basso).
+      </>,
+      <>
+        Scegli <b>&quot;Aggiungi alla schermata Home&quot;</b>, poi <b>Aggiungi</b>.
+      </>,
+    ],
+    note: "Si aggiunge il portale centri, \"TRAMA Partner\": richieste, posti e presenze a un tocco. Le richieste nuove vi arrivano anche per email.",
+  },
+  android: {
+    title: "Su Android",
+    steps: [
+      <>Apri {partnerLink} con <b>Chrome</b>.</>,
+      <>
+        Tocca <i className="ti ti-dots-vertical" aria-hidden="true" /> <b>menu</b> (in alto a destra).
+      </>,
+      <>
+        Scegli <b>&quot;Installa app&quot;</b> o <b>&quot;Aggiungi a schermata Home&quot;</b>.
+      </>,
+    ],
+    note: "Si aggiunge il portale centri, \"TRAMA Partner\". Le richieste nuove vi arrivano anche per email.",
+  },
+};
+
+const TONES: Record<InstallHintVariant, { link: string; title: string; num: string; noteBox: string; cta: string }> = {
+  famiglie: {
+    link: "text-trama-accent-ink",
+    title: "text-trama-navy",
+    num: "bg-trama-primary",
+    noteBox: "bg-trama-accent-soft text-trama-accent-ink",
+    cta: "bg-trama-primary active:bg-trama-primary-press",
+  },
+  centri: {
+    link: "text-partner-primary",
+    title: "text-trama-navy",
+    num: "bg-partner-primary",
+    noteBox: "bg-partner-soft text-partner-primary",
+    cta: "bg-partner-primary active:bg-partner-primary-press",
+  },
+};
+
+export default function InstallAppHint({ variant = "famiglie" }: { variant?: InstallHintVariant }) {
   const [hidden, setHidden] = useState(true);
   const [open, setOpen] = useState(false);
   const [tab, setTab] = useState<Platform>("android");
@@ -80,18 +142,24 @@ export default function InstallAppHint() {
   }, [open]);
 
   if (hidden) return null;
-  const s = STEPS[tab];
+  const s = (variant === "centri" ? CENTER_STEPS : FAMILY_STEPS)[tab];
+  const tone = TONES[variant];
 
   return (
     <>
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="flex min-h-[44px] items-center gap-2 self-start text-[15px] font-semibold text-trama-accent-ink"
+        className={`flex min-h-[44px] items-center gap-2 self-start text-left text-[15px] font-semibold ${tone.link}`}
         data-testid="install-app-hint"
+        data-variant={variant}
       >
         <i className="ti ti-device-mobile text-[20px]" aria-hidden="true" />
-        Usala come un&apos;app: aggiungila alla schermata Home
+        {variant === "centri" ? (
+          <>Il portale centri come un&apos;app: aggiungilo alla schermata Home</>
+        ) : (
+          <>Usala come un&apos;app: aggiungila alla schermata Home</>
+        )}
       </button>
 
       {open && (
@@ -105,8 +173,8 @@ export default function InstallAppHint() {
           >
             <div className="flex items-start justify-between gap-3">
               <div className="flex flex-col gap-1">
-                <h2 id="install-h" className="font-poppins text-[20px] font-semibold text-trama-navy">
-                  TRAMA come un&apos;app
+                <h2 id="install-h" className={`font-poppins text-[20px] font-semibold ${tone.title}`}>
+                  {variant === "centri" ? "Il portale centri come un'app" : "TRAMA come un'app"}
                 </h2>
                 <p className="text-[14px] leading-snug text-ink-2">Un&apos;icona sul telefono: la apri con un tocco, senza cercarla nel browser. Non serve nessuno store.</p>
               </div>
@@ -140,7 +208,7 @@ export default function InstallAppHint() {
             <ol className="flex flex-col gap-3" aria-label={s.title}>
               {s.steps.map((step, i) => (
                 <li key={i} className="flex items-start gap-3">
-                  <span className="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-full bg-trama-primary font-poppins text-[14px] font-semibold text-white">
+                  <span className={`flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-full ${tone.num} font-poppins text-[14px] font-semibold text-white`}>
                     {i + 1}
                   </span>
                   <span className="pt-0.5 text-[15.5px] leading-snug text-ink">{step}</span>
@@ -148,12 +216,12 @@ export default function InstallAppHint() {
               ))}
             </ol>
 
-            <p className="rounded-[14px] bg-trama-accent-soft px-3.5 py-3 text-[13.5px] leading-snug text-trama-accent-ink">{s.note}</p>
+            <p className={`rounded-[14px] px-3.5 py-3 text-[13.5px] leading-snug ${tone.noteBox}`}>{s.note}</p>
 
             <button
               type="button"
               onClick={() => setOpen(false)}
-              className="min-h-[48px] rounded-[12px] bg-trama-primary text-[15px] font-semibold text-white active:bg-trama-primary-press"
+              className={`min-h-[48px] rounded-[12px] text-[15px] font-semibold text-white ${tone.cta}`}
             >
               Ho capito
             </button>

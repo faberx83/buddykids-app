@@ -15,6 +15,8 @@ import { getPostLoginDestinationAction } from "@/app/actions/navigation";
 import { recordSignupLegalAcceptanceAction } from "@/app/actions/legal";
 import type { InvitePreview } from "@/lib/data/invites";
 import type { Tenant } from "@/lib/tenant";
+import InstallAppHint from "@/components/landing/InstallAppHint";
+import { CANONICAL_FAMILY_ORIGIN } from "@/lib/public-links";
 
 type Mode = "login" | "signup" | "reset";
 
@@ -567,13 +569,28 @@ export default function LoginForm({
               // app/auth/candidati/page.tsx). Un candidato già approvato
               // arriva invece in modalità signup direttamente da un link
               // dedicato (?mode=signup&email=..., vedi sopra).
-              <Link
-                href="/auth/candidati"
-                className="mt-5 block w-full text-center text-xs font-medium"
-                style={{ color: themeColor }}
-              >
-                Vuoi diventare un Centro Partner TRAMA? Candidati
-              </Link>
+              <>
+                <Link
+                  href="/auth/candidati"
+                  className="mt-5 block w-full text-center text-xs font-medium"
+                  style={{ color: themeColor }}
+                >
+                  Vuoi diventare un Centro Partner TRAMA? Candidati
+                </Link>
+                {/* 17/11/2026, Fabrizio: pagine bidirezionali e la nota "usala come
+                    un'app" anche lato centri. Qui si è già su partner.tramapp.it:
+                    aggiunta da qui, l'icona è il portale centri. */}
+                <a
+                  href={`${CANONICAL_FAMILY_ORIGIN}/centri?da=accesso-centri`}
+                  className="mt-2 flex min-h-[40px] w-full items-center justify-center text-xs font-medium text-ink-2"
+                  data-testid="login-to-centri"
+                >
+                  Come funziona TRAMA per i centri
+                </a>
+                <div className="mt-1 flex justify-center">
+                  <InstallAppHint variant="centri" />
+                </div>
+              </>
             ) : (
               isFamily && inviteOnly && mode === "login" && !inviteParam && !betaParam ? (
                 // 20/10/2026: beta solo su invito — senza un link d'invito non

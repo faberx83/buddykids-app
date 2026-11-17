@@ -1,5 +1,6 @@
 import Link from "next/link";
-import TramaThread from "@/components/nextgen/TramaThread";
+import { PartnerThread } from "@/components/center/PartnerPageHeader";
+import InstallAppHint from "@/components/landing/InstallAppHint";
 
 // TRAMA — PAGINA PER I CENTRI (27/10/2026, P0 di claude/INIZIATIVA_partner_admin_v2.md).
 // La destinazione della campagna verso i centri di Milano: il problema, cosa
@@ -8,6 +9,11 @@ import TramaThread from "@/components/nextgen/TramaThread";
 // Stessa grafica della pagina di benvenuto delle famiglie. Promesse coerenti
 // col prodotto di oggi: niente numeri di famiglie, niente "centri verificati",
 // niente pagamenti in app. Solo la parte visiva: i dati restano in app/centri/page.tsx.
+// 17/11/2026, Fabrizio: "deve avere i colori dell'app partner" → palette del
+// portale centri (petrolio e senape, tailwind partner-*; filo PartnerThread;
+// segno TRAMA navy con "Per i centri", come l'intestazione del portale), e
+// pagine bidirezionali: in alto "Sei un genitore?" porta a /benvenuto
+// (?da=centri), da /benvenuto la fascia "Per i centri" porta qui.
 
 const PAINS = [
   {
@@ -62,29 +68,41 @@ const FAQ = [
 
 export default function CentriView({ candidatiHref, contactEmail }: { candidatiHref: string; contactEmail: string | null }) {
   return (
-    <div data-nav-v2 className="min-h-screen bg-trama-page text-ink" data-testid="centri">
+    <div className="min-h-screen bg-partner-page text-ink" data-testid="centri" data-palette="partner">
       <header className="mx-auto flex max-w-5xl items-center justify-between px-5 pb-2 pt-[calc(16px+env(safe-area-inset-top,0px))]">
-        <Link href="/benvenuto" className="flex items-center gap-2.5" aria-label="TRAMA">
-          <img src="/brand/trama-logo-mark.png" alt="" aria-hidden="true" className="h-8 w-auto" />
-          <img src="/brand/trama-wordmark.png" alt="TRAMA" className="h-[18px] w-auto" />
+        <Link href="/centri" className="flex items-center gap-2.5" aria-label="TRAMA per i centri">
+          <img src="/brand/trama-logo-mark-navy.png" alt="" aria-hidden="true" className="h-8 w-auto" />
+          <span className="flex flex-col leading-tight">
+            <img src="/brand/trama-wordmark.png" alt="TRAMA" className="h-[16px] w-auto self-start" />
+            <span className="mt-1 text-[11px] font-bold uppercase tracking-[0.12em] text-partner-primary">Per i centri</span>
+          </span>
         </Link>
-        <a
-          href="https://partner.tramapp.it/auth/login"
-          className="flex min-h-[44px] items-center rounded-full border border-trama-line bg-white px-4 text-[14px] font-semibold text-trama-navy"
-        >
-          Accesso centri
-        </a>
+        <div className="flex items-center gap-1.5">
+          <Link
+            href="/benvenuto?da=centri"
+            data-testid="centri-to-famiglie"
+            className="hidden min-h-[44px] items-center px-3 text-[14px] font-semibold text-partner-primary sm:flex"
+          >
+            Sei un genitore?
+          </Link>
+          <a
+            href="https://partner.tramapp.it/auth/login"
+            className="flex min-h-[44px] items-center rounded-full border border-partner-line bg-white px-4 text-[14px] font-semibold text-partner-primary"
+          >
+            Accesso centri
+          </a>
+        </div>
       </header>
 
       <main>
         <section className="mx-auto flex max-w-5xl flex-col gap-5 px-5 pb-14 pt-8 md:pt-16">
-          <span className="self-start rounded-full bg-trama-accent-soft px-3 py-1 text-[12.5px] font-bold text-trama-accent-ink">
+          <span className="self-start rounded-full bg-partner-soft px-3 py-1 text-[12.5px] font-bold text-partner-primary">
             Per i centri · pilota in aree selezionate
           </span>
           <h1 className="max-w-[18ch] text-balance font-poppins text-[clamp(32px,8vw,50px)] font-semibold leading-[1.05] tracking-[-0.02em] text-trama-navy">
             Le famiglie organizzano la settimana su TRAMA. Fatevi trovare quando serve.
           </h1>
-          <TramaThread />
+          <PartnerThread />
           <p className="max-w-[52ch] text-[17px] leading-relaxed text-ink-2">
             Centri estivi, ludoteche, scuole di sport, musica e arte per bambini: cerchiamo pochi centri fondatori per il pilota di
             quest&apos;inverno, dal ponte di dicembre alle vacanze di Natale.
@@ -92,25 +110,31 @@ export default function CentriView({ candidatiHref, contactEmail }: { candidatiH
           <div className="flex flex-col gap-3 sm:flex-row">
             <Link
               href={candidatiHref}
-              className="flex min-h-[52px] items-center justify-center rounded-[12px] bg-trama-primary px-6 text-[16px] font-semibold text-white active:bg-trama-primary-press"
+              className="flex min-h-[52px] items-center justify-center rounded-[12px] bg-partner-primary px-6 text-[16px] font-semibold text-white active:bg-partner-primary-press"
             >
               Candidate il vostro centro
             </Link>
-            <a href="#come" className="flex min-h-[52px] items-center justify-center px-2 text-[15px] font-semibold text-trama-accent-ink">
+            <a href="#come" className="flex min-h-[52px] items-center justify-center px-2 text-[15px] font-semibold text-partner-accent-ink">
               Come funziona il pilota
             </a>
           </div>
+          {/* 17/11/2026, Fabrizio: la stessa nota della pagina delle famiglie, per il portale centri. */}
+          <InstallAppHint variant="centri" />
+          <Link href="/benvenuto?da=centri" className="flex min-h-[44px] items-center gap-1.5 self-start text-[15px] font-semibold text-ink-2 sm:hidden">
+            Sei un genitore? TRAMA per le famiglie
+            <i className="ti ti-arrow-right text-[16px]" aria-hidden="true" />
+          </Link>
         </section>
 
-        <section aria-labelledby="perche-h" className="border-t border-trama-line bg-white">
+        <section aria-labelledby="perche-h" className="border-t border-partner-line bg-white">
           <div className="mx-auto max-w-5xl px-5 py-14 md:py-20">
             <h2 id="perche-h" className="font-poppins text-[clamp(26px,6.4vw,36px)] font-semibold text-trama-navy">
               Cosa cambia per il vostro centro
             </h2>
             <div className="mt-6 grid gap-4 md:grid-cols-3">
               {PAINS.map((p) => (
-                <article key={p.title} className="flex flex-col gap-3 rounded-[20px] bg-trama-page p-6">
-                  <span className="flex items-center gap-2 text-[12px] font-bold uppercase tracking-[0.14em] text-trama-accent-ink">
+                <article key={p.title} className="flex flex-col gap-3 rounded-[20px] bg-partner-page p-6">
+                  <span className="flex items-center gap-2 text-[12px] font-bold uppercase tracking-[0.14em] text-partner-accent-ink">
                     <i className={`ti ${p.icon} text-[16px]`} aria-hidden="true" />
                     {p.kicker}
                   </span>
@@ -128,8 +152,8 @@ export default function CentriView({ candidatiHref, contactEmail }: { candidatiH
           </h2>
           <ol className="mt-6 grid gap-4 md:grid-cols-4">
             {STEPS.map((step, i) => (
-              <li key={step.t} className="flex flex-col gap-2 rounded-[20px] border border-trama-line bg-white p-5">
-                <span className="flex h-8 w-8 items-center justify-center rounded-full bg-trama-primary font-poppins text-[15px] font-semibold text-white">
+              <li key={step.t} className="flex flex-col gap-2 rounded-[20px] border border-partner-line bg-white p-5">
+                <span className="flex h-8 w-8 items-center justify-center rounded-full bg-partner-primary font-poppins text-[15px] font-semibold text-white">
                   {i + 1}
                 </span>
                 <span className="font-poppins text-[18px] font-semibold text-trama-navy">{step.t}</span>
@@ -139,7 +163,7 @@ export default function CentriView({ candidatiHref, contactEmail }: { candidatiH
           </ol>
         </section>
 
-        <section aria-labelledby="fondatori-h" className="bg-trama-primary">
+        <section aria-labelledby="fondatori-h" className="bg-partner-primary">
           <div className="mx-auto flex max-w-5xl flex-col gap-4 px-5 py-12 md:flex-row md:items-center md:justify-between">
             <div className="flex flex-col gap-2">
               <span className="text-[12px] font-bold uppercase tracking-[0.14em] text-white/70">Centri fondatori</span>
@@ -153,7 +177,7 @@ export default function CentriView({ candidatiHref, contactEmail }: { candidatiH
             </div>
             <Link
               href={candidatiHref}
-              className="flex min-h-[52px] flex-shrink-0 items-center justify-center self-start rounded-[12px] bg-white px-6 text-[16px] font-semibold text-trama-navy md:self-center"
+              className="flex min-h-[52px] flex-shrink-0 items-center justify-center self-start rounded-[12px] bg-white px-6 text-[16px] font-semibold text-partner-primary md:self-center"
             >
               Candidatevi
             </Link>
@@ -166,7 +190,7 @@ export default function CentriView({ candidatiHref, contactEmail }: { candidatiH
           </h2>
           <div className="mt-6 flex flex-col gap-3">
             {FAQ.map((f) => (
-              <details key={f.q} className="group rounded-2xl border border-trama-line bg-white p-5">
+              <details key={f.q} className="group rounded-2xl border border-partner-line bg-white p-5">
                 <summary className="flex cursor-pointer list-none items-center justify-between gap-3 font-poppins text-[17px] font-semibold text-trama-navy">
                   {f.q}
                   <i className="ti ti-chevron-down text-[18px] text-ink-2 transition-transform group-open:rotate-180" aria-hidden="true" />
@@ -178,7 +202,7 @@ export default function CentriView({ candidatiHref, contactEmail }: { candidatiH
           {contactEmail && (
             <p className="mt-6 text-[15px] leading-relaxed text-ink-2">
               Altre domande? Scrivete a{" "}
-              <a href={`mailto:${contactEmail}`} className="font-semibold text-trama-accent-ink">
+              <a href={`mailto:${contactEmail}`} className="font-semibold text-partner-accent-ink">
                 {contactEmail}
               </a>
               : vi rispondiamo noi, non un bot.
@@ -187,9 +211,9 @@ export default function CentriView({ candidatiHref, contactEmail }: { candidatiH
         </section>
       </main>
 
-      <footer className="mx-auto flex max-w-5xl flex-col gap-4 border-t border-trama-line px-5 pb-[calc(32px+env(safe-area-inset-bottom,0px))] pt-8 text-[14px] text-ink-2">
+      <footer className="mx-auto flex max-w-5xl flex-col gap-4 border-t border-partner-line px-5 pb-[calc(32px+env(safe-area-inset-bottom,0px))] pt-8 text-[14px] text-ink-2">
         <nav aria-label="Informazioni" className="flex flex-wrap gap-x-5 gap-y-2">
-          <Link href="/benvenuto" className="min-h-[32px] font-semibold text-ink">
+          <Link href="/benvenuto?da=centri" className="min-h-[32px] font-semibold text-ink">
             TRAMA per le famiglie
           </Link>
           <Link href="/privacy" className="min-h-[32px] font-semibold text-ink">
