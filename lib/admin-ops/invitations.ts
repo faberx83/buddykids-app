@@ -51,6 +51,8 @@ export interface AccountRef {
   betaCode: string | null;
   /** Ha almeno una riga in beta_cohort_memberships: esiste la scheda in Pilota. */
   inPilot?: boolean;
+  /** 17/11/2026: nella lista "Account di prova" (Beta Famiglie). */
+  isTest?: boolean;
 }
 
 export interface WaitlistLike {
@@ -92,7 +94,8 @@ export function inviteNotMarked(w: Pick<WaitlistLike, "status" | "invitedAt">, a
 export function waitlistQueue<T extends WaitlistLike>(items: T[]): { queue: T[]; registeredNotMarked: T[] } {
   return {
     queue: items.filter((w) => isAwaitingInvite(w, w.account)),
-    registeredNotMarked: items.filter((w) => w.status !== "archiviato" && inviteNotMarked(w, w.account)),
+    // 17/11/2026: gli account di prova non entrano nemmeno nella nota.
+    registeredNotMarked: items.filter((w) => w.status !== "archiviato" && inviteNotMarked(w, w.account) && !w.account?.isTest),
   };
 }
 

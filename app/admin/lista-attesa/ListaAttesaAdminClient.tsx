@@ -60,7 +60,8 @@ export default function ListaAttesaAdminClient({ data, inviteCode }: { data: Wai
   const stateOf = (i: WaitlistItem) => inviteQueueState(i, i.account);
   const counts = useMemo(() => {
     const c: Record<InviteQueueState, number> = { da_invitare: 0, invito_segnato: 0, registrata: 0, archiviata: 0 };
-    for (const i of items) c[inviteQueueState(i, i.account)]++;
+    // 17/11/2026: le richieste di account di prova restano in elenco (con etichetta) ma non contano.
+    for (const i of items) if (!i.account?.isTest) c[inviteQueueState(i, i.account)]++;
     return c;
   }, [items]);
   const shown = items.filter((i) => filter === "tutte" || stateOf(i) === filter);
@@ -155,6 +156,9 @@ export default function ListaAttesaAdminClient({ data, inviteCode }: { data: Wai
                 </span>
                 <span className="text-xs text-ink-2">richiesta {dateIt(i.createdAt)}</span>
                 {i.invitedAt && <span className="text-xs text-ink-2">· invio segnato {dateIt(i.invitedAt)}</span>}
+                {i.account?.isTest && (
+                  <span className="rounded-full bg-[#EEF0F4] px-2 py-0.5 text-[11px] text-[#6B7280]">account di prova · non contata</span>
+                )}
               </div>
               {i.account && (
                 <p className="mt-1 text-xs text-ink-2">

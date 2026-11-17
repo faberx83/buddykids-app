@@ -2,6 +2,7 @@ import Link from "next/link";
 import { getWalkthroughAdminSummary, getWalkthroughRestartCount } from "@/lib/walkthrough/data";
 import { computeWalkthroughFunnel } from "@/lib/walkthrough/funnel";
 import { getFavoritesDemandSignal } from "@/lib/data/admin-favorites";
+import { getTestAccountIds } from "@/lib/data/admin-ops";
 
 export const dynamic = "force-dynamic";
 
@@ -15,10 +16,13 @@ export const dynamic = "force-dynamic";
 // Il Lotto 2 (KPI su dati reali) parte da qui: vedi
 // claude/INIZIATIVA_admin_operativo.md.
 export default async function AdminCrescitaPage() {
+  // 17/11/2026: "Account di prova" fuori da walkthrough e preferiti. I riavvii
+  // del walkthrough sono eventi anonimi: non separabili (detto in pagina).
+  const testAccounts = await getTestAccountIds();
   const [walkthroughSummary, restartCount, favorites] = await Promise.all([
-    getWalkthroughAdminSummary("welcome_parent"),
+    getWalkthroughAdminSummary("welcome_parent", testAccounts),
     getWalkthroughRestartCount("welcome_parent"),
-    getFavoritesDemandSignal().catch(() => null),
+    getFavoritesDemandSignal(testAccounts).catch(() => null),
   ]);
   const funnel = computeWalkthroughFunnel(walkthroughSummary);
   const links: { href: string; title: string; text: string; real: boolean }[] = [
@@ -74,7 +78,7 @@ export default async function AdminCrescitaPage() {
         <p className="mb-2 text-xs text-navy-text2">
           &quot;Raggiunti&quot; = utenti arrivati almeno a questo step; &quot;Abbandono&quot; = persi rispetto allo step precedente.
           {restartCount !== null
-            ? ` Percorso ricominciato ${restartCount} volt${restartCount === 1 ? "a" : "e"} in totale.`
+            ? ` Percorso ricominciato ${restartCount} volt${restartCount === 1 ? "a" : "e"} in totale (eventi anonimi: comprende anche gli account di prova).`
             : " Conteggio riavvii non disponibile (richiede migration_20_product_events.sql applicata)."}
         </p>
         {funnel.length === 0 ? (

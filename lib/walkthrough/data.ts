@@ -94,7 +94,11 @@ export interface WalkthroughAdminStepSummary {
  * step, nessun dettaglio per singolo utente. RLS "is_platform_admin()"
  * consente la SELECT su tutte le righe solo a questo ruolo — se chiamata da
  * un utente non-admin, la query ritorna 0 righe per costruzione. */
-export async function getWalkthroughAdminSummary(tutorialKey: string): Promise<WalkthroughAdminStepSummary[]> {
+// 17/11/2026: excludeUserIds = "Account di prova" (Beta Famiglie), fuori dai conteggi.
+export async function getWalkthroughAdminSummary(
+  tutorialKey: string,
+  excludeUserIds: ReadonlySet<string> = new Set()
+): Promise<WalkthroughAdminStepSummary[]> {
   const definition = getTutorialDefinition(tutorialKey);
   if (!definition) return [];
 
@@ -104,13 +108,14 @@ export async function getWalkthroughAdminSummary(tutorialKey: string): Promise<W
   const supabase = await createClient();
   const { data } = await supabase
     .from("tutorial_progress")
-    .select("step_key, status")
+    .select("step_key, status, user_id")
     .eq("tutorial_key", tutorialKey);
 
   if (!data) return base;
 
   const byKey = new Map(base.map((b) => [b.key, b]));
   for (const row of data) {
+    if (row.user_id && excludeUserIds.has(row.user_id)) continue;
     const entry = byKey.get(row.step_key);
     if (!entry) continue;
     if (row.status === "completed") entry.completed += 1;

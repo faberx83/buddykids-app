@@ -25,7 +25,7 @@ export default function ExcludeMemberButton({ userId, excluded, disabled }: { us
         }}
         className="rounded border border-[#E8EBF0] px-2 py-0.5 text-xs font-semibold text-ink disabled:opacity-40"
       >
-        {excluded ? "Riammetti" : "Escludi dai conteggi"}
+        {excluded ? "Non è di prova: riammetti" : "Segna come account di prova"}
       </button>
       {error && <span className="text-xs text-[#C0392B]">{error}</span>}
     </>

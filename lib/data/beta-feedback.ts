@@ -31,6 +31,7 @@ interface RawRow {
   status: BetaFeedbackStatus;
   admin_note: string | null;
   created_at: string;
+  parent_id?: string | null;
   profiles?: { full_name: string | null } | { full_name: string | null }[] | null;
   pipeline_status: "none" | "confirmed" | "in_progress" | "done";
   // Migration 40 (family-first beta pass): assenti finché non è applicata.
@@ -58,6 +59,7 @@ function mapRow(row: RawRow): BetaFeedbackItem {
     adminNote: row.admin_note ?? undefined,
     createdAt: row.created_at,
     parentName: firstOf(row.profiles)?.full_name ?? undefined,
+    parentId: row.parent_id ?? null,
     pipelineStatus: row.pipeline_status,
     category: isBetaFeedbackCategory(row.category) ? row.category : null,
     clientContext: row.client_context ?? null,
@@ -93,7 +95,8 @@ export async function getAllBetaFeedbackForAdmin(): Promise<BetaFeedbackItem[]> 
   if (!isSupabaseConfigured) return [];
 
   const supabase = await createClient();
-  const baseColumns = "id, app_source, area, page_path, message, status, admin_note, created_at, pipeline_status, profiles ( full_name )";
+  // 17/11/2026: + parent_id, per riconoscere le segnalazioni degli account di prova.
+  const baseColumns = "id, parent_id, app_source, area, page_path, message, status, admin_note, created_at, pipeline_status, profiles ( full_name )";
   // Migration 62 (segnalazioni "accesso" con email di contatto): se manca,
   // stessa lista di prima senza email.
   const withContact = await supabase

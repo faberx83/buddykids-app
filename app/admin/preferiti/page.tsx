@@ -1,3 +1,4 @@
+import { getTestAccountIds } from "@/lib/data/admin-ops";
 import { getFavoritesDemandSignal } from "@/lib/data/admin-favorites";
 
 // Proposta Admin (Fabrizio ha chiesto cosa portare lato piattaforma dalle
@@ -7,7 +8,8 @@ import { getFavoritesDemandSignal } from "@/lib/data/admin-favorites";
 // contattare il centro (prezzo? disponibilità? descrizione poco chiara?) o
 // per proporre una promozione mirata.
 export default async function AdminPreferitiPage() {
-  const signals = await getFavoritesDemandSignal();
+  // 17/11/2026: senza gli "Account di prova" (Beta Famiglie).
+  const signals = await getFavoritesDemandSignal(await getTestAccountIds());
   const neverBooked = signals.filter((s) => s.bookingsCount === 0).length;
 
   return (

@@ -19,6 +19,8 @@ export interface PreRegistrationRaw {
   accounts: { createdAt: string; withCode: boolean; fromRequest: boolean }[];
   /** Account genitore interni o esclusi dal cockpit, non contati. */
   excludedAccounts: number;
+  /** 17/11/2026: richieste fatte da account interni o di prova, non contate. */
+  excludedRequests?: number;
 }
 
 export interface PreFunnelRow {
@@ -58,7 +60,7 @@ export function computePreFunnel(raw: PreRegistrationRaw, period: Period): PreFu
       value: requestsInP.length,
       unit: "richieste (una per email)",
       scope: periodScope,
-      rule: "Righe della lista d'attesa (pagina di benvenuto o '+ Famiglia invitata'), archiviate comprese.",
+      rule: `Righe della lista d'attesa (pagina di benvenuto o '+ Famiglia invitata'), archiviate comprese. Escluse quelle di account interni o di prova (${raw.excludedRequests ?? 0} in tutto).`,
       detail: `${requestsInP.filter((r) => r.status === "archiviato").length} archiviate`,
     },
     {

@@ -95,6 +95,8 @@ export interface BetaFeedbackItem {
   /** Solo segnalazioni "accesso" (migration 62): email lasciata per la risposta. */
   contactEmail?: string | null;
   clientContext?: (BetaFeedbackClientContext & { role?: string; build?: string }) | null;
+  /** 17/11/2026: autore, per escludere gli account di prova nei report Admin. */
+  parentId?: string | null;
 }
 
 export interface BetaFeedbackCounts {

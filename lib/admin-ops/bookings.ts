@@ -19,6 +19,7 @@
 
 import { bookingNeedsAction, effectiveDayBasedDecision, type PartnerDecision } from "@/lib/booking-response/effective-decision";
 import { isDemoRecord } from "@/lib/admin-ops/demo";
+import { NO_TEST_ACCOUNTS, isTestAccount, type TestAccountIds } from "@/lib/admin-ops/test-accounts";
 
 export type BookingStatus = "pending" | "confirmed" | "cancelled";
 export type DayDecision = "pending" | "accepted" | "rejected" | "waitlisted";
@@ -59,6 +60,8 @@ export interface AdminBookingRow {
   bookingMode: "week_only" | "day_only" | "mixed" | null;
   pricePerWeek: number | null;
   parentName: string;
+  /** 17/11/2026: per riconoscere gli account di prova. */
+  parentId?: string | null;
   parentEmail: string;
   kidNames: string[];
   days: AdminBookingDay[];
@@ -171,7 +174,7 @@ export function bookingState(b: AdminBookingRow): BookingStateKey {
   return "confermata";
 }
 
-export function viewAdminBooking(b: AdminBookingRow, todayIso: string): AdminBookingView {
+export function viewAdminBooking(b: AdminBookingRow, todayIso: string, testAccounts: TestAccountIds = NO_TEST_ACCOUNTS): AdminBookingView {
   const dates = participationDates(b);
   const nextDate = dates.find((d) => d >= todayIso) ?? null;
   const state = bookingState(b);
@@ -198,7 +201,12 @@ export function viewAdminBooking(b: AdminBookingRow, todayIso: string): AdminBoo
     ref: bookingRef(b.id),
     state,
     decision: effectiveDecision(b),
-    isDemo: isDemoRecord({ centerName: b.centerName, centerIsTestFixture: b.centerIsTestFixture, activityName: b.activityName }),
+    isDemo: isDemoRecord({
+      centerName: b.centerName,
+      centerIsTestFixture: b.centerIsTestFixture,
+      activityName: b.activityName,
+      accountIsTest: isTestAccount(b.parentId, testAccounts),
+    }),
     dates,
     firstDate: dates[0] ?? null,
     nextDate,

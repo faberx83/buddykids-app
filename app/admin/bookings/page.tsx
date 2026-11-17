@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { getAdminBookings } from "@/lib/data/admin-ops";
+import { getAdminBookings, getTestAccountIds } from "@/lib/data/admin-ops";
 import {
   ACTOR_LABEL,
   BOOKING_STATE_LABEL,
@@ -54,7 +54,9 @@ export default async function AdminBookingsPage({ searchParams }: { searchParams
   const f = parseBookingFilters(sp);
   const today = romeTodayIso();
   const rows = await getAdminBookings();
-  const views = rows.map((r) => viewAdminBooking(r, today));
+  // 17/11/2026: anche le prenotazioni degli account di prova sono "prova".
+  const testAccounts = await getTestAccountIds();
+  const views = rows.map((r) => viewAdminBooking(r, today, testAccounts));
   const filtered = sortAdminBookings(filterAdminBookings(views, f));
   const page = paginate(filtered, f.pagina);
   const scope = views.filter((v) => f.demo || !v.isDemo);

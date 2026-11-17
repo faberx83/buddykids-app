@@ -132,9 +132,12 @@ export default function ReportSettingsForm({
       </div>
 
       <div>
-        <h3 className="mb-1 text-xs font-bold uppercase tracking-wide text-ink-2">Account esclusi dai conteggi</h3>
+        {/* 17/11/2026: questa lista è l'etichetta "Account di prova" per tutto l'Admin. */}
+        <h3 className="mb-1 text-xs font-bold uppercase tracking-wide text-ink-2">Account di prova (esclusi dai conteggi)</h3>
         <p className="mb-1 text-xs text-ink-2">
-          Esclusi sempre: Admin, gestori, coorte &quot;internal-preview&quot;. Altri si escludono dal dettaglio della famiglia.
+          Valgono per tutto l&apos;Admin: Beta Famiglie, Oggi, Prenotazioni, Messaggi, Segnalazioni BETA, Pilota, Inviti e registrazioni, Analisi e crescita.
+          Si vedono con &quot;mostra anche le prove&quot;. Esclusi sempre da Beta Famiglie: Admin, gestori, coorte &quot;internal-preview&quot;.
+          Altri si segnano dal dettaglio della famiglia.
         </p>
         {excluded.length === 0 ? (
           <p className="text-xs text-ink-2">Nessuno.</p>

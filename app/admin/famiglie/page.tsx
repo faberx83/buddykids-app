@@ -2,6 +2,7 @@ import Link from "next/link";
 import { getAdminFamilyFunnel } from "@/lib/data/admin-ops";
 import { INVITE_QUEUE_RULE, INVITE_STAGE_LABEL, codeUsage, countPeopleAndFamilies, invitePipeline, type InviteStage } from "@/lib/admin-ops/invitations";
 import { buildJourney, type JourneyCell } from "@/lib/admin-ops/journey";
+import { withoutTestAccounts } from "@/lib/admin-ops/test-accounts";
 import { getPilotUsers, isPilotLastSignInAvailable } from "@/lib/data/pilot-users";
 
 export const dynamic = "force-dynamic";
@@ -40,7 +41,12 @@ export default async function AdminFamigliePage({ searchParams }: { searchParams
   const all = countPeopleAndFamilies(data.parents, data.memberships, new Set());
   const beta = countPeopleAndFamilies(data.parents, data.memberships, excluded);
   const rows = invitePipeline(data.waitlist, data.parents);
-  const live = rows.filter((r) => !r.archived);
+  // 17/11/2026: le richieste di "Account di prova" sono fuori da fasi e conteggi; ?demo=1 le mostra.
+  const showTest = sp.demo === "1";
+  const testIds = new Set(data.excludedIds);
+  const liveAll = rows.filter((r) => !r.archived);
+  const live = withoutTestAccounts(liveAll, (r) => r.accountId, testIds, showTest);
+  const hiddenTest = liveAll.length - live.length;
   const stageCount = (s: InviteStage) => live.filter((r) => r.stage === s).length;
   const shown = live.filter((r) => !fase || r.stage === fase);
   const viaCode = data.parents.filter((p) => p.betaCode && !excluded.has(p.id)).length;
@@ -64,7 +70,7 @@ export default async function AdminFamigliePage({ searchParams }: { searchParams
         <Stat label="Persone (account genitore)" value={beta.people} sub={`${all.people} con quelli di prova`} />
         <Stat label="Famiglie" value={beta.families} sub={`${all.families} con quelle di prova`} />
         <Stat label="Entrate con un codice beta" value={viaCode} sub="codice usato alla registrazione" />
-        <Stat label="Escluse dai conteggi" value={beta.excludedPeople} sub="coorte interna o escluse nel cockpit" />
+        <Stat label="Escluse dai conteggi" value={beta.excludedPeople} sub="coorte interna o account di prova" />
       </div>
 
       <h2 className="mb-2 text-[15px] font-bold text-white">Lista d&apos;attesa → invito → registrazione</h2>
@@ -84,6 +90,13 @@ export default async function AdminFamigliePage({ searchParams }: { searchParams
       </div>
       <p className="mb-2 text-xs text-navy-text2" data-testid="invite-queue-rule">
         {INVITE_QUEUE_RULE}
+        {hiddenTest > 0 ? ` ${hiddenTest} ${hiddenTest === 1 ? "richiesta di un account di prova non contata" : "richieste di account di prova non contate"}.` : ""}
+        {hiddenTest > 0 && (
+          <Link href="/admin/famiglie?demo=1" className="ml-1 underline">Mostrale</Link>
+        )}
+        {showTest && (
+          <Link href="/admin/famiglie" className="ml-1 underline">Nascondi le prove</Link>
+        )}
         {notMarked > 0 ? ` ${notMarked} ${notMarked === 1 ? "registrata" : "registrate"} senza invio segnato: restano qui, fuori dalla coda.` : ""}
       </p>
       <div className="mb-2 rounded-lg border border-dashed border-navy-3 px-4 py-2 text-xs text-navy-text2">

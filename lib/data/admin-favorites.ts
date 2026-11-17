@@ -22,17 +22,21 @@ export interface ActivityDemandSignal {
   bookingsCount: number;
 }
 
-export async function getFavoritesDemandSignal(): Promise<ActivityDemandSignal[]> {
+// 17/11/2026: excludeUserIds = "Account di prova" (Beta Famiglie): i loro
+// preferiti e le loro prenotazioni non contano come domanda.
+export async function getFavoritesDemandSignal(excludeUserIds: ReadonlySet<string> = new Set()): Promise<ActivityDemandSignal[]> {
   if (!isSupabaseConfigured) return [];
 
   const supabase = await createClient();
 
-  const { data: favs, error: favError } = await supabase.from("favorites").select("activity_id").limit(5000);
+  const { data: favsAll, error: favError } = await supabase.from("favorites").select("activity_id, parent_id").limit(5000);
   // Tabella non ancora creata (migrazione non eseguita) o nessun preferito salvato.
-  if (favError || !favs || favs.length === 0) return [];
+  if (favError || !favsAll || favsAll.length === 0) return [];
+  const favs = (favsAll as { activity_id: string; parent_id: string | null }[]).filter((r) => !(r.parent_id && excludeUserIds.has(r.parent_id)));
+  if (favs.length === 0) return [];
 
   const favCountByActivity = new Map<string, number>();
-  for (const row of favs as { activity_id: string }[]) {
+  for (const row of favs) {
     favCountByActivity.set(row.activity_id, (favCountByActivity.get(row.activity_id) ?? 0) + 1);
   }
 
@@ -40,12 +44,13 @@ export async function getFavoritesDemandSignal(): Promise<ActivityDemandSignal[]
 
   const { data: bookings } = await supabase
     .from("bookings")
-    .select("activity_id")
+    .select("activity_id, parent_id")
     .neq("status", "cancelled")
     .in("activity_id", activityIds);
 
   const bookingCountByActivity = new Map<string, number>();
-  for (const row of (bookings ?? []) as { activity_id: string }[]) {
+  for (const row of (bookings ?? []) as { activity_id: string; parent_id: string | null }[]) {
+    if (row.parent_id && excludeUserIds.has(row.parent_id)) continue;
     bookingCountByActivity.set(row.activity_id, (bookingCountByActivity.get(row.activity_id) ?? 0) + 1);
   }
 

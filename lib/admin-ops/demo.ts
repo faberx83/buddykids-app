@@ -23,13 +23,22 @@ export function isDemoCenter(c: { name?: string | null; isTestFixture?: boolean 
   return Boolean(c.isTestFixture) || looksLikeDemoName(c.name);
 }
 
-/** Un record collegato a un centro o a un'attività di prova è di prova. */
+/**
+ * Un record collegato a un centro o a un'attività di prova è di prova.
+ * 17/11/2026: anche un record di un account di prova (famiglia o gestore,
+ * lista "Account di prova" in Beta Famiglie, lib/admin-ops/test-accounts.ts).
+ */
 export function isDemoRecord(r: {
   centerName?: string | null;
   centerIsTestFixture?: boolean | null;
   activityName?: string | null;
+  accountIsTest?: boolean | null;
 }): boolean {
-  return isDemoCenter({ name: r.centerName, isTestFixture: r.centerIsTestFixture }) || looksLikeDemoName(r.activityName);
+  return (
+    Boolean(r.accountIsTest) ||
+    isDemoCenter({ name: r.centerName, isTestFixture: r.centerIsTestFixture }) ||
+    looksLikeDemoName(r.activityName)
+  );
 }
 
 // ADMIN OPERATIVO, retest del 12/11/2026 (Fabrizio): "La home dichiara che i
