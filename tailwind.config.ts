@@ -68,7 +68,7 @@ const config: Config = {
           // 17/11/2026 (Fabrizio sceglie la variante "un pelo più calda" per la
           // pagina di benvenuto): sabbia per la parte alta, corallo per la
           // promessa. coral-ink su sand 4,8:1 e su coral-soft 4,5:1 (AA).
-          sand: "#F7F1E8",
+          sand: "#FBF7F1",
           "coral-ink": "#B4473D",
           "coral-soft": "#FDE6E2",
         },

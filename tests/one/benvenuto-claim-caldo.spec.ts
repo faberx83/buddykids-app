@@ -27,7 +27,7 @@ test.describe("Benvenuto: claim e variante calda [no browser]", () => {
     expect(v).toContain("bg-trama-coral-soft");
     expect(v).toContain("bg-trama-primary px-6 text-[16px] font-semibold text-white");
     const tw = read("tailwind.config.ts");
-    expect(tw).toContain('sand: "#F7F1E8"');
+    expect(tw).toContain('sand: "#FBF7F1"');
     expect(tw).toContain('"coral-ink": "#B4473D"');
   });
 
