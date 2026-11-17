@@ -91,6 +91,12 @@ export default function DiscoverFiltersSheet({
   weekGroups,
   selectedWeekStarts,
   onToggleWeek,
+  periods = [],
+  periodKey = null,
+  onPeriodChange,
+  kinds = [],
+  kindKey = null,
+  onKindChange,
 }: {
   open: boolean;
   onClose: () => void;
@@ -124,6 +130,13 @@ export default function DiscoverFiltersSheet({
   weekGroups: { monthLabel: string; weeks: { start: string; label: string }[] }[];
   selectedWeekStarts: string[];
   onToggleWeek: (start: string) => void;
+  /** 17/11/2026: "Quando" (chiusure della scuola, prossime settimane, estate) e "Tipo di proposta" dentro Filtri. */
+  periods?: { key: string; label: string; closure: boolean }[];
+  periodKey?: string | null;
+  onPeriodChange?: (key: string | null) => void;
+  kinds?: { key: string; label: string }[];
+  kindKey?: string | null;
+  onKindChange?: (key: string | null) => void;
 }) {
   const sheetRef = useRef<HTMLElement>(null);
   useCloseOnBack(open, onClose); // "Indietro" chiude i filtri
@@ -176,6 +189,36 @@ export default function DiscoverFiltersSheet({
         </div>
 
         <div className="no-scrollbar flex-1 overflow-y-auto px-5">
+          {/* 17/11/2026 (Fabrizio: "forse anche il periodo lo metterei dentro ai filtri"): prima
+              Quando e Tipo di proposta, poi i filtri di sempre. Le prossime chiusure della scuola
+              restano anche come scorciatoia sopra i risultati. */}
+          {periods.length > 0 && onPeriodChange && (
+            <Section title="Quando">
+              <div className="flex flex-wrap gap-2" role="group" aria-label="Quando">
+                {periods.map((p) => (
+                  <Chip key={p.key} on={periodKey === p.key} onClick={() => onPeriodChange(periodKey === p.key ? null : p.key)} icon={p.closure ? "ti-school" : undefined}>
+                    {p.label}
+                  </Chip>
+                ))}
+              </div>
+            </Section>
+          )}
+
+          {kinds.length > 0 && onKindChange && (
+            <Section title="Tipo di proposta">
+              <div className="flex flex-wrap gap-2" role="group" aria-label="Tipo di proposta" data-testid="discover-kind-filter">
+                <Chip on={kindKey === null} onClick={() => onKindChange(null)}>
+                  Tutto
+                </Chip>
+                {kinds.map((k) => (
+                  <Chip key={k.key} on={kindKey === k.key} onClick={() => onKindChange(kindKey === k.key ? null : k.key)}>
+                    {k.label}
+                  </Chip>
+                ))}
+              </div>
+            </Section>
+          )}
+
           <Section title="Età" hint={agePreset ? undefined : `da ${minAge} a ${maxAge} anni`}>
             <div className="flex flex-wrap gap-2">
               {AGE_PRESETS.map((p) => (

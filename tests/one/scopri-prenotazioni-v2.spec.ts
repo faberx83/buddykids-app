@@ -259,3 +259,22 @@ test.describe("TRAMA — V2: card Scoperte, pannelli filtro, segno TRAMA [no bro
     expect(css).toMatch(/\[data-nav-v2\] \.trama-thread-auto \{\s*display: flex;/);
   });
 });
+
+// 17/11/2026 (Fabrizio: "qui non distinguerei i filtri per tipologia dagli altri… forse anche il
+// periodo lo metterei dentro ai filtri… possiamo semplificare"; "ok tieni natale").
+test.describe("Scopri: filtri in un posto solo, le chiusure della scuola in vista [no browser]", () => {
+  const read = (p: string) => fs.readFileSync(path.join(__dirname, "../..", p), "utf-8");
+  test("SPV2-40 sopra i risultati: per chi, le prossime 2 chiusure, Filtri · N e le pillole dei filtri scelti", () => {
+    const src = read("app/nextgen/search/SearchDiscoveryClient.tsx");
+    expect(src).not.toContain('<span className="text-[12px] font-semibold text-ink-2">Per quando</span>');
+    expect(src).toContain('const closureShortcuts = useMemo(() => periods.filter((p) => p.kind === "closure").slice(0, 2), [periods]);');
+    expect(src).toContain('data-testid="period-chip"');
+    expect(src).toContain('data-testid="kind-chip"');
+    expect(src).toContain("(periodKey !== null ? 1 : 0) +");
+    expect(src).toContain("(kindFilter !== null ? 1 : 0) +");
+    const sheet = read("components/nextgen/DiscoverFiltersSheet.tsx");
+    expect(sheet).toContain('<Section title="Quando">');
+    expect(sheet).toContain('<Section title="Tipo di proposta">');
+    expect(sheet.indexOf('<Section title="Quando">')).toBeLessThan(sheet.indexOf('<Section title="Età"'));
+  });
+});

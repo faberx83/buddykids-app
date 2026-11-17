@@ -181,7 +181,9 @@ test.describe("Scopri: tipo di proposta, ordinamento, pannello Planner V2", () =
 
   test("Scopri: chip Tutto / Campus / Spettacoli / Laboratori, filtro anche su 'Date da verificare', DEMO in fondo", () => {
     const src = read("app/nextgen/search/SearchDiscoveryClient.tsx");
-    expect(src).toContain('data-testid="discover-kind-filter"');
+    // 17/11/2026: i chip del tipo di proposta sono passati dentro "Filtri" (stessa logica di filtro).
+    expect(read("components/nextgen/DiscoverFiltersSheet.tsx")).toContain('data-testid="discover-kind-filter"');
+    expect(src).toContain("kindKey={kindFilter}");
     expect(src).toContain("if (kindFilter && leadKind(lead) !== kindFilter) return false;");
     expect(src).toContain("(!kindFilter || leadKind(lead) === kindFilter)");
     expect(src).toContain('if (kindFilter && kindFilter !== "campus") return [];');

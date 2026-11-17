@@ -543,6 +543,8 @@ export default function SearchDiscoveryClient({
     return per && v2.periods.some((p) => p.key === per) ? per : null;
   });
   const activePeriod = useMemo(() => periods.find((p) => p.key === periodKey) ?? null, [periods, periodKey]);
+  // 17/11/2026: le prossime chiusure della scuola (al massimo 2) restano in vista come scorciatoia.
+  const closureShortcuts = useMemo(() => periods.filter((p) => p.kind === "closure").slice(0, 2), [periods]);
   // TRAMA — CORREZIONI DAL TEST UX (21/10/2026), UX-PARENT-001. Con un
   // periodo scelto (Per quando o settimane del filtro Date), una scoperta
   // SENZA date note non entra più nei risultati né nel conteggio: va in "Date
@@ -992,6 +994,8 @@ export default function SearchDiscoveryClient({
     clearGeo();
     setOnlyDaySpots(false);
     setSelectedCoverageModes([]);
+    setPeriodKey(null);
+    setKindFilter(null);
   }
 
   // BUG CORRETTO 07/08/2026 — filtro "Settimane di camp" allineato alla
@@ -1027,6 +1031,9 @@ export default function SearchDiscoveryClient({
     (selectedKidId !== null ? 1 : 0) +
     (onlyDaySpots ? 1 : 0) +
     (selectedCoverageModes.length > 0 ? 1 : 0) +
+    // 17/11/2026: periodo e tipo di proposta ora stanno in "Filtri".
+    (periodKey !== null ? 1 : 0) +
+    (kindFilter !== null ? 1 : 0) +
     Object.values(services).filter(Boolean).length;
 
   const selectedKids = useMemo(
@@ -1450,27 +1457,10 @@ export default function SearchDiscoveryClient({
             <ProfileChip />
           </header>
         )}
-        {/* 16/11/2026: filtro per tipo di proposta (campus, spettacoli, laboratori). */}
-        {v2 && realDiscoveryLeads.length > 0 && (
-          <div role="group" aria-label="Tipo di proposta" data-testid="discover-kind-filter" className="no-scrollbar -mx-5 mb-3 flex gap-2 overflow-x-auto px-5">
-            {([null, "campus", "evento", "laboratorio"] as const).map((k) => {
-              const active = kindFilter === k;
-              return (
-                <button
-                  key={k ?? "tutto"}
-                  type="button"
-                  aria-pressed={active}
-                  onClick={() => setKindFilter(k)}
-                  className={`min-h-[40px] flex-shrink-0 rounded-full px-4 text-[13.5px] font-semibold ${
-                    active ? "bg-trama-navy text-white" : "border-[1.5px] border-trama-line bg-white text-ink"
-                  }`}
-                >
-                  {k ? DISCOVERY_KIND_LABELS[k] : "Tutto"}
-                </button>
-              );
-            })}
-          </div>
-        )}
+        {/* 17/11/2026 (Fabrizio: "qui non distinguerei i filtri per tipologia dagli altri…
+            forse anche il periodo lo metterei dentro ai filtri"): il tipo di proposta
+            (campus, spettacoli, laboratori) è ora una sezione di "Filtri"
+            (data-testid="discover-kind-filter" dentro DiscoverFiltersSheet). */}
         {/* TRAMA — FINAL BETA CHROME CLEANUP (15/09/2026): ProductStatusChip
             sostituisce NextgenBadge — vedi HomeDashboardClient.tsx per la
             spiegazione completa.
@@ -1595,31 +1585,6 @@ export default function SearchDiscoveryClient({
             comparsa come gli altri, primo della riga scorrevole, che scala a
             qualunque numero di figli invece di allargare la riga con un
             pulsante per ciascuno. */}
-        {v2 && periods.length > 0 && (
-          <div className="mb-4 flex flex-col gap-2">
-            <span className="text-[12px] font-semibold text-ink-2">Per quando</span>
-            <div className="no-scrollbar -mr-5 flex gap-2 overflow-x-auto pr-5" role="group" aria-label="Per quando">
-              {periods.map((p) => {
-                const on = periodKey === p.key;
-                return (
-                  <button
-                    key={p.key}
-                    type="button"
-                    aria-pressed={on}
-                    onClick={() => setPeriodKey(on ? null : p.key)}
-                    className={`flex min-h-[38px] flex-shrink-0 items-center gap-1.5 rounded-full px-3.5 text-[13px] font-semibold ${
-                      on ? "bg-trama-navy text-white" : "border border-[#E3E6EC] bg-white text-ink"
-                    }`}
-                  >
-                    {p.kind === "closure" && <i className="ti ti-school text-[15px]" aria-hidden="true" />}
-                    {p.label}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-        )}
-
         {/* SCOPRI V2: per chi + "Filtri · N" che apre la riga dei filtri esistenti. */}
         {v2 && (
           <div className="mb-3 flex flex-wrap items-center gap-2">
@@ -1640,6 +1605,27 @@ export default function SearchDiscoveryClient({
                     : "Per tutti i figli"}
               </button>
             )}
+            {/* 17/11/2026: in vista restano solo le prossime chiusure della scuola (es. "Ponte 7–8 dic",
+                "Natale"), calcolate dal calendario scolastico della famiglia: cambiano da sole. Gli altri
+                periodi ("Prossime settimane", "Estate") sono in Filtri → Quando. */}
+            {closureShortcuts.map((p) => {
+              const on = periodKey === p.key;
+              return (
+                <button
+                  key={p.key}
+                  type="button"
+                  aria-pressed={on}
+                  onClick={() => setPeriodKey(on ? null : p.key)}
+                  className={`flex min-h-[38px] items-center gap-1.5 rounded-full px-3.5 text-[13px] font-semibold ${
+                    on ? "bg-trama-navy text-white" : "border border-[#E3E6EC] bg-white text-ink"
+                  }`}
+                  data-testid="discover-closure-shortcut"
+                >
+                  <i className="ti ti-school text-[15px]" aria-hidden="true" />
+                  {p.label}
+                </button>
+              );
+            })}
             <button
               type="button"
               onClick={() => setShowFiltersV2((v) => !v)}
@@ -1651,6 +1637,32 @@ export default function SearchDiscoveryClient({
               <i className="ti ti-adjustments-horizontal text-[16px]" aria-hidden="true" />
               {activeFiltersCount > 0 ? `Filtri · ${activeFiltersCount}` : "Filtri"}
             </button>
+            {/* 17/11/2026: i filtri scelti in "Filtri" che non hanno un bottone qui si vedono come
+                pillole e si tolgono con un tocco. */}
+            {activePeriod && activePeriod.kind !== "closure" && (
+              <button
+                type="button"
+                data-testid="period-chip"
+                onClick={() => setPeriodKey(null)}
+                aria-label={`Togli il filtro ${activePeriod.label}`}
+                className="flex min-h-[38px] items-center gap-1.5 rounded-full bg-trama-primary-soft px-3 text-[13px] font-semibold text-trama-primary"
+              >
+                {activePeriod.label}
+                <i className="ti ti-x text-[14px]" aria-hidden="true" />
+              </button>
+            )}
+            {kindFilter && (
+              <button
+                type="button"
+                data-testid="kind-chip"
+                onClick={() => setKindFilter(null)}
+                aria-label={`Togli il filtro ${DISCOVERY_KIND_LABELS[kindFilter]}`}
+                className="flex min-h-[38px] items-center gap-1.5 rounded-full bg-trama-primary-soft px-3 text-[13px] font-semibold text-trama-primary"
+              >
+                {DISCOVERY_KIND_LABELS[kindFilter]}
+                <i className="ti ti-x text-[14px]" aria-hidden="true" />
+              </button>
+            )}
             {/* QA 04/11/2026 (F1b): il tetto di prezzo applicato si vede fuori
                 dal foglio, con l'unità, e si toglie da solo. */}
             {maxPrice < PRICE_ANY && (
@@ -1714,6 +1726,16 @@ export default function SearchDiscoveryClient({
             }))}
             selectedWeekStarts={selectedWeekStarts}
             onToggleWeek={toggleWeek}
+            periods={periods.map((p) => ({ key: p.key, label: p.label, closure: p.kind === "closure" }))}
+            periodKey={periodKey}
+            onPeriodChange={setPeriodKey}
+            kinds={
+              realDiscoveryLeads.length > 0
+                ? (["campus", "evento", "laboratorio"] as const).map((k) => ({ key: k, label: DISCOVERY_KIND_LABELS[k] }))
+                : []
+            }
+            kindKey={kindFilter}
+            onKindChange={(k) => setKindFilter(k as DiscoveryLeadKind | null)}
           />
         )}
 
