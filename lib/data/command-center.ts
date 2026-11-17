@@ -40,7 +40,7 @@ import { getAllBetaFeedbackForAdmin } from "./beta-feedback";
 import { getFeatureFlagOverridesForAdmin } from "./feature-flag-overrides";
 import { getWaitlistForAdmin } from "./waitlist";
 import { registeredNotMarkedNote, waitlistQueue } from "@/lib/admin-ops/invitations";
-import { getAdminBookings, getAdminInquiries } from "./admin-ops";
+import { getAdminBookings, getAdminInquiries, getTestAccountIds } from "./admin-ops";
 import {
   DEFAULT_BOOKING_FILTERS,
   bookingsHref,
@@ -52,6 +52,7 @@ import {
 import { filterInquiries, inquiriesHref, viewInquiry } from "@/lib/admin-ops/inquiries";
 import { buildOggiQueues, type OggiQueue, type QueueInput } from "@/lib/admin-ops/queues";
 import { isDemoCenter, isDemoCertification, isDemoLead, withDemo } from "@/lib/admin-ops/demo";
+import { withoutTestAccounts } from "@/lib/admin-ops/test-accounts";
 
 export type CommandCenterQueue = OggiQueue;
 
@@ -71,7 +72,8 @@ function bookingItem(v: AdminBookingView) {
 
 export async function getCommandCenterQueues(): Promise<CommandCenterQueue[]> {
   const today = romeTodayIso();
-  const [activations, centerLeads, certifications, betaFeedback, featureFlags, waitlist, bookings, inquiries] = await Promise.all([
+  // 17/11/2026: + lista "Account di prova" (Beta Famiglie): i loro record contano come prova.
+  const [activations, centerLeads, certifications, betaFeedback, featureFlags, waitlist, bookings, inquiries, testAccounts] = await Promise.all([
     getCentersForActivation(),
     getAllCenterLeadsForAdmin(),
     getAllCertificationsForAdmin(),
@@ -80,9 +82,10 @@ export async function getCommandCenterQueues(): Promise<CommandCenterQueue[]> {
     getWaitlistForAdmin(),
     getAdminBookings(),
     getAdminInquiries(),
+    getTestAccountIds(),
   ]);
 
-  const bookingViews = bookings.map((b) => viewAdminBooking(b, today));
+  const bookingViews = bookings.map((b) => viewAdminBooking(b, today, testAccounts));
   const pendingFilter = { ...DEFAULT_BOOKING_FILTERS, stato: "da_rispondere" as const };
   const imminentFilter = { ...pendingFilter, imminenti: true };
   const pending = filterAdminBookings(bookingViews, pendingFilter);
@@ -90,7 +93,7 @@ export async function getCommandCenterQueues(): Promise<CommandCenterQueue[]> {
   const imminent = filterAdminBookings(bookingViews, imminentFilter);
   const imminentAll = filterAdminBookings(bookingViews, { ...imminentFilter, demo: true });
 
-  const inquiryViews = inquiries.map((r) => viewInquiry(r, today));
+  const inquiryViews = inquiries.map((r) => viewInquiry(r, today, testAccounts));
   const openInq = filterInquiries(inquiryViews, { centro: "", stato: "aperta", demo: false });
   const openInqAll = filterInquiries(inquiryViews, { centro: "", stato: "aperta", demo: true });
 
@@ -103,7 +106,8 @@ export async function getCommandCenterQueues(): Promise<CommandCenterQueue[]> {
   const referrals = referralsAll.filter((l) => !isDemoLead(l));
   const certsPendingAll = certifications.filter((c) => c.status === "pending");
   const certsPending = certsPendingAll.filter((c) => !isDemoCertification(c));
-  const feedbackNew = betaFeedback.filter((f) => f.status === "nuovo");
+  const feedbackNewAll = betaFeedback.filter((f) => f.status === "nuovo");
+  const feedbackNew = withoutTestAccounts(feedbackNewAll, (f) => f.parentId, testAccounts);
   const flagAlerts = featureFlags.filter((f) => f.hasAlert);
   // LOTTO 2 (16/11/2026): stessa regola di Lista d'attesa e Famiglie. Una
   // richiesta con l'account già creato esce dalla coda (resta nello storico).
@@ -199,6 +203,8 @@ export async function getCommandCenterQueues(): Promise<CommandCenterQueue[]> {
       href: "/admin/segnalazioni-beta?stato=nuovo",
       nextStep: "Leggere e smistare: in gestione, risolta o pipeline",
       items: feedbackNew.map((f) => ({ id: f.id, title: f.message.slice(0, 70), sub: f.area, createdAt: f.createdAt, href: "/admin/segnalazioni-beta?stato=nuovo" })),
+      hiddenDemo: feedbackNewAll.length - feedbackNew.length,
+      demoHref: "/admin/segnalazioni-beta?stato=nuovo&demo=1",
     },
     {
       key: "waitlist",

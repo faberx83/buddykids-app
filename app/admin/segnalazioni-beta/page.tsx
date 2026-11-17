@@ -1,4 +1,9 @@
 import { getAllBetaFeedbackForAdmin } from "@/lib/data/beta-feedback";
+import { getTestAccountIds } from "@/lib/data/admin-ops";
+import { withoutTestAccounts } from "@/lib/admin-ops/test-accounts";
+
+// 17/11/2026: le segnalazioni degli "Account di prova" (Beta Famiglie) sono
+// fuori dai conteggi e dall'elenco; si vedono con ?demo=1.
 import SegnalazioniBetaAdminClient from "./SegnalazioniBetaAdminClient";
 
 // SPRINT 5 (NEXTGEN) — coda Admin per le segnalazioni BETA (richiesta di
@@ -15,10 +20,15 @@ export default async function SegnalazioniBetaAdminPage({
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
   const sp = await searchParams;
-  const items = await getAllBetaFeedbackForAdmin();
+  const [all, testAccounts] = await Promise.all([getAllBetaFeedbackForAdmin(), getTestAccountIds()]);
+  const showTest = sp.demo === "1";
+  const items = withoutTestAccounts(all, (f) => f.parentId, testAccounts, showTest);
   return (
     <SegnalazioniBetaAdminClient
       initialItems={items}
+      showTest={showTest}
+      hiddenTest={all.length - items.length}
+      testInList={showTest ? all.filter((f) => f.parentId && testAccounts.has(f.parentId)).length : 0}
       initialStatus={typeof sp.stato === "string" ? sp.stato : "tutti"}
       initialArea={typeof sp.area === "string" ? sp.area : "tutte"}
     />

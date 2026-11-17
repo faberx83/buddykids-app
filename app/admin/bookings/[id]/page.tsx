@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { getAdminBooking } from "@/lib/data/admin-ops";
+import { getAdminBooking, getTestAccountIds } from "@/lib/data/admin-ops";
 import { ACTOR_LABEL, BOOKING_STATE_LABEL, romeTodayIso, viewAdminBooking } from "@/lib/admin-ops/bookings";
 import { activityPrice, formatEuro } from "@/lib/nextgen/activity-price";
 import { countOf } from "@/lib/admin-ops/text";
@@ -32,7 +32,7 @@ export default async function AdminBookingDetailPage({ params, searchParams }: {
   const sp = await searchParams;
   const row = await getAdminBooking(id);
   if (!row) return notFound();
-  const v = viewAdminBooking(row, romeTodayIso());
+  const v = viewAdminBooking(row, romeTodayIso(), await getTestAccountIds());
   const rawBack = typeof sp.da === "string" ? sp.da : "";
   const back = `/admin/bookings${rawBack.startsWith("?") ? rawBack : ""}`;
   const price = activityPrice({ pricePerWeek: row.pricePerWeek, bookingMode: row.bookingMode });

@@ -8,6 +8,7 @@
 
 import { daysBetween, type Actor } from "@/lib/admin-ops/bookings";
 import { isDemoRecord } from "@/lib/admin-ops/demo";
+import { NO_TEST_ACCOUNTS, isTestAccount, type TestAccountIds } from "@/lib/admin-ops/test-accounts";
 
 export type InquiryStatus = "aperta" | "risposta" | "chiusa";
 
@@ -22,6 +23,8 @@ export interface AdminInquiryRow {
   centerIsTestFixture: boolean;
   activityId: string | null;
   activityName: string;
+  /** 17/11/2026: per riconoscere gli account di prova. */
+  parentId?: string | null;
   parentName: string;
   message: string;
   reply: string | null;
@@ -66,14 +69,19 @@ export function inquiriesHref(f: Partial<InquiryFilters>): string {
   return `/admin/richieste${s ? `?${s}` : ""}#casi`;
 }
 
-export function viewInquiry(r: AdminInquiryRow, todayIso: string): AdminInquiryView {
+export function viewInquiry(r: AdminInquiryRow, todayIso: string, testAccounts: TestAccountIds = NO_TEST_ACCOUNTS): AdminInquiryView {
   const ageDays = Math.max(0, daysBetween(r.createdAt, todayIso));
   const open = r.status === "aperta";
   const responseHours =
     r.repliedAt && r.createdAt ? Math.max(0, (Date.parse(r.repliedAt) - Date.parse(r.createdAt)) / 3600000) : null;
   return {
     row: r,
-    isDemo: isDemoRecord({ centerName: r.centerName, centerIsTestFixture: r.centerIsTestFixture, activityName: r.activityName }),
+    isDemo: isDemoRecord({
+      centerName: r.centerName,
+      centerIsTestFixture: r.centerIsTestFixture,
+      activityName: r.activityName,
+      accountIsTest: isTestAccount(r.parentId, testAccounts),
+    }),
     ageDays,
     actor: open ? "centro" : null,
     nextStep: open ? (ageDays >= 2 ? "Sollecitare il centro a rispondere" : "Il centro risponde alla famiglia") : null,

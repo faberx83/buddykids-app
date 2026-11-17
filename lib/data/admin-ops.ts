@@ -45,10 +45,22 @@ export async function adminSession(): Promise<Session | null> {
   return profile?.role === "platform_admin" ? supabase : null;
 }
 
+// ── Account di prova (17/11/2026) ─────────────────────────────────────────
+// Lista "Account di prova" = beta_cockpit_settings.excluded_user_ids (REUSE).
+// Tollerante: errore o tabella assente = lista vuota (nessuno nascosto).
+
+export async function getTestAccountIds(): Promise<Set<string>> {
+  const supabase = await adminSession();
+  if (!supabase) return new Set();
+  const { data, error } = await supabase.from("beta_cockpit_settings").select("excluded_user_ids").eq("id", 1).maybeSingle();
+  if (error || !data) return new Set();
+  return new Set(((data as { excluded_user_ids?: string[] | null }).excluded_user_ids ?? []).filter(Boolean));
+}
+
 // ── Prenotazioni ──────────────────────────────────────────────────────────
 
 const BOOKING_SELECT = (withNew: boolean) => `
-  id, status, partner_decision, created_at, responded_at, cancelled_by, total_amount, discount_amount,
+  id, parent_id, status, partner_decision, created_at, responded_at, cancelled_by, total_amount, discount_amount,
   activities ( id, slug, name, booking_mode, price_per_week, center_id, centers ( id, name${withNew ? ", is_test_fixture" : ""} ) ),
   profiles!parent_id ( full_name, email ),
   booking_kids ( kids ( name ) ),
@@ -63,6 +75,7 @@ interface RawCenter {
 }
 interface RawBooking {
   id: string;
+  parent_id?: string | null;
   status: BookingStatus;
   partner_decision: PartnerDecision;
   created_at: string;
@@ -120,6 +133,7 @@ function mapBooking(r: RawBooking): AdminBookingRow {
     activityName: a?.name ?? "Attività",
     bookingMode: mode === "day_only" || mode === "mixed" || mode === "week_only" ? mode : null,
     pricePerWeek: a?.price_per_week === null || a?.price_per_week === undefined ? null : Number(a.price_per_week),
+    parentId: r.parent_id ?? null,
     parentName: p?.full_name || "Genitore",
     parentEmail: p?.email ?? "",
     kidNames: (r.booking_kids ?? []).map((bk) => firstOf(bk.kids)?.name).filter((n): n is string => Boolean(n)),
@@ -174,6 +188,7 @@ export async function getAdminBooking(id: string): Promise<AdminBookingRow | nul
 
 interface RawInquiry {
   id: string;
+  parent_id?: string | null;
   status: InquiryStatus;
   created_at: string;
   replied_at: string | null;
@@ -191,7 +206,7 @@ export async function getAdminInquiries(): Promise<AdminInquiryRow[]> {
   const supabase = await adminSession();
   if (!supabase) return [];
   const sel = (withNew: boolean) =>
-    `id, status, created_at, replied_at, message, reply${withNew ? ", last_message_at" : ""},
+    `id, parent_id, status, created_at, replied_at, message, reply${withNew ? ", last_message_at" : ""},
      activities ( id, name, center_id, centers ( id, name${withNew ? ", is_test_fixture" : ""} ) ),
      profiles!parent_id ( full_name )`;
   let res = await supabase.from("activity_inquiries").select(sel(true)).order("created_at", { ascending: false }).limit(3000);
@@ -211,6 +226,7 @@ export async function getAdminInquiries(): Promise<AdminInquiryRow[]> {
       centerIsTestFixture: Boolean(c?.is_test_fixture),
       activityId: a?.id ?? null,
       activityName: a?.name ?? "Attività",
+      parentId: r.parent_id ?? null,
       parentName: firstOf(r.profiles)?.full_name || "Genitore",
       message: r.message ?? "",
       reply: r.reply,

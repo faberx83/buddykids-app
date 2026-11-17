@@ -617,14 +617,21 @@ export async function loadCockpitData(service: Service, session: Session | null,
     : { data: [], error: null };
   for (const p of rows<{ email: string | null }>(accountEmailRes)) if (p.email) accountEmails.add(p.email.trim().toLowerCase());
   const keptParents = allParents.filter((p) => !internal.has(p.id) && !excluded.has(p.id));
+  const testOrInternalEmails = new Set(
+    allParents.filter((p) => p.email && (internal.has(p.id) || excluded.has(p.id))).map((p) => (p.email as string).trim().toLowerCase())
+  );
   const preRegistration: PreRegistrationRaw = {
     landingViews: landingRes.error ? null : rows<{ created_at: string }>(landingRes).map((r) => r.created_at),
-    requests: allWait.map((w) => ({
-      createdAt: w.created_at,
-      invitedAt: w.invited_at,
-      status: w.status,
-      hasAccount: accountEmails.has(w.email.trim().toLowerCase()),
-    })),
+    // 17/11/2026: le richieste fatte da un account di prova (o interno) non contano.
+    requests: allWait
+      .filter((w) => !testOrInternalEmails.has(w.email.trim().toLowerCase()))
+      .map((w) => ({
+        createdAt: w.created_at,
+        invitedAt: w.invited_at,
+        status: w.status,
+        hasAccount: accountEmails.has(w.email.trim().toLowerCase()),
+      })),
+    excludedRequests: allWait.filter((w) => testOrInternalEmails.has(w.email.trim().toLowerCase())).length,
     accounts: keptParents.map((p) => ({
       createdAt: p.created_at,
       withCode: Boolean(p.beta_invited_by_code),

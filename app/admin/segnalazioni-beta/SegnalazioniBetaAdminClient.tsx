@@ -52,10 +52,17 @@ export default function SegnalazioniBetaAdminClient({
   initialItems,
   initialStatus = "tutti",
   initialArea = "tutte",
+  showTest = false,
+  hiddenTest = 0,
+  testInList = 0,
 }: {
   initialItems: BetaFeedbackItem[];
   initialStatus?: string;
   initialArea?: string;
+  /** 17/11/2026: segnalazioni degli account di prova. */
+  showTest?: boolean;
+  hiddenTest?: number;
+  testInList?: number;
 }) {
   const router = useRouter();
   const [items, setItems] = useState(initialItems);
@@ -69,6 +76,7 @@ export default function SegnalazioniBetaAdminClient({
     const p = new URLSearchParams();
     if (stato !== "tutti") p.set("stato", stato);
     if (area !== "tutte") p.set("area", area);
+    if (showTest) p.set("demo", "1");
     const q = p.toString();
     router.replace(`/admin/segnalazioni-beta${q ? `?${q}` : ""}`, { scroll: false });
   }
@@ -126,6 +134,22 @@ export default function SegnalazioniBetaAdminClient({
         <div className="mb-5 rounded-lg border border-orange-mid bg-orange-light p-4 text-sm text-ink">
           Supabase non è collegato in questo ambiente: qui vedrai le segnalazioni reali una volta collegato.
         </div>
+      )}
+
+      {(hiddenTest > 0 || showTest) && (
+        <p className="mb-3 text-xs text-ink-2" data-testid="feedback-test-accounts">
+          {showTest ? (
+            <>
+              Comprese {testInList} segnalazioni di account di prova.{" "}
+              <a href="/admin/segnalazioni-beta" className="font-semibold text-sky underline">Nascondile</a>
+            </>
+          ) : (
+            <>
+              {hiddenTest} {hiddenTest === 1 ? "segnalazione di un account di prova non contata" : "segnalazioni di account di prova non contate"}.{" "}
+              <a href="/admin/segnalazioni-beta?demo=1" className="font-semibold text-sky underline">Mostrale</a>
+            </>
+          )}
+        </p>
       )}
 
       {/* Report: conteggio totale + per stato + per area/sottosezione */}

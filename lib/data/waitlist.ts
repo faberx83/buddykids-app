@@ -92,6 +92,9 @@ export async function findAccountsByEmail(supabase: Db, emails: string[]): Promi
     ? await supabase.from("beta_cohort_memberships").select("user_id").in("user_id", ids)
     : { data: [] as { user_id: string }[] };
   const inPilot = new Set(((cohort ?? []) as { user_id: string }[]).map((c) => c.user_id));
+  // 17/11/2026: lista "Account di prova" (beta_cockpit_settings.excluded_user_ids).
+  const { data: settings } = await supabase.from("beta_cockpit_settings").select("excluded_user_ids").eq("id", 1).maybeSingle();
+  const testIds = new Set(((settings as { excluded_user_ids?: string[] | null } | null)?.excluded_user_ids ?? []).filter(Boolean));
   for (const p of profiles) {
     const key = (p.email ?? "").trim().toLowerCase();
     if (!key || out.has(key)) continue;
@@ -100,6 +103,7 @@ export async function findAccountsByEmail(supabase: Db, emails: string[]): Promi
       createdAt: p.created_at,
       betaCode: p.beta_invited_by_code ?? null,
       inPilot: inPilot.has(p.id),
+      isTest: testIds.has(p.id),
     });
   }
   return out;

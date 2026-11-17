@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { getAdminInquiries } from "@/lib/data/admin-ops";
+import { getAdminInquiries, getTestAccountIds } from "@/lib/data/admin-ops";
 import { romeTodayIso } from "@/lib/admin-ops/bookings";
 import { aggregateByCenter, filterInquiries, inquiriesHref, parseInquiryFilters, viewInquiry } from "@/lib/admin-ops/inquiries";
 import { countOf } from "@/lib/admin-ops/text";
@@ -30,7 +30,9 @@ export default async function AdminRichiestePage({ searchParams }: { searchParam
   const f = parseInquiryFilters(sp);
   const caso = typeof sp.caso === "string" ? sp.caso : "";
   const today = romeTodayIso();
-  const views = (await getAdminInquiries()).map((r) => viewInquiry(r, today));
+  const [inquiryRows, testAccounts] = await Promise.all([getAdminInquiries(), getTestAccountIds()]);
+  // 17/11/2026: anche le richieste degli account di prova sono "prova".
+  const views = inquiryRows.map((r) => viewInquiry(r, today, testAccounts));
   const scope = filterInquiries(views, { centro: "", stato: "tutte", demo: f.demo });
   const aggregates = aggregateByCenter(scope);
   const cases = filterInquiries(views, f).sort((a, b) => (a.row.status === "aperta" ? 0 : 1) - (b.row.status === "aperta" ? 0 : 1) || b.ageDays - a.ageDays);
