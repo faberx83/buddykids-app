@@ -30,7 +30,7 @@ test.describe("TRAMA - Login (header animato)", () => {
     // scopiamo comunque entrambe le asserzioni per chiarezza e simmetria.
     const header = page.getByTestId("trama-login-header");
     await expect(header.getByRole("img", { name: "TRAMA" })).toBeVisible();
-    await expect(header.getByText("Organizing childhood. Together.")).toBeVisible();
+    await expect(header.getByText("Meno cose da ricordare. Più tempo per esserci.")).toBeVisible();
     await expect(page.getByLabel(/email/i)).toBeVisible();
     // getByLabel(/password/i) è ambiguo dal pulsante "Mostra/Nascondi
     // password" (aria-label che contiene "password", vedi tests/fixtures/roles.ts).

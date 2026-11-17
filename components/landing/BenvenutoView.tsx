@@ -20,7 +20,12 @@ export default function BenvenutoView({
 }) {
   return (
     <div data-nav-v2 className="min-h-screen bg-trama-page text-ink" data-testid="benvenuto">
+      {/* 17/11/2026 (Fabrizio: "Meno cose da ricordare. Più tempo per esserci"
+          come prima frase, "è il leit motiv di tutto"; colori: variante B, "un
+          pelo più calda" dell'app): intestazione e apertura su sabbia, la
+          promessa in corallo; pulsante e logo restano quelli dell'app. */}
       {/* Intestazione */}
+      <div className="bg-trama-sand">
       <header className="mx-auto flex max-w-5xl items-center justify-between px-5 pb-2 pt-[calc(16px+env(safe-area-inset-top,0px))]">
         <span className="flex items-center gap-2.5">
           <img src="/brand/trama-logo-mark.png" alt="" aria-hidden="true" className="h-8 w-auto" />
@@ -33,21 +38,23 @@ export default function BenvenutoView({
           {loggedIn ? "Vai all'app" : "Accedi"}
         </Link>
       </header>
+      </div>
 
       <main>
         {/* Apertura */}
+        <div className="bg-trama-sand">
         <section className="mx-auto grid max-w-5xl items-center gap-10 px-5 pb-14 pt-8 md:grid-cols-[minmax(0,1fr)_auto] md:pt-16">
           <div className="flex flex-col gap-5">
-            <span className="self-start rounded-full bg-trama-accent-soft px-3 py-1 text-[12.5px] font-bold text-trama-accent-ink">
+            <span className="self-start rounded-full bg-trama-coral-soft px-3 py-1 text-[12.5px] font-bold text-trama-coral-ink">
               Beta gratuita · su invito
             </span>
             <h1 className="text-balance font-poppins text-[clamp(34px,8.5vw,52px)] font-semibold leading-[1.05] tracking-[-0.02em] text-trama-navy">
-              Il tempo dei tuoi figli, organizzato.
+              Meno cose da ricordare. <span className="text-trama-coral-ink">Più tempo per esserci.</span>
             </h1>
             <TramaThread />
             <p className="max-w-[46ch] text-[17px] leading-relaxed text-ink-2">
-              Attività, settimane, chi porta e chi ritira, ponti e vacanze scolastiche: tutto in un posto solo, insieme a chi ti
-              aiuta.
+              TRAMA organizza il tempo dei tuoi figli: attività, settimane, chi porta e chi ritira, ponti e vacanze scolastiche.
+              Tutto in un posto solo, insieme a chi ti aiuta.
             </p>
             <div className="flex flex-col gap-3 sm:flex-row">
               <a
@@ -57,7 +64,7 @@ export default function BenvenutoView({
                 Chiedi un invito
               </a>
               {!loggedIn && (
-                <Link href="/auth/login" className="flex min-h-[52px] items-center justify-center px-2 text-[15px] font-semibold text-trama-accent-ink">
+                <Link href="/auth/login" className="flex min-h-[52px] items-center justify-center px-2 text-[15px] font-semibold text-trama-navy">
                   Hai già un account? Accedi
                 </Link>
               )}
@@ -67,10 +74,11 @@ export default function BenvenutoView({
           </div>
           {/* Il marchio, non un telefono: le quattro schermate vere arrivano subito sotto. */}
           <div aria-hidden="true" className="relative hidden justify-center py-4 md:flex">
-            <div className="pointer-events-none absolute left-1/2 top-1/2 h-[300px] w-[300px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-trama-accent opacity-10 blur-[70px]" />
+            <div className="pointer-events-none absolute left-1/2 top-1/2 h-[300px] w-[300px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-trama-coral opacity-10 blur-[70px]" />
             <img src="/brand/trama-logo-mark.png" alt="" className="relative w-[320px] motion-safe:animate-[trama-onb-float_2.8s_ease-in-out_infinite]" />
           </div>
         </section>
+        </div>
 
         {/* Cosa fa: le quattro schermate del primo ingresso, a scorrimento automatico */}
         <section aria-labelledby="cosa-h" className="border-t border-trama-line bg-white">
@@ -182,7 +190,7 @@ export default function BenvenutoView({
             privacy@tramapp.it
           </a>
         </nav>
-        <p className="text-[12.5px]">© 2026 TRAMA · Organizing childhood. Together.</p>
+        <p className="text-[12.5px]">© 2026 TRAMA · Meno cose da ricordare. Più tempo per esserci.</p>
       </footer>
     </div>
   );

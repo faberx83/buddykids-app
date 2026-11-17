@@ -28,13 +28,14 @@ import { CENTER_PILOT_FLOW_FLAG } from "@/lib/centers/pilot-emails";
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
-  title: "TRAMA — Il tempo dei tuoi figli, organizzato",
+  title: "TRAMA — Meno cose da ricordare. Più tempo per esserci.",
   description:
-    "Attività, settimane, chi porta e chi ritira, ponti e vacanze scolastiche: tutto in un posto solo, insieme a chi ti aiuta. Beta gratuita su invito.",
+    "TRAMA organizza il tempo dei tuoi figli. Attività, settimane, chi porta e chi ritira, ponti e vacanze scolastiche: tutto in un posto solo, insieme a chi ti aiuta. Beta gratuita su invito.",
   openGraph: {
-    title: "TRAMA — Il tempo dei tuoi figli, organizzato",
-    description: "Attività, settimane, chi porta e chi ritira, ponti e vacanze: tutto in un posto solo. Beta gratuita su invito.",
-    images: [{ url: "/og/trama-private-beta.png", width: 1200, height: 630 }],
+    title: "TRAMA — Meno cose da ricordare. Più tempo per esserci.",
+    description: "TRAMA organizza il tempo dei tuoi figli. Attività, settimane, chi porta e chi ritira, ponti e vacanze: tutto in un posto solo. Beta gratuita su invito.",
+    // 17/11/2026: anteprima nella variante calda, con il claim (asset statico).
+    images: [{ url: "/og/trama-benvenuto.png", width: 1200, height: 630 }],
   },
 };
 
