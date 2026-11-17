@@ -2,6 +2,7 @@ import Link from "next/link";
 import FeatureSlider from "@/components/landing/FeatureSlider";
 import WaitlistForm from "@/components/landing/WaitlistForm";
 import TramaThread from "@/components/nextgen/TramaThread";
+import InstallAppHint from "@/components/landing/InstallAppHint";
 
 // TRAMA — PAGINA DI BENVENUTO (20/10/2026): solo la parte visiva, senza
 // accessi a dati (quelli restano in app/benvenuto/page.tsx). Testi e
@@ -61,6 +62,8 @@ export default function BenvenutoView({
                 </Link>
               )}
             </div>
+            {/* 17/11/2026: come aggiungerla alla schermata Home (iPhone / Android). */}
+            <InstallAppHint />
           </div>
           {/* Il marchio, non un telefono: le quattro schermate vere arrivano subito sotto. */}
           <div aria-hidden="true" className="relative hidden justify-center py-4 md:flex">
