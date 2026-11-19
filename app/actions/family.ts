@@ -17,6 +17,7 @@ import { escapeEmailHtml, tramaEmailHtml } from "@/lib/email-layout";
 import { familyHost } from "@/lib/tenant";
 import { defaultFamilyName } from "@/lib/nextgen/family-page-v2";
 import { appInviteUrl, newShortInviteToken, shortInviteUrl } from "@/lib/public-links";
+import { inheritFamilyCohorts } from "@/lib/beta-cohorts/membership";
 
 // Stessi caratteri di app/actions/communities.ts (niente 0/O/1/I, ambigui da
 // leggere/dettare a voce quando il codice viene condiviso a mano, es. col
@@ -118,6 +119,10 @@ export async function joinFamilyByCodeAction(
     .from("family_members")
     .insert({ family_id: family.id, parent_id: user.id, role: "membro" });
   if (error) return { error: friendlyDbError(error.message, "Errore nell'adesione alla famiglia") };
+
+  // 19/11/2026: l'altro genitore entra nella stessa beta di chi l'ha invitato.
+  // Se cambia la coorte cambiano le funzioni accese: si rinfresca tutta l'app.
+  if ((await inheritFamilyCohorts(family.id as string, user.id)).length > 0) revalidatePath("/nextgen", "layout");
 
   revalidatePath(PLANNER_FAMILY_PATH);
   return { familyId: family.id };
@@ -398,6 +403,10 @@ export async function acceptFamilyInviteAction(token: string): Promise<AcceptFam
   if (error) return { error: error.message };
   const row = data as { family_id: string | null; family_name: string | null; error: string | null } | null;
   if (!row || row.error) return { error: row?.error || "Errore nell'accettazione dell'invito" };
+
+  // 19/11/2026: l'altro genitore entra nella stessa beta di chi l'ha invitato.
+  // Se cambia la coorte cambiano le funzioni accese: si rinfresca tutta l'app.
+  if (row.family_id && (await inheritFamilyCohorts(row.family_id, user.id)).length > 0) revalidatePath("/nextgen", "layout");
 
   revalidatePath(PLANNER_FAMILY_PATH);
   return { familyName: row.family_name || undefined };
