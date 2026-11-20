@@ -12,7 +12,8 @@ import { createServiceClient } from "@/lib/supabase/service";
 import { isEmailConfigured, sendEmail } from "@/lib/email";
 import { lastClosedWindow, rangeLabel, resolvePeriod } from "@/lib/beta-cockpit/dates";
 import { buildCockpitView } from "@/lib/beta-cockpit/view";
-import { kpiValueLabel } from "@/lib/beta-cockpit/model";
+// 20/11/2026: contenuto dettagliato (grafici, motivi, azioni) in lib/beta-cockpit/report-email.ts.
+import { buildBetaReportEmail } from "@/lib/beta-cockpit/report-email";
 import { loadCockpitData, loadCockpitSettings } from "@/lib/data/beta-cockpit";
 import { CANONICAL_ROOT_DOMAIN } from "@/lib/public-links";
 import { countActivitySince, loadTestAccountIds } from "@/lib/admin-alerts/send";
@@ -57,25 +58,17 @@ export async function sendBetaReportNoticeIfDue(service: Service, now: Date): Pr
         zonesByFamily: data.zonesByFamily,
         thresholds: settings.thresholds,
         betaStart: settings.betaStart,
+        // 20/11/2026: anche i passaggi prima della registrazione (visite, richieste, clic).
+        preRegistration: data.preRegistration,
       },
       period,
       now
     );
     const link = `${ADMIN_ORIGIN}/admin/beta/report?p=custom&da=${win.from}&a=${win.to}`;
-    const kpiLines = view.kpis.map((k) => `${k.label}: ${kpiValueLabel(k)}`);
-    // 20/11/2026: resoconto degli avvisi della settimana (gli eventi arrivano
-    // solo come push; qui il riepilogo via email). Account di prova esclusi.
     const weekSince = new Date(now.getTime() - 7 * 24 * 3600 * 1000).toISOString();
     const weekLines = weeklyActivityLines(await countActivitySince(service, weekSince, await loadTestAccountIds(service)));
-    const subject = `TRAMA — Beta Report ${rangeLabel(win.from, win.to)}`;
-    const esc = (s: string) => s.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]!);
-    const html = `<div style="font-family:-apple-system,Helvetica,Arial,sans-serif;color:#172A4D;font-size:15px;line-height:1.5">
-<p><b>Beta Report · ${esc(rangeLabel(win.from, win.to))}</b></p>
-<p>${kpiLines.map(esc).join("<br>")}</p>
-<p><b>Ultimi 7 giorni</b><br>${weekLines.map(esc).join("<br>")}</p>
-${view.summary.signals.length ? `<p><b>Segnali da guardare</b><br>${view.summary.signals.map(esc).join("<br>")}</p>` : ""}
-<p><a href="${link}">Apri il report</a> (accesso Admin)</p></div>`;
-    const text = [`Beta Report · ${rangeLabel(win.from, win.to)}`, "", ...kpiLines, "", "Ultimi 7 giorni", ...weekLines, "", ...view.summary.signals, "", link].join("\n");
+    // 20/11/2026 — Fabrizio: "Email da TRAMA con report dettagliato grafici motivi e azioni".
+    const { subject, html, text } = buildBetaReportEmail({ view, rangeLabel: rangeLabel(win.from, win.to), link, weekLines });
 
     const r = await sendEmail({ to, subject, html, text });
     if (r.error) return { sent: false, reason: "invio non riuscito" };

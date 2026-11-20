@@ -188,6 +188,7 @@ export const KNOWN_PRODUCT_EVENTS = [
   // TRAMA — ADMIN BETA COCKPIT (20/10/2026): avviso al founder "report pronto",
   // uno per finestra (detail = chiave della finestra, date; mai famiglie).
   "beta_report_notice_sent",
+  "beta_nudge_sent", // 20/11/2026: sollecito inviato dall'Admin (detail = "<campagna>:<userId>")
 ] as const;
 
 export type KnownProductEvent = (typeof KNOWN_PRODUCT_EVENTS)[number];

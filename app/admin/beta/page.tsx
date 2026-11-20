@@ -20,6 +20,10 @@ import {
 } from "./sections";
 import FeedbackTriageClient from "./FeedbackTriageClient";
 import InviteFamilyForm from "./InviteFamilyForm";
+// 20/11/2026: solleciti alle famiglie poco attive + messaggi WhatsApp (tab Frizioni).
+import NudgesClient from "@/components/admin/beta/NudgesClient";
+import { loadNudgeOverview } from "@/lib/data/beta-nudges";
+import { CANONICAL_FAMILY_ORIGIN } from "@/lib/public-links";
 
 // Dati per-richiesta, solo Admin: getBetaCockpitData() rifà il controllo
 // platform_admin lato server prima di qualunque lettura.
@@ -125,7 +129,12 @@ export default async function BetaCockpitPage({ searchParams }: { searchParams: 
 
       {tab === "funnel" && <FunnelSection view={view} />}
       {tab === "utilizzo" && <UsageSection view={view} />}
-      {tab === "frizioni" && <FrictionsSection view={view} />}
+      {tab === "frizioni" && (
+        <>
+          <FrictionsSection view={view} />
+          <NudgesClient rows={await loadNudgeOverview()} defaultLink={`${CANONICAL_FAMILY_ORIGIN}/auth/login?beta=TRAMABETA`} />
+        </>
+      )}
       {tab === "centri" && <DemandSection view={view} />}
 
       {tab === "feedback" && (
