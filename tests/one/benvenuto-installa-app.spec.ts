@@ -9,7 +9,9 @@ const read = (f: string) => fs.readFileSync(path.join(__dirname, "../..", f), "u
 
 test.describe("Benvenuto: usala come un'app [no browser]", () => {
   test("BIA-01 riga sotto i pulsanti, foglietto con iPhone e Android", () => {
-    expect(read("components/landing/BenvenutoView.tsx")).toContain("<InstallAppHint />");
+    // 20/11/2026: tolta dalla pagina di benvenuto (si propone dopo la registrazione,
+    // vedi app-dopo-registrazione.spec.ts); il foglietto resta per i centri.
+    expect(read("components/landing/BenvenutoView.tsx")).not.toContain("<InstallAppHint");
     const c = read("components/landing/InstallAppHint.tsx");
     expect(c).toContain("Usala come un&apos;app: aggiungila alla schermata Home");
     expect(c).toContain('&quot;Aggiungi alla schermata Home&quot;');

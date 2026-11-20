@@ -42,7 +42,9 @@ test.describe("Pagina per i centri nei colori del portale centri [no browser]", 
     expect(centerBlock).not.toContain("notifiche");
     expect(read("components/landing/CentriView.tsx")).toContain('<InstallAppHint variant="centri" />');
     expect(read("app/auth/login/LoginForm.tsx")).toContain('<InstallAppHint variant="centri" />');
-    // La pagina delle famiglie resta com'era.
-    expect(read("components/landing/BenvenutoView.tsx")).toContain("<InstallAppHint />");
+    // 20/11/2026 (Fabrizio: "bisogna far uscire aggiungi/scarica l'app dopo, una
+    // volta fatta la registrazione"): la pagina delle famiglie non la propone
+    // più prima della registrazione; resta solo per i centri.
+    expect(read("components/landing/BenvenutoView.tsx")).not.toContain("<InstallAppHint");
   });
 });

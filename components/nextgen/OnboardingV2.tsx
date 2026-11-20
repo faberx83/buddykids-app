@@ -41,6 +41,7 @@ import {
   skipWalkthroughStepAction,
 } from "@/app/actions/walkthrough";
 import { addKidAction } from "@/app/actions/kids";
+import { markFirstUsefulAction } from "@/lib/nextgen/first-action";
 import { isParentalDeclarationGateEnabledAction } from "@/app/actions/legal";
 import { setSchoolContextForFamilyAction } from "@/app/actions/school-calendar";
 import { ITALIAN_REGIONS } from "@/lib/school-calendar/regions";
@@ -99,6 +100,7 @@ export default function OnboardingV2({
   const [addedKidIds, setAddedKidIds] = useState<string[]>([]);
   const dialogRef = useRef<HTMLDivElement>(null);
   const startedRef = useRef(false);
+  const kidAddedRef = useRef(false);
 
   // "Rivedi l'introduzione" (14/10, secondo motivo per cui non ripartiva):
   // questo componente vive nel layout e non si smonta cambiando pagina, quindi
@@ -145,6 +147,10 @@ export default function OnboardingV2({
       setDismissed(true); // chiude subito, nessuna attesa di rete
       const action = outcome === "completed" ? completeWalkthroughStepAction : skipWalkthroughStepAction;
       await action(ONBOARDING_V2_TUTORIAL_KEY, ONBOARDING_V2_STEP_KEY);
+      // 20/11/2026 (Fabrizio: "far uscire aggiungi/scarica l'app dopo, una volta
+      // fatta la registrazione"): finita l'introduzione con almeno un figlio,
+      // la Home propone di mettere TRAMA sulla schermata Home.
+      if (kidAddedRef.current) markFirstUsefulAction("figlio");
       router.push("/nextgen");
       router.refresh();
     },
@@ -242,6 +248,8 @@ export default function OnboardingV2({
               setSlideIndex(ONBOARDING_V2_SLIDES.length - 1);
             }}
             onKidAdded={(kid) => {
+              // 20/11/2026: primo figlio inserito → a fine introduzione l'app si propone (vedi finish).
+              kidAddedRef.current = true;
               setLocalKids((prev) => [...prev, kid]);
               setAddedKidIds((prev) => [...prev, kid.id]);
             }}

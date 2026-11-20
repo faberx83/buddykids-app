@@ -2,7 +2,6 @@ import Link from "next/link";
 import FeatureSlider from "@/components/landing/FeatureSlider";
 import WaitlistForm from "@/components/landing/WaitlistForm";
 import TramaThread from "@/components/nextgen/TramaThread";
-import InstallAppHint from "@/components/landing/InstallAppHint";
 import InviteResumeBanner from "@/components/landing/InviteResumeBanner";
 
 // TRAMA — PAGINA DI BENVENUTO (20/10/2026): solo la parte visiva, senza
@@ -72,8 +71,10 @@ export default function BenvenutoView({
                 </Link>
               )}
             </div>
-            {/* 17/11/2026: come aggiungerla alla schermata Home (iPhone / Android). */}
-            <InstallAppHint />
+            {/* 17/11/2026 "Usala come un'app" → tolta il 20/11 (Fabrizio: "bisogna
+                far uscire aggiungi/scarica l'app dopo, una volta fatta la
+                registrazione"): chi aggiungeva l'icona prima di registrarsi
+                perdeva l'invito. Ora lo propone l'app dopo il primo figlio. */}
           </div>
           {/* Il marchio, non un telefono: le quattro schermate vere arrivano subito sotto. */}
           <div aria-hidden="true" className="relative hidden justify-center py-4 md:flex">

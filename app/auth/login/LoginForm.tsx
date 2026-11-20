@@ -250,7 +250,8 @@ export default function LoginForm({
         /* niente */
       }
       setLoading(false);
-      setMessage("Registrazione completata! Controlla la tua email per confermare l'account prima di accedere.");
+      // 20/11/2026: l'invito a metterla sulla schermata Home arriva dopo, dentro l'app.
+      setMessage("Registrazione completata! Controlla la tua email per confermare l'account, poi entra in TRAMA: lì ti spieghiamo come metterla sulla schermata Home.");
       setPassword("");
     }
   }
@@ -401,8 +402,10 @@ export default function LoginForm({
                 da quando esiste anche l'invito Beta (?beta=CODICE, badge sopra,
                 MAI in questo campo) — "Codice invito" da solo era ambiguo tra i
                 due sistemi, non collegati tra loro. Questo campo resta invariato
-                nella logica (invite_code / sconto centro), cambia solo il testo. */}
-            {mode === "signup" && (
+                nella logica (invite_code / sconto centro), cambia solo il testo.
+                20/11/2026 (Fabrizio: "il codice invito ora confonde"): con un
+                link d'invito beta il campo non si mostra, l'invito c'è già. */}
+            {mode === "signup" && !betaParam && (
               <>
                 <label htmlFor="login-invite-code" className={labelClass}>
                   Codice invito centro — sconto (opzionale)

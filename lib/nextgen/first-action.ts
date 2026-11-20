@@ -11,7 +11,8 @@
 export const FIRST_ACTION_STORAGE_KEY = "trama_first_useful_action";
 export const FIRST_ACTION_EVENT = "trama:first-useful-action";
 
-export type FirstUsefulAction = "impegno" | "salvata" | "nel_planner" | "chi_porta" | "prenotazione";
+// 20/11/2026: "figlio" = primo figlio aggiunto nell'onboarding (l'app si propone subito dopo la registrazione).
+export type FirstUsefulAction = "impegno" | "salvata" | "nel_planner" | "chi_porta" | "prenotazione" | "figlio";
 
 /** true se in questo browser la famiglia ha già fatto un'azione utile. */
 export function hasDoneFirstUsefulAction(): boolean {

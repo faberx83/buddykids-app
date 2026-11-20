@@ -107,7 +107,13 @@ export default function InstallPrompt({
   // 20/10/2026: anche la pagina di benvenuto (tramapp.it/benvenuto) — chi non
   // ha un account non ha ancora niente da installare.
   const excluded = Boolean(
-    (routeExclude && pathname?.startsWith(routeExclude)) || pathname?.startsWith("/share") || pathname?.startsWith("/benvenuto") || pathname?.startsWith("/centri")
+    (routeExclude && pathname?.startsWith(routeExclude)) ||
+      pathname?.startsWith("/share") ||
+      pathname?.startsWith("/benvenuto") ||
+      pathname?.startsWith("/centri") ||
+      // 20/11/2026 (Fabrizio: "bisogna far uscire aggiungi/scarica l'app dopo,
+      // una volta fatta la registrazione"): mai su accesso e registrazione.
+      pathname?.startsWith("/auth")
   );
   const [deferredEvent, setDeferredEvent] = useState<BeforeInstallPromptEvent | null>(null);
   const [showIosHint, setShowIosHint] = useState(false);
@@ -125,7 +131,16 @@ export default function InstallPrompt({
   }, [waitForFirstAction]);
 
   useEffect(() => {
-    if (excluded) return; // rotta gestita da un'altra istanza (vedi routeExclude)
+    // 20/11/2026: dove il banner non si mostra (benvenuto, centri, accesso e
+    // registrazione) si ferma anche il riquadro automatico di Chrome Android
+    // ("Aggiungi TRAMA alla schermata Home"), che arrivava prima della
+    // registrazione. Senza tenere l'evento: lo raccoglie l'istanza dell'app.
+    if (excluded && routeExclude !== undefined && pathname?.startsWith(routeExclude)) return;
+    if (excluded) {
+      const stop = (e: Event) => e.preventDefault();
+      window.addEventListener("beforeinstallprompt", stop);
+      return () => window.removeEventListener("beforeinstallprompt", stop);
+    }
 
     if ("serviceWorker" in navigator) {
       navigator.serviceWorker.register("/sw.js", { scope: swScope }).catch(() => {});
@@ -169,7 +184,7 @@ export default function InstallPrompt({
 
     window.addEventListener("beforeinstallprompt", onBeforeInstallPrompt);
     return () => window.removeEventListener("beforeinstallprompt", onBeforeInstallPrompt);
-  }, [appName, excluded, swScope, uxFix]);
+  }, [appName, excluded, swScope, uxFix, routeExclude, pathname]);
 
   function dismiss() {
     try {
