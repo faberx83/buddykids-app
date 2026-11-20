@@ -706,6 +706,33 @@ export const FEATURE_CATALOG: FeatureCatalogEntry[] = [
     releaseEligible: true,
   },
   {
+    // 20/11/2026 — "manca qualche flag di accettazione consenso e informativa
+    // privacy alla prima login" (Fabrizio). Decisione: per ora solo famiglie.
+    key: "legal_first_access_consent",
+    label: "Consensi al primo accesso (famiglie già registrate)",
+    area: "parent",
+    status: "INTERNAL_PREVIEW",
+    flagName: "LEGAL_FIRST_ACCESS_GATE",
+    description:
+      "Schermata a tutta pagina all'ingresso nell'app famiglie (NextGen e Legacy) per chi non ha accettato la " +
+      "versione pubblicata dei Termini o non ha preso visione dell'Informativa: testi leggibili sul posto, due " +
+      "caselle obbligatorie, una facoltativa per le comunicazioni commerciali. Salva in legal_acceptances " +
+      "(source first_access) e consent_events. Si ripresenta solo quando si pubblica una nuova versione.",
+    sourceFiles: [
+      "lib/legal/first-access.ts",
+      "lib/legal/gate.ts",
+      "app/actions/legal.ts",
+      "components/legal/FirstAccessConsentScreen.tsx",
+      "app/nextgen/layout.tsx",
+      "app/(main)/layout.tsx",
+    ],
+    note:
+      "Nessuna migration: usa le tabelle della migration 27. Se un testo non è pubblicato o la sua impronta non " +
+      "coincide, la schermata non compare (mai un blocco senza testo da accettare).",
+    riskLevel: "medium",
+    releaseEligible: true,
+  },
+  {
     key: "legal_terms_gate_parental_declaration",
     label: "Legal Gate — dichiarazione genitoriale alla creazione bambino",
     area: "parent",

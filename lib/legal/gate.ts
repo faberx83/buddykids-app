@@ -15,6 +15,11 @@ import {
 // task #573 (spostate in ./consent.ts perché sono logica pura, vedi
 // commento lì — "server-only" sopra impedirebbe di importarle in test
 // puri altrimenti).
+import { resolveFeatureFlag } from "@/lib/feature-flags/resolve";
+import { isDraftLegalVersion, legalTextFor } from "@/lib/legal/texts";
+import { legalTextSha256 } from "@/lib/legal/text-integrity";
+import { FIRST_ACCESS_ROLES, needsFirstAccessConsent } from "@/lib/legal/first-access";
+
 export { deriveDocumentStatus };
 export type { LegalDocumentType, DerivedLegalDocumentStatus, LegalDocumentRecord };
 
@@ -474,4 +479,79 @@ export async function hasAcceptedCurrentDocument(
     .limit(1);
 
   return !error && !!data && data.length > 0;
+}
+
+// ── Consensi al primo accesso (20/11/2026) ─────────────────────────────
+// Fabrizio: "manca qualche flag di accettazione consenso e informativa
+// privacy alla prima login". Vedi lib/legal/first-access.ts per la regola.
+
+export interface FirstAccessConsentDoc {
+  version: string;
+  text: string;
+  accepted: boolean;
+}
+
+export interface FirstAccessConsentPayload {
+  terms: FirstAccessConsentDoc;
+  privacy: FirstAccessConsentDoc;
+  /** Mostrare la casella facoltativa solo a chi non ha mai fatto una scelta sul marketing. */
+  showMarketing: boolean;
+  isDraft: boolean;
+}
+
+async function resolveVerifiedDoc(
+  client: SupabaseClientLike,
+  userId: string,
+  documentType: LegalDocumentType
+): Promise<{ doc: LegalDocumentRecord; text: string; accepted: boolean } | null> {
+  const doc = await resolvePublishedDocument(client, documentType);
+  if (!doc) return null;
+  const text = legalTextFor(documentType, doc.version);
+  if (!text || !doc.sha256 || legalTextSha256(text) !== doc.sha256) return null;
+  const { data, error } = await client
+    .from("legal_acceptances")
+    .select("id")
+    .eq("user_id", userId)
+    .eq("legal_document_id", doc.id)
+    .limit(1);
+  return { doc, text, accepted: !error && !!data && data.length > 0 };
+}
+
+/**
+ * null = nessuna schermata (flag spento, ruolo non interessato, testi non
+ * disponibili o già accettati). Altrimenti i dati per FirstAccessConsentScreen.
+ * Errori di lettura → null (mai bloccare l'app per un errore tecnico).
+ */
+export async function getFirstAccessConsentPayload(
+  client: SupabaseClientLike,
+  userId: string,
+  role: string | null
+): Promise<FirstAccessConsentPayload | null> {
+  try {
+    if (!role || !FIRST_ACCESS_ROLES.includes(role)) return null;
+    const gateEnabled = await resolveFeatureFlag({ flagName: "LEGAL_FIRST_ACCESS_GATE", userId, role, tenant: "family" });
+    if (!gateEnabled) return null;
+
+    const [terms, privacy] = await Promise.all([
+      resolveVerifiedDoc(client, userId, "terms"),
+      resolveVerifiedDoc(client, userId, "privacy_notice"),
+    ]);
+    const needed = needsFirstAccessConsent({
+      gateEnabled,
+      role,
+      terms: { available: Boolean(terms), accepted: terms?.accepted ?? false },
+      privacy: { available: Boolean(privacy), accepted: privacy?.accepted ?? false },
+    });
+    if (!needed || !terms || !privacy) return null;
+
+    const { data: marketing } = await client.from("consent_events").select("id").eq("user_id", userId).limit(1);
+    return {
+      terms: { version: terms.doc.version, text: terms.text, accepted: terms.accepted },
+      privacy: { version: privacy.doc.version, text: privacy.text, accepted: privacy.accepted },
+      showMarketing: !marketing || marketing.length === 0,
+      isDraft: isDraftLegalVersion(terms.doc.version) || isDraftLegalVersion(privacy.doc.version),
+    };
+  } catch {
+    return null;
+  }
 }

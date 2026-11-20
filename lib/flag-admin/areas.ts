@@ -74,6 +74,7 @@ export const FLAG_AREAS: readonly FlagAreaDefinition[] = [
     flags: [
       "TRAMA_ONE_ENABLED",
       "LEGAL_TERMS_GATE",
+      "LEGAL_FIRST_ACCESS_GATE",
       "DOMAIN_MOVE_TRAMAPP_ENABLED",
       "NEXTGEN_CLASSIC_FALLBACK_ENABLED",
       "GLOBAL_ACTION_PROGRESS_ENABLED",

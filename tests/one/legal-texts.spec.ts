@@ -79,7 +79,10 @@ test.describe("TRAMA — Testi legali [no browser]", () => {
 
   test("LT-06 release 'Consensi e informative' con le due funzioni del gate", () => {
     const rel = RELEASE_CATALOG.find((r) => r.id === "consensi-informative");
-    expect(rel?.featureKeys).toEqual(["legal_terms_gate_signup", "legal_terms_gate_parental_declaration"]);
+    // 20/11/2026: la release ospita anche la schermata dei consensi al primo
+    // accesso (tests/one/consensi-primo-accesso.spec.ts). Le due funzioni del
+    // gate restano, nello stesso ordine, in testa.
+    expect(rel?.featureKeys).toEqual(["legal_terms_gate_signup", "legal_terms_gate_parental_declaration", "legal_first_access_consent"]);
     for (const k of rel!.featureKeys) expect(FEATURE_CATALOG.find((f) => f.key === k)?.releaseEligible).toBe(true);
     expect(read("supabase/migration_43_family_invites.sql")).toContain("-- STATO: PREPARATA, NON APPLICATA");
   });

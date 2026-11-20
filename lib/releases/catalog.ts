@@ -214,11 +214,11 @@ export const RELEASE_CATALOG: ReleaseCatalogEntry[] = [
     shortDescription:
       "In registrazione: accettazione dei Termini, link all'Informativa privacy, consenso marketing facoltativo. Aggiungendo un figlio: dichiarazione del genitore.",
     targetAudience: ["parent", "partner"],
-    featureKeys: ["legal_terms_gate_signup", "legal_terms_gate_parental_declaration"],
+    featureKeys: ["legal_terms_gate_signup", "legal_terms_gate_parental_declaration", "legal_first_access_consent"],
     knownLimitations: [
       "Va accesa SOLO dopo aver pubblicato i testi (supabase/legal_publish_2026-10-16_bozza1.sql): senza testi pubblicati la registrazione si blocca con 'momentaneamente non disponibile'.",
       "Al Pilot le caselle compaiono a chi si registra da un link d'invito beta (?beta=CODICE, la coorte arriva dal codice); chi si registra senza invito le vede solo con la release in GLOBALE.",
-      "Chi è già registrato non viene richiesto di accettare: serve una schermata di accettazione per gli account esistenti (da fare).",
+      "Chi è già registrato: dal 20/11/2026 c'è la schermata \"Prima di continuare\" (legal_first_access_consent), solo per le famiglie. I centri non la vedono finché non esistono testi dedicati.",
       "Testi in BOZZA, da far rivedere a un legale (dati di minori).",
     ],
     notes: "Creata il 16/10/2026. Ripiego: flag spento = registrazione come prima, senza caselle.",

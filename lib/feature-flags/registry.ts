@@ -56,6 +56,20 @@ export const FEATURE_FLAG_REGISTRY = {
   // nel registry (necessario per poterlo attivare in futuro) ma NON deve
   // essere scritto come override abilitato finché il contenuto legale non è
   // pronto — è una decisione operativa di Fabrizio, non tecnica.
+  // TRAMA — CONSENSI AL PRIMO ACCESSO (20/11/2026). Fabrizio: "manca qualche
+  // flag di accettazione consenso e informativa privacy alla prima login".
+  // Card Release "Consensi e informative".
+  LEGAL_FIRST_ACCESS_GATE: {
+    name: "LEGAL_FIRST_ACCESS_GATE",
+    description:
+      "Al primo accesso (e a ogni nuova versione pubblicata dei testi) le famiglie che non hanno ancora " +
+      "accettato i Termini o preso visione dell'Informativa privacy vedono una schermata con due caselle " +
+      "obbligatorie e una facoltativa (comunicazioni commerciali), salvate in legal_acceptances e " +
+      "consent_events. Solo famiglie (ruolo parent): i centri aspettano testi dedicati. Spento: nessuna " +
+      "schermata, app come prima.",
+    defaultValue: false,
+    allowedScopes: ["global", "environment", "user", "role", "cohort"],
+  },
   LEGAL_TERMS_GATE: {
     name: "LEGAL_TERMS_GATE",
     description:

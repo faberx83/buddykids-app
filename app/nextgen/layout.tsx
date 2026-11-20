@@ -29,6 +29,9 @@ import { NodiProvider } from "@/components/nextgen/Nodi";
 import { NODI_FLAG } from "@/lib/nextgen/nodi";
 import NotificationCenter from "@/components/nextgen/NotificationCenter";
 import NextgenAuthRedirect from "@/components/nextgen/NextgenAuthRedirect";
+// CONSENSI AL PRIMO ACCESSO (20/11/2026): schermata "Prima di continuare".
+import FirstAccessConsentScreen from "@/components/legal/FirstAccessConsentScreen";
+import { getFirstAccessConsentPayload } from "@/lib/legal/gate";
 import { getParentNotifications } from "@/lib/data/notifications";
 import { NotificationItem } from "@/lib/notifications/model";
 // TRAMA BETA v1.1.1 (FINAL FUNCTIONAL + UI CONSISTENCY FIXES, punto 7) —
@@ -190,6 +193,21 @@ export default async function NextgenLayout({ children }: { children: React.Reac
     const realRole = (profile?.role as Role) ?? "parent";
     profileFirstName = ((profile?.full_name as string | null) ?? "").trim().split(" ")[0] || null;
     profileAvatarUrl = (profile?.avatar_url as string | null) ?? null;
+
+    // CONSENSI AL PRIMO ACCESSO (20/11/2026, Fabrizio: "manca qualche flag di
+    // accettazione consenso e informativa privacy alla prima login"). Con
+    // LEGAL_FIRST_ACCESS_GATE acceso, una famiglia che non ha accettato la
+    // versione pubblicata di Termini e Informativa vede solo questa schermata,
+    // al posto della pagina richiesta (nessun redirect: resta nello scope
+    // /nextgen della PWA). Flag spento o errore → null → app come prima.
+    const consentPayload = await getFirstAccessConsentPayload(supabase, user.id, realRole);
+    if (consentPayload) {
+      return (
+        <PhoneShell>
+          <FirstAccessConsentScreen {...consentPayload} firstName={profileFirstName} />
+        </PhoneShell>
+      );
+    }
 
     if (realRole === "parent") {
       isParentUser = true;

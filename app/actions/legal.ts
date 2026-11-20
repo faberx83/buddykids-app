@@ -16,6 +16,14 @@ import { createClient } from "@/lib/supabase/server";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
 import { resolveFeatureFlag } from "@/lib/feature-flags/resolve";
 import { shouldRecordMarketingConsentAtSignup } from "@/lib/legal/consent";
+import { revalidatePath } from "next/cache";
+import { recordMarketingConsentEvent, getFirstAccessConsentPayload } from "@/lib/legal/gate";
+import {
+  FIRST_ACCESS_SOURCE,
+  canSubmitFirstAccessConsent,
+  shouldRecordMarketingAtFirstAccess,
+  type FirstAccessChoices,
+} from "@/lib/legal/first-access";
 
 /**
  * Chiamata dal client SUBITO dopo un supabase.auth.signUp() riuscito, con lo
@@ -39,6 +47,12 @@ export async function recordSignupLegalAcceptanceAction(
 
   const termsResult = await acceptCurrentLegalDocumentAtSignupBootstrap(userId, "terms", "signup");
   if (!termsResult.ok) return { error: termsResult.error || "Errore registrazione accettazione Termini" };
+
+  // 20/11/2026 (consensi al primo accesso): la casella di registrazione ora
+  // dice "…e dichiaro di aver letto l'Informativa privacy", quindi si registra
+  // anche la presa visione. Fail-soft: se manca, la chiede la schermata
+  // "Prima di continuare" al primo ingresso nell'app.
+  await acceptCurrentLegalDocumentAtSignupBootstrap(userId, "privacy_notice", "signup");
 
   // Privacy Notice: NESSUNA scrittura qui per costruzione (§8 del messaggio
   // operativo di Fabrizio, 25/08/2026 — "deve NOT registrare
@@ -125,4 +139,50 @@ export async function hasCurrentUserAcceptedTermsAction(): Promise<boolean> {
   if (!user) return false;
 
   return hasAcceptedCurrentDocument(supabase, user.id, "terms");
+}
+
+/**
+ * TRAMA — CONSENSI AL PRIMO ACCESSO (20/11/2026). Fabrizio: "manca qualche
+ * flag di accettazione consenso e informativa privacy alla prima login...
+ * si può aggiungere e salvare a db?".
+ *
+ * Chiamata da components/legal/FirstAccessConsentScreen.tsx. Le versioni da
+ * accettare le risolve il server (mai dal client): Termini e presa visione
+ * dell'Informativa in legal_acceptances (source "first_access", idempotente),
+ * comunicazioni commerciali in consent_events solo se spuntate e mai scelte
+ * prima. Rifiuta se il flag è spento o se la schermata non era dovuta.
+ */
+export async function acceptFirstAccessConsentAction(choices: FirstAccessChoices): Promise<{ ok: boolean; error?: string }> {
+  if (!isSupabaseConfigured) return { ok: false, error: "Servizio non disponibile." };
+  if (!canSubmitFirstAccessConsent(choices)) {
+    return { ok: false, error: "Per continuare accetta i Termini e conferma di aver letto l'Informativa privacy." };
+  }
+
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { ok: false, error: "Accedi di nuovo per continuare." };
+
+  const { data: profile } = await supabase.from("profiles").select("role").eq("id", user.id).maybeSingle();
+  const role = (profile?.role as string | undefined) ?? null;
+  const payload = await getFirstAccessConsentPayload(supabase, user.id, role);
+  if (!payload) return { ok: true }; // niente da accettare (già fatto altrove, flag spento o ruolo escluso)
+
+  if (!payload.terms.accepted) {
+    const r = await acceptCurrentLegalDocument(supabase, user.id, "terms", FIRST_ACCESS_SOURCE);
+    if (!r.ok) return { ok: false, error: "Non siamo riusciti a salvare l'accettazione. Riprova." };
+  }
+  if (!payload.privacy.accepted) {
+    const r = await acceptCurrentLegalDocument(supabase, user.id, "privacy_notice", FIRST_ACCESS_SOURCE);
+    if (!r.ok) return { ok: false, error: "Non siamo riusciti a salvare la presa visione. Riprova." };
+  }
+  if (shouldRecordMarketingAtFirstAccess(choices.marketing, !payload.showMarketing)) {
+    // Facoltativo: un errore qui non blocca l'ingresso nell'app.
+    await recordMarketingConsentEvent(supabase, user.id, "accepted", FIRST_ACCESS_SOURCE);
+  }
+
+  revalidatePath("/nextgen", "layout");
+  revalidatePath("/", "layout");
+  return { ok: true };
 }
