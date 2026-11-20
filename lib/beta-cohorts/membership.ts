@@ -22,6 +22,7 @@ import "server-only";
 
 import { createServiceClient } from "@/lib/supabase/service";
 import { cohortsToInherit, type CohortRow } from "@/lib/beta-cohorts/family-inherit";
+import { isBetaCodeUsable, normalizeBetaCode, type BetaCodeRow, type BetaJoinOutcome } from "@/lib/beta-cohorts/code";
 
 /**
  * Ritorna le cohort_key attive e non scadute per l'utente indicato.
@@ -96,5 +97,51 @@ export async function inheritFamilyCohorts(familyId: string, userId: string): Pr
   } catch (e) {
     console.error("[beta] coorte dell'altro genitore non assegnata", e instanceof Error ? e.message : e);
     return [];
+  }
+}
+
+/**
+ * 20/11/2026 — chi ha GIÀ un account e apre un link beta (/auth/login?beta=…)
+ * entra nella coorte del codice, come se si fosse registrato da quel link.
+ * Stesse regole del trigger handle_new_user: codice attivo, non scaduto, non
+ * esaurito; conta un utilizzo e segna beta_invited_by_code se vuoto. Service
+ * role (la RLS su beta_cohort_memberships e beta_invite_codes è solo Admin).
+ */
+export async function joinBetaCohortWithCode(userId: string, rawCode: string): Promise<BetaJoinOutcome> {
+  const code = normalizeBetaCode(rawCode);
+  if (!userId || !code) return "invalid";
+  try {
+    const client = createServiceClient();
+    if (!client) return "error";
+    const { data: row, error } = await client
+      .from("beta_invite_codes")
+      .select("code, cohort_key, active, expires_at, max_redemptions, redeemed_count")
+      .eq("code", code)
+      .maybeSingle();
+    if (error) return "error";
+    if (!row || !isBetaCodeUsable(row as BetaCodeRow)) return "invalid";
+    const cohortKey = (row as { cohort_key: string }).cohort_key;
+
+    const { data: existing } = await client
+      .from("beta_cohort_memberships")
+      .select("id, active")
+      .eq("user_id", userId)
+      .eq("cohort_key", cohortKey)
+      .maybeSingle();
+    // Una riga spenta da Admin resta spenta: è una scelta, non un buco.
+    if (existing) return (existing as { active: boolean }).active ? "already" : "invalid";
+
+    const { error: iErr } = await client
+      .from("beta_cohort_memberships")
+      .insert({ user_id: userId, cohort_key: cohortKey, active: true });
+    if (iErr) return "error";
+    await client
+      .from("beta_invite_codes")
+      .update({ redeemed_count: (row as { redeemed_count: number }).redeemed_count + 1 })
+      .eq("code", code);
+    await client.from("profiles").update({ beta_invited_by_code: code }).eq("id", userId).is("beta_invited_by_code", null);
+    return "joined";
+  } catch {
+    return "error";
   }
 }

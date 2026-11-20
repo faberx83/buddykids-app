@@ -1,5 +1,6 @@
 "use client";
 
+import { BETA_CODE_STORAGE_KEY, normalizeBetaCode } from "@/lib/beta-cohorts/code";
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -69,7 +70,21 @@ export default function LoginForm({
   // l'utente compila a mano (a differenza del codice invito centro, che ha
   // anche un input testuale) — il genitore non deve mai vedere/gestire
   // manualmente questo codice, arriva già "dentro" il link personale.
-  const betaParam = searchParams.get("beta");
+  // 20/11/2026 (link beta più sicuro): il codice del link si ricorda nel
+  // browser. Se poi si apre TRAMA dall'icona (stessa memoria su Android) e ci
+  // si registra da lì, la beta non si perde. Su iPhone l'icona ha una memoria
+  // separata da Safari: lì vale l'ordine "prima registrati, poi l'icona".
+  const urlBeta = normalizeBetaCode(searchParams.get("beta"));
+  const [storedBeta, setStoredBeta] = useState<string | null>(null);
+  useEffect(() => {
+    try {
+      if (urlBeta) window.localStorage.setItem(BETA_CODE_STORAGE_KEY, urlBeta);
+      else setStoredBeta(normalizeBetaCode(window.localStorage.getItem(BETA_CODE_STORAGE_KEY)));
+    } catch {
+      /* memoria del browser non disponibile: si usa solo il link */
+    }
+  }, [urlBeta]);
+  const betaParam = urlBeta ?? storedBeta;
   const [mode, setMode] = useState<Mode>(inviteParam || betaParam || modeParam === "signup" ? "signup" : "login");
   const [email, setEmail] = useState(searchParams.get("email") || "");
   const [emailSuggestion, setEmailSuggestion] = useState<string | null>(null);
@@ -183,7 +198,7 @@ export default function LoginForm({
       // invite_codes.sql): se il codice esiste, è attivo, non scaduto e non
       // esaurito, iscrive automaticamente il nuovo profilo alla Controlled
       // Beta Cohort — mai un valore digitato dall'utente, solo dall'URL.
-      if (betaParam?.trim()) metadata.beta_invite_code = betaParam.trim();
+      if (betaParam) metadata.beta_invite_code = betaParam;
 
       const { data, error } = await supabase.auth.signUp({
         email: cleanEmail,

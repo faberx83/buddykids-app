@@ -6,6 +6,10 @@ import { tenantForHost, TENANT_CONFIG } from "@/lib/tenant";
 import { resolveFeatureFlag } from "@/lib/feature-flags/resolve";
 import { resolvePublishedDocumentForPublicRoute } from "@/lib/legal/gate";
 import { cohortForBetaInviteCode } from "@/lib/legal/signup-cohort";
+import { createClient } from "@/lib/supabase/server";
+import { isSupabaseConfigured } from "@/lib/supabase/env";
+import { normalizeBetaCode } from "@/lib/beta-cohorts/code";
+import BetaJoinLoggedIn from "@/components/auth/BetaJoinLoggedIn";
 
 // Anteprima social (WhatsApp/etc.) per i link di invito Beta (?beta=CODICE,
 // condivisi manualmente da Fabrizio — vedi app/actions/beta-invites.ts).
@@ -82,6 +86,17 @@ export default async function LoginPage({
   // Pilot: chi si registra da un link d'invito beta porta la sua coorte nel
   // codice (?beta=), e la usiamo qui (lib/legal/signup-cohort.ts).
   const betaCode = typeof params.beta === "string" ? params.beta : null;
+
+  // 20/11/2026 (link beta più sicuro): chi ha già un account ed è collegato
+  // non deve vedere il modulo di registrazione: entra nella beta del codice.
+  const betaCodeNormalized = normalizeBetaCode(betaCode);
+  if (betaCodeNormalized && tenant === "family" && isSupabaseConfigured) {
+    const supabase = await createClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (user) return <BetaJoinLoggedIn code={betaCodeNormalized} />;
+  }
   const signupCohort = betaCode ? await cohortForBetaInviteCode(betaCode) : null;
   const legalGateEnabled = await resolveFeatureFlag({
     flagName: "LEGAL_TERMS_GATE",
