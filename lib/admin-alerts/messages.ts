@@ -24,7 +24,8 @@ export type AdminAlert =
   | { kind: "inquiry"; actorId: string; inquiryId: string; activityName: string | null; centerName: string | null }
   | { kind: "waitlist" }
   | { kind: "access_problem" }
-  | { kind: "center_lead"; centerName: string | null };
+  | { kind: "center_lead"; centerName: string | null }
+  | { kind: "center_activation"; centerName: string | null };
 
 export interface AlertMessage {
   push: { title: string; body: string; deepLink: string; tag: string };
@@ -158,6 +159,17 @@ export function buildAlertMessage(a: AdminAlert, adminOrigin: string): AlertMess
         email: null,
         dedupeKey: null,
       };
+    case "center_activation":
+      return {
+        push: {
+          title: "Un centro ha inviato il profilo",
+          body: a.centerName ? `${a.centerName} aspetta la tua revisione.` : "Un centro aspetta la tua revisione.",
+          deepLink: "/admin/centri-attivazione?f=trama",
+          tag: "center_activation",
+        },
+        email: null,
+        dedupeKey: null,
+      };
   }
 }
 
@@ -198,4 +210,15 @@ export function buildDailyDigest(c: DailyDigestCounts, adminOrigin: string): { p
       text: [`Nelle ultime 24 ore (account di prova esclusi):`, ...lines.map((l) => `- ${l}`), "", `Oggi in Admin: ${adminOrigin}/admin`, `Beta Famiglie: ${adminOrigin}/admin/beta`].join("\n"),
     },
   };
+}
+
+/** Righe "Ultimi 7 giorni" per il Beta Report settimanale (anche gli zeri: è un resoconto). */
+export function weeklyActivityLines(c: DailyDigestCounts): string[] {
+  return [
+    `Nuovi account: ${c.newAccounts}`,
+    `Segnalazioni: ${c.feedback}`,
+    `Prenotazioni: ${c.bookings}`,
+    `Richieste ai centri: ${c.inquiries}`,
+    `Richieste d'invito: ${c.waitlist}`,
+  ];
 }

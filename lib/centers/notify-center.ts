@@ -20,7 +20,7 @@ import {
   activationChangesEmail,
   activationSubmittedNoticeEmail,
 } from "@/lib/centers/pilot-emails";
-import { notifyAdmins } from "@/lib/admin-alerts/send";
+import { eventEmailsEnabled, notifyAdmins } from "@/lib/admin-alerts/send";
 
 async function flagOn(userId: string | null, role: string | null): Promise<boolean> {
   return resolveFeatureFlag({ flagName: CENTER_PILOT_FLOW_FLAG, userId, role, tenant: "center" }).catch(() => false);
@@ -109,7 +109,9 @@ export async function emailCandidacyReceived(input: {
     });
     await sendEmail({ to: input.email, subject: toCenter.subject, html: toCenter.html }).catch(() => undefined);
     const notifyTo = centerLeadsNotifyAddress();
-    if (notifyTo) {
+    // 20/11/2026: avviso a TRAMA via email solo con ADMIN_ALERTS_EVENT_EMAILS=on
+    // (di default la push qui sotto). La conferma al centro resta sempre.
+    if (notifyTo && eventEmailsEnabled()) {
       const notice = candidacyAdminNoticeEmail(input);
       await sendEmail({ to: notifyTo, subject: notice.subject, html: notice.html }).catch(() => undefined);
     }
@@ -156,7 +158,9 @@ async function centerAdminEmails(centerId: string): Promise<string[]> {
 }
 
 export async function emailActivationSubmitted(input: { centerName: string; city: string | null }): Promise<void> {
-  if (!isEmailConfigured) return;
+  // 20/11/2026: push agli Admin; l'email solo con ADMIN_ALERTS_EVENT_EMAILS=on.
+  await notifyAdmins({ kind: "center_activation", centerName: input.centerName });
+  if (!isEmailConfigured || !eventEmailsEnabled()) return;
   try {
     const to = centerLeadsNotifyAddress();
     if (!to) return;

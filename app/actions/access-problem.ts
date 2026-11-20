@@ -18,7 +18,7 @@ import {
   checkAccessProblem,
   type AccessProblemInput,
 } from "@/lib/nextgen/access-problem";
-import { notifyAdmins } from "@/lib/admin-alerts/send";
+import { eventEmailsEnabled, notifyAdmins } from "@/lib/admin-alerts/send";
 
 export type AccessProblemResult = { ok: true } | { ok: false; message: string; field?: "message" | "email"; suggestion?: string };
 
@@ -79,7 +79,8 @@ export async function submitAccessProblemAction(input: AccessProblemInput): Prom
 
   // Avviso a Fabrizio: stessa variabile della lista d'attesa (nessuna nuova da impostare).
   const notifyTo = process.env.FEEDBACK_NOTIFY_EMAIL || process.env.WAITLIST_NOTIFY_EMAIL;
-  if (notifyTo && isEmailConfigured) {
+  // 20/11/2026: email solo con ADMIN_ALERTS_EVENT_EMAILS=on (di default la push).
+  if (notifyTo && isEmailConfigured && eventEmailsEnabled()) {
     await sendEmail({
       to: notifyTo,
       subject: "TRAMA — qualcuno ha problemi ad accedere",

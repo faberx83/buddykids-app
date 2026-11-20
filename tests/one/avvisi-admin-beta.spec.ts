@@ -5,7 +5,7 @@
 import fs from "fs";
 import path from "path";
 import { test, expect } from "@playwright/test";
-import { buildAlertMessage, buildDailyDigest, isAlertFromTestAccount, type AdminAlert } from "../../lib/admin-alerts/messages";
+import { buildAlertMessage, buildDailyDigest, isAlertFromTestAccount, weeklyActivityLines, type AdminAlert } from "../../lib/admin-alerts/messages";
 
 const ROOT = path.resolve(__dirname, "../..");
 const read = (p: string) => fs.readFileSync(path.join(ROOT, p), "utf8");
@@ -55,7 +55,12 @@ test.describe("AA — avvisi Admin", () => {
   });
 
   test("AA-03 lista d'attesa, problemi di accesso e candidature: solo push (l'email c'era già)", () => {
-    for (const a of [{ kind: "waitlist" }, { kind: "access_problem" }, { kind: "center_lead", centerName: "Centro X" }] as AdminAlert[]) {
+    for (const a of [
+      { kind: "waitlist" },
+      { kind: "access_problem" },
+      { kind: "center_lead", centerName: "Centro X" },
+      { kind: "center_activation", centerName: "Centro X" },
+    ] as AdminAlert[]) {
       expect(buildAlertMessage(a, ORIGIN).email).toBeNull();
     }
   });
@@ -98,5 +103,39 @@ test.describe("AA — avvisi Admin", () => {
     expect(src).toContain("process.env.ADMIN_ALERTS_EMAIL || process.env.WAITLIST_NOTIFY_EMAIL");
     expect(src).toContain('console.error("[admin-alerts] avviso non inviato:", e)');
     expect(src).toContain("isRecentAccount(profile.created_at, now)");
+  });
+
+  test("AA-08 Fabrizio 20/11: solo push per gli eventi, email una volta a settimana, spegnibili dal profilo", () => {
+    const send = read("lib/admin-alerts/send.ts");
+    expect(send).toContain('(env.ADMIN_ALERTS_EVENT_EMAILS ?? "").trim().toLowerCase() === "on"');
+    expect(send).toContain("if (msg.email && eventEmailsEnabled() && isEmailConfigured)");
+    // Il riepilogo delle 7 non manda email.
+    const daily = send.slice(send.indexOf("export async function runAdminDailyAlerts"), send.indexOf("type Service ="));
+    expect(daily).not.toContain("sendEmail(");
+    // Le email che esistevano già passano dallo stesso interruttore.
+    expect(read("app/actions/waitlist.ts")).toContain("isEmailConfigured && eventEmailsEnabled()");
+    expect(read("app/actions/access-problem.ts")).toContain("isEmailConfigured && eventEmailsEnabled()");
+    const centers = read("lib/centers/notify-center.ts");
+    expect(centers).toContain("if (notifyTo && eventEmailsEnabled())");
+    expect(centers).toContain('kind: "center_activation"');
+    // Resoconto settimanale: Beta Report con gli ultimi 7 giorni, spento se l'Admin spegne le email.
+    const report = read("lib/data/beta-report-notice.ts");
+    expect(report).toContain("weeklyActivityLines(await countActivitySince(service, weekSince");
+    expect(report).toContain("adminRows.every((a) => a.notify_email === false)");
+    expect(weeklyActivityLines({ newAccounts: 0, feedback: 2, bookings: 1, inquiries: 0, waitlist: 3 })).toEqual([
+      "Nuovi account: 0",
+      "Segnalazioni: 2",
+      "Prenotazioni: 1",
+      "Richieste ai centri: 0",
+      "Richieste d'invito: 3",
+    ]);
+    // Profilo Admin: stessi interruttori di genitori e centri.
+    const prefs = read("app/admin/notifiche/AdminNotificationPrefs.tsx");
+    expect(prefs).toContain("updatePreferencesAction({ notifyPush: next })");
+    expect(prefs).toContain("updatePreferencesAction({ notifyEmail: next })");
+    expect(prefs).toContain("enablePushNotifications()");
+    expect(read("app/admin/layout.tsx")).toContain('{ href: "/admin/notifiche", label: "Le mie notifiche", icon: "ti-bell" }');
+    // La push rispetta notify_push in un punto solo (invariato).
+    expect(read("lib/push/send.ts")).toContain("if (profile && profile.notify_push === false) return;");
   });
 });

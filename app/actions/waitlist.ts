@@ -11,7 +11,7 @@ import { createServiceClient } from "@/lib/supabase/service";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
 import { sendEmail, isEmailConfigured } from "@/lib/email";
 import { checkWaitlist, type WaitlistInput } from "@/lib/landing/waitlist";
-import { notifyAdmins } from "@/lib/admin-alerts/send";
+import { eventEmailsEnabled, notifyAdmins } from "@/lib/admin-alerts/send";
 
 export type JoinWaitlistResult =
   | { ok: true; already: boolean }
@@ -54,7 +54,9 @@ export async function joinWaitlistAction(input: WaitlistInput): Promise<JoinWait
   }
 
   const notifyTo = process.env.WAITLIST_NOTIFY_EMAIL;
-  if (!already && notifyTo && isEmailConfigured) {
+  // 20/11/2026 (Fabrizio: "bastano le notifiche"): email solo con
+  // ADMIN_ALERTS_EVENT_EMAILS=on; di default arriva la push e il resoconto settimanale.
+  if (!already && notifyTo && isEmailConfigured && eventEmailsEnabled()) {
     const r = check.row;
     const lines = [
       `<b>Email:</b> ${escapeHtml(r.email)}`,

@@ -17,7 +17,7 @@ import { createServiceClient } from "@/lib/supabase/service";
 import { sendPushToUser } from "@/lib/push/send";
 import { isEmailConfigured, sendEmail } from "@/lib/email";
 import { CANONICAL_ROOT_DOMAIN } from "@/lib/public-links";
-import { buildAlertMessage, buildDailyDigest, isAlertFromTestAccount, type AdminAlert } from "./messages";
+import { buildAlertMessage, buildDailyDigest, isAlertFromTestAccount, type AdminAlert, type DailyDigestCounts } from "./messages";
 
 const ADMIN_ORIGIN = `https://admin.${CANONICAL_ROOT_DOMAIN}`;
 
@@ -27,6 +27,10 @@ function escapeHtml(s: string): string {
 
 export function adminAlertsEnabled(env: Record<string, string | undefined> = process.env): boolean {
   return (env.ADMIN_ALERTS ?? "").trim().toLowerCase() !== "off";
+}
+
+export function eventEmailsEnabled(env: Record<string, string | undefined> = process.env): boolean {
+  return (env.ADMIN_ALERTS_EVENT_EMAILS ?? "").trim().toLowerCase() === "on";
 }
 
 export async function notifyAdmins(alert: AdminAlert): Promise<{ sent: boolean; reason?: string }> {
@@ -54,7 +58,10 @@ export async function notifyAdmins(alert: AdminAlert): Promise<{ sent: boolean; 
     const adminRows = (admins ?? []) as { id: string; email: string | null }[];
     await Promise.all(adminRows.map((a) => sendPushToUser(a.id, msg.push)));
 
-    if (msg.email && isEmailConfigured) {
+    // 20/11/2026 (Fabrizio: "non vorrei le mail [...] bastano le notifiche"):
+    // per gli eventi solo push. L'email per evento si riaccende con
+    // ADMIN_ALERTS_EVENT_EMAILS=on; il resoconto arriva nel Beta Report settimanale.
+    if (msg.email && eventEmailsEnabled() && isEmailConfigured) {
       const to = (process.env.ADMIN_ALERTS_EMAIL || process.env.WAITLIST_NOTIFY_EMAIL || adminRows.find((a) => a.email)?.email || "").trim();
       if (to) {
         await sendEmail({
@@ -140,11 +147,6 @@ export async function runAdminDailyAlerts(now: Date = new Date()): Promise<{ che
 
     const { data: settings } = await service.from("beta_cockpit_settings").select("excluded_user_ids").eq("id", 1).maybeSingle();
     const testIds = new Set(((settings as { excluded_user_ids?: string[] | null } | null)?.excluded_user_ids ?? []).filter(Boolean));
-    const real = <T extends { id?: string; parent_id?: string | null }>(rows: T[] | null, key: "id" | "parent_id") =>
-      (rows ?? []).filter((r) => {
-        const v = (r as Record<string, unknown>)[key] as string | null | undefined;
-        return !(v && testIds.has(v));
-      });
 
     const { data: recent } = await service.from("profiles").select("id, created_at").gte("created_at", windowStart);
     let checkedNewAccounts = 0;
@@ -162,41 +164,47 @@ export async function runAdminDailyAlerts(now: Date = new Date()): Promise<{ che
       .eq("detail", `digest:${day}`);
     if ((already ?? 0) > 0) return { checkedNewAccounts, digest: false, reason: "già inviato" };
 
-    const [acc, fb, bk, inq, wl] = await Promise.all([
-      service.from("profiles").select("id").gte("created_at", since),
-      service.from("beta_feedback").select("parent_id").gte("created_at", since),
-      service.from("bookings").select("parent_id").gte("created_at", since),
-      service.from("activity_inquiries").select("parent_id").gte("created_at", since),
-      service.from("beta_waitlist").select("id").gte("created_at", since),
-    ]);
-    const digest = buildDailyDigest(
-      {
-        newAccounts: real(acc.data as { id: string }[] | null, "id").length,
-        feedback: real(fb.data as { parent_id: string | null }[] | null, "parent_id").length,
-        bookings: real(bk.data as { parent_id: string | null }[] | null, "parent_id").length,
-        inquiries: real(inq.data as { parent_id: string | null }[] | null, "parent_id").length,
-        waitlist: (wl.data ?? []).length,
-      },
-      ADMIN_ORIGIN
-    );
+    const digest = buildDailyDigest(await countActivitySince(service, since, testIds), ADMIN_ORIGIN);
     if (!digest) return { checkedNewAccounts, digest: false, reason: "niente da segnalare" };
     await service.from("product_events").insert({ event_name: "admin_alert_sent", detail: `digest:${day}`, tenant: "admin" });
 
-    const { data: admins } = await service.from("profiles").select("id, email").eq("role", "platform_admin");
-    const adminRows = (admins ?? []) as { id: string; email: string | null }[];
+    const { data: admins } = await service.from("profiles").select("id").eq("role", "platform_admin");
+    const adminRows = (admins ?? []) as { id: string }[];
+    // Solo push: il resoconto via email è settimanale (Beta Report).
     await Promise.all(adminRows.map((a) => sendPushToUser(a.id, digest.push)));
-    const to = (process.env.ADMIN_ALERTS_EMAIL || process.env.WAITLIST_NOTIFY_EMAIL || adminRows.find((a) => a.email)?.email || "").trim();
-    if (to && isEmailConfigured) {
-      await sendEmail({
-        to,
-        subject: digest.email.subject,
-        text: digest.email.text,
-        html: `<pre style="font-family:system-ui,sans-serif;white-space:pre-wrap">${escapeHtml(digest.email.text)}</pre>`,
-      });
-    }
     return { checkedNewAccounts, digest: true };
   } catch (e) {
     console.error("[admin-alerts] giro delle 7 non completato:", e);
     return { checkedNewAccounts: 0, digest: false, reason: "errore" };
   }
+}
+
+type Service = NonNullable<ReturnType<typeof createServiceClient>>;
+
+/**
+ * Conteggi da una data in poi, senza gli account di prova. Usato dal
+ * riepilogo delle 7 (push) e dal Beta Report settimanale (email).
+ */
+export async function countActivitySince(service: Service, sinceIso: string, testIds: ReadonlySet<string>): Promise<DailyDigestCounts> {
+  const real = (rows: unknown[] | null, key: "id" | "parent_id") =>
+    ((rows ?? []) as Record<string, string | null>[]).filter((r) => !(r[key] && testIds.has(r[key] as string))).length;
+  const [acc, fb, bk, inq, wl] = await Promise.all([
+    service.from("profiles").select("id").gte("created_at", sinceIso),
+    service.from("beta_feedback").select("parent_id").gte("created_at", sinceIso),
+    service.from("bookings").select("parent_id").gte("created_at", sinceIso),
+    service.from("activity_inquiries").select("parent_id").gte("created_at", sinceIso),
+    service.from("beta_waitlist").select("id").gte("created_at", sinceIso),
+  ]);
+  return {
+    newAccounts: real(acc.data, "id"),
+    feedback: real(fb.data, "parent_id"),
+    bookings: real(bk.data, "parent_id"),
+    inquiries: real(inq.data, "parent_id"),
+    waitlist: (wl.data ?? []).length,
+  };
+}
+
+export async function loadTestAccountIds(service: Service): Promise<Set<string>> {
+  const { data } = await service.from("beta_cockpit_settings").select("excluded_user_ids").eq("id", 1).maybeSingle();
+  return new Set(((data as { excluded_user_ids?: string[] | null } | null)?.excluded_user_ids ?? []).filter(Boolean));
 }

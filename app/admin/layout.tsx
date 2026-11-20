@@ -76,6 +76,7 @@ const baseNavItems = [
     { href: "/admin/preferiti", label: "Preferiti (domanda)", icon: "ti-heart" },
   ]),
   ...group("Impostazioni", [
+    { href: "/admin/notifiche", label: "Le mie notifiche", icon: "ti-bell" },
     { href: "/admin/feature-flags", label: "Feature flag", icon: "ti-flag-3" },
     { href: "/admin/tags", label: "Tag", icon: "ti-tags" },
     // TRAMA — SCHOOL CALENDAR INTELLIGENCE (14/09/2026, §B11) — dataset

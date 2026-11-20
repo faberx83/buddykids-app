@@ -15,6 +15,8 @@ import { buildCockpitView } from "@/lib/beta-cockpit/view";
 import { kpiValueLabel } from "@/lib/beta-cockpit/model";
 import { loadCockpitData, loadCockpitSettings } from "@/lib/data/beta-cockpit";
 import { CANONICAL_ROOT_DOMAIN } from "@/lib/public-links";
+import { countActivitySince, loadTestAccountIds } from "@/lib/admin-alerts/send";
+import { weeklyActivityLines } from "@/lib/admin-alerts/messages";
 
 type Service = NonNullable<ReturnType<typeof createServiceClient>>;
 
@@ -36,8 +38,12 @@ export async function sendBetaReportNoticeIfDue(service: Service, now: Date): Pr
       .eq("detail", win.key);
     if ((already.count ?? 0) > 0) return { sent: false, reason: "già inviato" };
 
-    const { data: admins } = await service.from("profiles").select("email").eq("role", "platform_admin");
-    const to = process.env.BETA_REPORT_EMAIL || (admins ?? []).map((a) => a.email as string | null).find(Boolean);
+    // 20/11/2026: l'Admin può spegnere l'email dal suo profilo (Admin → Le mie
+    // notifiche, profiles.notify_email, come per genitori e centri).
+    const { data: admins } = await service.from("profiles").select("email, notify_email").eq("role", "platform_admin");
+    const adminRows = (admins ?? []) as { email: string | null; notify_email: boolean | null }[];
+    if (adminRows.length > 0 && adminRows.every((a) => a.notify_email === false)) return { sent: false, reason: "email spenta dal profilo Admin" };
+    const to = process.env.BETA_REPORT_EMAIL || adminRows.filter((a) => a.notify_email !== false).map((a) => a.email).find(Boolean);
     if (!to || !isEmailConfigured) return { sent: false, reason: "email non configurata" };
 
     const data = await loadCockpitData(service, null, now);
@@ -57,14 +63,19 @@ export async function sendBetaReportNoticeIfDue(service: Service, now: Date): Pr
     );
     const link = `${ADMIN_ORIGIN}/admin/beta/report?p=custom&da=${win.from}&a=${win.to}`;
     const kpiLines = view.kpis.map((k) => `${k.label}: ${kpiValueLabel(k)}`);
+    // 20/11/2026: resoconto degli avvisi della settimana (gli eventi arrivano
+    // solo come push; qui il riepilogo via email). Account di prova esclusi.
+    const weekSince = new Date(now.getTime() - 7 * 24 * 3600 * 1000).toISOString();
+    const weekLines = weeklyActivityLines(await countActivitySince(service, weekSince, await loadTestAccountIds(service)));
     const subject = `TRAMA — Beta Report ${rangeLabel(win.from, win.to)}`;
     const esc = (s: string) => s.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]!);
     const html = `<div style="font-family:-apple-system,Helvetica,Arial,sans-serif;color:#172A4D;font-size:15px;line-height:1.5">
 <p><b>Beta Report · ${esc(rangeLabel(win.from, win.to))}</b></p>
 <p>${kpiLines.map(esc).join("<br>")}</p>
+<p><b>Ultimi 7 giorni</b><br>${weekLines.map(esc).join("<br>")}</p>
 ${view.summary.signals.length ? `<p><b>Segnali da guardare</b><br>${view.summary.signals.map(esc).join("<br>")}</p>` : ""}
 <p><a href="${link}">Apri il report</a> (accesso Admin)</p></div>`;
-    const text = [`Beta Report · ${rangeLabel(win.from, win.to)}`, "", ...kpiLines, "", ...view.summary.signals, "", link].join("\n");
+    const text = [`Beta Report · ${rangeLabel(win.from, win.to)}`, "", ...kpiLines, "", "Ultimi 7 giorni", ...weekLines, "", ...view.summary.signals, "", link].join("\n");
 
     const r = await sendEmail({ to, subject, html, text });
     if (r.error) return { sent: false, reason: "invio non riuscito" };
