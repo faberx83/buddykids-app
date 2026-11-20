@@ -39,7 +39,12 @@ export default function ProfileHeaderClient({
   initialGender = null,
   initialBusinessRole = null,
   showRoleSelector = true,
-  showPersonalDetails = true,
+  // 20/11/2026 (revisione legale dell'informativa: "solo se necessari, altrimenti
+  // da non trattare"): data di nascita e genere del genitore non servono a
+  // nessuna funzione, quindi non si chiedono più. Il blocco resta per ora
+  // nascosto per tutti; i valori già salvati si cancellano con
+  // supabase/privacy_pulizia_genitore_20261120.sql (lo lancia Fabrizio).
+  showPersonalDetails = false,
   showBusinessRole = false,
   accent = "sky",
   v2 = false,

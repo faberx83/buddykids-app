@@ -39,8 +39,9 @@ export async function updateParentProfileAction(input: {
       full_name: input.fullName.trim(),
       ...(input.parentRole ? { parent_role: input.parentRole } : {}),
       phone: input.phone?.trim() || null,
-      date_of_birth: input.dateOfBirth || null,
-      gender: input.gender || null,
+      // 20/11/2026: data di nascita e genere del genitore non si raccolgono più
+      // (informativa v. 2026-11-20): non si scrivono, i vecchi valori si
+      // cancellano con supabase/privacy_pulizia_genitore_20261120.sql.
       ...(input.businessRole !== undefined ? { business_role: input.businessRole || null } : {}),
     })
     .eq("id", user.id);

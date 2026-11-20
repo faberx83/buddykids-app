@@ -17,9 +17,12 @@ const sha = (t: string) => createHash("sha256").update(t, "utf8").digest("hex");
 
 test.describe("TRAMA — Testi legali [no browser]", () => {
   test("LT-01 il file di pubblicazione registra le impronte esatte dei testi nel codice", () => {
+    // 20/11/2026: la privacy ha una versione nuova (2026-11-20, vedi
+    // informativa-privacy-v2.spec.ts); qui resta la garanzia sulla bozza 1,
+    // con la versione scritta esplicitamente invece di LATEST_LEGAL_VERSION.
     const sql = read("supabase/legal_publish_2026-10-16_bozza1.sql");
     for (const type of ["privacy_notice", "terms"] as const) {
-      const v = LATEST_LEGAL_VERSION[type];
+      const v = "2026-10-16-bozza1";
       const text = legalTextFor(type, v)!;
       expect(text.length).toBeGreaterThan(1500);
       expect(sql).toMatch(new RegExp(`\\('${type}',\\s+'${v}',\\s+'${sha(text)}', now\\(\\)\\)`));
@@ -30,9 +33,11 @@ test.describe("TRAMA — Testi legali [no browser]", () => {
   });
 
   test("LT-02 bozze dichiarate: segnaposti da completare, nessuna promessa di conformità", () => {
+    // 20/11/2026: le bozze 1 restano bozze dichiarate (versione esplicita);
+    // la privacy 2026-11-20 non è più una bozza: vedi informativa-privacy-v2.spec.ts.
     for (const type of ["privacy_notice", "terms"] as const) {
-      const text = legalTextFor(type, LATEST_LEGAL_VERSION[type])!;
-      expect(isDraftLegalVersion(LATEST_LEGAL_VERSION[type])).toBe(true);
+      const text = legalTextFor(type, "2026-10-16-bozza1")!;
+      expect(isDraftLegalVersion("2026-10-16-bozza1")).toBe(true);
       expect(text).toContain("[RAGIONE SOCIALE DA COMPLETARE]");
       expect(text).toContain("privacy@tramapp.it");
       expect(text.toLowerCase()).not.toMatch(/conforme al gdpr|pienamente conforme/);

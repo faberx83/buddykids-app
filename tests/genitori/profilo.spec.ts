@@ -199,8 +199,10 @@ test.describe("Genitori - Profilo", () => {
     // ESCLUSO dall'automazione: richiede lo snippet SQL Storage applicato su Supabase prima del test
   });
 
-  // TC-132 - Dati personali estesi (telefono, data di nascita, genere)
-  test("TC-132 - telefono, data di nascita e genere si salvano e persistono dopo reload", async ({
+  // TC-132 - Dati personali estesi. 20/11/2026: data di nascita e genere del
+  // genitore non si chiedono più (informativa 2026-11-20, revisione legale:
+  // "solo se necessari"); il telefono resta e deve persistere.
+  test("TC-132 - il telefono si salva e persiste dopo reload; data di nascita e genere non si chiedono", async ({
     page,
   }) => {
     test.skip(!isRealDeployment, "Richiede un deploy con Supabase configurato e l'account genitore di test.");
@@ -209,14 +211,13 @@ test.describe("Genitori - Profilo", () => {
 
     await page.getByRole("button", { name: "Modifica" }).click();
     await page.locator("#profile-phone").fill("333 1234567");
-    await page.locator("#profile-dob").fill("1990-05-15");
-    await page.getByRole("button", { name: "Donna" }).click();
+    await expect(page.locator("#profile-dob")).toHaveCount(0);
+    await expect(page.getByText("Genere", { exact: true })).toHaveCount(0);
     await page.getByRole("button", { name: "Salva" }).click();
 
     await page.reload();
     await page.getByRole("button", { name: "Modifica" }).click();
     await expect(page.locator("#profile-phone")).toHaveValue("333 1234567");
-    await expect(page.locator("#profile-dob")).toHaveValue("1990-05-15");
   });
 
   // TC-133 - Cambio password dalla sezione Sicurezza

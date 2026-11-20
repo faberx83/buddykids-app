@@ -171,6 +171,9 @@ function buildFamilyInviteEmailHtml(params: { familyName: string; inviterName: s
     ],
     cta: { label: "Accetta l'invito", href: params.link },
     showLinkFallback: true,
+    // 20/11/2026 (revisione legale, art. 14 GDPR): chi riceve l'invito non ha
+    // scelto lui di darci l'email, quindi gli diciamo come la trattiamo.
+    footnote: `Ricevi questa email perché ${params.inviterName} ha inserito il tuo indirizzo per invitarti su TRAMA. Come trattiamo i dati: tramapp.it/privacy. Per non ricevere altri inviti o chiedere la cancellazione del tuo indirizzo: privacy@tramapp.it.`,
   });
 }
 
