@@ -28,6 +28,7 @@ import {
 // RC 20/11 (16/11/2026), Lotto A1: niente messaggi ai centri DEMO da chi non collauda.
 import { getDemoAccess } from "@/lib/demo/access";
 import { DEMO_BLOCKED_MESSAGE, DEMO_DB_ERROR_TAG } from "@/lib/nextgen/demo-label";
+import { notifyAdmins } from "@/lib/admin-alerts/send";
 
 // TRAMA — MESSAGGI CON IL CENTRO COME CONVERSAZIONE (27/10/2026,
 // migration_54; approvato il 15/10, richiamato da Fabrizio il 27/10: "un
@@ -170,6 +171,8 @@ export async function createInquiryAction(input: {
   revalidatePath("/nextgen/richieste");
   // Simulazione DEMO: nessun avviso ai gestori.
   if (!demoAccess.demo) await notifyCenterOfParentMessage(supabase, user.id, input.activityDbId, created.id as string, clean.body, true, threads);
+  // 20/11/2026: avviso Admin per la beta, solo alla prima richiesta della conversazione.
+  if (!demoAccess.demo) await notifyInquiryToAdmins(supabase, user.id, created.id as string, input.activityDbId);
   return { inquiryId: created.id as string };
 }
 
@@ -416,4 +419,15 @@ export async function startConversationWithFamilyAction(input: {
   }
 
   return { inquiryId };
+}
+
+async function notifyInquiryToAdmins(supabase: SupabaseLike, userId: string, inquiryId: string, activityDbId: string): Promise<void> {
+  try {
+    const { data } = await supabase.from("activities").select("name, centers ( name )").eq("id", activityDbId).maybeSingle();
+    const row = data as { name?: string | null; centers?: { name?: string | null } | { name?: string | null }[] | null } | null;
+    const center = Array.isArray(row?.centers) ? row?.centers[0] : row?.centers;
+    await notifyAdmins({ kind: "inquiry", actorId: userId, inquiryId, activityName: row?.name ?? null, centerName: center?.name ?? null });
+  } catch (e) {
+    console.error("[inquiries] avviso Admin non inviato:", e);
+  }
 }

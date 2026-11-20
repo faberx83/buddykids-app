@@ -11,6 +11,7 @@ import {
 import { getBuildInfo } from "@/lib/build-info";
 import { persistProductEvent } from "@/lib/telemetry/events";
 import { generateCorrelationId } from "@/lib/telemetry/correlation";
+import { notifyAdmins } from "@/lib/admin-alerts/send";
 
 // SPRINT 5 (NEXTGEN) — "Segnala un problema": il genitore invia una
 // segnalazione dalla floating CTA (BetaFeedbackButton.tsx), sempre in stato
@@ -94,6 +95,16 @@ export async function submitBetaFeedbackAction(
     },
     { supabase, userId: user.id }
   );
+
+  // 20/11/2026: avviso Admin (push + email), mai per gli account di prova.
+  await notifyAdmins({
+    kind: "beta_feedback",
+    actorId: user.id,
+    area,
+    pagePath,
+    excerpt: message.trim(),
+    category: category ?? null,
+  });
 
   revalidatePath("/nextgen/profile/segnalazioni");
   revalidatePath("/admin/segnalazioni-beta");

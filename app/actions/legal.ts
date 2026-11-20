@@ -24,6 +24,7 @@ import {
   shouldRecordMarketingAtFirstAccess,
   type FirstAccessChoices,
 } from "@/lib/legal/first-access";
+import { alertNewAccountIfRecent } from "@/lib/admin-alerts/send";
 
 /**
  * Chiamata dal client SUBITO dopo un supabase.auth.signUp() riuscito, con lo
@@ -44,6 +45,11 @@ export async function recordSignupLegalAcceptanceAction(
   marketingConsent: boolean
 ): Promise<{ error?: string }> {
   if (!userId) return { error: "userId mancante" };
+
+  // 20/11/2026: avviso Admin "registrazione da completare" (poi "confermato"
+  // dal callback). Solo per account creati da poco, una volta sola: un id
+  // qualunque passato a mano non produce avvisi.
+  await alertNewAccountIfRecent(userId);
 
   const termsResult = await acceptCurrentLegalDocumentAtSignupBootstrap(userId, "terms", "signup");
   if (!termsResult.ok) return { error: termsResult.error || "Errore registrazione accettazione Termini" };

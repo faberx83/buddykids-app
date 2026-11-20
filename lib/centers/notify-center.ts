@@ -20,6 +20,7 @@ import {
   activationChangesEmail,
   activationSubmittedNoticeEmail,
 } from "@/lib/centers/pilot-emails";
+import { notifyAdmins } from "@/lib/admin-alerts/send";
 
 async function flagOn(userId: string | null, role: string | null): Promise<boolean> {
   return resolveFeatureFlag({ flagName: CENTER_PILOT_FLOW_FLAG, userId, role, tenant: "center" }).catch(() => false);
@@ -112,6 +113,8 @@ export async function emailCandidacyReceived(input: {
       const notice = candidacyAdminNoticeEmail(input);
       await sendEmail({ to: notifyTo, subject: notice.subject, html: notice.html }).catch(() => undefined);
     }
+    // 20/11/2026: anche una push agli Admin.
+    await notifyAdmins({ kind: "center_lead", centerName: input.centerName });
   } catch (e) {
     console.error("[center-pilot] errore inatteso nelle email della candidatura:", e);
   }

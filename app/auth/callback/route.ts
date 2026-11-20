@@ -4,6 +4,7 @@ import { resolveFeatureFlag } from "@/lib/feature-flags/resolve";
 import { hasAcceptedCurrentDocument, acceptCurrentLegalDocument } from "@/lib/legal/gate";
 import { requiresLegalAcceptanceBeforeAccess } from "@/lib/legal/consent";
 import { resolveDefaultLandingPath } from "@/lib/auth/default-landing";
+import { alertNewAccountIfRecent } from "@/lib/admin-alerts/send";
 
 // Handles the redirect from Supabase email confirmation / magic links / OAuth.
 export async function GET(request: Request) {
@@ -61,6 +62,10 @@ export async function GET(request: Request) {
       // default: prima di questo fix ci atterrava comunque, senza alcun
       // modo per raggiungere NextGen (VersionToggle.tsx è visibile solo
       // per le utenze di test di Fabrizio dal 27/08).
+      // 20/11/2026: avviso Admin "nuovo account" alla prima conferma (una
+      // volta sola, mai per gli account di prova). Best effort.
+      if (userId) await alertNewAccountIfRecent(userId);
+
       const next =
         explicitNext && explicitNext.startsWith("/")
           ? explicitNext

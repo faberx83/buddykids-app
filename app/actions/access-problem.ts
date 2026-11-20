@@ -18,6 +18,7 @@ import {
   checkAccessProblem,
   type AccessProblemInput,
 } from "@/lib/nextgen/access-problem";
+import { notifyAdmins } from "@/lib/admin-alerts/send";
 
 export type AccessProblemResult = { ok: true } | { ok: false; message: string; field?: "message" | "email"; suggestion?: string };
 
@@ -85,6 +86,9 @@ export async function submitAccessProblemAction(input: AccessProblemInput): Prom
       html: `<div style="font-family:-apple-system,Helvetica,Arial,sans-serif;color:#172A4D"><p>${escapeHtml(row.message)}</p><p><b>Email per rispondere:</b> ${row.contact_email ? escapeHtml(row.contact_email) : "non lasciata"}</p><p>La trovi in Admin → Segnalazioni beta.</p></div>`,
     }).catch(() => undefined);
   }
+
+  // 20/11/2026: anche una push agli Admin (l'email qui sopra resta com'era).
+  await notifyAdmins({ kind: "access_problem" });
 
   revalidatePath("/admin/segnalazioni-beta");
   return { ok: true };

@@ -11,6 +11,7 @@ import { createServiceClient } from "@/lib/supabase/service";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
 import { sendEmail, isEmailConfigured } from "@/lib/email";
 import { checkWaitlist, type WaitlistInput } from "@/lib/landing/waitlist";
+import { notifyAdmins } from "@/lib/admin-alerts/send";
 
 export type JoinWaitlistResult =
   | { ok: true; already: boolean }
@@ -68,6 +69,9 @@ export async function joinWaitlistAction(input: WaitlistInput): Promise<JoinWait
       html: `<div style="font-family:-apple-system,Helvetica,Arial,sans-serif;color:#172A4D"><p>Qualcuno vuole provare TRAMA:</p><p>${lines.join("<br>")}</p><p>La trovi in Admin → Lista d'attesa.</p></div>`,
     }).catch(() => undefined);
   }
+
+  // 20/11/2026: anche una push agli Admin (l'email qui sopra resta com'era).
+  if (!already) await notifyAdmins({ kind: "waitlist" });
 
   return { ok: true, already };
 }

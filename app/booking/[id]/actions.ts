@@ -19,6 +19,7 @@ import { emailCenterAdminsOfNewRequest } from "@/lib/centers/notify-center";
 // e nessun avviso ai gestori per una simulazione.
 import { getDemoAccess } from "@/lib/demo/access";
 import { DEMO_BLOCKED_MESSAGE, DEMO_DB_ERROR_TAG } from "@/lib/nextgen/demo-label";
+import { notifyAdmins } from "@/lib/admin-alerts/send";
 
 export interface CreateBookingInput {
   activityDbId: string;
@@ -401,5 +402,25 @@ export async function createBookingAction(
     console.error(`[createBookingAction] Errore inatteso durante la push al centro (bookingId=${bookingId}):`, e);
   }
 
+  // 20/11/2026: avviso Admin per la beta (dopo il ritorno anticipato delle
+  // attività demo; mai per gli account di prova).
+  await notifyBookingToAdmins(supabase, user.id, bookingId, input.activityDbId);
+
   return { bookingId };
+}
+
+async function notifyBookingToAdmins(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  userId: string,
+  bookingId: string,
+  activityDbId: string
+): Promise<void> {
+  try {
+    const { data } = await supabase.from("activities").select("name, centers ( name )").eq("id", activityDbId).maybeSingle();
+    const row = data as { name?: string | null; centers?: { name?: string | null } | { name?: string | null }[] | null } | null;
+    const center = Array.isArray(row?.centers) ? row?.centers[0] : row?.centers;
+    await notifyAdmins({ kind: "booking_request", actorId: userId, bookingId, activityName: row?.name ?? null, centerName: center?.name ?? null });
+  } catch (e) {
+    console.error("[createBookingAction] avviso Admin non inviato:", e);
+  }
 }

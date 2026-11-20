@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createServiceClient } from "@/lib/supabase/service";
 import { runDailyBriefing } from "@/lib/data/daily-briefing";
 import { sendBetaReportNoticeIfDue } from "@/lib/data/beta-report-notice";
+import { runAdminDailyAlerts } from "@/lib/admin-alerts/send";
 import { isBriefingHour, romeNow } from "@/lib/nextgen/daily-briefing";
 
 // TRAMA — IL BUONGIORNO DI TRAMA (20/10/2026). Chiamato SOLO da Vercel Cron
@@ -44,5 +45,8 @@ export async function GET(req: NextRequest) {
   // Admin Beta Cockpit (20/10/2026): stesso giro delle 7, nessun nuovo
   // scheduler. Avviso "report pronto" al founder se una finestra si è chiusa.
   const betaReport = await sendBetaReportNoticeIfDue(service, now);
-  return NextResponse.json({ ok: true, ...result, betaReport });
+  // 20/11/2026: avvisi Admin per la beta — account nuovi sfuggiti al callback
+  // e riepilogo delle ultime 24 ore (solo se è successo qualcosa).
+  const adminAlerts = await runAdminDailyAlerts(now);
+  return NextResponse.json({ ok: true, ...result, betaReport, adminAlerts });
 }
