@@ -12,18 +12,20 @@
 import { PRIVACY_2026_10_16_BOZZA1 } from "@/lib/legal/texts/privacy-2026-10-16-bozza1";
 import { TERMS_2026_10_16_BOZZA1 } from "@/lib/legal/texts/terms-2026-10-16-bozza1";
 import { PRIVACY_2026_11_20 } from "@/lib/legal/texts/privacy-2026-11-20";
+import { TERMS_2026_11_20 } from "@/lib/legal/texts/terms-2026-11-20";
 import type { LegalDocumentType } from "@/lib/legal/consent";
 
 export const LEGAL_TEXTS: Record<LegalDocumentType, Record<string, string>> = {
   // 20/11/2026: versione rivista dal legale (bozza v.2 del 19/11), titolare Fabrizio.
   privacy_notice: { "2026-10-16-bozza1": PRIVACY_2026_10_16_BOZZA1, "2026-11-20": PRIVACY_2026_11_20 },
-  terms: { "2026-10-16-bozza1": TERMS_2026_10_16_BOZZA1 },
+  // 20/11/2026: "togli la bozza1 dai termini di servizio" (Fabrizio).
+  terms: { "2026-10-16-bozza1": TERMS_2026_10_16_BOZZA1, "2026-11-20": TERMS_2026_11_20 },
 };
 
 /** Ultima versione preparata per tipo (quella da pubblicare con legal_publish_*.sql). */
 export const LATEST_LEGAL_VERSION: Record<LegalDocumentType, string> = {
   privacy_notice: "2026-11-20",
-  terms: "2026-10-16-bozza1",
+  terms: "2026-11-20",
 };
 
 export function legalTextFor(type: LegalDocumentType, version: string): string | null {
