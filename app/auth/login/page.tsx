@@ -10,6 +10,7 @@ import { createClient } from "@/lib/supabase/server";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
 import { normalizeBetaCode } from "@/lib/beta-cohorts/code";
 import BetaJoinLoggedIn from "@/components/auth/BetaJoinLoggedIn";
+import { joinBetaCohortWithCode } from "@/lib/beta-cohorts/membership";
 
 // Anteprima social (WhatsApp/etc.) per i link di invito Beta (?beta=CODICE,
 // condivisi manualmente da Fabrizio — vedi app/actions/beta-invites.ts).
@@ -28,12 +29,17 @@ export async function generateMetadata({
 }): Promise<Metadata> {
   const params = await searchParams;
   if (!params.beta) return {};
+  // 20/11/2026 (icona con l'invito dentro): chi mette TRAMA sulla schermata
+  // Home da questa pagina riparte dall'invito, non da "/".
+  const inviteCode = normalizeBetaCode(typeof params.beta === "string" ? params.beta : null);
+  const manifest = inviteCode ? `/manifest-invito?beta=${encodeURIComponent(inviteCode)}` : undefined;
 
   const title = "TRAMA — Private Beta";
   const description = "Organizza attività, settimane e impegni dei tuoi figli in un unico posto.";
   return {
     title,
     description,
+    ...(manifest ? { manifest } : {}),
     openGraph: {
       title,
       description,
@@ -95,7 +101,17 @@ export default async function LoginPage({
     const {
       data: { user },
     } = await supabase.auth.getUser();
-    if (user) return <BetaJoinLoggedIn code={betaCodeNormalized} />;
+    if (user) {
+      // Aperta dall'icona (start_url del manifest d'invito, ?da=app): niente
+      // schermata, si entra nell'app. Se manca la beta la si aggiunge in
+      // silenzio (stesse regole del link, solo famiglie).
+      if (params.da === "app") {
+        const { data: profile } = await supabase.from("profiles").select("role").eq("id", user.id).maybeSingle();
+        if ((profile as { role?: string } | null)?.role === "parent") await joinBetaCohortWithCode(user.id, betaCodeNormalized);
+        redirect("/nextgen");
+      }
+      return <BetaJoinLoggedIn code={betaCodeNormalized} />;
+    }
   }
   const signupCohort = betaCode ? await cohortForBetaInviteCode(betaCode) : null;
   const legalGateEnabled = await resolveFeatureFlag({

@@ -243,6 +243,12 @@ export default function LoginForm({
         await recordSignupLegalAcceptanceAction(data.user.id, marketingConsent);
       }
 
+      // 20/11/2026: invito usato, la pagina di benvenuto non deve più proporlo.
+      try {
+        window.localStorage.removeItem(BETA_CODE_STORAGE_KEY);
+      } catch {
+        /* niente */
+      }
       setLoading(false);
       setMessage("Registrazione completata! Controlla la tua email per confermare l'account prima di accedere.");
       setPassword("");

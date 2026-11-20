@@ -3,6 +3,7 @@ import FeatureSlider from "@/components/landing/FeatureSlider";
 import WaitlistForm from "@/components/landing/WaitlistForm";
 import TramaThread from "@/components/nextgen/TramaThread";
 import InstallAppHint from "@/components/landing/InstallAppHint";
+import InviteResumeBanner from "@/components/landing/InviteResumeBanner";
 
 // TRAMA — PAGINA DI BENVENUTO (20/10/2026): solo la parte visiva, senza
 // accessi a dati (quelli restano in app/benvenuto/page.tsx). Testi e
@@ -45,6 +46,8 @@ export default function BenvenutoView({
         <div className="bg-trama-sand">
         <section className="mx-auto grid max-w-5xl items-center gap-10 px-5 pb-14 pt-8 md:grid-cols-[minmax(0,1fr)_auto] md:pt-16">
           <div className="flex flex-col gap-5">
+            {/* 20/11/2026: chi ha già aperto un link d'invito torna alla registrazione. */}
+            <InviteResumeBanner />
             <span className="self-start rounded-full bg-trama-coral-soft px-3 py-1 text-[12.5px] font-bold text-trama-coral-ink">
               Beta gratuita · su invito
             </span>
